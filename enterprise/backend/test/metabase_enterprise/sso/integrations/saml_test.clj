@@ -1126,30 +1126,31 @@
       (mt/with-additional-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true
                                            saml-attribute-tenant "tenant"]
-          (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
-                                                        :name "Tenant McTenantson"
-                                                        :is_active false}
+          (mt/with-temp [:model/Tenant {tenant-id :id
+                                        collection-id :tenant_collection_id} {:slug "tenant-mctenantson"
+                                                                              :name "Tenant McTenantson"}
                          :model/User {existing-email :email} {:tenant_id tenant-id}]
             (do-with-some-validators-disabled!
              (fn []
-               (testing "a new user fails to log in"
-                 (mt/with-model-cleanup [:model/User]
-                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
-                                                                default-redirect-uri)
-                         response    (client/client-real-response :post 302 "/auth/sso" req-options)]
-                     (is (successful-login? response)))))
-               (testing "an existing user also fails to log in"
-                 ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
-                 ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-                 #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-                 (with-redefs [saml.p/saml-response->attributes
-                               (fn [_]
-                                 {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" existing-email
-                                  "tenant" "tenant-mctenantson"})]
-                   (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
-                                                                default-redirect-uri)
-                         response    (client/client-real-response :post 302 "/auth/sso" req-options)]
-                     (is (successful-login? response)))))))))))))
+               (mt/with-model-cleanup [:model/User]
+                 (doseq [[user-type email] [["new" "newuser@metabase.com"] ["existing" existing-email]]]
+                   (testing (str "a " user-type " user can log into a deactivated tenant")
+                     (mt/user-http-request :crowberto :put 200 (str "/api/ee/tenant/" tenant-id) {:is_active false})
+                     (is (true? (t2/select-one-fn :archived :model/Collection :id collection-id)))
+                     ;; with-redefs (cross-thread): /auth/sso runs on Jetty workers that don't inherit *local-redefs*
+                     ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+                     #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                     (with-redefs [saml.p/saml-response->attributes
+                                   (fn [_]
+                                     {"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" email
+                                      "tenant" "tenant-mctenantson"})]
+                       (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
+                                                                    default-redirect-uri)
+                             response    (client/client-real-response :post 302 "/auth/sso" req-options)]
+                         (is (successful-login? response))
+                         (is (true? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
+                         (is (true? (t2/select-one-fn :is_active :model/User :email email)))
+                         (is (false? (t2/select-one-fn :archived :model/Collection :id collection-id))))))))))))))))
 
 (deftest a-user-can-not-log-into-deactivated-tenant-via-saml-if-provisioning-is-off
   (with-other-sso-types-disabled!
