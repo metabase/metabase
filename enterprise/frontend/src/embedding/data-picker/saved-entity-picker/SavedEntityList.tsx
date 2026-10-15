@@ -22,7 +22,7 @@ interface SavedEntityListProps {
   selectedId?: TableId;
   databaseId?: DatabaseId | null;
   collectionId?: CollectionId;
-  onSelect: (tableOrModelId: string) => void;
+  onSelect: (tableId: TableId) => void;
 }
 
 export const SavedEntityList = ({
@@ -68,7 +68,8 @@ export const SavedEntityList = ({
           <Fragment>
             {filteredList.map((collectionItem) => {
               const { id, name, moderated_status } = collectionItem;
-              const virtualTableId = getQuestionVirtualTableId(id);
+              const tableId =
+                type === "table" ? id : getQuestionVirtualTableId(id);
 
               return (
                 <SelectList.Item
@@ -78,14 +79,14 @@ export const SavedEntityList = ({
                   }}
                   key={id}
                   id={id}
-                  isSelected={selectedId === virtualTableId}
+                  isSelected={selectedId === tableId}
                   size="small"
                   name={tc(name)}
                   icon={{
                     name: CARD_INFO[type].icon,
                     size: 16,
                   }}
-                  onSelect={() => onSelect(virtualTableId)}
+                  onSelect={() => onSelect(tableId)}
                   rightIcon={PLUGIN_MODERATION.getStatusIcon(
                     moderated_status ?? undefined,
                   )}

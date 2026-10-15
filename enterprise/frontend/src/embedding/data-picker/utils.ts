@@ -1,4 +1,5 @@
 import {
+  LIBRARY_INFO_ITEM,
   METRICS_INFO_ITEM,
   MODELS_INFO_ITEM,
   RAW_DATA_INFO_ITEM,
@@ -11,12 +12,14 @@ export function getDataTypes({
   hasTables,
   hasSavedQuestions,
   hasMetrics,
+  hasLibrary,
   hasNestedQueriesEnabled,
 }: {
   hasTables: boolean;
   hasModels: boolean;
   hasSavedQuestions: boolean;
   hasMetrics: boolean;
+  hasLibrary: boolean;
   hasNestedQueriesEnabled: boolean;
 }): DataTypeInfoItem[] {
   const dataTypes: DataTypeInfoItem[] = [];
@@ -35,6 +38,10 @@ export function getDataTypes({
 
   if (hasNestedQueriesEnabled && hasMetrics) {
     dataTypes.push(METRICS_INFO_ITEM);
+  }
+
+  if (hasLibrary) {
+    dataTypes.push(LIBRARY_INFO_ITEM);
   }
 
   return dataTypes;
