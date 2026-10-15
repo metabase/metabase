@@ -26,7 +26,8 @@
   [{:keys [rule id place ids ref]}]
   (case rule
     (:place-inside :kind-fits :namespace
-                   :library-content :table-collection)    [id place]
+                   :library-content :table-collection
+                   :action-area)    [id place]
     (:refs-closed :ref-kind)                [id (second ref)]
     (:acyclic :unique-key :nested-identity) (sort snapshot/compare-identities ids)
     (:root :area-root)                      [id]))

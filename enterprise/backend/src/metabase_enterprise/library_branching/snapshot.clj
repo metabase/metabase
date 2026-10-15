@@ -85,6 +85,11 @@
   {:action    {:model #{:model}}
    :dashboard {:action #{:action} :dashboard #{:dashboard}}})
 
+(def action-namespaces
+  "The `:namespace` attributes of the collections that can hold an action with no model: the data actions and data
+  apps namespaces."
+  #{"data-actions" "data-apps"})
+
 (def library-content
   "`{collection-type #{content-type}}`: the content types that a collection of each Library type can hold, as master's
   Library content check has them ([[content-type]]). A collection of another type holds any content type."

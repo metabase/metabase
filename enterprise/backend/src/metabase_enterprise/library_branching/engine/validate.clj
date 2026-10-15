@@ -145,6 +145,23 @@
         :when   rule]
     {:rule rule :id id :place place}))
 
+(defn- model-ref?
+  [[role]]
+  (= :model role))
+
+(defn- action-area-findings
+  [s may-contain]
+  (for [[id {:keys [kind place refs]}] (sorted-items s)
+        :let  [container (get s place)]
+        :when (and (= :action kind)
+                   container
+                   ;; A container that cannot hold an action is a :kind-fits finding.
+                   (contains? (get may-contain (:kind container) #{}) kind)
+                   (not-any? model-ref? refs)
+                   (not (and (= :collection (:kind container))
+                             (contains? snapshot/action-namespaces (:namespace (:attrs container))))))]
+    {:rule :action-area :id id :place place}))
+
 (defn- area-root-findings
   [s areas]
   (for [[id _] (sorted-items s)
@@ -180,7 +197,10 @@
   - `{:rule :library-content :id i :place p}`: `p` is a collection whose `:type` `:library-content` names, and that
     type cannot hold the content type of `i` ([[snapshot/content-type]]);
   - `{:rule :table-collection :id i :place p}`: the published table `i` is in the collection `p`, whose type is not
-    [[snapshot/table-collection-type]], and `p` has no `:library-content` finding for `i`.
+    [[snapshot/table-collection-type]], and `p` has no `:library-content` finding for `i`;
+  - `{:rule :action-area :id i :place p}`: the action `i` has no reference of role `:model`, and its container `p`, an
+    item of `s` that `:may-contain` lets hold an action, is not a collection of a namespace of
+    [[snapshot/action-namespaces]].
 
   An area root is a place that names an identity of `:areas` and no item of `s`.
 
@@ -190,7 +210,8 @@
   ([[snapshot/unique-keys]]); `:ref-kinds`, `{kind {role #{kind}}}` ([[snapshot/ref-kinds]]); `:nested-ids`, `{kind
   path}` ([[snapshot/nested-ids]]); `:library-content`, `{collection-type #{content-type}}`
   ([[snapshot/library-content]]). These tables can name kinds that are not in [[snapshot/kinds]]: validate reads only
-  the kind, place, references, `:namespace`, `:type`, `:dashboard_id`, unique key and nested identities of an item."
+  the kind, place, references, `:namespace`, `:type`, `:dashboard_id`, unique key and nested identities of an item,
+  and the kind `:action` has the rule `:action-area`."
   ([s]
    (validate s {}))
   ([s {:keys [roots areas may-contain unique-keys ref-kinds nested-ids library-content]
@@ -210,4 +231,5 @@
                 (ref-kind-findings s ref-kinds)
                 (root-findings s roots)
                 (area-root-findings s areas)
-                (library-findings s library-content)))))
+                (library-findings s library-content)
+                (action-area-findings s may-contain)))))

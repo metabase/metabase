@@ -27,10 +27,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private model-less-namespaces
-  "The namespaces of the collections that an action with no model can be in."
-  #{"data-actions" "data-apps"})
-
 (defn- transforms
   "`{attribute {:export f :import g}}`: the serdes transforms of the attributes whose column the serdes specs of Action
   and QueryAction transform."
@@ -126,7 +122,7 @@
                                      " root of the Data actions area.")))
   (when-not (tree/place-area :action id place)
     (let [row (tree/place-collection id place)]
-      (when-not (contains? model-less-namespaces (:namespace row))
+      (when-not (contains? snapshot/action-namespaces (:namespace row))
         (instance/refuse! :place id "An action with no model is in a data actions or data app collection."
                           {:place place}))
       row)))
