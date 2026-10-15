@@ -427,6 +427,17 @@
           (testing tool-name
             (is (contains? mutating tool-name))))))))
 
+(def ^:private additive-only-tools
+  "Names of the mutating tools that declare `destructiveHint false`, because they only create."
+  #{"duplicate_content"})
+
+;; The registry defaults `destructiveHint` to false, so this turns that default around for mutating tools.
+(deftest mutating-tools-are-destructive-test
+  (testing "a mutating tool declares itself destructive unless it only creates (#84324)"
+    (let [hints (update-vals (mutating-tools) (comp :destructiveHint :annotations))]
+      (is (= (zipmap additive-only-tools (repeat false))
+             (into {} (remove (comp true? val)) hints))))))
+
 (deftest delivery-tools-are-open-world-test
   (testing "delivery tools are open-world: they send to email addresses and Slack channels outside Metabase"
     (let [delivery (filter #(= "agent:delivery:write" (:scope %)) (@#'registry/manifest))]
