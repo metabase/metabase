@@ -9,13 +9,15 @@
 
 (def kinds
   "The closed set of item kinds."
-  #{:collection :metric :published-table :snippet})
+  #{:collection :measure :metric :published-table :segment :snippet})
 
 (def may-contain
   "`{kind #{kind}}`: for each kind of [[kinds]], the kinds of the items that an item of that kind can contain."
   {:collection      #{:collection :metric :published-table :snippet}
+   :measure         #{}
    :metric          #{}
-   :published-table #{}
+   :published-table #{:measure :segment}
+   :segment         #{}
    :snippet         #{}})
 
 (registry/def ::kind

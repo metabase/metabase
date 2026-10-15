@@ -83,17 +83,19 @@
     (= refs (refs-of spec id attrs))))
 
 (defn item-schema
-  "The schema of the items of `spec`: a closed map, with a container identity or nil as `:place`, the closed
-  attributes of the spec, and the references of the attributes as `:refs`."
-  [spec]
-  [:and
-   [:map {:closed true}
-    [:kind [:= (:kind spec)]]
-    [:name [:string {:min 1}]]
-    [:place [:maybe ::snapshot/entity-id]]
-    [:refs [:set ::snapshot/ref]]
-    [:attrs (attrs-schema spec)]]
-   [:fn {:error/message "the references are not those of the attributes"} #(refs-consistent? spec %)]])
+  "The schema of the items of `spec`: a closed map, with `:place` of the spec's `:place-schema` (default a container
+  identity or nil), the closed attributes of the spec, and the references of the attributes as `:refs`; and each
+  schema of the spec's `:checks` on the whole item."
+  [{:keys [place-schema checks] :or {place-schema [:maybe ::snapshot/entity-id]} :as spec}]
+  (into [:and
+         [:map {:closed true}
+          [:kind [:= (:kind spec)]]
+          [:name [:string {:min 1}]]
+          [:place place-schema]
+          [:refs [:set ::snapshot/ref]]
+          [:attrs (attrs-schema spec)]]
+         [:fn {:error/message "the references are not those of the attributes"} #(refs-consistent? spec %)]]
+        checks))
 
 (defn encode-item
   "The document of `item` of `spec`, whose identity is `id`."
@@ -139,7 +141,9 @@
      :encode-attrs f                      ; optional: (f attrs), the attribute part of the document
      :decode-attrs f                      ; optional: its inverse
      :refs         f                      ; (f id attrs): the item's :refs
-     :refs-id      f}                     ; optional: (f item), the identity that :refs needs, for the schema
+     :refs-id      f                      ; optional: (f item), the identity that :refs needs, for the schema
+     :place-schema s                      ; optional: the schema of :place; default an entity id or nil
+     :checks       [s ...]}               ; optional: more schemas of the whole item
 
   Throws when an attribute key is `:kind`, `:id`, the name key or the place key."
   [{:keys [kind word directory? attrs] :as spec} schema-key]
