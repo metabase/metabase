@@ -41,11 +41,13 @@
                                                        :fence    (or fence (constantly nil))})]
           (cond
             (:ok result)
-            {:result         :discarded
-             :base           b
-             :steps          steps
-             :discarded      (vec ids)
-             :trashed-in-use (get-in result [:ok :trashed-in-use])}
+            (let [{:keys [trashed-in-use renamed]} (:ok result)]
+              (cond-> {:result         :discarded
+                       :base           b
+                       :steps          steps
+                       :discarded      (vec ids)
+                       :trashed-in-use trashed-in-use}
+                renamed (assoc :renamed renamed)))
 
             (and (:stale result) (< attempt retries))
             (recur (inc attempt))
@@ -61,9 +63,10 @@
   synced snapshot of `inst` is the snapshot of its base, and the base stays. `store` and `branch` give the branch that
   must still hold the base. Returns one of:
 
-  - `{:result :discarded :base b :steps plan :discarded ids :trashed-in-use m}`: `ids` are the items whose local
-    change it wrote over, in the order of the identities; `m` is `{identity [user ...]}`, the items that it moved to
-    the trash and that content outside the Library uses;
+  - `{:result :discarded :base b :steps plan :discarded ids :trashed-in-use m :renamed r}`: `ids` are the items whose
+    local change it wrote over, in the order of the identities; `m` is `{identity [user ...]}`, the items that it
+    moved to the trash and that content outside the Library uses; `r` is `{identity name}`, the items that it moved to
+    the trash with a new name, so that the base could take their keys, and is absent when there is none;
   - `{:result :up-to-date :base b}`: the instance has no local change;
   - `{:result :no-base}`: the instance has no base, so there is nothing to go back to;
   - `{:result :base-lost :base b}`: no branch of the repository holds the base (also when that became so during the

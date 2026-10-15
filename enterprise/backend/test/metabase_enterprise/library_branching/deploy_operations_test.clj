@@ -47,6 +47,15 @@
     (is (=? {:outcome {:kind "deployed" :discarded 2 :trashed 0 :trashed_in_use []}}
             (operations/deploy-task-result "main" {:result :deployed :head "h" :steps [] :trashed-in-use {}
                                                    :discarded ["a" "b"]}))))
+  (testing "a deploy that renamed items for their trash counts them"
+    (is (= {:outcome {:kind "deployed" :branch "main" :commit "h" :count 2 :trashed 0 :trashed_in_use []
+                      :discarded 1 :renamed 1}}
+           (operations/deploy-task-result "main" {:result         :deployed
+                                                  :head           "h"
+                                                  :steps          [{:id "a" :interim {}} {:id "b" :write {}} {:id "a" :trash true}]
+                                                  :trashed-in-use {}
+                                                  :discarded      ["a"]
+                                                  :renamed        {"a" "A (trashed a)"}}))))
   (is (= {:outcome {:kind "up-to-date" :branch "main" :commit "h"}}
          (operations/deploy-task-result "main" {:result :up-to-date :head "h"})))
   (doseq [[result message]

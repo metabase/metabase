@@ -40,11 +40,12 @@
 (defprotocol Instance
   "One Metabase instance as library branching sees it."
   (read-snapshot [inst]
-    "`{:snapshot s :shadowed-tables ts}`: `s` is the synced snapshot of the instance, the content of every in-scope
-    item of the kinds of the instance, read in one read-only transaction: one read point for the whole snapshot. A
-    save that commits after the read point is not in `s`. `ts`, optional, holds the published tables that scope
-    leaves out because another published table owns their natural key (`scope/shadowed-tables`), at the same read
-    point. Throws when the calling thread holds an open transaction.")
+    "`{:snapshot s :shadowed-tables ts :env e}`: `s` is the synced snapshot of the instance, the content of every
+    in-scope item of the kinds of the instance, read in one read-only transaction: one read point for the whole
+    snapshot. A save that commits after the read point is not in `s`. `ts`, optional, holds the published tables that
+    scope leaves out because another published table owns their natural key (`scope/shadowed-tables`), at the same
+    read point. `e`, optional, is the environment of the instance (`format.manifest/env`), at the same read point.
+    Throws when the calling thread holds an open transaction.")
   (base [inst]
     "The base commit id, or nil before the first sync with the repository of the instance.")
   (base-digests [inst commit]
@@ -52,6 +53,9 @@
   (table-names [inst table-keys]
     "`{table-key display-name}`: the display name that warehouse sync gives each table of `table-keys` on this
     instance, with no value that a user set. A key of no table of the instance has no entry.")
+  (card-entity-ids [inst row-ids]
+    "`{row-id entity-id}`: the entity id of the card of each row id of `row-ids` on this instance, in the trash or
+    not. A row id of no card has no entry.")
   (apply-plan! [inst plan opts]
     "Carries out `plan`, the steps of `engine.plan/plan`, in one transaction: lock each item and check its
     precondition, then write, link or trash each item, then move the base from `(:base opts)` to `(:new-base opts)`

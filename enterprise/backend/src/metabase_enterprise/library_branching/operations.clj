@@ -109,16 +109,17 @@
 (defn pull-task-result
   "The task result of `result`, a result of `pull/pull!` of branch `branch`: `{:outcome o}` when the pull applied or
   was up to date, else `{:error message}`. The outcome of an applied pull has `:trashed_in_use`, the
-  [[trashed-in-use-entries]]. With conflicts or violations, the error has an outcome of kind \"conflicts\" that lists
-  them."
-  [branch {:keys [result head steps trashed-in-use findings conflicts violations ids refused]}]
+  [[trashed-in-use-entries]], and, when it trashed items with a new name, `:renamed`, their number. With conflicts or
+  violations, the error has an outcome of kind \"conflicts\" that lists them."
+  [branch {:keys [result head steps trashed-in-use findings conflicts violations ids refused renamed]}]
   (case result
-    :pulled     {:outcome {:kind           "pulled"
-                           :branch         branch
-                           :commit         head
-                           :count          (step-count steps)
-                           :trashed        (count trashed-in-use)
-                           :trashed_in_use (trashed-in-use-entries steps trashed-in-use)}}
+    :pulled     {:outcome (cond-> {:kind           "pulled"
+                                   :branch         branch
+                                   :commit         head
+                                   :count          (step-count steps)
+                                   :trashed        (count trashed-in-use)
+                                   :trashed_in_use (trashed-in-use-entries steps trashed-in-use)}
+                            renamed (assoc :renamed (count renamed)))}
     :up-to-date {:outcome {:kind "up-to-date" :branch branch :commit head}}
     :invalid    {:error (format "The head of branch %s breaks the rules %s, so nothing was pulled."
                                 branch (rules findings))}
@@ -157,8 +158,9 @@
 (defn deploy-task-result
   "The task result of `result`, a result of `deploy/deploy!` of branch `branch`: `{:outcome o}` when the deploy applied
   or was up to date, else `{:error message}`. The outcome of an applied deploy has `:trashed_in_use`, the
-  [[trashed-in-use-entries]]; of a deploy that discarded drift, also `:discarded`, the number of items of the drift."
-  [branch {:keys [result head steps trashed-in-use findings ids refused discarded]}]
+  [[trashed-in-use-entries]]; of a deploy that discarded drift, also `:discarded`, the number of items of the drift;
+  of a deploy that trashed items with a new name, `:renamed`, their number."
+  [branch {:keys [result head steps trashed-in-use findings ids refused discarded renamed]}]
   (case result
     :deployed   {:outcome (cond-> {:kind           "deployed"
                                    :branch         branch
@@ -166,7 +168,8 @@
                                    :count          (step-count steps)
                                    :trashed        (count trashed-in-use)
                                    :trashed_in_use (trashed-in-use-entries steps trashed-in-use)}
-                            discarded (assoc :discarded (count discarded)))}
+                            discarded (assoc :discarded (count discarded))
+                            renamed   (assoc :renamed (count renamed)))}
     :up-to-date {:outcome {:kind "up-to-date" :branch branch :commit head}}
     :invalid    {:error (format "The head of branch %s breaks the rules %s, so nothing was deployed."
                                 branch (rules findings))}
@@ -187,16 +190,17 @@
   "The task result of `result`, a result of `discard/discard!` on branch `branch`: `{:outcome o}` when the discard
   applied or there was nothing to discard, else `{:error message}`. The outcome of an applied discard has `:count`,
   the number of items that it wrote or trashed, `:discarded`, the number of local changes that it wrote over, and the
-  trashed items as for a pull."
-  [branch {:keys [result base steps discarded trashed-in-use findings ids refused]}]
+  trashed items as for a pull, `:renamed` included."
+  [branch {:keys [result base steps discarded trashed-in-use findings ids refused renamed]}]
   (case result
-    :discarded  {:outcome {:kind           "discarded"
-                           :branch         branch
-                           :commit         base
-                           :count          (step-count steps)
-                           :discarded      (count discarded)
-                           :trashed        (count trashed-in-use)
-                           :trashed_in_use (trashed-in-use-entries steps trashed-in-use)}}
+    :discarded  {:outcome (cond-> {:kind           "discarded"
+                                   :branch         branch
+                                   :commit         base
+                                   :count          (step-count steps)
+                                   :discarded      (count discarded)
+                                   :trashed        (count trashed-in-use)
+                                   :trashed_in_use (trashed-in-use-entries steps trashed-in-use)}
+                            renamed (assoc :renamed (count renamed)))}
     :up-to-date {:outcome {:kind "nothing-to-discard" :branch branch :commit base}}
     :no-base    {:error "The instance has no base yet, so it has no changes to discard."}
     :base-lost  {:error (format "No branch of the repository holds the base %s, so nothing was discarded." base)}

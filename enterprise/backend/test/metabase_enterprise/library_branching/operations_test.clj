@@ -65,6 +65,14 @@
                                                                {:id "b" :trash true :pre revenue}]
                                               :trashed-in-use {"b" [{:kind :card :id "x" :name "X"}
                                                                     {:kind :dashboard :id "y" :name "Y"}]}})))
+  (testing "a pull that renamed items for their trash counts them"
+    (is (= {:outcome {:kind "pulled" :branch "main" :commit "h" :count 2 :trashed 0 :trashed_in_use []
+                      :renamed 1}}
+           (operations/pull-task-result "main" {:result         :pulled
+                                                :head           "h"
+                                                :steps          [{:id "a" :interim {}} {:id "b" :write {}} {:id "a" :trash true}]
+                                                :trashed-in-use {}
+                                                :renamed        {"a" "A (trashed a)"}}))))
   (is (= {:outcome {:kind "up-to-date" :branch "main" :commit "h"}}
          (operations/pull-task-result "main" {:result :up-to-date :head "h"})))
   (doseq [[result message]
@@ -141,6 +149,15 @@
                                                                   {:id "x" :trash true :pre revenue}]
                                                  :discarded      ["a" "x"]
                                                  :trashed-in-use {"x" [{:kind :card :id "u" :name "U"}]}})))
+  (testing "a discard that renamed items for their trash counts them"
+    (is (=? {:outcome {:kind "discarded" :count 2 :discarded 1 :renamed 1}}
+            (operations/discard-task-result "main" {:result         :discarded
+                                                    :base           "b"
+                                                    :steps          [{:id "a" :interim {}} {:id "b" :write {}}
+                                                                     {:id "a" :trash true}]
+                                                    :discarded      ["b"]
+                                                    :trashed-in-use {}
+                                                    :renamed        {"a" "A (trashed a)"}}))))
   (is (= {:outcome {:kind "nothing-to-discard" :branch "main" :commit "b"}}
          (operations/discard-task-result "main" {:result :up-to-date :base "b"})))
   (doseq [[result message]

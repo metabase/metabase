@@ -3996,6 +3996,9 @@
            collections
            dashboards
            events
+           lib
+           lib.metadata
+           lib.schema
            models
            queries
            request

@@ -40,10 +40,11 @@
       (boolean (some #(and (contains? % a) (contains? % b)) shared-tables))))
 
 (def unique-keys
-  "`{kind {:path path :name? bool}}`: the kinds whose key the app DB keeps unique over all rows of the kind, the path of
-  that key in an item, and whether the key is a name. Two names are one key iff their [[fold-name]] forms are equal.
-  An item whose key is nil has none."
-  {:snippet {:path [:name] :name? true}})
+  "`{kind {:path path :name? bool :max-length n}}`: the kinds whose key the app DB keeps unique over all rows of the
+  kind, the trash included, the path of that key in an item, whether the key is a name, and the most characters that
+  the app DB holds for the key. Two names are one key iff their [[fold-name]] forms are equal. An item whose key is
+  nil has none."
+  {:snippet {:path [:name] :name? true :max-length 254}})
 
 (defn fold-name
   "Name `s` in the form in which two names are one key: its primary weights under utf8mb4_unicode_ci, so two names are
