@@ -271,12 +271,25 @@
                      :mcp-ui-credential claims)))))
 
 (defn- auth-method
-  [session-info api-key-info oauth-info mcp-ui-info embedding-route]
-  (or ({"guest-embed" "guest"} embedding-route embedding-route)
-      (cond session-info (or (:auth-provider session-info) "session")
-            api-key-info "api-key"
-            oauth-info   "oauth"
-            mcp-ui-info  "mcp-ui")))
+  [session-info api-key-info oauth-info mcp-ui-info]
+  (cond
+    (= "guest-embed" (analytics/get-route))
+    "guest"
+
+    (analytics/get-route)
+    (analytics/get-route)
+
+    session-info
+    (or (:auth-provider session-info) "session")
+
+    api-key-info
+    "api-key"
+
+    oauth-info
+    "oauth"
+
+    mcp-ui-info
+    "mcp-ui"))
 
 (defn- bearer-only-credentials
   "The credential a request on a bearer-only path authenticates with: its OAuth bearer token, and nothing else."
@@ -303,8 +316,7 @@
         (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
           (bearer-only-credentials options request)
           (credentials options request))
-        embedding-route (analytics/get-route)
-        auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info embedding-route)]
+        auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info)]
     (merge
      request
      ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
