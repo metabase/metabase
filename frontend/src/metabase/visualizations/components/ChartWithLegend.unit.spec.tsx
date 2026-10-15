@@ -2,6 +2,7 @@ import type { CSSProperties, MouseEvent, ReactNode } from "react";
 
 import { render, screen } from "__support__/ui";
 import type { HoveredObject } from "metabase/viz-core";
+import type { LegendPosition } from "metabase-types/api";
 
 import {
   ChartWithLegend,
@@ -29,7 +30,7 @@ interface SetupProps {
   aspectRatio?: number;
   height: number;
   width: number;
-  showLegend?: boolean;
+  legendPosition?: LegendPosition;
   isDashboard?: boolean;
   isDocument?: boolean;
   onToggleSeriesVisibility?: (event: MouseEvent, index: number) => void;
@@ -41,7 +42,6 @@ const defaultProps: SetupProps = {
     ["Series 2", "50%"],
   ],
   legendColors: ["Red", "Green"],
-  showLegend: true,
   width: 800,
   height: 600,
   gridSize: { width: 8, height: 6 },
@@ -104,8 +104,28 @@ describe("ChartWithLegend", () => {
   });
 });
 
+describe("ChartWithLegend with an explicit position", () => {
+  it("should render no legend when the position is off", () => {
+    setup({ legendPosition: "off" });
+
+    expect(screen.getByText("Chart stub")).toBeInTheDocument();
+    expect(screen.queryByTestId("chart-legend")).not.toBeInTheDocument();
+  });
+
+  it.each<LegendPosition>(["top", "bottom", "left", "right"])(
+    "should render no %s legend below the width where the automatic layout drops it",
+    (legendPosition) => {
+      setup({ legendPosition, width: HIDE_HORIZONTAL_LEGEND_THRESHOLD - 1 });
+
+      expect(screen.getByText("Chart stub")).toBeInTheDocument();
+      expect(screen.queryByTestId("chart-legend")).not.toBeInTheDocument();
+    },
+  );
+});
+
 describe("getChartLayout", () => {
   const defaultInput: Parameters<typeof getChartLayout>[0] = {
+    position: "auto",
     width: 800,
     height: 400,
     gridSize: undefined,
@@ -118,6 +138,7 @@ describe("getChartLayout", () => {
 
     expect(layout).toMatchObject({
       type: "horizontal",
+      isLegendBeforeChart: true,
       LegendComponent: LegendVertical,
       chartWidth: 386,
       chartHeight: 386,
@@ -155,7 +176,9 @@ describe("getChartLayout", () => {
 
     expect(layout).toMatchObject({
       type: "vertical",
+      isLegendBeforeChart: false,
       LegendComponent: LegendHorizontal,
+      isLegendSingleRow: false,
       chartWidth: 772,
       chartHeight: 386,
       flexChart: false,
@@ -190,4 +213,82 @@ describe("getChartLayout", () => {
 
     expect(layout).toMatchObject({ type: "small", hasDimensions: false });
   });
+
+  it("should use the small layout without a legend when the position is off", () => {
+    expect(getChartLayout({ ...defaultInput, position: "off" })).toMatchObject({
+      type: "small",
+      LegendComponent: undefined,
+      hasDimensions: true,
+    });
+  });
+
+  it.each([
+    { position: "left" as const, isLegendBeforeChart: true },
+    { position: "right" as const, isLegendBeforeChart: false },
+  ])(
+    "should place a $position legend beside the chart even when the grid is tall",
+    ({ position, isLegendBeforeChart }) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        height: 600,
+        gridSize: { width: 3, height: 8 },
+        legendTitles: [["Series 1", "50%"], "Series 2"],
+      });
+
+      expect(layout).toMatchObject({
+        type: "horizontal",
+        isLegendBeforeChart,
+        LegendComponent: LegendVertical,
+        flexChart: true,
+      });
+      expect(layout.processedLegendTitles).toEqual([
+        ["Series 1", "50%"],
+        "Series 2",
+      ]);
+    },
+  );
+
+  it.each([
+    { position: "top" as const, isLegendBeforeChart: true },
+    { position: "bottom" as const, isLegendBeforeChart: false },
+  ])(
+    "should stack a $position legend with the chart even when the area is wide",
+    ({ position, isLegendBeforeChart }) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        legendTitles: [["Series 1", "50%"], "Series 2"],
+      });
+
+      expect(layout).toMatchObject({
+        type: "vertical",
+        isLegendBeforeChart,
+        LegendComponent: LegendHorizontal,
+        isLegendSingleRow: true,
+        flexChart: true,
+      });
+      expect(layout.processedLegendTitles).toEqual([
+        "Series 1 50%",
+        "Series 2",
+      ]);
+    },
+  );
+
+  it.each<LegendPosition>(["top", "bottom", "left", "right"])(
+    "should fall back to the small layout for a %s legend where the automatic layout does",
+    (position) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        width: 200,
+        height: 100,
+      });
+
+      expect(layout).toMatchObject({
+        type: "small",
+        LegendComponent: undefined,
+      });
+    },
+  );
 });

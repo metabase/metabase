@@ -55,6 +55,8 @@ export const Legend = ({
   const overflowIndex = visibleIndex + visibleLength;
   const visibleItems = items.slice(visibleIndex, overflowIndex);
   const overflowLength = items.length - overflowIndex;
+  const shouldPinRowItemWidths = !isVertical && overflowLength > 0;
+  const lastVisibleIndex = visibleItems.length - 1;
   const { itemGap, rowGap, maxVerticalWidth, typography } = LEGEND_SIZES[size];
 
   return (
@@ -77,6 +79,10 @@ export const Legend = ({
         return (
           <LegendItem
             key={item.key}
+            className={cx({
+              [S.pinnedRowItem]:
+                shouldPinRowItemWidths && index < lastVisibleIndex,
+            })}
             item={item}
             index={itemIndex}
             isMuted={hovered != null && itemIndex !== hovered.index}
@@ -116,7 +122,7 @@ export const Legend = ({
                 hovered={hovered}
                 visibleIndex={overflowIndex}
                 visibleLength={overflowLength}
-                isVertical={isVertical}
+                isVertical
                 size={size}
                 onHoverChange={onHoverChange}
                 onSelectSeries={onSelectSeries}

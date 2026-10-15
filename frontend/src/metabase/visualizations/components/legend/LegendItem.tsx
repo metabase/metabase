@@ -17,6 +17,7 @@ export interface LegendItemData {
 }
 
 interface LegendItemProps {
+  className?: string;
   item: LegendItemData;
   size?: LegendSize;
   index: number;
@@ -32,6 +33,7 @@ interface LegendItemProps {
 }
 
 const LegendItemInner = ({
+  className,
   item,
   size = "sm",
   index,
@@ -62,7 +64,7 @@ const LegendItemInner = ({
 
   return (
     <Flex
-      className={S.root}
+      className={cx(S.root, className)}
       align="center"
       miw={0}
       opacity={isMuted ? 0.4 : 1}

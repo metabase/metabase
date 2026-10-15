@@ -5,12 +5,18 @@ import CS from "metabase/css/core/index.css";
 import { Box, Flex } from "metabase/ui";
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { HoveredObject } from "metabase/viz-core";
+import type { LegendPosition } from "metabase-types/api";
 
 import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
 import type { LegendItemData } from "./LegendItem";
 import S from "./LegendLayout.module.css";
-import { LEGEND_SIZES, getLegendLayout, getLegendSize } from "./layout";
+import {
+  HIDDEN_LEGEND_LAYOUT,
+  LEGEND_SIZES,
+  getLegendLayout,
+  getLegendSize,
+} from "./layout";
 
 interface LegendLayoutProps {
   className?: string;
@@ -21,6 +27,7 @@ interface LegendLayoutProps {
   chartHeight?: number;
   indent?: number;
   hasLegend: boolean;
+  legendPosition?: LegendPosition;
   alwaysVisible?: boolean;
   actionButtons?: ReactNode;
   isFullscreen?: boolean;
@@ -47,6 +54,7 @@ export const LegendLayout = ({
   chartHeight,
   indent = 0,
   hasLegend,
+  legendPosition = "auto",
   alwaysVisible,
   actionButtons,
   isFullscreen,
@@ -66,6 +74,7 @@ export const LegendLayout = ({
     () =>
       getLegendLayout({
         items,
+        position: legendPosition,
         width,
         height,
         chartHeight,
@@ -74,9 +83,11 @@ export const LegendLayout = ({
         fontFamily,
         measureText,
         alwaysVisible,
+        isReversed,
       }),
     [
       items,
+      legendPosition,
       width,
       height,
       chartHeight,
@@ -85,10 +96,14 @@ export const LegendLayout = ({
       fontFamily,
       measureText,
       alwaysVisible,
+      isReversed,
     ],
   );
 
-  const isVisible = hasDimensions && hasLegend && layout.type !== "hidden";
+  const visibleLayout =
+    hasDimensions && hasLegend ? layout : HIDDEN_LEGEND_LAYOUT;
+  const isLegendBeforeChart =
+    visibleLayout.type !== "hidden" && visibleLayout.isBeforeChart;
   const { horizontalGap, verticalGap } = LEGEND_SIZES[size];
 
   const legendProps = {
@@ -101,45 +116,53 @@ export const LegendLayout = ({
     isReversed,
   };
 
+  const horizontalLegend = visibleLayout.type === "horizontal" && (
+    <Flex
+      justify="center"
+      flex="0 0 auto"
+      miw={0}
+      mt={visibleLayout.isBeforeChart ? 0 : horizontalGap}
+      mb={visibleLayout.isBeforeChart ? horizontalGap : 0}
+      ml={Math.max(indent, 0)}
+      mr={Math.max(-indent, 0)}
+      data-testid="legend-horizontal"
+    >
+      <Legend {...legendProps} visibleLength={visibleLayout.visibleCount} />
+    </Flex>
+  );
+
+  const verticalLegend = visibleLayout.type === "vertical" && (
+    <Box
+      className={cx(S.verticalLegend, CS.overflowHidden)}
+      flex="0 0 auto"
+      miw={0}
+      ml={visibleLayout.isBeforeChart ? 0 : verticalGap}
+      mr={visibleLayout.isBeforeChart ? verticalGap : 0}
+      style={{ width: visibleLayout.width }}
+      data-testid="legend-vertical"
+    >
+      <Legend
+        {...legendProps}
+        visibleLength={visibleLayout.visibleCount}
+        isVertical
+      />
+    </Box>
+  );
+
   return (
     <Flex className={className} flex="1 1 auto" miw={0} mih={0}>
+      {isLegendBeforeChart && verticalLegend}
       <Flex direction="column" flex="1 1 auto" miw={0} mih={0}>
         {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
+        {isLegendBeforeChart && horizontalLegend}
         {hasDimensions && (
           <Flex direction="column" flex="1 0 auto" mih={0}>
             {children}
           </Flex>
         )}
-        {isVisible && layout.type === "horizontal" && (
-          <Flex
-            justify="center"
-            flex="0 0 auto"
-            miw={0}
-            mt={horizontalGap}
-            ml={Math.max(indent, 0)}
-            mr={Math.max(-indent, 0)}
-            data-testid="legend-horizontal"
-          >
-            <Legend {...legendProps} />
-          </Flex>
-        )}
+        {!isLegendBeforeChart && horizontalLegend}
       </Flex>
-      {isVisible && layout.type === "vertical" && (
-        <Box
-          className={cx(S.verticalLegend, CS.overflowHidden)}
-          flex="0 0 auto"
-          miw={0}
-          ml={verticalGap}
-          style={{ width: layout.width }}
-          data-testid="legend-vertical"
-        >
-          <Legend
-            {...legendProps}
-            visibleLength={layout.visibleCount}
-            isVertical
-          />
-        </Box>
-      )}
+      {!isLegendBeforeChart && verticalLegend}
     </Flex>
   );
 };

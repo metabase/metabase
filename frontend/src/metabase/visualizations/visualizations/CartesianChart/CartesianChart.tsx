@@ -6,13 +6,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/utils/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
+import { useLegendHiddenSeries } from "metabase/visualizations/hooks/use-legend-hidden-series";
 import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -40,8 +40,6 @@ function CartesianChartInner(props: VisualizationProps) {
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
-
-  const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
   const {
     showAllLegendItems,
@@ -83,6 +81,10 @@ function CartesianChartInner(props: VisualizationProps) {
         gridSize: isMobile ? undefined : gridSize, // mobile doesn't use the grid layout
       }),
     [originalSettings, outerHeight, outerWidth, isMobile, gridSize],
+  );
+
+  const [hiddenSeries, toggleSeriesVisibility] = useLegendHiddenSeries<string>(
+    settings["legend.position"],
   );
 
   // Row charts don't offer timeline events (UXW-4833).
@@ -246,6 +248,7 @@ function CartesianChartInner(props: VisualizationProps) {
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
+        legendPosition={settings["legend.position"]}
         alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!showTitle ? actionButtons : undefined}

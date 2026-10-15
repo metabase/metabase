@@ -74,13 +74,13 @@ To format the total displayed in the middle of the chart, click on the three dot
 
 You can configure whether to show:
 
-- The legend next to the chart.
+- The legend, and which side of the chart it appears on. Set **Legend position** to **Auto**, **Top**, **Bottom**, **Left**, **Right**, or **Off**. **Auto** picks a side that fits the card. With **Top**, **Bottom**, **Left**, or **Right**, legend items that don't fit go into a **+ N more** list. On very small cards, Metabase hides the legend whatever position you pick.
 - The total in the center of the chart. The format of the total can be changed in the [data settings](#data-settings).
 - The labels for the pie slices. The labels for the inner ring slices can be changed in the [data settings](#data-settings).
 
   For sunburst charts with multiple breakouts, only the inner ring breakout will be displayed in the legend. By default, "Show labels" will be turned on. If you turn off "Show labels", the only way to distinguish slices on a sunburst chart will be to hover over them.
 
-- The percentage values for the slices. If you choose to display percentages **In the legend**, but then toggle off **Show legend**, the percentage values won't show up on the chart.
+- The percentage values for the slices. If you choose to display percentages **In the legend**, but then set **Legend position** to **Off**, the percentage values won't show up on the chart.
 
   You can always see percentage values for any slice by hovering over the slice.
 
