@@ -14,9 +14,12 @@
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.mutation.core :as mut]
-   [metabase.app-db.core :as mdb]))
+   [metabase.app-db.core :as mdb]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private read-point-tests
   [#'app-db-test/read-snapshot-needs-its-own-transaction-test

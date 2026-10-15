@@ -8,9 +8,12 @@
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.push-app-db-test]
-   [metabase-enterprise.library-branching.push-test]))
+   [metabase-enterprise.library-branching.push-test]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def mutations
   "Each mutation removes or weakens one rule of the push or of the base row."
