@@ -82,7 +82,7 @@
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (when (:stale (dependencies.db/dependency-status entity-type (:id entity)))
-    (deps.findings/mark-transitive-dependents-stale! {entity-type [(:id entity)]}))
+    (deps.findings/mark-transitive-dependents-stale! {entity-type #{(:id entity)}}))
   (t2/with-transaction [_]
     (let [deps (deps.calculation/calculate-deps entity-type entity)]
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)

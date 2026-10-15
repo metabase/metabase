@@ -223,7 +223,7 @@
   [transform-id table-id]
   (when table-id
     (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))
-  (when (deps.findings/mark-transitive-dependents-stale! {:transform [transform-id]})
+  (when (deps.findings/mark-transitive-dependents-stale! {:transform #{transform-id}})
     (trigger-jobs!)))
 
 (defenterprise after-serdes-load
