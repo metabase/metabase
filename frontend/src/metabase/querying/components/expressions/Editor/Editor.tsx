@@ -365,9 +365,18 @@ function useExpression({
 
   const handleSourceChange = useCallback(
     (source: string) => {
+      // While the initial expression is still being formatted the editor holds
+      // the transient empty document, and CodeMirror reports that as a change.
+      // Treating it as a user edit emits `onChange(null)` and clears the valid
+      // clause the widget opened with, which React 19's effect timing lets race
+      // ahead of the formatted value landing. Ignore changes until formatting
+      // settles; real edits only happen afterwards.
+      if (isFormatting) {
+        return;
+      }
       handleUpdate(source, false);
     },
-    [handleUpdate],
+    [handleUpdate, isFormatting],
   );
 
   const handleBlur = useCallback(() => {
