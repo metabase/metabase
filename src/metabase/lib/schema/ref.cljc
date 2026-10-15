@@ -197,7 +197,6 @@
                             :else
                             x)))}
    [:tuple
-    {:typescript "unknown"}
     [:= {:decode/normalize common/normalize-keyword} :field]
     [:ref ::field.options]
     [:or :string ::id/field]]

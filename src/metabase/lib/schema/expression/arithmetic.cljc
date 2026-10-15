@@ -140,7 +140,6 @@
   [:and
    {:error/message "valid :+ clause"}
    [:cat
-    {:typescript "unknown"}
     [:= {:decode/normalize common/normalize-keyword} :+]
     [:schema [:ref ::common/options]]
     [:+ {:min 2} :any]]
@@ -157,7 +156,6 @@
 (mbql-clause/define-mbql-clause :-
   [:and
    [:cat
-    {:typescript "unknown"}
     [:= {:decode/normalize common/normalize-keyword} :-]
     [:schema [:ref ::common/options]]
     [:+ {:min 2} :any]]

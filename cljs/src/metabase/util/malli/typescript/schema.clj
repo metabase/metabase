@@ -403,31 +403,74 @@
              :diagnostics [{:type :unsupported-map-key
                             :schema (mc/form (mc/schema key-schema))}]))))
 
+(declare resolve-registry-schema parse-schema)
+
+(defn- deref-key-schema
+  [key-schema options seen]
+  (let [malli-schema (try
+                       (if (mc/schema? key-schema)
+                         key-schema
+                         (parse-schema key-schema (:registry options)))
+                       (catch Exception _ nil))]
+    (cond
+      (nil? malli-schema)
+      key-schema
+
+      (= :ref (mc/type malli-schema))
+      (let [ref-key (first (mc/children malli-schema))]
+        (if (or (not (qualified-keyword? ref-key))
+                (contains? seen ref-key))
+          malli-schema
+          (if-let [resolved (resolve-registry-schema ref-key options)]
+            (recur resolved options (conj seen ref-key))
+            malli-schema)))
+
+      (and (= :malli.core/schema (mc/type malli-schema))
+           (qualified-keyword? (mc/form malli-schema)))
+      (let [ref-key (mc/form malli-schema)]
+        (if (contains? seen ref-key)
+          malli-schema
+          (if-let [resolved (resolve-registry-schema ref-key options)]
+            (recur resolved options (conj seen ref-key))
+            malli-schema)))
+
+      (and (= :schema (mc/type malli-schema))
+           (map? (:registry (mc/properties malli-schema))))
+      (let [local-registry (:registry (mc/properties malli-schema))
+            child-form     (last (mc/form malli-schema))]
+        (recur child-form (update options :registry merge local-registry) seen))
+
+      :else
+      malli-schema)))
+
 (defn- finite-key-values
   "Return finite property-key values for direct literal/enum union forms, or nil.
   Other schemas remain open dictionaries rather than guessing their key domain."
-  [form]
-  (when (vector? form)
-    (let [{:keys [schema-type children]} (schema-form-parts form)]
-      (case schema-type
-        :enum children
-        :=    [(first children)]
-        :or   (let [alternatives (mapv finite-key-values children)]
-                (when (every? some? alternatives)
-                  (vec (mapcat identity alternatives))))
-        nil))))
+  [schema options seen]
+  (let [dereffed (deref-key-schema schema options seen)
+        form     (if (mc/schema? dereffed) (mc/form dereffed) dereffed)]
+    (when (vector? form)
+      (let [{:keys [schema-type children]} (schema-form-parts form)]
+        (case schema-type
+          :enum children
+          :=    [(first children)]
+          :or   (let [alternatives (mapv #(finite-key-values % options seen) children)]
+                  (when (every? some? alternatives)
+                    (vec (mapcat identity alternatives))))
+          nil)))))
 
 (defn- finite-map-key-result
-  [key-schema]
-  (when-let [values (finite-key-values (mc/form (mc/schema key-schema)))]
+  [key-schema options]
+  (when-let [values (finite-key-values key-schema options #{})]
     (let [key-values (mapv typescript-property-key-value values)]
       (when (every? :supported? key-values)
         (assoc (result (type/union (mapv (comp type/literal :value) key-values)))
                :finite? true)))))
 
 (defn- map-of-key-result
-  [key-schema]
-  (let [schema-type (mc/type (mc/schema key-schema))]
+  [key-schema options]
+  (let [dereffed    (deref-key-schema key-schema options #{})
+        schema-type (mc/type (mc/schema dereffed))]
     (cond
       (contains? #{:string :keyword :qualified-keyword :symbol :qualified-symbol :uuid :re} schema-type)
       (result (type/primitive "string"))
@@ -436,16 +479,16 @@
       (result (type/primitive "number"))
 
       (= :enum schema-type)
-      (assoc (enum-map-key-result key-schema) :finite? true)
+      (assoc (enum-map-key-result dereffed) :finite? true)
 
       :else
-      (or (finite-map-key-result key-schema)
+      (or (finite-map-key-result dereffed options)
           (result (type/primitive "string"))))))
 
 (defn- map-of-result
   [malli-schema options]
   (let [[key-schema value-schema] (mc/children malli-schema)
-        key-result (map-of-key-result key-schema)
+        key-result (map-of-key-result key-schema options)
         value-result (schema->result* value-schema options)
         record-type (type/generic "Record" [(:type key-result) (:type value-result)])
         map-type (if (:finite? key-result)
@@ -499,22 +542,39 @@
 (defn- concat-fragments
   [left right]
   (if (or (:widened-type left)
+          (:widened-type right)
           (and (:rest left) (or (seq (:items right)) (:rest right))))
     {:items []
      :rest nil
      :widened-type (type/union (into (fragment-member-types left)
-                                     (fragment-member-types right)))}
-    (fragment (into (:items left) (:items right))
-              (or (:rest right) (:rest left)))))
+                                     (fragment-member-types right)))
+     :had-non-trailing-repetition? true}
+    (cond-> (fragment (into (:items left) (:items right))
+                      (or (:rest right) (:rest left)))
+      (or (:had-non-trailing-repetition? left)
+          (:had-non-trailing-repetition? right))
+      (assoc :had-non-trailing-repetition? true))))
+
+(defn- concat-prefix-and-suffix
+  [prefix suffix]
+  (if (and (nil? (:widened-type prefix))
+           (nil? (:rest prefix))
+           (seq (:items prefix))
+           (:widened-type suffix))
+    (assoc (fragment (:items prefix) (:widened-type suffix))
+           :had-non-trailing-repetition? true)
+    (concat-fragments prefix suffix)))
 
 (def ^:private sequence-alternative-limit 256)
 
 (defn- concatenate-alternatives
-  [left right]
-  (when (<= (* (count left) (count right)) sequence-alternative-limit)
-    (vec (for [left-fragment left
-               right-fragment right]
-           (concat-fragments left-fragment right-fragment)))))
+  ([left right]
+   (concatenate-alternatives left right concat-fragments))
+  ([left right combine-fn]
+   (when (<= (* (count left) (count right)) sequence-alternative-limit)
+     (vec (for [left-fragment left
+                right-fragment right]
+            (combine-fn left-fragment right-fragment))))))
 
 (defn- effective-key-transform
   [properties options]
@@ -532,6 +592,24 @@
   (let [munged (some-> child-name name symbol type/cljs-munge str)]
     (when (and munged (re-matches typescript-identifier-pattern munged))
       munged)))
+
+(defn- fixed-items-only-result?
+  [child-result]
+  (every? (fn [{:keys [rest widened-type]}]
+            (and (nil? rest) (nil? widened-type)))
+          (:alternatives child-result)))
+
+(defn- reduce-alternatives
+  [child-results]
+  (reduce (fn [{:keys [alternatives limit-exceeded?] :as state} child-result]
+            (if limit-exceeded?
+              state
+              (if-let [combined (concatenate-alternatives alternatives (:alternatives child-result))]
+                {:alternatives combined, :limit-exceeded? false}
+                {:alternatives [{:items [] :rest nil :widened-type (type/unknown)}]
+                 :limit-exceeded? true})))
+          {:alternatives [(fragment)], :limit-exceeded? false}
+          child-results))
 
 (defn- cat-seqex-result
   [children options named?]
@@ -553,17 +631,22 @@
                                     alternatives)))
                     child-result)))
               children)
+        [prefix-results suffix-results] (split-with fixed-items-only-result? child-results)
         {:keys [alternatives limit-exceeded?]}
-        (reduce (fn [{:keys [alternatives limit-exceeded?] :as state} child-result]
-                  (if limit-exceeded?
-                    state
-                    (if-let [combined (concatenate-alternatives alternatives (:alternatives child-result))]
-                      {:alternatives combined, :limit-exceeded? false}
-                      {:alternatives [{:items [] :rest nil :widened-type (type/unknown)}]
-                       :limit-exceeded? true})))
-                {:alternatives [(fragment)], :limit-exceeded? false}
-                child-results)
-        non-trailing? (some :widened-type alternatives)]
+        (if (and (seq prefix-results) (seq suffix-results))
+          (let [prefix-state (reduce-alternatives prefix-results)
+                suffix-state (reduce-alternatives suffix-results)]
+            (if (or (:limit-exceeded? prefix-state) (:limit-exceeded? suffix-state))
+              {:alternatives [{:items [] :rest nil :widened-type (type/unknown)}]
+               :limit-exceeded? true}
+              (if-let [combined (concatenate-alternatives (:alternatives prefix-state)
+                                                          (:alternatives suffix-state)
+                                                          concat-prefix-and-suffix)]
+                {:alternatives combined, :limit-exceeded? false}
+                {:alternatives [{:items [] :rest nil :widened-type (type/unknown)}]
+                 :limit-exceeded? true})))
+          (reduce-alternatives child-results))
+        non-trailing? (some #(or (:widened-type %) (:had-non-trailing-repetition? %)) alternatives)]
     (cond-> (seqex-result alternatives child-results)
       limit-exceeded?
       (update :diagnostics conj {:type :sequence-alternative-limit-exceeded
@@ -596,8 +679,6 @@
                                    :rest nil
                                    :widened-type member-type}])
             (update :diagnostics conj {:type :composite-sequence-repetition}))))))
-
-(declare resolve-registry-schema)
 
 (def ^:private seqex-schema-types
   #{:cat :catn :alt :altn :? :* :+ :repeat})
@@ -635,12 +716,8 @@
       :repeat
       (repeated-seqex-result (first children) properties 0 options)
 
-      (let [ref-key         (cond
-                              (= :ref schema-type)
-                              (first children)
-
-                              (and (= :malli.core/schema schema-type)
-                                   (qualified-keyword? (mc/form malli-schema)))
+      (let [ref-key         (when (and (= :malli.core/schema schema-type)
+                                       (qualified-keyword? (mc/form malli-schema)))
                               (mc/form malli-schema))
             resolved        (when (qualified-keyword? ref-key)
                               (resolve-registry-schema ref-key options))
@@ -819,23 +896,74 @@
           (update result :diagnostics conj (invalid-type-predicate-diagnostic predicate-value))
           result)))))
 
-(defn- try-require-ns!
-  [ns-sym]
-  (try
-    (locking clojure.lang.RT/REQUIRE_LOCK
-      #_{:clj-kondo/ignore [:metabase/modules]}
-      (require ns-sym))
-    true
-    (catch java.io.FileNotFoundException _
-      false)))
+(defn- multi-child-schema
+  [child]
+  (if (and (vector? child) (<= 2 (count child)))
+    (peek child)
+    child))
 
-(defn- ensure-registry-namespaces-loaded!
-  [form]
-  (when (coll? form)
-    (doseq [kw (filter qualified-keyword? (tree-seq coll? seq form))]
-      (when (nil? (mr/registered-schema kw))
-        (try-require-ns! (symbol (namespace kw))))))
-  form)
+(defn schema-reference-keywords
+  "Return the set of qualified keywords that appear in schema-reference
+  positions within `schema` (ignoring `:map` property keys, `:multi` dispatch
+  values, and `:=` / `:enum` literal values)."
+  [schema]
+  (letfn [(step [acc form]
+            (let [form (if (mc/schema? form) (mc/form form) form)]
+              (cond
+                (qualified-keyword? form)
+                (conj acc form)
+
+                (vector? form)
+                (let [{:keys [schema-type props children]} (schema-form-parts form)
+                      acc (cond-> acc
+                            (qualified-keyword? schema-type) (conj schema-type))
+                      acc (if (map? props)
+                            (let [acc (reduce step acc (vals (:registry props)))
+                                  acc (reduce step acc (keep props [:ts/array-of :ts/object-of :ts/ref :ts/promise-of]))
+                                  pred (:ts/predicate-of props)
+                                  acc (if (map? pred)
+                                        (step acc (:schema pred))
+                                        (step acc pred))]
+                              (reduce step acc (:ts/overloads props)))
+                            acc)]
+                  (case schema-type
+                    (:enum := :not= :fn :re)
+                    acc
+
+                    :ref
+                    (if (qualified-keyword? (first children))
+                      (conj acc (first children))
+                      acc)
+
+                    :map
+                    (reduce (fn [acc entry]
+                              (if (and (vector? entry) (<= 2 (count entry)))
+                                (step acc (peek entry))
+                                acc))
+                            acc
+                            children)
+
+                    (:catn :altn :orn)
+                    (reduce (fn [acc entry]
+                              (if (and (vector? entry) (<= 2 (count entry)))
+                                (step acc (catn-child-schema entry))
+                                acc))
+                            acc
+                            children)
+
+                    :multi
+                    (reduce (fn [acc entry]
+                              (if (and (vector? entry) (<= 2 (count entry)))
+                                (step acc (multi-child-schema entry))
+                                acc))
+                            acc
+                            children)
+
+                    (reduce step acc children)))
+
+                :else
+                acc)))]
+    (step #{} schema)))
 
 (defn- preserved-ref-schema?
   [schema]
@@ -867,28 +995,25 @@
   registry keyword (`:malli.core/schema`) references instead of inlining them."
   [schema-keyword]
   (if (and (qualified-keyword? schema-keyword)
-           (or (some? (mr/registered-schema schema-keyword))
-               (when-let [ns-name (namespace schema-keyword)]
-                 (and (try-require-ns! (symbol ns-name))
-                      (some? (mr/registered-schema schema-keyword))))))
-    (do
-      (ensure-registry-namespaces-loaded! (mr/registered-schema schema-keyword))
-      (let [schema (-> schema-keyword mc/schema (deref-preserving-properties false))]
-        (mc/walk schema
-                 (fn [schema _path children _options]
-                   (cond (preserved-ref-schema? schema)
-                         schema
+           (some? (mr/registered-schema schema-keyword)))
+    (let [schema (-> schema-keyword mc/schema (deref-preserving-properties false))]
+      (mc/walk schema
+               (fn [schema _path children _options]
+                 (cond (preserved-ref-schema? schema)
+                       schema
 
-                         (mc/-ref-schema? schema)
-                         (deref-preserving-properties (mc/-set-children schema children) true)
+                       (mc/-ref-schema? schema)
+                       (deref-preserving-properties (mc/-set-children schema children) true)
 
-                         :else
-                         (mc/-set-children schema children))))))
+                       :else
+                       (mc/-set-children schema children)))))
     (mr/resolve-schema schema-keyword)))
 
 (defn- resolve-registry-schema
   [schema-keyword options]
   (or (get (:registry options) schema-keyword)
+      (when-let [resolve-schema (:resolve-schema options)]
+        (resolve-schema schema-keyword))
       (resolve-registered-schema schema-keyword)))
 
 (defn- schema-contains-maybe?
@@ -960,13 +1085,10 @@
 
 (defn- any-result
   [malli-schema options]
-  (let [{:keys [typescript ts/array-of ts/object-of ts/ref ts/promise-of ts/instance-of] :as properties}
+  (let [{:keys [ts/array-of ts/object-of ts/ref ts/promise-of ts/instance-of] :as properties}
         (mc/properties malli-schema)
         nested-options (assoc options :key-transform (effective-key-transform properties options))]
     (cond
-      (contains? properties :typescript)
-      (result (explicit-type typescript))
-
       array-of
       (let [child-result (schema->result* array-of options)]
         (-> child-result
@@ -1011,12 +1133,6 @@
     (if supported?
       (result (type/literal literal-value))
       (unknown-result [:= value] :unsupported-literal))))
-
-(defn- multi-child-schema
-  [child]
-  (if (and (vector? child) (<= 2 (count child)))
-    (peek child)
-    child))
 
 (defn- multi-dispatch-key
   "Return the map key a `:multi` dispatches on when it can be determined:
@@ -1129,6 +1245,100 @@
                               children
                               branches)}))))
 
+(defn- literal-subsumes?
+  [general-node literal-node]
+  (and (= :literal (:kind literal-node))
+       (or (= general-node literal-node)
+           (and (= :primitive (:kind general-node))
+                (= (:name general-node) (literal-primitive-name (:value literal-node))))
+           (and (= :union (:kind general-node))
+                (boolean (some #(literal-subsumes? % literal-node) (:members general-node)))))))
+
+(defn- resolve-tuple-branch-node
+  [type-node options]
+  (cond
+    (= :tuple (:kind type-node))
+    {:tuple type-node}
+
+    (= :ref (:kind type-node))
+    (when-let [resolved (resolve-registry-schema (:schema-keyword type-node) options)]
+      (let [compiled (schema->result* resolved options)]
+        (when (= :tuple (get-in compiled [:type :kind]))
+          {:tuple (:type compiled)
+           :result compiled
+           :ref-node type-node})))
+
+    :else nil))
+
+(defn- with-tuple-item-type
+  [item type-node]
+  (if (and (map? item) (contains? item :type))
+    (assoc item :type type-node)
+    type-node))
+
+(defn- guard-items-compatible?
+  [guard-items branch-items]
+  (every? (fn [[guard-item branch-item]]
+            (let [guard-type (tuple-item-type guard-item)
+                  branch-type (tuple-item-type branch-item)]
+              (or (= :unknown (:kind guard-type))
+                  (= guard-type branch-type))))
+          (map vector (subvec guard-items 1) (subvec branch-items 1))))
+
+(defn- specialize-tuple-branch
+  [branch-node guard-items tag-node min-items union-target? options]
+  (when-let [{:keys [tuple result ref-node]} (resolve-tuple-branch-node branch-node options)]
+    (let [items (:items tuple)
+          rest-type (:rest tuple)
+          first-type (some-> (first items) tuple-item-type)]
+      (when (and (seq items)
+                 (literal-subsumes? first-type tag-node)
+                 (or (<= min-items (count items))
+                     (some? rest-type)))
+        (let [items' (update items 0 with-tuple-item-type tag-node)
+              padded-items (if (< (count items') min-items)
+                             (into items' (repeat (- min-items (count items')) {:type rest-type}))
+                             items')]
+          (when (or union-target? (guard-items-compatible? guard-items padded-items))
+            (if ref-node
+              {:type ref-node, :extra-results []}
+              {:type (assoc tuple :items padded-items)
+               :extra-results (if result [result] [])})))))))
+
+(defn- specialize-tuple-guard-branches
+  "When an `:and` schema combines a leading literal-tag tuple guard (such as
+  `[:cat [:= :+] [:schema [:ref ::common/options]] [:+ {:min 2} :any]]` or
+  `[:tuple [:= :field] [:ref ::field.options] [:or :string ::id/field]]`) with
+  a tuple or union of tuple branches, specialize each branch with the literal
+  tag and minimum arity rather than emitting a tuple intersection."
+  [type-nodes options]
+  (when (= 2 (count type-nodes))
+    (let [[guard-node target-node] type-nodes
+          guard-items (:items guard-node)
+          tag-node    (some-> (first guard-items) tuple-item-type)]
+      (when (and (= :tuple (:kind guard-node))
+                 (<= 2 (count guard-items))
+                 (= :literal (:kind tag-node))
+                 (or (nil? (:rest guard-node))
+                     (= :unknown (get-in guard-node [:rest :kind]))))
+        (let [min-items     (count guard-items)
+              union-target? (= :union (:kind target-node))
+              branches      (if union-target?
+                              (:members target-node)
+                              [target-node])
+              specialized   (mapv #(specialize-tuple-branch % guard-items tag-node min-items union-target? options)
+                                  branches)]
+          (when (every? some? specialized)
+            {:type (union-type (mapv :type specialized))
+             :extra-results (into [] (mapcat :extra-results) specialized)}))))))
+
+(defn- and-result
+  [results options]
+  (let [type-nodes (mapv :type results)]
+    (if-let [{:keys [type extra-results]} (specialize-tuple-guard-branches type-nodes options)]
+      (with-type type (into results extra-results))
+      (with-type (intersection-type type-nodes) results))))
+
 (defn- compile-malli-schema
   [malli-schema options]
   (let [schema-type (mc/type malli-schema)
@@ -1210,8 +1420,7 @@
       (multi-result malli-schema options)
 
       (contains? #{:and :merge} schema-type)
-      (let [results (compile-children children options)]
-        (with-type (intersection-type (mapv :type results)) results))
+      (and-result (compile-children children options) options)
 
       (= schema-type :maybe)
       (let [child-result (schema->result* (first children) options)
@@ -1286,31 +1495,21 @@
         (with-type (type/intersection (mapv :type results)) results))
 
       (= schema-type :fn)
-      (let [predicate (predicate-target-info (:ts/predicate-of properties))]
-        (cond
-          (contains? properties :typescript)
-          (result (explicit-type (:typescript properties)))
-
-          predicate
-          (let [predicate-result (schema->result* (:schema predicate) options)]
-            (assoc (merge-result-metadata [predicate-result])
-                   :type (type/function-predicate
-                          (type/function-type [{:name "value", :type (type/unknown)}]
-                                              (type/unknown))
-                          0
-                          (:type predicate-result))))
-
-          :else
-          (unknown-result form :predicate-schema)))
+      (if-let [predicate (predicate-target-info (:ts/predicate-of properties))]
+        (let [predicate-result (schema->result* (:schema predicate) options)]
+          (assoc (merge-result-metadata [predicate-result])
+                 :type (type/function-predicate
+                        (type/function-type [{:name "value", :type (type/unknown)}]
+                                            (type/unknown))
+                        0
+                        (:type predicate-result))))
+        (unknown-result form :predicate-schema))
 
       (= schema-type :ref)
       (registry-ref-result (first children) options)
 
       (= schema-type :malli.core/schema)
       (registry-ref-result (if (qualified-keyword? form) form (last form)) options)
-
-      (contains? properties :typescript)
-      (result (explicit-type (:typescript properties)))
 
       (qualified-keyword? schema-type)
       (registry-ref-result schema-type options)

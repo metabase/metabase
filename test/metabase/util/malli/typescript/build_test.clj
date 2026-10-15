@@ -126,15 +126,26 @@
       (let [attempts (atom [])
             resolver (factory
                       (fn [schema-keyword]
-                        (when (= schema-keyword ::global-ref) :string))
+                        (cond
+                          (= schema-keyword ::global-ref)
+                          :string
+
+                          (= schema-keyword :example.parent/schema)
+                          (if (some #(= 'example.child %) @attempts)
+                            [:vector :int]
+                            (throw (ex-info ":malli.core/invalid-schema"
+                                            {:type :malli.core/invalid-schema
+                                             :data {:schema :example.child/leaf}})))))
                       (fn [ns-sym]
                         (swap! attempts conj ns-sym)
                         true))]
         (is (= :string (resolver ::global-ref)))
         (is (empty? @attempts))
+        (is (= [:vector :int] (resolver :example.parent/schema)))
+        (is (= ['example.child] @attempts))
         (is (nil? (resolver :example.missing/schema)))
         (is (nil? (resolver :example.missing/other)))
-        (is (= ['example.missing] @attempts))))))
+        (is (= ['example.child 'example.missing] @attempts))))))
 
 (deftest ^:parallel registry-namespace-load-failures-remain-retryable-test
   (let [factory (ns-resolve 'metabase.util.malli.typescript.build 'registry-schema-resolver)
@@ -179,7 +190,7 @@
     (is (.exists runtime-file))
     (is (.exists unrelated-file))))
 
-(deftest produce-dts-test
+(deftest ^:parallel produce-dts-test
   (let [directory (.toFile (java.nio.file.Files/createTempDirectory
                             "cljs-dts-produce-test"
                             (make-array java.nio.file.attribute.FileAttribute 0)))
@@ -193,8 +204,7 @@
     (spit manifest "old.module\n")
     (spit old-declaration "old")
     (spit unrelated-declaration "unrelated")
-    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-    (with-redefs [build/output-file output-file]
+    (binding [build/*output-file* output-file]
       (is (= state (build/produce-dts state))))
     (is (= #{"example.empty" "example.entry"}
            (set (str/split-lines (slurp manifest)))))
@@ -208,14 +218,13 @@
     (let [next-state (assoc-in state
                                [:compiler-env :cljs.analyzer/namespaces 'example.entry :defs 'exported :schema]
                                :int)]
-      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [build/output-file output-file]
+      (binding [build/*output-file* output-file]
         (is (= next-state (build/produce-dts next-state))))
       (is (re-find #"export const exported: number;"
                    (slurp (java.io.File. directory "example.entry.d.ts"))))
       (is (not (.exists (java.io.File. directory "metabase.lib.shared.d.ts")))))))
 
-(deftest produce-dts-computes-before-writing-test
+(deftest ^:parallel produce-dts-computes-before-writing-test
   (let [directory (.toFile (java.nio.file.Files/createTempDirectory
                             "cljs-dts-failure-test"
                             (make-array java.nio.file.attribute.FileAttribute 0)))
@@ -229,14 +238,12 @@
     (spit manifest "previous.module\n")
     (spit shared-declaration "previous shared")
     (spit entry-declaration "previous entry")
-    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-    (with-redefs [build/output-file output-file]
-      (with-redefs-fn {(ns-resolve 'metabase.util.malli.typescript.build 'ts-content)
-                       (fn [& _]
-                         (throw (ex-info "generation failed" {})))}
-        #(is (thrown-with-msg? clojure.lang.ExceptionInfo
-                               #"generation failed"
-                               (build/produce-dts state)))))
+    (binding [build/*output-file* output-file
+              build/*ts-content* (fn [& _]
+                                   (throw (ex-info "generation failed" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"generation failed"
+                            (build/produce-dts state))))
     (is (= "previous.module\n" (slurp manifest)))
     (is (= "previous shared" (slurp shared-declaration)))
     (is (= "previous entry" (slurp entry-declaration)))))

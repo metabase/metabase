@@ -17,6 +17,9 @@
   (let [f (requiring-resolve 'shadow.build.data/output-file)]
     (f state filename)))
 
+(def ^:private ^:dynamic *output-file*
+  output-file)
+
 (defn entry-namespaces
   "Return configured Shadow CLJS entry namespaces in declaration order."
   [state]
@@ -64,33 +67,53 @@
   []
   (some? (System/getenv "MB_CLJS_TS_READONLY")))
 
+(defn- missing-schema-namespace
+  [schema-keyword exception]
+  (let [missing-kw (when (= :malli.core/invalid-schema (:type (ex-data exception)))
+                     (get-in (ex-data exception) [:data :schema]))
+        kw         (if (qualified-keyword? missing-kw)
+                     missing-kw
+                     schema-keyword)]
+    (some-> (namespace kw) symbol)))
+
 (defn- registry-schema-resolver
   [resolve-schema require-ns]
   (let [attempted-namespaces (atom #{})]
-    (fn [schema-keyword]
-      (or (try
-            (resolve-schema schema-keyword)
-            (catch Exception _
-              nil))
-          (when-let [ns-name (namespace schema-keyword)]
-            (let [ns-sym (symbol ns-name)]
-              (when (and (not (contains? @attempted-namespaces ns-sym))
-                         (require-ns ns-sym))
-                (swap! attempted-namespaces conj ns-sym))
-              (try
-                (resolve-schema schema-keyword)
-                (catch Exception _
-                  nil))))))))
+    (letfn [(ensure-ns-loaded! [ns-sym]
+              (when (and ns-sym
+                         (not (contains? @attempted-namespaces ns-sym)))
+                (when (require-ns ns-sym)
+                  (swap! attempted-namespaces conj ns-sym)
+                  true)))]
+      (fn [schema-keyword]
+        (loop []
+          (let [[resolved exception]
+                (try
+                  [(resolve-schema schema-keyword) nil]
+                  (catch Exception e
+                    [nil e]))]
+            (cond
+              (some? resolved)
+              resolved
+
+              (some? exception)
+              (when (ensure-ns-loaded! (missing-schema-namespace schema-keyword exception))
+                (recur))
+
+              :else
+              (when (ensure-ns-loaded! (some-> (namespace schema-keyword) symbol))
+                (recur)))))))))
 
 (defn- try-require-ns
   [ns-sym]
   (try
-    #_{:clj-kondo/ignore [:metabase/modules]}
-    (require ns-sym)
+    (locking clojure.lang.RT/REQUIRE_LOCK
+      #_{:clj-kondo/ignore [:metabase/modules]}
+      (require ns-sym))
     true
     (catch java.io.FileNotFoundException _
       (log/debug "Skipping CLJS-only registry namespace" {:ns-sym ns-sym})
-      false)))
+      true)))
 
 (defonce ^:private resolve-global-schema
   (registry-schema-resolver schema/resolve-registered-schema try-require-ns))
@@ -257,6 +280,9 @@
                                 (:diagnostics alias-result)))
       :weak-types (merge-weak-types results)})))
 
+(def ^:private ^:dynamic *ts-content*
+  ts-content)
+
 (defn- generate-shared-types-result
   "Generate content and diagnostics for the shared registry alias module."
   ([shared-refs camel-used?]
@@ -368,8 +394,8 @@
         nses-defs    (entry-definitions state)
         defs-count   (count nses-defs)
         module-names (declaration-module-names nses-defs)
-        manifest-file (output-file state "cljs-dts-modules.txt")
-        output-directory (.getParentFile ^java.io.File manifest-file)
+        manifest-file ^java.io.File (*output-file* state "cljs-dts-modules.txt")
+        output-directory (.getParentFile manifest-file)
         previous-modules (previous-module-names manifest-file)
         weak-types   (atom {})]
     (log/info "Compiling TypeScript defs" {:namespaces defs-count :total total})
@@ -390,11 +416,11 @@
                   (let [t            (u/start-timer)
                         fname        (type/cljs-munge (str ns))
                         this-ns-refs (get ns-refs ns #{})
-                        result       (ts-content ns defs shared-refs this-ns-refs
-                                                 (get ns-input-refs ns #{}) shared-exists?)]
+                        result       (*ts-content* ns defs shared-refs this-ns-refs
+                                                   (get ns-input-refs ns #{}) shared-exists?)]
                     (swap! weak-types #(merge-with into % (:weak-types result)))
                     (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})
-                    {:file (output-file state (str fname ".d.ts"))
+                    {:file (*output-file* state (str fname ".d.ts"))
                      :ns ns
                      :camel-used? (:camel-used? result)
                      :result result}))
@@ -412,7 +438,7 @@
         (log/debug "TypeScript schema diagnostics" {:ns ns
                                                     :diagnostics (:diagnostics result)}))
       (when shared-result
-        (write-file-atomically! (output-file state "metabase.lib.shared.d.ts")
+        (write-file-atomically! (*output-file* state "metabase.lib.shared.d.ts")
                                 (:content shared-result))
         (log/debug "Generated shared types file" {:types (count shared-refs)}))
       (log/debug "Pass 2: Writing per-namespace type files")

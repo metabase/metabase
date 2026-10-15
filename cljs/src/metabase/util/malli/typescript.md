@@ -176,7 +176,7 @@ Named sequence entries become labeled tuple elements or parameter names:
 [op: string, value: number]
 ```
 
-The compiler preserves this order and emits flat tuples with valid rest elements.
+The compiler preserves this order and emits flat tuples with valid rest elements. In Malli, a bare registry keyword inside a sequence expression (such as `[:cat [:= :clause] ::options ::repeated-args]`) splices when its registered schema is itself a sequence expression (`:cat`, `:catn`, `:alt`, `:altn`, `:?`, `:*`, `:+`, or `:repeat`), whereas `[:schema [:ref ::clause]]` (or `[:ref ::clause]`) validates a single element at that position and stays a scalar tuple item.
 
 ### Multi-arity functions become overload intersections
 

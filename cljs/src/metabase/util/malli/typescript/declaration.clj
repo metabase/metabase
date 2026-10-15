@@ -832,15 +832,20 @@
       (find-ns ns-sym))
     ns-or-name))
 
+(defonce ^:private attempted-registry-namespaces
+  (atom #{}))
+
 (defn- require-registry-namespaces!
   [schema]
-  (doseq [schema-keyword (filter qualified-keyword? (tree-seq coll? seq schema))]
-    (when-not (try
-                (mr/resolve-schema schema-keyword)
-                (catch Exception _))
-      (try
-        (require-or-return (symbol (namespace schema-keyword)))
-        (catch java.io.FileNotFoundException _))))
+  (doseq [schema-keyword (schema/schema-reference-keywords schema)]
+    (when (nil? (mr/registered-schema schema-keyword))
+      (when-let [ns-name (namespace schema-keyword)]
+        (let [ns-sym (symbol ns-name)]
+          (when-not (contains? @attempted-registry-namespaces ns-sym)
+            (swap! attempted-registry-namespaces conj ns-sym)
+            (try
+              (require-or-return ns-sym)
+              (catch java.io.FileNotFoundException _)))))))
   schema)
 
 (defn- js-symbol?

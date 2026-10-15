@@ -556,3 +556,135 @@
            [:mbql.stage/mbql [:ref :t/stage-mbql]]]
           {:registry {:t/stage-native [:map [:lib/type [:= {:decode/normalize identity} :mbql.stage/native]]]
                       :t/stage-mbql   [:map [:lib/type [:= {:decode/normalize identity} :mbql.stage/mbql]]]}}))))
+
+(mr/def ::test-pivot-types
+  [:enum :category :location :time])
+
+(mr/def ::test-map-of-enum-ref
+  [:map-of ::test-pivot-types :boolean])
+
+(mr/def ::test-int-key
+  :int)
+
+(mr/def ::test-map-of-int-ref
+  [:map-of [:ref ::test-int-key] :string])
+
+(deftest ^:parallel map-of-preserved-ref-key-test
+  (is (= "Partial<Record<\"category\" | \"location\" | \"time\", boolean>>"
+         (schema/schema->ts (schema/resolve-registered-schema ::test-map-of-enum-ref))))
+  (is (= "Record<number, string>"
+         (schema/schema->ts (schema/resolve-registered-schema ::test-map-of-int-ref)))))
+
+(deftest ^:parallel non-trailing-sequence-repetition-with-prefix-test
+  (let [{:keys [type diagnostics]}
+        (schema/schema->result
+         [:cat [:enum :+ :-] :boolean [:* :string] :int [:* [:alt :string :int]]])]
+    (is (= "[\"+\" | \"-\", boolean, ...(string | number)[]]"
+           (type/render type)))
+    (is (some #(= :non-trailing-sequence-repetition (:type %)) diagnostics))))
+
+(mr/def ::test-plus-minus-temporal
+  [:cat
+   [:enum :+ :-]
+   [:schema [:ref ::test-descendant-options]]
+   [:* :string]
+   :int
+   [:* [:alt :string :int]]])
+
+(mr/def ::test-plus-minus-numeric
+  [:cat
+   :keyword
+   [:schema [:ref ::test-descendant-options]]
+   [:+ {:min 2} :int]])
+
+(mr/def ::test-temporal-diff
+  [:tuple
+   [:= :-]
+   [:schema [:ref ::test-descendant-options]]
+   :int
+   :int])
+
+(mr/def ::test-field-id
+  [:tuple [:= :field] [:ref ::test-descendant-options] :int])
+
+(mr/def ::test-field-literal
+  [:tuple [:= :field] [:ref ::test-descendant-options] :string])
+
+(deftest ^:parallel tuple-guard-specialization-test
+  (testing ":+ , :-, and :field preserve compatible :ref branches without emitting a tuple intersection"
+    (is (= (str "metabase.util.malli.typescript.schema-test/test-plus-minus-temporal"
+                " | metabase.util.malli.typescript.schema-test/test-plus-minus-numeric")
+           (schema/schema->ts
+            [:and
+             [:cat
+              [:= :+]
+              [:schema [:ref ::test-descendant-options]]
+              [:+ {:min 2} :any]]
+             [:multi {:dispatch first}
+              [:temporal [:ref ::test-plus-minus-temporal]]
+              [:numeric [:ref ::test-plus-minus-numeric]]]])))
+    (is (= (str "metabase.util.malli.typescript.schema-test/test-plus-minus-temporal"
+                " | metabase.util.malli.typescript.schema-test/test-plus-minus-numeric"
+                " | metabase.util.malli.typescript.schema-test/test-temporal-diff")
+           (schema/schema->ts
+            [:and
+             [:cat
+              [:= :-]
+              [:schema [:ref ::test-descendant-options]]
+              [:+ {:min 2} :any]]
+             [:multi {:dispatch first}
+              [:temporal [:ref ::test-plus-minus-temporal]]
+              [:numeric [:ref ::test-plus-minus-numeric]]
+              [:diff [:ref ::test-temporal-diff]]]])))
+    (is (= (str "metabase.util.malli.typescript.schema-test/test-field-id"
+                " | metabase.util.malli.typescript.schema-test/test-field-literal")
+           (schema/schema->ts
+            [:and
+             [:tuple
+              [:= :field]
+              [:ref ::test-descendant-options]
+              [:or :string :int]]
+             [:multi {:dispatch first}
+              [:id ::test-field-id]
+              [:literal ::test-field-literal]]]))))
+  (testing "inline tuple branches are specialized with the guard's literal tag and minimum arity"
+    (is (= (str "[\"+\", metabase.util.malli.typescript.schema-test/test-descendant-options,"
+                " string | number, string | number, ...(string | number)[]]"
+                " | [\"+\", metabase.util.malli.typescript.schema-test/test-descendant-options,"
+                " number, number, ...number[]]")
+           (schema/schema->ts
+            [:and
+             [:cat
+              [:= :+]
+              [:schema [:ref ::test-descendant-options]]
+              [:+ {:min 2} :any]]
+             [:multi {:dispatch first}
+              [:temporal
+               [:cat
+                [:enum :+ :-]
+                [:schema [:ref ::test-descendant-options]]
+                [:* :string]
+                :int
+                [:* :string]]]
+              [:numeric
+               [:cat
+                :keyword
+                [:schema [:ref ::test-descendant-options]]
+                [:+ {:min 2} :int]]]]])))))
+
+(deftest ^:parallel schema-reference-keywords-test
+  (is (= #{:ref.ns/value-schema
+           :ref.ns/branch-schema
+           :ref.ns/catn-schema
+           :ref.ns/registry-schema
+           :ref.ns/predicate-schema}
+         (schema/schema-reference-keywords
+          [:and
+           [:map {:registry {:local.ns/def :ref.ns/registry-schema}}
+            [:ignored.map.key/one :ref.ns/value-schema]
+            [:ignored.map.key/two {:optional true} [:= :ignored.literal/kw]]
+            [:ignored.map.key/three [:enum :ignored.enum/a :ignored.enum/b]]]
+           [:catn [:item :ref.ns/catn-schema]]
+           [:=> [:cat :any] [:boolean {:ts/predicate-of {:param 0 :schema :ref.ns/predicate-schema}}]]
+           [:multi {:dispatch :lib/type}
+            [:ignored.dispatch/value [:ref :ref.ns/branch-schema]]]]))))

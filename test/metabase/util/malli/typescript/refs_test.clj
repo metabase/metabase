@@ -307,4 +307,22 @@
               "export type T_right = unknown;"]
              declarations))
       (is (= #{[::left ::right] [::right ::left]}
+             (set (map (juxt :schema :ref) diagnostics))))))
+  (testing "type-alias generics (Record and Partial<Record>) do not guard direct recursion, while Set does"
+    (let [recursive-schemas {::open-dict [:map-of :string [:ref ::open-dict]]
+                             ::finite-dict [:map-of [:enum :a :b] [:ref ::finite-dict]]
+                             ::nested-set [:set [:ref ::nested-set]]}
+          {:keys [declarations diagnostics]}
+          (refs/type-aliases
+           #{::open-dict ::finite-dict ::nested-set}
+           {:resolve-schema recursive-schemas
+            :compile-options {:registry recursive-schemas}
+            :type-name test-type-name
+            :ref-name test-type-name})]
+      (is (= ["export type T_finite-dict = Partial<Record<\"a\" | \"b\", unknown>>;"
+              "export type T_nested-set = Set<T_nested-set>;"
+              "export type T_open-dict = Record<string, unknown>;"]
+             declarations))
+      (is (= #{[::open-dict ::open-dict]
+               [::finite-dict ::finite-dict]}
              (set (map (juxt :schema :ref) diagnostics)))))))

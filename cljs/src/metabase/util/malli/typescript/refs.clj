@@ -44,7 +44,8 @@
           (if-let [definition (resolve-definition resolve-schema local-definitions schema-keyword)]
             (let [compiled (schema/schema->result
                             definition
-                            (update compile-options :registry merge local-definitions))
+                            (cond-> (update compile-options :registry merge local-definitions)
+                              resolve-schema (assoc :resolve-schema resolve-schema)))
                   discovered (get compiled dependency-refs)
                   new-local  (merge local-definitions (:local-definitions compiled))
                   new-pending (->> discovered
@@ -91,13 +92,26 @@
   (or (= schema-keyword ref-keyword)
       (reachable? graph ref-keyword schema-keyword)))
 
+(def ^:private transparent-generic-names
+  "Built-in TypeScript utility types that are type aliases (`type Record<K, T> = ...`)
+  rather than interfaces, and therefore do not defer recursive type alias evaluation."
+  #{"Partial" "Record"})
+
+(defn- generic-guards-recursion?
+  [node]
+  (not (contains? transparent-generic-names (:name node))))
+
 (defn- unguarded-refs
   "Return registry references reachable from `node` without crossing a guarded
-  TypeScript type constructor (object, array, tuple, generic, key-transform, or function)."
+  TypeScript type constructor (object, array, tuple, interface-backed generic, or function)."
   [node]
   (case (:kind node)
     :ref #{(:schema-keyword node)}
     (:union :intersection) (into #{} (mapcat unguarded-refs) (:members node))
+    :generic (if (generic-guards-recursion? node)
+               #{}
+               (into #{} (mapcat unguarded-refs) (:arguments node)))
+    :key-transform (unguarded-refs (:inner node))
     #{}))
 
 (defn- preserve-node-flags
@@ -172,8 +186,9 @@
       [(preserve-node-flags node (type/array element)) diagnostics])
 
     :generic
-    (let [[arguments diagnostics]
-          (transform-many schema-keyword graph lookup-type true (:arguments node))]
+    (let [child-guarded? (or guarded? (generic-guards-recursion? node))
+          [arguments diagnostics]
+          (transform-many schema-keyword graph lookup-type child-guarded? (:arguments node))]
       [(preserve-node-flags node (type/generic (:name node) arguments)) diagnostics])
 
     :tuple
@@ -212,7 +227,7 @@
 
     :key-transform
     (let [[inner diagnostics]
-          (make-recursion-safe* schema-keyword graph lookup-type true (:inner node))]
+          (make-recursion-safe* schema-keyword graph lookup-type guarded? (:inner node))]
       [(preserve-node-flags node (type/key-transform-type (:name node) inner)) diagnostics])
 
     :function
