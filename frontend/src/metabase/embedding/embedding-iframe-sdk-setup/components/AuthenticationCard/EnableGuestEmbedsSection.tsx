@@ -50,7 +50,7 @@ export const EnableGuestEmbedsSection = ({
         ...(!termsAccepted && { "show-static-embed-terms": false }),
       });
     } catch (error) {
-      sendToast({ message: failedToEnableMessage });
+      sendToast({ message: failedToEnableMessage, variant: "negative" });
     }
   };
 
@@ -114,7 +114,6 @@ export const EnableGuestEmbedsSection = ({
         <Button
           variant={isAccepted ? "default" : "filled"}
           onClick={handleEnable}
-          size="xs"
           disabled={isAccepted}
           leftSection={isAccepted && <Icon name="check" />}
         >

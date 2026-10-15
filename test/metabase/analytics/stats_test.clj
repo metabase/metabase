@@ -394,8 +394,7 @@
 
 (deftest internal-content-metrics-test
   (testing "Internal content doesn't contribute to stats"
-    (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? true)
+    (mt/with-sample-h2-app-db!
       (mbc/ensure-audit-db-installed!)
       (testing "sense check: internal content exists"
         (is (true? (t2/exists? :model/User)))
@@ -428,8 +427,7 @@
                (#'stats/dashboard-metrics)))))))
 
 (deftest activation-signals-test
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
+  (mt/with-sample-h2-app-db!
     (testing "sufficient-users? correctly counts the number of users within three days of instance creation"
       (is (false? (@#'stats/sufficient-users? 1)))
       (mt/with-temp [:model/User _ {:date_joined
@@ -443,8 +441,7 @@
         (is (true? (@#'stats/sufficient-queries? 1)))))))
 
 (deftest csv-upload-available-test
-  (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
+  (mt/with-sample-h2-app-db!
     (testing "csv-upload-available? currently detects upload availability based on the current MB version"
       (mt/with-temp [:model/Database _ {:engine :postgres}]
         (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 46)
@@ -543,7 +540,8 @@
   or to this set, so that [[every-feature-is-accounted-for-test]] passes."
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
-    :data-apps-preview
+    :content-diagnostics
+    :data-apps
     :data-complexity-score
     :development-mode
     :library
@@ -560,6 +558,7 @@
     :metabase-ai-managed
     :metabot-v3
     :cloud-custom-smtp
+    :session-management
     :session-timeout-config
     :sso-oidc
     :admin-security-center})
@@ -584,6 +583,12 @@
           (is (not (< (get query_executions k)
                       (get query_executions_24h k)))
               "There are never more query executions in the 24h version than all-of-time."))))))
+
+(deftest snowplow-anonymous-usage-stats-test
+  (testing "the stats ping sends every metric it collects"
+    (let [{:strs [metrics]} (#'stats/snowplow-anonymous-usage-stats (legacy-anonymous-usage-stats))]
+      (is (empty? (set/difference (set (map name (keys (#'stats/->snowplow-metric-info))))
+                                  (set (map #(get % "name") metrics))))))))
 
 (deftest snowplow-setting-tests
   (testing "snowplow formated settings"

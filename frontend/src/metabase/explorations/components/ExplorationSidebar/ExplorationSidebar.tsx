@@ -23,9 +23,9 @@ import {
   type IconProps,
   Menu,
   SegmentedControl,
+  type SegmentedControlItem,
   Stack,
   Text,
-  Tooltip,
 } from "metabase/ui";
 import type { Exploration, ExplorationPageNodeId } from "metabase-types/api";
 
@@ -267,8 +267,6 @@ export function ExplorationSidebar({
         <Box flex={1} miw={0}>
           <SegmentedControl<ExplorationSidebarTab>
             fullWidth
-            radius="xl"
-            bg="background-tertiary"
             value={selectedSidebarTab}
             onChange={(value) => {
               if (
@@ -280,10 +278,7 @@ export function ExplorationSidebar({
               }
             }}
             data={Object.values(explorationSidebarTabsInfo).map(
-              ({ value, label }) => ({
-                value,
-                label: <SidebarTabLabel tab={value} label={label} />,
-              }),
+              getSidebarTabItem,
             )}
           />
         </Box>
@@ -304,24 +299,20 @@ const TAB_ICON: Partial<Record<ExplorationSidebarTab, IconProps["name"]>> = {
   discussions: "comment",
 };
 
-function SidebarTabLabel({
-  tab,
+function getSidebarTabItem({
+  value,
   label,
-}: {
-  tab: ExplorationSidebarTab;
-  label: string;
-}) {
-  const iconName = TAB_ICON[tab];
+}: ExplorationSidebarTabsInfo[ExplorationSidebarTab]): SegmentedControlItem<ExplorationSidebarTab> {
+  const iconName = TAB_ICON[value];
 
-  return iconName ? (
-    <Tooltip label={label}>
-      <Center component="span" aria-label={label}>
-        <Icon name={iconName} />
-      </Center>
-    </Tooltip>
-  ) : (
-    label
-  );
+  return iconName
+    ? {
+        value,
+        ariaLabel: label,
+        icon: iconName,
+        withTooltip: true,
+      }
+    : { value, label };
 }
 
 function SidebarShowFilterMenu({

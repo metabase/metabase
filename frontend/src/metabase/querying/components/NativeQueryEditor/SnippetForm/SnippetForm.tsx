@@ -121,9 +121,8 @@ function SnippetFormInner({
                   type="button"
                   className={S.ArchiveButton}
                   leftSection={<Icon name="archive" />}
-                  variant="subtle"
-                  color="text-secondary"
-                  size="sm"
+                  variant="transparent"
+                  size="compact-md"
                   onClick={onArchive}
                 >
                   {t`Archive`}
@@ -133,7 +132,7 @@ function SnippetFormInner({
             </Flex>
             <Flex align="center" justify="center" gap="sm">
               {!!onCancel && (
-                <Button type="button" size="sm" onClick={onCancel}>
+                <Button type="button" onClick={onCancel}>
                   {t`Cancel`}
                 </Button>
               )}
@@ -141,7 +140,6 @@ function SnippetFormInner({
                 label={t`Save`}
                 disabled={!dirty && !isInitiallyDirty}
                 variant="filled"
-                size="sm"
               />
             </Flex>
           </Flex>

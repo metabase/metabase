@@ -1,4 +1,4 @@
-(ns metabase.app-db.schema-migrations-test.impl
+(ns ^:mb/app-db-migrations-test metabase.app-db.schema-migrations-test.impl
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database

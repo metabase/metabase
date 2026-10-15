@@ -17,8 +17,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
-   [metabase.mcp.v2.resources :as v2.resources]
-   [metabase.util.json :as json]))
+   [metabase.mcp.v2.resources :as v2.resources]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,7 +85,7 @@
    it resolves the handle at `GET /api/embed-mcp/queries/:handle`; the text mirrors it so the model
    is never told less than the iframe was."
   [payload]
-  (common/success-content (message/msg ["%s" "%s"] (message/raw (json/encode payload)) visualize-steering) payload))
+  (common/success-content (message/msg ["%s" "%s"] (message/data payload) visualize-steering) payload))
 
 ;;; ---------------------------------------------- visualize_query -------------------------------------------------
 
@@ -109,6 +108,7 @@
 
 Use this for any request to show, display, visualize, plot, chart, or present results — for example `Show me customers`, `Show me orders by month`, `Display revenue by region`, `Visualize active users over time`. Rendering the visualization IS the final answer: do not call execute_query or execute_sql afterwards to restate the numbers, and do not tell the user to change display types or open the Metabase query builder, a panel, or a sidebar — this is a lightweight inline visualization, not the full Metabase UI."
   {:name                "visualize_query"
+   :default-access      :allowed
    :scope               (v2.resources/resource-scope v2.resources/visualize-query-uri)
    ;; Not idempotent: the fresh-`query` path mints a new handle row on every call.
    :annotations         {:readOnlyHint true}
@@ -134,6 +134,7 @@ Use this for any request to show, display, visualize, plot, chart, or present re
 (registry/deftool render-drill-through
   "Render the drill-through visualization the user just navigated into. Use this — not an execute tool — when the user asks to show a result and their message carries a handle UUID; it is the exact follow-up for the phrase `Show me the result`. Pass that UUID through as query_handle without running the query yourself. Like visualize_query, this renders a lightweight inline visualization and is the final answer: do not restate the numbers with an execute tool, and do not tell the user to change display types or open a Metabase panel or sidebar."
   {:name                "render_drill_through"
+   :default-access      :allowed
    :scope               (v2.resources/resource-scope v2.resources/render-drill-through-uri)
    :annotations         {:readOnlyHint true :idempotentHint true}
    :required-extensions #{:mcp-app-ui}

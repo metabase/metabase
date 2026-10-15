@@ -50,6 +50,7 @@
   :type           :string
   :database-local :only)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *use-routing-details*
   "Used to decide if routing details should be used for a db."
   false)
@@ -213,6 +214,7 @@
 
 (defonce ^:private has-done-before-run (atom #{}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-before-run?*
   "When true, loading a driver's test extensions does NOT run its [[before-run]] hook. Bound by the nightly sweep
   ([[metabase.test.data.gc]]), which needs the extensions to dispatch [[gc-orphans!]] but not the hooks: Redshift's
@@ -295,6 +297,7 @@
   {:pre [(string? database-name)]}
   (str/replace database-name #"\s+" "_"))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *database-name-override*
   "Bind this to a string to override the database name, for the purpose of calculating the qualified table name. The
   purpose of this is to allow for a new Database to clone an existing one with the same details (ex: to test different

@@ -11,6 +11,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.alert :as tools.alert]
    [metabase.metabot.scope :as metabot.scope]
@@ -40,9 +41,14 @@
   (boolean (or error (:isError result))))
 
 (defn- response-text
-  "The outcome's text block, or a registry-level rejection's message."
+  "The outcome's text block, or a registry-level rejection's message. A successful result must open with a
+   data boundary, which is stripped; error text is returned raw."
   [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  (let [text (-> result :content first :text)]
+    (cond
+      error             (message/render (:message error))
+      (:isError result) text
+      :else             (v2.tu/strip-data-boundary text))))
 
 (defn- tool-result
   [outcome]
@@ -899,7 +905,9 @@
     (is (set/subset? #{"agent:delivery:write"} (registry/registered-scopes)))))
 
 (deftest ^:parallel tools-list-visibility-test
-  (testing "GHY-4155: the tool is visible exactly to tokens carrying its write scope"
-    (is (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:delivery:write"})))
-    (is (not (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:alert:create"}))))
-    (is (not (some #(= "alert_write" (:name %)) (registry/list-tools #{"agent:content:read"}))))))
+  (testing "GHY-4543: the tool is listed to every token, whatever its scopes"
+    (is (some #(= "alert_write" (:name %)) (registry/list-tools))))
+  (testing "GHY-4155: only a token carrying its write scope can call it"
+    (doseq [token-scopes [#{"agent:alert:create"} #{"agent:content:read"}]]
+      (is (str/starts-with? (message/render (-> (registry/call-tool token-scopes nil "alert_write" {}) :error :message))
+                            "Insufficient scope to call tool: \"alert_write\".")))))

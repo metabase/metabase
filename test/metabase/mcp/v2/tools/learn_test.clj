@@ -106,7 +106,7 @@
 (deftest ^:parallel unknown-topic-and-reference-text-test
   (testing "GHY-4544: teaching errors quote the caller's topic and reference and the server's names"
     (is (= (str "Unknown topic \"nope\". Topics: \"query-dialect\", \"native-parameters\", \"dashboard-filters\", "
-                "\"dashboard-layout\", \"documents\", \"transforms\", \"visualization-settings\". "
+                "\"dashboard-layout\", \"documents\", \"visualization-settings\". "
                 "Call learn() with no arguments for the catalog with descriptions.")
            (text-of (call {:topic "nope"}))))
     (is (= "Topic \"query-dialect\" has no reference \"nope\". Its references: \"operators\"."
@@ -132,13 +132,13 @@
         (is (not (str/includes? text leaked)))))))
 
 (defn- tool-descriptions
-  "Every registered tool's description. `nil` token-scopes sees the whole surface."
+  "Every registered tool's description, as `tools/list` publishes them to every caller."
   []
-  (keep :description (registry/list-tools nil)))
+  (keep :description (registry/list-tools)))
 
 (defn- learn-description
   []
-  (->> (registry/list-tools nil)
+  (->> (registry/list-tools)
        (filter #(= "learn" (:name %)))
        first
        :description))

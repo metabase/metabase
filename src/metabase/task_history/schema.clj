@@ -56,6 +56,12 @@
    [:run-method      [:= :cron]]
    [:skipped-reason  {:optional true} :string]])
 
+(mr/def ::task-details.content-diagnostics-scan
+  [:map {:closed true}
+   [:scan-id        {:optional true} :string]
+   [:skipped-reason {:optional true} :string]
+   [:run-method     {:optional true} [:enum :cron :upgrade-backfill]]])
+
 (mr/def ::task-details.remote-sync-auto-import
   [:map {:closed true}
    [:task-id ms/PositiveInt]])
@@ -76,6 +82,7 @@
   [:map {:closed true}
    [:version                {:optional true} [:maybe :string]]
    [:timezone-id            {:optional true} [:maybe :string]]
+   [:default-schema         {:optional true} [:maybe :string]]
    [:total-tables           {:optional true} :int]
    [:updated-tables         {:optional true} :int]
    [:tables-classified      {:optional true} :int]
@@ -106,7 +113,8 @@
    [:semantic-version       {:optional true} [:or
                                               [:sequential :int]
                                               [:map {:closed true} [:major :int] [:minor :int]]]]
-   [:cloud                  {:optional true} :boolean]])
+   [:cloud                  {:optional true} :boolean]
+   [:single-node            {:optional true} :boolean]])
 
 (mr/def ::task-details.empty
   [:map {:closed true}])
@@ -134,6 +142,7 @@
    ::task-details.notification-trigger
    ::task-details.send-pulse
    ::task-details.run-transforms
+   ::task-details.content-diagnostics-scan
    ::task-details.remote-sync-auto-import
    ::task-details.persist-refresh
    ::task-details.sync-step

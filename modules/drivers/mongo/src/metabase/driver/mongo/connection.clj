@@ -25,6 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *mongo-client*
   "Stores an instance of `MongoClient` bound by [[with-mongo-client]]."
   nil)

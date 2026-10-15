@@ -904,6 +904,62 @@
     {:query {:filter [:and [:= [:field 10 nil] 20] [:= [:field 20 nil] 30]]}}
     {:query {:filter [:between 10 20 30]}} {:query {:filter [:between [:field 10 nil] 20 30]}}}))
 
+(deftest ^:parallel legacy-int-field-ids-opt-out-test
+  (let [query      {:database 1
+                    :type     :query
+                    :query    {:source-table 1
+                               :filter       [:and
+                                              [:= 1 1]
+                                              [:!= 2 3]
+                                              [:< 4 5]
+                                              [:between 5 1 10]
+                                              [:contains 6 "x"]
+                                              [:= [:field 10 nil] 20]]
+                               :aggregation  [[:sum-where [:field 10 nil] [:= 7 7]]
+                                              [:count-where [:< 8 9]]
+                                              [:sum [:case [[[:= 11 11] 1]]]]
+                                              [:sum 12]]
+                               :joins        [{:source-table 2, :alias "J", :condition ["=" 1 1]}]}}
+        normalize  (fn [options]
+                     (-> (mbql.normalize/normalize ::mbql.s/Query query options)
+                         :query
+                         (select-keys [:filter :aggregation :joins])))
+        literals   {:filter [:and
+                             [:= 1 1]
+                             [:!= 2 3]
+                             [:< 4 5]
+                             [:between 5 1 10]
+                             [:contains 6 "x"]
+                             [:= [:field 10 nil] 20]]
+                    :aggregation [[:sum-where [:field 10 nil] [:= 7 7]]
+                                  [:count-where [:< 8 9]]
+                                  [:sum [:case [[[:= 11 11] 1]]]]
+                                  [:sum 12]]
+                    :joins  [{:source-table 2, :alias "J", :condition [:= 1 1]}]}
+        field-refs {:filter [:and
+                             [:= [:field 1 nil] 1]
+                             [:!= [:field 2 nil] 3]
+                             [:< [:field 4 nil] 5]
+                             [:between [:field 5 nil] 1 10]
+                             [:contains [:field 6 nil] "x"]
+                             [:= [:field 10 nil] 20]]
+                    :aggregation [[:sum-where [:field 10 nil] [:= [:field 7 nil] 7]]
+                                  [:count-where [:< [:field 8 nil] 9]]
+                                  [:sum [:case [[[:= [:field 11 nil] 11] 1]]]]
+                                  [:sum [:field 12 nil]]]
+                    :joins  [{:source-table 2, :alias "J", :condition [:= [:field 1 nil] 1]}]}]
+    (testing "{:legacy-int-field-ids? false} keeps raw integers as literals in comparisons and aggregation arguments"
+      (is (= literals
+             (normalize {:legacy-int-field-ids? false}))))
+    (testing "raw integers in comparisons and aggregation arguments are treated as Field IDs by default"
+      (is (= field-refs
+             (normalize nil))))
+    (testing "the opt-out coercer is cached separately from the default one"
+      (is (= literals
+             (normalize {:legacy-int-field-ids? false})))
+      (is (= field-refs
+             (normalize {:legacy-int-field-ids? true}))))))
+
 (deftest ^:parallel canonicalize-filter-test-2
   (normalize-tests
    "`:inside` filters should get implict Field IDs for the first two args"

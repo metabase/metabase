@@ -2,8 +2,11 @@ import { render } from "@testing-library/react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import { seedApiQueryCache } from "__support__/state";
-import { type StoreSeedState, createMockState } from "__support__/state";
+import {
+  type StoreSeedState,
+  createMockState,
+  seedApiQueryCache,
+} from "__support__/state";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
@@ -52,7 +55,7 @@ export function renderWithSDKProviders(
   // Without this, SDK components will not render due to missing token features and settings.
   if (!storeInitialState.settings && seededSettings) {
     seededSettings.values["token-features"].embedding_sdk = true;
-    seededSettings.values["enable-embedding-modular"] = true;
+    seededSettings.values["enable-embedding-sdk"] = true;
   }
 
   if (seededSettings?.values) {

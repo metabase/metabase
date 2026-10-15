@@ -25,11 +25,7 @@ const ListVizComponent = ({
   isDashboard,
   onZoomRow,
 }: VisualizationProps & VisualizationPassThroughProps) => {
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(
-    () => (card ? buildQuestion(card) : null),
-    [card, buildQuestion],
-  );
+  const question = useQuestionFromCard(card) ?? null;
 
   const { sortedColumnName, sortingDirection } = useMemo(() => {
     if (!question) {

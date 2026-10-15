@@ -32,17 +32,24 @@
   (import-fk        [this eid model]       "Given a portable ID and model, return the numeric PK.")
   (import-fk-keyed  [this portable model field] "Given a portable identifying field value, return the numeric :id.")
   (import-user      [this email]           "Import a user by email, creating if needed. Returns PK.")
+  (import-database-fk [this db-name]       "Given a portable database name, return the numeric database id.")
   (import-table-fk  [this path]            "Given [db-name schema table-name], return numeric table_id.")
   (import-field-fk  [this path]            "Given [db-name schema table-name field-name], return numeric field_id."))
+
+(defprotocol ResettableCache
+  "A resolver whose memoized lookups can be dropped."
+  (reset-cache! [this] "Drop every memoized lookup."))
 
 ;;; ============================================================
 ;;; Dynamic vars — bound to resolver instances
 ;;; ============================================================
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *export-resolver*
   "The current `SerdesExportResolver` instance. Bound during export."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *import-resolver*
   "The current `SerdesImportResolver` instance. Bound during import."
   nil)
@@ -51,6 +58,7 @@
 ;;; Agent surface
 ;;; ============================================================
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *numeric-ids-allowed?*
   "Whether bare numeric table/field/card ids are accepted alongside portable references inside
   a query body being resolved.
@@ -140,7 +148,7 @@
     (-> &match
         (assoc :database (if (= fully-qualified-name "database/__virtual")
                            lib.schema.id/saved-questions-virtual-database-id
-                           (import-fk-keyed resolver fully-qualified-name :model/Database :name)))
+                           (import-database-fk resolver fully-qualified-name)))
         (->> (mbql-fully-qualified-names->ids* resolver)))
 
     {:card-id (entity-id :guard content-ref?)}
@@ -222,14 +230,19 @@
              (#{:field :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
 
+(mr/def ::field-ref
+  "MBQL 5 or legacy `:field` clause. Registered under a keyword so [[lib/normalize]] reuses one cached coercer; an
+  inline literal with a fresh dispatch fn misses the registry cache on every call."
+  [:multi
+   {:dispatch #(and (vector? %)
+                    (map? (second %)))}
+   [true  :mbql.clause/field]
+   [false ::mbql.s/field]])
+
 (defn- normalize [mbql]
   (let [tag    (mbql-clause-tag mbql)
         schema (case tag
-                 :field     [:multi
-                             {:dispatch #(and (vector? %)
-                                              (map? (second %)))}
-                             [true  :mbql.clause/field]
-                             [false ::mbql.s/field]] ; legacy MBQL clause
+                 :field     ::field-ref
                  :dimension ::lib.schema.parameter/dimension
                  :metric    :mbql.clause/metric
                  :segment   :mbql.clause/segment

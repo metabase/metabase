@@ -304,7 +304,7 @@ describe("createTestQuery", () => {
               {
                 type: "column",
                 name: "RATING",
-                bins: 10,
+                binning: { strategy: "num-bins", numBins: 10 },
               },
             ],
           },
@@ -330,8 +330,7 @@ describe("createTestQuery", () => {
               {
                 type: "column",
                 name: "LATITUDE",
-                sourceName: "PEOPLE",
-                binWidth: 10,
+                binning: { strategy: "bin-width", binWidth: 10 },
               },
             ],
           },

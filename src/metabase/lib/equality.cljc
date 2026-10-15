@@ -69,6 +69,7 @@
               (or (empty? more-x)
                   (recur more-x more-y))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *side->uuid->index* nil)
 
 (defn- aggregation-uuid->index

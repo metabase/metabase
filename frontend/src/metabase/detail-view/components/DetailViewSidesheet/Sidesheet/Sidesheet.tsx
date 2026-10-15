@@ -39,18 +39,17 @@ export function Sidesheet({
         w={rem(720)}
       >
         <Modal.Body className={S.body} p={0} pt="xl">
-          <Group gap="xl" justify="flex-end" px="xxl">
+          <Group gap="lg" justify="flex-end" px="xxl">
             {actions}
 
             <Tooltip label={t`Close`}>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
                 aria-label={t`Close`}
-                c="text-primary"
-                h={20}
                 leftSection={<Icon name="close" />}
-                p={0}
+                size="sm"
                 variant="subtle"
-                w={20}
+                color="neutral"
                 onClick={onClose}
               />
             </Tooltip>

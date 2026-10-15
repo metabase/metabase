@@ -615,6 +615,7 @@
                                     :source/table-defaults
                                     :source/previous-stage)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *recursive-expression-resolution?* false)
 
 (defn- maybe-resolve-expression-in-current-stage [query stage-number id-or-name]
@@ -632,6 +633,7 @@
 
 (declare resolve-from-previous-stage-or-source)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *in-deduplicated-column-resolution?* false)
 
 (defn- resolve-nonexistent-deduplicated-column-name
@@ -716,6 +718,10 @@
           {:lib/original-ref-style-for-result-metadata-purposes (if (pos-int? id-or-name)
                                                                   :original-ref-style/id
                                                                   :original-ref-style/name)}])
+        (as-> $col (cond-> $col
+                     (:lib/ref-name $col) (-> (assoc :name              (:lib/ref-name $col)
+                                                     :lib/original-name (:lib/ref-name $col))
+                                              (dissoc :lib/deduplicated-name))))
         (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col))
           (cond-> $col
             (and (contains? #{nil :type/*} (:effective-type $col))

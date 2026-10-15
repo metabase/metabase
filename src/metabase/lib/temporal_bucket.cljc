@@ -400,11 +400,8 @@
   [query stage-number option]
   (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)
           :short-name (u/qualified-name (raw-temporal-bucket option))
-          :is-temporal-extraction (let [bucket (raw-temporal-bucket option)]
-                                    (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units
-                                                    bucket)
-                                         (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units
-                                                         bucket))))}
+          :is-temporal-extraction (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units
+                                             (raw-temporal-bucket option))}
          (select-keys option [:default :selected])))
 
 (defmulti available-temporal-buckets-method
@@ -458,9 +455,10 @@
 (mu/defn describe-temporal-pair :- :string
   "Return a string describing the temporal pair.
    Used when comparing temporal values like `[:!= ... [:field {:temporal-unit :day-of-week} ...] \"2022-01-01\"]`"
-  [temporal-column :- Bucketable
+  [time-config    :- ::lib.schema.common/time-config
+   temporal-column :- Bucketable
    temporal-value :- [:or :int :string]]
-  (u.time/format-unit temporal-value (:unit (temporal-bucket temporal-column))))
+  (u.time/format-unit time-config temporal-value (:unit (temporal-bucket temporal-column))))
 
 (defn add-temporal-bucket-to-ref
   "Internal helper shared between a few implementations of [[with-temporal-bucket-method]].
@@ -473,7 +471,7 @@
   ;; we want to remove it later. We will record this with the key `:lib/original-effective-type`. Note that changing the
   ;; unit multiple times should keep the original first value of `:lib/original-effective-type`.
   (if unit
-    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-integer-extraction-units unit)
           original-effective-type ((some-fn :lib/original-effective-type :effective-type :base-type)
                                    options)
           new-effective-type      (if extraction-unit?

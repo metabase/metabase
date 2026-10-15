@@ -2,8 +2,8 @@ import cx from "classnames";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { addParameter, duplicateCard } from "metabase/dashboard/actions";
@@ -14,8 +14,8 @@ import {
   getDashcardResultsError,
   isDashcardLoading,
 } from "metabase/dashboard/utils";
-import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -337,10 +337,10 @@ function DashCardInner({
     ? onEditVisualizationClick
     : undefined;
 
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card) ? buildQuestion(dashcard.card) : null;
-  }, [dashcard.card, buildQuestion]);
+  const question =
+    useQuestionFromCard(
+      isQuestionCard(dashcard.card) ? dashcard.card : undefined,
+    ) ?? null;
 
   return (
     <ErrorBoundary>

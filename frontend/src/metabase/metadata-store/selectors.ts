@@ -390,13 +390,6 @@ const UNFILTERED_OPTS: MetadataSelectorOpts = {
 export const getMetadataUnfiltered = (state: State) =>
   getMetadata(state, UNFILTERED_OPTS);
 
-export const getMetadataWithHiddenTables = (
-  state: State,
-  props?: TableSelectorOpts,
-) => {
-  return getMetadata(state, { ...props, includeHiddenTables: true });
-};
-
 // Utils
 
 function isNotNull<T>(value: T | null | undefined): value is T {

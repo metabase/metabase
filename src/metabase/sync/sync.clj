@@ -40,9 +40,16 @@
    :analyze      analyze/analyze-db!
    :field-values sync.field-values/update-field-values!})
 
-(defn- scan-phases [scan]
-  (if (not= :full scan)
+(defn- scan-phases [scan initial-sync-complete?]
+  (cond
+    (not= :full scan)
     [:metadata]
+
+    ;; FieldValues are only created on demand, so a Database on its first sync has none to update or clear.
+    (not initial-sync-complete?)
+    [:metadata :analyze]
+
+    :else
     [:metadata :analyze :field-values]))
 
 (defn- do-phase! [database phase]
@@ -61,7 +68,8 @@
   "Perform all the different sync operations synchronously for `database`.
 
   By default, does a `:full` sync that performs all the different sync operations consecutively. You may instead
-  specify only a `:schema` sync that will sync just the schema but skip analysis.
+  specify only a `:schema` sync that will sync just the schema but skip analysis. A `:full` sync skips the FieldValues
+  scan when the `:initial_sync_status` of `database` is not `\"complete\"`.
 
   Please note that this function is *not* what is called by the scheduled tasks; those call different steps
   independently. This function is called when a Database is first added."
@@ -73,7 +81,7 @@
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (tracing/with-span :sync "sync.database" {:db/id (:id database)}
      (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-       (->> (scan-phases scan)
+       (->> (scan-phases scan (= "complete" (:initial_sync_status database)))
             (keep (partial do-phase! database))
             (doall))))))
 

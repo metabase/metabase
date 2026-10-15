@@ -29,6 +29,7 @@ type SetupOpts = {
   hasModels?: boolean;
   canWrite?: boolean;
   isConfigured?: boolean;
+  aiFeaturesEnabled?: boolean;
 };
 
 const SAMPLE_DATABASE = createSampleDatabase();
@@ -38,10 +39,12 @@ async function setup({
   databases = [SAMPLE_DATABASE],
   canWrite = true,
   isConfigured = true,
+  aiFeaturesEnabled = true,
 }: SetupOpts = {}) {
   const settings = mockSettings({
     "llm-metabot-configured?": isConfigured,
     "metabot-enabled?": true,
+    "ai-features-enabled?": aiFeaturesEnabled,
   });
 
   setupUserMetabotPermissionsEndpoint();
@@ -98,6 +101,13 @@ describe("NewItemMenu", () => {
     await setup({ isConfigured: false });
 
     expect(await screen.findByText("AI exploration")).toBeInTheDocument();
+  });
+
+  it("does not show AI exploration when AI features are disabled", async () => {
+    await setup({ aiFeaturesEnabled: false });
+
+    expect(await screen.findByText("Question")).toBeInTheDocument();
+    expect(screen.queryByText("AI exploration")).not.toBeInTheDocument();
   });
 
   it("should support keyboard navigation", async () => {

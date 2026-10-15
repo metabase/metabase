@@ -29,6 +29,7 @@ export function NewDatasetModal({ onClose }: { onClose: () => void }) {
           key="cancel"
           onClick={onClose}
           variant="subtle"
+          color="neutral"
         >{t`Cancel`}</Button>,
         <Button
           key="action"

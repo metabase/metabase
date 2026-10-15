@@ -18,7 +18,7 @@ import type {
   MetabotMessage,
 } from "metabase/metabot/state/types";
 import { convertSlackMessage } from "metabase/metabot/utils/slack-mrkdwn";
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -199,6 +199,7 @@ export function ConversationDetailPage() {
               <Card withBorder shadow="none" p="xxl">
                 <Messages
                   messages={messages}
+                  size="md"
                   getExtraActions={getExtraActions}
                   isDoingScience={false}
                   debug
@@ -301,6 +302,7 @@ function FeedbackCard({
         {agentResponse && (
           <AgentMessage
             message={agentResponse}
+            size="md"
             debug={false}
             readonly
             hideActions
@@ -308,7 +310,6 @@ function FeedbackCard({
             submittedFeedback={undefined}
             bg="background_page-secondary"
             p="lg"
-            pb="0"
             bd="1px solid var(--mb-color-border-neutral)"
             bdrs="1rem"
           />
@@ -331,7 +332,7 @@ export function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
 }
 
 function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
 
   const runUrl = useMemo(() => {
     if (query.database_id == null || !query.sql) {
@@ -401,7 +402,7 @@ function NotebookGeneratedQueryCard({
   const { isLoading, isError } = useGetAdhocQueryMetadataQuery(
     mbql.database != null ? mbql : skipToken,
   );
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );

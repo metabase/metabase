@@ -31,13 +31,16 @@ export function PermissionsEditBar({
       key="save"
       onClick={openModal}
       disabled={!isDirty}
-      variant="filled"
-      size="sm"
+      variant={isEmbeddingHub ? "filled" : "on-dark-primary"}
     >{t`Save changes`}</Button>
   );
 
   const cancelButton = (
-    <Button variant="subtle" size="sm" onClick={onCancel} key="cancel">
+    <Button
+      variant={isEmbeddingHub ? "default" : "on-dark-secondary"}
+      onClick={onCancel}
+      key="cancel"
+    >
       {t`Cancel`}
     </Button>
   );
@@ -45,7 +48,7 @@ export function PermissionsEditBar({
   return (
     <>
       <EditBar
-        admin={!isEmbeddingHub}
+        location={isEmbeddingHub ? "embedding-hub" : "admin"}
         className={isEmbeddingHub ? S.hubEditBar : undefined}
         title={t`You've made changes to permissions.`}
         buttons={[cancelButton, saveButton]}

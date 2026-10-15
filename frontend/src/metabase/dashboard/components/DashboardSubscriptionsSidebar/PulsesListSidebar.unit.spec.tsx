@@ -1,95 +1,113 @@
-import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import type { ParameterValueOrArray } from "metabase-types/api";
+import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
+import type { Channel, ChannelApiResponse } from "metabase-types/api";
 import {
+  createMockChannel,
   createMockDashboardSubscription,
-  createMockParameter,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
-import { buildFilterText } from "./PulsesListSidebar";
+import { PulsesListSidebar } from "./PulsesListSidebar";
 
-jest.mock("metabase/parameters/utils/date-formatting", () => ({
-  formatDateValue: jest.fn((_parameter, value) =>
-    value === "2024-01-15" ? "January 15, 2024" : null,
-  ),
-}));
+const UNCONFIGURED_EMAIL: ChannelApiResponse = {
+  channels: {
+    email: {
+      type: "email",
+      name: "Email",
+      schedules: ["hourly", "daily", "weekly", "monthly"],
+      schedule_type: "hourly",
+      allows_recipients: true,
+      configured: false,
+      recipients: ["user", "email"],
+    },
+  },
+};
 
-describe("buildFilterText", () => {
-  const stateParameter = createMockUiParameter({
-    id: "1",
-    name: "State",
-    slug: "state",
-    type: "string/=",
-  });
+type SetupOpts = {
+  channel: Channel;
+  formInput?: ChannelApiResponse;
+};
 
-  const buildPulse = (value: ParameterValueOrArray) =>
-    createMockDashboardSubscription({
-      parameters: [createMockParameter({ id: "1", value })],
-    });
-
-  it("returns an empty string when no parameters have values", () => {
-    expect(
-      buildFilterText(createMockDashboardSubscription(), [stateParameter]),
-    ).toBe("");
-  });
-
-  it("renders a single value", () => {
-    expect(buildFilterText(buildPulse("CA"), [stateParameter])).toBe(
-      "State: CA",
-    );
-  });
-
-  it("renders a single-element array value", () => {
-    expect(buildFilterText(buildPulse(["CA"]), [stateParameter])).toBe(
-      "State: CA",
-    );
-  });
-
-  it("renders a numeric value", () => {
-    expect(buildFilterText(buildPulse(42), [stateParameter])).toBe("State: 42");
-  });
-
-  it("summarizes multi-value selections", () => {
-    expect(buildFilterText(buildPulse(["CA", "NY"]), [stateParameter])).toBe(
-      "State: 2 selections",
-    );
-  });
-
-  it("drops nullish array entries instead of rendering them", () => {
-    expect(buildFilterText(buildPulse([null]), [stateParameter])).toBe(
-      "State: ",
-    );
-  });
-
-  it("mentions the number of additional filters", () => {
-    const cityParameter = createMockUiParameter({
-      id: "2",
-      name: "City",
-      slug: "city",
-      type: "string/=",
-    });
+describe("PulsesListSidebar", () => {
+  const setup = ({ channel, formInput = { channels: {} } }: SetupOpts) => {
     const pulse = createMockDashboardSubscription({
-      parameters: [
-        createMockParameter({ id: "1", value: "CA" }),
-        createMockParameter({ id: "2", value: "SF" }),
-      ],
+      id: 1,
+      channels: [channel],
     });
-    expect(buildFilterText(pulse, [stateParameter, cityParameter])).toBe(
-      "State: CA and 1 more filter",
+    const editPulse = jest.fn();
+
+    renderWithProviders(
+      <PulsesListSidebar
+        pulses={[pulse]}
+        formInput={formInput}
+        createSubscription={jest.fn()}
+        onCancel={jest.fn()}
+        editPulse={editPulse}
+      />,
     );
+
+    return { pulse, editPulse };
+  };
+
+  const recipient = createMockUser({ common_name: "Ada Lovelace" });
+
+  it("shows the custom subject of an email subscription", () => {
+    setup({
+      channel: createMockChannel({
+        recipients: [recipient],
+        details: { subject: "Weekly revenue" },
+      }),
+    });
+
+    expect(screen.getByText("Weekly revenue")).toBeInTheDocument();
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
   });
 
-  it("formats date parameter values", () => {
-    const dateParameter = createMockUiParameter({
-      id: "3",
-      name: "Created At",
-      slug: "created_at",
-      type: "date/single",
+  it("shows only the recipients when no subject is set", () => {
+    setup({ channel: createMockChannel({ recipients: [recipient] }) });
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByRole("listitem")).toHaveTextContent("Ada Lovelace");
+  });
+
+  it("says how and when each subscription sends", () => {
+    setup({
+      channel: createMockChannel({
+        channel_type: "slack",
+        details: { channel: "#sales" },
+        schedule_type: "weekly",
+        schedule_day: "mon",
+        schedule_hour: 9,
+      }),
     });
-    const pulse = createMockDashboardSubscription({
-      parameters: [createMockParameter({ id: "3", value: "2024-01-15" })],
+
+    expect(screen.getByText("Sent to #sales Monday at 9:00 AM")).toBeVisible();
+  });
+
+  it("opens the edit form of an email subscription whose channel is not configured", async () => {
+    const channel = createMockChannel({
+      schedule_type: "daily",
+      schedule_hour: 8,
     });
-    expect(buildFilterText(pulse, [dateParameter])).toBe(
-      "Created At: January 15, 2024",
-    );
+    const { pulse, editPulse } = setup({
+      channel,
+      formInput: UNCONFIGURED_EMAIL,
+    });
+
+    await userEvent.click(screen.getByText("Emailed daily at 8:00 AM"));
+
+    expect(editPulse).toHaveBeenCalledTimes(1);
+    expect(editPulse).toHaveBeenCalledWith(pulse, "email");
+  });
+
+  it("does not open an edit form for a channel the form input leaves out", async () => {
+    const { editPulse } = setup({
+      channel: createMockChannel({ schedule_type: "hourly" }),
+    });
+
+    await userEvent.click(screen.getByText("Emailed hourly"));
+
+    expect(editPulse).not.toHaveBeenCalled();
   });
 });

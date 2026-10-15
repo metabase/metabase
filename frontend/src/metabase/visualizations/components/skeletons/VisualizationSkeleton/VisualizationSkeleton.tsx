@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 
-import { VisualizationRoot } from "metabase/visualizations/components/Visualization/Visualization.styled";
-import { VisualizationSkeletonCaption } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton.styled";
+import { Flex } from "metabase/ui";
+import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 
 export type VisualizationSkeletonProps = HTMLAttributes<HTMLDivElement> & {
   name?: string | null;
@@ -17,13 +17,13 @@ export const VisualizationSkeleton = ({
   className,
 }: VisualizationSkeletonProps) => {
   return (
-    <VisualizationRoot className={className}>
-      <VisualizationSkeletonCaption
+    <Flex className={className} direction="column" h="100%">
+      <SkeletonCaption
         name={name}
         description={description}
         actionMenu={actionMenu}
       />
       {children}
-    </VisualizationRoot>
+    </Flex>
   );
 };

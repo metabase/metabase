@@ -108,8 +108,7 @@ export const CreateTenantsOnboardingStep = ({
       onTenantsCreated?.(tenants);
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(error, t`Failed to create tenants`),
       });
     }
@@ -128,7 +127,7 @@ export const CreateTenantsOnboardingStep = ({
         {tenants.map((tenant, index) => (
           <Paper key={index} withBorder p="lg" radius="sm">
             <Stack gap="lg">
-              <Group justify="space-between" align="flex-start">
+              <Group justify="space-between" align="center">
                 <TextInput
                   value={tenant.name}
                   onChange={(e) =>
@@ -139,16 +138,16 @@ export const CreateTenantsOnboardingStep = ({
                   fw="bold"
                   classNames={{ input: S.TenantNameInput }}
                 />
+                {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {tenants.length > 1 && (
                   <Button
                     variant="subtle"
-                    color="text-secondary"
-                    p={0}
+                    color="neutral"
+                    size="sm"
+                    leftSection={<Icon name="close" />}
                     onClick={() => removeTenantCard(index)}
                     aria-label={t`Remove tenant`}
-                  >
-                    <Icon name="close" size={16} />
-                  </Button>
+                  />
                 )}
               </Group>
 
@@ -191,11 +190,10 @@ export const CreateTenantsOnboardingStep = ({
 
       <Flex justify="space-between" align="center">
         <Button
-          variant="subtle"
+          variant="transparent"
+          size="compact-md"
           leftSection={<Icon name="add" size={16} />}
           onClick={addTenantCard}
-          p={0}
-          fw="bold"
         >
           {t`New tenant`}
         </Button>

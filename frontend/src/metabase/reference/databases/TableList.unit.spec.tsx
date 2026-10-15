@@ -1,5 +1,3 @@
-import { createMockState } from "__support__/state";
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { Route } from "metabase/router";
@@ -38,19 +36,13 @@ const database = createMockDatabase({
   tables,
 });
 
-const storeInitialState = createMockState({
-  entities: createMockEntitiesState({
-    databases: [database],
-  }),
-});
-
 function setup() {
   return renderWithProviders(
     <Route
       path="/"
-      element={<TableList params={{ databaseId: String(databaseId) }} />}
+      element={<TableList database={database} tables={tables} />}
     />,
-    { storeInitialState, withRouter: true },
+    { withRouter: true },
   );
 }
 

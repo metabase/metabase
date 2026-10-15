@@ -5,6 +5,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -13,7 +14,6 @@
    [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -97,7 +97,8 @@
           {:keys [query-id query]} action-result]
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id)]
+              instr       (instructions/query-created-instructions-for query-id
+                                                                       (tools.run-query/sql-results-readable?))]
           {:output (format-query-output structured instr {:preamble? true})
            :structured-output structured
            :instructions instr
@@ -187,10 +188,7 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/errorf "Error editing SQL query: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        (metabot.tools.u/handle-agent-error e)
-        {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Replace SQL query
@@ -236,7 +234,4 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/errorf "Error replacing SQL query: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        (metabot.tools.u/handle-agent-error e)
-        {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))

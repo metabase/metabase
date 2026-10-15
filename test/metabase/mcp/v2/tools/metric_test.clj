@@ -16,6 +16,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.metric :as tools.metric]
    [metabase.permissions.core :as perms]
@@ -51,7 +52,7 @@
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
-  (-> result :content first :text json/decode+kw))
+  (-> result :content first :text v2.tu/strip-data-boundary json/decode+kw))
 
 (defn- tool-error
   "Tool-level error text of a tool response; throws when the call succeeded, so a passing call
@@ -574,9 +575,11 @@
     (is (contains? (registry/registered-scopes) "agent:content:write"))))
 
 (deftest ^:parallel tools-list-visibility-test
-  (testing "GHY-4146: the tool is visible exactly to tokens carrying its write scope"
-    (is (some #(= "metric_write" (:name %)) (registry/list-tools write-scope)))
-    (is (not (some #(= "metric_write" (:name %)) (registry/list-tools #{"agent:content:read"}))))))
+  (testing "GHY-4543: the tool is listed to every token, but only a token carrying its write scope can call it"
+    (is (some #(= "metric_write" (:name %)) (registry/list-tools)))
+    (is (str/starts-with? (message/render (-> (registry/call-tool #{"agent:content:read"} nil "metric_write" {})
+                                              :error :message))
+                          "Insufficient scope to call tool: \"metric_write\"."))))
 
 ;;; ------------------------------------------------ Round-2 review ------------------------------------------------
 
@@ -585,14 +588,14 @@
             matching collection_write, whose archived:true has the same effect"
     (is (true? (:destructiveHint
                 (:annotations (first (filter #(= "metric_write" (:name %))
-                                             (registry/list-tools write-scope)))))))))
+                                             (registry/list-tools)))))))))
 
 ;; not ^:parallel: creates a row through the tool; with-model-cleanup's id watermark is not parallel-safe
 (deftest text-only-response-test
   (testing "round-2 review: metric_write has no outputSchema and no concrete structuredContent
             consumer, so it follows the stack's text-only convention like collection_write"
     (is (nil? (:outputSchema (first (filter #(= "metric_write" (:name %))
-                                            (registry/list-tools write-scope))))))
+                                            (registry/list-tools))))))
     (mt/with-model-cleanup [:model/Card]
       (let [response (call-tool! :crowberto write-scope "metric_write"
                                  {:method "create" :name "metric-test text-only"

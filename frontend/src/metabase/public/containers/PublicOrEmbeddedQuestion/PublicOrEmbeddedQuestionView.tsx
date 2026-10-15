@@ -54,9 +54,8 @@ export function PublicOrEmbeddedQuestionView({
   setCard,
   downloadsEnabled,
 }: PublicOrEmbeddedQuestionViewProps) {
-  const buildQuestion = useQuestionFromCard();
   // EmbedFrame lays out a question frame before the card loads.
-  const question = card ? buildQuestion(card) : new Question(null);
+  const question = useQuestionFromCard(card) ?? new Question(null);
 
   const isTable = question.display() === "table";
   const downloadInFooter = !titled && isTable;

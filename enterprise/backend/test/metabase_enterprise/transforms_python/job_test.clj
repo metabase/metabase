@@ -1,9 +1,6 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.job-test
   (:require
    [clojure.test :refer :all]
-   ;; tests redef log/log* to capture log lines; util.log macros bottom out in tools.logging
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -58,21 +55,19 @@
       (let [python-transform {:id 2
                               :source python-source
                               :name "Test Python Transform"}
-            run-id 101
-            logged-messages (atom [])]
-        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
-                                               (swap! logged-messages conj {:level level :message message}))
-                                    transform-run/running-run-for-transform-id (constantly nil)]
-          (#'jobs/run-transform! {:parent-run       [:job run-id]
-                                  :run-method       :scheduled
-                                  :user-id          nil
-                                  :add-run-activity! (constantly nil)}
-                                 (promise)
-                                 python-transform)
-          (is (= 1 (count @logged-messages))
-              "Should log exactly one warning")
-          (is (= :warn (:level (first @logged-messages)))
-              "Should log at warn level")
-          (is (re-matches #".*Skip running transform 2 due to lacking premium features.*"
-                          (:message (first @logged-messages)))
-              "Warning message should indicate transform was skipped due to missing features"))))))
+            run-id 101]
+        (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
+          (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)]
+            (#'jobs/run-transform! {:parent-run       [:job run-id]
+                                    :run-method       :scheduled
+                                    :user-id          nil
+                                    :add-run-activity! (constantly nil)}
+                                   (promise)
+                                   python-transform)
+            (is (= 1 (count (messages)))
+                "Should log exactly one warning")
+            (is (= :warn (:level (first (messages))))
+                "Should log at warn level")
+            (is (re-matches #".*Skip running transform 2 due to lacking premium features.*"
+                            (:message (first (messages))))
+                "Warning message should indicate transform was skipped due to missing features")))))))

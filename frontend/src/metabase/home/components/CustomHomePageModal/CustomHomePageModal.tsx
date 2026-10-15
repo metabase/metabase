@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUpdateSettingsMutation } from "metabase/settings";
-import { Box, Button, Flex, Modal, Text } from "metabase/ui";
+import { Box, Button, Modal, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
@@ -42,12 +42,12 @@ export const CustomHomePageModal = ({
           <Box ml="0.5rem" mr="2.5rem">
             <Text
               span
-              c="text-primary-inverse"
+              c="inherit"
               fw={700}
             >{t`This dashboard has been set as your homepage.`}</Text>
             <Text
               span
-              c="text-primary-inverse"
+              c="inherit"
             >{t`You can change this in Admin > Settings > General.`}</Text>
           </Box>
         ),
@@ -85,28 +85,26 @@ export const CustomHomePageModal = ({
       onClose={handleClose}
       size="544px"
     >
-      <Box mt="sm">
-        <Text>
-          {t`If anyone lacks permission to see the dashboard you pick, they'll be redirected to the default homepage.`}
-        </Text>
-        <Text mt="sm">{jt`You can always change the homepage in ${<Link key="link" className={CS.link} to="/admin/settings/general" style={{ textDecoration: "underline" }}>{t`admin settings`}</Link>} under General.`}</Text>
-        <Box mt="xl">
-          <DashboardSelector
-            value={dashboardId}
-            fullWidth={false}
-            onChange={handleChange}
-          />
-        </Box>
+      <Text>
+        {t`If anyone lacks permission to see the dashboard you pick, they'll be redirected to the default homepage.`}
+      </Text>
+      <Text mt="sm">{jt`You can always change the homepage in ${<Link key="link" className={CS.link} to="/admin/settings/general" style={{ textDecoration: "underline" }}>{t`admin settings`}</Link>} under General.`}</Text>
+      <Box mt="xl">
+        <DashboardSelector
+          value={dashboardId}
+          fullWidth={false}
+          onChange={handleChange}
+        />
       </Box>
 
-      <Flex mt="xl" justify="flex-end" gap="0.5rem">
-        <Button variant="subtle" onClick={handleClose}>
+      <Modal.Footer>
+        <Button variant="subtle" color="neutral" onClick={handleClose}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" disabled={!dashboardId} onClick={handleSave}>
           {t`Done`}
         </Button>
-      </Flex>
+      </Modal.Footer>
     </Modal>
   );
 };

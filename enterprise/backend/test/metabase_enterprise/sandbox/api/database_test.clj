@@ -20,16 +20,20 @@
   metabase-enterprise.sandbox.api.table-test/native-query-metadata-test."
   [group]
   (let [card (t2/select-one :model/Card
-                            {:select [:c.id :c.dataset_query :c.entity_id :c.card_schema]
+                            {:select [:c.id :c.dataset_query :c.entity_id :c.card_schema
+                                      ;; required alongside :card_schema for the Card schema upgrade
+                                      :c.type :c.database_id :c.result_metadata
+                                      :c.dimensions :c.dimension_mappings]
                              :from   [[:sandboxes :s]]
                              :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
                                       [:report_card :c] [:= :c.id :s.card_id]]
                              :where  [:= :pg.id (u/the-id group)]})
         {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
                                             (:dataset_query card))]
-    (if metadata
-      (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-      (card.metadata/save-metadata-async! metadata-future card))))
+    (mt/with-test-user :crowberto
+      (if metadata
+        (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
+        (card.metadata/save-metadata-async! metadata-future card)))))
 
 (deftest database-metadata-respects-column-sandbox-test
   (testing "GET /api/database/:id/metadata excludes columns hidden by a column-restricting sandbox."

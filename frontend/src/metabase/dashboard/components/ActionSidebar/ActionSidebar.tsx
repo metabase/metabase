@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -117,7 +118,7 @@ export function ActionSidebar() {
             <Flex justify="space-between" py="xxs">
               <Ellipsified fw="bold">{dashcard.action.name}</Ellipsified>
               <Button
-                h="auto"
+                size="compact-md"
                 variant="transparent"
                 onClick={openActionModal}
                 flex="0 0 auto"
@@ -132,7 +133,7 @@ export function ActionSidebar() {
           size="auto"
         >
           <Modal.Overlay />
-          <Modal.Content>
+          <Modal.Content className={cx(CS.flex, CS.flexColumn)}>
             <ActionDashcardSettings
               dashboard={dashboard}
               dashcard={dashcard}

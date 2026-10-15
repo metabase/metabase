@@ -13,6 +13,7 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -39,6 +40,10 @@
    (com.google.cloud.http HttpTransportOptions)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (is (nil? (driver.sql/default-schema :bigquery-cloud-sdk (mt/db))))))
 
 (defn ^:private get-test-data-name
   []

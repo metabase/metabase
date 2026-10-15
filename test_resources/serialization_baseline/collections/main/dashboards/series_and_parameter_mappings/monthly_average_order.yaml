@@ -35,9 +35,7 @@ visualization_settings:
   column_settings: null
 card_schema: 24
 serdes/meta:
-- id: dShCrdMnthlyAvgOr0003
-  label: monthly_average_order
-  model: Card
+- model: Card
 dashboard_id: 8xFV0XmZs2olbGKXWenfS
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

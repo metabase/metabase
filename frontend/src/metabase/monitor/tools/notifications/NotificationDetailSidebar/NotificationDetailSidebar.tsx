@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   skipToken,
@@ -42,7 +42,6 @@ export const NotificationDetailSidebar = ({
   }, [notificationId]);
 
   const dispatch = useDispatch();
-  const buildQuestion = useQuestionFromCard();
   const cardId = notification?.payload?.card_id;
   const { currentData: card, isFetching: isCardLoading } = useGetCardQuery(
     cardId != null ? { id: cardId } : skipToken,
@@ -54,10 +53,7 @@ export const NotificationDetailSidebar = ({
     }
   }, [card, dispatch]);
 
-  const question = useMemo(
-    () => (card ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
+  const question = useQuestionFromCard(card);
 
   return (
     <>

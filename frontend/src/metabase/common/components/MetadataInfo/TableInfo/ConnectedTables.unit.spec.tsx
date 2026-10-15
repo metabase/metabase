@@ -1,7 +1,7 @@
+import { createMockMetadataFromState } from "__support__/metadata";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { createMockTable } from "metabase-types/api/mocks";
@@ -62,7 +62,7 @@ describe("ConnectedTables", () => {
   it("should link each table to a new question on it", () => {
     const { state } = setup({ tables: [createProductsTable()] });
     const newQuestion = checkNotNull(
-      getMetadata(state).table(PRODUCTS_ID),
+      createMockMetadataFromState(state).table(PRODUCTS_ID),
     ).newQuestion();
 
     expect(screen.getByRole("link", { name: /Products/ })).toHaveAttribute(

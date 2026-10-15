@@ -44,6 +44,7 @@
 ;;; |                                                 Current Driver                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *driver*
   "Current driver (a keyword such as `:postgres`) in use by the Query Processor/tests/etc. Bind this with `with-driver`
   below. The QP binds the driver this way in the `bind-driver` middleware."
@@ -956,6 +957,11 @@
     ;; Does this driver support executing python transforms?
     :transforms/python
     ;;
+    ;; Does this driver support running transform test suites against temp tables? Drivers with this feature
+    ;; implement [[temp-table-name]], [[compile-create-temp-table]], [[compile-drop-temp-table]],
+    ;; [[do-with-test-connection]], [[execute-on-connection!]] and [[query-on-connection]].
+    :transforms/testing
+    ;;
     ;; Does this driver support creating an index (in the broad sense -- see the comment above
     ;; [[supported-index-methods]]) as a standalone statement after the transform target table already exists?
     ;; Drivers with this feature implement [[supported-index-methods]] and [[compile-create-index]]. Contrast with
@@ -1179,6 +1185,7 @@
   [_ native-form]
   native-form)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:added "0.51.0"} *compile-with-inline-parameters*
   "Whether to compile an MBQL query to native with parameters spliced inline (as opposed to using placeholders like `?`
   and passing the parameters separately.) Normally we want to pass parameters separately to protect against SQL
@@ -1452,6 +1459,47 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti temp-table-name
+  "Returns a new unique name for a temp table created while running a transform test suite."
+  {:added "0.64.0", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-create-temp-table
+  "Compiles the `[sql params]` statement creating the temp table `table` from the compiled `query`."
+  {:added "0.64.0", :arglists '([driver {:keys [table query]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-drop-temp-table
+  "Compiles the `[sql params]` statement dropping the temp table `table` if it exists."
+  {:added "0.64.0", :arglists '([driver table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti do-with-test-connection
+  "Calls `f` with a single connection to `database` that keeps its temp tables between statements and rolls back
+  everything it did afterwards."
+  {:added "0.64.0", :arglists '([driver database f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti execute-on-connection!
+  "Executes the `[sql params]` statement on a connection from [[do-with-test-connection]]."
+  {:added "0.64.0", :arglists '([driver conn query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti query-on-connection
+  "`{:rows :columns}` for the `[sql params]` `query` on a connection from [[do-with-test-connection]]:
+  at most `max-rows` rows as vectors, and one `{:name :database_type}` per column, in order.
+
+  Names and types are the engine's own, after whatever folding it applies to unquoted identifiers,
+  and are reported whether or not any row comes back."
+  {:added "0.64.0", :arglists '([driver conn query {:keys [max-rows]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti compile-drop-table
   "Compiles the sql for a drop table statement for a given table."
   {:added "0.57.0", :arglists '([driver table])}
@@ -1637,6 +1685,7 @@
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *insert-chunk-rows*
   "The number of rows to insert at a time when uploading data to a database. This can be bound for testing purposes."
   nil)
@@ -1794,6 +1843,17 @@
   [driver _database _schema _table]
   (throw (ex-info (format "fetch-table-indexes is not implemented for driver %s" driver)
                   {:driver driver})))
+
+(defmulti humanize-index-error-message
+  "Trim `message`, from an exception an index operation raised ([[fetch-table-indexes]] or the DDL from
+  [[compile-create-index]]), for display to the user. The default returns it unchanged."
+  {:added "0.64.0", :arglists '([driver message])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod humanize-index-error-message :default
+  [_driver message]
+  message)
 
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified

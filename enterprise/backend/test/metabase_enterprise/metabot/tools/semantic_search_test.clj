@@ -2,8 +2,7 @@
   "Semantic search tests specific to the Metabot search tool integration."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.metabot.db :as metabot.db]
+   [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search-core]
@@ -44,32 +43,32 @@
                        :name "Sales Dashboard"
                        :description "Dashboard for sales"
                        :verified true}]
-        (with-redefs [perms/impersonated-user? (fn [] false)
-                      perms/sandboxed-user? (fn [] false)
-                      search.engine/active-engines (constantly [:search.engine/semantic :search.engine/appdb])
-                      ;; The per-query search now runs through ranked-results (each sub-test mocks that).
-                      ;; search-results — the one-time hydrate step — is a passthrough so the mocked ranked
-                      ;; records reach postprocess-search-result unchanged.
-                      search-core/search-results (fn [_ctx _model-set ranked] {:data (vec ranked)})]
+        (mt/with-dynamic-fn-redefs [perms/impersonated-user? (fn [] false)
+                                    perms/sandboxed-user? (fn [] false)
+                                    search.engine/active-engines (constantly [:search.engine/semantic :search.engine/appdb])
+                                    ;; The per-query search now runs through ranked-results (each sub-test mocks that).
+                                    ;; search-results — the one-time hydrate step — is a passthrough so the mocked ranked
+                                    ;; records reach postprocess-search-result unchanged.
+                                    search-core/search-results (fn [_ctx _model-set ranked] {:data (vec ranked)})]
           (testing "search returns postprocessed results for term queries"
-            (with-redefs [search-core/ranked-results (fn [_] [order-table])]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [order-table])]
               (let [args {:term-queries ["orders"]
                           :entity-types ["table"]}
                     results (search/search args)
                     expected [(#'search/postprocess-search-result order-table)]]
                 (is (= expected results)))))
           (testing "search returns postprocessed results for semantic queries"
-            (with-redefs [search-core/ranked-results (fn [_] [dashboard])]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [dashboard])]
               (let [args {:semantic-queries ["sales metrics"]
                           :entity-types ["dashboard"]}
                     results (search/search args)
                     expected [(#'search/postprocess-search-result dashboard)]]
                 (is (= expected results)))))
           (testing "search combines term and semantic queries using RRF"
-            (with-redefs [search-core/ranked-results (fn [context]
-                                                       (if (= (:search-string context) "orders")
-                                                         [order-table]
-                                                         [dashboard]))]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                     (if (= (:search-string context) "orders")
+                                                                       [order-table]
+                                                                       [dashboard]))]
               (let [args {:term-queries ["orders"]
                           :semantic-queries ["sales"]
                           :entity-types ["table" "dashboard"]}
@@ -96,8 +95,8 @@
                 (is (some #(= (:id %) 1) results))
                 (is (some #(= (:id %) 2) results)))))
           (testing "search applies RRF to overlapping results"
-            (with-redefs [search-core/ranked-results (fn [_]
-                                                       [order-table dashboard])]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_]
+                                                                     [order-table dashboard])]
               (let [args {:term-queries ["orders" "sales"]
                           :entity-types ["table" "dashboard"]}
                     results (search/search args)]
@@ -106,7 +105,7 @@
                 (is (some #(= (:id %) 1) results))
                 (is (some #(= (:id %) 2) results)))))
           (testing "search handles empty results"
-            (with-redefs [search-core/ranked-results (fn [_] [])]
+            (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] [])]
               (let [args {:term-queries ["nonexistent"]
                           :entity-types ["table"]}
                     results (search/search args)]
@@ -114,15 +113,12 @@
           (testing "search with metabot verified-or-curated content flag"
             (let [metabot {:entity_id "test-bot"
                            :use_verified_content true}]
-              (with-redefs [metabot.db/metabot-by-entity-id (fn [entity-id]
-                                                              (is (= "test-bot" entity-id) "Should look up the Metabot")
-                                                              metabot)
-                            search-core/ranked-results (fn [context]
-                                                         ;; use_verified_content now drives the curated filter, not :verified
-                                                         (is (true? (:curated? context)))
-                                                         [dashboard])]
+              (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
+                                                                       ;; use_verified_content now drives the curated filter, not :verified
+                                                                       (is (true? (:curated? context)))
+                                                                       [dashboard])]
                 (let [results (search/search {:term-queries ["test"]
-                                              :metabot-id "test-bot"
+                                              :metabot metabot
                                               :entity-types ["dashboard"]})]
                   (is (= 1 (count results)))
                   (is (= 2 (:id (first results)))))))))))))
@@ -153,7 +149,7 @@
                              :model/Dashboard {id-3 :id} {:name "baseline"}]
                 (when semantic-support?
                   (semantic.tu/index-all!))
-                (let [test-entity? (comp #{id-1 id-2 id-3} :id)
+                (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3} :id))
                       query        (fn [base-query]
                                      (->> (search/search base-query)
                                           (filter test-entity?)
@@ -180,7 +176,7 @@
                            :model/Dashboard {id-5 :id} {:name "quixotic"}
                            :model/Dashboard {id-6 :id} {:name "baseline"}]
               (semantic.tu/index-all!)
-              (let [test-entity? (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id)
+              (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id))
                     query        (fn [base-query]
                                    (->> (search/search base-query)
                                         (filter test-entity?)

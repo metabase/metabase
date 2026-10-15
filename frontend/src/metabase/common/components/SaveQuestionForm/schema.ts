@@ -1,6 +1,6 @@
 import * as Yup from "yup";
 
-import { QUESTION_NAME_MAX_LENGTH } from "metabase/questions/constants";
+import { QUESTION_NAME_MAX_LENGTH } from "metabase/common/utils/card";
 import * as Errors from "metabase/utils/errors";
 
 export const SAVE_QUESTION_SCHEMA = Yup.object({

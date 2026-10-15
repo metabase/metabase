@@ -14,20 +14,6 @@ import type {
 import type { SegmentId } from "metabase-types/api/segment";
 import type { TableId } from "metabase-types/api/table";
 
-export const idsToObjectMap = <T extends { id: unknown }>(
-  ids: ReadonlyArray<string | number>,
-  objects: Record<string, T>,
-): Record<string, T> =>
-  ids
-    .map((id) => objects[id])
-    .reduce<Record<string, T>>(
-      (map, object) => ({ ...map, [String(object.id)]: object }),
-      {},
-    );
-// recursive freezing done by assoc here is too expensive
-// hangs browser for large databases
-// .reduce((map, object) => assoc(map, object.id, object), {});
-
 export const filterUntouchedFields = (
   fields: Record<string, unknown>,
   entity: Record<string, unknown> = {},

@@ -32,6 +32,7 @@
 
 (methodical/defmethod t2/table-name :model/DataPermissions [_model] :data_permissions)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *skip-cluster-locks*
   "When true, skip per-(db-id, perm-type) cluster locks. Should only be bound to true
    when a coarser lock is already held by the calling code."
@@ -232,6 +233,7 @@
   caller passing a very large set is split across several queries rather than failing outright."
   5000)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *use-perms-cache?*
   "Bind to `false` to intentionally bypass the permissions caches and fetch data straight from the DB."
   true)
@@ -248,6 +250,7 @@
   (and *use-perms-cache?*
        (= user-id api/*current-user-id*)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *perms-cache-misses-are-errors?*
   "Whether a permission check that has to load turns into an exception rather than a query. Bound to true by
   [[with-relevant-permissions-for-user]] in dev and test, so an unprimed batch of checks fails loudly there and
@@ -310,6 +313,7 @@
 
 ;;; --------------------------------------------- Database level cache ---------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *db-permission-cache*
   "Request cache for every whole-database question:
   `{user-id {perm-type {db-id {:database v :every-table v :any-table v}}}}`.
@@ -339,6 +343,7 @@
   Checks that walk a list of databases should [[prime-database-perms-cache]] first, exactly as table checks do."
   (atom {:db-ids #{} :perms {}}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *all-db-permission-cache*
   "Request cache for the questions that scan *every* database rather than asking about one --
   [[user-has-any-perms-of-type?]]. Shaped like [[*db-permission-cache*]]'s `:perms`, but loaded in full, so it needs
@@ -415,6 +420,7 @@
 
 ;;; ---------------------------------------------- Schema level cache ----------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *schema-permission-cache*
   "Request cache for [[schema-permission-for-user]]: `{:db-ids #{} :perms {user-id {perm-type {db-id entry}}}}`
   where each entry is `{:default v, :schemas {schema v}}` — per schema, the coalesced value of the schema's table
@@ -463,6 +469,7 @@
 
 ;;; ---------------------------------------------- Table level cache -----------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *table-permission-cache*
   "Request cache for [[table-permission-for-user]]:
 
@@ -560,6 +567,7 @@
 
 ;;; ---------------------------------------------- Table level checks ----------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *additional-table-permissions*
   "See the `with-additional-table-permission` macro below."
   {})
@@ -846,6 +854,7 @@
   [_user-id]
   #{})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *sandboxes-for-user*
   "Filled by `enforced-sandboxes-for-user`. Empty on OSS instances, or EE instances without the `sandboxes` feature."
   (delay nil))
@@ -1320,17 +1329,26 @@
   [_db-id group-ids]
   (zipmap group-ids (repeat :unrestricted)))
 
-(defenterprise data-app-view-data-permission-level
-  "The app-group View Data level to preserve when a new table is created."
-  metabase-enterprise.data-apps.permissions
-  [_database-id]
-  :blocked)
-
-(defenterprise data-app-group-ids
-  "Ids of the permission groups Metabase owns and manages itself (data-app groups). They grant no data
-   access beyond ordinary groups' permissions. SSO group sync must never touch their membership. OSS has none."
+(defenterprise data-app-collection-ids
+  "Ids of the collections data apps own, which hold the copies an app runs. OSS has none."
   metabase-enterprise.data-apps.models.data-app
   []
+  #{})
+
+(defenterprise data-app-collection?
+  "Whether the collection with `collection-id` is one a data app owns. OSS has none."
+  metabase-enterprise.data-apps.models.data-app
+  [_collection-id]
+  false)
+
+(defenterprise new-table-sandboxed-groups
+  "Returns the subset of `group-ids` whose new tables on `db-id` have a sandbox somewhere in this DB, and must therefore
+  have their `view-data` forced to `:blocked` regardless of the new table's schema.
+
+  On OSS there are no sandboxes, so the set is always empty. The EE implementation is `:feature :none`: a sandbox that
+  is already configured keeps forcing new tables to `:blocked` even when the token no longer grants `:sandboxes`."
+  metabase-enterprise.advanced-permissions.common
+  [_db-id _group-ids]
   #{})
 
 ;;; ---------------------------------------- Bulk permission functions ------------------------------------------------
@@ -1393,7 +1411,6 @@
 (defn set-default-database-permissions!
   "Bulk-sets default permissions for a newly-created database across all groups.
    For tenant groups, uses least-permissive values. For audit DBs, uses hardcoded values.
-   Data-app groups use least-permissive values for other databases.
    For other groups, values are based on the group's lowest existing permission level.
    Uses batch SQL operations instead of per-row mutations."
   [database groups]
@@ -1401,7 +1418,6 @@
     (let [db-id        (u/the-id database)
           is-audit     (:is_audit database)
           group-ids    (map u/the-id groups)
-          app-group-ids (set (data-app-group-ids))
           defaults     (least-permissive-defaults)
           ;; Batch-fetch distinct (group, perm-type, value) triples — we only need the set of unique values per
           ;; group to find the most restrictive level;
@@ -1435,10 +1451,6 @@
                                    :perms/manage-table-metadata :no
                                    :perms/manage-database       :no
                                    :perms/transforms            :no}
-
-                                  ;; new databases must not grant any permissions to existing data app groups
-                                  (contains? app-group-ids group-id)
-                                  defaults
 
                                   ;; Normal: compute based on group's lowest existing perm level
                                   :else
@@ -1492,19 +1504,43 @@
                                  (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
                                {} table-level)
      :all-db-tables    (permissions.db/active-table-locations-for-database db-id)
-     :view-data-levels (new-table-view-data-permission-levels db-id group-ids)}))
+     :view-data-levels (new-table-view-data-permission-levels db-id group-ids)
+     :sandboxed-groups (new-table-sandboxed-groups db-id group-ids)}))
 
 (defn- compute-actual-value
-  "Per-entry resolution: enterprise view-data override, then schema-consistency
-  if all existing tables in the schema agree, else the caller's default."
-  [{:keys [view-data-levels schema-vals-idx]}
+  "Per-entry resolution for a new table's permission value for a given `group-id` and `perm-type`.
+
+  For perms other than `view-data`, the new table inherits its schema's value when all existing tables in that schema
+  agree, otherwise the default supplied by the caller.
+
+  For `view-data` the order depends on where the table came from, which we read off its `:data_source`:
+
+  - Sync (any other data source): the enterprise DB-wide override wins. If the group has *any* `:blocked` table (or a
+    sandbox) in the DB, then it has only partial access, so a newly-discovered, unclassified table fails safe to
+    `:blocked`.
+  - Upload (`:data_source` is `:upload`): if the permissions for all (active) tables in the new table's schema are
+    unanimously `:unrestricted`, then the new table is granted the same permission.
+    - This is a specific override for an uploaded table, since otherwise the user would be both locked out of their
+      own freshly uploaded table *and* prevented from making any further uploads! (Since uploads require at least one
+      group with unanimous `:unrestricted` access to the target schema. See UXW-3217.)
+
+  Note that if the group has a sandbox anywhere on this DB, the uploaded table is still `:blocked`, preventing any
+  leak of data to that group which should be sandboxed."
+  [{:keys [sandboxed-groups schema-vals-idx view-data-levels]}
    {:keys [group-id perm-type default-value table]}]
-  (or (when (= perm-type :perms/view-data)
-        (get view-data-levels group-id))
-      (let [sv (get-in schema-vals-idx [group-id perm-type (:schema table)])]
-        (when (and (seq sv) (= (count sv) 1))
-          (first sv)))
-      default-value))
+  (let [view-data?   (= perm-type :perms/view-data)
+        upload?      (= :upload (some-> table :data_source keyword))
+        schema-value (let [sv (get-in schema-vals-idx [group-id perm-type (:schema table)])]
+                       (when (and (seq sv) (= (count sv) 1))
+                         (first sv)))
+        override     (when view-data?
+                       (get view-data-levels group-id))]
+    (or (when (and view-data? (contains? sandboxed-groups group-id))
+          :blocked)
+        (if (and view-data? upload?)
+          (or schema-value override)
+          (or override schema-value))
+        default-value)))
 
 (defn- classify-key
   "For one `(group-id, perm-type)`, return `{:deletes [id?] :rows [perm-row...]}`.
@@ -1580,7 +1616,10 @@
 
    `group-perm-defaults` is a seq of `{:group-id :perm-type :default-value}`
    triples. Thin wrapper over [[set-default-table-permissions-bulk!]] for
-   the single-table case."
+   the single-table case.
+
+   `table` may be a Table ID or a Table map. A map must carry `:data_source`, since [[compute-actual-value]] branches
+   on whether the table came from an upload; the `:model/Table` after-insert hook passes the full inserted row."
   [table group-perm-defaults]
   (let [table (if (map? table)
                 table

@@ -14,6 +14,12 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
 
+(mu/defn active-card
+  "The non-archived Card with `card-id`, or nil. A trashed Card keeps its DashboardCard rows, so the dashcard routes
+  select it as absent rather than checking `:archived` after the fact."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id :archived false))
+
 (mu/defn card-embedding-params
   "The embedding parameters of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]

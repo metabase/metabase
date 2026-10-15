@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
@@ -38,11 +38,7 @@ export const PublicOrEmbeddedDashCardMenu = ({
     },
   });
 
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(
-    () => buildQuestion(dashcard.card),
-    [dashcard.card, buildQuestion],
-  );
+  const question = useQuestionFromCard(dashcard.card);
 
   // by the time we reach this code,  dashboardId really should not be null.
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({

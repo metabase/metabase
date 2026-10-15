@@ -10,6 +10,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import CS from "metabase/css/core/index.css";
 import { Loader } from "metabase/ui";
 
@@ -67,18 +68,9 @@ export const LoadingAndErrorWrapper = forwardRef<
   });
 
   function getErrorMessage() {
-    let errorMessage =
-      // NOTE Atte Keinänen 5/10/17 Dashboard API endpoint returns the error as JSON with `message` field
-      error &&
-      ((error.data?.message ? error.data.message : error.data) ||
-        error.statusText ||
-        error.message ||
-        error);
-
-    if (!errorMessage || typeof errorMessage !== "string") {
-      errorMessage = t`An error occurred`;
-    }
-    return errorMessage;
+    const statusText =
+      typeof error?.statusText === "string" ? error.statusText : undefined;
+    return findErrorMessage(error) ?? statusText ?? t`An error occurred`;
   }
 
   function renderError(contentClassName: string) {

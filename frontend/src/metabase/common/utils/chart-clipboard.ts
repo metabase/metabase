@@ -4,7 +4,7 @@ import * as Urls from "metabase/urls";
 import type { Card, CardDisplayType, DatasetQuery } from "metabase-types/api";
 import { isCardDisplayType } from "metabase-types/api";
 
-import { deserializeCardFromUrl } from "./card";
+import { deserializeCardFromUrl, getNonBlankNameAndDescription } from "./card";
 
 const ADHOC_QUESTION_HASH_REGEX = /\/question#([A-Za-z0-9_=-]+)/;
 
@@ -48,8 +48,7 @@ export function parseChartClipboard(
       return null;
     }
     return {
-      name: card.name ?? "",
-      description: card.description ?? undefined,
+      ...getNonBlankNameAndDescription(card),
       display: card.display,
       dataset_query: card.dataset_query,
       visualization_settings: card.visualization_settings ?? {},

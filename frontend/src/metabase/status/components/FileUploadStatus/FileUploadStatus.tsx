@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { FileUpload } from "metabase/redux/store/upload";
 import { clearAllUploads, getAllUploads } from "metabase/redux/uploads";

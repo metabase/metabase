@@ -509,6 +509,19 @@ describe("version-helpers", () => {
       expect(latest).toBe("v0.12.4-beta");
     });
 
+    it("should sort double digit pre release patches numerically", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.64.0-beta" },
+          { ref: "refs/tags/v0.64.0.1-beta" },
+          { ref: "refs/tags/v0.64.0.10-beta" },
+          { ref: "refs/tags/v0.64.0.2-beta" },
+          { ref: "refs/tags/v0.64.0.9-beta" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.64.0.10-beta");
+    });
+
     it("should ignore pre releases with a flag passeed", () => {
       const latest = getLastReleaseFromTags({
         tags: [

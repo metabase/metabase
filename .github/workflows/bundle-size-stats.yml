@@ -43,7 +43,7 @@ jobs:
     outputs:
       found: ${{ steps.probe.outputs.fetch-hit }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: probe
         uses: ./.github/actions/fetch-artifact
         with:
@@ -64,7 +64,7 @@ jobs:
       MIN_DELTA_PERCENT: "0.5"
     steps:
       - name: Check out the code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.HEAD_SHA }}
       - uses: ./.github/actions/prepare-node-bun

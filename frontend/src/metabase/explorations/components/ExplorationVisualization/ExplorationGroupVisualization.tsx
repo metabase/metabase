@@ -4,8 +4,8 @@ import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { explorationApi } from "metabase/api/exploration";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -21,7 +21,6 @@ import {
 } from "metabase/ui";
 import { is403Error } from "metabase/utils/errors";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { LEGEND_ITEM_FONT_SIZE } from "metabase/visualizations/components/legend/LegendItem.styled";
 import type { ClickActionsMode, OnBrush } from "metabase/visualizations/types";
 import { type HighlightedObject, isCartesianChart } from "metabase/viz-core";
 import type {
@@ -53,6 +52,8 @@ import {
   composeChartsForGroup,
   resolveHighlightForSeries,
 } from "./utils";
+
+const LEGEND_ITEM_FONT_SIZE = "0.928em";
 
 interface ExplorationGroupVisualizationProps {
   explorationId: ExplorationId;

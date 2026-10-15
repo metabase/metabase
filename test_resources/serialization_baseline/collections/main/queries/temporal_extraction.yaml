@@ -706,8 +706,6 @@ visualization_settings:
   column_settings: null
 card_schema: 24
 serdes/meta:
-- id: bDK7jyPszEHzHh4aG4_SV
-  label: temporal_extraction
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

@@ -44,6 +44,7 @@ export type CartesianVisualizationSettings = Pick<
   | "graph.x_axis.scale"
   | "graph.x_axis.axis_enabled"
   | "graph.y_axis.title_text"
+  | "graph.y_axis.right.title_text"
   | "graph.y_axis.scale"
   | "graph.y_axis.auto_range"
   | "graph.y_axis.min"
@@ -98,6 +99,7 @@ export type TableVisualizationSettings = Pick<
   | "pivot_table.column_split"
   | "pivot_table.collapsed_rows"
   | "column_settings"
+  | "table.pivot"
 >;
 
 /**

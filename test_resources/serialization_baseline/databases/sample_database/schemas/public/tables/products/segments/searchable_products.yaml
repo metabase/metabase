@@ -58,6 +58,4 @@ description: Products with non-empty title containing "awesome", vendor starting
 entity_id: yZptbJRR3S8L9S9r0ZF8M
 name: Searchable Products
 serdes/meta:
-- id: yZptbJRR3S8L9S9r0ZF8M
-  label: searchable_products
-  model: Segment
+- model: Segment

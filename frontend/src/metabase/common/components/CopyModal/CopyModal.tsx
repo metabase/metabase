@@ -2,9 +2,9 @@ import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
+import { CopyCardForm } from "metabase/common/components/CopyCardForm/CopyCardForm";
 import { CopyDashboardFormConnected } from "metabase/common/components/CopyDashboardForm";
 import { DocumentCopyForm } from "metabase/common/components/DocumentCopyForm/DocumentCopyForm";
-import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
 import { Modal } from "metabase/ui";
 
 import type { CopyModalProps } from "./types";
@@ -39,6 +39,7 @@ export function CopyModal(props: CopyModalProps) {
 
   return (
     <Modal
+      density="relaxed"
       title={
         title || t`Duplicate "${resolvedObjectWithDefaultCollection.name}"`
       }

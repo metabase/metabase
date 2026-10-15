@@ -46,8 +46,7 @@ export function RevisionHistoryTimeline({
     } catch (error) {
       dispatch(
         addUndo({
-          icon: "warning",
-          toastColor: "feedback-negative",
+          variant: "negative",
           message: getErrorMessage(
             error,
             t`Failed to revert to previous version.`,
@@ -96,15 +95,17 @@ export function RevisionHistoryTimeline({
               <Flex>
                 {revision && canWrite && isNotFirstEvent && (
                   <Tooltip label={t`Revert to this version`}>
+                    {/* TODO: replace with ActionIcon (GDGT-2457) */}
                     <Button
                       className={S.revertButton}
                       variant="subtle"
+                      color="neutral"
+                      size="sm"
                       onClick={() => handleRevert(revision)}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
-                    >
-                      <Icon name="revert" />
-                    </Button>
+                      leftSection={<Icon name="revert" />}
+                    />
                   </Tooltip>
                 )}
               </Flex>

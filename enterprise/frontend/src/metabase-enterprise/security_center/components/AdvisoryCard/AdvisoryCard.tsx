@@ -111,7 +111,6 @@ export function AdvisoryCard({
         <Group gap="lg" mt="sm">
           {downloadJar && (
             <Button
-              variant="outline"
               component="a"
               href={downloadJar.url}
               target="_blank"
@@ -127,8 +126,6 @@ export function AdvisoryCard({
               label={t`Clicking on Dismiss just hides the notification and you can view this later by toggling 'Show dismissed'`}
             >
               <Button
-                variant="outline"
-                color="text-secondary"
                 onClick={() => onAcknowledge(advisory.advisory_id)}
                 data-testid="acknowledge-button"
               >
@@ -137,12 +134,7 @@ export function AdvisoryCard({
             </Tooltip>
           )}
           {acknowledged && (
-            <Button
-              variant="outline"
-              color="text-secondary"
-              disabled
-              data-testid="acknowledge-button"
-            >
+            <Button disabled data-testid="acknowledge-button">
               {t`Dismissed`}
             </Button>
           )}

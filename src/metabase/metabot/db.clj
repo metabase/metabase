@@ -281,6 +281,33 @@
    user-id :- ::lib.schema.id/user]
   (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id user-id))
 
+(mu/defn- other-participant?
+  "Whether a User other than `user-id` has sent a message in the MetabotConversation with `conversation-id`."
+  [conversation-id :- :string
+   user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id [:not= user-id]))
+
+(mu/defn- slack-message?
+  "Whether any message in the MetabotConversation with `conversation-id` was sent through Slack."
+  [conversation-id :- :string]
+  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :channel_id [:not= nil]))
+
+(mu/defn conversation-open-to-others?
+  "Whether someone other than the User with `user-id` can read the MetabotConversation with `conversation-id`,
+   now or by joining it later. False for a conversation that does not exist.
+   Superusers can read every conversation and are not counted."
+  [conversation-id :- :string
+   user-id :- ::lib.schema.id/user]
+  (boolean
+   (when-let [{:keys [id user_id slack_thread_ts]} (conversation conversation-id)]
+     ;; Anyone in a Slack thread can join its conversation, so the thread counts before a second person writes.
+     ;; A thread older than the `slack_thread_ts` column shows as Slack only through its messages.
+     ;; Whoever started a conversation can read it even when none of its messages name them.
+     (or (some? slack_thread_ts)
+         (some-> user_id (not= user-id))
+         (other-participant? id user-id)
+         (slack-message? id)))))
+
 (mu/defn message-by-external-id
   "The ID and conversation of the MetabotMessage with `external-id`, or nil."
   [external-id :- :string]
@@ -420,10 +447,12 @@
   (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil]))
 
 (mu/defn non-audit-databases
-  "The ID, name, engine, description, and audit flag of every non-audit, non-destination Database, ordered by name."
+  "The ID, name, engine, description, and audit flag of every non-audit, non-stub, non-destination Database, ordered
+  by name."
   []
   (t2/select [:model/Database :id :name :engine :description :is_audit]
              :is_audit false
+             :is_stub false
              :router_database_id nil
              {:order-by [[:%lower.name :asc]]}))
 
@@ -663,6 +692,11 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
+(mu/defn fields
+  "The Fields with `field-ids`."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
@@ -692,9 +726,9 @@
   (t2/select-one :model/Card :id card-id :type type))
 
 (mu/defn card-type-row
-  "The ID, type, and schema of the Card with `card-id`, or nil."
+  "The ID and type of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :id :type :card_schema] :id card-id))
+  (t2/select-one [:model/Card :id :type] :id card-id))
 
 (defn- metabot-metrics-and-models-query
   "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to
@@ -783,26 +817,26 @@
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema :type] :id [:in card-ids]))
+  (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
 
 (mu/defn unarchived-card-summaries
   "The presentable columns of the unarchived Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name :type :description :card_schema :collection_id :database_id :table_id]
+  (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              :id [:in card-ids]
              :archived false))
 
 (mu/defn cards-in-collection
   "The presentable columns of the unarchived Cards in the Collection with `collection-id`, ordered by name."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select [:model/Card :id :name :type :description :card_schema :collection_id :database_id :table_id]
+  (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn cards-for-table
   "The presentable columns of the unarchived Cards on the Table with `table-id`, ordered by name."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Card :id :name :type :description :card_schema :collection_id :database_id :table_id]
+  (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              :table_id table-id
              :archived false
              {:order-by [[:%lower.name :asc]]}))
@@ -810,7 +844,7 @@
 (mu/defn models-for-database
   "The presentable columns of the unarchived model Cards on the Database with `database-id`, ordered by name."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Card :id :name :type :description :card_schema :collection_id :database_id :table_id]
+  (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              :type :model
              :database_id database-id
              :archived false
@@ -892,9 +926,9 @@
   (t2/select-one :model/Dashboard dashboard-id))
 
 (mu/defn dashboard-summary
-  "The ID, description, name, and Collection ID of the Dashboard with `dashboard-id`, or nil."
+  "The ID, description, name, Collection ID, and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id))
+  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] dashboard-id))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
@@ -1038,3 +1072,13 @@
   "The ID, name, description, Table ID, and entity ID of the Segments with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Segment :id :name :description :table_id :entity_id] :id [:in ids]))
+
+(mu/defn measure-entity-ids
+  "A map of Measure ID to entity ID for `ids`."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (t2/select-pk->fn :entity_id :model/Measure :id [:in ids]))
+
+(mu/defn segment-entity-ids
+  "A map of Segment ID to entity ID for `ids`."
+  [ids :- [:sequential ::lib.schema.id/segment]]
+  (t2/select-pk->fn :entity_id :model/Segment :id [:in ids]))

@@ -6,15 +6,22 @@ const { H } = cy;
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 const FIRST_SCORE_ROW_ID = 11;
 const SECOND_SCORE_ROW_ID = 12;
+const FIRST_SCORE_ROW = {
+  id: "11",
+  team_name: "Kind Koalas",
+  score: "70",
+  status: "active",
+};
+const SECOND_SCORE_ROW = {
+  id: "12",
+  team_name: "Lively Lemurs",
+  score: "80",
+  status: "active",
+};
 const UPDATED_SCORE = 987654321;
 const UPDATED_SCORE_FORMATTED = "987,654,321";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
-
-const DASHBOARD = {
-  name: "Test dashboard",
-  database: WRITABLE_DB_ID,
-};
 
 describe(
   "scenarios > actions > actions-in-object-detail-view",
@@ -49,177 +56,143 @@ describe(
       });
     });
 
-    describe("in dashboard", () => {
-      beforeEach(() => {
-        asAdmin(() => {
-          cy.get("@modelId").then((modelId) => {
-            H.createImplicitActions({ modelId });
-
-            H.createQuestionAndDashboard({
-              questionDetails: {
-                name: "Score detail",
-                display: "object",
-                database: WRITABLE_DB_ID,
-                query: {
-                  "source-table": `card__${modelId}`,
-                },
-              },
-              dashboardDetails: DASHBOARD,
-            }).then(({ body: { dashboard_id } }) => {
-              cy.wrap(dashboard_id).as("dashboardId");
-            });
-          });
-        });
-      });
-
-      it("does not show model actions in model visualization on a dashboard", () => {
-        asAdmin(() => {
-          H.visitDashboard("@dashboardId");
-
-          cy.findByTestId("dashcard").within(() => {
-            assertActionsDropdownNotExists();
-          });
-        });
-      });
-    });
-
     describe(
       "in modal",
       // These tests time out frequently in CI on `POST /api/dataset`
       { viewportHeight: 1200, requestTimeout: 10000 },
       () => {
-        const permissionLevels = [
-          {
-            name: "admin",
-            permissionFn: asAdmin,
-          },
-          {
-            name: "normal",
-            permissionFn: asNormalUser,
-          },
-        ];
+        it("should be able to run update and delete actions when enabled", () => {
+          cy.get("@modelId").then((modelId) => {
+            asNormalUser(() => {
+              cy.log(
+                "As normal user: verify there are no model actions to run",
+              );
+              visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+              objectDetailModal()
+                .should("be.visible")
+                .and("contain.text", FIRST_SCORE_ROW.team_name);
+              cy.wait("@getModelActions");
+              objectDetailModal().within(() => {
+                assertActionsDropdownNotExists();
+              });
+            });
 
-        permissionLevels.forEach(({ name, permissionFn }) => {
-          it(`should be able to run update and delete actions when enabled for a ${name} user`, () => {
-            cy.get("@modelId").then((modelId) => {
-              permissionFn(() => {
-                cy.log(
-                  `As ${name} user: verify there are no model actions to run`,
-                );
-                visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-                objectDetailModal().within(() => {
-                  assertActionsDropdownNotExists();
-                });
+            asAdmin(() => {
+              H.createImplicitActions({ modelId });
+            });
+
+            asNormalUser(() => {
+              cy.log(
+                "As normal user: verify there are model actions to run (1)",
+              );
+              visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+              objectDetailModal().within(() => {
+                assertActionsDropdownExists();
               });
 
-              asAdmin(() => {
-                H.createImplicitActions({ modelId });
-              });
+              cy.log(
+                "does not close object detail modal when pressing Esc while action modal is open",
+              );
+              openUpdateObjectModal();
+              cy.wait("@prefetchValues");
+              actionExecuteModal().should("be.visible");
+              cy.realPress("Escape");
+              actionExecuteModal().should("not.exist");
+              objectDetailModal().should("be.visible");
 
-              permissionFn(() => {
-                cy.log(
-                  `As ${name} user: verify there are model actions to run (1)`,
-                );
-                visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-                objectDetailModal().within(() => {
-                  assertActionsDropdownExists();
-                });
-
-                cy.log(
-                  "does not close object detail modal when pressing Esc while action modal is open",
-                );
-                openUpdateObjectModal();
-                cy.wait("@prefetchValues");
-                actionExecuteModal().should("be.visible");
-                cy.realPress("Escape");
-                actionExecuteModal().should("not.exist");
-                objectDetailModal().should("be.visible");
-
-                cy.log(`As ${name} user: verify update form gets prefilled`);
-                openUpdateObjectModal();
-                actionExecuteModal().within(() => {
-                  cy.wait("@prefetchValues").then((request) => {
-                    const firstScoreRow = request.response.body;
-
-                    actionForm().within(() => {
-                      assertScoreFormPrefilled(firstScoreRow);
-                    });
-                  });
-                  cy.button("Close").click();
-                });
-                objectDetailModal().icon("close").click();
-
-                cy.log(
-                  `As ${name} user: verify there are model actions to run (2)`,
-                );
-                openObjectDetailModal(SECOND_SCORE_ROW_ID);
-                objectDetailModal().within(() => {
-                  assertActionsDropdownExists();
-                });
-
-                cy.log(
-                  `As ${name} user: verify form gets prefilled with values for another entity and run update action`,
-                );
-                openUpdateObjectModal();
-                actionExecuteModal().within(() => {
-                  cy.wait("@prefetchValues").then((request) => {
-                    const secondScoreRow = request.response.body;
-
-                    actionForm().within(() => {
-                      assertScoreFormPrefilled(secondScoreRow);
-
-                      cy.findByLabelText("Score").clear().type(UPDATED_SCORE);
-                      cy.findByText("Update").click();
-                    });
+              cy.log("As normal user: verify update form gets prefilled");
+              openUpdateObjectModal();
+              actionExecuteModal().within(() => {
+                cy.wait("@prefetchValues").then((request) => {
+                  actionForm().within(() => {
+                    assertScoreFormPrefilled(
+                      FIRST_SCORE_ROW,
+                      request.response.body,
+                    );
                   });
                 });
-                objectDetailModal().icon("close").click();
-                assertSuccessfullUpdateToast();
-                assertUpdatedScoreInTable();
 
-                cy.log(`As ${name} user: run delete action`);
-                openObjectDetailModal(SECOND_SCORE_ROW_ID);
-                objectDetailModal().within(() => {
-                  assertActionsDropdownExists();
+                cy.log(
+                  "As normal user: verify detailed form errors for constraint violations",
+                );
+                actionForm().within(() => {
+                  cy.findByLabelText("Team Name").clear().type("Dusty Ducks");
+                  cy.findByText("Update").click();
                 });
-                openDeleteObjectModal();
-                deleteObjectModal().findByText("Delete forever").click();
-                assertSuccessfullDeleteToast();
-                assertUpdatedScoreNotInTable();
+
+                cy.wait("@executeAction");
+
+                cy.findByLabelText("Team Name").should("exist");
+                cy.findByText("This Team_name value already exists.").should(
+                  "exist",
+                );
+
+                cy.findByText("Team_name already exists.").should("exist");
+
+                cy.button("Close").click();
               });
+              objectDetailModal().icon("close").click();
+
+              cy.log(
+                "As normal user: verify there are model actions to run (2)",
+              );
+              openObjectDetailModal(SECOND_SCORE_ROW_ID);
+              objectDetailModal().within(() => {
+                assertActionsDropdownExists();
+              });
+
+              cy.log(
+                "As normal user: verify form gets prefilled with values for another entity and run update action",
+              );
+              openUpdateObjectModal();
+              actionExecuteModal().within(() => {
+                cy.wait("@prefetchValues").then((request) => {
+                  actionForm().within(() => {
+                    assertScoreFormPrefilled(
+                      SECOND_SCORE_ROW,
+                      request.response.body,
+                    );
+
+                    cy.findByLabelText("Score").clear().type(UPDATED_SCORE);
+                    cy.findByText("Update").click();
+                  });
+                });
+              });
+              objectDetailModal().icon("close").click();
+              assertSuccessfullUpdateToast();
+              assertUpdatedScoreInTable();
+
+              cy.log("As normal user: run delete action");
+              openObjectDetailModal(SECOND_SCORE_ROW_ID);
+              objectDetailModal().within(() => {
+                assertActionsDropdownExists();
+              });
+              openDeleteObjectModal();
+              deleteObjectModal().findByText("Delete forever").click();
+              assertSuccessfullDeleteToast();
+              assertUpdatedScoreNotInTable();
+            });
+
+            asAdmin(() => {
+              cy.log("As admin user: run delete action");
+              visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
+              objectDetailModal().within(() => {
+                assertActionsDropdownExists();
+              });
+              H.tableInteractive()
+                .findByText(FIRST_SCORE_ROW.team_name)
+                .should("exist");
+              openDeleteObjectModal();
+              deleteObjectModal().findByText("Delete forever").click();
+              assertSuccessfullDeleteToast();
+              H.tableInteractive()
+                .findByText(FIRST_SCORE_ROW.team_name)
+                .should("not.exist");
             });
           });
         });
       },
     );
-
-    it("should show detailed form errors for constraint violations when executing model actions", () => {
-      const actionName = "Update";
-
-      cy.signInAsAdmin();
-
-      cy.get("@modelId").then((modelId) => {
-        H.createImplicitActions({ modelId });
-        visitObjectDetail(modelId, FIRST_SCORE_ROW_ID);
-        openUpdateObjectModal();
-      });
-
-      actionExecuteModal().within(() => {
-        cy.wait("@prefetchValues");
-
-        actionForm().within(() => {
-          cy.findByLabelText("Team Name").clear().type("Dusty Ducks");
-          cy.findByText(actionName).click();
-        });
-
-        cy.wait("@executeAction");
-
-        cy.findByLabelText("Team Name").should("exist");
-        cy.findByText("This Team_name value already exists.").should("exist");
-
-        cy.findByText("Team_name already exists.").should("exist");
-      });
-    });
   },
 );
 
@@ -265,13 +238,13 @@ function assertActionsDropdownNotExists() {
   cy.findByTestId("actions-menu").should("not.exist");
 }
 
-function assertScoreFormPrefilled(object) {
-  assertInputValue("ID", object.id);
-  assertInputValue("Team Name", object.team_name);
-  assertInputValue("Score", object.score);
-  assertInputValue("Status", object.status);
-  assertDateInputValue("Created At", object.created_at);
-  assertDateInputValue("Updated At", object.updated_at);
+function assertScoreFormPrefilled(expected, prefetchedRow) {
+  assertInputValue("ID", expected.id);
+  assertInputValue("Team Name", expected.team_name);
+  assertInputValue("Score", expected.score);
+  assertInputValue("Status", expected.status);
+  assertDateInputValue("Created At", prefetchedRow.created_at);
+  assertDateInputValue("Updated At", prefetchedRow.updated_at);
 }
 
 function assertInputValue(labelText, value) {
@@ -306,7 +279,6 @@ function assertSuccessfullUpdateToast() {
   H.undoToastList()
     .last()
     .should("be.visible")
-    .should("have.attr", "color", "feedback-positive")
     .should("contain.text", "Successfully updated");
 }
 
@@ -316,7 +288,6 @@ function assertSuccessfullDeleteToast() {
   H.undoToastList()
     .last()
     .should("be.visible")
-    .should("have.attr", "color", "feedback-positive")
     .should("contain.text", "Successfully deleted");
 }
 

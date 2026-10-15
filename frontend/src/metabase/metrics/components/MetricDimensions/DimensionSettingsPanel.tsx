@@ -159,7 +159,7 @@ export function DimensionSettingsPanel({
     >
       <Group
         align="center"
-        flex="0 0 2.25rem"
+        flex="0 0 2rem"
         justify="space-between"
         wrap="nowrap"
       >
@@ -168,8 +168,6 @@ export function DimensionSettingsPanel({
           <Button
             loading={isSettingDefault || isFetching}
             onClick={dimension.default ? handleRemoveDefault : handleSetDefault}
-            size="sm"
-            variant="default"
           >
             {dimension.default ? t`Remove default` : t`Set as default`}
           </Button>

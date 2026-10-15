@@ -54,7 +54,8 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - `metabase://database/{id}/schemas/{schemaName}/tables` — tables in a specific schema
 
 **Examples:**
-- Want to see warehouse layout before writing SQL? → `metabase://database/1/schemas` then `metabase://database/1/schemas/PUBLIC/tables`
+- Want to see warehouse layout before writing SQL? → `metabase://database/2/schemas` then `metabase://database/2/schemas/public/tables`
+- Database without schemas, like the Sample Database (its `/schemas` list is empty)? → `metabase://database/1/tables`
 - Want curated models in a specific warehouse? → `metabase://database/1/models`
 
 **Best Practices:**

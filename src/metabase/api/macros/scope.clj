@@ -22,6 +22,7 @@
   request is rejected rather than served. Being a keyword, it can never be requested, granted, or named on
   a consent screen."
   (:require
+   [clojure.string :as str]
    [metabase.api-scope.core :as api-scope]
    [metabase.config.core :as config]
    [metabase.util.log :as log]))
@@ -38,10 +39,45 @@
   [token-scopes required-scope]
   (api-scope/scope-matches? token-scopes required-scope))
 
+(defn- quoted-string
+  "`s` as a double-quoted auth-param value: `\"` becomes `'`, `\\` becomes `/`, and every character outside
+   printable ASCII becomes `?`."
+  [s]
+  ;; Replaced rather than backslash-escaped: RFC 6750 section 3 excludes `\"` and `\\` from `scope` and
+  ;; `error_description` values outright, so an escaped quote is still invalid there.
+  (str "\""
+       (-> (str s)
+           (str/replace #"[^\x20-\x7E]" "?")
+           (str/replace "\"" "'")
+           (str/replace "\\" "/"))
+       "\""))
+
+(defn- insufficient-scope-response
+  "A 403 JSON response with `error` and `message`, carrying an RFC 6750 `insufficient_scope` `WWW-Authenticate`
+   challenge that names `required-scope` as `scope` when non-nil and uses `message` as `error_description`."
+  [error message required-scope]
+  {:status  403
+   ;; Comma-separated per RFC 7235's `#auth-param`.
+   :headers {"Content-Type"     "application/json"
+             "WWW-Authenticate" (str "Bearer error=\"insufficient_scope\""
+                                     (when required-scope
+                                       (str ", scope=" (quoted-string required-scope)))
+                                     ", error_description=" (quoted-string message))}
+   :body    {:error   error
+             :message message}})
+
+(defn- oauth-without-token-scopes?
+  "True for a request the session middleware authenticated with an OAuth access token that carries no
+   `:token-scopes`."
+  [request]
+  ;; Nil scopes mean scope-unaware auth only for sessions and API keys; for OAuth they must fail closed.
+  (and (:authenticated-via-oauth? request)
+       (empty? (:token-scopes request))))
+
 (defn enforce-scope
   "Returns a Ring middleware that checks `:token-scopes` on the request against `required-scope` (a string).
    Passes through when `:token-scopes` is nil (normal session auth) or contains `::unrestricted`
-   (session auth or unscoped JWT).
+   (session auth or unscoped JWT). Rejects an OAuth-authenticated request with no `:token-scopes`.
 
    On success, sets `:token-scopes-checked` on the request so that downstream [[ensure-scopes-checked]]
    middleware knows scope enforcement already happened. This allows `enforce-scope` to be applied at the
@@ -66,19 +102,19 @@
   (fn [handler]
     (fn [request respond raise]
       (let [token-scopes (:token-scopes request)]
-        (if (or (nil? token-scopes)
-                (contains? token-scopes ::unrestricted)
-                (and (contains? token-scopes ::mcp-ui)
-                     (:token-scopes-checked request))
-                (scope-satisfied? token-scopes required-scope))
+        (if (and (not (oauth-without-token-scopes? request))
+                 (or (nil? token-scopes)
+                     (contains? token-scopes ::unrestricted)
+                     (and (contains? token-scopes ::mcp-ui)
+                          (:token-scopes-checked request))
+                     (scope-satisfied? token-scopes required-scope)))
           (handler (cond-> request
                      token-scopes (assoc :token-scopes-checked true))
                    respond raise)
           (do (log/warnf "Scope check failed — required: %s, granted: %s" required-scope token-scopes)
-              (respond {:status  403
-                        :headers {"Content-Type" "application/json"}
-                        :body    {:error   "unsupported_scope"
-                                  :message "Insufficient scope for this operation."}})))))))
+              (respond (insufficient-scope-response "unsupported_scope"
+                                                    "Insufficient scope for this operation."
+                                                    required-scope))))))))
 
 (defn ensure-scopes-checked
   "Security middleware that prevents scoped authorization tokens from accessing endpoints that have not
@@ -90,15 +126,17 @@
    Passes through when:
    - `:token-scopes` is nil (request did not go through scope-aware auth)
    - `:token-scopes` contains `::unrestricted` (session auth or unscoped JWT)
-   - `:token-scopes-checked` is true ([[enforce-scope]] already ran, e.g. at the namespace level)"
+   - `:token-scopes-checked` is true ([[enforce-scope]] already ran, e.g. at the namespace level)
+
+   None of these apply to an OAuth-authenticated request with no `:token-scopes`, which is always rejected."
   [handler]
   (fn [request respond raise]
     (let [token-scopes (:token-scopes request)]
-      (if (or (nil? token-scopes)
-              (contains? token-scopes ::unrestricted)
-              (:token-scopes-checked request))
+      (if (and (not (oauth-without-token-scopes? request))
+               (or (nil? token-scopes)
+                   (contains? token-scopes ::unrestricted)
+                   (:token-scopes-checked request)))
         (handler request respond raise)
-        (respond {:status  403
-                  :headers {"Content-Type" "application/json"}
-                  :body    {:error   "scope_not_permitted"
-                            :message "Scoped tokens cannot access this endpoint."}})))))
+        (respond (insufficient-scope-response "scope_not_permitted"
+                                              "Scoped tokens cannot access this endpoint."
+                                              nil))))))

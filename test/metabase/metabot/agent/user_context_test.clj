@@ -6,12 +6,15 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -402,14 +405,24 @@
         (let [result (user-context/format-viewing-context
                       {:user_is_viewing [{:type "question" :id card-id}]})]
           (is (re-find #"display_type=\"pie\"" result))))))
-  (testing "dashboard with only type+id fetches name and description from DB"
+  (testing "dashboard with only type+id fetches name, description and filters from DB"
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name        "Executive Dashboard"
-                                                     :description "Top-level KPIs"}]
+                                                     :description "Top-level KPIs"
+                                                     :parameters  [{:id   "p1"
+                                                                    :name "Created At"
+                                                                    :type "date/all-options"}
+                                                                   {:id   "p2"
+                                                                    :name "State & Province"
+                                                                    :type "string/="}]}]
         (let [result (user-context/format-viewing-context
                       {:user_is_viewing [{:type "dashboard" :id dash-id}]})]
           (is (re-find #"Executive Dashboard" result))
-          (is (re-find #"Top-level KPIs" result))))))
+          (is (re-find #"Top-level KPIs" result))
+          (is (str/includes? result (str "  <filters>\n"
+                                         "    <filter id=\"p1\" name=\"Created At\" type=\"date/all-options\"/>\n"
+                                         "    <filter id=\"p2\" name=\"State &amp; Province\" type=\"string/=\"/>\n"
+                                         "  </filters>")))))))
   (testing "table with only type+id fetches details including fields from DB"
     (mt/with-test-user :rasta
       (let [result (user-context/format-viewing-context
@@ -482,6 +495,26 @@
     (is (str/includes? result "1111")
         "Formatting result should contain database id")))
 
+(deftest exportable-query-source-card-test
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                            :type     :query
+                                                            :query    {:source-table (mt/id :venues)}}}]
+    (let [query {:database (mt/id)
+                 :type     :query
+                 :query    {:source-table (str "card__" card-id)}}]
+      (testing "a query sourced from a readable card is exportable even when its database is not queryable"
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
+                                       :perms/manage-table-metadata :yes)
+          (mt/with-test-user :rasta
+            (is (not (mi/can-query? :model/Database (mt/id))))
+            (is (some? (shared.content-store/query-for-export query false))))))
+      (testing "and not exportable when the card is not readable"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-test-user :rasta
+              (is (nil? (shared.content-store/query-for-export query false))))))))))
+
 (deftest ^:parallel adhoc-viewing-context-includes-query-test
   (testing "adhoc viewing context renders the query so the model can see the chart"
     (let [out (user-context/format-viewing-context
@@ -491,24 +524,35 @@
       (is (str/includes? out "notebook editor"))
       (is (str/includes? out "source-table")))))
 
-(deftest adhoc-viewing-context-read-checks-database-test
-  (let [viewing (fn [db-id]
-                  {:user_is_viewing [{:type  "adhoc"
-                                      :query {:database db-id
-                                              :type     "query"
-                                              :query    {:source-table (mt/id :venues)}}}]})]
-    (testing "renders the query when the user can read its database"
+(deftest adhoc-viewing-context-permission-checks-database-test
+  (let [viewing {:user_is_viewing [{:type  "adhoc"
+                                    :query {:database (mt/id)
+                                            :type     "query"
+                                            :query    {:source-table (mt/id :venues)}}}]}]
+    (testing "renders the query when the user can query its database"
       (mt/with-test-user :crowberto
-        (let [out (user-context/format-viewing-context (viewing (mt/id)))]
+        (let [out (user-context/format-viewing-context viewing)]
           (is (str/includes? out "notebook editor"))
           (is (str/includes? out "source-table")))))
-    (testing "omits the query when the user cannot read its database"
-      (mt/with-temp [:model/Database {db-id :id} {}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-test-user :rasta
-            (let [out (user-context/format-viewing-context (viewing db-id))]
-              (is (str/includes? out "notebook editor"))
-              (is (not (str/includes? out "source-table"))))))))))
+    (testing "omits the query when the user can read the database but not query it"
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
+                                     :perms/manage-table-metadata :yes)
+        (mt/with-test-user :rasta
+          (is (mi/can-read? :model/Database (mt/id)))
+          (is (not (mi/can-query? :model/Database (mt/id))))
+          (let [out (user-context/format-viewing-context viewing)]
+            (is (str/includes? out "notebook editor"))
+            (is (not (str/includes? out "source-table")))))))))
+
+(deftest adhoc-viewing-context-unpermissionable-native-source-test
+  (testing "native SQL under a later stage is withheld when its permissions cannot be calculated"
+    (let [query (test-util/unpermissionable-native-query (mt/id))]
+      (mt/with-test-user :rasta
+        (is (:unchecked? (shared.content-store/query-for-export query true)))
+        (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+          (is (str/includes? out "notebook editor"))
+          (is (not (str/includes? out "SELECT"))))))))
 
 (deftest adhoc-viewing-context-virtual-database-id-gates-real-database-test
   (let [viewing (fn [card-id]

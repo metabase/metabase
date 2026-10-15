@@ -177,8 +177,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     } catch (error) {
       console.error(error);
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "warning",
+        variant: "negative",
         message: t`Failed to start research`,
       });
     }
@@ -211,10 +210,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       <Group justify="space-between" align="center" flex="none">
         <Title order={3} fs="1rem" lh={1.4}>{t`Research plan`}</Title>
         <Button
-          variant="outline"
-          color="text-primary"
-          bd="1px solid text-tertiary"
-          size="sm"
           disabled={isManualDataPickingDisabled}
           onClick={() => setActiveModal("metrics")}
         >
@@ -241,8 +236,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         )}
         <Button
           variant="subtle"
-          c="text-secondary"
-          size="sm"
+          color="neutral"
           bd="1px dashed border"
           bdrs="xl"
           leftSection={
@@ -298,7 +292,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         />
         <Button
           className={cx(!canStart && CS.hidden)}
-          size="sm"
           flex="none"
           variant="filled"
           loading={isStarting}

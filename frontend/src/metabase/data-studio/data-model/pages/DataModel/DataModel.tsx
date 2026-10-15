@@ -39,11 +39,12 @@ import {
 import * as Urls from "metabase/urls";
 
 import { trackMetadataChange } from "../../analytics";
-import { RouterTablePicker, TableSection } from "../../components";
-import type { TreePath } from "../../components/TablePicker/types";
-import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
+import { RouterTablePicker } from "./TablePicker";
+import type { TreePath } from "./TablePicker/types";
+import { TableSection } from "./TableSection";
+import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
 import { COLUMN_CONFIG } from "./constants";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
@@ -248,16 +249,17 @@ function DataModelContent() {
               px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                p="sm"
-                size="compact-sm"
+                leftSection={<Icon name="close" />}
                 onClick={() => {
                   closePreview();
                   resetSelection();
@@ -314,16 +316,18 @@ function DataModelContent() {
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                   tableId: table?.id,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="compact-sm"
+                leftSection={<Icon name="close" />}
                 onClick={closePreview}
               />
             </Group>

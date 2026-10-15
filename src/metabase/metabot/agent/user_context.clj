@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
@@ -253,8 +254,8 @@
   database and query the tables it references. The database refusal is audited for the same
   reason the query's card ids get the audited store: the id is the caller's own."
   [query]
-  (when-let [[gated mp] (shared.content-store/query-for-export query true)]
-    (llm-shape/export-query-for-llm gated mp shared.content-store/audited-store)))
+  (some-> (shared.content-store/query-for-export query true)
+          (query-export/export->text shared.content-store/audited-store)))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"

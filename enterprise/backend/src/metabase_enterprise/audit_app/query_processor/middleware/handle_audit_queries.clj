@@ -125,6 +125,7 @@
                     {:type        qp.error-type/invalid-query
                      :status-code 400}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *additional-query-params*
   "Additional `internal` query params beyond `type`, `fn`, and `args`. These are bound to this dynamic var which is a
   chance to do something clever outside of the normal function args. For example audit app uses `limit` and `offset`

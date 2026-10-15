@@ -5,7 +5,7 @@ import { DashboardSharingEmbeddingModal } from "metabase/dashboard/components/Da
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { useGetCurrentResource } from "metabase/embedding/embedding-iframe-sdk-setup/hooks";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
-import type { LegacyStaticEmbeddingModalProps } from "metabase/plugins";
+import type { LegacyStaticEmbeddingModalProps } from "metabase/embedding/types";
 import type { Card, Dashboard } from "metabase-types/api";
 
 export type InternalProps = LegacyStaticEmbeddingModalProps & {

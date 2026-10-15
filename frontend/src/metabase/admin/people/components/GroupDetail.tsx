@@ -8,10 +8,12 @@ import {
   useUpdateMembershipMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
 import {
   canEditMembership,
+  getAddMembersDisabledReason,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
@@ -19,7 +21,7 @@ import {
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { SettingsSection } from "metabase/settings-components";
-import { Box, Button, Text } from "metabase/ui";
+import { Box, Button, Text, Tooltip } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { Alert } from "./Alert";
@@ -38,6 +40,11 @@ export const GroupDetail = ({
 }: GroupDetailProps) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
+  const hasAdvancedPermissions = useHasTokenFeature("advanced_permissions");
+  const addMembersDisabledReason = getAddMembersDisabledReason(
+    group,
+    hasAdvancedPermissions,
+  );
 
   const [createMembership] = useCreateMembershipMutation();
   const [updateMembership] = useUpdateMembershipMutation();
@@ -82,7 +89,7 @@ export const GroupDetail = ({
     } else {
       const { error } = await updateMembership(membership);
       if (error) {
-        sendToast({ message: t`Failed to update user` });
+        sendToast({ message: t`Failed to update user`, variant: "negative" });
       }
     }
   };
@@ -108,7 +115,10 @@ export const GroupDetail = ({
     } else {
       const { error } = await deleteMembership(membership);
       if (error) {
-        sendToast({ message: t`Failed to remove user from group` });
+        sendToast({
+          message: t`Failed to remove user from group`,
+          variant: "negative",
+        });
       }
     }
   };
@@ -124,11 +134,11 @@ export const GroupDetail = ({
         )}
         titleActions={
           canEditMembership(group) && (
-            <Button
-              variant="filled"
+            <AddMembersButton
+              disabledReason={addMembersDisabledReason}
+              isAddingUsers={addUserVisible}
               onClick={onAddUsersClicked}
-              disabled={addUserVisible}
-            >{t`Add members`}</Button>
+            />
           )
         }
       >
@@ -145,6 +155,40 @@ export const GroupDetail = ({
         {modalContent}
       </AdminPaneLayout>
     </SettingsSection>
+  );
+};
+
+interface AddMembersButtonProps {
+  disabledReason: string | null;
+  isAddingUsers: boolean;
+  onClick: () => void;
+}
+
+const AddMembersButton = ({
+  disabledReason,
+  isAddingUsers,
+  onClick,
+}: AddMembersButtonProps) => {
+  const button = (
+    <Button
+      variant="filled"
+      onClick={onClick}
+      disabled={isAddingUsers || disabledReason != null}
+    >{t`Add members`}</Button>
+  );
+
+  if (disabledReason == null) {
+    return button;
+  }
+
+  return (
+    <Tooltip label={disabledReason}>
+      {/* Wrapper so the tooltip still shows over the disabled button,
+          which itself does not emit pointer events. */}
+      <Box component="span" display="inline-flex">
+        {button}
+      </Box>
+    </Tooltip>
   );
 };
 

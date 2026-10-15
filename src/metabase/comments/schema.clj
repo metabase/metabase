@@ -4,9 +4,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(set! *warn-on-reflection* true)
 
 (mr/def ::prose-mirror-node.attrs
   "The `attrs` of a ProseMirror node in a comment: the ones this code reads by name, and whatever else the editor put
@@ -100,6 +103,25 @@
    ::comment-reaction.update
    [:map {:closed true}
     [:id         ms/PositiveInt]]])
+
+;; The `emoji` of a reaction: a string of 1 to 10 Unicode code points.
+;;
+;; The limit counts code points, not UTF-16 units, because `comment_reaction.emoji` is `varchar(10)` on Postgres and
+;; MySQL, and those count code points.
+;;
+;; No docstring on purpose: `mr/def` would store it as the `:description`, which is the text a 400 response shows
+;; under `:errors`. `with-api-error-message` sets that text instead, localized.
+(mr/def ::reaction-emoji
+  (mu/with-api-error-message
+   [:and
+    ;; Documentation only: Malli ignores these when validating. JSON Schema counts maxLength in code points, the same
+    ;; unit the :fn below enforces.
+    {:json-schema/minLength 1
+     :json-schema/maxLength 10}
+    :string
+    [:fn {:error/message "must be 1 to 10 Unicode code points"}
+     (fn [^String s] (<= 1 (.codePointCount s 0 (.length s)) 10))]]
+   (deferred-tru "Emoji must be 1 to 10 Unicode code points.")))
 
 (mr/def ::comment-reaction.update
   "What an update (or insert) of a CommentReaction accepts: every column of `:comment_reaction` except `id`, all optional."

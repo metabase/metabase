@@ -171,14 +171,7 @@ export const AgentSuggestionMessage = ({
             h="1.375rem"
             gap="sm"
           >
-            <Button
-              size="compact-xs"
-              variant="subtle"
-              fw="normal"
-              fz="sm"
-              c="text-disabled"
-              disabled
-            >
+            <Button size="compact-md" variant="transparent" disabled>
               {isNew ? t`Create` : t`Apply`}
             </Button>
           </Flex>

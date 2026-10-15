@@ -99,6 +99,125 @@
   []
   (keyword (str "p" (Long/toUnsignedString (.nextLong (ThreadLocalRandom/current)) 36))))
 
+(def ^:private identifier-clauses
+  "Query-map keys whose entries name columns or tables rather than carrying values."
+  ;; `:order-by` and `:group-by` are deliberately absent: HoneySQL binds a param in both
+  ;; (`ORDER BY ?`), so a marker there is a pointless no-op rather than a dropped value, and
+  ;; refusing it would turn a harmless mistake into a production exception.
+  #{:select :select-distinct :select-top :from :join :left-join :right-join :inner-join :full-join
+    :cross-join :update :insert-into :delete-from :returning :with :with-columns :using
+    :create-table :drop-table :truncate :partition-by :window})
+
+(def ^:private on-condition-clauses
+  "Join clauses that alternate a table with an ON condition, so odd positions hold values."
+  ;; `:cross-join` is NOT one of these -- it takes a flat list of tables with no condition, so
+  ;; every element is an identifier.
+  #{:join :left-join :right-join :inner-join :full-join})
+
+(def ^:private expression-entry-clauses
+  "Identifier clauses where index 0 of an `[expr alias]` entry is an expression, so HoneySQL binds a
+  param there."
+  ;; Each of these formats `[[:param :k] :a]` as `? AS a` or `? a`. The table clauses bind it too --
+  ;; `FROM ? AS a` -- but a table cannot be a parameter, so the database rejects the statement, and
+  ;; refusing it here names the mistake instead. `:with` throws inside HoneySQL, and the DDL clauses
+  ;; format it as an identifier or inline the value.
+  #{:select :select-distinct :select-top :returning :partition-by})
+
+(declare marker-in-identifier-position?)
+
+(defn- marker-in-entry?
+  "Whether a marker sits in an identifier position of `entry`, one element of identifier `clause`.
+
+  An entry is `expr`, or `[expr alias]`. HoneySQL tells those apart POSITIONALLY, not by shape, so
+  only index 0 may be an expression -- everything after it is an alias, which is always an
+  identifier. Checking by head shape instead let `[:t [:auto/param \"al\"]]` pass as though `:t`
+  headed an operator form, and the value was silently compiled to the identifier `param`.
+
+  A marker directly at index 0 is bound, not dropped, in a clause in [[expression-entry-clauses]], so
+  it does not count there."
+  [clause entry]
+  (cond
+    ;; The entry IS a marker -- `:select [[:auto/param "n"]]`. Destructuring it below would read
+    ;; `:auto/param` as the expression, so catch it before that.
+    (marker-form? entry)     true
+    (not (sequential? entry)) (marker-in-identifier-position? entry)
+    :else
+    (let [[expr & aliases] entry]
+      (boolean (or (and (not (and (marker-form? expr)
+                                  (contains? expression-entry-clauses clause)))
+                        (marker-in-identifier-position? expr))
+                   ;; An alias slot can only be a name. A marker anywhere in one is a mistake.
+                   ;; A nested query map is not an alias -- `:with` pairs a name with a query --
+                   ;; so those are scanned separately by [[query-maps]].
+                   (some #(and (not (map? %)) (contains-marker? %)) aliases))))))
+
+(defn- marker-in-identifier-position?
+  "Whether a marker sits in an identifier slot within `form`.
+
+  Descends past two things, which are not mistakes:
+
+  - a keyword-headed operator form, whose arguments are values. A computed projection --
+    `[[:= :engine [:auto/param \"h2\"]] :is_match]` -- puts a real comparison in a clause that
+    otherwise holds identifiers.
+  - a nested query map. A subquery has its own clauses, and [[check-marker-placement]] scans it
+    separately, so a marker in its `:where` is judged there rather than here."
+  [form]
+  (cond
+    (map? form)           false
+    (marker-form? form)   true
+    (operator-form? form) false
+    (sequential? form)    (boolean (some marker-in-identifier-position? form))
+    :else                 false))
+
+(defn- query-maps
+  "`query` and every map nested anywhere inside it.
+
+  A subquery's clauses have to be scanned on their own terms: `:select` in an outer query holds
+  identifiers, but a subquery sitting there has its own `:where` that holds values -- and its own
+  `:select`, which holds identifiers again."
+  [query]
+  (let [found (volatile! [])]
+    (walk/postwalk (fn [x] (when (map? x) (vswap! found conj x)) x) query)
+    @found))
+
+(defn- misplaced-marker
+  "The offending entry of `clause`, if `v` puts a marker in an identifier position, else nil."
+  [clause v]
+  (let [entries (cond
+                  ;; The whole value is a marker -- `:from [:auto/param "t"]`. Split as a list, it
+                  ;; would be `:auto/param` and the payload, and neither is a marker.
+                  (marker-form? v) [v]
+
+                  ;; Alternating table / ON condition -- only the table halves are identifiers.
+                  (and (contains? on-condition-clauses clause) (sequential? v))
+                  (take-nth 2 v)
+
+                  ;; Every other identifier clause holds a flat list of entries -- including
+                  ;; `:cross-join`, which takes tables with no ON condition.
+                  (sequential? v) v
+
+                  ;; A bare value is its own single entry -- `:update :some_table`.
+                  :else [v])]
+    (first (filter #(marker-in-entry? clause %) entries))))
+
+(defn- check-marker-placement
+  "Refuse a marker sitting in a clause that names columns or tables, in `query` or any subquery."
+  [query]
+  ;; `contains-marker?` first: the overwhelming majority of app-DB queries carry no marker at all,
+  ;; and this runs on every one of them at compile.
+  (when (contains-marker? query)
+    (doseq [m          (query-maps query)
+            [clause v] m
+            :when      (contains? identifier-clauses clause)
+            :let       [part (misplaced-marker clause v)]
+            :when      part]
+      (throw (ex-info (str "[:auto/param ...] in a " clause " clause: " (pr-str part)
+                           ". That slot names a column or table, so the marker would compile to the"
+                           " identifier `param` and the value would be dropped. A marker belongs in"
+                           " a value slot.")
+                      {:type ::marker-outside-value-slot, :clause clause, :form part
+                       :query query})))))
+
 (defn- auto-param
   "Rewrite `[:auto/param v]` markers in `query` into HoneySQL's `[:param :kN]`, returning
   `[rewritten-query params-map]`.
@@ -165,7 +284,8 @@
   (if-not (map? built-query)
     (do (assert-no-marker-survived! built-query)
         (next-method query-type model built-query))
-    (let [[query params] (auto-param built-query)]
+    (let [_              (check-marker-placement built-query)
+          [query params] (auto-param built-query)]
       (assert-no-marker-survived! query)
       (if-not (seq params)
         (next-method query-type model query)

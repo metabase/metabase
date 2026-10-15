@@ -17,8 +17,8 @@ import {
   diagnoseAndCompile,
   format,
   getClauseDefinition,
+  tokenAtPos,
 } from "metabase/querying/expressions";
-import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -203,22 +203,22 @@ export function Editor(props: EditorProps) {
             <Button
               aria-label={t`Function browser`}
               onClick={toggleFunctionBrowser}
+              size="sm"
               variant={isFunctionBrowserOpen ? "filled" : "subtle"}
               className={S.toolbarButton}
-              size="xs"
-              p="x"
               leftSection={<Icon name="function" />}
             />
           </ButtonTooltip>
           {source.trim() !== "" && error == null && isValidated && (
             <ButtonTooltip label={t`Auto-format`}>
+              {/* TODO: replace with ActionIcon (GDGT-2457) */}
               <Button
+                variant="subtle"
+                color="neutral"
+                size="sm"
                 aria-label={t`Auto-format`}
                 onClick={formatExpression}
                 className={S.toolbarButton}
-                variant="subtle"
-                size="xs"
-                p="xxs"
                 disabled={isFormatting || error != null}
                 leftSection={<Icon name="format_code" />}
               />
@@ -367,8 +367,12 @@ function useExpression({
   );
 
   const handleBlur = useCallback(() => {
+    // `source` is stale until formatting settles; updating now would overwrite the formatted result
+    if (isFormatting) {
+      return;
+    }
     handleUpdate(source, true);
-  }, [handleUpdate, source]);
+  }, [handleUpdate, source, isFormatting]);
 
   const handleFormatExpression = useCallback(() => {
     formatExpression({ initial: false });

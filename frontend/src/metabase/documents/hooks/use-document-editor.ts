@@ -30,9 +30,10 @@ import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
-  Card,
+  CardId,
   CollectionId,
   Document,
+  DocumentCardToCreate,
   DocumentId,
   RegularCollectionId,
 } from "metabase-types/api";
@@ -44,7 +45,12 @@ import {
   setHasUnsavedChanges,
   setSidebarEmbedIndex,
 } from "../documents.slice";
-import { getDraftCards, getHasUnsavedChanges } from "../selectors";
+import {
+  getDraftCardOriginalIds,
+  getDraftCards,
+  getHasUnsavedChanges,
+} from "../selectors";
+import { getDocumentCardToCreate } from "../utils/draftCardUtils";
 
 import { useDocumentState } from "./use-document-state";
 import { useRegisterDocumentMetabotContext } from "./use-register-document-metabot-context";
@@ -101,6 +107,7 @@ export function useDocumentEditor({
   const [sendToast] = useToast();
 
   const draftCards = useSelector(getDraftCards);
+  const draftCardOriginalIds = useSelector(getDraftCardOriginalIds);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
 
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
@@ -116,22 +123,39 @@ export function useDocumentEditor({
 
   const [createDocument, { isLoading: isCreating }] =
     useCreateDocumentMutation();
-  const [updateDocument, { isLoading: isUpdating }] =
-    useUpdateDocumentMutation();
+  const [updateDocument, { isLoading: isUpdating }] = useUpdateDocumentMutation(
+    {
+      fixedCacheKey: documentId ? `document:${documentId}` : undefined,
+    },
+  );
 
   const isNewDocument = documentId === "new";
   const isSaving = isCreating || isUpdating;
 
+  const hasLoadedDocumentRef = useRef(false);
+
+  // if the document is updating on mount (due to a previous update with the same fixedCacheKey),
+  // then skip getDocument so we don't show the stale document
+  // this is a little unusual - the standard pattern here would to be use an optimistic update on save
+  // but a document with draft card IDs can't be rendered if Redux state has been cleared, so we need a different approach
+  const isUpdatingOnMount = isUpdating && !hasLoadedDocumentRef.current;
+
   let {
     data: documentData,
-    isLoading: isDocumentLoading,
+    isLoading,
     error,
   } = useGetDocumentQuery(
-    documentId && !isNewDocument ? { id: documentId } : skipToken,
+    documentId && !isNewDocument && !isUpdatingOnMount
+      ? { id: documentId }
+      : skipToken,
   );
   if (documentId !== documentData?.id) {
     documentData = undefined;
   }
+  if (documentData) {
+    hasLoadedDocumentRef.current = true;
+  }
+  const isDocumentLoading = isLoading || isUpdatingOnMount;
 
   const canWrite = Boolean(
     !documentData?.archived && (isNewDocument || documentData?.can_write),
@@ -293,7 +317,7 @@ export function useDocumentEditor({
       }
 
       try {
-        const cardsToSave: Record<number, Card> = {};
+        const cardsToSave: Record<number, DocumentCardToCreate> = {};
         const processedCardIds = new Set<number>();
 
         editorInstance.state.doc.descendants((node: ProseMirrorNode) => {
@@ -303,7 +327,12 @@ export function useDocumentEditor({
               processedCardIds.add(cardId);
 
               if (cardId < 0 && draftCards[cardId]) {
-                cardsToSave[cardId] = draftCards[cardId];
+                const originalId: CardId | undefined =
+                  draftCardOriginalIds[cardId];
+                cardsToSave[cardId] = getDocumentCardToCreate(
+                  draftCards[cardId],
+                  originalId,
+                );
               }
             }
           }
@@ -357,7 +386,7 @@ export function useDocumentEditor({
         }
       } catch (error) {
         console.error("Failed to save document:", error);
-        sendToast({ message: t`Error saving document`, icon: "warning" });
+        sendToast({ message: t`Error saving document`, variant: "negative" });
         return {
           error: error,
         };
@@ -368,6 +397,7 @@ export function useDocumentEditor({
       isSaving,
       documentTitle,
       draftCards,
+      draftCardOriginalIds,
       documentData?.id,
       onDocumentCreated,
       onDocumentUpdated,

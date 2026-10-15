@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
@@ -45,11 +46,13 @@ export function GdriveConnectionModal({
   const { data: { email: serviceAccountEmail } = {} } =
     useGetServiceAccountQuery(shouldShow ? undefined : skipToken);
 
-  const { data: gSheetData, error } = useGetGsheetsFolderQuery(
-    shouldShow ? undefined : skipToken,
-  );
+  const {
+    data: gSheetData,
+    error,
+    isLoading,
+  } = useGetGsheetsFolderQuery(shouldShow ? undefined : skipToken);
 
-  if (!shouldShow) {
+  if (!shouldShow || isLoading) {
     return null;
   }
 
@@ -124,7 +127,7 @@ function GoogleSheetsConnectModal({
         onClose(true);
       })
       .catch((response) => {
-        setErrorMessage(response?.data?.message ?? "Something went wrong");
+        setErrorMessage(getErrorMessage(response));
       });
   };
 
@@ -135,9 +138,6 @@ function GoogleSheetsConnectModal({
     <ModalWrapper onClose={onClose} title={t`Import Google Sheets`}>
       <SegmentedControl<UploadType>
         fullWidth
-        autoContrast
-        color="core-brand"
-        c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
         data={
@@ -245,16 +245,12 @@ function GoogleSheetsDisconnectModal({
             {errorMessage}
           </Text>
           <Flex justify="flex-end" gap="lg">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={isDeletingFolderLink}
-            >
+            <Button onClick={onClose} disabled={isDeletingFolderLink}>
               {connectButtonText}
             </Button>
             <Button
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >

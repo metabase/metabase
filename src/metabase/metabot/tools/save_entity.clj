@@ -18,10 +18,10 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -240,7 +240,4 @@
                              ;; as the settled "Saved …" step label
                              :title       (te/link question-name link)})]})
     (catch Exception e
-      (log/errorf "Error saving entity: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to save: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-or-api-error e))))

@@ -697,8 +697,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
         buttons={[
           <Button
             key="cancel"
-            variant="subtle"
-            size="sm"
+            variant="on-dark-secondary"
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
           <Tooltip
@@ -716,8 +715,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               activeText={t`Saving…`}
               failedText={t`Save failed`}
               successText={t`Saved`}
-              variant="filled"
-              size="sm"
+              variant="on-dark-primary"
             />
           </Tooltip>,
         ]}

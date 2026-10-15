@@ -5,6 +5,4 @@ content: CREATED_AT BETWEEN '2024-01-01' AND '2024-12-31'
 creator_id: admin@example.com
 template_tags: {}
 serdes/meta:
-- id: jpIUEStroQyLnJ-MVfeS4
-  label: date_range_filter
-  model: NativeQuerySnippet
+- model: NativeQuerySnippet

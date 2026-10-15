@@ -53,7 +53,7 @@ export const StoragePurchaseButton = ({ location }: { location: string }) => {
       };
 
   return (
-    <Button variant="default" leftSection={<UpsellGem />} {...props}>
+    <Button leftSection={<UpsellGem />} {...props}>
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Storage, only visible to admins */}
       {t`Add Metabase Storage`}
     </Button>

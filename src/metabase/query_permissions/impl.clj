@@ -45,7 +45,8 @@
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
                     :actual-permissions   (perms/permissions-for-user api/*current-user-id*)
-                    :permissions-error?   true}
+                    :permissions-error?   true
+                    :response/keys        #{:required-permissions}}
                    additional-ex-data))))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
@@ -166,6 +167,7 @@
   (when (seq query)
     (:table-ids (query->source-ids query))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).
   Useful when bulk loading cards from different databases."
@@ -375,7 +377,7 @@
                       :unrestricted
                       database-id
                       %)
-             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
+             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." (str %))
                                      {database-id {:perms/view-data {% :unrestricted}}})))
           table-ids)))
 

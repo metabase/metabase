@@ -3997,7 +3997,8 @@
    :name                        "test-data"
    :settings                    {:breakout-bin-width 10.0
                                  :breakout-bins-num  8
-                                 :enable-xrays       true}
+                                 :enable-xrays       true
+                                 :start-of-week      :sunday}
    :caveats                     nil
    :tables                      [(table-metadata-method :categories)
                                  (table-metadata-method :checkins)
@@ -4024,6 +4025,7 @@
    :is-on-demand                false
    :options                     nil
    :engine                      :h2
+   :default-schema              "PUBLIC"
    :initial-sync-status         "complete"
    :native-permissions          :write
    :dbms-version                {:flavor "H2", :version "2.1.212 (2022-04-09)", :semantic-version [2 1]}

@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema-rest.api.field
   (:require
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -52,6 +53,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `Field` with ID."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {include-editable-data-model? :include_editable_data_model} :- [:map {:closed true}
@@ -180,7 +182,8 @@
                                     {:status-code 400
                                      :base-type (:base_type field)
                                      :coercion-strategy coercion-strategy
-                                     :effective-type effective}))))))
+                                     :effective-type effective
+                                     :response/keys #{:base-type :coercion-strategy :effective-type}}))))))
         removed-fk?        (removed-fk-semantic-type? (:semantic_type field) new-semantic-type)
         fk-target-field-id (get body :fk_target_field_id (:fk_target_field_id field))]
     ;; validate that fk_target_field_id is a valid Field in the same database
@@ -223,6 +226,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [field (api/read-check :model/Field id)]
@@ -264,6 +268,8 @@
         :type                    dimension-type
         :name                    dimension-name
         :human_readable_field_id human-readable-field-id})))
+  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
+                                              :user-id api/*current-user-id*})
   (warehouse-schema-rest.db/dimension-for-field id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -276,6 +282,8 @@
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
   (warehouse-schema-rest.db/delete-dimensions-for-field! id)
+  (events/publish-event! :event/field-update {:object  (warehouse-schema-rest.db/field id)
+                                              :user-id api/*current-user-id*})
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -286,6 +294,7 @@
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or
   remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [field (api/query-check (warehouse-schema-rest.db/field id))]
@@ -376,6 +385,7 @@
 (api.macros/defendpoint :get "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   [[metabase.parameters.field/search-values]] for a more detailed explanation."
+  {:scope api-scope/data-app}
   [{:keys [id search-id]} :- [:map {:closed true}
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]
@@ -395,6 +405,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
+  {:scope api-scope/data-app}
   [{:keys [id remapped-id]} :- [:map {:closed true}
                                 [:id          ms/PositiveInt]
                                 [:remapped-id ms/PositiveInt]]
@@ -411,6 +422,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))

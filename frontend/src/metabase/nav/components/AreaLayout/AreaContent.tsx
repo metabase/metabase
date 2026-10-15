@@ -1,6 +1,6 @@
 import { type ReactNode, memo } from "react";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Box } from "metabase/ui";
 
 export const CONTENT_PADDING_X = "3.5rem";

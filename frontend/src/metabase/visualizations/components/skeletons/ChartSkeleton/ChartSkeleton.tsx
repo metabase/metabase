@@ -12,7 +12,6 @@ import RowSkeleton from "metabase/visualizations/components/skeletons/RowSkeleto
 import SankeySkeleton from "metabase/visualizations/components/skeletons/SankeySkeleton";
 import ScalarSkeleton from "metabase/visualizations/components/skeletons/ScalarSkeleton/ScalarSkeleton";
 import ScatterSkeleton from "metabase/visualizations/components/skeletons/ScatterSkeleton";
-import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
 import TableSkeleton from "metabase/visualizations/components/skeletons/TableSkeleton";
 import { VisualizationSkeleton } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 import WaterfallSkeleton from "metabase/visualizations/components/skeletons/WaterfallSkeleton";
@@ -100,7 +99,4 @@ const ChartSkeleton = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(ChartSkeleton, {
-  Title: SkeletonCaption.Title,
-  Description: SkeletonCaption.Description,
-});
+export default ChartSkeleton;

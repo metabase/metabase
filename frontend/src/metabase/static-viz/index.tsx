@@ -1,9 +1,7 @@
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
-// eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
-
 import {
   StaticChoropleth,
   getStaticChoroplethSettings,
@@ -222,6 +220,7 @@ function RenderChart(
       width={options.width}
       height={options.height}
       fitWithinBounds={options.fitWithinBounds}
+      gridSize={options.gridSize}
     />,
   );
 }

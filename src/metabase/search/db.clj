@@ -5,6 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.search.appdb.index-schema :as index-schema]
    [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as search.scoring]
@@ -121,8 +122,11 @@
   (t2/query (sql.helpers/drop-table :if-exists table-name)))
 
 (mu/defn drop-search-index-table!
-  "Drop the search index table named `table-name`."
+  "Drop the search index table named `table-name`, throwing if it is already gone."
   [table-name :- [:or :keyword :string]]
+  ;; `IF EXISTS` cannot reliably report whether it dropped a table.
+  ;; PostgreSQL emits only a JDBC warning, which Toucan does not expose, and H2 emits nothing.
+  ;; Let an absent table throw so callers can detect races.
   (t2/query (sql.helpers/drop-table table-name)))
 
 (mu/defn create-search-index-table!
@@ -266,19 +270,24 @@
   [version :- :string]
   (t2/delete! :model/SearchIndexMetadata :version version))
 
-(mu/defn delete-index-metadata-by-name-on-conn!
-  "Delete the SearchIndexMetadata rows named `index-name`, on `conn`."
+(mu/defn delete-index-metadata-by-name!
+  "Delete the SearchIndexMetadata rows named `index-name` using `conn`."
   [conn       :- (ms/InstanceOfClass java.sql.Connection)
    index-name :- :string]
   (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
 
-(mu/defn delete-index-metadata!
-  "Delete the SearchIndexMetadata row of `engine`, `version`, `lang-code`, and `index-name`."
+(mu/defn delete-non-active-index-metadata!
+  "Delete the pending or retired SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name`."
   [engine     :- :keyword
    version    :- :string
    lang-code  :- :string
    index-name :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :index_name index-name))
+  (t2/delete! :model/SearchIndexMetadata
+              :engine engine
+              :version version
+              :lang_code lang-code
+              :index_name index-name
+              :status [:not= :active]))
 
 (mu/defn index-metadata
   "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
@@ -308,6 +317,19 @@
    version   :- :string
    lang-code :- :string]
   (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :pending))
+
+(mu/defn lock-pending-index-metadata!
+  "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
+  Must be called inside the transaction that will promote the row."
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
+  (t2/select-one [:model/SearchIndexMetadata :id]
+                 :engine engine
+                 :version version
+                 :lang_code lang-code
+                 :status :pending
+                 {:for :update}))
 
 (mu/defn delete-retired-index-metadata!
   "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
@@ -372,6 +394,17 @@
   (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
 (mu/defn card-result-metadata
-  "A map of Card id to result metadata for the Cards with `card-ids`."
+  "A map of Card id to result metadata for the Cards with `card-ids`.
+
+  SELECTs `report_card` directly instead of `:model/Card`, so the `:card_schema` read-time upgrade stays out of it.
+  Naming a schema-governed column on the model arms the whole upgrade chain, and the upgrade to 24 recomputes a
+  legacy metric's entire dimension set from its query — several app-db round trips per row, to produce columns
+  search never looks at. What search wants is the stored result metadata, so all that is needed from the model is
+  its `:out` transform, applied here. (The upgrade to 22 also strips `:ident` keys left by an abandoned experiment;
+  a stale one reaching a search payload is harmless.)"
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))
+  (let [result-metadata-out (:out mi/transform-result-metadata)]
+    (into {}
+          (map (juxt :id (comp result-metadata-out :result_metadata)))
+          (when (seq card-ids)
+            (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))

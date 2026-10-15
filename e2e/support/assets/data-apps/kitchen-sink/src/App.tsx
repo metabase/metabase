@@ -64,7 +64,10 @@ function Overview() {
       <h2 style={{ margin: "0 0 8px" }}>All orders</h2>
       <div style={{ height: 400 }}>
         {ordersQuery.query ? (
-          <InteractiveQuestion card={{ query: ordersQuery.query }} />
+          <InteractiveQuestion
+            card={{ query: ordersQuery.query }}
+            withDownloads
+          />
         ) : (
           <div>…</div>
         )}
@@ -195,14 +198,14 @@ function NativeQueryPage() {
 }
 
 function Actions() {
-  const { actionId, actionParams } = getTestEnv();
-  // A data app names its actions by definition. Nothing synchronizes here, so
-  // the copy the definition points at is the authored action itself.
+  const { actionId, actionEntityId, actionParams } = getTestEnv();
+  // A data app names its actions by definition. This fixture has no
+  // collection files, so the copy the definition points at is the authored action.
   const action = useAction(
     actionId
       ? defineAction({
           action: { id: actionId, parameters: [] },
-          copiedActionId: actionId,
+          copiedActionEntityId: actionEntityId,
         })
       : null,
   );

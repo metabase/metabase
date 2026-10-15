@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { forwardRef } from "react";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
@@ -6,7 +5,8 @@ import {
   MetabotPromptInput,
   type MetabotPromptInputProps,
 } from "metabase/metabot/components/MetabotPromptInput";
-import { Box, Icon, UnstyledButton } from "metabase/ui";
+import { MetabotSendButton } from "metabase/metabot/components/MetabotSendButton";
+import { Box } from "metabase/ui";
 
 import S from "./MetabotChatEditor.module.css";
 
@@ -35,23 +35,12 @@ export const MetabotChatEditor = forwardRef<
           data-testid="metabot-chat-input"
         />
       </Box>
-      <UnstyledButton
-        className={cx(
-          S.button,
-          isResponding && S.buttonResponding,
-          props.value.length === 0 && !isResponding && S.buttonHidden,
-        )}
+      <MetabotSendButton
+        className={S.button}
+        isResponding={isResponding}
+        isHidden={props.value.length === 0 && !isResponding}
         onClick={isResponding ? props.onStop : props.onSubmit}
-        data-testid={
-          isResponding ? "metabot-stop-response" : "metabot-send-message"
-        }
-      >
-        {isResponding ? (
-          <Icon className={S.stopIcon} name="stop" />
-        ) : (
-          <Icon className={S.sendIcon} name="arrow_up" />
-        )}
-      </UnstyledButton>
+      />
     </Box>
   );
 });

@@ -1,5 +1,6 @@
 /**
- * The SDK should never bundle React itself
+ * The SDK bundle never includes React. Each import below resolves at runtime to
+ * the host app's React, which the SDK package puts on these globals.
  *
  * @type {Readonly<{
  *   react: "METABASE_REACT";
