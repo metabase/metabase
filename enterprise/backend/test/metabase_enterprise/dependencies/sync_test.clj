@@ -108,6 +108,19 @@
                   (is (some #(= :missing-column (:error_type %)) errors)
                       "Should have a missing-column error"))))))))))
 
+(deftest ^:synchronized scheduled-metadata-sync-triggers-reanalysis-test
+  (testing "The metadata sync the scheduled sync task runs marks the dependents of a changed table for re-analysis"
+    (with-syncable-db!
+      (fn [{:keys [card-id]}]
+        (let [initial-analysis-time (t2/select-one-fn :analyzed_at :model/AnalysisFinding
+                                                      :analyzed_entity_type :card
+                                                      :analyzed_entity_id card-id)]
+          (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
+          (sync/sync-db-metadata! (mt/db))
+          (let [finding (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id card-id)]
+            (is (or (:stale finding)
+                    (not= initial-analysis-time (:analyzed_at finding))))))))))
+
 ;; Integration test that a DB sync which doesn't change anything about a table does not trigger re-analysis of all
 ;; cards which depend on that table.
 (deftest ^:synchronized sync-without-changes-does-not-trigger-reanalysis-test

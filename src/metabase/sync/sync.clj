@@ -9,7 +9,6 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the [[sync-database!]] function to do all three at once."
   (:require
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze :as analyze]
@@ -82,11 +81,9 @@
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (tracing/with-span :sync "sync.database" {:db/id (:id database)}
      (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-       (let [results (->> (scan-phases scan (= "complete" (:initial_sync_status database)))
-                          (keep (partial do-phase! database))
-                          (doall))]
-         (dependencies.hooks/after-database-sync (:id database))
-         results)))))
+       (->> (scan-phases scan (= "complete" (:initial_sync_status database)))
+            (keep (partial do-phase! database))
+            (doall))))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
