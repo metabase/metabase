@@ -4011,6 +4011,7 @@
                     :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/ParameterCard
                     :model/Segment
                     :model/TableUserSettings
                     :model/User}}
