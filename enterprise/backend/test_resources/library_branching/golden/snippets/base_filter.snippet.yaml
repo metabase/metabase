@@ -1,0 +1,4 @@
+kind: snippet
+id: bAsEfIlTeRsNiPpEt0001
+content: products.deleted_at IS NULL
+name: Base filter
