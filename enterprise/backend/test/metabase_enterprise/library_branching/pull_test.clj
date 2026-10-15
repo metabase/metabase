@@ -668,17 +668,10 @@
      (with-remote [repo s]
        (let [[inst c1] (pushed-instance! s s1)
              h         (pltu/commit-snapshot! repo ptu/branch (if c1 [c1] []) s2)
-             clashes   (pltu/trashed-name-clashes s1 s2)
-             {:keys [result key-clash]} (pltu/pull! inst s)]
-         (if (seq clashes)
-           ;; the head gives a snippet the name of a snippet that it removes: the trash keeps the removed one with its
-           ;; name, so the apply refuses with exactly those pairs, and writes nothing
-           (and (= :key-clash result)
-                (= clashes (set (map :ids key-clash)))
-                (= s1 (pltu/snapshot-of inst))
-                (= c1 (instance/base inst)))
-           ;; with no local change, the instance takes the head: get(A) = S after an apply of S
-           (and (= :pulled result)
-                (= s2 (pltu/snapshot-of inst))
-                (= h (instance/base inst))
-                (= none (ptu/local-changes inst)))))))))
+             {:keys [result]} (pltu/pull! inst s)]
+         ;; with no local change, the instance takes the head: get(A) = S after an apply of S, also when the head gives
+         ;; a snippet the name of a snippet that it removes
+         (and (= :pulled result)
+              (= s2 (pltu/snapshot-of inst))
+              (= h (instance/base inst))
+              (= none (ptu/local-changes inst))))))))

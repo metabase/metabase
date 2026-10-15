@@ -177,15 +177,3 @@
 (defn push!
   [inst s]
   (ptu/push! inst s))
-
-(defn trashed-name-clashes
-  "The pairs `#{i j}` of snippets where `i` is in `s2` and `j` is a snippet of `s1` that `s2` removes, so an apply of
-  `s2` over `s1` trashes `j`, which keeps its name, one key with the name of `i` (`snapshot/unique-key`)."
-  [s1 s2]
-  (set (for [[j item-j] s1
-             :when (and (= :snippet (:kind item-j)) (not (contains? s2 j)))
-             [i item-i] s2
-             :when (and (= :snippet (:kind item-i))
-                        (= (snapshot/unique-key snapshot/unique-keys item-i)
-                           (snapshot/unique-key snapshot/unique-keys item-j)))]
-         #{i j})))

@@ -458,7 +458,7 @@
            (is (= work (pltu/snapshot-of prod)))
            (is (= merged (instance/base prod)))))))))
 
-(deftest deploy-refuses-the-name-of-a-trashed-snippet-test
+(deftest deploy-renames-a-trashed-snippet-whose-name-the-head-takes-test
   (enabled
    (with-remote [repo s]
      (let [before   (assoc ptu/sample other-id (other-snippet))
@@ -467,14 +467,13 @@
            new-id   "NewOtherSnippet000001"
            h        (pltu/commit-snapshot! repo ptu/branch [c1]
                                            (assoc ptu/sample new-id (ptu/item new-id :snippet "other" "snippetssnippetssnipp" {:content "1 = 1"})))]
-       (testing "the head removes a snippet and adds one with a name of one key: the trash keeps the removed snippet with
-                its name, so the deploy refuses with the pair and writes nothing"
-         (is (= {:result    :key-clash
-                 :head      h
-                 :key-clash [{:rule :unique-key :kind :snippet :key "other" :ids #{new-id other-id}}]}
-                (deploy! inst s)))
-         (is (= before (pltu/snapshot-of inst)))
-         (is (= c1 (instance/base inst))))))))
+       (testing "the head removes a snippet and adds one with a name of one key: the deploy renames the removed snippet,
+                trashes it, and writes the new one"
+         (is (= :deployed (:result (deploy! inst s))))
+         (is (= (assoc ptu/sample new-id (ptu/item new-id :snippet "other" "snippetssnippetssnipp" {:content "1 = 1"}))
+                (pltu/snapshot-of inst)))
+         (is (= "Other (trashed OtherSnippet000000001)" (get-in @(:state inst) [:trash other-id :name])))
+         (is (= h (instance/base inst))))))))
 
 ;;; ---------------------------------------------------- Properties ----------------------------------------------------
 
@@ -486,17 +485,10 @@
              inst (pltu/memory-instance (atom {:snapshot {}}))
              r1   (deploy! inst s {:env (env-of s1)})
              h    (pltu/commit-snapshot! repo ptu/branch [c1] s2)
-             r2   (deploy! inst s {:env (env-of s2)})
-             clashes (pltu/trashed-name-clashes s1 s2)]
+             r2   (deploy! inst s {:env (env-of s2)})]
+         ;; with no drift, a consumption instance shows exactly the head after each deploy (ProdShowsValid), also when
+         ;; the head gives a snippet the name of a snippet that it removes
          (and (= :deployed (:result r1))
-              (if (seq clashes)
-                ;; the head gives a snippet the name of a snippet that it removes: the trash keeps the removed one with
-                ;; its name, so the apply refuses with exactly those pairs, and writes nothing
-                (and (= :key-clash (:result r2))
-                     (= clashes (set (map :ids (:key-clash r2))))
-                     (= s1 (pltu/snapshot-of inst))
-                     (= c1 (instance/base inst)))
-                ;; with no drift, a consumption instance shows exactly the head after each deploy (ProdShowsValid)
-                (and (= :deployed (:result r2))
-                     (= s2 (pltu/snapshot-of inst))
-                     (= h (instance/base inst))))))))))
+              (= :deployed (:result r2))
+              (= s2 (pltu/snapshot-of inst))
+              (= h (instance/base inst))))))))

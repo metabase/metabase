@@ -207,3 +207,26 @@
           [result after] (apply-to! before plan "base")]
       (is (= [[library-id :system-item]] (map (juxt :id :reason) (:refused result))))
       (is (= before after)))))
+
+(deftest interim-rename-frees-a-key-test
+  (testing "the plan renames a live snippet in an interim step, trashes it, and writes a new snippet with its old name:
+            the old row does not hold the key any more, so the apply writes both"
+    (let [old-id  "RenamedBeforeTrash001"
+          new-id  "TakesTheFreedName0001"
+          old     (snippet old-id "Active orders")
+          renamed (assoc old :name "Active orders (trashed RenamedBeforeTrash001)")
+          plan    [{:id old-id :interim renamed :pre old}
+                   {:id old-id :trash true :pre old}
+                   {:id new-id :write (snippet new-id "Active orders") :pre nil}]
+          [result state] (apply-to! {:snapshot {old-id old}} plan "base")]
+      (is (= {:ok {:trashed-in-use {} :renamed {old-id (:name renamed)}}} result))
+      (is (= {new-id (snippet new-id "Active orders")} (:snapshot state)))
+      (is (= {old-id renamed} (:trash state)))))
+  (testing "with no interim step, the trashed row keeps its name, and the apply refuses with the pair"
+    (let [old-id "TrashedWithItsName001"
+          new-id "TakesTheFreedName0001"
+          old    (snippet old-id "Active orders")
+          plan   [{:id old-id :trash true :pre old}
+                  {:id new-id :write (snippet new-id "Active orders") :pre nil}]]
+      (is (= {:key-clash [{:rule :unique-key :kind :snippet :key "Active orders" :ids #{old-id new-id}}]}
+             (first (apply-to! {:snapshot {old-id old}} plan "base")))))))

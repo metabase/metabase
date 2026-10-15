@@ -253,26 +253,15 @@
              _    (pltu/save! inst (constantly s3))
              h    (pltu/commit-snapshot! repo ptu/branch [c1] s2)
              r    (deploy! inst s {:env (env-of s2)})
-             ;; the head gives a snippet the name of a snippet that the apply trashes: the trash keeps the name, so the
-             ;; apply refuses with exactly those pairs, and writes nothing
-             clashes (pltu/trashed-name-clashes s3 s2)
-             refused? (fn [result]
-                        (and (= :key-clash (:result result))
-                             (= clashes (set (map :ids (:key-clash result))))
-                             (= s3 (pltu/snapshot-of inst))
-                             (= c1 (instance/base inst))))
-             kept (cond
-                    (and (= s3 s1) (seq clashes)) (refused? r)
-                    (= s3 s1)                     (= :deployed (:result r))
+             kept (if (= s3 s1)
+                    (= :deployed (:result r))
                     ;; ProdNoLostDrift: the deploy writes nothing, and the drift stays
-                    :else                         (and (= :drift (:result r))
-                                                       (= s3 (pltu/snapshot-of inst))
-                                                       (= c1 (instance/base inst))))
+                    (and (= :drift (:result r))
+                         (= s3 (pltu/snapshot-of inst))
+                         (= c1 (instance/base inst))))
              d    (discard! inst s {:env (env-of s2)})]
+         ;; with the admin's choice, production converges on the head (ProdConverges)
          (and kept
-              (if (seq clashes)
-                (refused? d)
-                ;; with the admin's choice, production converges on the head (ProdConverges)
-                (and (#{:deployed :up-to-date} (:result d))
-                     (= s2 (pltu/snapshot-of inst))
-                     (= h (instance/base inst))))))))))
+              (#{:deployed :up-to-date} (:result d))
+              (= s2 (pltu/snapshot-of inst))
+              (= h (instance/base inst))))))))
