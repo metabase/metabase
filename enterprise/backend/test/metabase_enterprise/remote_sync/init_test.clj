@@ -372,14 +372,14 @@
   (testing "Strict mode turns on once no collection outside the Library is synced"
     (mt/with-temporary-setting-values [:remote-sync-strict-mode false]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :is_remote_synced true}]
-        (remote-sync.core/switch-to-strict-mode!)
+        (remote-sync.core/maybe-switch-to-strict-mode!)
         (is (false? (settings/remote-sync-strict-mode)))
         (t2/update! :model/Collection coll-id {:is_remote_synced false})
-        (remote-sync.core/switch-to-strict-mode!)
+        (remote-sync.core/maybe-switch-to-strict-mode!)
         (is (true? (settings/remote-sync-strict-mode))))))
   (testing "An environment variable keeps it off"
     (mt/with-temp-env-var-value! [mb-remote-sync-strict-mode "false"]
-      (remote-sync.core/switch-to-strict-mode!)
+      (remote-sync.core/maybe-switch-to-strict-mode!)
       (is (false? (settings/remote-sync-strict-mode))))))
 
 (deftest finish-remote-config-strict-mode-test

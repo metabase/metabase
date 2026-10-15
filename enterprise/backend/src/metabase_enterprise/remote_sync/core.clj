@@ -522,7 +522,7 @@
   (when (nil? (settings/remote-sync-strict-mode))
     (settings/remote-sync-strict-mode! (not (other-collection-synced?)))))
 
-(defn switch-to-strict-mode!
+(defn maybe-switch-to-strict-mode!
   "Turns on [[settings/remote-sync-strict-mode]] once no collection outside the Library and transforms is synced,
   unless an environment variable sets it."
   []
@@ -530,6 +530,15 @@
              (not (settings/strict-mode-set-by-env?))
              (not (other-collection-synced?)))
     (settings/remote-sync-strict-mode! true)))
+
+(defn maybe-switch-out-of-strict-mode!
+  "Turns off [[settings/remote-sync-strict-mode]] once a collection outside the Library and transforms is synced,
+  unless an environment variable sets it."
+  []
+  (when (and (settings/remote-sync-strict-mode)
+             (not (settings/strict-mode-set-by-env?))
+             (other-collection-synced?))
+    (settings/remote-sync-strict-mode! false)))
 
 (defn enable-library-and-transforms-sync!
   "In strict mode, creates the Library when it's missing and, on a read-write instance, turns on remote sync for

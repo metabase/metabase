@@ -742,6 +742,8 @@
                  :outcome {:kind "pulled"
                            :count (pulled-change-count imported-data)
                            :branch (settings/remote-sync-branch)}}))]
+        (when (= :success (:status result))
+          (remote-sync.core/maybe-switch-out-of-strict-mode!))
         result)
       (catch Exception e
         ;; A cancellation isn't a failure: log it and return nil. Otherwise log the error, count it, and

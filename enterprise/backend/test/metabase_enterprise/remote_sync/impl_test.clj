@@ -41,6 +41,27 @@
         (let [result (impl/import! (source.p/snapshot (test-helpers/create-mock-source)) task-id)]
           (is (= :success (:status result))))))))
 
+(deftest import!-switches-out-of-strict-mode-test
+  (mt/with-temporary-setting-values [remote-sync-strict-mode true]
+    (testing "a pull of only the Library keeps strict mode on"
+      (with-library [_]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+              source  (test-helpers/create-mock-source
+                       :initial-files {"main" {"collections/library/library.yaml"
+                                               (test-helpers/generate-collection-yaml collection/library-entity-id "Library"
+                                                                                      :type "library" :is-remote-synced true)}})]
+          (is (= :success (:status (impl/import! (source.p/snapshot source) task-id))))
+          (is (true? (remote-sync.settings/remote-sync-strict-mode)))
+          (t2/update! :model/RemoteSyncTask task-id {:ended_at :%now}))))
+    (testing "a pull that syncs a collection outside the Library and transforms turns strict mode off"
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (is (= :success (:status (impl/import! (source.p/snapshot (test-helpers/create-mock-source
+                                                                   :initial-files {"main" {"collections/other/other.yaml"
+                                                                                           (test-helpers/generate-collection-yaml "other-collectionxxxxx" "Other"
+                                                                                                                                  :is-remote-synced true)}}))
+                                               task-id :force? true))))
+        (is (false? (remote-sync.settings/remote-sync-strict-mode)))))))
+
 (deftest import!-with-branch-parameter-test
   (testing "import! with branch parameter uses provided branch"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})

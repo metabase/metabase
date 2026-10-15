@@ -314,7 +314,7 @@
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})
-    (remote-sync.core/switch-to-strict-mode!)
+    (remote-sync.core/maybe-switch-to-strict-mode!)
     (if-let [task-id (impl/finish-remote-config!)]
       {:success true
        :task_id task-id}
