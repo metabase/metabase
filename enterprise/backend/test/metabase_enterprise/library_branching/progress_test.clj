@@ -11,6 +11,7 @@
    [metabase-enterprise.library-branching.api]
    [metabase-enterprise.library-branching.engine.merge :as merge]
    [metabase-enterprise.library-branching.engine.plan :as plan]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
@@ -27,7 +28,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private wait-ms
   "The longest time that a test waits for a worker on another thread."
@@ -127,7 +128,7 @@
 (deftest pull-progress-shows-on-current-task-test
   (testing (str "a pull that waits between its phases shows a progress above 0 and below 1 on GET /current-task;
                 app DB " (mdb/db-type))
-    (mt/with-premium-features #{:remote-sync}
+    (mt/with-additional-premium-features #{:remote-sync}
       (with-remote [repo url]
         (with-settings {:remote-sync-url url :remote-sync-branch "main"}
           (rtu/do-with-library-metric!

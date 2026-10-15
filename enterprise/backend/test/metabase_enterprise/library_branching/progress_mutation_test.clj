@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.deploy :as deploy]
    [metabase-enterprise.library-branching.discard :as discard]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.merge-branch :as merge-branch]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.operations :as operations]
@@ -16,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private phases-test #'progress-test/operations-report-their-phases-test)
 
