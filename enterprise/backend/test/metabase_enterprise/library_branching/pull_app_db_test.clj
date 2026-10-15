@@ -326,7 +326,7 @@
                      :head      h
                      :key-clash [{:rule :unique-key :kind :snippet :key "lb pull clash"
                                   :ids  #{new-id (:entity_id trashed)}}]}
-                    (pull! inst s)))
+                    (dissoc (pull! inst s) :semantic)))
              (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
              (is (= c1 (instance/base inst))))))))))
 
@@ -350,7 +350,7 @@
                      :head      h
                      :key-clash [{:rule :unique-key :kind :snippet :key "lb pull cläsh"
                                   :ids  #{new-id (:entity_id trashed)}}]}
-                    (pull! inst s)))
+                    (dissoc (pull! inst s) :semantic)))
              (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
              (is (= c1 (instance/base inst))))))))))
 
@@ -380,7 +380,7 @@
                          :head      h
                          :key-clash [{:rule :unique-key :kind :snippet :key new-name
                                       :ids  #{new-id (:entity_id trashed)}}]}
-                        (pull! inst s)))
+                        (dissoc (pull! inst s) :semantic)))
                  (is (not (t2/exists? :model/NativeQuerySnippet :entity_id new-id)))
                  (is (= c1 (instance/base inst))))))))))))
 

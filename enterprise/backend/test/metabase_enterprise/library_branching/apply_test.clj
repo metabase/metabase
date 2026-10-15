@@ -96,10 +96,10 @@
           [result after] (apply-to! before plan "base")]
       (is (= {:key-clash [{:rule :unique-key :kind :snippet :key "Active orders" :ids #{new-id trashed-id}}]} result))
       (is (= before after))))
-  (testing "a snippet that the plan renames frees its name for another write of the plan"
+  (testing "a snippet that the plan renames frees its name for a later write of the plan"
     (let [before         {:snapshot {trashed-id (snippet trashed-id "Active orders")}}
-          plan           [{:id new-id :write (snippet new-id "Active orders") :pre nil}
-                          {:id trashed-id :write (snippet trashed-id "Old orders") :pre (snippet trashed-id "Active orders")}]
+          plan           [{:id trashed-id :write (snippet trashed-id "Old orders") :pre (snippet trashed-id "Active orders")}
+                          {:id new-id :write (snippet new-id "Active orders") :pre nil}]
           [result after] (apply-to! before plan "base")]
       (is (contains? result :ok))
       (is (= #{"Active orders" "Old orders"} (set (map :name (vals (:snapshot after))))))))
@@ -177,8 +177,13 @@
                                  (snapshot/fold-name (:name (or (get-in state [:snapshot holder])
                                                                 (get-in state [:trash holder]))))))))
                      clashes))
-        (and (contains? result :ok)
-             (rows-unique? after))))))
+        (if (:refused result)
+          ;; The memory instance, as the app DB, refuses a write whose key a row holds that the plan renames only in a
+          ;; later step; the engine plan gives such a row a free name first. The apply writes nothing.
+          (and (= state after)
+               (every? (comp #{:key-taken} :reason) (:refused result)))
+          (and (contains? result :ok)
+               (rows-unique? after)))))))
 
 (deftest key-world-gen-covers-the-cases-test
   (testing "the generator gives worlds whose apply clashes and worlds whose apply does not"

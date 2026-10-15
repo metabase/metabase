@@ -49,14 +49,15 @@
           (filter checked? plan)))
 
 (defn key-clashes
-  "The unique-key findings of the writes of `plan` against the rows that stay: for each write of an item of a kind with
-  a unique key (`snapshot/unique-keys`), each other identity of `(key-holders kind k)` that `plan` does not write, as
-  `{:rule :unique-key :kind kind :key key :ids #{id other}}`; `k` is the key in its compared form
-  (`snapshot/unique-key`), and `key` the key of the written item as it is. A row that `plan` trashes keeps its key, so
-  it clashes. `key-holders` gives the identities of every row of the kind whose key has the compared form `k`, the
-  trash and rows outside the Library included."
+  "The unique-key findings of the writes and interim steps of `plan` against the rows that stay: for each such step of
+  an item of a kind with a unique key (`snapshot/unique-keys`), each other identity of `(key-holders kind k)` that
+  `plan` neither writes nor renames in an interim step, as `{:rule :unique-key :kind kind :key key :ids #{id other}}`;
+  `k` is the key in its compared form (`snapshot/unique-key`), and `key` the key of the step's item as it is. A row that
+  `plan` trashes with no interim step keeps its key, so it clashes. `key-holders` gives the identities of every row of
+  the kind whose key has the compared form `k`, the trash and rows outside the Library included."
   [key-holders plan]
-  (let [written (into #{} (comp (filter :write) (map :id)) plan)]
+  (let [steps   (into [] (keep (fn [{:keys [id write interim]}] (when-let [c (or write interim)] {:id id :write c}))) plan)
+        written (into #{} (map :id) steps)]
     (into []
           (mapcat (fn [{:keys [id write]}]
                     (let [kind (:kind write)
@@ -68,7 +69,7 @@
                            :kind kind
                            :key  (get-in write (get-in snapshot/unique-keys [kind :path]))
                            :ids  #{id other}})))))
-          (filter :write plan))))
+          steps)))
 
 (defn- system-trashes
   "A refusal of each trash step of `plan` whose item is a system item, which no plan may trash."
