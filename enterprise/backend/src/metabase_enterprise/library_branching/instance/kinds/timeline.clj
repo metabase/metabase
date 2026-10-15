@@ -194,5 +194,5 @@
     (read-all [_ ids] (read-timelines ids))
     (read-models [_] models-of-read)
     (current [_ id] (current-timeline id))
-    (write! [_ id item] (library-branching.db/do-in-transaction #(write-timeline! id item)))
-    (trash! [_ id] (library-branching.db/do-in-transaction #(trash-timeline! id)))))
+    (write! [_ id item] (content/do-in-write-transaction id #(write-timeline! id item)))
+    (trash! [_ id] (content/do-in-write-transaction id #(trash-timeline! id)))))

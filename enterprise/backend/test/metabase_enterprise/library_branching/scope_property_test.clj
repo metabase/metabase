@@ -7,6 +7,7 @@
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
    [metabase-enterprise.library-branching.scope :as scope]
@@ -17,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 ;;; ------------------------------------------------ The generated world ---------------------------------------------
 
@@ -283,7 +284,8 @@
   :snapshot-agrees?}`."
   [rows data]
   (t2/with-transaction [_conn nil {:rollback-only true}]
-    (let [outside (first (t2/insert-returning-pks! :collection {:name "lb outside" :slug "lb_outside" :entity_id "lboutsidecollection01" :location "/"}))]
+    (let [outside (first (t2/insert-returning-pks! :collection {:name "lb outside" :slug "lb_outside" :entity_id "lboutsidecollection01"
+                                                                 :type "library-data" :location "/"}))]
       (doseq [{:keys [name schema archived published place]} rows]
         (t2/insert! :model/Table {:db_id         (mt/id)
                                   :schema        schema

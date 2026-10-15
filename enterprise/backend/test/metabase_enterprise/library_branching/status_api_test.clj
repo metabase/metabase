@@ -8,6 +8,7 @@
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
    [metabase-enterprise.library-branching.api]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu]
@@ -22,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private routes
   ["/status" "/is-dirty" "/dirty" "/has-remote-changes" "/push-preview"])
@@ -33,14 +34,14 @@
 
 (deftest status-routes-need-a-repository-test
   ;; Scenario M6-022.
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-settings {}
       (doseq [route routes]
         (testing route
           (is (= "Library branching is not configured." (get-route route 400))))))))
 
 (deftest status-routes-need-a-branch-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-settings {:remote-sync-url "https://git.example.com/a.git"}
       (doseq [route routes]
         (testing route
@@ -59,7 +60,7 @@
 
 (deftest status-routes-on-the-app-db-test
   (testing (str "the status routes after a push, a local change and a remote change; app DB " (mdb/db-type))
-    (mt/with-premium-features #{:remote-sync}
+    (mt/with-additional-premium-features #{:remote-sync}
       (with-remote [repo url]
         (with-settings {:remote-sync-url url :remote-sync-branch "main"}
           (rtu/do-with-library-metric!
@@ -114,7 +115,7 @@
 
 (deftest dirty-names-the-rows-of-the-instance-test
   (testing (str "each local change names the row of the instance that holds it now; app DB " (mdb/db-type))
-    (mt/with-premium-features #{:remote-sync}
+    (mt/with-additional-premium-features #{:remote-sync}
       (with-remote [_repo url]
         (with-settings {:remote-sync-url url :remote-sync-branch "main"}
           (rtu/do-with-library-metric!
@@ -147,7 +148,7 @@
 
 (deftest has-remote-changes-with-no-base-test
   ;; Scenario M6-023.
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-remote [repo url]
       (let [h (rtu/commit-branch! repo "main")]
         (with-settings {:remote-sync-url url :remote-sync-branch "main"}
@@ -158,7 +159,7 @@
 
 (deftest status-routes-with-a-repository-that-went-away-test
   ;; Scenario M6-031 (changed): a remote failure that is not a missing branch is a 400 with the message.
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (with-settings {:remote-sync-url    "file:///no/such/library-branching/repository"
                     :remote-sync-branch "main"}
       (rtu/do-with-library-metric!

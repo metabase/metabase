@@ -5,12 +5,13 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.deploy :as deploy]
    [metabase-enterprise.library-branching.deploy-test :as deploy-test]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the deploy."

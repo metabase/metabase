@@ -121,6 +121,6 @@
     (read-all [_ ids] (read-collections ids))
     (read-models [_] #{:model/Collection})
     (current [_ id] (current-collection id))
-    (write! [_ id item] (library-branching.db/do-in-transaction #(write-collection! id item)))
-    (trash! [_ id] (library-branching.db/do-in-transaction
-                    #(table-item/do-keeping-archive-closed (fn [] (trash-collection! id)))))))
+    (write! [_ id item] (content/do-in-write-transaction id #(write-collection! id item)))
+    (trash! [_ id] (content/do-in-write-transaction id
+                                                    #(table-item/do-keeping-archive-closed (fn [] (trash-collection! id)))))))

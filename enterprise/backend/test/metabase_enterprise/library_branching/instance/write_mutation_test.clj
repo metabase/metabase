@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.card-test]
    [metabase-enterprise.library-branching.instance.cascade-test]
    [metabase-enterprise.library-branching.instance.content :as content]
@@ -23,7 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the write side."
@@ -166,7 +167,13 @@
     :doc    "The save rule refuses every save while any reference out of scope exists, also one that the save did not
             add."
     :target `save-rule/do-with-save-rule
-    :edits  [[:replace '(set/difference (findings after (in-scope)) old) '(findings after (in-scope))]]}])
+    :edits  [[:replace '(set/difference (findings after (in-scope)) old) '(findings after (in-scope))]]}
+   {:name   :content-rule-not-a-refusal
+    :doc    "A write that the Library's content rule refuses throws the error of the rule, not a refusal, so a pull
+            fails in the middle of its apply."
+    :target `content/do-in-write-transaction
+    :edits  [[:replace '(= 400 status-code) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/library-content-rule-refusal-test]}])
 
 (def ^:private tests
   [#'metabase-enterprise.library-branching.instance.card-test/card-write-test
@@ -183,6 +190,7 @@
    #'metabase-enterprise.library-branching.instance.write-test/collection-trash-and-restore-test
    #'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test
    #'metabase-enterprise.library-branching.instance.write-test/refused-writes-write-nothing-test
+   #'metabase-enterprise.library-branching.instance.write-test/library-content-rule-refusal-test
    #'metabase-enterprise.library-branching.instance.write-test/published-table-write-test
    #'metabase-enterprise.library-branching.instance.write-test/published-table-remapping-write-test
    #'metabase-enterprise.library-branching.instance.write-test/published-table-legacy-visibility-type-test
