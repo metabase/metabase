@@ -3,9 +3,8 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.api :as deps.api]
-   [metabase-enterprise.dependencies.async :as dependencies.async]
-   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
+   [metabase-enterprise.dependencies.hooks :as deps.hooks]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
@@ -22,9 +21,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
-
-(comment
-  metabase-enterprise.dependencies.events/keep-me)
 
 (defn- card-with-query
   "Create a card map with the given name and dataset query."
@@ -133,19 +129,6 @@
    Must be called within lib-be/with-metadata-provider-cache."
   [card-id]
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
-
-; dependencies.async/submit! effectively awaits all pending tasks on the executor.
-; Those tasks would be executed regardless; this is just changing the timing to be
-; less problematic for multiple test runs in sequence.
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each
-  (fn drained-dependency-async-executor-fixture [t]
-    (try
-      (t)
-      (finally
-        ;; Drain the single-threaded async executor to ensure all pending dependency
-        ;; work completes before model cleanup deletes cards, avoiding lock timeouts.
-        @(dependencies.async/submit! (fn [] nil))))))
 
 (deftest graph-test
   (testing "GET /api/ee/dependencies/graph"
@@ -466,11 +449,7 @@
                                                                      :name "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
           (t2/update! :model/Transform transform-id {:target_table_id table-id})
-          (events/publish-event! :event/transform-run-complete
-                                 {:object {:db-id (mt/id)
-                                           :output-schema "PUBLIC"
-                                           :output-table "inactive_transform_table"
-                                           :transform-id transform-id}})
+          (deps.hooks/after-transform-run transform-id table-id)
           (deps.test/synchronously-run-backfill!)
           (testing "GET /graph/dependents returns the inactive table as a child"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
@@ -1198,11 +1177,7 @@
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
           (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
-          (events/publish-event! :event/transform-run-complete
-                                 {:object {:db-id (mt/id)
-                                           :output-schema "PUBLIC"
-                                           :output-table "referenced_transform_table"
-                                           :transform-id referenced-transform-id}})
+          (deps.hooks/after-transform-run referenced-transform-id referenced-table-id)
           (deps.test/synchronously-run-backfill!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
             (is (=? {:data [{:id unreffed-transform-id

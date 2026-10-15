@@ -890,6 +890,11 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Graphy"
+   :api  #{metabase.dependencies.hooks}
+   :uses #{premium-features}}
+
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
@@ -1748,6 +1753,7 @@
            metabase.models.visualization-settings}
    :uses #{api
            app-db
+           dependencies
            lib
            lib.legacy-mbql
            lib.metadata
@@ -2013,7 +2019,7 @@
    :uses #{analytics.interface
            analytics.internal-stats
            app-db
-           events
+           dependencies
            settings
            startup
            task
@@ -2826,6 +2832,7 @@
            app-db
            audit-app
            database-routing
+           dependencies
            driver
            events
            interestingness
@@ -3057,6 +3064,7 @@
                     :model/TransformRun}
    :uses #{app-db
            database-routing
+           dependencies
            driver
            events
            lib
@@ -3885,11 +3893,11 @@
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{api
            app-db
+           batch-processing
            collections
            database-routing
            documents
            driver
-           events
            lib
            lib.be
            lib.metadata
@@ -3917,13 +3925,20 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardCardSeries
+                    :model/DashboardTab
+                    :model/Database
+                    :model/Dimension
                     :model/Document
+                    :model/Field
                     :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/Sandbox
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Transform}}
 
   enterprise/dependencies.replacement
@@ -4209,7 +4224,6 @@
            app-db
            audit-app
            driver
-           events
            lib
            lib.be
            lib.legacy-mbql
@@ -4408,7 +4422,7 @@
            app-db
            appearance
            collections
-           events
+           dependencies
            lib
            lib.schema
            logger

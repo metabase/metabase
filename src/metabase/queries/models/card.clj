@@ -136,7 +136,8 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
