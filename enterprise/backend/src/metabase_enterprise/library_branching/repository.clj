@@ -148,6 +148,11 @@
                                     (str/blank? (:branch check))
                                     (not (contains? env :remote-sync-branch))))}))
 
+(defn branch-change-refused?
+  "Not implemented yet."
+  [_body _saved _env]
+  (throw (ex-info "Not implemented yet." {})))
+
 (defn- check-connection!
   "Checks `connection` of [[save-plan]] with one fresh remote call, and returns the writes that it adds: the default
   branch of the repository when `default-branch?`. Throws 400 with the message for the person."

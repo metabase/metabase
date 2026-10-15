@@ -97,10 +97,12 @@
 (defn push-task!
   "Runs the push to branch `branch` with the commit message `message` (nil: the default) as the work of task `id`, and
   returns its task result ([[push-task-result]])."
-  [_id branch message]
-  (repository/do-with-store
-   (fn [s]
-     (push-task-result branch (push/push! (instance) s branch (cond-> {} message (assoc :message message)))))))
+  ([_id branch message]
+   (repository/do-with-store
+    (fn [s]
+      (push-task-result branch (push/push! (instance) s branch (cond-> {} message (assoc :message message)))))))
+  ([_id _branch _message _opts]
+   (throw (ex-info "Not implemented yet." {}))))
 
 (defn pull-task!
   "Runs the pull of branch `branch` as the work of task `id`, and returns its task result ([[pull-task-result]]). The
@@ -151,10 +153,12 @@
   "Starts a push task of the synced snapshot to the configured branch, for the user `user-id`, with the commit message
   `message` (nil: the default), and returns the task. Throws ex-info with `:status-code` 400 when library branching is
   off or not configured, on a consumption instance, and while a task runs."
-  [user-id message]
-  (check-start!)
-  (let [branch (configured-branch)]
-    (submit! "push" user-id #(push-task! % branch message))))
+  ([user-id message]
+   (check-start!)
+   (let [branch (configured-branch)]
+     (submit! "push" user-id #(push-task! % branch message))))
+  ([_user-id _message _new-branch]
+   (throw (ex-info "Not implemented yet." {}))))
 
 (defn start-pull!
   "Starts a pull task of the configured branch, for the user `user-id`, and returns the task. The apply of the pull
@@ -171,3 +175,25 @@
   (check-start!)
   (let [into (or into (configured-branch))]
     (submit! "merge-branch" user-id #(merge-branch-task! % into from))))
+
+;;; -------------------------------------------------- Branch operations -------------------------------------------------
+
+(defn create-branch-task!
+  "Not implemented yet."
+  [_id _branch-name _from]
+  (throw (ex-info "Not implemented yet." {})))
+
+(defn switch-task!
+  "Not implemented yet."
+  [_id _branch]
+  (throw (ex-info "Not implemented yet." {})))
+
+(defn start-create-branch!
+  "Not implemented yet."
+  [_user-id _branch-name _from]
+  (throw (ex-info "Not implemented yet." {})))
+
+(defn start-switch!
+  "Not implemented yet."
+  [_user-id _branch]
+  (throw (ex-info "Not implemented yet." {})))

@@ -7,7 +7,9 @@
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
    [metabase-enterprise.library-branching.api]
+   [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.repository-test-util :as rtu :refer [with-remote with-settings]]
+   [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
    [metabase.api.macros :as api.macros]
@@ -32,6 +34,8 @@
    [:post "/push"]                {}
    [:post "/pull"]                {}
    [:post "/merge-branch"]        {:from "dev"}
+   [:post "/create-branch"]       {:name "feature"}
+   [:post "/switch-branch"]       {:branch "dev"}
    [:get "/status"]               {}
    [:get "/is-dirty"]             {}
    [:get "/dirty"]                {}
@@ -124,3 +128,62 @@
               (let [running (tasks/start! "pull" nil)]
                 (is (= "Library branching task in progress" (request :crowberto :post "/pull" 400 {})))
                 (tasks/cancel! (:id running))))))))))
+
+(defn- remote-branches []
+  (repository/do-with-store store/branches))
+
+(deftest branch-routes-test
+  (mt/with-premium-features #{:remote-sync}
+    (with-remote [repo url]
+      (rtu/remote-with-branches! repo ["main" "dev"])
+      (tasks.tu/with-no-tasks
+        (with-settings {:remote-sync-url url :remote-sync-branch "main"}
+          (mt/with-temporary-setting-values [library-branching-enabled true]
+            (rtu/with-synchronous-tasks
+              (testing "a branch created from main through the API; the instance uses it"
+                (let [{:keys [task_id]} (request :crowberto :post "/create-branch" 200 {:name "feature"})]
+                  (is (=? {:task_type "branch-create" :status "successful"
+                           :outcome   {:kind "branch-created" :branch "feature" :from "main"}}
+                          (tasks/task task_id)))
+                  (is (= #{"main" "dev" "feature"} (remote-branches)))
+                  (is (= "feature" (setting/get :remote-sync-branch)))))
+              (testing "a branch created from another branch than the configured one"
+                (let [{:keys [task_id]} (request :crowberto :post "/create-branch" 200 {:name "from-dev" :from "dev"})]
+                  (is (=? {:outcome {:kind "branch-created" :branch "from-dev" :from "dev"}} (tasks/task task_id)))
+                  (is (= "from-dev" (setting/get :remote-sync-branch)))))
+              (testing "a switch to another branch through the API"
+                (let [{:keys [task_id]} (request :crowberto :post "/switch-branch" 200 {:branch "main"})]
+                  (is (=? {:task_type "branch-switch" :initiated_by (mt/user->id :crowberto)} (tasks/task task_id)))
+                  (is (tasks/ended-statuses (:status (tasks/task task_id))))
+                  (is (= (if (= "successful" (:status (tasks/task task_id))) "main" "from-dev")
+                         (setting/get :remote-sync-branch)))))
+              (testing "a pull of another branch through the API is a switch"
+                (let [before (setting/get :remote-sync-branch)
+                      {:keys [task_id]} (request :crowberto :post "/pull" 200 {:branch "dev"})]
+                  (is (=? {:task_type "branch-switch"} (tasks/task task_id)))
+                  (is (= (if (= "successful" (:status (tasks/task task_id))) "dev" before)
+                         (setting/get :remote-sync-branch)))))
+              (testing "a pull of the configured branch is a pull"
+                (let [{:keys [task_id]} (request :crowberto :post "/pull" 200
+                                                 {:branch (setting/get :remote-sync-branch)})]
+                  (is (=? {:task_type "pull"} (tasks/task task_id)))))
+              (testing "a push to a new branch through the API"
+                (let [{:keys [task_id]} (request :crowberto :post "/push" 200 {:message "Stash" :new_branch "stash"})]
+                  (is (=? {:task_type "push"} (tasks/task task_id)))
+                  (is (tasks/ended-statuses (:status (tasks/task task_id))))
+                  (is (= (contains? (remote-branches) "stash")
+                         (= "successful" (:status (tasks/task task_id)))))))
+              (testing "each branch operation is refused while a task runs, and changes nothing"
+                (let [running  (tasks/start! "pull" nil)
+                      branch   (setting/get :remote-sync-branch)
+                      branches (remote-branches)]
+                  (doseq [[route body] [["/create-branch" {:name "other"}]
+                                        ["/switch-branch" {:branch "dev"}]
+                                        ["/pull" {:branch "dev"}]
+                                        ["/push" {:new_branch "other"}]]]
+                    (testing route
+                      (is (= "Library branching task in progress" (request :crowberto :post route 400 body)))))
+                  (is (= branch (setting/get :remote-sync-branch)))
+                  (is (= branches (remote-branches)))
+                  (is (= running (tasks/newest-task)))
+                  (tasks/cancel! (:id running)))))))))))
