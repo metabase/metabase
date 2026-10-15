@@ -4,7 +4,9 @@
   Scope is the containment closure of [[roots]] minus the trash. An item is in scope iff it is not archived, and its
   collection is in scope, or it is at the root level of a root namespace that holds its kind, or its kind is one of
   the kinds with no container that the roots hold; a segment or a measure is in scope iff it is not archived and its
-  table is an in-scope published table. Every reader of scope calls [[scope-ids]] or [[scope-count]].
+  table is an in-scope published table; a transform test is in scope iff its transform is. A published table leaves
+  scope only by an unpublish or by its collection: an archive by warehouse sync is a change of the environment. Every
+  reader of scope calls [[scope-ids]] or [[scope-count]].
 
   Precondition: archive is closed downward. An archived collection's subtree and the items in it, and a dashboard's
   questions, are archived with it; an archive on the instance keeps this."
@@ -22,7 +24,7 @@
 (def kinds
   "The kinds of the items that scope holds."
   #{:action :collection :dashboard :data-app :document :glossary-term :measure :metric :model :published-table
-    :python-library :question :segment :snippet :transform :transform-job :transform-tag})
+    :python-library :question :segment :snippet :timeline :transform :transform-job :transform-tag :transform-test})
 
 (defmulti kind-query
   "HoneySQL that selects the in-scope items of `kind` for `roots`: the column `:id`, and `:entity_id` (or `:db`,
@@ -105,13 +107,23 @@
   [roots _kind]
   (card-query roots "question"))
 
-(defmethod kind-query :dashboard
-  [roots _kind]
+(defn- collection-item-query
+  "The in-scope rows of `table`, whose rows have an archived flag and a collection: those not archived in an in-scope
+  collection."
+  [roots table]
   (subquery {:select [:t.id :t.entity_id]
-             :from   [[:report_dashboard :t]]
+             :from   [[table :t]]
              :where  [:and
                       (unarchived :t.archived)
                       (in-scope roots :t.collection_id :collection)]}))
+
+(defmethod kind-query :dashboard
+  [roots _kind]
+  (collection-item-query roots :report_dashboard))
+
+(defmethod kind-query :timeline
+  [roots _kind]
+  (collection-item-query roots :timeline))
 
 ;; An exploration's summary document belongs to its exploration, which does not sync.
 (defmethod kind-query :document
@@ -130,7 +142,6 @@
              :join   [[:metabase_database :d] [:= :d.id :t.db_id]]
              :where  [:and
                       [:= :t.is_published true]
-                      [:= :t.archived_at nil]
                       (in-scope roots :t.collection_id :collection)]}))
 
 (defn- table-item-query
@@ -150,6 +161,13 @@
 (defmethod kind-query :measure
   [roots _kind]
   (table-item-query roots :measure))
+
+;; A transform test has no archived flag; it is in scope with its transform.
+(defmethod kind-query :transform-test
+  [roots _kind]
+  (subquery {:select [:t.id :t.entity_id]
+             :from   [[:transform_test :t]]
+             :where  (in-scope roots :t.transform_id :transform)}))
 
 (defmethod kind-query :snippet
   [roots _kind]
