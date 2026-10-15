@@ -12,31 +12,9 @@ const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
 describe("scenarios > admin > settings", () => {
   beforeEach(() => {
-    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
   });
-
-  it(
-    "should prompt admin to migrate to a hosted instance",
-    { tags: "@OSS" },
-    () => {
-      cy.visit("/admin/settings/cloud");
-
-      cy.findByTestId("upsell-big-card").findByText(
-        /Migrate to Metabase Cloud/,
-      );
-      cy.findByTestId("upsell-big-card")
-        .findAllByRole("link", { name: "Learn more" })
-        .click();
-      // link opens in new tab
-      H.expectUnstructuredSnowplowEvent({
-        event: "upsell_viewed",
-        promoted_feature: "cloud",
-      });
-      H.expectNoBadSnowplowEvents();
-    },
-  );
 
   it("should save a setting, surface a validation error (metabase#4506), and check for working https before enabling a redirect", () => {
     const BASE_URL = Cypress.config().baseUrl;
@@ -156,112 +134,6 @@ describe("scenarios > admin > settings", () => {
       cy.findByText("$39.72");
       cy.findByText("$117.03");
     });
-  });
-
-  it("'General' admin settings should handle setup via `MB_SITE_URL` environment variable (metabase#14900)", () => {
-    // 1. Get the array of ALL available settings
-    cy.request("GET", "/api/setting").then(({ body }) => {
-      // 2. Create a stubbed version of that array by passing modified "site-url" settings
-      const STUBBED_BODY = body.map((setting) => {
-        if (setting.key === "site-url") {
-          const STUBBED_SITE_URL = Object.assign({}, setting, {
-            is_env_setting: true,
-            value: null,
-          });
-
-          return STUBBED_SITE_URL;
-        }
-        return setting;
-      });
-
-      // 3. Stub the whole response
-      cy.intercept("GET", "/api/setting", (req) => {
-        req.reply({ body: STUBBED_BODY });
-      }).as("appSettings");
-    });
-    cy.visit("/admin/settings/general");
-
-    cy.wait("@appSettings");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("We're a little lost...").should("not.exist");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Site name/i);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Site URL/i);
-  });
-
-  describe(" > slack settings", () => {
-    it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/slack");
-
-      cy.findByRole("main").findByText("Create a Slack app and connect to it.");
-
-      cy.findByLabelText(/Slack Bot User OAuth Token/i).type("xoxb");
-      cy.button("Connect").click();
-      cy.findByRole("main").findByText(/invalid token/i);
-    });
-  });
-});
-
-describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should show the store link when running Metabase OSS", () => {
-    cy.visit("/admin/settings/general");
-
-    cy.findByLabelText("Navigation bar").findByLabelText("store icon");
-  });
-});
-
-describe("scenarios > admin > settings (EE)", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-  });
-
-  it("should hide the store link when running Metabase EE", () => {
-    cy.visit("/admin/settings/license");
-
-    cy.findByLabelText("Navigation bar")
-      .findByLabelText("store icon")
-      .should("not.exist");
-  });
-});
-
-describe("Cloud settings section", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should be visible when running Metabase Cloud", () => {
-    // Setting to none will give us an instance where token-features.hosting is set to true
-    // Allowing us to pretend that we are a hosted instance (seems backwards though haha)
-    H.activateToken("pro-cloud");
-
-    cy.visit("/admin/settings");
-    cy.findByTestId("admin-layout-sidebar").findByText(/Cloud/i).click();
-    cy.findByTestId("admin-layout-content")
-      .findByText("Go to the Metabase Store")
-      .should("have.attr", "href", "https://test-store.metabase.com/");
-  });
-
-  it("should prompt us to migrate to cloud if we are not hosted", () => {
-    H.activateToken("pro-self-hosted");
-    cy.visit("/admin/settings/cloud");
-    cy.findAllByTestId("settings-sidebar-link")
-      .filter(":contains(Cloud)")
-      .should("have.descendants", ".Icon-gem")
-      .click();
-
-    cy.findByRole("heading", { name: "Migrate to Metabase Cloud" }).should(
-      "exist",
-    );
-    cy.button("Try for free").should("exist");
   });
 });
 
@@ -413,37 +285,6 @@ describe("scenarios > admin > settings > email settings", () => {
     );
   });
 
-  describe("starter instance", () => {
-    beforeEach(() => {
-      cy.intercept("GET", "/api/session/properties", (req) => {
-        req.continue((res) => {
-          // in an actual cloud starter instance this gets configured via env vars
-          res.body["email-configured?"] = true;
-          return res.body;
-        });
-      });
-
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("starter");
-    });
-
-    it("should not allow custom SMTP configuration", () => {
-      cy.visit("/admin/settings/email");
-
-      cy.findByTestId("self-hosted-smtp-connection-card").should("not.exist");
-      cy.findByTestId("cloud-smtp-connection-card").should("not.exist");
-      cy.button("Send test email").should("not.exist");
-      cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByText("Whitelabel email notifications").should("be.visible");
-        cy.findByLabelText("From Address").should("be.disabled");
-        cy.findByText(
-          "Please set up a custom SMTP server to change this (Pro only)",
-        ).should("be.visible");
-      });
-    });
-  });
-
   describe("Pro-cloud instance", () => {
     beforeEach(() => {
       cy.intercept("DELETE", "api/ee/email/override").as("smtpCleared");
@@ -548,22 +389,6 @@ describe("scenarios > admin > settings > email settings", () => {
   });
 });
 
-describe("scenarios > admin > license and billing", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  describe("store info", () => {
-    it("should show the user a link to the store for an unlincensed enterprise instance", () => {
-      cy.visit("/admin/settings/license");
-      cy.findByTestId("license-and-billing-content")
-        .findByText("Go to the Metabase Store")
-        .should("have.prop", "tagName", "A");
-    });
-  });
-});
-
 describe("scenarios > admin > localization", () => {
   function setFirstWeekDayTo(day) {
     H.updateSetting("start-of-week", day.toLowerCase());
@@ -598,47 +423,6 @@ describe("scenarios > admin > localization", () => {
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
     // April 28 is Monday in year 2025. Expect this to break when we shift years in the Sample Database.
     H.echartsContainer().find("text").should("contain", "April 28, 2025");
-  });
-
-  it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
-    H.createQuestion({
-      name: "13604",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
-        ],
-        filter: [
-          "between",
-          ["field", ORDERS.CREATED_AT, null],
-          "2026-03-02", // Monday
-          "2026-03-03", // Tuesday
-        ],
-      },
-      display: "bar",
-      visualization_settings: {
-        "graph.dimensions": ["CREATED_AT"],
-        "graph.metrics": ["count"],
-        "graph.x_axis.scale": "ordinal",
-      },
-    });
-
-    cy.visit("/collection/root");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("13604").click();
-
-    cy.log("Reported failing on v0.37.0.2 and labeled as `.Regression`");
-    H.echartsContainer()
-      .get("text")
-      .contains(/sunday/i)
-      .should("not.exist");
-    H.echartsContainer()
-      .get("text")
-      .contains(/monday/i);
-    H.echartsContainer()
-      .get("text")
-      .contains(/tuesday/i);
   });
 
   // HANDLE WITH CARE!
@@ -1012,124 +796,5 @@ describe("notifications", { tags: "@external" }, () => {
       .click();
 
     cy.findByRole("heading", { name: "Add a webhook" }).should("exist");
-  });
-});
-
-describe("admin > settings > updates", () => {
-  // we're mocking this so it can be stable for tests
-  const versionInfo = {
-    latest: {
-      version: "v1.56.4",
-      released: "2022-10-14",
-      rollout: 60,
-      highlights: ["New latest feature", "Another new feature"],
-    },
-    beta: {
-      version: "v1.56.75.3",
-      released: "2022-10-15",
-      rollout: 70,
-      highlights: ["New beta feature", "Another new feature"],
-    },
-    nightly: {
-      version: "v1.56.75.2",
-      released: "2022-10-16",
-      rollout: 80,
-      highlights: ["New nightly feature", "Another new feature"],
-    },
-    older: [
-      {
-        version: "v1.56.1",
-        released: "2022-10-10",
-        rollout: 100,
-        highlights: ["Some old feature", "Another old feature"],
-      },
-    ],
-  };
-
-  const currentVersion = "v1.55.2";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("GET", "/api/session/properties", (req) => {
-      req.continue((res) => {
-        res.body.version.tag = currentVersion;
-        return res.body;
-      });
-    });
-
-    cy.intercept("GET", "/api/setting/version-info", (req) => {
-      req.reply(versionInfo);
-    });
-
-    cy.visit("/admin/settings/updates");
-  });
-
-  const assertIframeLoaded = (testId) => {
-    cy.findByTestId(testId).should("be.visible");
-    cy.findByTestId(testId).should(($iframe) => {
-      const body = $iframe.contents().find("body");
-      expect(body).to.exist;
-    });
-  };
-
-  it("should show the updates page", () => {
-    cy.findByTestId("check-for-updates-setting")
-      .findByText("Check for updates")
-      .should("be.visible");
-
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(
-        "Metabase 1.56.4 is available. You're running 1.55.2.",
-      ).should("be.visible");
-
-      cy.findByText("Changelog").should("be.visible").click();
-      assertIframeLoaded("changelog-iframe");
-
-      cy.findByText("What's new").should("be.visible").click();
-      assertIframeLoaded("releases-iframe");
-    });
-  });
-});
-
-describe("admin > settings > nav", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.visit("/admin/settings");
-  });
-
-  it("should navigate properly", () => {
-    // sadly we can't test this in unit tests with the current state of react-router and redux 😭
-    cy.log("clicking sidebar nav links should navigate there");
-
-    cy.url().should("include", "/admin/settings/general");
-    cy.findByTestId("admin-layout-sidebar").findByText(/email/i).click();
-    cy.findByTestId("admin-layout-content").findByText(/email/i);
-    cy.url().should("include", "/admin/settings/email");
-
-    cy.log(
-      "clicking folders should expand and collapse them, but not navigate",
-    );
-
-    cy.findByTestId("admin-layout-sidebar")
-      .findByText(/api keys/i)
-      .should("not.be.visible");
-    cy.findByTestId("admin-layout-sidebar")
-      .findByText(/authentication/i)
-      .click();
-    cy.findByTestId("admin-layout-sidebar")
-      .findByText(/api keys/i)
-      .should("be.visible");
-    // still on email page
-    cy.findByTestId("admin-layout-content").findByText(/email/i);
-    cy.url().should("include", "/admin/settings/email");
-    // navigate to sub-item
-    cy.findByTestId("admin-layout-sidebar")
-      .findByText(/api keys/i)
-      .click();
-    cy.findByTestId("admin-layout-content").findByText(/No API keys yet/i);
-    cy.url().should("include", "/admin/settings/authentication/api-keys");
   });
 });

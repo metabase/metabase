@@ -394,6 +394,9 @@ describe("LicenseAndBilling", () => {
         "Bought a license to unlock advanced functionality? Please enter it below.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Go to the Metabase Store/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders disabled input when tokens specified with an env variable", async () => {

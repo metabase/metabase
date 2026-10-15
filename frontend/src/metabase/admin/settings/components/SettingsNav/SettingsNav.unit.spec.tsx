@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -45,7 +45,7 @@ const setup = async ({
     settingValue: versionInfo,
   });
 
-  renderWithProviders(<Route path="*" element={<SettingsNav />} />, {
+  return renderWithProviders(<Route path="*" element={<SettingsNav />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {
@@ -124,6 +124,25 @@ describe("SettingsNav", () => {
     expect(authNavItem).not.toHaveAttribute("data-expanded");
   });
 
+  it("should navigate to a page link but only expand a section", async () => {
+    const { router } = await setup({ initialRoute: "/admin/settings/general" });
+
+    await userEvent.click(await screen.findByRole("link", { name: /Email/ }));
+    expect(router?.location.pathname).toBe("/admin/settings/email");
+
+    const authNavItem = screen.getByRole("link", { name: /Authentication/ });
+    await userEvent.click(authNavItem);
+    expect(authNavItem).toHaveAttribute("data-expanded", "true");
+    expect(router?.location.pathname).toBe("/admin/settings/email");
+
+    await userEvent.click(
+      await screen.findByRole("link", { name: /API keys/ }),
+    );
+    expect(router?.location.pathname).toBe(
+      "/admin/settings/authentication/api-keys",
+    );
+  });
+
   it("should highlight a collapsed parent when a child is active", async () => {
     await setup({ initialRoute: "/admin/settings/authentication/google" });
 
@@ -141,6 +160,21 @@ describe("SettingsNav", () => {
     expect(authNavItem).not.toHaveAttribute("data-expanded");
     expect(authNavItem).toHaveAttribute("data-active", "true");
   });
+
+  it.each([
+    { isHosted: false, gemCount: 1 },
+    { isHosted: true, gemCount: 0 },
+  ])(
+    "should mark the Cloud nav item as an upsell only when not hosted (hosted: $isHosted)",
+    async ({ isHosted, gemCount }) => {
+      await setup({ initialRoute: "/admin/settings/general", isHosted });
+
+      const cloudNavItem = await screen.findByRole("link", { name: /Cloud/ });
+      expect(within(cloudNavItem).queryAllByTestId("upsell-gem")).toHaveLength(
+        gemCount,
+      );
+    },
+  );
 
   it("should only show Updates nav item when hosted", async () => {
     await setup({ initialRoute: "/admin/settings/general", isHosted: true });

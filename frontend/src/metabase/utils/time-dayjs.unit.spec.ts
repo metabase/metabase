@@ -1,4 +1,5 @@
 import { dayjs } from "metabase/dayjs";
+import { updateStartOfWeek } from "metabase/utils/i18n";
 import {
   hasExplicitTimezone,
   parseTime,
@@ -85,6 +86,20 @@ describe("time-dayjs", () => {
       // as timestamps, so parseTimestamp should return an invalid date
       expect(result.isValid()).toBe(false);
     });
+
+    it.each([
+      { startOfWeek: "sunday", first: "Sunday", last: "Saturday" },
+      { startOfWeek: "monday", first: "Monday", last: "Sunday" },
+      { startOfWeek: "tuesday", first: "Tuesday", last: "Monday" },
+    ] as const)(
+      "should map day-of-week numbers from the start of week ($startOfWeek)",
+      ({ startOfWeek, first, last }) => {
+        updateStartOfWeek(startOfWeek);
+
+        expect(parseTimestamp(1, "day-of-week").format("dddd")).toBe(first);
+        expect(parseTimestamp(7, "day-of-week").format("dddd")).toBe(last);
+      },
+    );
 
     it("should parse week of year correctly", () => {
       const daysOfWeek = [0, 1, 2, 3, 4, 5, 6];

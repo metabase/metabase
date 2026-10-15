@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import {
   setupPropertiesEndpoints,
   setupSettingEndpoint,
@@ -90,6 +92,28 @@ describe("UpdatesSettingsPage", () => {
         "You're running Metabase 1.53.8 which is the latest and greatest!",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("should switch between release notes and the changelog for the latest major version", async () => {
+    await setup({
+      isHosted: false,
+      versionTag: "v1.53.8",
+    });
+
+    expect(screen.getByTestId("releases-iframe")).toBeVisible();
+    expect(screen.getByTestId("releases-iframe")).toHaveAttribute(
+      "src",
+      expect.stringContaining("https://www.metabase.com/releases"),
+    );
+
+    await userEvent.click(screen.getByRole("tab", { name: "Changelog" }));
+
+    expect(screen.getByTestId("changelog-iframe")).toBeVisible();
+    expect(screen.getByTestId("changelog-iframe")).toHaveAttribute(
+      "src",
+      expect.stringContaining("https://www.metabase.com/changelog/53"),
+    );
+    expect(screen.queryByTestId("releases-iframe")).not.toBeInTheDocument();
   });
 
   it("should load initial settings", async () => {
