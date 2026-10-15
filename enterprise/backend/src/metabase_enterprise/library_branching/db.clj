@@ -125,6 +125,59 @@
    [:= name-column table]
    [:and [:not= archived-column nil] [:like name-column (str table "__mbarchiv__%")]]])
 
+(def ^:private archive-suffix-sql
+  ;; [[archive-suffix]] as a regular expression of every app DB. `$` also matches before a final line terminator; no
+  ;; table name ends with one.
+  "__mbarchiv__[0-9]+$")
+
+(defn- table-key-name
+  "HoneySQL: the table name of the natural key ([[table-key]]) of the table row whose name is in `name-column` and
+  whose archive time is in `archived-column`."
+  [name-column archived-column]
+  [:case
+   [:= archived-column nil] name-column
+   :else                    [:regexp_replace name-column archive-suffix-sql ""]])
+
+(defn- exact=
+  "HoneySQL: the strings `a` and `b` are equal as Clojure compares strings, or both are null."
+  [a b]
+  ;; The database name has a case-insensitive collation on MySQL and MariaDB.
+  (let [exact (if (= :mysql (mdb/db-type)) (fn [x] [:cast x :binary]) identity)]
+    [:or [:= (exact a) (exact b)] [:and [:= a nil] [:= b nil]]]))
+
+(defn- column
+  [alias c]
+  (keyword (str (name alias) "." (name c))))
+
+(defn shadowed-table
+  "HoneySQL: the natural key ([[table-key]]) of the table row aliased `t`, whose database row is aliased `d`, is owned
+  by another published table row, which `t` then does not own. Of the published rows of one key, the owner is the
+  row that warehouse sync did not archive, else the newest; `t` and `d` have the columns of
+  `warehouse-schema-overlay/table-query` and of the database table. With `live-owner?`, the owner is also a row that
+  warehouse sync did not archive."
+  ([t d]
+   (shadowed-table t d false))
+  ([t d live-owner?]
+   (let [tc          (partial column t)
+         t-archived? [:<> (tc :archived_at) nil]
+         o-archived? [:<> :o.archived_at nil]]
+     [:exists (vary-meta
+               {:select [[1 :one]]
+                :from   [(warehouse-schema-overlay/table-query {:alias :o})]
+                :join   [[(t2/table-name :model/Database) :od] [:= :od.id :o.db_id]]
+                :where  [:and
+                         [:= :o.is_published true]
+                         [:<> :o.id (tc :id)]
+                         (exact= :od.name (column d :name))
+                         (exact= :o.schema (tc :schema))
+                         (exact= (table-key-name :o.name :o.archived_at) (table-key-name (tc :name) (tc :archived_at)))
+                         [:or
+                          [:and [:not o-archived?] t-archived?]
+                          [:and [:> :o.id (tc :id)] [:or [:not o-archived?] t-archived?]]]
+                         (when live-owner?
+                           [:not o-archived?])]}
+               assoc :allow-subquery true)])))
+
 (defn- with-key-name
   "`row` with `:table` set to the name of its [[table-key]], and no `:archived_at`."
   [row]
@@ -224,15 +277,15 @@
 
 (defn- key-row
   "The row of several table rows with one natural key: the published one, then the one that warehouse sync did not
-  archive, then the newest."
+  archive, then the newest. Of the published rows, it is the owner of [[shadowed-table]]."
   [rows]
   (first (sort-by (juxt (comp not true? :is_published) (comp some? :archived_at) (comp - :id)) rows)))
 
 (mu/defn tables-by-key :- [:sequential ::row]
   "`{:id :db :schema :table :display_name :collection_id}` of each table of `table-keys`, natural keys `[database
   schema table]` ([[table-key]]), at most one per key. `:display_name` and `:collection_id` are the values that users
-  see. Of a table that warehouse sync archived and a later table with its name, the row is the published one, else
-  the later one."
+  see. Of several rows of one key, the row is the published one, then the one that warehouse sync did not archive,
+  then the newest: of published rows, the one that owns the key ([[shadowed-table]])."
   [table-keys :- [:sequential {:max 100} ::table-key]]
   (if (empty? table-keys)
     []

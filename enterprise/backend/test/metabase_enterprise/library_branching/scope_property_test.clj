@@ -265,11 +265,18 @@
                        [k (first (apply max-key (fn [[i row]] (+ i (if (:archived row) 0 1000))) irs))])))))
 
 (defn- expected-tables
-  "`{:keys #{[schema key-name]}}`: the keys of the in-scope published tables of `rows`."
+  "`{:keys #{[schema key-name]} :shadowed #{[schema name]}}`: the keys of the in-scope published tables of `rows`, and
+  the published rows in the Library that do not own their key."
   [rows]
-  {:keys (into #{}
-               (keep (fn [[k i]] (when (= :library (:place (nth rows i))) k)))
-               (key-owners rows))})
+  (let [owners (key-owners rows)]
+    {:keys     (into #{}
+                     (keep (fn [[k i]] (when (= :library (:place (nth rows i))) k)))
+                     owners)
+     :shadowed (into #{}
+                     (keep (fn [[i {:keys [schema name key-name published place]}]]
+                             (when (and published (= :library place) (not= i (get owners [schema key-name])))
+                               [schema name])))
+                     (map-indexed vector rows))}))
 
 (defn- check-tables!
   "Writes the table rows `rows` in a transaction that rolls back, and returns `{:expected :actual :counts-agree?
@@ -290,8 +297,11 @@
             counts   (scope/scope-count)
             snapshot (app-db/read-current {:published-table kinds.published-table/kind-store} scope/roots)]
         {:expected         (expected-tables rows)
-         :actual           {:keys (into #{} (comp (filter ours) (map (fn [[_db schema table]] [schema table])))
-                                        (:published-table ids))}
+         :actual           {:keys     (into #{} (comp (filter ours) (map (fn [[_db schema table]] [schema table])))
+                                            (:published-table ids))
+                            :shadowed (into #{}
+                                            (comp (filter (comp ours :key)) (map (fn [t] [(second (:key t)) (:name t)])))
+                                            (scope/shadowed-tables))}
          :counts-agree?    (= (update-vals ids count) counts)
          :snapshot-agrees? (= (:published-table counts) (count snapshot))}))))
 

@@ -100,6 +100,34 @@
     :target `library-branching.db/table-named
     :edits  [[:remove '[:and [:not= archived-column nil] [:like name-column (str table "__mbarchiv__%")]]]]
     :tests  [#'kinds-test/archived-published-table-test]}
+   {:name   :key-owner-ignored
+    :doc    "A published table stays in scope when another published table owns its key, so scope counts two tables for
+            one item of the snapshot, and a push drops the content of one of them."
+    :target [:method `scope/kind-query :published-table]
+    :edits  [[:remove '[:not (library-branching.db/shadowed-table :t :d)]]]
+    :tests  [#'scope-test/archived-table-key-owner-test]}
+   {:name   :newest-owns-key
+    :doc    "The newest published table of a key owns it, also when it is archived and an older one is live."
+    :target `library-branching.db/shadowed-table
+    :edits  [[:replace '[:and [:not o-archived?] t-archived?] false]
+             [:replace '[:or [:not o-archived?] t-archived?] true]]
+    :tests  [#'scope-test/database-name-key-owner-test]}
+   {:name   :archived-key-by-name
+    :doc    "The key of an archived table is its new name when scope looks for its owner, so a live table of the same
+            key does not take it out of scope."
+    :target `library-branching.db/shadowed-table
+    :edits  [[:replace '(table-key-name (tc :name) (tc :archived_at)) '(tc :name)]]
+    :tests  [#'scope-test/archived-table-key-owner-test]}
+   {:name   :database-id-in-key
+    :doc    "Two tables of two databases with one name have different keys, so both are in scope for one item."
+    :target `library-branching.db/shadowed-table
+    :edits  [[:replace '(exact= :od.name (column d :name)) '[:= :o.db_id (tc :db_id)]]]
+    :tests  [#'scope-test/database-name-key-owner-test]}
+   {:name   :shadowed-tables-unnamed
+    :doc    "Scope names every published table as left out, not only the tables whose key another table owns."
+    :target `scope/shadowed-tables
+    :edits  [[:remove '(library-branching.db/shadowed-table :t :d)]]
+    :tests  [#'scope-test/archived-table-key-owner-test]}
    {:name   :model-actions-at-root
     :doc    "An action of a model at the root level is in scope."
     :target [:method `scope/kind-query :action]
