@@ -21,8 +21,8 @@
     :doc    "The push moves the branch from whatever head the remote has when it writes (a force push), not only from
             the base: a commit of someone else that lands during the push is written over."
     :target `push/commit!
-    :edits  [[:replace '(store/cas-ref! store branch b c)
-              '(let [r (store/cas-ref! store branch b c)]
+    :edits  [[:replace '(store/cas-ref! store branch (when-not new-branch? b) c)
+              '(let [r (store/cas-ref! store branch (when-not new-branch? b) c)]
                  (if (map? r) (store/cas-ref! store branch (:moved r) c) r))]]}
    {:name   :no-head-check
     :doc    "The push does not refuse at once a branch that is not at the base. The compare-and-swap still refuses it,

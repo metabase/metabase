@@ -9,6 +9,7 @@
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.kinds.metric :as format.metric]
    [metabase-enterprise.library-branching.format.writer :as writer]
+   [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
    [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
    [metabase-enterprise.library-branching.status :as status]
@@ -326,19 +327,19 @@
      (let [[_inst c1] (pushed-instance! s ptu/sample)
            h1        (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed ptu/sample ptu/revenue-id "Later"))]
        (testing "the head and an ancestor of the head are held"
-         (is (true? (status/base-held? s h1 ptu/branch (store/head s ptu/branch))))
-         (is (true? (status/base-held? s c1 ptu/branch (store/head s ptu/branch)))))
+         (is (true? (pull/held? s h1 ptu/branch (store/head s ptu/branch))))
+         (is (true? (pull/held? s c1 ptu/branch (store/head s ptu/branch)))))
        (testing "a base that only another branch holds is held: a switch of branch"
          (pltu/commit-snapshot! repo "dev" [c1] ptu/sample)
          (let [h (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)]
            (is (= h (store/head s ptu/branch)))
-           (is (true? (status/base-held? s c1 ptu/branch h)))))
+           (is (true? (pull/held? s c1 ptu/branch h)))))
        (testing "after a force push of every branch that held it, the base is lost, also in a new store"
          (pltu/reset-branch! repo "dev" (store/head s ptu/branch))
-         (is (false? (status/base-held? s c1 ptu/branch (store/head s ptu/branch))))
+         (is (false? (pull/held? s c1 ptu/branch (store/head s ptu/branch))))
          (let [fresh (fresh-store repo)]
            (try
-             (is (false? (status/base-held? fresh c1 ptu/branch (store/head fresh ptu/branch))))
+             (is (false? (pull/held? fresh c1 ptu/branch (store/head fresh ptu/branch))))
              (finally
                (store/close fresh)))))))))
 

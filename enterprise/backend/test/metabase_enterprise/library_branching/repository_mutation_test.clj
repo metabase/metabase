@@ -83,7 +83,7 @@
     :doc    "A push, a pull or a merge-branch starts on a read-only instance."
     :target `operations/check-start!
     :edits  [[:remove '(when-not (repository/read-write?)
-                         (refuse! (tru "Push, pull and merge-branch are only allowed when remote-sync-type is read-write.")))]]
+                         (refuse! (tru "Push, pull, merge-branch and the branch operations are only allowed when remote-sync-type is read-write.")))]]
     :tests  [#'operations-test/start-preconditions-test]}
    {:name   :pull-with-no-fence
     :doc    "The apply of a pull commits although its task ended."

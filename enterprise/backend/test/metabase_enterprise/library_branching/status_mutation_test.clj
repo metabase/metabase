@@ -46,30 +46,16 @@
     :target `status/remote-changes
     :edits  [[:replace '(and fast (map? fast)) 'fast]]
     :tests  [#'status-test/remote-change-of-a-section-file-test #'status-test/new-file-with-an-item-of-the-base-test]}
-   {:name   :held-only-by-the-branch
-    :doc    "A base is held only by the configured branch: after a switch of branch, the base is lost."
-    :target `status/base-held?
-    :edits  [[:replace '(some (fn [other]
-                                (when-let [x (and (not= other branch) (store/head store other))]
-                                  (store/ancestor? store b x)))
-                              (store/branches store))
-              false]]
-    :tests  [#'status-test/base-held-test]}
-   {:name   :held-when-not-fetched
-    :doc    "The held check asks about a base that is not in the local object store."
-    :target `status/base-held?
-    :edits  [[:replace '(readable? store b) true]]
-    :tests  [#'status-test/base-held-test]}
    {:name   :status-never-lost
     :doc    "The status never says that the base is lost."
     :target `status/status
-    :edits  [[:replace '(boolean (and b (not (base-held? store b branch h)))) false]]
+    :edits  [[:replace '(boolean (and b (not (pull/held? store b branch h)))) false]]
     :tests  [#'status-test/status-test]}
    {:name   :preview-merges-with-a-lost-base
     :doc    "The push preview merges against a base that no branch holds, so a difference of the head shows as a remote
             change, not as a conflict."
     :target `status/push-preview
-    :edits  [[:replace '(base-held? store b branch h) true]]
+    :edits  [[:replace '(pull/held? store b branch h) true]]
     :tests  [#'status-test/push-preview-with-a-lost-base-test]}
    {:name   :preview-reads-at-the-base
     :doc    "The push preview reads and merges the instance when the head is the base."
