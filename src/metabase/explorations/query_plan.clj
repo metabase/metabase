@@ -308,11 +308,11 @@
   return the outcome keyword (`:ok`, `:skip-empty`, or `:failed`)."
   [{:keys [thread-id metric-by-key] :as ctx} picked planner-id pre]
   (let [{:keys [outcome plan rationale transcript final-errors]} (planner/plan! picked ctx)
-        transcript-body {:outcome      outcome
-                         :rationale    rationale
-                         :plan         plan
-                         :final-errors final-errors
-                         :planner      transcript}]
+        transcript-body {:outcome       outcome
+                         :rationale     rationale
+                         :plan          plan
+                         :final-errors  final-errors
+                         :planner-notes transcript}]
     (case outcome
       :ok
       (let [result (insert-plan-rows! thread-id metric-by-key plan)]

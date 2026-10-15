@@ -13,6 +13,8 @@ import { handleMetabotSlashCommand } from "metabase-enterprise/monitor/ai-auditi
 import {
   getAiAuditingRoutes,
   getAiAuditingUpsellRoutes,
+  registerAiAuditingPagePrefetch,
+  registerAiAuditingUpsellPagePrefetch,
 } from "metabase-enterprise/monitor/ai-auditing/routes";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { User } from "metabase-types/api";
@@ -52,9 +54,13 @@ export function initializePlugin() {
     PLUGIN_AUDIT.AnalyticsExportStatus = AnalyticsExportStatus;
     PLUGIN_AUDIT.CollectionExportAnalytics = CollectionExportAnalytics;
     PLUGIN_AUDIT.isAiAuditingEnabled = true;
-    PLUGIN_AUDIT.getAiAuditingRoutes = hasPremiumFeature("ai_controls")
-      ? getAiAuditingRoutes
-      : getAiAuditingUpsellRoutes;
+    if (hasPremiumFeature("ai_controls")) {
+      PLUGIN_AUDIT.getAiAuditingRoutes = getAiAuditingRoutes;
+      registerAiAuditingPagePrefetch();
+    } else {
+      PLUGIN_AUDIT.getAiAuditingRoutes = getAiAuditingUpsellRoutes;
+      registerAiAuditingUpsellPagePrefetch();
+    }
     PLUGIN_METABOT_SLASH_COMMANDS.handleSlashCommand =
       handleMetabotSlashCommand;
   }

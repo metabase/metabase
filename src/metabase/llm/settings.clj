@@ -58,8 +58,8 @@
                         {:status-code 400
                          :llm-url     url}))))))
 
-;; TODO (Chris 2026-08-17) -- BOT-2005: generate-sql and semantic search read these settings directly, so
-;; deleting the connection they key off turns those features off. They should name a connection instead.
+;; TODO (Chris 2026-08-17) -- BOT-2005: semantic search reads these settings directly, so deleting the
+;; connection it keys off turns it off. It should name a connection instead.
 (defn- connection-field-getter
   "Getter for a per-provider credential setting whose value lives on the `llm-providers` connection list."
   [setting-kw]
@@ -85,22 +85,6 @@
   :setter           (connection-field-setter :llm-anthropic-api-key)
   :doc              "Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
 
-(defsetting llm-anthropic-api-key-configured?
-  "Whether an Anthropic API key has been configured."
-  :type       :boolean
-  :visibility :public
-  :setter     :none
-  :export?    false
-  :getter     #(some? (llm-anthropic-api-key))
-  :doc        false)
-
-(defsetting llm-anthropic-model
-  (deferred-tru "The Anthropic model to use.")
-  :encryption :no
-  :visibility :settings-manager
-  :default "claude-opus-4-5-20251101"
-  :export? false)
-
 (defsetting llm-anthropic-api-base-url
   (deferred-tru "The Anthropic API base URL.")
   :encryption       :when-encryption-key-set
@@ -111,14 +95,6 @@
   :setter           (connection-field-setter :llm-anthropic-api-base-url)
   :deprecated-name  :ee-anthropic-api-base-url
   :doc              "Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.")
-
-(defsetting llm-anthropic-api-version
-  (deferred-tru "The Anthropic API version.")
-  :encryption :no
-  :visibility :internal
-  :default "2023-06-01"
-  :export? false
-  :doc false)
 
 ;;; -------------------------------------------------- OpenAI ---------------------------------------------------
 
@@ -478,19 +454,5 @@
         "thread forever."))
   :type :integer
   :default 10000
-  :visibility :settings-manager
-  :export? false)
-
-(defsetting llm-rate-limit-per-user
-  (deferred-tru "Maximum SQL generation requests per user per minute.")
-  :type :integer
-  :default 20
-  :visibility :settings-manager
-  :export? false)
-
-(defsetting llm-rate-limit-per-ip
-  (deferred-tru "Maximum SQL generation requests per IP address per minute.")
-  :type :integer
-  :default 100
   :visibility :settings-manager
   :export? false)

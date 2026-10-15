@@ -206,7 +206,7 @@ Response:
       "display_name": "Orders",
       "description": "All customer orders",
       "database_id": 1,
-      "database_schema": "PUBLIC",
+      "database_schema": null,
       "verified": false
     },
     {
@@ -256,9 +256,9 @@ Minimal example:
     "stages": [
       {
         "lib/type": "mbql.stage/mbql",
-        "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-        "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
-        "breakout":    [["field", {}, ["Sample Database", "PUBLIC", "PEOPLE", "STATE"]]],
+        "source-table": ["Sample Database", null, "ORDERS"],
+        "aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]]],
+        "breakout":    [["field", {}, ["Sample Database", null, "PEOPLE", "STATE"]]],
         "limit": 100
       }
     ]

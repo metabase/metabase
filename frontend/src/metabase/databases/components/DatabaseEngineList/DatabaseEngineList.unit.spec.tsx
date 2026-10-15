@@ -42,10 +42,12 @@ const mockEngines: Record<string, Engine> = {
   }),
 };
 
-const setup = () => {
+const setup = ({
+  engines = mockEngines,
+}: { engines?: Record<string, Engine> } = {}) => {
   const state = createMockState({
     settings: createMockSettingsState({
-      engines: mockEngines,
+      engines,
     }),
   });
 
@@ -86,6 +88,23 @@ describe("DatabaseEngineList", () => {
       MAX_INITIAL_ENGINES_SHOWN,
     );
     expect(screen.getByText("Show more")).toBeInTheDocument();
+  });
+
+  it("should not render the toggle when every engine fits the initial list", async () => {
+    const { mysql, postgres, sqlserver } = mockEngines;
+    setup({ engines: { mysql, postgres, sqlserver } });
+
+    expect(screen.getByText("MySQL")).toBeInTheDocument();
+    expect(screen.queryByText("Show more")).not.toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Search databases"),
+      "sql",
+    );
+
+    expect(screen.getByText("MySQL")).toBeInTheDocument();
+    expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
+    expect(screen.queryByText("Hide")).not.toBeInTheDocument();
   });
 
   it("should call `onSelect` when a database is selected", async () => {

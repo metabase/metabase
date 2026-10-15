@@ -8,9 +8,9 @@
   logging never fails the Agent API request and adds negligible latency."
   (:require
    [metabase-enterprise.agent-api.db :as agent-api.db]
-   [metabase.agent-api.usage :as agent-api.usage]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
+   [metabase.metabot.agent-api.usage :as agent-api.usage]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]))

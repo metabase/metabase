@@ -168,6 +168,11 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
     completion(label: string) {
       return cy.get(".cm-completionLabel").contains(label).parent();
     },
+    completionLabels(label: string) {
+      return cy
+        .get(".cm-completionLabel")
+        .filter((_, element) => element.textContent === label);
+    },
     acceptCompletion(key: "enter" | "tab" = "enter") {
       helpers.completions().should("be.visible");
 

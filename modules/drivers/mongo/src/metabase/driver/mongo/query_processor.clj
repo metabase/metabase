@@ -240,6 +240,7 @@
 ;;; |                                                    QP Impl                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *next-alias-index*
   "Tracks index of next alias for join compilation. It is bound in [[mbql->native]] to `volatile!` valued 0. Hence
    every compilation starts with a fresh 0. Indices are used in [[handle-join]] to make aliases unique. Index values
@@ -253,6 +254,7 @@
   (vswap! *next-alias-index* inc))
 
 ;; TODO (Cam 2026-07-24) get rid of this dynamic var and attach the mappings directly to the `query` itself
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the fields to the projected names created
   by the nested query."
@@ -717,9 +719,9 @@ function(bin) {
                         java.time.ZonedDateTime  (t/offset-date-time t report-zone)))
         t           (normalize-t t)]
     (letfn [(extract [unit]
-              (u.date/extract t unit))
+              (driver-api/date-extract t unit))
             (bucket [unit]
-              ($date-from-string (u.date/bucket t unit)))]
+              ($date-from-string (driver-api/date-bucket t unit)))]
       (case (or unit :default)
         :default         ($date-from-string t)
         :minute          (bucket :minute)
@@ -757,7 +759,7 @@ function(bin) {
         t
         (-> t
             (u.date/add unit amount)
-            (u.date/bucket unit)))))))
+            (driver-api/date-bucket unit)))))))
 
 ;;; ---------------------------------------------------- functions ---------------------------------------------------
 
@@ -1306,7 +1308,7 @@ function(bin) {
 
 (mu/defmethod negate :default :- ::lib.schema.mbql-clause/clause
   [expr :- ::lib.schema.expression/boolean]
-  (lib/negate-boolean-expression expr))
+  (driver-api/negate-boolean-expression expr))
 
 (mu/defmethod negate :and :- ::lib.schema.mbql-clause/clause
   [[_ opts & subclauses] :- :mbql.clause/and]

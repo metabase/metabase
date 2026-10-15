@@ -10,7 +10,9 @@
 (mu/defn setting-value
   "The stored value of the Setting with `setting-key`, or nil."
   [setting-key :- [:or :keyword :string]]
-  (t2/select-one-fn :value :model/Setting :key setting-key))
+  ;; The key is bound by its name: a keyword left bare compiles to a column, and bound as-is the driver cannot
+  ;; convert it.
+  (t2/select-one-fn :value :model/Setting :key [:auto/param (name setting-key)]))
 
 (mu/defn setting-values-by-key
   "A map of key to stored value for every Setting."
@@ -21,19 +23,20 @@
   "Insert a Setting row for `setting-key` holding `value` and return it."
   [setting-key :- [:or :keyword :string]
    value       :- :string]
-  (first (t2/insert-returning-instances! :model/Setting :key setting-key :value value)))
+  (first (t2/insert-returning-instances! :model/Setting :key (name setting-key) :value value)))
 
 (mu/defn update-setting-value!
   "Set the value of the Setting with `setting-key` to `value`, returning the number updated."
   [setting-key :- [:or :keyword :string]
    value       :- :string]
-  (t2/update! :model/Setting :key setting-key {:value value}))
+  ;; `value` is written, not filtered on, so it stays unmarked: the before-update hook encrypts it.
+  (t2/update! :model/Setting :key [:auto/param (name setting-key)] {:value value}))
 
 (mu/defn delete-setting!
   "Delete the Setting with `setting-key`, via a raw table delete that bypasses model hooks, returning the number
   deleted."
   [setting-key :- [:or :keyword :string]]
-  (t2/delete! (t2/table-name :model/Setting) :key setting-key))
+  (t2/delete! (t2/table-name :model/Setting) :key [:auto/param (name setting-key)]))
 
 (mu/defn update-raw-setting-row!
   "Set the raw `value` and `value-with-aad` of the Setting row with `setting-key`, returning the number of rows
@@ -41,7 +44,7 @@
   [setting-key    :- [:or :keyword :string]
    value          :- [:maybe :string]
    value-with-aad :- [:maybe :string]]
-  (t2/update! :setting {:key setting-key} {:value value, :value_with_aad value-with-aad}))
+  (t2/update! :setting {:key [:auto/param (name setting-key)]} {:value value, :value_with_aad value-with-aad}))
 
 (mu/defn insert-raw-setting-row!
   "Insert a raw Setting row for `setting-key` holding `value` and `value-with-aad`, returning the number inserted."
@@ -49,7 +52,7 @@
    value          :- [:maybe :string]
    value-with-aad :- [:maybe :string]]
   (t2/insert! (t2/table-name (t2/resolve-model :model/Setting))
-              :key setting-key, :value value, :value_with_aad value-with-aad))
+              :key (name setting-key), :value value, :value_with_aad value-with-aad))
 
 (mu/defn current-timestamp-string
   "The application DB's own current timestamp, as a string."

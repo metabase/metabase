@@ -166,6 +166,7 @@
   (when (seq query)
     (:table-ids (query->source-ids query))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).
   Useful when bulk loading cards from different databases."

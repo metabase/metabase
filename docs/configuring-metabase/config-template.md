@@ -210,7 +210,6 @@ config:
     license-token-missing-banner-dismissal-timestamp: []
     llm-anthropic-api-base-url: https://api.anthropic.com
     llm-anthropic-api-key: null
-    llm-anthropic-model: claude-opus-4-5-20251101
     llm-azure-api-base-url: null
     llm-azure-api-key: null
     llm-azure-deployment-name: null
@@ -241,8 +240,6 @@ config:
     llm-openrouter-api-base-url: https://openrouter.ai/api
     llm-openrouter-api-key: null
     llm-providers: []
-    llm-rate-limit-per-ip: 100
-    llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 120000
     llm-vllm-api-base-url: null
     llm-vllm-api-key: null

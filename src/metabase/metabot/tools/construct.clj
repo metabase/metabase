@@ -27,7 +27,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -55,9 +54,9 @@
                      "(possibly empty) options map at position 1, and every field reference is `[\"field\", {}, "
                      "[\"<db>\", \"<schema>\", \"<table>\", \"<field>\"]]`. Minimal example — count of orders by "
                      "month: `{\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", "
-                     "\"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": "
+                     "\"source-table\": [\"Sample Database\", null, \"ORDERS\"], \"aggregation\": "
                      "[[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, "
-                     "[\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}`. Load the "
+                     "[\"Sample Database\", null, \"ORDERS\", \"CREATED_AT\"]]]}]}`. Load the "
                      "`construct-notebook-query-*` skills for the full operator catalog, joins, expressions, "
                      "and multi-stage rules.")
    :required    ["lib/type" "stages"]
@@ -75,7 +74,7 @@
                                            "source-table" {:type        "array"
                                                            :minItems    3
                                                            :maxItems    3
-                                                           :items       {:type "string"}
+                                                           :items       {}
                                                            :description "Portable FK `[<db-name>, <schema-or-null>, <table-name>]`."}
                                            "source-card"  {:type        "string"
                                                            :description "entity_id of a saved question/model used as the source."}
@@ -97,6 +96,13 @@
          ::mr/deliberately-open true
          :description           "An LLM-authored MBQL 5 query, structurally unvalidated here; real validation happens at the entry-point boundaries."}])
 
+(def LLMQueryArgument
+  "Schema for the `:query` argument of `construct_notebook_query` and the tools that reuse it.
+
+  Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the `:json-schema`
+  override only changes what the LLM sees. See [[construct-notebook-query-json-schema]]."
+  (mu/with LLMExternalQuery {:json-schema construct-notebook-query-json-schema}))
+
 (def ^:private construct-notebook-query-args-schema
   "Args schema for `construct_notebook_query`.
 
@@ -113,9 +119,7 @@
   omits `:source_entity` and `:referenced_entities` — the query body is self-describing."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
-   ;; Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the
-   ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
-   [:query (mu/with LLMExternalQuery {:json-schema construct-notebook-query-json-schema})]
+   [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
    [:title :string]
    [:description :string]])
@@ -679,10 +683,13 @@
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
     6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
-       ([[query-not-runnable-explanation]]), then run the FE expression editor's own
+       ([[query-not-runnable-explanation]]), run the FE expression editor's own
        diagnostics over every custom column / aggregation / filter
-       ([[repr.repair/assert-editor-accepts-expressions!]]). Either failure is a retryable
-       `:agent-error?` - success on a query the editor rejects is BOT-1442.
+       ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
+       sitting on a column that is not temporal
+       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]). Any of the three
+       failing is a retryable `:agent-error?` - success on a query the editor rejects is
+       BOT-1442.
     7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
        `:query-json` / `query-content` output.
 
@@ -742,6 +749,7 @@
             ;; after the `_runnable` gate: `diagnose-expression` itself validates its query
             ;; argument against the same schema.
             _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
+            _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr)
             query-id      (u/generate-nano-id)]
@@ -892,16 +900,4 @@
                                 "<instructions>\n" instruction-text "\n</instructions>")))
           query-result)))
     (catch Exception e
-      ;; A 403 counts as agent-facing even without the flag: `api/read-check` throws a bare one,
-      ;; and it means the user can't have the card they named rather than that anything broke.
-      (if (or (:agent-error? (ex-data e))
-              (= 403 (:status-code (ex-data e))))
-        ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
-        ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
-        ;; is the tool's result and the LLM is expected to self-correct on the next turn.
-        (do
-          (log/debugf "construct_notebook_query returned agent-error to the LLM: %s" (ex-message e))
-          {:output (ex-message e)})
-        (do
-          (log/errorf "Failed to construct notebook query: %s" (ex-message e))
-          {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})))))
+      (tools.u/handle-agent-or-api-error e))))

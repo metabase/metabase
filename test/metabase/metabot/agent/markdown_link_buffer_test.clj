@@ -121,14 +121,10 @@
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-table-link-test
-  (testing "resolves metabase://table links to ad-hoc question URLs"
+  (testing "resolves metabase://table links to table URLs"
     (let [table-id (mt/id :venues)
           [output flushed] (process (str "[Users Table](metabase://table/" table-id ")"))]
-      (is (re-find #"\[Users Table\]\(/question#.+\)" output))
-      (is (= "" flushed))))
-  (testing "falls back to link text for unknown table"
-    (let [[output flushed] (process "[Unknown Table](metabase://table/999999999)")]
-      (is (= "Unknown Table" output))
+      (is (= (str "[Users Table](/table/" table-id ")") output))
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-entity-link-test

@@ -19,6 +19,7 @@ export {
   getUserId,
   getUserIsAdmin,
   getUserIsAnalyst,
+  getUserIsEntitledAnalyst,
   getUserPersonalCollectionId,
 } from "./selectors";
 export { useUserAcknowledgement } from "./use-user-acknowledgement";

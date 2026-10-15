@@ -105,6 +105,7 @@ export const TEST_SCHEMA = {
           type: "measure" as const,
           id: 21,
           tableId: 1,
+          name: "Revenue",
           columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
         },
       },
@@ -132,6 +133,7 @@ export const TEST_SCHEMA = {
     revenue: {
       type: "metric" as const,
       id: 31,
+      name: "Revenue",
       sourceTableId: 1,
       mappedTableIds: [1, 2],
       columns: [{ name: "sum", displayName: "Revenue", jsType: "number" }],

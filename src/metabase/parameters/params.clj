@@ -69,6 +69,7 @@
                       {:parameter_mappings parameter-mappings
                        :errors             (:errors (mr/explain schema parameter-mappings))})))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
   "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by
   Cards and Dashboards. This determines how `:param_values` gets hydrated for Card and Dashboard. Normally, this is
@@ -295,6 +296,7 @@
           (update-in [:param-id->field-ids param-id] conj field-id))
       ctx)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *field-id-context*
   "Context for effective computation of field ids for parameters. Bound in
   the [[metabase.dashboards-rest.api/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to

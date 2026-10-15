@@ -55,13 +55,12 @@ export function FormCollectionAuthorityLevel({
         data={getOptions().map((option) => ({
           value: String(option.value),
           label: (
-            <Center style={{ gap: 10 }} c={option.selectedColor}>
+            <Center style={{ gap: 10 }}>
               <Icon name={option.icon} />
               {option.label}
             </Center>
           ),
         }))}
-        variant="fill-background"
       />
     </FormField>
   );

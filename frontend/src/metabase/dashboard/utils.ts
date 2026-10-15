@@ -512,7 +512,7 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
   const noBehaviorMessage = hasActionsMenu(dashcard)
     ? t`Open the drill-through menu`
     : t`Do nothing`;
-  if (isTableDisplay(dashcard)) {
+  if (hasColumnLevelClickBehavior(dashcard)) {
     const columnSettings: Record<string, ColumnSettings> =
       getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
 
@@ -574,6 +574,9 @@ export function hasActionsMenu(dashcard: DashboardCard) {
   return !question.isNative();
 }
 
-export function isTableDisplay(dashcard: DashboardCard) {
+export function hasColumnLevelClickBehavior(dashcard: DashboardCard) {
+  if (isVisualizerDashboardCard(dashcard)) {
+    return dashcard.visualization_settings.visualization.display === "table";
+  }
   return dashcard?.card?.display === "table";
 }

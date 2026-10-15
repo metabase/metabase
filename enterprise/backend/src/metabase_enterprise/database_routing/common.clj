@@ -11,6 +11,7 @@
   [db-or-id]
   (database-routing.db/router-user-attribute (u/the-id db-or-id)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *database-routing-on* :unset)
 
 (defn- router-db-or-id->destination-db-id*

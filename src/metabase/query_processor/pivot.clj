@@ -587,6 +587,7 @@
            :qp.pivot/num-remapped-breakouts   num-remapped-breakouts
            :qp.pivot/remapped-indexes         remap)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *pivot-max-result-rows*
   "Maximum number of result rows for each pivot sub-query. Divided by the number of aggregations since each aggregation
   adds a column to the output, so fewer rows are needed to fill the pivot table."
@@ -711,6 +712,7 @@
   []
   (boolean (some-> (resolve 'clojure.test/*testing-vars*) deref seq)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *check-pivot-parity?*
   "Controls whether [[run-pivot-query]] runs both the native and multi-query pivot paths whenever both are
   applicable and reports disagreement via [[*on-parity-mismatch*]]. Left at the default sentinel
@@ -740,6 +742,7 @@
       :actual   native-outcome})
     (log/warnf "Pivot parity mismatch — native and multi-query paths disagree: %s" (pr-str ctx))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *on-parity-mismatch*
   "Called with `{:native-outcome ..., :multi-outcome ...}` when the two pivot paths disagree under
   [[*check-pivot-parity?*]]. Each outcome is either the result map returned by the path, or the

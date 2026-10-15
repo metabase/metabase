@@ -1,7 +1,7 @@
 import Color from "color";
 
 import { DEFAULT_ACCENT_COLORS } from "./constants/accent-colors";
-import { METABASE_LIGHT_THEME } from "./constants/themes/light";
+import { getLightTheme } from "./constants/themes/light";
 
 type ColorInstance = ReturnType<typeof Color>;
 
@@ -26,11 +26,13 @@ const toHex = (c: ColorInstance) => c.hex().toLowerCase();
 
 const normalize = (cssColor: string) => toHex(Color(cssColor));
 
+const lightTheme = getLightTheme();
+
 const FALLBACK: HarmonyColors = {
-  filter: normalize(METABASE_LIGHT_THEME.colors.filter),
-  summarize: normalize(METABASE_LIGHT_THEME.colors.summarize),
-  positive: normalize(METABASE_LIGHT_THEME.colors["feedback-positive"]),
-  negative: normalize(METABASE_LIGHT_THEME.colors["feedback-negative"]),
+  filter: normalize(lightTheme.colors.filter),
+  summarize: normalize(lightTheme.colors.summarize),
+  positive: normalize(lightTheme.colors["feedback-positive"]),
+  negative: normalize(lightTheme.colors["feedback-negative"]),
   charts: DEFAULT_ACCENT_COLORS.flatMap((c) => {
     if (c == null) {
       return [];

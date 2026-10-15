@@ -1367,6 +1367,65 @@ describe("scenarios > explorations > collection placement + archive", () => {
     );
   });
 
+  it("shows the trash banner on an archived exploration and restores or permanently deletes it from there", () => {
+    const explorationName = "Exploration-page trash banner fixture";
+
+    H.createExplorationViaApi({ name: explorationName }).then(
+      (explorationId) => {
+        cy.request("PUT", `/api/exploration/${explorationId}`, {
+          archived: true,
+        });
+
+        cy.log("An archived exploration opens with the trash banner");
+        cy.intercept("PUT", `/api/exploration/${explorationId}`).as(
+          "restoreExploration",
+        );
+        H.visitExploration(explorationId);
+        cy.findByTestId("archive-banner")
+          .should("contain", "This research is in the trash.")
+          .findByRole("button", { name: /Restore/ })
+          .click();
+
+        cy.wait("@restoreExploration").then(({ request, response }) => {
+          expect(request.body).to.deep.eq({ archived: false });
+          expect(response?.statusCode).to.eq(200);
+        });
+        cy.findByTestId("exploration-page-sidebar").should("be.visible");
+        cy.findByTestId("archive-banner").should("not.exist");
+
+        cy.log("Delete permanently from the banner lands on the trash page");
+        cy.request("PUT", `/api/exploration/${explorationId}`, {
+          archived: true,
+        });
+        cy.intercept("DELETE", `/api/exploration/${explorationId}`).as(
+          "deleteExploration",
+        );
+        cy.reload();
+        cy.findByTestId("archive-banner")
+          .findByRole("button", { name: /Delete permanently/ })
+          .click();
+        H.modal()
+          .findByRole("button", { name: /Delete permanently/i })
+          .click();
+
+        cy.wait("@deleteExploration")
+          .its("response.statusCode")
+          .should("eq", 204);
+        cy.location("pathname").should("eq", "/trash");
+        H.undoToast()
+          .findByText("This item has been permanently deleted.")
+          .should("be.visible");
+        cy.request({
+          method: "GET",
+          url: `/api/exploration/${explorationId}`,
+          failOnStatusCode: false,
+        })
+          .its("status")
+          .should("eq", 404);
+      },
+    );
+  });
+
   it("restores an archived exploration via the Restore action on the /trash page", () => {
     // `useSetArchive`'s undo toast is one path back, but the trash
     // page exposes a separate `Restore` action that runs through

@@ -108,9 +108,11 @@
     [(not= (:schema item) target-schema)
      (not= (:name item) target-name)]))
 
-(mu/defn sync-fields! :- [:map
-                          [:updated-fields ms/IntGreaterThanOrEqualToZero]
-                          [:total-fields   ms/IntGreaterThanOrEqualToZero]]
+(mu/defn sync-fields! :- [:or
+                          [:map
+                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
+                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]
+                          (ms/InstanceOfClass Throwable)]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`.
 
   `fields-metadata` is a *reducible* of per-column metadata, ordered so a table's columns are contiguous. It is passed

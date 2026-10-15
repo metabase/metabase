@@ -109,10 +109,11 @@
     (mapv export-dimension dimensions)))
 
 (defn import-dimensions
-  "Inverse of [[export-dimensions]]."
+  "Inverse of [[export-dimensions]]. Normalized like [[transform-dimensions]] output, since a file-based import reads
+  keyword values back as strings."
   [dimensions]
   (when (some? dimensions)
-    (mapv import-dimension dimensions)))
+    (mapv (comp normalize-dimension import-dimension) dimensions)))
 
 (defn export-dimension-mappings
   "Serialize a curated entity's `:dimension_mappings`: convert `:table-id` and the Field IDs inside each mapping's
@@ -126,13 +127,15 @@
           mappings)))
 
 (defn import-dimension-mappings
-  "Inverse of [[export-dimension-mappings]]."
+  "Inverse of [[export-dimension-mappings]]. Normalized like [[transform-dimension-mappings]] output, for the same
+  reason as [[import-dimensions]]."
   [mappings]
   (when (some? mappings)
     (mapv (fn [mapping]
-            (cond-> mapping
-              (vector? (:table-id mapping)) (update :table-id serdes/*import-table-fk*)
-              (:target mapping)             (update :target serdes/import-mbql)))
+            (normalize-dimension-mapping
+             (cond-> mapping
+               (vector? (:table-id mapping)) (update :table-id serdes/*import-table-fk*)
+               (:target mapping)             (update :target serdes/import-mbql))))
           mappings)))
 
 (defn dimension-mappings-deps

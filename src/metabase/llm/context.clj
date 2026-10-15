@@ -1,8 +1,6 @@
 (ns metabase.llm.context
-  "Schema extraction for LLM context. Parses table mentions from prompts
-   and fetches table metadata formatted as DDL for SQL generation."
+  "Resolves the tables and cards a native query references, with permission-filtered column metadata."
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -10,37 +8,10 @@
    [metabase.llm.db :as llm.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.models.interface :as mi]
-   [metabase.parameters.field-values :as params.field-values]
-   [metabase.request.core :as request]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.sync.core :as sync]
-   [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.field-values :as field-values])
-  (:import
-   (java.io StringWriter Writer)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-;;; ------------------------------------------------ Mention Parsing ------------------------------------------------
-
-(def ^:private table-mention-pattern
-  "Regex to extract table IDs from markdown-style metabase:// links.
-   Frontend serializes @mentions as: [Display Name](metabase://table/123)"
-  #"\[[^\]]+\]\(metabase://table/(\d+)\)")
-
-(defn parse-table-mentions
-  "Extract table IDs from metabase://table/{id} links in prompt text.
-
-   Frontend serializes @mentions as markdown links:
-   [Display Name](metabase://table/123)
-
-   Returns a set of table IDs (integers), or nil if input is nil."
-  [prompt-text]
-  (when (string? prompt-text)
-    (->> (re-seq table-mention-pattern prompt-text)
-         (keep (fn [[_ id-str]]
-                 (parse-long id-str)))
-         set)))
 
 (defn extract-tables-from-sql
   "Extract table IDs from a raw SQL string.
@@ -103,26 +74,21 @@
 
 (defn- fetch-table-columns
   "Use metadata provider to get visible columns for a table.
-   Returns sequence of column maps with metadata for DDL generation.
-   By default excludes implicitly-joinable columns; pass opts to override."
-  ([mp table-id]
-   (fetch-table-columns mp table-id {}))
-  ([mp table-id opts]
-   (when-let [table-meta (lib.metadata/table mp table-id)]
-     (let [table-query (lib/query mp table-meta)
-           vis-opts    (merge {:include-implicitly-joinable? false} opts)
-           columns     (lib/visible-columns table-query -1 vis-opts)]
-       (mapv (fn [col]
-               {:id                  (:id col)
-                :table-id            table-id
-                :name                (:name col)
-                :database_type       (or (:database-type col)
-                                         (some-> (:base-type col) name))
-                :description         (:description col)
-                :semantic_type       (:semantic-type col)
-                :fingerprint         (:fingerprint col)
-                :fk_target_field_id  (:fk-target-field-id col)})
-             columns)))))
+   Returns sequence of column maps with the metadata the API response needs.
+   Excludes implicitly-joinable columns."
+  [mp table-id]
+  (when-let [table-meta (lib.metadata/table mp table-id)]
+    (let [table-query (lib/query mp table-meta)
+          columns     (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})]
+      (mapv (fn [col]
+              {:id                 (:id col)
+               :name               (:name col)
+               :database_type      (or (:database-type col)
+                                       (some-> (:base-type col) name))
+               :description        (:description col)
+               :semantic_type      (:semantic-type col)
+               :fk_target_field_id (:fk-target-field-id col)})
+            columns))))
 
 (defn- filter-sandbox-restricted-columns
   "Remove columns that the current user's column-level sandbox does not expose for `table-id`."
@@ -130,48 +96,6 @@
   (if-let [allowed-field-ids (get sandbox-restricted table-id)]
     (filterv #(contains? allowed-field-ids (:id %)) columns)
     columns))
-
-(def ^:private max-restricted-field-values-fetches
-  "Per-table cap on how many columns of a row-restricted table [[fetch-field-values]] will fetch
-   synchronously. A restricted table's FieldValues can't be served from the cheap shared cache --
-   each one is a real warehouse query -- so an unbounded table can otherwise turn one request into
-   hundreds of synchronous queries. Unrestricted columns are not capped: they're served by the existing
-   shared FieldValues cache."
-  25)
-
-(defn- cap-restricted-fields
-  "Caps each restricted table's fields at [[max-restricted-field-values-fetches]] independently, so one
-   large restricted table can't starve another restricted table's fields of any fetches at all."
-  [restricted-fields-by-table]
-  (into []
-        (mapcat (fn [[table-id fields]]
-                  (when (> (count fields) max-restricted-field-values-fetches)
-                    (log/infof "Capping restricted-table field values fetch to %d of %d columns for table %d."
-                               max-restricted-field-values-fetches (count fields) table-id))
-                  (take max-restricted-field-values-fetches fields)))
-        restricted-fields-by-table))
-
-(defn- fetch-field-values
-  "Returns a map of field-id -> values vector for those `columns` that should have FieldValues.
-   Values are the ones the current user is allowed to see, and are fetched from the source database when
-   nothing suitable is cached. Fields belonging to a table in `restricted-table-ids` are capped at
-   [[max-restricted-field-values-fetches]] per table -- applied only after narrowing to fields that
-   should have FieldValues, so ineligible fields can't consume another field's budget."
-  [columns restricted-table-ids]
-  (let [field-ids (->> columns (keep :id) (filter pos-int?) set)]
-    (when (seq field-ids)
-      (let [;; Grouped by the persisted Field's own table_id, not the caller-supplied column's
-            ;; :table-id, consistent with the permission checks elsewhere in this namespace.
-            fields (filter field-values/field-should-have-field-values?
-                           (llm.db/fields field-ids))
-            {restricted true, unrestricted false} (group-by #(contains? restricted-table-ids (:table_id %)) fields)
-            capped-fields (concat unrestricted (cap-restricted-fields (group-by :table_id restricted)))]
-        (into {}
-              (keep (fn [field]
-                      (when-let [fv (params.field-values/get-or-create-field-values! field)]
-                        (when-let [values (not-empty (:values fv))]
-                          [(:id field) values]))))
-              capped-fields)))))
 
 (defn- fetch-fk-targets
   "Fetch table.field names for FK target fields.
@@ -195,206 +119,12 @@
                           [id {:table (:name (get accessible-tables table_id)) :field name}]))))
               fields)))))
 
-;;; ----------------------------------------- On-Demand Metadata Enrichment -----------------------------------------
-
-(defn- drop-fingerprints
-  "Removes `:fingerprint` from every column of `table`."
-  [table]
-  (update table :columns #(mapv (fn [col] (dissoc col :fingerprint)) %)))
-
-(defn- enrich-fingerprints-on-demand!
-  "For columns missing fingerprints, trigger re-fingerprinting.
-   Returns a map of field-id -> fingerprint for columns that were missing them.
-   This queries the source database to compute fingerprints if they don't exist.
-   Only call this for a user who can see every row: the computed fingerprint is stored on the Field and
-   served to every user."
-  [columns]
-  (let [missing-fp-ids (->> columns
-                            (filter #(and (:id %) (nil? (:fingerprint %))))
-                            (map :id)
-                            (filter pos-int?)
-                            set)]
-    (when (seq missing-fp-ids)
-      (let [fields (llm.db/fields missing-fp-ids)]
-        (doseq [field fields]
-          ;; Run with admin perms to match behavior during normal sync.
-          (request/as-admin (sync/refingerprint-field! field)))
-        (llm.db/field-fingerprints missing-fp-ids)))))
-
-;;; ------------------------------------------- Fingerprint Formatting -------------------------------------------
-
-(defn- format-numeric-stats
-  "Format numeric fingerprint as readable string."
-  [{:keys [min max avg]}]
-  (when (and min max)
-    (let [fmt #(if (integer? %) (str %) (format "%.2f" (double %)))]
-      (cond-> (str "range: " (fmt min) "-" (fmt max))
-        avg (str ", avg: " (fmt avg))))))
-
-(defn- format-temporal-stats
-  "Format temporal fingerprint as readable string."
-  [{:keys [earliest latest]}]
-  (when (and earliest latest)
-    (let [fmt-date #(some-> % (subs 0 (min 10 (count %))))]
-      (str (fmt-date earliest) " to " (fmt-date latest)))))
-
-(defn- format-text-stats
-  "Format text fingerprint as readable string.
-   Includes average-length from type fingerprint and distinct-count/nil% from global."
-  [type-fp global-fp]
-  (let [{:keys [average-length]} type-fp
-        {:keys [distinct-count nil%]} global-fp
-        parts (cond-> []
-                distinct-count
-                (conj (str "distinct: " distinct-count))
-
-                (and nil% (pos? nil%))
-                (conj (str "nil: " (format "%.0f%%" (* 100 nil%))))
-
-                (and average-length (> average-length 0))
-                (conj (str "avg-len: " (format "%.0f" (double average-length)))))]
-    (when (seq parts)
-      (str/join ", " parts))))
-
-(defn- semantic-type->hint
-  "Extract the type name from a semantic type keyword for DDL comments.
-   e.g. :type/Email -> \"Email\", :type/CreationTimestamp -> \"CreationTimestamp\"
-   Returns nil if semantic-type is nil."
-  [semantic-type]
-  (some-> semantic-type name))
-
-;;; -------------------------------------------- Column Comment Building --------------------------------------------
-
-(def ^:private max-sample-values 6)
-(def ^:private max-sample-value-length 30)
-
-(defn- truncate-value
-  "Truncate a sample value if too long."
-  [v]
-  (let [s (str v)]
-    (if (> (count s) max-sample-value-length)
-      (str (subs s 0 (- max-sample-value-length 3)) "...")
-      s)))
-
-(defn- build-column-comment
-  "Build an informative comment for a column based on available metadata.
-   Returns nil if no useful metadata is available."
-  [{:keys [description semantic_type fingerprint fk_target_field_id]}
-   field-values
-   fk-target-info]
-  (let [has-sample-values? (and (not-empty field-values)
-                                (<= (count field-values) max-sample-values))
-        fp-global (get fingerprint :global)
-        fp-type   (some-> fingerprint :type vals first)
-
-        parts (cond-> []
-                ;; User-provided description takes priority
-                (not-empty description)
-                (conj description)
-
-                ;; FK relationship
-                (and fk_target_field_id fk-target-info)
-                (conj (str "FK->" (:table fk-target-info) "." (:field fk-target-info))))
-
-        ;; Sample values for low-cardinality fields
-        parts (if has-sample-values?
-                (conj parts (str/join ", " (map truncate-value field-values)))
-                ;; Semantic type hint only when no description and no sample values
-                (if-let [sem-hint (and (nil? description)
-                                       semantic_type
-                                       (semantic-type->hint semantic_type))]
-                  (conj parts sem-hint)
-                  parts))
-
-        ;; Fingerprint stats based on field type
-        stats (cond
-                ;; Numeric range
-                (and (:min fp-type) (:max fp-type))
-                (format-numeric-stats fp-type)
-
-                ;; Temporal range
-                (and (:earliest fp-type) (:latest fp-type))
-                (format-temporal-stats fp-type)
-
-                ;; Text stats (distinct count, nil%, avg length)
-                (or (:average-length fp-type) (:distinct-count fp-global))
-                (format-text-stats fp-type fp-global))
-
-        all-parts (cond-> parts
-                    stats (conj stats))]
-    (when (seq all-parts)
-      (str/join "; " all-parts))))
-
-;;; ------------------------------------------------ DDL Formatting ------------------------------------------------
-
-(defn- format-escaped
-  "Escape identifier if it contains special characters."
-  [^String identifier ^Writer writer]
-  (if (re-matches #"[\p{Alpha}_][\p{Alnum}_]*" identifier)
-    (.append writer identifier)
-    (do
-      (.append writer \")
-      (doseq [^Character c identifier]
-        (when (= c \")
-          (.append writer c))
-        (.append writer c))
-      (.append writer \"))))
-
-(defn- format-column-ddl
-  "Format a single column definition. If column has a :comment, emit it as a SQL comment
-   on the line before the column definition."
-  [{:keys [^String database_type ^String comment], col-name :name} ^Writer writer first?]
-  (when comment
-    (when-not first?
-      (.append writer "\n"))
-    (.append writer "  -- ")
-    (.append writer comment)
-    (.append writer "\n"))
-  (when-not (or first? comment)
-    (.append writer "\n"))
-  (.append writer "  ")
-  (format-escaped col-name writer)
-  (.append writer " ")
-  (.append writer (or database_type "UNKNOWN")))
-
-(defn- format-table-ddl
-  [{:keys [schema columns description], table-name :name} ^Writer writer]
-  (when (not-empty description)
-    (.append writer "-- ")
-    (.append writer ^String description)
-    (.append writer "\n"))
-  (.append writer "CREATE TABLE ")
-  (when (seq schema)
-    (format-escaped schema writer)
-    (.append writer \.))
-  (format-escaped table-name writer)
-  (.append writer " (")
-  (when (seq columns)
-    (.append writer "\n")
-    (format-column-ddl (first columns) writer true)
-    (doseq [column (rest columns)]
-      (.append writer ",")
-      (format-column-ddl column writer false)))
-  (.append writer "\n);"))
-
-(defn- format-schema-ddl
-  "Format multiple tables as DDL string."
-  [tables]
-  (let [sw (StringWriter.)]
-    (doseq [table tables]
-      (format-table-ddl table sw)
-      (.append sw \newline))
-    (str/trimr (str sw))))
-
 (defn- fetch-accessible-tables-with-columns
-  "Shared prelude for [[build-schema-context]] and [[get-tables-with-columns]]: fetch the tables in
-   `table-ids` the current user can access in `database-id`, and build each one's sandbox-filtered
-   column list (via the metadata provider, so numbers/joins resolve the same way for both callers).
+  "Fetch the tables in `table-ids` the current user can access in `database-id`, and build each one's
+   sandbox-filtered column list via the metadata provider.
 
-   Does not itself require read access to `database-id` -- a caller that needs a hard 403 for that
-   (like [[build-schema-context]]) must check it before calling this. [[get-tables-with-columns]]
-   deliberately doesn't: it shares this prelude only for its `:tables` behavior, and a caller that
-   only wants its `:card_ids` behavior shouldn't be denied over unrelated table access.
+   Does not require read access to `database-id`: a user who can't reach any of the requested tables
+   gets nil rather than a 403.
 
    Returns nil when the user can't reach any of the requested tables in `database-id`; otherwise a
    vector of `{:id :name :schema :display_name :description :columns}` maps -- possibly empty, if
@@ -421,29 +151,6 @@
 
 ;;; ------------------------------------------------- Public API -------------------------------------------------
 
-(defn- enrich-columns-with-comments
-  "Add :comment to each column based on available metadata."
-  [columns field-values-map fk-targets-map]
-  (mapv (fn [col]
-          (let [fv      (get field-values-map (:id col))
-                fk-info (get fk-targets-map (:fk_target_field_id col))
-                comment (build-column-comment col fv fk-info)]
-            (cond-> col
-              comment (assoc :comment comment))))
-        columns))
-
-(defn- merge-enriched-fingerprints
-  "Merge on-demand fingerprints into columns that were missing them."
-  [columns enriched-fp-map]
-  (if (seq enriched-fp-map)
-    (mapv (fn [col]
-            (if (and (nil? (:fingerprint col))
-                     (contains? enriched-fp-map (:id col)))
-              (assoc col :fingerprint (get enriched-fp-map (:id col)))
-              col))
-          columns)
-    columns))
-
 (defn- format-columns-for-response
   "Format columns for API response, resolving FK targets."
   [columns fk-targets-map]
@@ -457,79 +164,6 @@
               fk-info (assoc :fk_target {:table_name (:table fk-info)
                                          :field_name (:field fk-info)}))))
         columns))
-
-(defn- drop-or-enrich-fingerprints
-  "For each of `tables-with-columns`: drop fingerprints from a table in `restricted-table-ids`
-   (see [[build-schema-context]]'s docstring), or merge in any on-demand fingerprints computed for
-   the columns of one that isn't."
-  [tables-with-columns restricted-table-ids]
-  (let [;; On-demand enrichment: trigger fingerprinting only for columns of tables the current
-        ;; user can see every row of -- a fingerprint covers every row of the field and is
-        ;; computed under the database's default role, with no per-user variant to fall back on.
-        unrestricted-columns (mapcat :columns (remove #(contains? restricted-table-ids (:id %))
-                                                      tables-with-columns))
-        enriched-fp-map (enrich-fingerprints-on-demand! unrestricted-columns)]
-    ;; For a restricted table the only honest answer is to say nothing about ranges or
-    ;; distinct counts.
-    (mapv (fn [table]
-            (if (contains? restricted-table-ids (:id table))
-              (drop-fingerprints table)
-              (update table :columns merge-enriched-fingerprints enriched-fp-map)))
-          tables-with-columns)))
-
-(defn build-schema-context
-  "Fetch table metadata for mentioned tables and format as DDL for LLM context.
-
-   Uses the metadata provider to get visible columns, respecting field
-   visibility settings. Includes field descriptions, sample values, and
-   statistical information when available.
-
-   For fields missing fingerprints or field values, this function will
-   trigger on-demand creation by querying the source database.
-
-   For a table where the user's row access is narrowed by sandboxing, connection impersonation, or
-   database routing, sample values are fetched under their own effective access and fingerprint
-   statistics are omitted for that table's columns -- this is decided per table, since sandboxing
-   varies by table even within one request.
-
-   Parameters:
-   - database-id: Database containing the tables
-   - table-ids: Set of table IDs to include
-
-   Returns a map with:
-   - :ddl - DDL string for LLM context
-   - :tables - structured table metadata for API response
-   Or nil if no accessible tables found."
-  [database-id table-ids]
-  (when (and database-id (seq table-ids))
-    (api/read-check :model/Database database-id)
-    (metabot.perms/with-cache
-      (when-let [tables-with-columns (fetch-accessible-tables-with-columns database-id table-ids)]
-        (let [restricted-table-ids (metabot.perms/row-restricted-table-ids (into #{} (map :id) tables-with-columns))
-              tables-with-enriched-fps (drop-or-enrich-fingerprints tables-with-columns restricted-table-ids)
-              all-enriched-columns (mapcat :columns tables-with-enriched-fps)
-
-              ;; Batch fetch FieldValues (on-demand) and FK targets
-              field-values-map (fetch-field-values all-enriched-columns restricted-table-ids)
-              fk-targets-map   (fetch-fk-targets database-id all-enriched-columns)
-
-              ;; Enrich columns with comments for DDL
-              enriched-tables
-              (mapv (fn [table]
-                      (update table :columns
-                              enrich-columns-with-comments
-                              field-values-map
-                              fk-targets-map))
-                    tables-with-enriched-fps)
-
-              ;; Format tables for API response (without :comment, with :fk_target)
-              response-tables
-              (mapv (fn [table]
-                      (update table :columns format-columns-for-response fk-targets-map))
-                    tables-with-enriched-fps)]
-          (when (seq enriched-tables)
-            {:ddl    (format-schema-ddl enriched-tables)
-             :tables response-tables}))))))
 
 (defn get-tables-with-columns
   "Fetch tables with their columns for the extract-sources endpoint.

@@ -101,7 +101,6 @@ const ControlledParametersEmbedJsPlayground = () => {
             {STORYBOOK_METABASE_INSTANCE_URL} (logged-in session required).
           </Text>
           <SegmentedControl
-            size="xs"
             value={mode}
             // Unjustified type cast. FIXME
             onChange={(value) => setMode(value as Mode)}

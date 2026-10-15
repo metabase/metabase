@@ -262,10 +262,12 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         .findByText(/allowed_hosts changed since the dev server started/)
         .should("not.exist");
 
-      // `allowed_hosts` is the manifest's last key, so appending stays valid YAML.
       cy.writeFile(
         DATA_APP_DEV_MANIFEST_PATH,
-        `${originalManifest}  - https://added.example\n`,
+        originalManifest.replace(
+          "  - https://allowed.data-app.test\n",
+          "  - https://allowed.data-app.test\n  - https://added.example\n",
+        ),
       );
 
       // No reload and no dev-server restart: the watcher re-validates and the

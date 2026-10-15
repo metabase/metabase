@@ -188,10 +188,12 @@
 
 ;;; -------------------------------------------------- Group Sync Tests --------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *group-sync-claims*
   "Dynamic var to control what claims the group sync mock returns."
   {:groups ["test-group"]})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *group-sync-email*
   "Dynamic var to control the email returned by the group sync mock."
   "oidc-group-user@example.com")

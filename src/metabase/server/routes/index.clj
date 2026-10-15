@@ -145,7 +145,7 @@
     (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
 
 (defn data-app
-  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps-preview` feature is
+  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
    instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
    data-app entrypoint rather than in the top-level route table. A signed-out visitor is sent to

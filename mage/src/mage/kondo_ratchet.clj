@@ -471,6 +471,31 @@
 ;;;; kondo-insert-ignores
 ;;;; ---------------------------------------------------------------------------
 
+(defn- exemption-suggestion
+  "The `insert-ignores` follow-up message recommending where to add `linter` to :comment-exempt, given its
+  `occurrences` (already found) -- naming the prod file, the test file, both, or nil when neither needs
+  it. An existing comment above a flagged form may already justify its ignore, so a file is only named
+  when the scanner still finds uncommented ignores there that its own :comment-exempt doesn't already
+  cover; otherwise it is unnecessary and the ratchet check reports it as stale. Prod and test track
+  :comment-exempt independently, so each is checked against its own file."
+  [linter occurrences]
+  (let [{test-occ true, prod-occ false} (group-by kondo-ratchet/test-occurrence? occurrences)
+        needs-exempt? (fn [ratchets-file occs]
+                        (and (seq occs)
+                             (not (contains? (:comment-exempt (binding [kondo-ratchet/*ratchets-file* ratchets-file]
+                                                                (kondo-ratchet/read-ratchets)))
+                                             linter))
+                             (seq (kondo-ratchet/unjustified #{} occs))))
+        prod?         (needs-exempt? kondo-ratchet/*ratchets-file* prod-occ)
+        test?         (needs-exempt? kondo-ratchet/*test-ratchets-file* test-occ)]
+    (cond
+      (and prod? test?) (format "Also add %s to :comment-exempt in both %s and %s -- the inserted ignores have no comments."
+                                linter kondo-ratchet/*ratchets-file* kondo-ratchet/*test-ratchets-file*)
+      prod?             (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
+                                linter kondo-ratchet/*ratchets-file*)
+      test?             (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
+                                linter kondo-ratchet/*test-ratchets-file*))))
+
 (defn insert-ignores
   "Insert an inline ignore above every site `linter` flags, so a new linter can land without a big-bang
   fix. Args: `LINTER [PATHS...]`; paths default to the usual lint roots."
@@ -494,11 +519,6 @@
                            (count (distinct (map (juxt :filename :row) findings)))
                            (count by-file)
                            linter))
-          ;; An existing comment above the flagged form may justify the inserted ignore. Suggest an
-          ;; exemption only when the scanner still finds uncommented ignores; otherwise it is unnecessary
-          ;; and the ratchet check reports it as stale.
-          (when-not (contains? (:comment-exempt (kondo-ratchet/read-ratchets)) linter)
-            (when (seq (kondo-ratchet/unjustified #{} (filter #(some #{linter} (:linters %))
-                                                              (kondo-ratchet/scan roots))))
-              (println (format "Also add %s to :comment-exempt in %s -- the inserted ignores have no comments."
-                               linter kondo-ratchet/*ratchets-file*))))))))
+          (some-> (exemption-suggestion linter (filter #(some #{linter} (:linters %))
+                                                       (kondo-ratchet/scan roots)))
+                  println)))))

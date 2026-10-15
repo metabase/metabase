@@ -22,12 +22,13 @@
    foreign table, so the same field id is reachable via different `:source-field` paths. Keying maps
    by field id alone therefore collides — always key by this instead.
 
-   It drops only per-instance/derived opts (`:lib/uuid`, `:effective-type`, `:base-type`) and KEEPS
+   It drops only per-instance/derived opts (`:lib/uuid`, `:effective-type`, `:base-type`, and the
+   `:lib/transformation-added-base-type` bookkeeping flag that legacy-MBQL conversion stamps on a ref) and KEEPS
    everything identity-relevant: the id, the `:source-field`/`:join-alias` that identifies the FK or
    join, and any `:binning`/`:temporal-unit`."
   [[clause-type opts id-or-name]]
   [clause-type
-   (dissoc opts :lib/uuid :effective-type :base-type)
+   (dissoc opts :lib/uuid :effective-type :base-type :lib/transformation-added-base-type)
    id-or-name])
 
 (defn targets-equal?

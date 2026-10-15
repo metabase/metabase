@@ -23,7 +23,18 @@ const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
 const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
 
 /** The manifest as source control holds it. */
-const AUTHORED_MANIFEST = `name: ${APP_DISPLAY_NAME}\npath: ./dist/index.js\n`;
+const AUTHORED_MANIFEST = [
+  "version: 1",
+  `name: ${APP_DISPLAY_NAME}`,
+  `slug: ${APP_SLUG}`,
+  "path: ./dist/index.js",
+  "entity_id: nPu5r1EndcM_D8TQfLk9c",
+  "serdes/meta:",
+  "- model: DataApp",
+  "  id: nPu5r1EndcM_D8TQfLk9c",
+  "  label: synced-actions-app",
+  "",
+].join("\n");
 
 /** The declaration as source control holds it, with no generated ID yet. */
 const declaration = (sourceActionId: number) =>

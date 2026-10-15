@@ -95,6 +95,7 @@
                          (pr-str driver))
                     {:status-code 400}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *misc-value-cache*
   "A cache that lives for the duration of the top-level Action invoked by [[perform-action!]]. You can use this to store
   miscellaneous values such as things that need to be fetched from the application database to avoid duplicate calls

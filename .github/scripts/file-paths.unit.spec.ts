@@ -49,6 +49,7 @@ describe("file-paths.yaml", () => {
     "%s skips a ratchets-only change and still follows the rest of .clj-kondo",
     (name) => {
       expect(matches(name, ".clj-kondo/ratchets.edn")).toBe(false);
+      expect(matches(name, ".clj-kondo/ratchets-test.edn")).toBe(false);
       expect(matches(name, ".clj-kondo/config/modules/ratchets.edn")).toBe(
         false,
       );
@@ -94,6 +95,9 @@ describe("file-paths.yaml", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,
     );
+    expect(
+      matches("project_ratchet_checks", ".clj-kondo/ratchets-test.edn"),
+    ).toBe(true);
     expect(
       matches(
         "project_ratchet_checks",
@@ -177,5 +181,14 @@ describe("file-paths.yaml", () => {
     "e2e/support/cypress.config.js",
   ])("runs CI-script tests when %s changes", (file) => {
     expect(matches("ci_scripts", file)).toBe(true);
+  });
+
+  it("runs the module cycles test when a cluster is named", () => {
+    expect(
+      matches(
+        "project_backend_checks",
+        ".clj-kondo/config/modules/cycle-clusters.edn",
+      ),
+    ).toBe(true);
   });
 });

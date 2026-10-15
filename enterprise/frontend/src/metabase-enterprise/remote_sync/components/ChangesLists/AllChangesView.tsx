@@ -134,7 +134,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
               group.items.length > 0 || group.tableGroups.length > 0;
 
             return (
-              <Fragment key={group.collectionId}>
+              <Fragment key={group.collectionId ?? "root"}>
                 {groupIndex > 0 && <Divider />}
                 <Box p="lg">
                   <Group

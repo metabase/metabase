@@ -23,6 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
 
 (defmacro with-version! "Used to track information about the metabase embedding client version."
@@ -32,6 +33,7 @@
 
 (defn get-version "Returns [[*version*]]." [] *version*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
 
 (defmacro with-client! "Used to track information about the metabase embedding client client."
@@ -41,16 +43,19 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *client-identifier*
   "Used to track the identifier of the concrete embedding client, e.g. the data-app name."
   nil)
 
 (defn get-client-identifier "Returns [[*client-identifier*]]." [] *client-identifier*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *route* "Used to track the API route for the current request (e.g. \"public\", \"guest-embed\")." nil)
 
 (defn get-route "Returns [[*route*]]." [] *route*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *auth-method* "Used to track the authentication method for the current request (e.g. \"password\", \"jwt\", \"api-key\")." nil)
 
 (defmacro with-auth-method! "Binds [[*auth-method*]] for the duration of `body`."

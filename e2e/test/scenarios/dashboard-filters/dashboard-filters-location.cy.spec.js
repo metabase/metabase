@@ -7,7 +7,7 @@ import {
 import {
   addWidgetStringFilter,
   selectFilterValueFromList,
-} from "../native-filters/helpers/e2e-field-filter-helpers";
+} from "../native/helpers/e2e-field-filter-helpers";
 
 import { DASHBOARD_LOCATION_FILTERS } from "./shared/dashboard-filters-location";
 

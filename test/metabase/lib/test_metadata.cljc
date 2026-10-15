@@ -3997,7 +3997,8 @@
    :name                        "test-data"
    :settings                    {:breakout-bin-width 10.0
                                  :breakout-bins-num  8
-                                 :enable-xrays       true}
+                                 :enable-xrays       true
+                                 :start-of-week      :sunday}
    :caveats                     nil
    :tables                      [(table-metadata-method :categories)
                                  (table-metadata-method :checkins)

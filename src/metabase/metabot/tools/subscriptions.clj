@@ -105,13 +105,7 @@
          {:dashboard-id  dashboard_id
           :email         email
           :slack-channel slack_channel
-          :schedule      (-> schedule
-                             (update :frequency keyword)
-                             (cond->
-                              (:day_of_week schedule)  (-> (assoc :day-of-week (keyword (:day_of_week schedule)))
-                                                           (dissoc :day_of_week))
-                              (:day_of_month schedule) (-> (assoc :day-of-month (keyword (:day_of_month schedule)))
-                                                           (dissoc :day_of_month))))})
+          :schedule      schedule})
         (set/rename-keys {:error :output}))
     (catch Exception e
       (metabot.tools.u/handle-agent-or-api-error e))))

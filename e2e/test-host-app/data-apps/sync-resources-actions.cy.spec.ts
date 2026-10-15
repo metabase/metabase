@@ -17,7 +17,7 @@ const { H } = cy;
 const TEST_TABLE = "scoreboard_actions";
 const MODEL_NAME = "Scoreboard model";
 
-/** `syncResources` takes the app's slug from its directory name. */
+/** The `slug` the app's `data_app.yaml` declares. */
 const APP_SLUG = "vite-6-data-app-host-app";
 
 const APP_ROOT = () => dataAppHostAppRoot();

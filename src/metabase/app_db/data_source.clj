@@ -18,6 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *current-millis*
   "Returns the current time millis, but can be overridden for testing."
   []

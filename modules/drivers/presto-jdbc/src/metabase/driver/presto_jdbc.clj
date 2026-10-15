@@ -195,6 +195,7 @@
 
 (sql/register-fn! ::mod #'format-mod)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *inline-param-style*
   "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a
   best-effort attempt to escape strings and generate SQL that is nice to look at, but should not be considered safe
@@ -698,6 +699,7 @@
 ;;; Connection spec from the top-level call, and if the `:presto-jdbc/force-fresh?` is passed in to recursive calls
 ;;; we'll create a NEW connection using the original spec every time. See for example the code
 ;;; in [[metabase.test.data.presto-jdbc]]
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *original-connection-spec* nil)
 
 (defn- set-connection-options! [driver ^java.sql.Connection conn {:keys [^String session-timezone write?], :as _options}]

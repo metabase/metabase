@@ -916,7 +916,7 @@
               "Should return full token response"))))))
 
 (deftest token-auth-code-invalid-code-test
-  (testing "Authorization code grant -- invalid code returns error"
+  (testing "GHY-4491: Authorization code grant -- an unknown code is an invalid grant (RFC 6749 section 5.2)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [test-client   (create-test-client!)
@@ -928,10 +928,10 @@
                               :redirect_uri  "https://example.com/callback"}
                              :expected-status 400
                              :authorization (basic-auth-header client-id client-secret))]
-          (is (=? {:error string?} response)))))))
+          (is (=? {:error "invalid_grant"} response)))))))
 
 (deftest token-auth-code-wrong-client-test
-  (testing "Authorization code grant -- wrong client gets error"
+  (testing "GHY-4491: Authorization code grant -- a code issued to another client is an invalid grant"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [client-a      (create-test-client!)
@@ -947,7 +947,22 @@
                               :redirect_uri  "https://example.com/callback"}
                              :expected-status 400
                              :authorization (basic-auth-header (:client_id client-b) (:client_secret client-b)))]
-          (is (=? {:error string?} response)))))))
+          (is (=? {:error "invalid_grant"} response)))))))
+
+(deftest token-auth-code-redirect-uri-mismatch-test
+  (testing "GHY-4491: Authorization code grant -- a redirect_uri that differs from the authorization request's is an
+            invalid grant"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client_id client_secret]} (create-test-client!)
+              code (authorize-and-get-code! client_id)]
+          (is (=? {:error "invalid_grant"}
+                  (token-request!
+                   {:grant_type    "authorization_code"
+                    :code          code
+                    :redirect_uri  "https://example.com/other-callback"}
+                   :expected-status 400
+                   :authorization (basic-auth-header client_id client_secret)))))))))
 
 (deftest token-refresh-grant-test
   (testing "Refresh token grant -- returns new access token"
@@ -1026,7 +1041,7 @@
           (is (=? {:error string?} response)))))))
 
 (deftest token-missing-grant-type-test
-  (testing "Missing grant_type -- returns 400"
+  (testing "Missing grant_type -- a malformed request stays invalid_request"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [test-client (create-test-client!)
@@ -1034,7 +1049,18 @@
                            {}
                            :expected-status 400
                            :authorization (basic-auth-header (:client_id test-client) (:client_secret test-client)))]
-          (is (=? {:error string?} response)))))))
+          (is (=? {:error "invalid_request"} response)))))))
+
+(deftest token-refresh-missing-refresh-token-test
+  (testing "GHY-4491: a refresh_token grant with no refresh_token is a malformed request, not an invalid grant"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client_id client_secret]} (create-test-client!)]
+          (is (=? {:error "invalid_request"}
+                  (token-request!
+                   {:grant_type "refresh_token"}
+                   :expected-status 400
+                   :authorization (basic-auth-header client_id client_secret)))))))))
 
 (deftest token-basic-auth-test
   (testing "Client auth via Basic header works"
@@ -1131,12 +1157,12 @@
                                :redirect_uri  "https://example.com/callback"}
                               :expected-status 400
                               :authorization (basic-auth-header client-id client-secret))]
-          (is (=? {:error string?} response)))))))
+          (is (=? {:error "invalid_grant"} response)))))))
 
 ;;; ----------------------------------------- Expired / Revoked Token Tests ------------------------------------
 
 (deftest token-auth-code-expired-code-test
-  (testing "Authorization code grant with expired code returns error"
+  (testing "GHY-4491: Authorization code grant with an expired code is an invalid grant"
     (mt/with-temporary-setting-values [site-url                            "http://localhost:3000"
                                        oauth-server-authorization-code-ttl 1]
       (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -1146,7 +1172,7 @@
               code          (authorize-and-get-code! client-id)]
           (is (string? code) "Should get an authorization code")
           (Thread/sleep 1500)
-          (is (=? {:error string?}
+          (is (=? {:error "invalid_grant"}
                   (token-request!
                    {:grant_type    "authorization_code"
                     :code          code
@@ -1212,7 +1238,9 @@
                                  :authorization (basic-auth-header client_id client_secret)))))))))
 
 (deftest token-refresh-revoked-token-test
-  (testing "Refresh token grant with revoked refresh token returns error"
+  (testing (str "GHY-4491: a revoked refresh token is an invalid grant (RFC 6749 section 5.2). Claude Code drops its "
+                "stored tokens and asks the user to sign in again on invalid_grant, but keeps retrying the dead "
+                "tokens on invalid_request.")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [test-client    (create-test-client!)
@@ -1234,7 +1262,38 @@
                            :refresh_token refresh-token}
                           :expected-status 400
                           :authorization (basic-auth-header client-id client-secret))]
-            (is (=? {:error string?} response))))))))
+            (is (=? {:error "invalid_grant"} response))))))))
+
+(deftest token-refresh-unknown-token-test
+  (testing "GHY-4491: an unknown refresh token is an invalid grant"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{:keys [client_id client_secret]} (create-test-client!)]
+          (is (= {:error             "invalid_grant"
+                  :error_description invalid-token-request-description}
+                 (token-request!
+                  {:grant_type    "refresh_token"
+                   :refresh_token "not-a-refresh-token"}
+                  :expected-status 400
+                  :authorization (basic-auth-header client_id client_secret)))))))))
+
+(deftest token-refresh-other-clients-token-test
+  (testing "GHY-4491: a refresh token issued to another client is an invalid grant"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-a (create-test-client!)
+              client-b (create-test-client!)
+              tokens   (token-request!
+                        {:grant_type   "authorization_code"
+                         :code         (authorize-and-get-code! (:client_id client-a))
+                         :redirect_uri "https://example.com/callback"}
+                        :authorization (basic-auth-header (:client_id client-a) (:client_secret client-a)))]
+          (is (=? {:error "invalid_grant"}
+                  (token-request!
+                   {:grant_type    "refresh_token"
+                    :refresh_token (:refresh_token tokens)}
+                   :expected-status 400
+                   :authorization (basic-auth-header (:client_id client-b) (:client_secret client-b))))))))))
 
 (deftest revocation-valid-token-test
   (testing "Revocation returns 200 for a valid access token"

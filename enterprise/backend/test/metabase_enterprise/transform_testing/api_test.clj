@@ -23,7 +23,8 @@
    :target {:type "table" :schema "PUBLIC" :name "PEOPLE_SUMMARY" :database (mt/id)}})
 
 (defmacro ^:private with-transforms-enabled [& body]
-  `(mt/with-premium-features #{:transforms-basic :transforms-testing}
+  ;; advanced-permissions: the Data Analyst role only opens transform tests while the plan includes it
+  `(mt/with-premium-features #{:advanced-permissions :transforms-basic :transforms-testing}
      (mt/with-temporary-raw-setting-values [~'transforms-enabled "true"]
        ~@body)))
 

@@ -27,6 +27,10 @@ export function makeApp() {
 
   fs.mkdirSync(path.join(appRoot, "queries"));
   fs.mkdirSync(path.join(appRoot, "actions"));
+  fs.writeFileSync(
+    path.join(appRoot, "data_app.yaml"),
+    `slug: ${path.basename(appRoot)}\n`,
+  );
 
   const packageRoot = path.join(
     appRoot,

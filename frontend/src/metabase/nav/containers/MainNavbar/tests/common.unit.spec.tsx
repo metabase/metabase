@@ -468,6 +468,32 @@ describe("nav > containers > MainNavbar", () => {
       ).toBeInTheDocument();
     });
 
+    it("should select other users' personal collections when viewing them (#79967)", async () => {
+      await setup({
+        pathname: Urls.otherUsersPersonalCollections(),
+        route: "/collection/:slug",
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const listItem = screen.getByRole("listitem", {
+        name: /Other users' personal collections/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("should not select other users' personal collections when viewing another collection (#79967)", async () => {
+      await setup({
+        pathname: Urls.collection(TEST_COLLECTION),
+        route: "/collection/:slug",
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const listItem = screen.getByRole("listitem", {
+        name: /Other users' personal collections/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "false");
+    });
+
     it("admin not should see other users personal collections if there no other users", async () => {
       await setup({
         user: createMockUser({ is_superuser: true }),

@@ -20,6 +20,7 @@
 
 ;; Many functions in this namespace re-parse the same files over and over again during testing, so introduce a
 ;; mechanism for bounded caching of those parsed files.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parsed-file-cache* nil)
 
 (def ^:private File

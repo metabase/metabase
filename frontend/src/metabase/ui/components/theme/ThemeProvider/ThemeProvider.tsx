@@ -46,6 +46,12 @@ export interface ThemeProviderProps {
    * CSS selector for Mantine CSS variables injection.
    */
   cssVariablesSelector?: string;
+
+  /**
+   * Keeps brand-derived colors as `color-mix()` over `--mb-color-core-brand` instead of
+   * replacing them with Ocean stops. Used by SDK.
+   */
+  forceDynamicBrandRamp?: boolean;
 }
 
 export const ThemeProvider = ({
@@ -55,6 +61,7 @@ export const ThemeProvider = ({
   whitelabelColors,
   onUpdateWhitelabelColors,
   cssVariablesSelector,
+  forceDynamicBrandRamp,
 }: ThemeProviderProps) => {
   const colorSchemeContext = useColorScheme();
   const resolvedColorScheme =
@@ -63,7 +70,11 @@ export const ThemeProvider = ({
   const theme = useMemo(() => {
     // Unjustified type cast. FIXME
     const baseTheme = merge(
-      getThemeOverrides(resolvedColorScheme, whitelabelColors),
+      getThemeOverrides({
+        colorScheme: resolvedColorScheme,
+        whitelabelColors,
+        forceDynamicBrandRamp,
+      }),
       themeOverride,
     ) as MantineTheme;
 
@@ -93,6 +104,7 @@ export const ThemeProvider = ({
     } as MantineTheme;
   }, [
     themeOverride,
+    forceDynamicBrandRamp,
     resolvedColorScheme,
     whitelabelColors,
     onUpdateWhitelabelColors,

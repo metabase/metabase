@@ -72,6 +72,7 @@
   [^Integer id]
   (str (site-url) (card-path id)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *dashcard-parameters*
   "Bind dashboard parameters for dashcard deeplinked urls"
   {})

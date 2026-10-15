@@ -267,8 +267,6 @@ export function ExplorationSidebar({
         <Box flex={1} miw={0}>
           <SegmentedControl<ExplorationSidebarTab>
             fullWidth
-            radius="xl"
-            bg="background-tertiary"
             value={selectedSidebarTab}
             onChange={(value) => {
               if (

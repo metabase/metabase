@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase.request.settings :as request.settings]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *request*
   nil)
 
@@ -27,6 +28,7 @@
   [request & body]
   `(do-with-current-request ~request (^:once fn* [] ~@body)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *limit*
   nil)
 
@@ -35,6 +37,7 @@
   []
   *limit*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *offset*
   nil)
 
@@ -43,6 +46,7 @@
   []
   *offset*)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *paged?*
   false)
 

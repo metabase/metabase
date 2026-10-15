@@ -213,6 +213,19 @@
           (is (not (contains? (:body @captured-response) :trace))
               "Response should not include stacktrace"))))))
 
+(deftest catch-api-exceptions-middleware-includes-configured-cors-test
+  (let [origin   "https://mcp.example"
+        cors     {:origins-fn         (constantly origin)
+                  :sandbox-origin?-fn (constantly false)}
+        handler  (mw.exceptions/catch-api-exceptions
+                  (fn [_request _respond raise]
+                    (raise (Exception. "boom")))
+                  cors)
+        response (handler {:headers {"origin" origin}}
+                          identity
+                          #(throw %))]
+    (is (= origin (get-in response [:headers "Access-Control-Allow-Origin"])))))
+
 (deftest catch-api-exceptions-middleware-eof-exception-logs-request-info-test
   (testing "EofException (request canceled) log line includes the HTTP method, URI, and client IP"
     (let [handler (mw.exceptions/catch-api-exceptions

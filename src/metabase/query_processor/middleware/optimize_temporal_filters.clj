@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [get-in mapv])
   (:require
    [better-cond.core :as b]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -139,12 +140,16 @@
 (mu/defn- temporal-literal-lower-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
    t    :- ::temporal]
-  (:start (u.date/range t unit)))
+  ;; TODO (Chris 2026-09-30) -- thread time-config through from optimize-temporal-clauses instead of
+  ;; re-fetching it per clause, the way lib.filter.desugar does.
+  (:start (u.date/range (lib-be/time-config) t unit)))
 
 (mu/defn- temporal-literal-upper-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
    t    :- ::temporal]
-  (:end (u.date/range t unit)))
+  ;; TODO (Chris 2026-09-30) -- thread time-config through from optimize-temporal-clauses instead of
+  ;; re-fetching it per clause, the way lib.filter.desugar does.
+  (:end (u.date/range (lib-be/time-config) t unit)))
 
 (defn- change-temporal-unit-to-default [field]
   (match/replace field
@@ -243,7 +248,9 @@
   (if (date-field-with-day-bucketing? query path field)
     (lib/!= (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value))
     (when-let [optimized ((get-method optimize-clause :=) query path clause)]
-      (lib/negate-boolean-expression optimized))))
+      ;; TODO (Chris 2026-09-30) -- thread time-config through from optimize-temporal-clauses instead of
+      ;; re-fetching it per clause, the way lib.filter.desugar does.
+      (lib/negate-boolean-expression (lib-be/time-config) optimized))))
 
 (mu/defn- optimize-comparison-clause :- [:maybe ::lib.schema.mbql-clause/clause]
   [query                       :- ::lib.schema/query

@@ -537,6 +537,7 @@
 
 (defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *secret-key* nil)
 
 (defn sign [claims] (jwt/sign claims *secret-key*))

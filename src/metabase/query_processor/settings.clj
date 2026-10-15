@@ -58,6 +58,7 @@
   details."
   1048575)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *minimum-download-row-limit*
   "Minimum download row limit. Using dynamic so we can rebind in tests"
   absolute-max-results)

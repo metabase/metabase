@@ -344,6 +344,16 @@ function getAggregationResultColumnNames(
   aggregations: readonly unknown[] | undefined,
 ) {
   return (aggregations ?? []).flatMap((aggregation) => {
+    // Metrics and Measures also carry a `name`, but it is their title, not a
+    // result column name.
+    if (
+      isObject(aggregation) &&
+      aggregation.type === "operator" &&
+      typeof aggregation.name === "string"
+    ) {
+      return [aggregation.name];
+    }
+
     if (isCountAggregation(aggregation)) {
       return ["count"];
     }

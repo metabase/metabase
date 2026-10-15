@@ -55,7 +55,7 @@
   "The ID, name, type, and Collection of the unarchived metric and model Cards outside the Database with
   `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Card :id :name :type :collection_id :card_schema]
+  (t2/select [:model/Card :id :name :type :collection_id]
              :type        [:in ["metric" "model"]]
              :archived    false
              :database_id [:not= audit-database-id]))

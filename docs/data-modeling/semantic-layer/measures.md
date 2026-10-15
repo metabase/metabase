@@ -13,6 +13,8 @@ People will see measures as options in the Summarize block of the [query builder
 
 ![Measure in the query builder](./images/measure.png)
 
+You can define measures on any table. Measures on [published tables](published-tables.md) are part of your [semantic layer](library.md#semantic-layer).
+
 ## Create measures
 
 > If your instance is in read-only [remote sync](../../installation-and-operation/remote-sync.md) mode, and you enabled sync of the [Library](./library.md), you will not be able to create measures on tables published in the Library while in read-only mode.
@@ -20,7 +22,7 @@ People will see measures as options in the Summarize block of the [query builder
 Measures are created in [Data Studio](../data-studio.md).
 
 1. Go to **Data Studio** by clicking the **grid icon** in top right of the screen and selecting **Data Studio**.
-2. In Data Studio, go to **Tables** in the left sidebar, and select the table to define a measure on.
+2. In Data Studio, go to **Connected data** in the left sidebar, and select the table to define a measure on.
 3. In the right sidebar for the table, select **Measures**.
 
    ![Find measures](./images/find-measures.png)
@@ -56,7 +58,7 @@ Measures are only available to questions that directly query the measure's table
 Deleting a measure won't break questions using it. The questions that use the deleted measure will "revert" to using the measure's (now unnamed) aggregation formula.
 
 1. Go to **Data Studio** by clicking the **grid icon** in top right of the screen and selecting **Data Studio**.
-2. In Data Studio, go to **Tables**, and select the measure's table.
+2. In Data Studio, go to **Connected data**, and select the measure's table.
 3. In the right sidebar for the table, select **Measures**.
 4. Choose the measure you want to delete.
 5. On the measure's page, click on the **three dots** icon next to the measure's name and select **Remove measure**.
@@ -67,7 +69,7 @@ You can explore measures along dimensions and compare several measures in the [M
 
 ![Explore a measure](./images/explore-measure.png)
 
-To see all measures on a table, select the table in [Data Studio > Managing tables](../metadata/managing-tables.md) and switch to the **Measures** tab.
+To see all measures on a table, select the table in [Data Studio > Connected data](../metadata/managing-tables.md) and switch to the **Measures** tab.
 
 ## Permissions for measures
 

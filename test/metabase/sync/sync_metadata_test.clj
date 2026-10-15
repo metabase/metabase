@@ -46,7 +46,10 @@
           (is (thrown? Throwable
                        (#'sync-metadata/sync-db-metadata!* db))))
         (is (= "aborted"
-               (t2/select-one-fn :initial_sync_status :model/Database (:id db))))))))
+               (t2/select-one-fn :initial_sync_status :model/Database (:id db))))
+        (testing "and the message of the error is recorded as the cause (GHY-3856)"
+          (is (= "boom"
+                 (t2/select-one-fn :initial_sync_error :model/Database (:id db)))))))))
 
 (deftest field-sync-failure-aborts-initial-sync-test
   (testing "When an essential sync step fails non-transiently mid-initial-sync (e.g. MariaDB <10.2 whose"
@@ -61,4 +64,16 @@
                                                  (.setStackTrace (into-array StackTraceElement [])))))]
             (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id))))
           (is (= "aborted"
-                 (t2/select-one-fn :initial_sync_status :model/Database (mt/id)))))))))
+                 (t2/select-one-fn :initial_sync_status :model/Database (mt/id))))
+          (testing "and the step's own error message is recorded as the cause, not a schema-validation error (GHY-3856)"
+            (is (= "Unknown column 'generation_expression' in 'field list'"
+                   (t2/select-one-fn :initial_sync_error :model/Database (mt/id))))))))))
+
+(deftest completed-sync-clears-initial-sync-error-test
+  (testing "GHY-3856: a sync that completes after an aborted one clears the recorded cause, so the UI shows no stale error"
+    (mt/with-temp-copy-of-db
+      (t2/update! :model/Database (mt/id) {:initial_sync_status "aborted"
+                                           :initial_sync_error  "boom"})
+      (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id)))
+      (is (= {:initial_sync_status "complete", :initial_sync_error nil}
+             (t2/select-one [:model/Database :initial_sync_status :initial_sync_error] :id (mt/id)))))))

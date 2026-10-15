@@ -378,10 +378,12 @@
                      :join  [[:collection :c] [:= :collection_id :c.id]]}))
 
 (mu/defn set-pulse-archived-in-collections!
-  "Set `archived?` on the Pulses in the Collections with `collection-ids`, returning the number updated."
+  "Set `archived?` on the Pulses in the Collections with `collection-ids`, returning the number updated.
+  Dashboard subscriptions are skipped: they follow their Dashboard's `archived` flag, and their own `archived` flag
+  records only that the user deleted them."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    archived?      :- :boolean]
-  (t2/update! :model/Pulse {:collection_id [:in collection-ids]} {:archived archived?}))
+  (t2/update! :model/Pulse {:collection_id [:in collection-ids] :dashboard_id nil} {:archived archived?}))
 
 (mu/defn set-native-query-snippet-archived-in-collections!
   "Set `archived?` on the NativeQuerySnippets in the Collections with `collection-ids`, returning the number

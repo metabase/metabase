@@ -10,9 +10,9 @@
    [toucan2.core :as t2]))
 
 (mu/defn enabled-data-app-count
-  "The number of enabled data apps without a sync error."
+  "The number of enabled data apps that aren't drafts."
   []
-  (t2/count :data_app :enabled true :sync_error nil))
+  (t2/count :data_app :enabled true :draft false))
 
 (mu/defn embedded-dashboard-count
   "The number of unarchived Dashboards with embedding enabled."

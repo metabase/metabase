@@ -138,8 +138,7 @@ function ExplorationTreeHeading({
       aria-busy={isLoading}
       className={cx(S.treeRow, S.treeRowHeading, {
         [S.treeRowNested]: depth > 0,
-        [S.treeRowThreadSeparated]:
-          depth === 0 && item.data?.headingKind === "sub-exploration",
+        [S.treeRowThreadSeparated]: depth === 0,
       })}
       tabIndex={0}
       onKeyDown={(e) => {

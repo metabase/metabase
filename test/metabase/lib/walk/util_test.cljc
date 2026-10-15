@@ -1,5 +1,6 @@
 (ns metabase.lib.walk.util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -393,3 +394,117 @@
                       [(lib/query override-mp (lib.metadata/card override-mp 2))]
                       {:include-implicitly-joinable? true})))
           "the result-metadata FK-target override pulls in PEOPLE, which the raw PRODUCTS.PRICE Field does not reference"))))
+
+(defn- snippet-tag [snippet-name snippet-id]
+  {:name         (str "snippet: " snippet-name)
+   :display-name (str "Snippet: " snippet-name)
+   :type         :snippet
+   :snippet-name snippet-name
+   :snippet-id   snippet-id})
+
+(defn- native-query-with-tags [mp tags]
+  (lib.query/query-with-stages
+   mp
+   [{:lib/type      :mbql.stage/native
+     :native        (str "SELECT * FROM " (str/join " " (map #(str "{{" % "}}") (keys tags))))
+     :template-tags tags}]))
+
+(deftest ^:parallel all-referenced-entity-ids-recursive-snippet-test
+  (testing "follows snippet -> snippet and snippet -> card edges through the snippets' stored template tags"
+    (let [card-id  5
+          outer-id 10
+          inner-id 11
+          card-tag (str "#" card-id "-products")
+          mp       (-> meta/metadata-provider
+                       (lib.tu/metadata-provider-with-card-from-query
+                        card-id
+                        (lib/query meta/metadata-provider (meta/table-metadata :products)))
+                       (lib.tu/mock-metadata-provider
+                        {:native-query-snippets
+                         [{:id            outer-id
+                           :name          "outer"
+                           :template-tags {"snippet: inner" (snippet-tag "inner" inner-id)}}
+                          {:id            inner-id
+                           :name          "inner"
+                           :template-tags {card-tag {:name         card-tag
+                                                     :display-name "Products"
+                                                     :type         :card
+                                                     :card-id      card-id}}}]}))
+          query    (native-query-with-tags mp {"snippet: outer" (snippet-tag "outer" outer-id)})]
+      (is (= {:table   #{(meta/id :products)}
+              :card    #{card-id}
+              :metric  #{}
+              :measure #{}
+              :segment #{}
+              :snippet #{outer-id inner-id}}
+             (lib/all-referenced-entity-ids-recursive query))))))
+
+(deftest ^:parallel all-referenced-entity-ids-recursive-measure-segment-test
+  (testing "follows measure -> segment (inside sum-where) and segment -> segment edges"
+    (let [inner-segment-id 200
+          outer-segment-id 201
+          measure-id       300
+          orders           (meta/table-metadata :orders)
+          total            (meta/field-metadata :orders :total)
+          mp1              (lib.tu/mock-metadata-provider
+                            meta/metadata-provider
+                            {:segments [{:id         inner-segment-id
+                                         :name       "Big orders"
+                                         :table-id   (meta/id :orders)
+                                         :definition (-> (lib/query meta/metadata-provider orders)
+                                                         (lib/filter (lib/> total 100)))}]})
+          mp2              (lib.tu/mock-metadata-provider
+                            mp1
+                            {:segments [{:id         outer-segment-id
+                                         :name       "Big orders, again"
+                                         :table-id   (meta/id :orders)
+                                         :definition (-> (lib/query mp1 orders)
+                                                         (lib/filter (lib.metadata/segment mp1 inner-segment-id)))}]})
+          mp               (lib.tu/mock-metadata-provider
+                            mp2
+                            {:measures [{:id         measure-id
+                                         :name       "Sum of big totals"
+                                         :table-id   (meta/id :orders)
+                                         :definition (lib/aggregate
+                                                      (lib/query mp2 orders)
+                                                      (lib/sum-where total
+                                                                     (lib.metadata/segment mp2 outer-segment-id)))}]})
+          query            (-> (lib/query mp orders)
+                               (lib/aggregate (lib.metadata/measure mp measure-id)))]
+      (is (= {:table   #{(meta/id :orders)}
+              :card    #{}
+              :metric  #{}
+              :measure #{measure-id}
+              :segment #{outer-segment-id inner-segment-id}
+              :snippet #{}}
+             (lib/all-referenced-entity-ids-recursive query))))))
+
+(deftest ^:parallel all-referenced-entity-ids-recursive-cycle-test
+  (testing "a snippet cycle terminates"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:native-query-snippets [{:id 20, :name "a", :template-tags {"snippet: b" (snippet-tag "b" 21)}}
+                                          {:id 21, :name "b", :template-tags {"snippet: a" (snippet-tag "a" 20)}}]})
+          query (native-query-with-tags mp {"snippet: a" (snippet-tag "a" 20)})]
+      (is (= #{20 21}
+             (:snippet (lib/all-referenced-entity-ids-recursive query))))))
+  (testing "a Card cycle (legacy queries) terminates"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :name          "a"
+                           :database-id   (meta/id)
+                           :dataset-query {:database (meta/id), :type :query, :query {:source-table "card__2"}}}
+                          {:id            2
+                           :name          "b"
+                           :database-id   (meta/id)
+                           :dataset-query {:database (meta/id), :type :query, :query {:source-table "card__1"}}}]})
+          query (lib/query mp (lib.metadata/card mp 1))]
+      (is (= #{1 2}
+             (:card (lib/all-referenced-entity-ids-recursive query)))))))
+
+(deftest ^:parallel all-referenced-entity-ids-recursive-unresolvable-test
+  (testing "ids the metadata provider cannot resolve are kept in the result but not followed"
+    (let [query (native-query-with-tags meta/metadata-provider {"snippet: ghost" (snippet-tag "ghost" 999)})]
+      (is (= #{999}
+             (:snippet (lib/all-referenced-entity-ids-recursive query)))))))

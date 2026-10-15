@@ -50,14 +50,16 @@
   the direct openai adapter.
 
   `:reasoning` classifies what each model streams back, probed live against OpenRouter on
-  2026-08-31 (all 26 models) and cross-checked with the `reasoning` metadata in
+  2026-08-31 (all 26 models then in the catalog; rows added or renamed since carry their own
+  probe notes) and cross-checked with the `reasoning` metadata in
   `GET /v1/models` (https://openrouter.ai/docs/use-cases/reasoning-tokens):
   `:renderable` streams reasoning text under an explicit `reasoning {:enabled true}`;
   `:renderable-default` streams reasoning summaries under the server default but must receive
   NO directive — an explicit enable verifiably suppresses gpt-5.6's reasoning entirely;
   `:budget-only` (`supported_efforts` nil in the catalog) silently ignores the unified enable
   and would need an explicit token budget.
-  `:reasoning-mandatory?` marks models where `reasoning {:enabled false}` is rejected with a 400."
+  `:reasoning-mandatory?` marks models where `reasoning {:enabled false}` is rejected with a 400.
+  `:required-tool-choice? false` marks models that don't support `:tool_choice \"required\"`; absent means they do."
   {"anthropic/claude-fable-5"        {:display-name "Claude Fable 5"          :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
    "anthropic/claude-opus-5"         {:display-name "Claude Opus 5"           :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.8"       {:display-name "Claude Opus 4.8"         :context-window 1000000 :reasoning :renderable}
@@ -90,7 +92,9 @@
    "openai/gpt-5.4"                  {:display-name "GPT-5.4"                 :context-window  922000 :reasoning :renderable}
    "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000 :reasoning :renderable}
    "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
-   "qwen/qwen3.8-max"                {:display-name "Qwen3.8 Max"             :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
+   ;; classified from the 2026-08-31 and 2026-09-03 probes of the undated `qwen/qwen3.8-max`, which OpenRouter
+   ;; has retired in favor of this dated id (see `:retired-models` in `metabase.llm.provider`)
+   "qwen/qwen3.8-max-0902"           {:display-name "Qwen3.8 Max 0902"        :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true :required-tool-choice? false}
    ;; probed 2026-09-04 (post-dating the 2026-08-31 run): the enable streams reasoning, the
    ;; disable is rejected with a 400 (thinking-only upstream, as on native z.ai), and a forced
    ;; tool call at the floored budget completes
@@ -192,14 +196,10 @@
              (re-find #"^openai/o\d" model)
              (anthropic-current-gen? model)))))
 
-(def ^:private required-tool-choice-unsupported-models
-  "Models that don't support `:tool_choice \"required\"`"
-  #{"qwen/qwen3.8-max"})
-
 (defn- supports-required-tool-choice?
-  "Whether `model` accepts `:tool_choice \"required\"`."
+  "Whether `model` accepts `:tool_choice \"required\"`: true unless its [[supported-models]] row says otherwise."
   [model]
-  (not (contains? required-tool-choice-unsupported-models model)))
+  (get-in supported-models [(str model) :required-tool-choice?] true))
 
 (defn- required-tool-choice->auto
   "Downgrade `:tool_choice \"required\"` to `\"auto\"`."

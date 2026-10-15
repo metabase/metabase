@@ -318,8 +318,9 @@
           ;;            narrows CI coverage, so it wants a deliberate decision.
           ;; 2026-09-11 Bumped to 47: lib.schema, lib.metadata and query-processor.cache-backend are carved out of
           ;;            lib and query-processor, which already trigger driver tests
-          ;; 2026-09-29 48 after merging master's 47 into Dynamic goals (+1 visualization-settings)
-          max-allowed-count 48]
+          ;; 2026-10-01 Bumped to 48: parameters.schema is carved out of parameters, which already triggers driver tests
+          ;; 2026-10-15 49 after merging master's 48 into Dynamic goals (+1 visualization-settings)
+          max-allowed-count 49]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s

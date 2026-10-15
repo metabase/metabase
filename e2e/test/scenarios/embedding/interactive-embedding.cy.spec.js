@@ -2006,10 +2006,14 @@ const addLinkClickBehavior = ({ dashboardId, linkTemplate }) => {
       dashcards: body.dashcards.map((card) => ({
         ...card,
         visualization_settings: {
-          click_behavior: {
-            type: "link",
-            linkType: "url",
-            linkTemplate,
+          column_settings: {
+            '["name","ID"]': {
+              click_behavior: {
+                type: "link",
+                linkType: "url",
+                linkTemplate,
+              },
+            },
           },
         },
       })),

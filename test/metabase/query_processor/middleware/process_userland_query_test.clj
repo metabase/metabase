@@ -194,6 +194,7 @@
                        :parameters    nil}
                       (qe))))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *viewlog-call-count* nil)
 
 (methodical/defmethod events/publish-event! ::event

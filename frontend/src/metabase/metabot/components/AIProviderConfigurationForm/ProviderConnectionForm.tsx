@@ -46,8 +46,8 @@ export function ProviderConnectionForm({
   onCancel?: () => void;
 }) {
   const isEditing = connection != null;
-  const [typeName, setTypeName] = useState<string | undefined>(
-    connection?.type,
+  const [providerType, setProviderType] = useState(() =>
+    providerTypes.find((option) => option.type === connection?.type),
   );
   const [name, setName] = useState(connection?.name ?? "");
   const [config, setConfig] = useState<LlmProviderConfig>(
@@ -83,11 +83,6 @@ export function ProviderConnectionForm({
   const [updateProvider, updateResult] = useUpdateLlmProviderMutation();
   const isSaving = createResult.isLoading || updateResult.isLoading;
 
-  const providerType = useMemo(
-    () => providerTypes.find((option) => option.type === typeName),
-    [providerTypes, typeName],
-  );
-
   const [primaryFields, advancedFields] = useMemo(() => {
     const fields = providerType?.fields ?? [];
     return [
@@ -102,7 +97,7 @@ export function ProviderConnectionForm({
 
   const selectProviderType = useCallback(
     (selected: LlmProviderType, nextConfig: LlmProviderConfig = {}) => {
-      setTypeName(selected.type);
+      setProviderType(selected);
       setName(selected.label);
       setConfig(nextConfig);
       setModel(selected.default_model ?? undefined);
@@ -140,7 +135,7 @@ export function ProviderConnectionForm({
   }, [isPickingType, providerTypes, selectProviderType]);
 
   const handleBack = () => {
-    setTypeName(undefined);
+    setProviderType(undefined);
     setName("");
     setConfig({});
     setModel(undefined);
@@ -169,6 +164,10 @@ export function ProviderConnectionForm({
     Object.entries(providerType.requires).every(
       ([key, deps]) => !hasValue(key) || deps.every(hasValue),
     );
+  const hasConfiguredModel =
+    providerType != null &&
+    providerType.model_fields.length > 0 &&
+    providerType.model_fields.every(hasValue);
 
   const handleSave = async () => {
     if (!providerType) {
@@ -184,19 +183,20 @@ export function ProviderConnectionForm({
       ...config,
       ...Object.fromEntries(cleared.map((key) => [key, ""])),
     };
+    const savedModel = hasConfiguredModel ? undefined : model;
     try {
       const saved = isEditing
         ? await updateProvider({
             key: connection.key,
             name,
             config: savedConfig,
-            model,
+            model: savedModel,
           }).unwrap()
         : await createProvider({
             type: providerType.type,
             name,
             config: savedConfig,
-            model,
+            model: savedModel,
           }).unwrap();
       onSaved(saved);
     } catch (caught) {
@@ -247,7 +247,7 @@ export function ProviderConnectionForm({
                 disabledFields={connection?.env_fields}
                 autoFocusFirstField
               />
-              {selected.models.length > 0 && (
+              {selected.models.length > 0 && !hasConfiguredModel && (
                 <Select
                   label={t`Model`}
                   description={t`Connecting checks your credentials against this model, and Metabot starts on it.`}

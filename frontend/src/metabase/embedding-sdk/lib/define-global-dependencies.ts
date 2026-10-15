@@ -17,7 +17,9 @@ const CONFIG: Record<ExternalDependenciesGlobalName, any> = {
   METABASE_REACT_DOM_SERVER: ReactDOMServer,
 };
 
-// Put External Dependencies to the global object, so it can be used by the SDK bundle
+// Put External Dependencies to the global object, so it can be used by the SDK
+// bundle. The React here is the host app's, since the package is installed and
+// bundled by the host; the bundle has none of its own.
 export function defineGlobalDependencies() {
   if (typeof window === "undefined") {
     return;

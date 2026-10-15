@@ -149,34 +149,16 @@ describe("ManageDataAppsPage", () => {
       ).toBeInTheDocument();
     });
 
-    it("renders each sync status: a synced sha, a failure with its reason, and never-synced", async () => {
+    it("labels drafts", async () => {
       setup({
         apps: [
-          createMockDataApp({
-            id: 1,
-            display_name: "Synced App",
-            last_synced_sha: "abcdef0",
-          }),
-          createMockDataApp({
-            id: 2,
-            display_name: "Failed App",
-            sync_error: "boom: bad manifest",
-          }),
-          createMockDataApp({
-            id: 3,
-            display_name: "New App",
-            last_synced_sha: null,
-            sync_error: null,
-          }),
+          createMockDataApp({ id: 1, display_name: "Live App" }),
+          createMockDataApp({ id: 2, display_name: "Draft App", draft: true }),
         ],
       });
 
-      expect(await screen.findByText("Synced abcdef0")).toBeInTheDocument();
-      expect(screen.getByText("Sync failed")).toHaveAttribute(
-        "title",
-        "boom: bad manifest",
-      );
-      expect(screen.getByText("Not synced yet")).toBeInTheDocument();
+      expect(await screen.findByText("Draft App")).toBeInTheDocument();
+      expect(screen.getAllByText("Draft")).toHaveLength(1);
     });
 
     it("shows how many hosts an app is allowed to reach", async () => {

@@ -318,6 +318,10 @@
     (is (= "anthropic/claude-sonnet-4-5"
            (llm.provider/connection-model "azure" {:model-family    "anthropic"
                                                    :deployment-name "claude-sonnet-4-5"}))))
+  (testing "Google names a Model Garden endpoint by the collection its ID belongs to, and nothing without an ID"
+    (is (= "endpoints/1234567890123456789"
+           (llm.provider/connection-model "google" {:endpoint-id " 1234567890123456789 "})))
+    (is (nil? (llm.provider/connection-model "google" {:oauth-access-token "ya29.token"}))))
   (testing "a half-filled connection names no model rather than a malformed one"
     (is (nil? (llm.provider/connection-model "azure" {:model-family "openai"})))
     (is (nil? (llm.provider/connection-model "azure" {:model-family    "openai"
@@ -613,6 +617,33 @@
       (is (nil? (llm.provider/resolve-model-ref "nope/some-model")))
       (is (nil? (llm.provider/resolve-model-ref "openai/gpt-5.4")))
       (is (nil? (llm.provider/resolve-model-ref nil))))))
+
+(deftest resolve-model-ref-reads-a-retired-model-as-its-successor-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id resolves to the model that now serves it"
+      (is (= "qwen/qwen3.8-max-0902" (:model (llm.provider/resolve-model-ref "openrouter/qwen/qwen3.8-max")))))
+    (testing "the same id under another provider type is not retired there"
+      (is (= "qwen/qwen3.8-max" (:model (llm.provider/resolve-model-ref "anthropic/qwen/qwen3.8-max")))))))
+
+(deftest canonical-model-ref-test
+  (mt/with-temporary-setting-values [llm-providers [(connection "openrouter" "openrouter" {:api-key "sk-or-v1-db"})
+                                                    (connection "anthropic" "anthropic" {:api-key "sk-ant-db"})]]
+    (testing "a retired model id reads as the model that now serves it"
+      (is (= "openrouter/qwen/qwen3.8-max-0902" (llm.provider/canonical-model-ref "openrouter/qwen/qwen3.8-max"))))
+    (testing "any other reference is returned unchanged"
+      (is (= "openrouter/qwen/qwen3.8-max-0902" (llm.provider/canonical-model-ref "openrouter/qwen/qwen3.8-max-0902")))
+      (is (= "anthropic/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "anthropic/qwen/qwen3.8-max")))
+      (is (= "nope/qwen/qwen3.8-max" (llm.provider/canonical-model-ref "nope/qwen/qwen3.8-max")))
+      (is (nil? (llm.provider/canonical-model-ref nil))))))
+
+(deftest ^:parallel retired-models-map-straight-to-a-current-model-test
+  (testing (str "a retired model's successor is never itself retired: a model ref resolves through a single "
+                "lookup, so a chain would leave a saved selection naming a retired id")
+    (doseq [{:keys [type retired-models]} (llm.provider/provider-types)
+            successor                     (vals retired-models)]
+      (testing type
+        (is (not (contains? retired-models successor)))))))
 
 (deftest with-field-defaults-normalizes-base-urls-test
   (testing "a base URL keeps no trailing slash, whichever source it comes from, so joining a path cannot double the /"

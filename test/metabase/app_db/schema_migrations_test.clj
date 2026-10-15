@@ -2861,6 +2861,23 @@
           (migrate!)
           (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
 
+(deftest retire-confirmed-at-v59-ids-test
+  (testing "v59.2026-07-10T22:29:18 deletes the changelog rows of the confirmed_at changesets that moved to v63 ids"
+    (impl/test-migrations "v59.2026-07-10T22:29:18" [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]]
+        (t2/insert! clog (map-indexed (fn [i id]
+                                        {:id            id
+                                         :author        "escherize"
+                                         :filename      "migrations/059_update_migrations.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      v59-ids))
+        (migrate!)
+        (is (empty? (t2/select clog :id [:in v59-ids])))))))
+
 (deftest dependency-status-segment-handles-missing-column-migration-test
   (testing "The whole 20260402_dependency_status changeset run survives a missing
             segment.dependency_analysis_version column (issue #74443). Every changeset that
@@ -3287,6 +3304,38 @@
         (testing "normal db permissions are untouched"
           (is (some? (t2/select-one-fn :id :data_permissions :id normal-perm)))
           (is (= 1 (t2/count :data_permissions :db_id normal-id))))))))
+
+(deftest auth-identity-confirmed-at-retires-misnumbered-v59-ids-test
+  (testing "v63.2026-07-10 confirmed_at changesets adopt a database that ran them under their old v59 ids, and roll back"
+    (impl/test-migrations ["v63.2026-07-10T22:29:15" "v63.2026-07-10T22:29:17"] [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            v59-ids    ["v59.2026-07-10T22:29:16" "v59.2026-07-10T22:29:17"]
+            column?    #(seq (t2/query [(str "SELECT column_name FROM information_schema.columns"
+                                             " WHERE lower(table_name) = 'auth_identity' AND lower(column_name) = 'confirmed_at'"
+                                             (case (mdb/db-type)
+                                               :mysql    " AND table_schema = database()"
+                                               :postgres " AND table_schema = current_schema()"
+                                               :h2       ""))]))]
+        ;; simulate an instance upgraded by the code that shipped these changesets under v59 ids
+        (t2/query ["ALTER TABLE auth_identity ADD COLUMN confirmed_at TIMESTAMP NULL"])
+        (t2/insert! clog (map-indexed (fn [i id]
+                                        {:id            id
+                                         :author        "escherize"
+                                         :filename      "migrations/059_update_migrations.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      v59-ids))
+        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (migrate!)
+        (testing "the stale v59 rows are gone and the existing column is adopted"
+          (is (empty? (t2/select clog :id [:in v59-ids])))
+          (is (= "MARK_RAN" (t2/select-one-fn :exectype clog :id "v63.2026-07-10T22:29:16")))
+          (is (column?)))
+        (testing "rolling back to 62 drops the column"
+          (migrate! :down 62)
+          (is (not (column?))))))))
 
 (deftest move-metabot-conversation-state-to-messages-test
   (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"

@@ -3,6 +3,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.events :as rs-events]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -140,7 +141,9 @@
              :model_id          (:id entity)
              :status            "create"
              :status_changed_at (t/offset-date-time)}
-            (spec/build-sync-object-fields spec entity)))))
+            (spec/build-sync-object-fields spec entity))))
+  ;; Actions live in their model's collection, not a collection_id of their own.
+  (rs-events/track-untracked-actions! collection-ids))
 
 (defn- collections-by-id
   "`{id collection}` for `ids`, carrying the fields the failure descriptions need. Nil and duplicate ids
@@ -195,7 +198,6 @@
                                  "card")
                       ;; Named for the wire, as the dirty-changes payload already does for `display`.
                       :display (some-> display name)}]))
-          ;; :card_schema is required alongside :type — selecting it runs Card's schema upgrades.
           (remote-sync.db/card-types ids))))
 
 (defn- describe-entities

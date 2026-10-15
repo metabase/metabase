@@ -76,6 +76,7 @@
    [:refingerprint               {:optional true} [:maybe :boolean]]
    [:cache_ttl                   {:optional true} [:maybe :int]]
    [:initial_sync_status         {:optional true} [:maybe [:or :keyword :string]]]
+   [:initial_sync_error          {:optional true} [:maybe :string]]
    [:creator_id                  {:optional true} [:maybe ::lib.schema.id/user]]
    [:settings                    {:optional true} [:maybe ::database.settings]]
    [:dbms_version                {:optional true} [:maybe ::database.dbms-version]]

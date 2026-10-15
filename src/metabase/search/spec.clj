@@ -513,6 +513,7 @@
     (sequential? form) (mapv canonicalize form)
     :else form))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *testing-only-index-version-hash*
   "Override for tests that need a specific index version."
   nil)

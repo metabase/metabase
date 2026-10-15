@@ -1,0 +1,6 @@
+template/dist
+template/package-lock.json
+template/yarn.lock
+template/pnpm-lock.yaml
+template/bun.lock
+template/bun.lockb

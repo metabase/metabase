@@ -214,6 +214,25 @@
         (with-temp-public-dashboard [{uuid :public_uuid, dashboard-id :id}]
           (is (= dashboard-id (:id (mt/client :get 200 (str "public/dashboard/" uuid))))))))))
 
+(deftest ^:synchronized public-uuid-prefix-lookup-is-bound-test
+  (testing "GHY-4587: every shared model resolves by its uuid through the bound prefix lookup"
+    (encryption-tu/with-encrypted-app-db
+      (mt/with-actions-enabled
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-card [{uuid :public_uuid, card-id :id}]
+            (is (= card-id (:id (mt/client :get 200 (str "public/card/" uuid)))))
+            (is (= card-id (:id (public-sharing/public-uuid->model :model/Card uuid)))))
+          (with-temp-public-dashboard [{uuid :public_uuid, dashboard-id :id}]
+            (is (= dashboard-id (:id (mt/client :get 200 (str "public/dashboard/" uuid)))))
+            (is (= dashboard-id (:id (public-sharing/public-uuid->model :model/Dashboard uuid)))))
+          (let [{uuid :public_uuid, :as action-opts} (shared-obj)]
+            (mt/with-actions [{action-id :action-id} action-opts]
+              (is (= action-id (:id (mt/client :get 200 (str "public/action/" uuid)))))
+              (is (= action-id (:id (public-sharing/public-uuid->model :model/Action uuid))))))
+          (mt/with-temp [:model/Document {uuid :public_uuid, document-id :id} (merge {:name "Shared Doc"} (shared-obj))]
+            (is (= document-id (:id (mt/client :get 200 (str "public/document/" uuid)))))
+            (is (= document-id (:id (public-sharing/public-uuid->model :model/Document uuid))))))))))
+
 (defn- assert-forged-plaintext-does-not-resolve!
   [model id]
   (let [uuid (str (random-uuid))]

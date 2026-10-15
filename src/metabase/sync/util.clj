@@ -221,6 +221,7 @@
                javax.net.ssl.SSLHandshakeException]]
   (register-transient-exception klass))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *log-exceptions-and-continue?*
   "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default
   behavior. You can disable this for debugging or test purposes."
@@ -432,6 +433,7 @@
   (when (not= (:initial_sync_status table) "complete")
     (sync.db/update-table! (u/the-id table) {:initial_sync_status "complete"})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *batch-size*
   "Size of table update partition."
   20000)
@@ -450,13 +452,16 @@
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (sync.db/update-database! (u/the-id database) {:initial_sync_status "complete"})))
+    (sync.db/update-database! (u/the-id database) {:initial_sync_status "complete"
+                                                   :initial_sync_error  nil})))
 
 (defn set-initial-database-sync-aborted!
-  "Marks initial sync as aborted for this database so that an error can be displayed on the UI"
-  [database]
+  "Marks initial sync as aborted for this database, recording the message of `error` (the Throwable that aborted it)
+  so that the cause can be displayed on the UI"
+  [database error]
   (when (not= (:initial_sync_status database) "complete")
-    (sync.db/update-database! (u/the-id database) {:initial_sync_status "aborted"})))
+    (sync.db/update-database! (u/the-id database) {:initial_sync_status "aborted"
+                                                   :initial_sync_error  (ex-message error)})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |

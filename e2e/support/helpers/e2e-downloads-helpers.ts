@@ -25,6 +25,8 @@ interface DownloadAndAssertParams {
   assertStatusCode?: number;
   /** Assert that parameters in request body match expected values */
   assertParameters?: any[];
+  /** Assert on the downloaded file content (POST downloads only) */
+  assertResponseBody?: (body: string) => void;
   waitForDismiss?: boolean;
 }
 
@@ -75,6 +77,7 @@ export function downloadAndAssert({
   pivoting,
   assertStatusCode,
   assertParameters,
+  assertResponseBody,
   waitForDismiss = true,
 }: DownloadAndAssertParams) {
   const { method, endpoint } = downloadUrl
@@ -122,6 +125,8 @@ export function downloadAndAssert({
             expect(req.body.parameters[index]).to.deep.include(expectedParam);
           });
         }
+
+        assertResponseBody?.(res.body);
 
         // After assertions pass, redirect to prevent navigation
         res.send({ statusCode: 302, headers: { location: "/foo" } });

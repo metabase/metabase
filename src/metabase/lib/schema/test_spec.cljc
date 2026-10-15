@@ -82,7 +82,9 @@
   [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::test-operator-spec]
-   [:args {:default []} [:sequential [:ref ::test-expression-spec]]]])
+   [:args {:default []} [:sequential [:ref ::test-expression-spec]]]
+   ;; For an aggregation: the name of its result column, which a later stage refers to.
+   [:name {:optional true} string?]])
 
 (mr/def ::test-expression-spec
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case

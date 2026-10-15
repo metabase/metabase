@@ -5,7 +5,7 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { many_data_types_rows } from "e2e/support/test_tables_data";
 import { createMockActionParameter } from "metabase-types/api/mocks";
 
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { addWidgetStringFilter } from "../native/helpers/e2e-field-filter-helpers";
 
 const TEST_TABLE = "scoreboard_actions";
 const TEST_COLUMNS_TABLE = "many_data_types";

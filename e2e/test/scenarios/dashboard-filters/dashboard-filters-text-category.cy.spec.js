@@ -4,7 +4,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   applyFilterByType,
   selectDefaultValueFromPopover,
-} from "../native-filters/helpers/e2e-field-filter-helpers";
+} from "../native/helpers/e2e-field-filter-helpers";
 
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 

@@ -185,8 +185,6 @@ export function AIProviderList() {
 // Features that read a fixed connection key directly rather than following the Metabot selection: deleting
 // the connection they name turns them off, which the admin deserves to hear before confirming.
 const KEYED_DEPENDENTS: Record<string, () => string> = {
-  anthropic: () =>
-    t`SQL generation also runs on this connection, and will stop working without it.`,
   openai: () =>
     t`Semantic search also runs on this connection, and will stop working without it.`,
 };

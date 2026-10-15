@@ -193,6 +193,8 @@ export function createExploration({
     description: null,
     creator_id: 1,
     can_write: true,
+    can_restore: false,
+    can_delete: false,
     archived: false,
     collection_id: null,
     collection_position: null,

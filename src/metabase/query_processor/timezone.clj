@@ -19,10 +19,13 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *report-timezone-id-override* nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *database-timezone-id-override* nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *results-timezone-id-override* nil)
 
 ;; TODO - consider making this `metabase.util.date-2/the-timezone-id`

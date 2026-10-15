@@ -4,7 +4,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
+import * as DateFilter from "../native/helpers/e2e-date-filter-helpers";
 
 import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
 

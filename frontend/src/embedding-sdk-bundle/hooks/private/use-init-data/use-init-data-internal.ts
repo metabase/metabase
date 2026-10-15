@@ -3,6 +3,10 @@ import { useMount } from "react-use";
 import _ from "underscore";
 
 import {
+  isHostReactVersionSupported,
+  useLogUnsupportedReactVersion,
+} from "embedding-sdk-bundle/lib/host-react-version";
+import {
   ensureMetabaseProviderPropsStore,
   useMetabaseProviderPropsStore,
 } from "embedding-sdk-bundle/lib/provider-props-store";
@@ -69,7 +73,7 @@ interface InitDataLoaderParameters {
   isLocalHost?: boolean;
 }
 
-export const useInitData = () => {
+const useInitDataOnSupportedReact = () => {
   const {
     state: { props, internalProps },
   } = useMetabaseProviderPropsStore();
@@ -100,6 +104,10 @@ export const useInitData = () => {
     authConfig,
   });
 };
+
+export const useInitData = isHostReactVersionSupported()
+  ? useInitDataOnSupportedReact
+  : useLogUnsupportedReactVersion;
 
 export const useInitDataInternal = ({
   reduxStore,

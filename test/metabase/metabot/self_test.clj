@@ -58,7 +58,10 @@
     (doseq [[provider-type supported] supported-models-by-provider-type]
       (testing provider-type
         (is (contains? @supported (llm.provider/default-model provider-type)))
-        (is (contains? @supported (llm.provider/mini-model provider-type)))))))
+        (is (contains? @supported (llm.provider/mini-model provider-type)))
+        (testing "and a retired model reads as one the picker offers"
+          (doseq [successor (vals (:retired-models (llm.provider/provider-type provider-type)))]
+            (is (contains? @supported successor))))))))
 
 (deftest parse-provider-model-test
   (llm.tu/with-default-connections

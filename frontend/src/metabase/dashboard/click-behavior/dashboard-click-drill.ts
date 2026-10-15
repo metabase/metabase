@@ -1,5 +1,6 @@
 import querystring from "querystring";
 
+import { hasColumnLevelClickBehavior } from "metabase/dashboard/utils";
 import type { ClickBehaviorExtraData } from "metabase/dashboard/utils/click-behavior";
 import {
   formatSourceForTarget,
@@ -17,13 +18,11 @@ import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
-import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   ClickBehavior,
   ClickBehaviorParameterMapping,
   ClickBehaviorSource,
-  DatasetColumn,
   ParameterValueOrArray,
 } from "metabase-types/api";
 
@@ -192,29 +191,19 @@ export function getClickBehavior(
   clicked: ClickBehaviorClickObject,
 ): ClickBehavior | undefined {
   const settings: ComputedVisualizationSettings = clicked?.settings || {};
-  const columnClickBehavior = getColumnClickBehavior(settings, clicked?.column);
-  if (columnClickBehavior) {
-    return columnClickBehavior;
+  const dashcard = clicked?.extraData?.dashcard;
+  const columnSettings = clicked?.column
+    ? settings.column?.(clicked.column)
+    : undefined;
+
+  if (dashcard) {
+    return hasColumnLevelClickBehavior(dashcard)
+      ? columnSettings?.click_behavior
+      : settings.click_behavior;
   }
 
-  const dimensionClickBehavior = (clicked?.dimensions || [])
-    .map((dimension) => getColumnClickBehavior(settings, dimension.column))
-    .find(Boolean);
-
-  return dimensionClickBehavior || settings.click_behavior;
-}
-
-function getColumnClickBehavior(
-  settings: ComputedVisualizationSettings,
-  column: DatasetColumn | undefined,
-): ClickBehavior | undefined {
-  if (!column) {
-    return undefined;
-  }
-  return (
-    getObjectColumnSettings(settings.column_settings, column)?.click_behavior ??
-    settings.column?.(column)?.click_behavior
-  );
+  // Standalone SDK questions can have column links without a dashboard card.
+  return columnSettings?.click_behavior || settings.click_behavior;
 }
 
 export function getClickBehaviorData(

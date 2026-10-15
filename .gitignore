@@ -159,6 +159,7 @@ mise.local.toml
 !**/.clj-kondo/README.md
 !**/.clj-kondo/config.edn
 !**/.clj-kondo/ratchets.edn
+!**/.clj-kondo/ratchets-test.edn
 !**/.clj-kondo/config/
 !**/.clj-kondo/src/
 !**/.clj-kondo/test/

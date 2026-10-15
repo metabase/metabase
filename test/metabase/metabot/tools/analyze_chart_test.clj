@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.interestingness.core :as interestingness]
    [metabase.metabot.tools.analyze-chart :as analyze-chart]
-   [metabase.metabot.tools.shared :as shared]))
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,12 +40,12 @@
 
 (deftest ^:parallel analyze-chart-tool-empty-series-test
   (testing "a chart config with no series is rejected"
-    (is (= {:output "Failed to analyze chart: This chart has no series data to analyze."}
+    (is (= {:output "This chart has no series data to analyze."}
            (analyze "c1" {"c1" {:display_type "row" :title "Empty" :series {}}})))))
 
 (deftest ^:parallel analyze-chart-tool-empty-y-values-test
   (testing "a series with no data points is rejected"
-    (is (= {:output "Failed to analyze chart: Series \"Count\" has no data points to analyze."}
+    (is (= {:output "Series \"Count\" has no data points to analyze."}
            (analyze "c1" {"c1" {:display_type "row"
                                 :title        "No points"
                                 :series       {"Count" {:x            {:name "category" :type "string"}
@@ -54,7 +56,7 @@
 
 (deftest ^:parallel analyze-chart-tool-non-numeric-y-values-test
   (testing "a series with non-numeric y-values is rejected"
-    (is (= {:output (str "Failed to analyze chart: Series \"Count\" has non-numeric y-values. "
+    (is (= {:output (str "Series \"Count\" has non-numeric y-values. "
                          "Chart analysis requires a numeric y-axis metric.")}
            (analyze "c1" {"c1" {:display_type "row"
                                 :title        "Survey responses"
@@ -63,3 +65,9 @@
                                                         :x_values     ["Never" "Rarely" "Often"]
                                                         :y_values     ["One"   "Two"    "Three"]
                                                         :display_name "Count"}}}})))))
+
+(deftest ^:parallel analyze-chart-tool-unexpected-error-test
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [interestingness/compute-chart-stats (fn [& _] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (analyze "c1" (numeric-series-config)))))))

@@ -40,8 +40,7 @@
   [snapshot]
   (let [errors (atom [])]
     {:entities (into {} (for [path (source.p/list-files snapshot)
-                              :when (and (not (str/starts-with? path "."))
-                                         (str/ends-with? path ".yaml"))
+                              :when (serialization/entity-file-path? path)
                               :let [content (try
                                               (source.p/read-file snapshot path)
                                               (catch Exception e
@@ -147,9 +146,11 @@
 
   (ingest-one [_ serdes-path]
     (populate-cache! cache errors-atom #(ingest-all snapshot))
-    (when-let [target (get @cache (serialization/strip-labels serdes-path))]
+    (when-let [{:keys [content ^String path]} (get @cache (serialization/strip-labels serdes-path))]
       (try
-        (ingest-content (:content target))
+        (let [dir (subs path 0 (inc (or (str/last-index-of path "/") -1)))]
+          (serialization/read-resources (ingest-content content)
+                                        #(source.p/read-file snapshot (str dir %))))
         (catch Exception e
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))))
 

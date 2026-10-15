@@ -428,7 +428,10 @@ describe("database page > side panel", () => {
     cy.visit("/admin/databases/create");
   });
 
-  it("should show side panel with help content when 'Help is here' is clicked", () => {
+  it("should show side panel with help content and update it when the engine is changed", () => {
+    cy.log(
+      "should show side panel with help content when 'Help is here' is clicked",
+    );
     cy.findByRole("button", { name: /Help is here/ }).click();
     cy.findByTestId("database-help-side-panel").within(() => {
       cy.findByText("Add PostgreSQL").should("be.visible");
@@ -440,9 +443,10 @@ describe("database page > side panel", () => {
         "be.visible",
       );
     });
-  });
+    cy.findByRole("button", { name: /Close panel/ }).click();
+    cy.findByTestId("database-help-side-panel").should("not.exist");
 
-  it("should update the side panel content when the engine is changed", () => {
+    cy.log("should update the side panel content when the engine is changed");
     const enginesMap = [
       { name: "Amazon Athena", file: "athena" },
       { name: "BigQuery", file: "bigquery" },

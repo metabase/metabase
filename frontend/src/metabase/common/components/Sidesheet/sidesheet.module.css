@@ -1,13 +1,39 @@
 .SidesheetContent {
+  inset-block: 0;
+  inset-inline-end: 0;
+  flex-direction: column;
+
+  /* Mantine's content height rules must lose regardless of stylesheet order. */
   &:not([data-css-specificity-hack="🤷‍♀️"]) {
-    position: fixed;
     height: 100dvh;
     max-height: 100dvh;
-    inset-inline-end: 0;
     border-radius: 0;
-    display: flex;
-    flex: 1;
-    flex-direction: column;
+
+    &[data-offset] {
+      height: calc(
+        100dvh - var(--mantine-spacing-lg) - var(--mantine-spacing-lg)
+      );
+      max-height: calc(
+        100dvh - var(--mantine-spacing-lg) - var(--mantine-spacing-lg)
+      );
+      inset-block: var(--mantine-spacing-lg);
+      inset-inline-end: var(--mantine-spacing-lg);
+      border-radius: var(--mantine-radius-lg);
+    }
+  }
+}
+
+.SidesheetCloseButton {
+  /* Modal.module.css uses !important for the close color and icon size. */
+  color: var(--mb-color-text-primary) !important;
+
+  &:hover {
+    color: var(--mb-color-text-primary) !important;
+  }
+
+  svg {
+    width: rem(16px) !important;
+    height: rem(16px) !important;
   }
 }
 

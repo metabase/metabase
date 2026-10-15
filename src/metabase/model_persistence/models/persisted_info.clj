@@ -68,6 +68,7 @@
   [query :- :metabase.lib-be.schema/maybe-legacy-or-empty-query]
   (String. ^bytes (codecs/bytes->b64 (qp.util/query-hash query))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-persisted-substitution*
   "Allow persisted substitution. When refreshing, set this to nil to ensure that all underlying queries are used to
   rebuild the persisted table."

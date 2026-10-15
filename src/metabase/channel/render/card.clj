@@ -5,6 +5,7 @@
    [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
+   [metabase.channel.render.markdown :as markdown]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
@@ -17,7 +18,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.markdown :as markdown]
    [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (defn- card-href

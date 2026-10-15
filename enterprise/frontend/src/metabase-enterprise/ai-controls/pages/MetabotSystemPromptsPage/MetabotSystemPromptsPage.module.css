@@ -8,18 +8,11 @@
   overflow: hidden;
 }
 
-.textareaRoot {
+.editor {
   flex: 1;
   min-height: 0;
-  display: flex;
-}
-
-.textareaWrapper {
-  flex: 1;
-  display: flex;
-}
-
-.textareaInput {
-  height: 100%;
-  line-height: 1.25rem;
+  /* Keeps the editor's internal scroller inside the rounded border */
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
 }

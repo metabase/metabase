@@ -305,6 +305,7 @@
                      (assoc % endpoint (new-embedder-circuit-breaker))))
            endpoint)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *bypass-circuit-breaker*
   "Bind true to run an embedding call without consulting or tripping the breaker.
   The health probe binds it so the probe stays an independent signal and can't flip the breaker from inside

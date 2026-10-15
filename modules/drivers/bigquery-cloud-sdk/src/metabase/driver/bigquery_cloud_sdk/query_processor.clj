@@ -629,6 +629,7 @@
 
 ;; this is a little hacky, I'm 99% sure we could just have the [[sql.qp/->honeysql]] method for `:field` swap out the
 ;; `::add/source-table` to a `[project.dataset table]` pair but this will have to do for now.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *field-is-from-join-or-source-query?* false)
 
 (defn- should-qualify-identifier?
@@ -829,6 +830,7 @@
   [_ t]
   (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *compiling-cumulative-aggregation* false)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cum-count]

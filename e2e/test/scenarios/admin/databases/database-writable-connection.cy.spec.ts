@@ -45,10 +45,32 @@ describe("scenarios > admin > databases > writable connection", () => {
     dropTable(TRANSFORM_TABLE_NAME);
   });
 
-  it("should be able to create, edit, and remove a writable connection", () => {
+  it("should be able to create, edit, and remove a writable connection and show up-to-date connection health status", () => {
     visitDatabase(WRITABLE_DB_ID);
     createWritableConnection(DEFAULT_USER);
     updateWritableConnection(READ_ONLY_USER);
+
+    cy.log("should show up-to-date connection health status");
+    getMainConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    });
+    getWritableConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    });
+
+    dropUser(READ_ONLY_USER);
+    visitDatabase(WRITABLE_DB_ID);
+    getMainConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
+    });
+    getWritableConnectionInfoSection().within(() => {
+      getDatabaseConnectionHealthInfo().should(
+        "contain.text",
+        "Could not connect",
+      );
+    });
+
+    cy.log("should be able to remove a writable connection");
     removeWritableConnection();
     getWritableConnectionInfoSection()
       .findByText("Add writable connection")
@@ -70,29 +92,6 @@ describe("scenarios > admin > databases > writable connection", () => {
       "contain.text",
       "Metabase tried, but couldn't connect",
     );
-  });
-
-  it("should show up-to-date connection health status", () => {
-    visitDatabase(WRITABLE_DB_ID);
-    createWritableConnection(READ_ONLY_USER);
-    getMainConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
-    });
-    getWritableConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
-    });
-
-    dropUser(READ_ONLY_USER);
-    visitDatabase(WRITABLE_DB_ID);
-    getMainConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should("have.text", "Connected");
-    });
-    getWritableConnectionInfoSection().within(() => {
-      getDatabaseConnectionHealthInfo().should(
-        "contain.text",
-        "Could not connect",
-      );
-    });
   });
 
   it("should be able to run transforms with a writable connection", () => {
