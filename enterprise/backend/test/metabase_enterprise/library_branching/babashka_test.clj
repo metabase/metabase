@@ -32,6 +32,8 @@
      java.security.MessageDigest
      java.text.Normalizer
      java.text.Normalizer$Form
+     java.time.Instant
+     java.time.OffsetDateTime
      java.util.Locale})
 
 (defn- source

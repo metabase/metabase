@@ -17,6 +17,7 @@
    [metabase-enterprise.library-branching.instance.kinds.question :as kinds.question]
    [metabase-enterprise.library-branching.instance.kinds.segment :as kinds.segment]
    [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
+   [metabase-enterprise.library-branching.instance.kinds.timeline :as kinds.timeline]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
@@ -33,7 +34,8 @@
    :published-table kinds.published-table/kind-store
    :question        kinds.question/kind-store
    :segment         kinds.segment/kind-store
-   :snippet         kinds.snippet/kind-store})
+   :snippet         kinds.snippet/kind-store
+   :timeline        kinds.timeline/kind-store})
 
 (defn read-current
   "The synced snapshot for `stores` (`{kind KindStore}`, default [[kind-stores]]) and `roots` (default

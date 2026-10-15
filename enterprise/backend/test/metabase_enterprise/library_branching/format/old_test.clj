@@ -529,6 +529,37 @@
   (testing "an archived segment is not in the snapshot"
     (is (= {} (snapshot-of [(str/replace segment-yaml "archived: false" "archived: true")])))))
 
+;;; ------------------------------------------------- Timelines --------------------------------------------------------
+
+(def ^:private timeline-yaml
+  (str "name: Releases\nentity_id: ReleasesTimelineXXXXX\ncollection_id: DashboardsCollXXXXXXX\n"
+       "description: null\nicon: star\ndefault: false\narchived: false\n"
+       "created_at: '2024-08-28T09:46:18.671622Z'\ncreator_id: rasta@metabase.com\n"
+       "events:\n"
+       "- {entity_id: LaunchEventXXXXXXXXXX, name: Launch, description: null, timestamp: '2024-03-01T11:00:00+01:00',"
+       " timezone: Europe/Paris, time_matters: true, icon: cake, archived: false,"
+       " created_at: '2024-08-28T09:46:18.671622Z', creator_id: rasta@metabase.com}\n"
+       "- {entity_id: GoneEventXXXXXXXXXXXX, name: Gone, timestamp: '2024-01-01T00:00:00Z', timezone: UTC,"
+       " time_matters: false, icon: star, archived: true}\n"
+       "- {entity_id: OutageEventXXXXXXXXXX, name: Outage, timestamp: '2024-02-01T00:00:00Z', timezone: UTC,"
+       " time_matters: false, icon: star, archived: false}\n"
+       "serdes/meta:\n- model: Timeline\n"))
+
+(deftest timelines-test
+  (testing "a timeline file holds its events: an event in the trash is not content; the others are in the order of
+           their times, with the times in UTC and no key at its default"
+    (is (= {"ReleasesTimelineXXXXX"
+            (item :timeline "Releases" "DashboardsCollXXXXXXX"
+                  {:events [{:id "OutageEventXXXXXXXXXX" :name "Outage" :timestamp "2024-02-01T00:00:00Z" :timezone "UTC"}
+                            {:id "LaunchEventXXXXXXXXXX" :name "Launch" :timestamp "2024-03-01T10:00:00Z"
+                             :timezone "Europe/Paris" :time_matters true :icon "cake"}]})}
+           (snapshot-of [timeline-yaml]))))
+  (testing "a timeline with no events key has no events"
+    (is (= {} (get-in (snapshot-of [(str/replace timeline-yaml #"(?s)events:.*serdes" "serdes")])
+                      ["ReleasesTimelineXXXXX" :attrs]))))
+  (testing "an archived timeline is not in the snapshot"
+    (is (= {} (snapshot-of [(str/replace timeline-yaml "archived: false\ncreated_at" "archived: true\ncreated_at")])))))
+
 ;;; ------------------------------------------------- Claims -----------------------------------------------------------
 
 (deftest claims-decode-test

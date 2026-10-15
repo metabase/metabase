@@ -80,6 +80,9 @@
              data    (insert! :model/Collection {:name     "Count data"
                                                  :type     "library-data"
                                                  :location (children-location library)})
+             dashes  (insert! :model/Collection {:name     "Count dashboards"
+                                                 :type     "library-dashboards"
+                                                 :location (children-location library)})
              folder  (insert! :model/Collection {:name "Count snippets" :namespace "snippets" :location "/"})
              outside (insert! :model/Collection {:name "Count outside" :location "/"})
              app     (insert! :model/Collection {:name "Count app" :namespace "data-apps" :location "/"})]
@@ -118,6 +121,13 @@
                                   :definition (sum-query :venues :price)})
          (insert! :model/Measure {:name "Count trashed measure" :table_id (mt/id :venues) :creator_id user
                                   :archived true :definition (sum-query :venues :price)})
+         (let [timeline (insert! :model/Timeline {:name "Count timeline" :collection_id (:id dashes) :icon "star"
+                                                  :creator_id user})]
+           (insert! :model/TimelineEvent {:timeline_id (:id timeline) :name "Count event" :timezone "UTC"
+                                          :timestamp (java.time.OffsetDateTime/parse "2024-01-01T00:00:00Z")
+                                          :time_matters false :icon "star" :creator_id user})
+           (insert! :model/Timeline {:name "Count trashed timeline" :collection_id (:id dashes) :icon "star"
+                                     :creator_id user :archived true}))
          (let [{:keys [snapshot]} (instance/read-snapshot (app-db/app-db-instance))
                counts             (engine.count/count-by-kind snapshot)]
            (is (= (select-keys (scope/scope-count) snapshot/kinds) counts))

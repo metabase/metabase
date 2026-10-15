@@ -52,7 +52,7 @@
     (is (= {:collection ["collection" true] :dashboard ["dashboard" false] :glossary-term ["term" false]
             :measure ["measure" false] :metric ["metric" false] :model ["model" false]
             :published-table ["table" false] :question ["question" false] :segment ["segment" false]
-            :snippet ["snippet" false]}
+            :snippet ["snippet" false] :timeline ["timeline" false]}
            (update-vals by-kind (juxt layout/word layout/directory?))))))
 
 ;;; ------------------------------------------------------ Laws -------------------------------------------------------
@@ -107,6 +107,9 @@
       (is (some #(re-find #"\.table\.yaml$" %) paths) "a published table")
       (is (some #(re-find #"\.table/[^/]+\.segment\.yaml$" %) paths) "a segment in the directory of its table")
       (is (some #(re-find #"\.table/[^/]+\.measure\.yaml$" %) paths) "a measure in the directory of its table")
+      (is (some #(re-find #"\.timeline\.yaml$" %) paths) "a timeline")
+      (is (some #(< 1 (count (get-in % [:attrs :events]))) items) "a timeline with several events")
+      (is (some (fn [item] (some #(get-in item [:attrs :events % :description]) [0 1 2])) items) "an event with a description")
       (is (some #(some (fn [[role]] (= :segment role)) (:refs %)) items) "a reference to a segment")
       (is (some #(some (fn [[role]] (= :measure role)) (:refs %)) items) "a reference to a measure")
       (is (some #(str/includes? % "~") paths) "an identity suffix")
@@ -164,6 +167,7 @@
 (def ^:private transforms-root "transformstransformst")
 (def ^:private glossary-root "glossaryglossarygloss")
 (def ^:private dashboards-id "dAsHbOaRdScOlLeCtIoN1")
+(def ^:private releases-id "rElEaSeStImElInE00001")
 (def ^:private overview-id "7RZUq1g5o1C5ws_e3ppKf")
 
 (defn- collection [nm place & {:as attrs}]
@@ -305,6 +309,25 @@
    base-filter-id
    {:kind :snippet :name "Base filter" :place snippets-root :refs #{} :attrs {:content "products.deleted_at IS NULL"}}
 
+   releases-id
+   {:kind  :timeline
+    :name  "Releases"
+    :place dashboards-id
+    :refs  #{}
+    :attrs {:description "What we shipped."
+            :icon        "bell"
+            :events      [{:id           "lAuNcHeVeNt000000001A"
+                           :name         "Launch"
+                           :timestamp    "2024-03-01T10:00:00Z"
+                           :timezone     "Europe/Paris"
+                           :time_matters true
+                           :icon         "cake"}
+                          {:id          "oUtAgEeVeNt000000002B"
+                           :name        "Outage"
+                           :description "The API was down."
+                           :timestamp   "2024-05-02T00:00:00Z"
+                           :timezone    "UTC"}]}}
+
    churn-id
    {:kind  :glossary-term
     :name  "Churn"
@@ -385,6 +408,7 @@
                        [:glossary-term (get golden-snapshot churn-id)]
                        [:segment (get golden-snapshot large-orders-id)]
                        [:measure (get golden-snapshot order-total-id)]
+                       [:timeline (get golden-snapshot releases-id)]
                        [:dashboard (get golden-snapshot overview-id)]]]
     (testing (str kind " with " k)
       (is (not (mr/validate (codec/schema (get by-kind kind)) (assoc-in item [:attrs k] "x"))))))

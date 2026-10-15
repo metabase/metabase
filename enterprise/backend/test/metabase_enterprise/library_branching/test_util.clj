@@ -113,14 +113,23 @@
                      refs))
            (vals s))))
 
+(defn nested-ids-unique?
+  "True iff no two items of snapshot `s` of one kind hold a nested entry with one identity
+  ([[snapshot/nested-identities]])."
+  [s]
+  (let [ks (mapcat (fn [{:keys [kind] :as item}]
+                     (map (partial vector kind) (distinct (snapshot/nested-identities snapshot/nested-ids item))))
+                   (vals s))]
+    (= (count ks) (count (set ks)))))
+
 (defn well-formed?
   "True iff snapshot `s` obeys the structural rules of `specs/Structure.als` `wf` and `uniqueKeys`:
   [[places-inside?]], [[acyclic?]], [[kinds-fit?]], [[refs-closed?]] and [[unique-keys?]]; and the rules that the
-  model does not have: [[namespaces-fit?]], [[ref-kinds-fit?]] and [[area-ids-free?]]."
+  model does not have: [[namespaces-fit?]], [[ref-kinds-fit?]], [[area-ids-free?]] and [[nested-ids-unique?]]."
   ([s] (well-formed? s snapshot/may-contain))
   ([s may-contain]
    (and (places-inside? s) (acyclic? s) (kinds-fit? s may-contain) (refs-closed? s)
-        (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s) (area-ids-free? s))))
+        (unique-keys? s) (namespaces-fit? s) (ref-kinds-fit? s) (area-ids-free? s) (nested-ids-unique? s))))
 
 ;;; --------------------------------------------- Identities and values ----------------------------------------------
 
@@ -357,6 +366,11 @@
   (gen/one-of [(gen/tuple (gen/return :item) gen/nat)
                (gen/tuple (gen/return :env) env-key-gen)]))
 
+(def ^:private place-choice-gen
+  ;; Mostly a small choice: the root level or one of the newest containers, so chains of containment are long also
+  ;; when a container can hold many kinds. A larger choice saturates at the oldest container.
+  (gen/frequency [[2 (gen/choose 0 3)] [1 gen/nat]]))
+
 ;;; -------------------------------------------------- Generators ----------------------------------------------------
 
 (defn well-formed-snapshot-gen
@@ -382,7 +396,7 @@
      (gen/fmap (fn [choices]
                  (let [[item-kinds item-places] (well-formed-structure opts choices)]
                    (with-unique-keys (:unique-keys opts) (assemble choices item-kinds item-places))))
-               (choices-gen opts gen/nat item-target-gen)))))
+               (choices-gen opts place-choice-gen item-target-gen)))))
 
 (defn arbitrary-snapshot-gen
   "Generates snapshots with no structural guarantee: a place or a reference can name an identity that is not in the

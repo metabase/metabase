@@ -13,6 +13,7 @@
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
    [metabase-enterprise.library-branching.format.old.snippet :as old.snippet]
    [metabase-enterprise.library-branching.format.old.table-item :as old.table-item]
+   [metabase-enterprise.library-branching.format.old.timeline :as old.timeline]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase.test.fixtures :as fixtures]))
 
@@ -138,6 +139,21 @@
     :target `old.table-item/decode-as
     :edits  [[:replace '(table-item/source-table (:definition doc)) nil]]
     :tests  [#'old-test/table-items-test]}
+   {:name   :archived-timeline-kept
+    :doc    "An archived timeline is in the snapshot."
+    :target `old.timeline/decode
+    :edits  [[:replace '(common/archived? doc) false]]
+    :tests  [#'old-test/timelines-test]}
+   {:name   :archived-events-kept
+    :doc    "An event in the trash is content of its timeline, so a pull brings it back out of the trash."
+    :target `old.timeline/decode
+    :edits  [[:replace '(remove common/archived?) '(map identity)]]
+    :tests  [#'old-test/timelines-test #'old-test/remote-sync-files-decode-to-the-golden-items-test]}
+   {:name   :event-identity-dropped
+    :doc    "An event has no identity, so a pull cannot match it to its row."
+    :target `old.timeline/event
+    :edits  [[:replace '(assoc (select-keys e event-keys) :id (:entity_id e)) '(select-keys e event-keys)]]
+    :tests  [#'old-test/timelines-test]}
    {:name   :old-format-unread
     :doc    "`claims/decode` does not read the old format, so production cannot pull main before the switch."
     :target `claims/decode

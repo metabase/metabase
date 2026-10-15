@@ -10,11 +10,12 @@
 
 (def kinds
   "The closed set of item kinds."
-  #{:collection :dashboard :glossary-term :measure :metric :model :published-table :question :segment :snippet})
+  #{:collection :dashboard :glossary-term :measure :metric :model :published-table :question :segment :snippet
+    :timeline})
 
 (def may-contain
   "`{kind #{kind}}`: for each kind of [[kinds]], the kinds of the items that an item of that kind can contain."
-  {:collection      #{:collection :dashboard :metric :model :published-table :question :snippet}
+  {:collection      #{:collection :dashboard :metric :model :published-table :question :snippet :timeline}
    :dashboard       #{}
    :glossary-term   #{}
    :measure         #{}
@@ -23,7 +24,8 @@
    :published-table #{:measure :segment}
    :question        #{}
    :segment         #{}
-   :snippet         #{}})
+   :snippet         #{}
+   :timeline        #{}})
 
 (def shared-tables
   "Sets of kinds whose items the app DB keeps in one table, keyed by identity: an instance holds at most one item of
@@ -60,6 +62,20 @@
   (when-let [{:keys [path name?]} (get unique-keys (:kind item))]
     (when-some [k (get-in item path)]
       (if (and name? (string? k)) (fold-name k) k))))
+
+(def nested-ids
+  "`{kind path}`: the kinds whose items hold nested entries with identities of their own, and the path in an item of the
+  vector of those entries. Each entry has its identity under `:id`. The app DB keeps the identities of the entries of
+  a kind unique over all items of the kind."
+  {:timeline [:attrs :events]})
+
+(defn nested-identities
+  "The identities of the nested entries of `item` by `nested-ids` (in the form of [[nested-ids]])."
+  [nested-ids item]
+  (when-let [path (get nested-ids (:kind item))]
+    (let [entries (get-in item path)]
+      (when (sequential? entries)
+        (keep #(when (map? %) (:id %)) entries)))))
 
 (def ref-kinds
   "`{kind {role #{kind}}}`: a reference of `role` from an item of `kind` names an item of one of these kinds. The

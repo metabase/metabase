@@ -425,6 +425,43 @@
   (attrs-of {:description [false text-gen]
              :definition  [true measure-definition-gen]}))
 
+(def ^:private timeline-icons
+  "The icons of Metabase other than the default."
+  ["cake" "mail" "mail_at" "warning" "bell" "cloud" "info" "note" "event"])
+
+(def instant-gen
+  "Generates the canonical text of an instant from 1970 to 2100: whole seconds, or with milliseconds."
+  (gen/fmap (fn [[s ms]] (str (.plusMillis (java.time.Instant/ofEpochSecond s) ms)))
+            (gen/tuple (gen/choose 0 4102444800) (gen/elements [0 500 1]))))
+
+(def ^:private event-gen
+  (attrs-of {:name         [true non-empty-text-gen]
+             :description  [false text-gen]
+             :timestamp    [true instant-gen]
+             :timezone     [true (gen/elements ["UTC" "Europe/Paris" "America/New_York"])]
+             :time_matters [false (gen/return true)]
+             :icon         [false (gen/elements timeline-icons)]}))
+
+(def events-gen
+  "Generates the events of a timeline: identities with one random prefix, so two timelines have none in common, in the
+  order of their times, then of their identities. Two events can have one time."
+  (gen/fmap (fn [[prefix events]]
+              (->> events
+                   (map-indexed (fn [i e] (assoc e :id (str (subs prefix 0 16) (format "%05d" i)))))
+                   (sort-by (fn [{:keys [timestamp id]}] [(java.time.Instant/parse timestamp) id]))
+                   vec))
+            (gen/tuple lb.tu/entity-id-gen
+                       (gen/vector (gen/frequency [[3 event-gen]
+                                                   [1 (gen/fmap #(assoc % :timestamp "2024-03-01T10:00:00Z") event-gen)]])
+                                   1 3))))
+
+(def timeline-attrs-gen
+  "Generates the `:attrs` of a timeline."
+  (attrs-of {:description [false text-gen]
+             :icon        [false (gen/elements timeline-icons)]
+             :default     [false (gen/return true)]
+             :events      [false events-gen]}))
+
 ;;; ---------------------------------------------------- Dashboards ---------------------------------------------------
 
 (def ^:private nested-id-prefix-gen
@@ -513,7 +550,8 @@
    :published-table published-table-attrs-gen
    :question        question-attrs-gen
    :segment         segment-attrs-gen
-   :snippet         snippet-attrs-gen})
+   :snippet         snippet-attrs-gen
+   :timeline        timeline-attrs-gen})
 
 (def table-item-kinds
   "The kinds whose items live on a published table."
