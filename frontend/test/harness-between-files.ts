@@ -5,7 +5,7 @@ import { dayjs } from "metabase/dayjs";
 // The node:test harness keeps packages loaded for the life of a worker, where
 // jest loads them again for every spec file. This puts back, between files,
 // the state that our code keeps inside those packages.
-export function prepareBetweenFiles() {
+export function prepareBetweenFiles(): () => void {
   // dayjs is one instance per worker, and the order its plugins are installed
   // in changes what format() returns. Loading the app's own entry first gives
   // every file the order the app has, whichever spec ran before it.
@@ -17,7 +17,7 @@ export function prepareBetweenFiles() {
     ]),
   );
 
-  return function betweenFiles() {
+  return function betweenFiles(): void {
     // A spec that switches the language or edits a locale would otherwise
     // change date text for every later file.
     for (const [name, definition] of baselineTable) {
@@ -28,7 +28,7 @@ export function prepareBetweenFiles() {
       }
       for (const key of Object.keys(live)) {
         if (!(key in definition)) {
-          delete live[key];
+          Reflect.deleteProperty(live, key);
         }
       }
       Object.assign(live, definition);

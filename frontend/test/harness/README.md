@@ -148,18 +148,29 @@ those.
 
 ## The files
 
+The runner is TypeScript that Node runs directly, without a build step. Its
+own files are never transformed or evaluated again between spec files.
+
 | File | What it holds |
 |---|---|
-| `cli.cjs` | The command line and watch mode. |
-| `pool.cjs` | The worker pool. It hands spec files to workers and replaces a worker that uses too much memory. |
-| `run.cjs` | The entry point of a worker. |
-| `hooks.cjs` | The runner itself: the transform, module resolution, the jsdom window, the jest globals, and the reset between spec files. |
-| `jest-config.cjs` | Reads the module mapping, the module roots, the setup files and the projects from `jest.config.js`. |
-| `reporters.cjs` | The three kinds of output. |
+| `cli.ts` | The command line and watch mode. |
+| `pool.ts` | The worker pool. It hands spec files to workers and replaces a worker that uses too much memory. |
+| `reporters.ts` | The three kinds of output. |
+| `ci-results.ts` | The JUnit report and the JSON summary that the CI job reads. |
+| `jest-config.ts` | Reads the module mapping, the module roots, the setup files and the projects from `jest.config.js`. |
+| `types.ts` | The results and messages that pass between a worker, the pool and the reporters. |
 | `durations.json` | The time that each spec file took, used for the estimate in the progress line on a machine with no times of its own. |
-| `ci-results.cjs` | The JUnit report and the JSON summary that the CI job reads. |
+| `worker/main.ts` | The entry point of a worker. It prepares the environment once, then runs the spec files that the pool sends. |
+| `worker/run-file.ts` | Runs one spec file, and resets the worker for the next one. |
+| `worker/collect.ts` | jest's `describe`, `it` and hooks, and the rules for `.only`, `.skip` and `-t`. |
+| `worker/jest-object.ts` | The `jest` object and `expect`, built from jest's own packages. |
+| `worker/transform.ts`, `worker/resolve.ts`, `worker/module-hooks.ts` | The swc transform, the module resolution of the jest config, and the Node module hooks that apply both. |
+| `worker/mocks.ts` | The registry behind `jest.mock`. |
+| `worker/dom.ts` | The jsdom window as the global DOM. |
+| `worker/timers.ts` | Deadlines, tracked timers and the fake clock. |
+| Other files in `worker/` | The resets between spec files, each for one kind of state. |
 
-`frontend/test/harness-between-files.js` is next to the jest setup files. It
+`frontend/test/harness-between-files.ts` is next to the jest setup files. It
 resets the state that this repository keeps inside packages that stay loaded:
 the dayjs locale table and the translation locale.
 
@@ -172,8 +183,8 @@ the dayjs locale table and the translation locale.
 | Cause | What to do |
 |---|---|
 | The spec asserts before the data it needs has loaded. Under jest the file starts slowly, which hides this. | Wait for the data in the spec, with `findBy` or `waitFor`. |
-| Project code keeps state in a package, such as a locale or a registry. | Reset it in `frontend/test/harness-between-files.js`. |
-| A package keeps an object from the jsdom window that was current when it loaded. The symptom is an empty `<body>` or events that do nothing. | Add the package to `WINDOW_BOUND_PACKAGES` in `hooks.cjs`. The runner then loads it again for each spec file. |
+| Project code keeps state in a package, such as a locale or a registry. | Reset it in `frontend/test/harness-between-files.ts`. |
+| A package keeps an object from the jsdom window that was current when it loaded. The symptom is an empty `<body>` or events that do nothing. | Add the package to `WINDOW_BOUND_PACKAGES` in `worker/package-loading.ts`. The runner then loads it again for each spec file. |
 | Every spec fails with `Cannot find module 'cljs/...'`. | The cljs build is missing. Run `bun run build-pure:cljs`. |
 
 ## Settings in the environment
@@ -188,7 +199,5 @@ work on the runner.
 | `NT_MAX_RSS_MB` | 1500 | A worker above this resident size is replaced after its current file. |
 | `NT_HEAP_MB` | 1536 | Heap limit of a worker. |
 | `NT_SEMI_SPACE_MB` | 64 | Size of the young generation of a worker's heap. |
-| `NT_FAILURES`, `NT_FAILURE_DETAIL` | not set | Files that failures are appended to, one line or one block each. |
 | `NT_FILE_LOG` | not set | Prints a line for each spec file with its worker, time, memory and garbage collection time. |
-| `NT_IDLE_LOG` | not set | A file that gets, for each test, its time and the part of it spent idle. |
 | `NT_FRAME_MS` | 1 | Interval of the animation frame clock, in milliseconds. |
