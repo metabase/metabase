@@ -2,7 +2,7 @@ import { EditorSelection, type EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import cx from "classnames";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -362,6 +362,23 @@ function useExpression({
       initial: clause === initialClause,
     });
   });
+
+  // Once the opened expression finishes formatting, validate it so the compiled
+  // clause reaches the widget and keeps the submit button enabled. We cannot
+  // wait for CodeMirror to report the formatted value as a change: that signal
+  // is unreliable under React 19's effect timing, which is what left the editor
+  // looking populated while the widget still had no clause.
+  const hasPropagatedInitialClause = useRef(false);
+  useEffect(() => {
+    if (
+      !isFormatting &&
+      !hasPropagatedInitialClause.current &&
+      source.trim() !== ""
+    ) {
+      hasPropagatedInitialClause.current = true;
+      handleUpdate(source, true);
+    }
+  }, [isFormatting, source, handleUpdate]);
 
   const handleSourceChange = useCallback(
     (source: string) => {
