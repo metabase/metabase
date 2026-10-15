@@ -216,8 +216,8 @@
     (testing "with run_query offered, the query is built and the user is shown nothing"
       (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true}
              (construct! #{"construct_notebook_query" "run_query"} {:show_chart false}))))
-    (testing "with run_query offered and the argument left out, the chart is shown"
-      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
+    (testing "with run_query offered and the argument left out, the chart is shown and points at run_query"
+      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? true}
              (construct! #{"construct_notebook_query" "run_query"} {}))))
     (testing "without run_query the chart is shown whatever the argument says"
       (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
