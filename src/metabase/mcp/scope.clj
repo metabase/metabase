@@ -34,7 +34,7 @@
   (contains? v2-baseline-scopes scope))
 
 (defn matches?
-  "Does `token-scopes` hold the scope `required-scope`?"
+  "True when `required-scope` is a valid MCP scope and is contained in `token-scopes`."
   [token-scopes required-scope]
   (boolean (and (valid-scope? required-scope)
                 (contains? token-scopes required-scope))))
