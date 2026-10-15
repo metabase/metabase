@@ -35,7 +35,7 @@
 (defn- mark-stale!
   "Mark an entity as stale in dependency_status for testing."
   [entity-type entity-id]
-  (deps.dependency-status/mark-stale! entity-type [entity-id]))
+  (deps.dependency-status/mark-stale! {entity-type #{entity-id}}))
 
 (defn- assert-processed
   "Assert that an entity has been processed (not stale, current version)."

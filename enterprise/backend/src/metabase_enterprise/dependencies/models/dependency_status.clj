@@ -16,11 +16,11 @@
   {:entity_type mi/transform-keyword})
 
 (defn mark-stale!
-  "Mark entities of `entity-type` with ids in `entity-ids` as stale for dependency recalculation.
-  Creates entries if they don't exist, or sets stale=true if they do.
-  Resets retry state so previously-failed entities get a fresh chance."
-  [entity-type entity-ids]
-  (doseq [id entity-ids]
+  "Mark the entities in `type->ids`, `{entity-type ids}`, stale for dependency recalculation, creating their statuses
+  if they don't exist and resetting their retry state so previously-failed entities get a fresh chance."
+  [type->ids]
+  (doseq [[entity-type ids] type->ids
+          id                ids]
     (dependencies.db/mark-dependency-status-stale! entity-type id)))
 
 (defn upsert-status!

@@ -134,9 +134,9 @@
             (deps.dependency-status/upsert-status! :card card-id)
             (deps.analysis-finding/upsert-analysis! :card card-id true []))
           (mt/with-dynamic-fn-redefs [deps.dependency-status/mark-stale!
-                                      (fn [entity-type entity-ids]
-                                        (mark-stale! entity-type entity-ids)
-                                        (when (= [:card [card-b]] [entity-type entity-ids])
+                                      (fn [type->ids]
+                                        (mark-stale! type->ids)
+                                        (when (= {:card #{card-b}} type->ids)
                                           (deliver b-status-marked true)))]
             (let [cascade (save! #(t2/with-transaction [_conn]
                                     (t2/update! :model/Card card-a {:dataset_query (table-query :orders)})

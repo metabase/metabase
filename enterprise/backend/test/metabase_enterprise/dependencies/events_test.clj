@@ -300,7 +300,7 @@
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
            (deps.test/synchronously-run-backfill!)
            (mt/with-dynamic-fn-redefs [deps.dependency-status/mark-stale!
-                                       (fn [_ _] (throw (ex-info "Simulated DB failure" {})))]
+                                       (fn [_] (throw (ex-info "Simulated DB failure" {})))]
              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated DB failure"
                                    (t2/update! :model/Card card-id {:dataset_query (lib/query mp orders)}))))
            (is (=? {:stages [{:source-table (mt/id :products)}]}
@@ -1010,7 +1010,7 @@
                         :model/Card {other-id :id}         {:dataset_query (query :products)}]
            (let [exported (serdes/extract-one "Card" {} card)]
              (t2/update! :model/Card card-id {:dataset_query (query :orders)})
-             (deps.dependency-status/mark-stale! :card [card-id other-id])
+             (deps.dependency-status/mark-stale! {:card #{card-id other-id}})
              (deps.test/synchronously-run-backfill!)
              (is (= #{[:table (mt/id :orders)]} (card-deps card-id)))
              (load! [exported])

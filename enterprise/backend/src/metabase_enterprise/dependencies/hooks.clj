@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as task.backfill]
@@ -53,9 +54,9 @@
   marks its dependents for re-analysis."
   [entity-type entity-id]
   (when entity-id
-    (deps.dependency-status/mark-stale! entity-type [entity-id])
+    (deps.dependency-status/mark-stale! {entity-type #{entity-id}})
     (when (contains? deps.findings/analyzable-entities entity-type)
-      (deps.findings/mark-entity-stale! entity-type entity-id))
+      (deps.analysis-finding/mark-stale! {entity-type #{entity-id}}))
     (trigger-jobs!)))
 
 (defn- changed?

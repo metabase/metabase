@@ -121,8 +121,7 @@
                                   (into {}
                                         (filter (fn [[dep-type _]] (analyzable-entities dep-type)))
                                         pass-through-dependents))]
-    (doseq [[dep-type dep-ids] all-supported]
-      (deps.analysis-finding/mark-stale! dep-type dep-ids))
+    (deps.analysis-finding/mark-stale! all-supported)
     (boolean (seq all-supported))))
 
 (defn mark-transitive-dependents-stale!
@@ -142,7 +141,7 @@
   "Mark a single entity as stale for re-analysis by the background job."
   [entity-type :- AnalyzableEntityType
    entity-id   :- pos-int?]
-  (deps.analysis-finding/mark-stale! entity-type [entity-id]))
+  (deps.analysis-finding/mark-stale! {entity-type #{entity-id}}))
 
 (mu/defn mark-entity-and-transitive-dependents-stale!
   "Mark `entity-id` and all of its transitive dependents stale for re-analysis. Use this when an entity changes: it
