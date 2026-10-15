@@ -1,0 +1,130 @@
+(ns metabase-enterprise.library-branching.push-app-db-test
+  "The push of the app DB instance. A push reads at a read point of its own, so these tests commit their content and
+  delete it afterwards, and they change the one base row of the app DB; they are not parallel."
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.instance :as instance]
+   [metabase-enterprise.library-branching.instance.app-db :as app-db]
+   [metabase-enterprise.library-branching.push :as push]
+   [metabase-enterprise.library-branching.push-test-util :as ptu :refer [with-remote]]
+   [metabase.app-db.core :as mdb]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(defn- reset-base! []
+  (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
+
+(defn- children-location
+  [{:keys [id location]}]
+  (str location id "/"))
+
+(defn- do-with-committed-content
+  "Calls `f` with a function `(insert! model row)` that inserts and commits a row and returns it, and the Library
+  collection. Deletes every inserted row afterwards, the last first, and clears the base row before and after."
+  [f]
+  (let [rows    (atom ())
+        insert! (fn [model row]
+                  (let [inserted (t2/insert-returning-instance! model row)]
+                    (swap! rows conj [model inserted])
+                    inserted))]
+    (reset-base!)
+    (try
+      (mt/with-temporary-setting-values [library-branching-enabled true]
+        (let [library (or (t2/select-one :model/Collection :type "library" :archived false)
+                          (insert! :model/Collection {:name "Library" :type "library" :location "/"}))]
+          (f insert! library)))
+      (finally
+        (doseq [[model row] @rows]
+          (t2/delete! model :id (:id row)))
+        (reset-base!)))))
+
+(defn- metric-row
+  [collection metric-name query & {:as more}]
+  (merge {:name                   metric-name
+          :type                   :metric
+          :collection_id          (:id collection)
+          :creator_id             (mt/user->id :crowberto)
+          :display                :scalar
+          :visualization_settings {}
+          :dataset_query          query}
+         more))
+
+(defn- sum-query []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :venues :price)))))))
+
+(defn- metric-query
+  "A query whose aggregation is the metric `card-id`."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib.metadata/metric mp card-id)))))
+
+(deftest push-of-the-app-db-test
+  (testing (str "a push writes the synced snapshot of the app DB, and the base row holds the commit; app DB "
+                (mdb/db-type))
+    (do-with-committed-content
+     (fn [insert! library]
+       (let [metrics (insert! :model/Collection {:name     "Push metrics"
+                                                 :type     "library-metrics"
+                                                 :location (children-location library)})
+             metric  (insert! :model/Card (metric-row metrics "Total price" (sum-query)))
+             inst    (app-db/app-db-instance)]
+         (with-remote [repo s]
+           (let [{:keys [result commit]} (push/push! inst s ptu/branch)
+                 read                    (:snapshot (instance/read-snapshot inst))]
+             (is (= :pushed result))
+             (is (= commit (ptu/remote-head repo)))
+             (is (= commit (instance/base inst)))
+             (is (= read (ptu/commit-snapshot s commit)))
+             (is (contains? read (:entity_id metric)))
+             (is (= {:created #{} :deleted #{} :updated #{}} (ptu/local-changes inst)))
+             (testing "a second push has nothing to push"
+               (is (= {:result :nothing-to-push :commit commit} (push/push! inst s ptu/branch)))))))))))
+
+(deftest push-refuses-a-library-metric-that-uses-a-trashed-metric-test
+  (testing (str "a Library metric uses a metric in the trash: the push refuses, names the pair, and writes nothing; "
+                "app DB " (mdb/db-type))
+    (do-with-committed-content
+     (fn [insert! library]
+       (let [metrics (insert! :model/Collection {:name     "Trash metrics"
+                                                 :type     "library-metrics"
+                                                 :location (children-location library)})
+             trashed (insert! :model/Card (metric-row metrics "Trashed" (sum-query) :archived true))
+             user    (insert! :model/Card (metric-row metrics "Uses the trashed one" (metric-query (:id trashed))))
+             inst    (app-db/app-db-instance)]
+         (with-remote [repo s]
+           (let [{:keys [result findings]} (push/push! inst s ptu/branch)]
+             (is (= :invalid result))
+             (is (some #(= {:rule :refs-closed :id (:entity_id user) :ref [:metric (:entity_id trashed)]} %)
+                       findings))
+             (is (nil? (ptu/remote-head repo)))
+             (is (nil? (instance/base inst))))))))))
+
+(deftest save-during-push-of-the-app-db-test
+  (testing (str "a save that commits after the read point of the push is a local change, and the next push carries "
+                "it; app DB " (mdb/db-type))
+    (do-with-committed-content
+     (fn [insert! library]
+       (let [metrics (insert! :model/Collection {:name     "Save metrics"
+                                                 :type     "library-metrics"
+                                                 :location (children-location library)})
+             metric  (insert! :model/Card (metric-row metrics "Before" (sum-query)))
+             inst    (app-db/app-db-instance)
+             racing  (ptu/wrap-instance inst {:read-snapshot (fn [read-snapshot]
+                                                               (let [r (read-snapshot)]
+                                                                 (t2/update! :model/Card (:id metric) {:name "After"})
+                                                                 r))})]
+         (with-remote [_repo s]
+           (let [{:keys [result commit]} (push/push! racing s ptu/branch)]
+             (is (= :pushed result))
+             (is (= "Before" (get-in (ptu/commit-snapshot s commit) [(:entity_id metric) :name])))
+             (is (= #{(:entity_id metric)} (:updated (ptu/local-changes inst))))
+             (let [next-push (push/push! inst s ptu/branch)]
+               (is (= :pushed (:result next-push)))
+               (is (= "After" (get-in (ptu/commit-snapshot s (:commit next-push)) [(:entity_id metric) :name])))))))))))

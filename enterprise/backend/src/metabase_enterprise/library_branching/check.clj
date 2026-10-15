@@ -22,12 +22,6 @@
 
 ;;; ------------------------------------------------------ Files ------------------------------------------------------
 
-(defn- checked-path?
-  [^String p]
-  (or (= tree/format-path p)
-      (and (str/ends-with? p ".yaml")
-           (not-any? #(str/starts-with? % ".") (str/split p #"/")))))
-
 (defn tree-files
   "`{path bytes}` of the files of directory `dir` that the checker decodes, with relative paths separated by /: each
   regular file whose name ends in .yaml and whose path has no segment that starts with a dot, and the format version
@@ -37,7 +31,7 @@
     (into {}
           (comp (filter #(.isFile ^File %))
                 (map (fn [^File f] [(str/join "/" (map str (.relativize root (.toPath f)))) f]))
-                (filter (comp checked-path? first))
+                (filter (comp tree/managed-path? first))
                 (map (fn [[p ^File f]] [p (Files/readAllBytes (.toPath f))])))
           (file-seq (io/file dir)))))
 

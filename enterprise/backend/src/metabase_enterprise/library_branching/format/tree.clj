@@ -114,12 +114,18 @@
   [codecs files]
   (dissoc (decode-files codecs files) :files))
 
+(defn managed-path?
+  "True iff the file at tree path `p` belongs to sync: the format version file [[format-path]], or a YAML file with no
+  path segment that starts with a dot. Every other file is foreign: sync never decodes it, and a push keeps it."
+  [^String p]
+  (or (= format-path p)
+      (and (str/ends-with? p ".yaml")
+           (not-any? #(str/starts-with? % ".") (str/split p #"/")))))
+
 (defn old-format?
-  "True iff the tree paths `paths` hold no [[format-path]] and some YAML file outside a directory whose name starts
-  with a dot: a repository that remote sync wrote."
+  "True iff the tree paths `paths` hold no [[format-path]] and some other path that [[managed-path?]] holds: a
+  repository that remote sync wrote."
   [paths]
   (boolean
    (and (not-any? #{format-path} paths)
-        (some (fn [p] (and (str/ends-with? p ".yaml")
-                           (not-any? #(str/starts-with? % ".") (str/split p #"/"))))
-              paths))))
+        (some managed-path? paths))))

@@ -41,8 +41,9 @@
   (read-snapshot [_]
     {:snapshot (read-at-read-point stores roots)})
   (base [_] (instance/not-yet! `instance/base))
+  (base-digests [_ _commit] (instance/not-yet! `instance/base-digests))
   (apply-plan! [_ _plan _new-base] (instance/not-yet! `instance/apply-plan!))
-  (set-base! [_ _expected _new] (instance/not-yet! `instance/set-base!)))
+  (set-base! [_ _expected _new _digests] (instance/not-yet! `instance/set-base!)))
 
 (defn app-db-instance
   "The `Instance` of this process's app DB, for `stores` (default [[kind-stores]]) and `roots` (default
