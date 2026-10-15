@@ -125,6 +125,19 @@
                tables
                contents))))
 
+(defn sync-display-names
+  "`{table-key display-name}`: the display name that warehouse sync gives each table of `table-keys`, with no user
+  value. A key of no table has no entry."
+  [table-keys]
+  (let [wanted (set table-keys)]
+    (into {}
+          (keep (fn [t]
+                  (let [k (table-key t)]
+                    ;; A case-insensitive collation can match a table whose key differs in case.
+                    (when (contains? wanted k)
+                      [k (:display_name t)]))))
+          (content/in-chunks library-branching.db/sync-names-by-key (vec wanted) 100))))
+
 (defn- table-of-key
   "The table row (`{:id :db :schema :table :display_name :collection_id}`) of natural key `k`, or nil."
   [k]

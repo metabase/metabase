@@ -112,7 +112,17 @@
                  (ptu/remote-commit! repo [c1] (old-tree (assoc-in remote [(:entity_id data) :attrs :description] "Data")))
                  (is (= {:created #{} :deleted #{} :updated #{(:entity_id data)}}
                         (:remote (status/status inst s ptu/branch {}))))
-                 (is (true? (:has-changes (status/check-remote-changes inst s ptu/branch {})))))))))))))
+                 (is (true? (:has-changes (status/check-remote-changes inst s ptu/branch {})))))
+               (testing "a user display name on the instance is a local change: the name of warehouse sync names the table
+                        in the base, so a head that changes the table gives a conflict"
+                 (t2/update! :model/TableUserSettings (mt/id :venues) {:display_name "My venues"})
+                 (ptu/remote-commit! repo [(ptu/remote-head repo)]
+                                     (old-tree (assoc-in remote [venues :attrs :description] "Changed again")))
+                 (let [{:keys [result conflicts]} (pull/pull! inst s ptu/branch)]
+                   (is (= :conflicts result))
+                   (is (= [venues] (map :id conflicts))))
+                 (is (= c1 (instance/base inst)))
+                 (is (= "My venues" (user-display-name))))))))))))
 
 (deftest deploy-of-old-format-trees-names-tables-as-the-instance-does-test
   (testing (str "a deploy of a published table with no display name in its settings file writes no display name, and "

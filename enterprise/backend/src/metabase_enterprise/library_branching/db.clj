@@ -194,19 +194,31 @@
   [entity-ids :- ::entity-ids]
   (t2/select :model/NativeQuerySnippet :entity_id [:in entity-ids]))
 
-(mu/defn tables-by-key :- [:sequential ::row]
-  "`{:id :db :schema :table :display_name :collection_id}` of each table of `table-keys`, natural keys `[database
-  schema table]`. `:display_name` and `:collection_id` are the values that users see."
-  [table-keys :- [:sequential {:max 100} ::table-key]]
+(defn- query-tables-by-key
+  [columns table-source table-keys]
   (if (empty? table-keys)
     []
-    (t2/query {:select [:t.id [:d.name :db] :t.schema [:t.name :table] :t.display_name :t.collection_id]
-               :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+    (t2/query {:select (into [:t.id [:d.name :db] :t.schema [:t.name :table]] columns)
+               :from   [table-source]
                :join   [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
                :where  (into [:or]
                              (map (fn [[db schema table]]
                                     [:and [:= :d.name db] [:= :t.schema schema] [:= :t.name table]]))
                              table-keys)})))
+
+(mu/defn tables-by-key :- [:sequential ::row]
+  "`{:id :db :schema :table :display_name :collection_id}` of each table of `table-keys`, natural keys `[database
+  schema table]`. `:display_name` and `:collection_id` are the values that users see."
+  [table-keys :- [:sequential {:max 100} ::table-key]]
+  (query-tables-by-key [:t.display_name :t.collection_id] (warehouse-schema-overlay/table-query {:alias :t}) table-keys))
+
+(mu/defn sync-names-by-key :- [:sequential ::row]
+  "`{:id :db :schema :table :display_name}` of each table of `table-keys`, natural keys `[database schema table]`.
+  `:display_name` is the value that warehouse sync writes, with no user value."
+  [table-keys :- [:sequential {:max 100} ::table-key]]
+  (query-tables-by-key [:t.display_name]
+                       (warehouse-schema-overlay/table-query {:alias :t :user-settings? false})
+                       table-keys))
 
 (mu/defn table-user-settings-by-table-id :- [:sequential ::row]
   "The user settings rows of the tables of `ids`, as instances of `:model/TableUserSettings`."

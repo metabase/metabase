@@ -23,7 +23,7 @@
    {:name   :deploy-novalidate
     :doc    "The deploy does not check the head at the structural level: an ill-formed text merge is applied."
     :target `deploy/check-head
-    :edits  [[:replace '(pull/check-commit store codecs h) '(pull/decode-commit store codecs h)]]
+    :edits  [[:replace '(pull/check-commit store codecs h opts) '(pull/decode-commit store codecs h opts)]]
     :tests  [#'deploy-test/deploy-refuses-an-ill-formed-head-test]}
    {:name   :prodbatched
     :doc    "The deploy applies a part of the plan (the TLA+ mutation prodbatched): the instance shows a mix of two

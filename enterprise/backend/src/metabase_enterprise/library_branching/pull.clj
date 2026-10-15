@@ -20,23 +20,33 @@
 
 ;;; ------------------------------------------------------ Commits ------------------------------------------------------
 
+(defn decode-opts
+  "The options of `claims/decode` for a tree that instance `inst` reads: a published table of the old format with no
+  display name has the name that warehouse sync gives it on `inst`."
+  [inst]
+  {:table-names #(instance/table-names inst %)})
+
 (defn decode-commit
-  "`claims/decode` of the tree of `commit` in `store`, with the codecs `codecs`: `{:snapshot s}`, or
-  `{:findings [f ...]}`."
-  [store codecs commit]
-  (claims/decode codecs (store/read-tree store commit)))
+  "`claims/decode` of the tree of `commit` in `store`, with the codecs `codecs` and the options `opts` (default none;
+  see [[decode-opts]]): `{:snapshot s}`, or `{:findings [f ...]}`."
+  ([store codecs commit]
+   (decode-commit store codecs commit {}))
+  ([store codecs commit opts]
+   (claims/decode codecs (store/read-tree store commit) opts)))
 
 (defn check-commit
-  "[[decode-commit]], then the structural findings of its snapshot (`validate/validate`, with the fixed roots of
-  `roots/root-ids`): `{:snapshot s}`, or `{:findings [f ...]}`."
-  [store codecs commit]
-  (let [{s :snapshot :as decoded} (decode-commit store codecs commit)]
-    (if-not s
-      decoded
-      (let [findings (validate/validate s {:roots (roots/root-ids s)})]
-        (if (seq findings)
-          {:findings findings}
-          {:snapshot s})))))
+  "[[decode-commit]] with `opts`, then the structural findings of its snapshot (`validate/validate`, with the fixed
+  roots of `roots/root-ids`): `{:snapshot s}`, or `{:findings [f ...]}`."
+  ([store codecs commit]
+   (check-commit store codecs commit {}))
+  ([store codecs commit opts]
+   (let [{s :snapshot :as decoded} (decode-commit store codecs commit opts)]
+     (if-not s
+       decoded
+       (let [findings (validate/validate s {:roots (roots/root-ids s)})]
+         (if (seq findings)
+           {:findings findings}
+           {:snapshot s}))))))
 
 ;;; ----------------------------------------------------- Decisions -----------------------------------------------------
 
@@ -80,13 +90,14 @@
   {})
 
 (defn- base-snapshot
-  "`{:snapshot b}` of base commit `b` for head `h`, or `{:lost reason}` when the three-way merge has no base: `b` is not
-  [[held?]] (`:rewritten`), or its tree does not decode (`:unreadable`). With no base (nil), [[no-base-snapshot]]."
-  [store codecs b h]
+  "`{:snapshot b}` of base commit `b` for head `h`, decoded with `opts`, or `{:lost reason}` when the three-way merge
+  has no base: `b` is not [[held?]] (`:rewritten`), or its tree does not decode (`:unreadable`). With no base (nil),
+  [[no-base-snapshot]]."
+  [store codecs opts b h]
   (cond
     (nil? b)                {:snapshot (no-base-snapshot)}
     (not (held? store b h)) {:lost :rewritten}
-    :else                   (let [{:keys [snapshot]} (decode-commit store codecs b)]
+    :else                   (let [{:keys [snapshot]} (decode-commit store codecs b opts)]
                               (if snapshot {:snapshot snapshot} {:lost :unreadable}))))
 
 ;;; ------------------------------------------------------- Pull --------------------------------------------------------
@@ -150,10 +161,10 @@
   - `{:result :no-branch}`: the branch does not exist, and the instance has a base;
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
-  Every result other than `:pulled` writes nothing. A pulled or invalid result has `:semantic`, the findings of
-  `semantic/validate` against `:env`, when `opts` has one. `opts`: `:codecs` (default `kinds/codecs`), `:decisions`
-  (the keep-mine decisions, see [[decide]]), `:env` (an environment of `format.manifest`), `:fence` (as in
-  `apply/apply-plan`), `:retries` (default [[default-retries]])."
+  Every result other than `:pulled` writes nothing. The head and the base decode with [[decode-opts]] of `inst`. A
+  pulled or invalid result has `:semantic`, the findings of `semantic/validate` against `:env`, when `opts` has one.
+  `opts`: `:codecs` (default `kinds/codecs`), `:decisions` (the keep-mine decisions, see [[decide]]), `:env` (an
+  environment of `format.manifest`), `:fence` (as in `apply/apply-plan`), `:retries` (default [[default-retries]])."
   ([inst store branch]
    (pull! inst store branch {}))
   ([inst store branch opts]
@@ -161,16 +172,17 @@
      (if-not (settings/library-branching-enabled)
        {:result :disabled}
        (loop [rewrites 0]
-         (let [b (instance/base inst)
-               h (store/head store branch)]
+         (let [b       (instance/base inst)
+               h       (store/head store branch)
+               decoding (decode-opts inst)]
            (cond
              (= b h) {:result :up-to-date :head h}
              (nil? h) {:result :no-branch}
              :else
-             (let [{r :snapshot :keys [findings]} (check-commit store codecs h)]
+             (let [{r :snapshot :keys [findings]} (check-commit store codecs h decoding)]
                (if-not r
                  {:result :invalid :head h :findings findings}
-                 (let [result (cond-> (apply-merge! inst store branch opts b h r (base-snapshot store codecs b h))
+                 (let [result (cond-> (apply-merge! inst store branch opts b h r (base-snapshot store codecs decoding b h))
                                 env (assoc :semantic (semantic/validate r env)))]
                    (if (and (= :rewritten (:result result)) (< rewrites retries))
                      (recur (inc rewrites))
