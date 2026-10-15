@@ -1,0 +1,10 @@
+kind: published-table
+id: [Sample Database, PUBLIC, ORDERS]
+collection: dAtAcOlLeCtIoNiD00000
+description: One row per order.
+display_name: Orders
+fields:
+  TOTAL: {display_name: Total, semantic_type: type/Currency}
+  USER_ID:
+    fk_target: [Sample Database, PUBLIC, PEOPLE, ID]
+    visibility_type: hidden

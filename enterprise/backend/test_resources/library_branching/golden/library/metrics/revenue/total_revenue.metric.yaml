@@ -1,0 +1,16 @@
+kind: metric
+id: IW8kbqZVaMxdGtCM2F4U6
+collection: cOlQuErIeS0ExAmPlE2x1
+description: Sum of order totals, after discounts.
+display: scalar
+name: Total Revenue
+query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - sum
+      - {}
+      - - field
+        - {base-type: type/Float}
+        - [Sample Database, PUBLIC, ORDERS, TOTAL]
+    source-table: [Sample Database, PUBLIC, ORDERS]
