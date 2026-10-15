@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.kinds.visualization :as visualization]
    [metabase-enterprise.library-branching.instance.dashboard-property-test :as property-test]
    [metabase-enterprise.library-branching.instance.dashboard-test :as dashboard-test]
@@ -17,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the instance side of dashboards."
@@ -38,18 +39,16 @@
     :edits  [[:replace '(format.dashboard/dashcard-order tab-items entries) 'entries]]
     :tests  [#'dashboard-test/content-test]}
    {:name   :every-attribute-written
-    :doc    "A write sets every attribute, also one whose content did not change. Toucan skips an update to the values
-            that a row has, so no row changes: the mutation survives, and GetPut does not rest on this comparison."
+    :doc    "A write sets every attribute, also one whose content did not change, so a write of the current content
+            updates the dashboard row."
     :target `dashboard/write-dashboard!
     :edits  [[:replace '(content/changed-attrs format.dashboard/spec (:attrs old) attrs) '(set own)]]
-    :expect :survived
     :tests  [#'dashboard-test/get-put-test]}
    {:name   :every-card-written
-    :doc    "A write sets every column of each dashboard card that it keeps. Toucan skips an update to the values that a
-            row has, so no row changes: the mutation survives, and GetPut does not rest on this comparison."
+    :doc    "A write sets every column of each dashboard card that it keeps, so a write of the current content updates
+            the rows of the dashboard cards."
     :target `dashboard/write-dashcards!
     :edits  [[:replace '(not= (entry-v before k) (entry-v entry k)) true]]
-    :expect :survived
     :tests  [#'dashboard-test/get-put-test]}
    {:name   :series-not-written
     :doc    "A write of a dashboard card that it keeps leaves its series as they were."

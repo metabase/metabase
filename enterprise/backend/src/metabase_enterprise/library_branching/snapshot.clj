@@ -84,6 +84,34 @@
   {:action    {:model #{:model}}
    :dashboard {:action #{:action} :dashboard #{:dashboard}}})
 
+(def library-content
+  "`{collection-type #{content-type}}`: the content types that a collection of each Library type can hold, as master's
+  Library content check has them ([[content-type]]). A collection of another type holds any content type."
+  ;; A copy of the table of `metabase-enterprise.library.validation`, which babashka cannot load; a test checks that the
+  ;; two agree on every pair of a collection type and an item.
+  {"library"            #{"library-data" "library-metrics" "library-dashboards"}
+   "library-data"       #{:table "library-data"}
+   "library-metrics"    #{:metric "library-metrics"}
+   "library-dashboards" #{:model/Dashboard :dashboard-question :model/Pulse :model/Timeline "library-dashboards"}})
+
+(def table-collection-type
+  "The one collection type that can hold a published table, inside the Library or outside it."
+  "library-data")
+
+(defn content-type
+  "The content type of `item` in the terms of master's Library content check: the `:type` of a collection, or
+  `:collection` for one with none; `:dashboard-question` for a question of a dashboard; else the kind, or the model
+  of the kind where master names the model."
+  [{:keys [kind attrs]}]
+  (case kind
+    :collection      (or (:type attrs) :collection)
+    :dashboard       :model/Dashboard
+    :published-table :table
+    :question        (if (some? (:dashboard_id attrs)) :dashboard-question :question)
+    :snippet         :model/NativeQuerySnippet
+    :timeline        :model/Timeline
+    kind))
+
 (def stub-kinds
   "The kinds whose new item an apply can write first without its references, as a stub, and complete in a later step:
   in a reference cycle, the items of these kinds leave out their references, so the items of other kinds need none."

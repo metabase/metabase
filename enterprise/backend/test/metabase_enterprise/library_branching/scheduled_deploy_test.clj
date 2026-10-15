@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
@@ -26,7 +27,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 ;;; ------------------------------------------------------ Reports -----------------------------------------------------
 
@@ -113,7 +114,7 @@
 (deftest scheduled-deploy-ticks-test
   (testing (str "each tick deploys a new head, reports a red head once, and records nothing while a task runs; app DB "
                 (mdb/db-type))
-    (mt/with-premium-features #{:audit-app}
+    (mt/with-additional-premium-features #{:audit-app}
       (with-remote [repo url]
         (with-settings {:remote-sync-url url :remote-sync-branch "main"}
           (rtu/with-synchronous-tasks

@@ -5,7 +5,9 @@
   operation, starts its task, and returns the task at once; a worker runs the operation. The result of the operation
   ends the task: an outcome for a success, an error message for every other result, with an outcome that tells why for
   a pull that stops on conflicts. A task that succeeds gets one audit-log entry after it ends. A branch operation
-  writes the branch setting only when it succeeds, in the transaction that ends it."
+  writes the branch setting only when it succeeds, in the transaction that ends it. The worker of a push, a pull, a
+  switch, a merge-branch, a discard and a deploy writes the progress of its task at the start of each phase of its
+  operation (`tasks/phase-starts`); a report that finds the task ended stops the operation at that phase."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.library-branching.audit :as audit]
@@ -228,9 +230,22 @@
     :no-branch     {:error (format "The repository has no branch %s." ref)}
     :no-merge-base {:error (format "The branches %s and %s have no common commit, so nothing was merged." into from)}
     :remote-moved  {:error (format "The branch %s moved during the merge, so nothing was merged. Try again." into)}
+    :fenced        {:error "The task ended before the merge moved the branch, so nothing was merged."}
     :disabled      {:error disabled-message}))
 
 ;;; ------------------------------------------------------ Workers -----------------------------------------------------
+
+(defn- reporting
+  "`(f on-phase)`, the result of an operation, where `on-phase` reports the start of each of its phases as the progress
+  of task `id` (`tasks/phase-checkpoints`). When a report finds task `id` ended, the operation stops at that phase,
+  and the result is `{:result :fenced :reason {:fenced status}}`."
+  [id f]
+  (try
+    (f (tasks/phase-checkpoints (tasks/progress-reporter id)))
+    (catch clojure.lang.ExceptionInfo e
+      (if (= ::tasks/stopped (:type (ex-data e)))
+        {:result :fenced :reason {:fenced (:status (ex-data e))}}
+        (throw e)))))
 
 (defn- write-branch!
   [branch]
@@ -245,11 +260,11 @@
   ([id branch message {:keys [new-branch?]}]
    (repository/do-with-store
     (fn [s]
-      (push-task-result branch (push/push! (instance) s branch id
-                                           (cond-> {}
-                                             message     (assoc :message message)
-                                             new-branch? (assoc :new-branch? true
-                                                                :on-record #(write-branch! branch)))))))))
+      (let [opts (cond-> {}
+                   message     (assoc :message message)
+                   new-branch? (assoc :new-branch? true
+                                      :on-record #(write-branch! branch)))]
+        (push-task-result branch (reporting id #(push/push! (instance) s branch id (assoc opts :on-phase %)))))))))
 
 (defn pull-task!
   "Runs the pull of branch `branch` as the work of task `id`, and returns its task result ([[pull-task-result]]). The
@@ -257,7 +272,8 @@
   [id branch]
   (repository/do-with-store
    (fn [s]
-     (pull-task-result branch (pull/pull! (instance) s branch {:fence (fn [] (tasks/fence id))})))))
+     (pull-task-result branch (reporting id #(pull/pull! (instance) s branch {:fence    (fn [] (tasks/fence id))
+                                                                              :on-phase %}))))))
 
 (defn switch-task!
   "Runs the switch of the instance to branch `branch` as the work of task `id`, and returns its task result
@@ -268,8 +284,11 @@
   [id branch]
   (repository/do-with-store
    (fn [s]
-     (let [{:keys [result head] :as pulled} (pull/pull! (instance) s branch {:fence     (fn [] (tasks/fence id))
-                                                                             :on-commit #(write-branch! branch)})]
+     (let [{:keys [result head] :as pulled} (reporting id (fn [on-phase]
+                                                            (pull/pull! (instance) s branch
+                                                                        {:fence     (fn [] (tasks/fence id))
+                                                                         :on-commit #(write-branch! branch)
+                                                                         :on-phase  on-phase})))]
        (cond
          (not= :up-to-date result) (switch-task-result branch pulled)
          ;; with no base, a branch that does not exist is "up to date"
@@ -307,9 +326,10 @@
   ([id branch {:keys [on-result discard?]}]
    (repository/do-with-store
     (fn [s]
-      (let [result (deploy/deploy! (instance) s branch (instance-env)
-                                   {:fence          (fn [] (tasks/fence id))
-                                    :discard-drift? (boolean discard?)})]
+      (let [result (reporting id #(deploy/deploy! (instance) s branch (instance-env)
+                                                  {:fence          (fn [] (tasks/fence id))
+                                                   :discard-drift? (boolean discard?)
+                                                   :on-phase       %}))]
         (when on-result
           (on-result result))
         (deploy-task-result branch result))))))
@@ -321,15 +341,21 @@
   [id branch]
   (repository/do-with-store
    (fn [s]
-     (discard-task-result branch (discard/discard! (instance) s branch {:fence (fn [] (tasks/fence id))})))))
+     (discard-task-result branch (reporting id #(discard/discard! (instance) s branch
+                                                                  {:fence    (fn [] (tasks/fence id))
+                                                                   :on-phase %}))))))
 
 (defn merge-branch-task!
   "Runs the merge of branch `from` into branch `into` as the work of task `id`, and returns its task result
-  ([[merge-branch-task-result]]). The commits decode with `pull/decode-opts` of this instance."
-  [_id into from]
+  ([[merge-branch-task-result]]). The commits decode with `pull/decode-opts` of this instance. When task `id` ended,
+  the merge stops at the start of its next phase; a merge that started its commit (the move of `into`) does not
+  stop."
+  [id into from]
   (repository/do-with-store
    (fn [s]
-     (merge-branch-task-result into from (merge-branch/merge-branch! s into from (pull/decode-opts (instance)))))))
+     (merge-branch-task-result into from (reporting id #(merge-branch/merge-branch! s into from
+                                                                                    (assoc (pull/decode-opts (instance))
+                                                                                           :on-phase %)))))))
 
 ;;; ------------------------------------------------------- Starts -----------------------------------------------------
 

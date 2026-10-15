@@ -2,6 +2,7 @@
   "Mutations of the rules of the edit gates. Each mutation removes or weakens one rule, and a test must fail."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.gates :as gates]
    [metabase-enterprise.library-branching.gates-test :as gates-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
@@ -9,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the edit gates."

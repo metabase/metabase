@@ -3,6 +3,7 @@
   that it names must fail."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.claims :as claims]
    [metabase-enterprise.library-branching.format.old :as old]
    [metabase-enterprise.library-branching.format.old-sync-test :as old-sync-test]
@@ -20,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 ;; The round-trip property test is in no list: it takes most of the time of a run, and the fixed tests kill each
 ;; mutation.

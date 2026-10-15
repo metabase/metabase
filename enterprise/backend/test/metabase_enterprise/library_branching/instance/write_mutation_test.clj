@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.card-test]
    [metabase-enterprise.library-branching.instance.cascade-test]
    [metabase-enterprise.library-branching.instance.content :as content]
@@ -22,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the write side."
@@ -190,7 +191,13 @@
             add."
     :target `save-rule/do-with-save-rule
     :edits  [[:replace '(set/difference (findings after (in-scope)) old) '(findings after (in-scope))]]
-    :tests  [#'metabase-enterprise.library-branching.instance.save-rule-test/saves-the-rule-allows-test]}])
+    :tests  [#'metabase-enterprise.library-branching.instance.save-rule-test/saves-the-rule-allows-test]}
+   {:name   :content-rule-not-a-refusal
+    :doc    "A write that the Library's content rule refuses throws the error of the rule, not a refusal, so a pull
+            fails in the middle of its apply."
+    :target `content/do-in-write-transaction
+    :edits  [[:replace '(= 400 status-code) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/library-content-rule-refusal-test]}])
 
 (deftest write-side-mutations-test
   (mut/check mutations {:timeout-ms 300000}))

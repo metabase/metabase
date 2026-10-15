@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.deploy :as deploy]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.old :as old]
    [metabase-enterprise.library-branching.format.old-test :as old-test]
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
@@ -22,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation drops or weakens the names of warehouse sync or the card ids of the instance at one place."

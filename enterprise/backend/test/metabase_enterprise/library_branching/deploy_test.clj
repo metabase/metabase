@@ -10,6 +10,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [metabase-enterprise.library-branching.deploy :as deploy]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.kinds.metric :as format.metric]
@@ -24,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defmacro ^:private enabled
   [& body]
@@ -408,10 +409,10 @@
   (testing "a question whose card becomes a model: one write of the card, as the app DB keeps both kinds in one table"
     (enabled
      (with-remote [repo s]
-       (let [local    (assoc-in ptu/sample [ptu/revenue-id :kind] :question)
+       (let [local    (ptu/with-app-card ptu/sample :question)
              c1       (pltu/commit-snapshot! repo ptu/branch [] local)
              [inst _] (deployed-instance! s)
-             remote   (assoc-in ptu/sample [ptu/revenue-id :kind] :model)
+             remote   (ptu/with-app-card ptu/sample :model)
              h        (pltu/commit-snapshot! repo ptu/branch [c1] remote)
              {:keys [result steps]} (deploy! inst s)]
          (is (= :deployed result))

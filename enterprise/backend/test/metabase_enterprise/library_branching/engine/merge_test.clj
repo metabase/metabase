@@ -162,6 +162,21 @@
               :violations [{:rule :acyclic :ids #{id0 id3} :ours id0 :theirs id3}]}
              (merge/merge b o t {}))))))
 
+(deftest ^:parallel library-content-violation-test
+  (testing (str "ours moves the empty collection Archive from Dashboards to Data and gives it the Data type; theirs "
+                "adds a dashboard in Archive. Each side obeys the Library rules; the result has a dashboard in a Data "
+                "collection, a violation that names the pair")
+    (let [archive (engine.tu/eid "archive")
+          board   (engine.tu/eid "board")
+          in      (fn [place t] (assoc-in (engine.tu/item :collection "Archive" place) [:attrs :type] t))
+          b       (assoc lb.tu/library-core archive (in "librarylibrarydashbrd" "library-dashboards"))
+          o       (assoc b archive (in "librarylibrarydatadat" "library-data"))
+          t       (assoc b board (engine.tu/item :dashboard "Board" archive))]
+      (is (and (lb.tu/library-content-fits? o) (lb.tu/library-content-fits? t)) "each side obeys the rules")
+      (is (= {:conflicts  []
+              :violations [{:rule :library-content :id board :place archive :ours archive :theirs board}]}
+             (merge/merge b o t {}))))))
+
 (deftest ^:parallel alloy-unique-keys-test
   (let [lib (engine.tu/eid "lib")
         b   {lib (engine.tu/item :collection "Library" nil) id1 (engine.tu/item :snippet "M" lib)}]
@@ -438,12 +453,17 @@
    {:name   :unknown-is-none
     :doc    "An unknown base is no content, so a remote item comes back over a trash before the first sync."
     :target `merge/merge
-    :edits  [[:replace '(get b id) '(let [v (get b id)] (when-not (= :unknown v) v)) {:nth 0}]]}])
+    :edits  [[:replace '(get b id) '(let [v (get b id)] (when-not (= :unknown v) v)) {:nth 0}]]}
+   {:name   :library-rule-not-involved
+    :doc    "The merge does not know which items a Library finding is about, so a merge that breaks a Library rule throws."
+    :target `merge/involved
+    :edits  [[:replace '(:place-inside :kind-fits :namespace :library-content :table-collection)
+              '(:place-inside :kind-fits :namespace)]]}])
 
 (deftest merge-mutations-test
   (mut/check mutations {:tests [#'per-item-table-test #'unknown-base-test #'keep-mine-test
                                 #'alloy-dangling-reference-test #'alloy-orphan-test #'alloy-cycle-test
-                                #'alloy-unique-keys-test #'violations-with-conflicts-test
+                                #'alloy-unique-keys-test #'violations-with-conflicts-test #'library-content-violation-test
                                 #'merge-laws-test #'merge-keeps-unique-keys-fails-test
                                 #'violation-names-two-items-with-keys-test
                                 #'unknown-base-merge-test #'one-sided-merge-is-well-formed-test]}))

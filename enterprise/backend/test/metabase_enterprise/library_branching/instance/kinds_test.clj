@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.engine.diff :as diff]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.layout :as layout]
@@ -26,7 +27,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- children-location
   [{:keys [id location]}]
@@ -308,9 +309,13 @@
 ;;; ------------------------------------------------- Local changes ------------------------------------------------
 
 (deftest local-changes-test
-  (collections.tu/with-library [{:keys [library data metrics]}]
-    (mt/with-temp [:model/Collection         folder  {:name "Folder" :location (children-location library)}
-                   :model/Collection         sub     {:name "Sub" :location (children-location folder)}
+  (collections.tu/with-library [{:keys [data metrics]}]
+    (mt/with-temp [:model/Collection         folder  {:name     "Folder"
+                                                      :type     "library-metrics"
+                                                      :location (children-location metrics)}
+                   :model/Collection         sub     {:name     "Sub"
+                                                      :type     "library-metrics"
+                                                      :location (children-location folder)}
                    :model/Card               metric  {:name          "Total price"
                                                       :type          :metric
                                                       :collection_id (:id metrics)
@@ -401,7 +406,9 @@
                                                      :dataset_query (sum-query :venues :category_id)}
                          :model/NativeQuerySnippet _ {:name "Two" :collection_id (:id f) :content "2 = 2"}
                          :model/NativeQuerySnippet _ {:name "Three" :content "3 = 3"}
-                         :model/Collection        _ {:name "Sub" :location (children-location metrics)}
+                         :model/Collection        _ {:name     "Sub"
+                                                     :type     "library-metrics"
+                                                     :location (children-location metrics)}
                          :model/TableUserSettings _ {:table_id      (mt/id :users)
                                                      :is_published  true
                                                      :collection_id (:id data)}

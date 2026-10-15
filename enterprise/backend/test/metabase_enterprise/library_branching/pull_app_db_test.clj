@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.operations :as operations]
@@ -23,7 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
@@ -35,12 +36,13 @@
 (def ^:private created-ids
   "Entity ids of the rows that a pull of these tests creates."
   ["lbPullNewMetric000001" "lbPullSnippetOne00001" "lbPullSnippetTwo00001" "lbPullLinkedMetric001"
-   "lbPullMetricLinks0001"])
+   "lbPullMetricLinks0001" "lbPullPlainFolder0001"])
 
 (defn- delete-created! []
   (t2/delete! :model/Dashboard :entity_id [:in created-ids])
   (t2/delete! :model/Card :entity_id [:in created-ids])
-  (t2/delete! :model/NativeQuerySnippet :entity_id [:in created-ids]))
+  (t2/delete! :model/NativeQuerySnippet :entity_id [:in created-ids])
+  (t2/delete! :model/Collection :entity_id [:in created-ids]))
 
 (defn- do-with-committed-content!
   "Calls `f` with a function `(insert! model row)` that inserts and commits a row and returns it, and the metrics
@@ -252,6 +254,30 @@
              (is (= "Personal" (t2/select-one-fn :name :model/Card (:id personal))))
              (is (= c1 (instance/base inst))))))))))
 
+(deftest library-content-rule-refusal-writes-nothing-test
+  (testing (str "the head holds a collection with no Library type in the Metrics section, which the Library's content "
+                "rule refuses: the pull finds it in the head, before any write, and names the collection; app DB "
+                (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! metrics]
+       (let [metric (insert! :model/Card (metric-row metrics "Before" :entity_id "lbPullAaaMetric000001"))
+             folder "lbPullPlainFolder0001"]
+         (with-remote [repo s]
+           (let [[inst c1 base] (pushed! s)
+                 h              (pltu/commit-snapshot! repo ptu/branch [c1]
+                                                       (-> base
+                                                           (ptu/renamed (:entity_id metric) "After")
+                                                           (assoc folder {:kind  :collection :name "Plain folder"
+                                                                          :place (:entity_id metrics) :refs #{}
+                                                                          :attrs {}})))
+                 {:keys [result findings head]} (pull! inst s)]
+             (is (= :invalid result))
+             (is (= h head))
+             (is (= [{:rule :library-content :id folder :place (:entity_id metrics)}] findings))
+             (is (= "Before" (t2/select-one-fn :name :model/Card (:id metric))))
+             (is (not (t2/exists? :model/Collection :entity_id folder)))
+             (is (= c1 (instance/base inst))))))))))
+
 (deftest identity-of-another-kind-test
   (testing (str "the head gives the identity of a collection to a glossary term: the pull writes the term and trashes "
                 "the collection; a later head with the collection again restores it and deletes the term; app DB "
@@ -259,6 +285,7 @@
     (do-with-committed-content!
      (fn [insert! metrics]
        (let [collection (insert! :model/Collection {:name     "lb kind change"
+                                                    :type     "library-metrics"
                                                     :location (children-location metrics)})
              id         (:entity_id collection)]
          (try
@@ -321,9 +348,13 @@
      (fn [insert! metrics]
        (let [[metric-eid dashboard-eid] (drop 3 created-ids)
              metric    (insert! :model/Card (metric-row metrics "Linked" :entity_id metric-eid))
+             ;; the Library's content rule keeps a dashboard in a Dashboards collection
+             section   (insert! :model/Collection {:name     "Pull dashboards"
+                                                   :type     "library-dashboards"
+                                                   :location (:location metrics)})
              dashboard (insert! :model/Dashboard {:name          "Metric links"
                                                   :entity_id     dashboard-eid
-                                                  :collection_id (:id metrics)
+                                                  :collection_id (:id section)
                                                   :creator_id    (mt/user->id :crowberto)})
              _         (insert! :model/DashboardCard {:dashboard_id (:id dashboard) :row 0 :col 0 :size_x 4 :size_y 2
                                                       :visualization_settings

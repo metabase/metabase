@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.kinds.metric :as format.metric]
@@ -22,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defmacro ^:private enabled
   [& body]
@@ -79,7 +80,7 @@
   "The sample, with a second collection of the Library that holds a nested collection with a metric."
   (assoc ptu/sample
          reports-id       (ptu/item reports-id :collection "Reports" ptu/library-id {:type "library-metrics"})
-         nested-id        (ptu/item nested-id :collection "Nested" reports-id {})
+         nested-id        (ptu/item nested-id :collection "Nested" reports-id {:type "library-metrics"})
          nested-metric-id (ptu/item nested-metric-id :metric "Nested revenue" nested-id
                                     {:display "scalar" :query (ptu/count-query ptu/orders-table)})))
 
@@ -125,7 +126,7 @@
                              (ptu/renamed ptu/revenue-id "Revenue, net")
                              (described nested-metric-id "In a nested collection.")
                              (dissoc ptu/orders-id)
-                             (assoc added-id (ptu/item added-id :snippet "Added" ptu/library-id {:content "x"}))))
+                             (assoc added-id (ptu/item added-id :snippet "Added" ptu/snippets-root {:content "x"}))))
        (let [{:keys [base local changes]} (status/local-changes inst (with-store-of s calls) ptu/branch {})]
          (testing "an update, a nested update, a delete and a create"
            (is (= c1 base))
@@ -241,7 +242,7 @@
            remote    (-> ptu/sample
                          (ptu/renamed ptu/revenue-id "Revenue, net")
                          (dissoc ptu/orders-id)
-                         (assoc added-id (ptu/item added-id :snippet "Added" ptu/library-id {:content "x"})))
+                         (assoc added-id (ptu/item added-id :snippet "Added" ptu/snippets-root {:content "x"})))
            h         (pltu/commit-snapshot! repo ptu/branch [c1] remote {"notes/plan.txt" (ptu/utf8 "plan")})]
        (store/head s ptu/branch)
        (testing "an update, a delete and a create; a foreign file is no change"
@@ -401,7 +402,7 @@
                                                                      (ptu/renamed ptu/orders-id "Remote")
                                                                      (dissoc ptu/snippet-id)
                                                                      (assoc added-id (ptu/item added-id :snippet "Added"
-                                                                                               ptu/library-id {:content "x"}))))]
+                                                                                               ptu/snippets-root {:content "x"}))))]
        (pltu/save! inst #(ptu/renamed % ptu/revenue-id "Local"))
        (testing "a moved head with changes that do not conflict: diverged, clean, with a summary of what the merge
                 takes from the head"

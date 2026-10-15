@@ -8,6 +8,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.deploy :as deploy]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.manifest :as format.manifest]
    [metabase-enterprise.library-branching.format.old-test-util :as old.tu]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -21,6 +22,7 @@
    [metabase-enterprise.library-branching.repository-test-util :as rtu]
    [metabase-enterprise.library-branching.status :as status]
    [metabase-enterprise.library-branching.store :as store]
+   [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
@@ -31,7 +33,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
@@ -157,17 +159,24 @@
                 (mdb/db-type))
     (do-with-published-venues!
      (fn [data]
-       ;; A pull reads at a read point of its own, so the rows commit; `mt/with-temp` would hold a transaction.
-       (let [metric    (t2/insert-returning-instance! :model/Card
+       ;; A pull reads at a read point of its own, so the rows commit; `mt/with-temp` would hold a transaction. The
+       ;; Library's content rule keeps a metric in a Metrics collection and a dashboard in a Dashboards collection.
+       (let [section   (fn [section-name section-type]
+                         (t2/insert-returning-instance! :model/Collection {:name     section-name
+                                                                           :type     section-type
+                                                                           :location (:location data)}))
+             metrics   (section "Old format metrics" "library-metrics")
+             boards    (section "Old format dashboards" "library-dashboards")
+             metric    (t2/insert-returning-instance! :model/Card
                                                       {:name                   "Linked metric"
                                                        :type                   :metric
-                                                       :collection_id          (:id data)
+                                                       :collection_id          (:id metrics)
                                                        :creator_id             (mt/user->id :crowberto)
                                                        :display                :scalar
                                                        :visualization_settings {}
                                                        :dataset_query          (count-query)})
              dashboard (t2/insert-returning-instance! :model/Dashboard {:name          "Metric links"
-                                                                        :collection_id (:id data)
+                                                                        :collection_id (:id boards)
                                                                         :creator_id    (mt/user->id :crowberto)})]
          (try
            (t2/insert! :model/DashboardCard {:dashboard_id (:id dashboard) :row 0 :col 0 :size_x 4 :size_y 2
@@ -201,7 +210,8 @@
                    (is (= status/no-changes (ptu/local-changes inst)))))))
            (finally
              (t2/delete! :model/Dashboard (:id dashboard))
-             (t2/delete! :model/Card (:id metric)))))))))
+             (t2/delete! :model/Card (:id metric))
+             (t2/delete! :model/Collection :id [:in [(:id metrics) (:id boards)]]))))))))
 
 (deftest deploy-of-old-format-trees-names-tables-as-the-instance-does-test
   (testing (str "a deploy of a published table with no display name in its settings file writes no display name, and "
@@ -259,7 +269,9 @@
              (let [a (pltu/commit-on! repo "main" [] (old-tree local))
                    m (pltu/commit-on! repo "main" [a] (old-tree ours))
                    d (pltu/commit-on! repo "dev" [a] (old-tree theirs))
-                   {:keys [outcome]} (operations/merge-branch-task! nil "main" "dev")
+                   {:keys [outcome]} (tasks.tu/with-no-tasks
+                                       (let [{:keys [id]} (tasks/start! "merge-branch" nil)]
+                                         (tasks/run-task! id #(operations/merge-branch-task! % "main" "dev"))))
                    ;; a store holds the commits of the branches that it fetched
                    merged (repository/do-with-store (fn [s]
                                                       (store/head s "main")
