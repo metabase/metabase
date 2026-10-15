@@ -27,8 +27,7 @@ export function LegendHorizontal({
   const legendItemRefs = useRef<Record<number, HTMLSpanElement | null>>({});
   const { overflowCount, visibleCount, containerRef, itemRefs } =
     useLegendOverflow({
-      itemCount: titles.length,
-      itemsKey: JSON.stringify(titles),
+      titles,
       minVisibleCount: MIN_VISIBLE_COUNT,
       axis: "horizontal",
       isEnabled: isSingleRow,

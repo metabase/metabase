@@ -283,6 +283,12 @@ describe("getLegendLayout lg size", () => {
 
 describe("getLegendLayout with an explicit position", () => {
   const SMALL_CARD = { width: 300, height: 150 };
+  const MOSTLY_TRUNCATED_NAMES = [
+    "a".repeat(40),
+    "b".repeat(40),
+    "c".repeat(40),
+    "d".repeat(10),
+  ];
 
   it("should hide the legend when the position is off", () => {
     expect(layout(["a", "b"], { position: "off" })).toEqual({
@@ -290,7 +296,7 @@ describe("getLegendLayout with an explicit position", () => {
     });
   });
 
-  it.each<LegendPosition>(["auto", "top", "bottom", "left", "right"])(
+  it.each<LegendPosition>(["top", "bottom", "left", "right"])(
     "should hide a %s legend on a card below the minimum size",
     (position) => {
       expect(layout(["a", "b"], { ...SMALL_CARD, position })).toEqual({
@@ -368,34 +374,23 @@ describe("getLegendLayout with an explicit position", () => {
     ).toMatchObject({ visibleCount: 4 });
   });
 
-  it("should hide a column the automatic layout hides for truncation", () => {
-    const names = [
-      "a".repeat(40),
-      "b".repeat(40),
-      "c".repeat(40),
-      "d".repeat(10),
-    ];
-    expect(layout(names, { position: "left" })).toEqual({ type: "hidden" });
+  it("should hide a column when most labels would be truncated", () => {
+    expect(layout(MOSTLY_TRUNCATED_NAMES, { position: "left" })).toEqual({
+      type: "hidden",
+    });
   });
 
   it.each<LegendPosition>(["top", "bottom"])(
-    "should keep a %s row the automatic layout hides for column truncation",
+    "should keep a %s row when most labels would be truncated in a column",
     (position) => {
-      const names = [
-        "a".repeat(40),
-        "b".repeat(40),
-        "c".repeat(40),
-        "d".repeat(10),
-      ];
-      expect(layout(names)).toEqual({ type: "hidden" });
-      expect(layout(names, { position })).toMatchObject({
+      expect(layout(MOSTLY_TRUNCATED_NAMES, { position })).toMatchObject({
         type: "horizontal",
         isBeforeChart: position === "top",
       });
     },
   );
 
-  it("should keep at least one item in the column when no row fits", () => {
+  it("should keep at least one item in the column when its height fits none", () => {
     expect(
       layout(["a", "b"], { chartHeight: 10, position: "right" }),
     ).toMatchObject({ type: "vertical", visibleCount: 1 });

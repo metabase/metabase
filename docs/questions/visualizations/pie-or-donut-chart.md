@@ -74,7 +74,7 @@ To format the total displayed in the middle of the chart, click on the three dot
 
 You can configure whether to show:
 
-- The legend, and which side of the chart it appears on. Set **Legend position** to **Auto**, **Top**, **Bottom**, **Left**, **Right**, or **Off**. **Auto** picks a side that fits the card. With **Top**, **Bottom**, **Left**, or **Right**, legend items that don't fit go into a **+ N more** list. On very small cards, Metabase hides the legend whatever position you pick.
+- The legend, and which side of the chart it appears on. Set **Legend position** to **Auto**, **Top**, **Bottom**, **Left**, **Right**, or **Off**. **Auto** picks a side that fits the card. Legend items that don't fit go into a **+ N more** list. On very small cards, Metabase hides the legend whatever position you pick.
 - The total in the center of the chart. The format of the total can be changed in the [data settings](#data-settings).
 - The labels for the pie slices. The labels for the inner ring slices can be changed in the [data settings](#data-settings).
 

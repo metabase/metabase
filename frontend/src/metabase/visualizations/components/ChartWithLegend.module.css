@@ -43,22 +43,22 @@
 }
 
 /* VERTICAL */
-.ChartWithLegend.vertical.legendBeforeChart {
-  flex-direction: column;
-}
-
-.ChartWithLegend.vertical.legendAfterChart {
+.ChartWithLegend.vertical {
   flex-direction: column-reverse;
 }
 
-.ChartWithLegend.vertical.legendBeforeChart .Legend {
-  margin-top: 0;
-  margin-bottom: 1em;
+.ChartWithLegend.vertical.legendBeforeChart {
+  flex-direction: column;
 }
 
 .ChartWithLegend.vertical .Legend {
   flex-shrink: 1;
   overflow: hidden;
+}
+
+.ChartWithLegend.vertical.legendBeforeChart .Legend {
+  margin-top: 0;
+  margin-bottom: 1em;
 }
 
 .ChartWithLegend.vertical .LegendWrapper {
@@ -77,7 +77,7 @@
 }
 
 /* HORIZONTAL */
-.ChartWithLegend.horizontal.legendBeforeChart {
+.ChartWithLegend.horizontal {
   flex-direction: row;
 }
 
@@ -85,15 +85,15 @@
   flex-direction: row-reverse;
 }
 
-.ChartWithLegend.horizontal.legendAfterChart .Legend {
-  margin-right: 0;
-  margin-left: 1em;
-}
-
 .ChartWithLegend.horizontal .Legend {
   flex-grow: 0;
   flex-shrink: 1;
   overflow: hidden;
+}
+
+.ChartWithLegend.horizontal.legendAfterChart .Legend {
+  margin-right: 0;
+  margin-left: 1em;
 }
 
 .ChartWithLegend.horizontal .LegendWrapper {

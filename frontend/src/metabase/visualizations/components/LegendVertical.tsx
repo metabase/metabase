@@ -21,8 +21,7 @@ export function LegendVertical({
   onToggleSeriesVisibility,
 }: LegendProps) {
   const { visibleCount, containerRef, itemRefs } = useLegendOverflow({
-    itemCount: titles.length,
-    itemsKey: JSON.stringify(titles),
+    titles,
     minVisibleCount: 0,
     axis: "vertical",
   });
@@ -149,7 +148,7 @@ export function LegendOverflow({
             .slice(-foldedCount)
             .concat(colors.slice(0, -foldedCount))}
           hiddenIndices={hiddenIndices
-            .filter((i) => i >= visibleCount - 1)
+            .filter((i) => i >= visibleCount)
             .map((i) => i - visibleCount)}
           onToggleSeriesVisibility={(event, sliceIndex) =>
             onToggleSeriesVisibility?.(event, sliceIndex + visibleCount)

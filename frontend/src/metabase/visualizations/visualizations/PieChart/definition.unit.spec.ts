@@ -12,6 +12,8 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
+registerVisualizations();
+
 const ROWS = 200;
 
 /**
@@ -67,8 +69,6 @@ describe("PieChart pie.rows caching", () => {
 });
 
 describe("PieChart legend.position", () => {
-  registerVisualizations();
-
   const computeLegend = (settings: VisualizationSettings) =>
     getComputedSettingsForSeries([
       {
