@@ -4,14 +4,7 @@ definition:
   database: Sample Database
   stages:
   - aggregation:
-    - - sum-where
-      - {}
-      - - field
-        - {base-type: type/Float}
-        - [Sample Database, PUBLIC, ORDERS, TOTAL]
-      - - segment
-        - {}
-        - lArGeOrDeRsSeGmEnT001
+    - [sum-where, {}, [field, {base-type: type/Float}, [Sample Database, PUBLIC, ORDERS, TOTAL]], [segment, {}, lArGeOrDeRsSeGmEnT001]]
     source-table: [Sample Database, PUBLIC, ORDERS]
 name: Order total
 table: [Sample Database, PUBLIC, ORDERS]

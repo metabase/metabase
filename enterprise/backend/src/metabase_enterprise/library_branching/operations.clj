@@ -1,10 +1,13 @@
 (ns metabase-enterprise.library-branching.operations
-  "Push, pull and merge-branch on a creation instance, and the deploy on a consumption instance, on the configured
-  repository and the app DB instance, each as a task: each start function checks the preconditions of its operation,
-  starts its task, and returns the task at once; a worker runs the operation. The result of the operation ends the
-  task: an outcome for a success, an error message for every other result."
+  "Push, pull, merge-branch and the branch operations (create a branch, push to a new branch, switch to another
+  branch) on a creation instance, and the deploy on a consumption instance, on the configured repository and the app DB
+  instance, each as a task: each start function checks the preconditions of its operation, starts its task, and
+  returns the task at once; a worker runs the operation. The result of the operation ends the task: an outcome for a
+  success, an error message for every other result. A branch operation writes the branch setting only when it
+  succeeds, in the transaction that ends it."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.library-branching.branch :as branch]
    [metabase-enterprise.library-branching.deploy :as deploy]
    [metabase-enterprise.library-branching.format.manifest :as format.manifest]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -16,7 +19,9 @@
    [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.settings :as settings]
+   [metabase-enterprise.library-branching.store.jgit :as store.jgit]
    [metabase-enterprise.library-branching.tasks :as tasks]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
@@ -56,6 +61,7 @@
     :nothing-to-push      {:outcome {:kind "nothing-to-push" :branch branch :commit commit}}
     :remote-moved         {:error (push/remote-moved-message branch)}
     :invalid              {:error (format "The Library breaks the rules %s, so nothing was pushed." (rules findings))}
+    :branch-exists        {:error (format "The repository already has a branch %s, so nothing was pushed." branch)}
     :fenced               {:error "The task ended before the push reached its commit point, so nothing was pushed."}
     :disabled             {:error disabled-message}))
 
@@ -84,6 +90,24 @@
     :fenced     {:error "The task ended before the pull applied, so nothing was pulled."}
     :no-branch  {:error (format "The repository has no branch %s." branch)}
     :disabled   {:error disabled-message}))
+
+(defn switch-task-result
+  "The task result of `result`, a result of `pull/pull!` of branch `branch` for a switch to it: as
+  [[pull-task-result]], with the outcome kind switched."
+  [branch result]
+  (let [task-result (pull-task-result branch result)]
+    (cond-> task-result
+      (:outcome task-result) (assoc-in [:outcome :kind] "switched"))))
+
+(defn create-branch-task-result
+  "The task result of `result`, a result of `branch/create-branch!` of branch `branch-name` from branch `from`:
+  `{:outcome o}` when the branch was created, else `{:error message}`."
+  [branch-name from {:keys [result commit ref]}]
+  (case result
+    :created       {:outcome {:kind "branch-created" :branch branch-name :from from :commit commit}}
+    :branch-exists {:error (format "The repository already has a branch %s." branch-name)}
+    :no-branch     {:error (format "The repository has no branch %s." ref)}
+    :fenced        {:error "The task ended before the branch was created, so nothing changed."}))
 
 (defn deploy-task-result
   "The task result of `result`, a result of `deploy/deploy!` of branch `branch`: `{:outcome o}` when the deploy applied
@@ -130,13 +154,24 @@
 
 ;;; ------------------------------------------------------ Workers -----------------------------------------------------
 
+(defn- write-branch!
+  [branch]
+  (setting/set! :remote-sync-branch branch))
+
 (defn push-task!
   "Runs the push to branch `branch` with the commit message `message` (nil: the default) as the work of task `id`, and
-  returns its task result ([[push-task-result]])."
-  [id branch message]
-  (repository/do-with-store
-   (fn [s]
-     (push-task-result branch (push/push! (instance) s branch id (cond-> {} message (assoc :message message)))))))
+  returns its task result ([[push-task-result]]). With `(:new-branch? opts)`, the push creates `branch`, and the
+  branch setting becomes `branch` in the record step of the push, with the move of the base."
+  ([id branch message]
+   (push-task! id branch message {}))
+  ([id branch message {:keys [new-branch?]}]
+   (repository/do-with-store
+    (fn [s]
+      (push-task-result branch (push/push! (instance) s branch id
+                                           (cond-> {}
+                                             message     (assoc :message message)
+                                             new-branch? (assoc :new-branch? true
+                                                                :on-record #(write-branch! branch)))))))))
 
 (defn pull-task!
   "Runs the pull of branch `branch` as the work of task `id`, and returns its task result ([[pull-task-result]]). The
@@ -145,6 +180,44 @@
   (repository/do-with-store
    (fn [s]
      (pull-task-result branch (pull/pull! (instance) s branch {:fence (fn [] (tasks/fence id))})))))
+
+(defn switch-task!
+  "Runs the switch of the instance to branch `branch` as the work of task `id`, and returns its task result
+  ([[switch-task-result]]). The switch is the pull of `branch`: it merges against the base while a branch holds the
+  base, also when the base is not in the history of `branch`. The branch setting becomes `branch` in the transaction
+  of the apply, or, when the head of `branch` is the base, in a commit of the task; both commit only while task `id`
+  is running."
+  [id branch]
+  (repository/do-with-store
+   (fn [s]
+     (let [{:keys [result head] :as pulled} (pull/pull! (instance) s branch {:fence     (fn [] (tasks/fence id))
+                                                                             :on-commit #(write-branch! branch)})]
+       (cond
+         (not= :up-to-date result) (switch-task-result branch pulled)
+         ;; with no base, a branch that does not exist is "up to date"
+         (nil? head)               (switch-task-result branch {:result :no-branch})
+         :else
+         (let [task-result (switch-task-result branch pulled)
+               committed   (tasks/commit! id (fn []
+                                               (write-branch! branch)
+                                               {:ok true :outcome (:outcome task-result)}))]
+           (if (:fenced committed)
+             (switch-task-result branch {:result :fenced :reason committed})
+             task-result)))))))
+
+(defn create-branch-task!
+  "Runs the creation of branch `branch-name` at the head of branch `from` as the work of task `id`, and returns its task
+  result ([[create-branch-task-result]]). The task passes its commit point before the remote changes, and the branch
+  setting becomes `branch-name` in the record step of the task. The base does not change: a branch still holds it."
+  [id branch-name from]
+  (repository/do-with-store
+   (fn [s]
+     (let [result      (branch/create-branch! s branch-name from {:commit-point #(let [r (tasks/mark-committing! id)]
+                                                                                   (when-not (= :ok r) r))})
+           task-result (create-branch-task-result branch-name from result)]
+       (when (= :created (:result result))
+         (tasks/record! id (fn [] (write-branch! branch-name) task-result)))
+       task-result))))
 
 (defn deploy-task!
   "Runs the deploy of branch `branch` as the work of task `id`, against the environment of this instance, and returns
@@ -175,7 +248,18 @@
   (when-not (repository/configured?)
     (refuse! (tru "Library branching is not configured.")))
   (when-not (repository/read-write?)
-    (refuse! (tru "Push, pull and merge-branch are only allowed when remote-sync-type is read-write."))))
+    (refuse! (tru "Push, pull, merge-branch and the branch operations are only allowed when remote-sync-type is read-write."))))
+
+(defn- check-branch-settable!
+  "Throws 400 when the branch setting comes from an environment variable: a write of it would not change it."
+  []
+  (when (= :env (setting/get-raw-value-source :remote-sync-branch))
+    (refuse! (tru "The branch comes from the environment variable MB_REMOTE_SYNC_BRANCH, so it does not change."))))
+
+(defn- check-branch-name!
+  [branch-name]
+  (when-not (store.jgit/valid-branch-name? branch-name)
+    (refuse! (tru "The name {0} is not a valid branch name." branch-name))))
 
 (defn- configured-branch []
   (or (repository/branch)
@@ -193,20 +277,52 @@
 
 (defn start-push!
   "Starts a push task of the synced snapshot to the configured branch, for the user `user-id`, with the commit message
-  `message` (nil: the default), and returns the task. Throws ex-info with `:status-code` 400 when library branching is
-  off or not configured, on a consumption instance, and while a task runs."
-  [user-id message]
+  `message` (nil: the default), and returns the task. With `new-branch` (not nil), the push creates the branch
+  `new-branch` instead, and the instance uses it after the push. Throws ex-info with `:status-code` 400 when library
+  branching is off or not configured, on a consumption instance, and while a task runs; for a new branch, also when
+  `new-branch` is not a valid branch name and when the branch setting comes from an environment variable."
+  ([user-id message]
+   (start-push! user-id message nil))
+  ([user-id message new-branch]
+   (check-start!)
+   (if new-branch
+     (do (check-branch-settable!)
+         (check-branch-name! new-branch)
+         (submit! "push" user-id #(push-task! % new-branch message {:new-branch? true})))
+     (let [branch (configured-branch)]
+       (submit! "push" user-id #(push-task! % branch message))))))
+
+(defn start-switch!
+  "Starts a task that switches the instance to branch `branch` (`switch-task!`), for the user `user-id`, and returns
+  the task. Throws as [[start-push!]] for a new branch, except for the name."
+  [user-id branch]
   (check-start!)
-  (let [branch (configured-branch)]
-    (submit! "push" user-id #(push-task! % branch message))))
+  (check-branch-settable!)
+  (submit! "branch-switch" user-id #(switch-task! % branch)))
 
 (defn start-pull!
   "Starts a pull task of the configured branch, for the user `user-id`, and returns the task. The apply of the pull
-  commits only while its task is running. Throws as [[start-push!]]."
-  [user-id]
+  commits only while its task is running. A pull of `branch`, another branch than the configured one, is a switch to
+  it ([[start-switch!]]). Throws as [[start-push!]]."
+  ([user-id]
+   (start-pull! user-id nil))
+  ([user-id branch]
+   (check-start!)
+   (let [configured (configured-branch)]
+     (if (and branch (not= branch configured))
+       (start-switch! user-id branch)
+       (submit! "pull" user-id #(pull-task! % configured))))))
+
+(defn start-create-branch!
+  "Starts a task that creates branch `branch-name` at the head of branch `from` (nil: the configured branch), for the
+  user `user-id`, and returns the task; the instance uses the new branch after it. Throws as [[start-push!]] for a new
+  branch."
+  [user-id branch-name from]
   (check-start!)
-  (let [branch (configured-branch)]
-    (submit! "pull" user-id #(pull-task! % branch))))
+  (check-branch-settable!)
+  (check-branch-name! branch-name)
+  (let [from (or from (configured-branch))]
+    (submit! "branch-create" user-id #(create-branch-task! % branch-name from))))
 
 (defn start-merge-branch!
   "Starts a task that merges branch `from` into branch `into` (nil: the configured branch), for the user `user-id`, and

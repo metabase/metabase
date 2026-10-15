@@ -68,14 +68,18 @@
     (.setLineBreak DumperOptions$LineBreak/UNIX)
     (.setIndent 2)
     (.setIndicatorIndent 0)
-    (.setWidth 80)
-    (.setSplitLines true)
+    ;; Past the width, the emitter splits a scalar or a flow collection, and puts the `:` of a long flow key on a new
+    ;; line. With no width, a clause stays on one line.
+    (.setWidth Integer/MAX_VALUE)
     (.setExplicitStart false)
     (.setExplicitEnd false)))
 
 (def ^:private unicode-line-break
   ;; SnakeYAML writes these characters raw in a single-quoted scalar, and a reader folds them to a space.
   #"[\u0085  ]")
+
+(def ^:private line-break
+  #"[\n\r\u0085  ]")
 
 (defn scalar-style
   "The style that the writer asks for string `s`: double-quoted for text with a Unicode line break, a literal block for
@@ -88,7 +92,9 @@
 
 (defn- key-style
   [^String k]
-  (if (re-find unicode-line-break k) DumperOptions$ScalarStyle/DOUBLE_QUOTED DumperOptions$ScalarStyle/PLAIN))
+  ;; A key with a line break is not a simple key. The emitter writes it as an explicit key, and in single quotes it
+  ;; takes more than one line.
+  (if (re-find line-break k) DumperOptions$ScalarStyle/DOUBLE_QUOTED DumperOptions$ScalarStyle/PLAIN))
 
 (defn- scalar-node
   ^Node [^Tag tag ^String text style]
@@ -98,6 +104,13 @@
   "Flow style (`[a, b]`, `{a: 1}`) for a collection of scalars only; block style for every other collection."
   ^DumperOptions$FlowStyle [nodes]
   (if (every? #(instance? ScalarNode %) nodes) DumperOptions$FlowStyle/FLOW DumperOptions$FlowStyle/BLOCK))
+
+(defn- sequence-style
+  "The style of the sequence of vector `x` with nodes `nodes`: flow style for a clause, a vector whose first element
+  is a string (`[sum, {}, [field, ...]]`), else [[flow-style]]. YAML puts each collection inside a flow collection in
+  flow style, so a clause is one line."
+  ^DumperOptions$FlowStyle [x nodes]
+  (if (string? (first x)) DumperOptions$FlowStyle/FLOW (flow-style nodes)))
 
 (defn- ->node
   "The YAML node of canonical form `x`."
@@ -111,7 +124,7 @@
                                      (flow-style (mapcat (fn [^NodeTuple t] [(.getKeyNode t) (.getValueNode t)])
                                                          tuples))))
     (vector? x)      (let [nodes (mapv ->node x)]
-                       (SequenceNode. Tag/SEQ ^java.util.List nodes (flow-style nodes)))
+                       (SequenceNode. Tag/SEQ ^java.util.List nodes (sequence-style x nodes)))
     (string? x)      (scalar-node Tag/STR x (scalar-style x))
     (boolean? x)     (scalar-node Tag/BOOL (str x) DumperOptions$ScalarStyle/PLAIN)
     (nil? x)         (scalar-node Tag/NULL "null" DumperOptions$ScalarStyle/PLAIN)
