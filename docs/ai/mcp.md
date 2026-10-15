@@ -162,9 +162,13 @@ The consent page lists the permission scopes the client is asking for. Each [too
 
 Most clients ask for all of them. A scope never grants more than your Metabase permissions allow: `agent:sql:run` won't let a client run SQL against a database you can't write native queries on.
 
-### Headless access with JWT
+### Using the MCP server when embedding Metabase
 
-On [Pro and Enterprise plans](https://www.metabase.com/pricing), if you sign people in with [JWT authentication](../people-and-groups/authenticating-with-jwt.md), an agent in your own app can use the MCP server as the person signed in to your app, with no browser sign-in or consent page. Your backend signs a JWT for the person as it would for SSO, and posts it to the token endpoint:
+{% include plans-blockquote.html feature="Headless access with JWT" %}
+
+If you have an agent in your app, the agent can use your embedded Metabase's MCP server on behalf of the person signed in to your app.
+
+How it works: your backend [signs a JWT](../people-and-groups/authenticating-with-jwt.md) for the person (as it would for SSO), and posts the JWT to the token endpoint. There's no browser sign-in or consent page.
 
 ```
 curl https://{your-metabase.example.com}/oauth/token \
@@ -172,13 +176,24 @@ curl https://{your-metabase.example.com}/oauth/token \
   -d assertion={signed-jwt}
 ```
 
-Metabase checks the JWT the same way it does at SSO login, creates or updates the person's account, and returns an `access_token` for the MCP server. Your agent sends it as `Authorization: Bearer {access_token}`. The token lasts an hour and comes without a refresh token, so sign a fresh JWT to get a new one.
+Metabase checks the JWT the same way it does at SSO login, creates or updates the person's account, and returns an `access_token` for the MCP server.
 
-The token gets all the [permission scopes](#permission-scopes) unless you ask for fewer with a space-separated `scope` parameter.
+The token gets all the [permission scopes](#permission-scopes), unless you ask for fewer with a space-separated `scope` parameter. The token lasts an hour. To get a new one after the token expires, you'll need to sign a fresh JWT.
 
-If you have Usage analytics, each token issued this way appears in the [Activity log](../usage-and-performance-tools/usage-analytics-reference.md#activity-log) with the topic `mcp-jwt-token-issued`, but not in the [authorization logs](#authorization-logs).
+To request only the scopes for reading content and running queries:
 
-People who only use headless access show **Never** under **Last Login** in **Admin > People**, but their use shows up in [MCP analytics](#mcp-analytics).
+```
+curl https://{your-metabase.example.com}/oauth/token \
+  -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+  -d assertion={signed-jwt} \
+  --data-urlencode "scope=agent:content:read agent:query:run"
+```
+
+Your agent sends the token to the MCP server at `https://{your-metabase.example.com}/api/metabase-mcp` as `Authorization: Bearer {access_token}`.
+
+Each token issued for headless access to the MCP server appears in the [Activity log](../usage-and-performance-tools/usage-analytics-reference.md#activity-log) with the topic `mcp-jwt-token-issued`. Their activity shows up in [MCP analytics](#mcp-analytics).
+
+People who only use headless access show **Never** under **Last Login** in **Admin > People**.
 
 ## Authorization logs
 
