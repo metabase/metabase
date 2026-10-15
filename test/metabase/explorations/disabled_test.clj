@@ -32,7 +32,7 @@
       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
         (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
           (let [conversation-id (str (random-uuid))]
-            (is (=? {:message #"Unknown profile"}
+            (is (=? #"Unknown profile.*"
                     (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
                                           {:message         "hello"
                                            :context         {}
