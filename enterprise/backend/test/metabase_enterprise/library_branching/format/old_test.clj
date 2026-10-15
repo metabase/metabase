@@ -529,7 +529,6 @@
   (testing "an archived segment is not in the snapshot"
     (is (= {} (snapshot-of [(str/replace segment-yaml "archived: false" "archived: true")])))))
 
-<<<<<<< HEAD
 ;;; ------------------------------------------------- Timelines --------------------------------------------------------
 
 (def ^:private timeline-yaml
@@ -560,7 +559,7 @@
                       ["ReleasesTimelineXXXXX" :attrs]))))
   (testing "an archived timeline is not in the snapshot"
     (is (= {} (snapshot-of [(str/replace timeline-yaml "archived: false\ncreated_at" "archived: true\ncreated_at")])))))
-=======
+
 ;;; ------------------------------------------------- Actions ----------------------------------------------------------
 
 (defn- action-yaml
@@ -600,12 +599,13 @@
    :visualization_settings {:confirmMessage "Sure?"}})
 
 (deftest actions-test
-  (testing "an action with no model at the root of the data actions namespace, and one in a collection: the query of
-           the query row, and no database, which the query gives"
-    (is (= {"RootActionXXXXXXXXXXX" (item :action "Refund" nil query-attrs #{[:database [:env ["test-db"]]]})
+  (testing "an action with no model at the root of the data actions namespace, at the area root, and one in a
+           collection: the query of the query row, and no database, which the query gives"
+    (is (= {"RootActionXXXXXXXXXXX" (item :action "Refund" "dataactionsdataaction" query-attrs
+                                          #{[:database [:env ["test-db"]]]})
             "FolderActionXXXXXXXXX" (item :action "Refund all" "RefundsCollXXXXXXXXXX" query-attrs
                                           #{[:database [:env ["test-db"]]]})
-            "RefundsCollXXXXXXXXXX" (item :collection "Refunds" nil {:namespace "data-actions"})}
+            "RefundsCollXXXXXXXXXX" (item :collection "Refunds" "dataactionsdataaction" {:namespace "data-actions"})}
            (snapshot-of [(action-yaml "RootActionXXXXXXXXXXX" "Refund" :extra query-yaml)
                          (action-yaml "FolderActionXXXXXXXXX" "Refund all" :collection "RefundsCollXXXXXXXXXX"
                                       :extra query-yaml)
@@ -636,7 +636,6 @@
     (is (= [{:type :invalid :file 0}]
            (finding-types (decode [(action-yaml "HttpActionXXXXXXXXXXX" "Call" :type "http"
                                                 :extra "query: []\nimplicit: []\nparameters: []\n")]))))))
->>>>>>> fleet/GALDRE-762
 
 ;;; ------------------------------------------------- Claims -----------------------------------------------------------
 

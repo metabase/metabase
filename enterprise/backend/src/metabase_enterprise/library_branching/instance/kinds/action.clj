@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.instance.kinds.action
   "The app DB side of the kind `:action`, in the item form of `format.kinds.action`. The place of an action with a
-  model is the model; of an action with no model, its collection, or nil at the root of the data actions namespace.
+  model is the model; of an action with no model, its collection, or the root of the Data actions area for an action at
+  the root level of the data actions namespace.
   `:dataset_query` is the portable form of the query of a query action, `:implicit_kind` the kind of an implicit
   action; the other attributes are the action columns of the same names, in the portable form of the serdes export of
   Action. Not content: the archive columns (scope), the public link (instance-local), the database of a query action
@@ -18,6 +19,7 @@
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.instance.tree :as tree]
    [metabase-enterprise.library-branching.scope :as scope]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
@@ -67,7 +69,10 @@
 (defn- portable-content
   [ts queries implicit-kinds {:keys [id model_id collection_id] :as row}]
   (let [model (some-> model_id (serdes/*export-fk* :model/Card))]
-    {:place (or model (serdes/*export-fk* collection_id :model/Collection))
+    {:place (cond
+              model         model
+              collection_id (serdes/*export-fk* collection_id :model/Collection)
+              :else         (snapshot/area-root :data-actions))
      :attrs (attrs ts model row (get queries id) (get implicit-kinds id))}))
 
 (defn read-actions
@@ -112,14 +117,19 @@
     card))
 
 (defn- model-less-collection!
-  "The collection row of `place`, the place of action `id` with no model, or nil at the root. Throws
-  ::instance/refused unless it is an in-scope collection of the data actions or data apps namespace."
+  "The collection row of `place`, the place of action `id` with no model, or nil at the root of the Data actions area.
+  Throws ::instance/refused unless `place` is that area root or an in-scope collection of the data actions or data
+  apps namespace."
   [id place]
-  (when-let [row (tree/place-collection id place)]
-    (when-not (contains? model-less-namespaces (:namespace row))
-      (instance/refuse! :place id "An action with no model is in a data actions or data app collection."
-                        {:place place}))
-    row))
+  (when (nil? place)
+    (instance/refuse! :place id (str "An action with no model is in a data actions or data app collection, or at the"
+                                     " root of the Data actions area.")))
+  (when-not (tree/place-area :action id place)
+    (let [row (tree/place-collection id place)]
+      (when-not (contains? model-less-namespaces (:namespace row))
+        (instance/refuse! :place id "An action with no model is in a data actions or data app collection."
+                          {:place place}))
+      row)))
 
 (defn- columns
   "The action columns of the attributes `ks` of `attrs`, an absent one at its default, through the serdes imports: the

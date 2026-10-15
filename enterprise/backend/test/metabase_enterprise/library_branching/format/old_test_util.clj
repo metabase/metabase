@@ -106,7 +106,6 @@
           :serdes/meta [{:model "Measure"}]}
          attrs))
 
-<<<<<<< HEAD
 (defn timeline-doc
   "The old document of timeline `id`, with its events under `events`, each with every column. The time of an event has
   an offset, as the export keeps the offset that the app DB returns."
@@ -182,7 +181,7 @@
                                          (:dashcards attrs))
           :serdes/meta             [{:model "Dashboard" :id id}]}
          (dissoc attrs :parameters :tabs :dashcards)))
-=======
+
 (defn action-doc
   "The old document of action `id`: its query row under `query`, or its implicit row under `implicit`. An action with
   a model has the collection of its model, which a snapshot does not hold; here it has none."
@@ -195,7 +194,7 @@
             :archived               false
             :archived_directly      false
             :model_id               model
-            :collection_id          (when-not model place)
+            :collection_id          (when-not model (container place))
             :public_uuid            nil
             :made_public_by_id      nil
             :parameters             []
@@ -205,7 +204,6 @@
             :implicit               (if implicit_kind [{:kind implicit_kind}] [])
             :serdes/meta            [{:model "Action"}]}
            (select-keys attrs [:description :type :parameters :parameter_mappings]))))
->>>>>>> fleet/GALDRE-762
 
 (def ^:private table-flags
   {:description        :description_set

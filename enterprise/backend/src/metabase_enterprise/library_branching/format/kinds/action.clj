@@ -1,9 +1,10 @@
 (ns metabase-enterprise.library-branching.format.kinds.action
   "The codec of the kind :action: a data action, as the file `<name>.action.yaml`. An action with a model is in the
   directory of its model: its place is the model, under `model`, and the file has no `collection`. An action with no
-  model is in a data actions or data app collection, under `collection`, or at the root of the data actions area, in
-  `actions/`. An action of type query runs `dataset_query`, MBQL 5 in its portable JSON form, with no `:lib/type` that
-  the query's structure implies; an implicit action runs the row operation `implicit_kind` on the table of its model."
+  model is in a data actions or data app collection, or at the root of the Data actions area, in `actions/`; the file
+  names its place under `collection`. An action of type query runs `dataset_query`, MBQL 5 in its portable JSON
+  form, with no `:lib/type` that the query's structure implies; an implicit action runs the row operation
+  `implicit_kind` on the table of its model."
   (:require
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds.common :as common]
@@ -27,7 +28,7 @@
    [:fn {:error/message "every stage and join of the query has its :lib/type"} portable/implied-keys?]])
 
 (defn home
-  "A root-level action, an action with no model and no collection, is in `actions/`."
+  "An action at the root of the Data actions area is in `actions/`."
   [_item]
   {:dir ["actions"]})
 

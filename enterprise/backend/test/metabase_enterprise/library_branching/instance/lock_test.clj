@@ -151,7 +151,6 @@
                                               :table_id   (mt/id :venues)
                                               :creator_id user
                                               :definition (sum-query :venues :price)})
-<<<<<<< HEAD
              dashes  (insert! :model/Collection {:name     "Lock dashboards"
                                                  :type     "library-dashboards"
                                                  :location (children-location library)})
@@ -165,12 +164,10 @@
              tab     (insert! :model/DashboardTab {:dashboard_id (:id dash) :name "Locked tab" :position 0})
              dashcard (insert! :model/DashboardCard {:dashboard_id (:id dash) :card_id (:id metric)
                                                      :dashboard_tab_id (:id tab) :row 0 :col 0 :size_x 4 :size_y 4})
-=======
              action  (insert! :model/Action {:name "Locked action" :type :query :creator_id user})
              _       (insert! :model/QueryAction {:action_id     (:id action)
                                                   :dataset_query (lib/native-query (mt/metadata-provider)
                                                                                    "UPDATE venues SET name = 'x'")})
->>>>>>> fleet/GALDRE-762
              stores  app-db/kind-stores
              table   (let [{:keys [schema name]} (t2/select-one :model/Table (mt/id :venues))]
                        [(t2/select-one-fn :name :model/Database (mt/id)) schema name])]
@@ -193,7 +190,6 @@
                    #(t2/query-one {:update :segment :set {:name "Saved"} :where [:= :id (:id segment)]})]
                   ["a measure" :measure (:entity_id measure)
                    #(t2/query-one {:update :measure :set {:name "Saved"} :where [:= :id (:id measure)]})]
-<<<<<<< HEAD
                   ["a timeline" :timeline (:entity_id tl)
                    #(t2/query-one {:update :timeline :set {:name "Saved"} :where [:= :id (:id tl)]})]
                   ["an event of a timeline" :timeline (:entity_id tl)
@@ -203,14 +199,12 @@
                   ["a tab of a dashboard" :dashboard (:entity_id dash)
                    #(t2/query-one {:update :dashboard_tab :set {:name "Saved"} :where [:= :id (:id tab)]})]
                   ["a card of a dashboard" :dashboard (:entity_id dash)
-                   #(t2/query-one {:update :report_dashboardcard :set {:row 1} :where [:= :id (:id dashcard)]})]]]
-=======
+                   #(t2/query-one {:update :report_dashboardcard :set {:row 1} :where [:= :id (:id dashcard)]})]
                   ["an action" :action (:entity_id action)
                    #(t2/query-one {:update :action :set {:name "Saved"} :where [:= :id (:id action)]})]
                   ["the query row of an action" :action (:entity_id action)
                    #(t2/query-one {:update :query_action :set {:legacy_query "Saved"}
                                    :where  [:= :action_id (:id action)]})]]]
->>>>>>> fleet/GALDRE-762
            (testing label
              (let [[content during after] (while-current-holds! (get stores kind) id save!)]
                (is (map? content))

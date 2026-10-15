@@ -425,7 +425,6 @@
   (attrs-of {:description [false text-gen]
              :definition  [true measure-definition-gen]}))
 
-<<<<<<< HEAD
 (def ^:private timeline-icons
   "The icons of Metabase other than the default."
   ["cake" "mail" "mail_at" "warning" "bell" "cloud" "info" "note" "event"])
@@ -540,11 +539,8 @@
                                   :tabs                    [false (gen/vector non-empty-text-gen 1 2)]
                                   :dashcards               [false (gen/vector dashcard-choice-gen 1 3)]}))))
 
-(def attrs-gens
-  "`{kind generator}` of the `:attrs` of each kind."
-  {:collection      collection-attrs-gen
-   :dashboard       dashboard-attrs-gen
-=======
+;;; ----------------------------------------------------- Actions ----------------------------------------------------
+
 (def action-attrs-gen
   "Generates the `:attrs` of an action with no model: a query action."
   (gen/fmap #(assoc % :type "query")
@@ -572,7 +568,7 @@
   an action in a model its model."
   {:action          action-attrs-gen
    :collection      collection-attrs-gen
->>>>>>> fleet/GALDRE-762
+   :dashboard       dashboard-attrs-gen
    :glossary-term   glossary-attrs-gen
    :measure         measure-attrs-gen
    :metric          metric-attrs-gen
@@ -607,16 +603,16 @@
                                                                (assoc-in [:stages 0 :source-table] place)))
                      item))))
 
-<<<<<<< HEAD
 (def ^:private area-of-kind
   "The area of the top-level items of each kind that is in an area by its kind alone."
-  {:glossary-term :glossary
+  {:action        :data-actions
+   :glossary-term :glossary
    :snippet       :snippets})
 
 (defn in-areas
   "Snapshot `s` in which each item at the root level that belongs to an area has the area root as its place
-  (`snapshot/area-root`): a glossary term, a snippet, and a collection of a namespace. The Library collection, and a
-  collection of no namespace, stay at the root level."
+  (`snapshot/area-root`): an action, a glossary term, a snippet, and a collection of a namespace. The Library
+  collection, and a collection of no namespace, stay at the root level."
   [s]
   (update-vals s (fn [{:keys [kind place attrs] :as item}]
                    (if-some [area (when (nil? place)
@@ -625,10 +621,6 @@
                      (assoc item :place (snapshot/area-root area))
                      item))))
 
-(def complete
-  "[[with-refs]] of [[on-their-tables]] of [[in-areas]]."
-  (comp with-refs on-their-tables in-areas))
-=======
 (defn on-their-models
   "Snapshot `s` with each action whose place is a model of `s` an action on that model: its `:model` is the place."
   [s]
@@ -638,14 +630,13 @@
                      item))))
 
 (def complete
-  "[[with-refs]] of [[on-their-tables]] and [[on-their-models]]."
-  (comp with-refs on-their-models on-their-tables))
->>>>>>> fleet/GALDRE-762
+  "[[with-refs]] of [[on-their-models]] of [[on-their-tables]] of [[in-areas]]."
+  (comp with-refs on-their-models on-their-tables in-areas))
 
 (defn snapshot-gen
   "Generates well-formed snapshots of the kinds, at most `max-items` (default 30) items, whose items fit the schemas
-  of their codecs. A segment or a measure is on a published table, never at the root level. A glossary term, a snippet
-  at the top level and a collection of a namespace at the top level are at their area roots ([[in-areas]]). The
+  of their codecs. A segment or a measure is on a published table, never at the root level. A glossary term, and
+  an action, a snippet and a collection of a namespace at the top level, are at their area roots ([[in-areas]]). The
   references of an item are those of its attributes; they can name items that are not in the snapshot."
   ([] (snapshot-gen 30))
   ([max-items]

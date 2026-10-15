@@ -1,9 +1,11 @@
 (ns metabase-enterprise.library-branching.format.old.action
   "The old format of the kind `:action`: a file of the serdes model Action, with its query row under `query` or its
   implicit row under `implicit`. The place of an action with a model is the model; its `collection_id`, the
-  collection of the model, is no attribute. The database of the query row is derived from the query."
+  collection of the model, is no attribute. An action with no model and no collection is at the root of the Data
+  actions area. The database of the query row is derived from the query."
   (:require
-   [metabase-enterprise.library-branching.format.old.common :as common]))
+   [metabase-enterprise.library-branching.format.old.common :as common]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,7 +23,8 @@
       {:doc (common/item-doc :action id
                              (merge (select-keys doc attribute-keys)
                                     {:model                  model
-                                     :collection             (when-not model (:collection_id doc))
+                                     :collection             (when-not model
+                                                               (or (:collection_id doc) (snapshot/area-root :data-actions)))
                                      ;; The export writes `column_settings: null`; an instance holds no nil setting.
                                      :visualization_settings (some-> (:visualization_settings doc) common/present)}
                                     (case (:type doc)

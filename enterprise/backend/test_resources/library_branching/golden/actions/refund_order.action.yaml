@@ -1,5 +1,6 @@
 kind: action
 id: rEfUnDoRdErAcTiOn0001
+collection: dataactionsdataaction
 dataset_query:
   database: Sample Database
   stages:
