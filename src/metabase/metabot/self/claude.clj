@@ -418,9 +418,10 @@
                                              (strip-vendor-prefix model))]
     [family (parse-long major) (or (some-> minor parse-long) 0)]))
 
-(defn- model-current-gen?
-  "Current-generation Claude (Fable, Mythos, Opus >=4.7, Sonnet >=5, Haiku >=5): no sampling params;
-  thinking streams via `display: summarized`."
+(defn model-current-gen?
+  "Whether `model` is current-generation Claude: Fable, Mythos, Opus >=4.7, Sonnet >=5 or Haiku >=5.
+  These take no sampling params, and their thinking streams via `display: summarized`.
+  Accepts a bare id, a Bedrock `anthropic.` id or an Azure deployment name."
   [model]
   (or (str/starts-with? (strip-vendor-prefix model) "claude-fable")
       (when-let [[family major minor] (claude-model-version model)]
