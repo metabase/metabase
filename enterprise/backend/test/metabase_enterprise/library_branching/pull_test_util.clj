@@ -7,7 +7,6 @@
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.pull :as pull]
-   [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.push-test-util :as ptu])
   (:import
    (org.eclipse.jgit.dircache DirCache DirCacheBuilder DirCacheEntry)
@@ -138,4 +137,4 @@
 
 (defn push!
   [inst s]
-  (push/push! inst s ptu/branch))
+  (ptu/push! inst s))

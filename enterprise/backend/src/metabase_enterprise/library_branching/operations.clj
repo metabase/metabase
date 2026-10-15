@@ -52,11 +52,11 @@
   [branch {:keys [result commit findings]}]
   (case result
     ;; a push whose base another task moved is on the branch all the same
-    (:pushed :base-moved) {:outcome {:kind "pushed" :branch branch :commit commit}}
+    (:pushed :base-moved) {:outcome (push/outcome branch commit)}
     :nothing-to-push      {:outcome {:kind "nothing-to-push" :branch branch :commit commit}}
-    :remote-moved         {:error (format "The branch %s moved since the last sync, so nothing was pushed. Pull first."
-                                          branch)}
+    :remote-moved         {:error (push/remote-moved-message branch)}
     :invalid              {:error (format "The Library breaks the rules %s, so nothing was pushed." (rules findings))}
+    :fenced               {:error "The task ended before the push reached its commit point, so nothing was pushed."}
     :disabled             {:error disabled-message}))
 
 (defn pull-task-result
@@ -133,10 +133,10 @@
 (defn push-task!
   "Runs the push to branch `branch` with the commit message `message` (nil: the default) as the work of task `id`, and
   returns its task result ([[push-task-result]])."
-  [_id branch message]
+  [id branch message]
   (repository/do-with-store
    (fn [s]
-     (push-task-result branch (push/push! (instance) s branch (cond-> {} message (assoc :message message)))))))
+     (push-task-result branch (push/push! (instance) s branch id (cond-> {} message (assoc :message message)))))))
 
 (defn pull-task!
   "Runs the pull of branch `branch` as the work of task `id`, and returns its task result ([[pull-task-result]]). The

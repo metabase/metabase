@@ -4,11 +4,14 @@
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.scope :as scope]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
+   [metabase-enterprise.library-branching.status :as status]
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]))
 
@@ -101,6 +104,149 @@
                  (repository/do-with-store store/branches)
                  (catch Exception e
                    (throw (ex-info (repository/failure-message e) {:status-code 400} e)))))})
+
+(defn- status-branch
+  "The configured branch of the status routes. Throws 400 when no repository or no branch is configured."
+  []
+  (api/check-400 (repository/configured?) (tru "Library branching is not configured."))
+  (or (repository/branch)
+      (throw (ex-info (tru "Library branching has no branch.") {:status-code 400}))))
+
+(defn- with-store
+  "`(f store)` with a new store of the configured repository. A failed remote call throws 400 with the message for the
+  person."
+  [f]
+  (try
+    (repository/do-with-store f)
+    (catch clojure.lang.ExceptionInfo e
+      (if (:operation (ex-data e))
+        (throw (ex-info (repository/failure-message e) {:status-code 400} e))
+        (throw e)))))
+
+(def ^:private Identity
+  [:or :string [:sequential [:maybe :string]]])
+
+(def ^:private ChangeSet
+  [:map
+   [:created [:sequential Identity]]
+   [:deleted [:sequential Identity]]
+   [:updated [:sequential Identity]]])
+
+(def ^:private Findings
+  [:maybe [:sequential :map]])
+
+(defn- change-set-response
+  "Change set `changes` with each set of identities as a list in the order of the identities."
+  [changes]
+  (some-> changes (update-vals #(vec (sort snapshot/compare-identities %)))))
+
+(api.macros/defendpoint :get "/status" :- [:map
+                                           [:base [:maybe :string]]
+                                           [:head [:maybe :string]]
+                                           [:branch_missing :boolean]
+                                           [:base_lost :boolean]
+                                           [:head_findings Findings]
+                                           [:local ChangeSet]
+                                           [:remote [:maybe ChangeSet]]]
+  "The status of the instance and the configured branch: the base, the head, whether the branch is missing, whether no
+  branch holds the base (then nothing shows as synced), the findings of the head, and the local and remote changes as
+  identities. 400 when no repository or branch is configured, and with the message for the person when the remote
+  call fails. Superuser only."
+  []
+  (api/check-superuser)
+  (let [branch (status-branch)
+        {:keys [base head branch-missing base-lost head-findings local remote]}
+        (with-store #(status/status (operations/instance) % branch {}))]
+    {:base           base
+     :head           head
+     :branch_missing branch-missing
+     :base_lost      base-lost
+     :head_findings  head-findings
+     :local          (change-set-response local)
+     :remote         (change-set-response remote)}))
+
+(api.macros/defendpoint :get "/is-dirty" :- [:map [:is_dirty :boolean]]
+  "Whether the synced content of the instance differs from the content of its base. 400 when no repository or branch
+  is configured. Superuser only."
+  []
+  (api/check-superuser)
+  (let [branch (status-branch)]
+    {:is_dirty (status/changed? (:changes (status/local-changes (operations/instance) with-store branch {})))}))
+
+(api.macros/defendpoint :get "/dirty" :- [:map [:dirty [:sequential [:map
+                                                                     [:id Identity]
+                                                                     [:kind [:maybe :string]]
+                                                                     [:name [:maybe :string]]
+                                                                     [:change [:enum "created" "updated" "deleted"]]]]]]
+  "The local changes of the instance: for each changed item, its identity, kind, name and change type (created,
+  updated or deleted), in the order of the identities. A deleted item has the kind and the name of the base, or none
+  when no branch holds the base. 400 when no repository or branch is configured. Superuser only."
+  []
+  (api/check-superuser)
+  (let [branch (status-branch)
+        {:keys [base local changes]} (status/local-changes (operations/instance) with-store branch {})
+        base-snapshot (when (seq (:deleted changes))
+                        (with-store #(status/base-snapshot % branch base {})))]
+    {:dirty (mapv (fn [{:keys [kind change] :as entry}]
+                    (assoc entry :kind (some-> kind name) :change (name change)))
+                  (status/change-list changes local base-snapshot))}))
+
+(api.macros/defendpoint :get "/has-remote-changes" :- [:map
+                                                       [:has_changes :boolean]
+                                                       [:remote_version [:maybe :string]]
+                                                       [:local_version [:maybe :string]]
+                                                       [:cached :boolean]
+                                                       [:branch_missing {:optional true} :boolean]]
+  "Whether the configured branch has changes of content since the base: a new commit with equal content has none. The
+  answer is cached for `remote-sync-check-changes-cache-ttl-seconds`, for the repository, the branch and the base;
+  `force-refresh` reads the remote again. A branch that does not exist gives `has_changes` false and `branch_missing`
+  true, and is not cached. 400 when no repository or branch is configured, and with the message for the person when the
+  remote call fails. Superuser only."
+  [_route-params
+   {:keys [force-refresh]} :- [:map {:closed true} [:force-refresh {:optional true} :boolean]]]
+  (api/check-superuser)
+  (let [branch (status-branch)
+        {:keys [has-changes remote-version local-version cached branch-missing]}
+        (status/has-remote-changes! (operations/instance) with-store
+                                    {:url            (repository/url)
+                                     :branch         branch
+                                     :ttl-seconds    (setting/get :remote-sync-check-changes-cache-ttl-seconds)
+                                     :force-refresh? (boolean force-refresh)})]
+    (cond-> {:has_changes    has-changes
+             :remote_version remote-version
+             :local_version  local-version
+             :cached         cached}
+      branch-missing (assoc :branch_missing true))))
+
+(api.macros/defendpoint :get "/push-preview" :- [:map
+                                                 [:has_changes :boolean]
+                                                 [:clean :boolean]
+                                                 [:conflicts [:sequential [:map
+                                                                           [:id Identity]
+                                                                           [:kind [:maybe :string]]
+                                                                           [:name [:maybe :string]]]]]
+                                                 [:violations [:sequential :map]]
+                                                 [:summary [:map [:added :int] [:updated :int] [:removed :int]]]
+                                                 [:branch_missing :boolean]
+                                                 [:base_lost :boolean]
+                                                 [:head_findings Findings]]
+  "What a push of the instance to the configured branch meets: whether the branch moved since the base
+  (`has_changes`), whether a merge of the base, the instance and the head is clean, its conflicts and violations, and
+  the numbers of items that the merge takes from the head. Writes nothing. 400 when no repository or branch is
+  configured, and with the message for the person when the remote call fails. Superuser only."
+  []
+  (api/check-superuser)
+  (let [branch (status-branch)
+        {:keys [diverged clean conflicts violations summary branch-missing base-lost head-findings]}
+        (with-store #(status/push-preview (operations/instance) % branch {}))]
+    {:has_changes    diverged
+     :clean          clean
+     :conflicts      (mapv #(update % :kind (fn [k] (some-> k name))) conflicts)
+     :violations     violations
+     :summary        summary
+     :branch_missing branch-missing
+     :base_lost      base-lost
+     :head_findings  head-findings}))
 
 (defn- task-response [{:keys [id]}]
   {:task_id id})

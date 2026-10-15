@@ -35,7 +35,7 @@
             cachereread): a save during the push shows as synced, and the next push has nothing to push."
     :target `push/commit!
     :edits  [[:replace '(instance/set-base! inst b c digests)
-              '(instance/set-base! inst b c (writer/item-digests codecs (:snapshot (instance/read-snapshot inst))))]]}
+              '(instance/set-base! inst b c (writer/item-digests kinds/codecs (:snapshot (instance/read-snapshot inst))))]]}
    {:name   :no-validate
     :doc    "The push writes a snapshot with a structural finding, for example a reference to a trashed item."
     :target `push/push!
@@ -45,6 +45,37 @@
             old format stay."
     :target `push/foreign-files
     :edits  [[:replace '(claims/kept-files (claims/item-claims t)) 't]]}
+   {:name   :no-commit-point
+    :doc    "The push does not move its task to committing before its remote compare-and-swap (the TLA+ mutation
+            nocommitpoint): a push whose task an admin cancelled still lands."
+    :target `push/commit!
+    :edits  [[:replace '(tasks/mark-committing! task) :ok]]}
+   {:name   :nocas
+    :doc    "The record step moves the base from the base that it reads at that moment, not from the base that the push
+            read (the TLA+ mutation nocas): a paused push that wakes up moves the base back."
+    :target `push/commit!
+    :edits  [[:replace '(instance/set-base! inst b c digests) '(instance/set-base! inst (instance/base inst) c digests)]]}
+   {:name   :remote-refusal-interrupts
+    :doc    "A push whose remote compare-and-swap refused ends its task as interrupted (the push may have landed), not
+            as failed: the task record is not truthful."
+    :target `push/commit!
+    :edits  [[:replace '(tasks/fail-committing! task (remote-moved-message branch))
+              '(tasks/fail! task (remote-moved-message branch))]]}
+   {:name   :no-record-step
+    :doc    "The push moves the base outside the record step of its task, so the task stays committing after the
+            push landed."
+    :target `push/commit!
+    :edits  [[:replace '(tasks/record! task record) '(record)]]}
+   {:name   :foreign-paths-not-taken
+    :doc    "The layout of a push does not know the paths of the foreign files of the base tree, so an item whose path
+            a foreign file holds takes no suffix."
+    :target `push/tree
+    :edits  [[:replace '(set (keys kept)) #{}]]}
+   {:name   :no-foreign-guard
+    :doc    "The push writes a file at the path of a foreign file that no suffix avoids: it overwrites the foreign
+            file."
+    :target `push/tree
+    :edits  [[:replace '(foreign-clashes kept written) []]]}
    {:name   :base-not-compared
     :doc    "set-base! moves the base row whatever its commit id is."
     :target `library-branching.db/compare-and-set-base!
@@ -64,10 +95,22 @@
    #'metabase-enterprise.library-branching.push-test/push-refuses-an-item-at-the-root-that-is-no-root-test
    #'metabase-enterprise.library-branching.push-test/foreign-files-stay-and-moved-files-go-back-test
    #'metabase-enterprise.library-branching.push-test/first-push-to-an-old-format-tree-test
+   #'metabase-enterprise.library-branching.push-test/foreign-file-at-the-path-of-an-item-stays-test
+   #'metabase-enterprise.library-branching.push-test/foreign-file-at-the-suffixed-path-too-test
+   #'metabase-enterprise.library-branching.push-test/foreign-file-where-a-directory-of-an-item-is-test
+   #'metabase-enterprise.library-branching.push-test/push-never-overwrites-a-foreign-file-test
+   #'metabase-enterprise.library-branching.push-test/files-that-sync-does-not-own-stay-in-the-directory-of-an-item-test
+   #'metabase-enterprise.library-branching.push-test/push-ends-its-task-past-the-commit-point-test
+   #'metabase-enterprise.library-branching.push-test/cancel-before-the-commit-point-stops-the-push-test
+   #'metabase-enterprise.library-branching.push-test/cancel-after-the-commit-point-is-refused-test
+   #'metabase-enterprise.library-branching.push-test/remote-refusal-after-the-commit-point-fails-the-task-test
+   #'metabase-enterprise.library-branching.push-test/paused-push-cannot-move-the-base-back-test
    #'metabase-enterprise.library-branching.instance.base-test/set-base-is-a-compare-and-swap-test
    #'metabase-enterprise.library-branching.instance.base-test/concurrent-set-base-test
    #'metabase-enterprise.library-branching.push-app-db-test/push-refuses-a-library-metric-that-uses-a-trashed-metric-test
-   #'metabase-enterprise.library-branching.push-app-db-test/save-during-push-of-the-app-db-test])
+   #'metabase-enterprise.library-branching.push-app-db-test/push-refuses-a-reference-out-of-the-library-test
+   #'metabase-enterprise.library-branching.push-app-db-test/save-during-push-of-the-app-db-test
+   #'metabase-enterprise.library-branching.push-app-db-test/paused-push-cannot-move-the-base-row-back-test])
 
 (deftest push-mutations-test
   (mut/check mutations {:tests tests :timeout-ms 180000}))
