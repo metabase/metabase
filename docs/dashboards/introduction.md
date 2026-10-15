@@ -258,7 +258,7 @@ To edit a card's:
 
 Time series cards can show [events](../exploration-and-organization/events-and-timelines.md) saved to the question.
 
-**To toggle events for a card**, click on the card's **three-dot menu** (**...**) and select **Events**. 
+**To toggle events for a card**, click on the card's **three-dot menu** (**...**) and select **Events**.
 
 **To toggle events for all time series cards on the current tab**, click on the **three-dot menu** (**...**) in the dashboard header and select **Events**.
 
