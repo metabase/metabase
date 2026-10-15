@@ -6,6 +6,7 @@
    [metabase-enterprise.library-branching.format.kinds.collection :as format.collection]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.content :as content]
+   [metabase-enterprise.library-branching.instance.kinds.table-item :as table-item]
    [metabase-enterprise.library-branching.instance.portable :as portable]
    [metabase-enterprise.library-branching.instance.tree :as tree]
    [metabase-enterprise.library-branching.instance.values-source :as values-source]
@@ -118,4 +119,5 @@
     (read-models [_] #{:model/Collection})
     (current [_ id] (current-collection id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-collection! id item)))
-    (trash! [_ id] (library-branching.db/do-in-transaction #(trash-collection! id)))))
+    (trash! [_ id] (library-branching.db/do-in-transaction
+                    #(table-item/do-keeping-archive-closed (fn [] (trash-collection! id)))))))

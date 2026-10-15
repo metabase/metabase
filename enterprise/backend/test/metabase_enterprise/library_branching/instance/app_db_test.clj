@@ -94,6 +94,18 @@
                                              :collection_id (:id folder)})
          (insert! :model/TableUserSettings {:table_id (mt/id :venues) :is_published true :collection_id (:id data)})
          (insert! :model/Glossary {:term (str "Count term " (random-uuid)) :definition "Counted." :creator_id user})
+         (insert! :model/Segment {:name "Count segment" :table_id (mt/id :venues) :creator_id user
+                                  :definition (let [mp (mt/metadata-provider)]
+                                                (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                            (lib/< (lib.metadata/field mp (mt/id :venues :price)) 2)))})
+         (insert! :model/Segment {:name "Count users segment" :table_id (mt/id :users) :creator_id user
+                                  :definition (let [mp (mt/metadata-provider)]
+                                                (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :users)))
+                                                            (lib/< (lib.metadata/field mp (mt/id :users :id)) 2)))})
+         (insert! :model/Measure {:name "Count measure" :table_id (mt/id :venues) :creator_id user
+                                  :definition (sum-query :venues :price)})
+         (insert! :model/Measure {:name "Count trashed measure" :table_id (mt/id :venues) :creator_id user
+                                  :archived true :definition (sum-query :venues :price)})
          (let [{:keys [snapshot]} (instance/read-snapshot (app-db/app-db-instance))
                counts             (engine.count/count-by-kind snapshot)]
            (is (= (select-keys (scope/scope-count) snapshot/kinds) counts))
