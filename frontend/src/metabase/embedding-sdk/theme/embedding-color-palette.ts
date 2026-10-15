@@ -7,6 +7,7 @@ import { colors } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
 import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorName, ColorPalette } from "metabase/ui/colors/types";
+import type { ColorSettings } from "metabase-types/api";
 
 /**
  * Define SDK colors that can be mapped 1:1 to the main app colors.
@@ -94,11 +95,11 @@ const originalColors = { ...colors };
 
 /**
  * @param sdkColors color overrides from the SDK theme
- * @param appPalette color palette from the admin appearance settings
+ * @param appColors the `application-colors` setting
  */
 export function getEmbeddingColorPalette(
   sdkColors: MetabaseColors = {},
-  appPalette?: ColorPalette,
+  appColors?: ColorSettings,
 ): ColorPalette {
   const mappedSdkColors = Object.fromEntries(
     Object.entries(sdkColors)
@@ -120,7 +121,7 @@ export function getEmbeddingColorPalette(
 
   const merged: ColorPalette = {
     ...originalColors,
-    ...mapWhitelabelColorsToTokens(appPalette),
+    ...mapWhitelabelColorsToTokens(appColors),
     ...mappedSdkColors,
     ...chartColors,
   };
@@ -132,13 +133,13 @@ export function getEmbeddingColorPalette(
  * !! Mutate the global colors object to apply the new colors.
  *
  * @param sdkColors color overrides from the SDK theme
- * @param appPalette color palette from the admin appearance settings
+ * @param appColors the `application-colors` setting
  */
 export function setGlobalEmbeddingColors(
   sdkColors?: MetabaseColors,
-  appPalette?: ColorPalette,
+  appColors?: ColorSettings,
 ) {
-  const combinedThemeColors = getEmbeddingColorPalette(sdkColors, appPalette);
+  const combinedThemeColors = getEmbeddingColorPalette(sdkColors, appColors);
 
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     // Unjustified type cast. FIXME

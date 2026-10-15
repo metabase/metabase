@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { SettingHeader } from "metabase/settings-components";
 import { Box, Stack, Tabs } from "metabase/ui";
 import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
+import type { ColorPalette } from "metabase/ui/colors/types";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
 import { BrandColorSettings } from "../BrandColorSettings";
@@ -12,7 +13,7 @@ import { ChartColorSettings } from "../ChartColorSettings";
 
 export interface ColorSettingsProps {
   initialColors: ColorSettingsType | null;
-  themeColors: ColorSettingsType;
+  themeColors: ColorPalette;
   onChange?: (colors: ColorSettingsType) => void;
 }
 

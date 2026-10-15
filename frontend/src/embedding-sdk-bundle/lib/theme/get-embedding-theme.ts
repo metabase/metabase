@@ -82,15 +82,17 @@ export function getEmbeddingThemeOverride(
 
   const whitelabeledTokens = mapWhitelabelColorsToTokens(whitelabeledColors);
 
-  for (const key in whitelabeledTokens) {
+  for (const [key, value] of Object.entries(whitelabeledTokens)) {
+    if (value === undefined) {
+      continue;
+    }
+
     if (!override.colors) {
       override.colors = {};
     }
 
-    // Unjustified type cast. FIXME
-    override.colors[key as MetabaseColorKey] = colorTuple(
-      whitelabeledTokens[key],
-    );
+    // `Object.entries` widens `ColorPalette` keys to `string`, need to manually narrow it back
+    override.colors[key as MetabaseColorKey] = colorTuple(value);
   }
 
   if (theme.colors) {

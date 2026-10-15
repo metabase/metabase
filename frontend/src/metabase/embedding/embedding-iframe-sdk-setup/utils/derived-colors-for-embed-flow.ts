@@ -8,6 +8,7 @@ import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/emb
 import { colors, isDark } from "metabase/ui/colors";
 import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorPalette } from "metabase/ui/colors/types";
+import type { ColorSettings } from "metabase-types/api";
 
 import { EMBED_FLOW_DERIVED_COLORS_CONFIG } from "./dynamic-sdk-color-defaults";
 
@@ -20,7 +21,7 @@ const PRIMARY_COLORS = [
   "background",
   "text-primary",
   "brand",
-] as const satisfies MetabaseColor[];
+] as const satisfies readonly MetabaseColor[];
 
 /**
  * Generate derived colors for SDK colors that the user did not define in the embed flow.
@@ -38,7 +39,7 @@ export function getDerivedDefaultColorsForEmbedFlow({
 }: {
   isSimpleEmbedFeatureAvailable: boolean;
   theme: MetabaseTheme;
-  applicationColors?: ColorPalette;
+  applicationColors?: ColorSettings;
 }): MetabaseTheme {
   if (!isSimpleEmbedFeatureAvailable) {
     return {
