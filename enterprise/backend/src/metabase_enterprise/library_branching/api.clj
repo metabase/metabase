@@ -1,12 +1,16 @@
 (ns metabase-enterprise.library-branching.api
   (:require
    [metabase-enterprise.library-branching.manifest :as manifest]
+   [metabase-enterprise.library-branching.operations :as operations]
+   [metabase-enterprise.library-branching.repository :as repository]
    [metabase-enterprise.library-branching.scope :as scope]
+   [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,6 +55,78 @@
                      (tru "The task is past its commit point, so it can no longer be cancelled."))
       (api/check-400 ok (tru "No active task to cancel"))
       ok)))
+
+(api.macros/defendpoint :post "/test-connection" :- [:map [:status [:= "success"]]]
+  "Tests whether the repository URL and the access token reach the repository, with a fresh remote call. A URL or a
+  token in the body overrides the saved one; the obfuscated saved token means the saved token. 400 with the message
+  for the person when no URL is given or saved, and when the call fails. Superuser only."
+  [_route-params
+   _query-params
+   body :- [:map {:closed true}
+            [:remote-sync-url {:optional true} [:maybe :string]]
+            [:remote-sync-token {:optional true} [:maybe :string]]]]
+  (api/check-superuser)
+  (repository/test-connection! body)
+  {:status "success"})
+
+(api.macros/defendpoint :put "/settings" :- [:map [:success [:= true]]]
+  "Saves the repository settings that library branching shares with remote sync. A blank URL turns library branching
+  off. The obfuscated saved token keeps the saved token, and a value from an environment variable stays. A change of
+  the URL, the token, the type or the branch is checked against the repository first. 400 while a task runs, and when
+  the check fails. Superuser only."
+  [_route-params
+   _query-params
+   body :- [:map {:closed true}
+            [:remote-sync-url {:optional true} [:maybe :string]]
+            [:remote-sync-token {:optional true} [:maybe :string]]
+            [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
+            [:remote-sync-branch {:optional true} [:maybe :string]]
+            [:remote-sync-auto-import {:optional true} [:maybe :boolean]]]]
+  (api/check-superuser)
+  (repository/save-settings! body api/*current-user-id*)
+  {:success true})
+
+(api.macros/defendpoint :get "/branches" :- [:map [:items [:sequential :string]]]
+  "The names of the branches of the repository now, with a fresh remote call. 400 when no repository is configured,
+  and with the message for the person when the call fails. Superuser only."
+  []
+  (api/check-superuser)
+  (api/check-400 (repository/configured?) (tru "Library branching is not configured."))
+  {:items (vec (try
+                 (repository/do-with-store store/branches)
+                 (catch Exception e
+                   (throw (ex-info (repository/failure-message e) {:status-code 400} e)))))})
+
+(defn- task-response [{:keys [id]}]
+  {:task_id id})
+
+(api.macros/defendpoint :post "/push" :- [:map [:task_id pos-int?]]
+  "Starts a push of the synced snapshot to the configured branch, as a task, and returns its id. 400 when library
+  branching is off or not configured, on a read-only instance, and while a task runs. Superuser only."
+  [_route-params
+   _query-params
+   {:keys [message]} :- [:map {:closed true}
+                         [:message {:optional true} ms/NonBlankString]]]
+  (api/check-superuser)
+  (task-response (operations/start-push! api/*current-user-id* message)))
+
+(api.macros/defendpoint :post "/pull" :- [:map [:task_id pos-int?]]
+  "Starts a pull of the configured branch into the instance, as a task, and returns its id. 400 as for a push.
+  Superuser only."
+  []
+  (api/check-superuser)
+  (task-response (operations/start-pull! api/*current-user-id*)))
+
+(api.macros/defendpoint :post "/merge-branch" :- [:map [:task_id pos-int?]]
+  "Starts a merge of branch `from` into branch `into` (default: the configured branch) in the repository, as a task,
+  and returns its id. 400 as for a push. Superuser only."
+  [_route-params
+   _query-params
+   {:keys [from into]} :- [:map {:closed true}
+                           [:from ms/NonBlankString]
+                           [:into {:optional true} ms/NonBlankString]]]
+  (api/check-superuser)
+  (task-response (operations/start-merge-branch! api/*current-user-id* into from)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/library-branching` routes."

@@ -4,9 +4,12 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase-enterprise.library-branching.tasks-test-util :as tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- current-task [user status]
   (mt/user-http-request user :get status "ee/library-branching/current-task"))

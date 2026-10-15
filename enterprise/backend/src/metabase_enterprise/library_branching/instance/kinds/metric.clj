@@ -134,10 +134,16 @@
       (library-branching.db/update-card! (:id row) {:archived true :archived_directly true}))
     nil))
 
+(def ^:private models-of-read
+  "The models whose tables a read of metrics reads: the cards and their collections, and the tables, fields, databases,
+  cards, segments and measures that a query refers to."
+  #{:model/Card :model/Collection :model/Database :model/Field :model/Measure :model/Segment :model/Table})
+
 (def kind-store
   "The `KindStore` of metrics."
   (reify instance/KindStore
     (read-all [_ ids] (read-metrics ids))
+    (read-models [_] models-of-read)
     (current [_ id] (current-metric id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-metric! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-metric! id)))))

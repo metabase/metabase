@@ -107,6 +107,7 @@
   "The `KindStore` of collections."
   (reify instance/KindStore
     (read-all [_ ids] (read-collections ids))
+    (read-models [_] #{:model/Collection})
     (current [_ id] (current-collection id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-collection! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-collection! id)))))
