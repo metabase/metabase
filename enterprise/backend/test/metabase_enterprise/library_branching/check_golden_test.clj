@@ -264,15 +264,6 @@
       (is (str/includes? line "Metrics"))
       (is (str/includes? line "namespace"))
       (is (not (str/includes? line ":rule")) "a sentence, not the finding as data")))
-  (testing "a Library finding names the item, the collection and what a collection of its type holds"
-    (let [[line] (check/report (checked (golden/edit golden/total-revenue-path
-                                                     #(str/replace % "collection: cOlQuErIeS0ExAmPlE2x1\n"
-                                                                   "collection: dAtAcOlLeCtIoNiD00000\n"))))]
-      (is (str/includes? line golden/total-revenue-path))
-      (is (str/includes? line "Total Revenue"))
-      (is (str/includes? line "\"Data\""))
-      (is (str/includes? line "published tables"))
-      (is (not (str/includes? line ":rule")) "a sentence, not the finding as data")))
   (testing "a decode finding names its file"
     (is (str/includes? (first (check/report (checked (golden/tree-with {"library/notes.yaml" "kind: metric\nid: 12\n"}))))
                        "library/notes.yaml")))
@@ -284,6 +275,17 @@
       (is (str/includes? (first lines) "x.yaml"))
       (is (str/includes? (first lines) golden/base-filter-path))
       (is (= "green" (peek lines))))))
+
+(deftest library-finding-report-test
+  (testing "a Library finding names the item, the collection and what a collection of its type holds"
+    (let [[line] (check/report (checked (golden/edit golden/total-revenue-path
+                                                     #(str/replace % "collection: cOlQuErIeS0ExAmPlE2x1\n"
+                                                                   "collection: dAtAcOlLeCtIoNiD00000\n"))))]
+      (is (str/includes? line golden/total-revenue-path))
+      (is (str/includes? line "Total Revenue"))
+      (is (str/includes? line "\"Data\""))
+      (is (str/includes? line "published tables"))
+      (is (not (str/includes? line ":rule")) "a sentence, not the finding as data"))))
 
 ;;; ------------------------------------------------------- Run -------------------------------------------------------
 
