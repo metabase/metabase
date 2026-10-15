@@ -13,6 +13,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -466,19 +467,33 @@
   [conversation-id]
   (:external_id (leaf-message conversation-id)))
 
+(def ^:private hidden-query-results
+  "Replayed in place of a stored query result while query execution is off."
+  "Results hidden: query execution is turned off.")
+
+(defn- hidden-query-results?
+  "Whether the stored output of tool `part` holds query results that must not reach the model.
+  Turning query execution off hides them without changing what is stored, so turning it on again restores them."
+  [part]
+  (and (not (metabot.settings/metabot-query-execution-enabled?))
+       (metabot.tools/query-result-tool? (schema.v2/tool-part-name part))))
+
 (defn tool-part->llm-messages
   "A stored v2 tool part → LLM history pair: the assistant tool call plus its
   tool result. An unresolved (`input-available`) call is paired with a
   synthetic interrupted result by default, so an aborted turn's partial content
   stays replayable rather than being silently dropped. Pass
   `:on-unresolved :skip` to drop it instead (Slack replays only completed tool
-  calls and gets assistant text from its own thread copy)."
+  calls and gets assistant text from its own thread copy).
+  While query execution is off, a stored query result is replaced with a note that it is hidden."
   ([part] (tool-part->llm-messages part nil))
   ([part {:keys [on-unresolved]}]
    (when (schema.v2/tool-part? part)
      (let [{:keys [state input output errorText toolCallId]} part
            content (case state
-                     "output-available" (str (if (map? output) (:output output) output))
+                     "output-available" (if (hidden-query-results? part)
+                                          hidden-query-results
+                                          (str (if (map? output) (:output output) output)))
                      "output-error"     (or errorText "Tool execution failed")
                      "input-available"  (when-not (= on-unresolved :skip)
                                           "Tool execution interrupted by user")

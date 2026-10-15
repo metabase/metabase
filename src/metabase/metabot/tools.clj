@@ -127,6 +127,21 @@
     "create_alert" "create_dashboard_subscription" "static_viz"
     "read_resource" "run_query"})
 
+(def ^:private query-result-tool-names
+  "Names of the tools that return query results: those that need `:feature-query-execution`."
+  (delay
+    (into #{}
+          (comp (map meta)
+                (filter #(contains? (:capabilities %) :feature-query-execution))
+                (map :tool-name))
+          (vals (ns-publics 'metabase.metabot.tools)))))
+
+(defn query-result-tool?
+  "Whether the tool named `tool-name` returns query results, which may reach the model only while query execution
+  is on."
+  [tool-name]
+  (contains? @query-result-tool-names tool-name))
+
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks
   `*current-user-scope*` against `required-scope` before calling `f`.
