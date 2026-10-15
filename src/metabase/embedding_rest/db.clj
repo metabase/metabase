@@ -87,3 +87,12 @@
   "Delete the EmbeddingTheme with `id`."
   [id :- ms/PositiveInt]
   (t2/delete! :model/EmbeddingTheme :id id))
+
+(mu/defn sdk-react-18-hosts-last-seen-after :- [:sequential ::embedding.schema/sdk-react-18-host]
+  "The EmbeddingSdkReact18Hosts last seen after `cutoff`, newest first, at most `limit`."
+  [cutoff :- ms/TemporalInstant
+   limit  :- ms/PositiveInt]
+  (t2/select :model/EmbeddingSdkReact18Host {:select   [:id :host :created_at :last_seen_at]
+                                             :where    [:> :last_seen_at [:auto/param cutoff]]
+                                             :order-by [[:last_seen_at :desc] [:id :desc]]
+                                             :limit    limit}))

@@ -265,7 +265,7 @@
                  :id        "call-1"
                  :function  "construct_notebook_query"
                  :arguments {:query query}}
-          ;; the stream parser decodes the arguments with keyword keys at every depth
+          ;; the stream parser keywordizes only the top-level argument names
           parts (into [] (self.core/aisdk-xf) (metabot.tu/parts->aisdk-chunks [call]))]
       (is (=? {:messages [{:role       "assistant"
                            :tool_calls [{:function {:name      "construct_notebook_query"
@@ -280,18 +280,21 @@
                             :id        "call-1"
                             :function  "f"
                             :arguments arguments}]}))]
-    (testing "decoded JSON replays at any depth, keyed by strings, keywords or both"
+    (testing "decoded JSON replays at any depth, with keyword argument names and string keys below them"
       (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
                            (replay arguments))
-        ;; keyword keys, as the stream decodes them
-        {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
-        ;; string keys, as replayed history decodes them
-        {"a" {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
-        ;; both
-        {:a {"b" [{:c {"d" [{:e 1}]}}]}}))
+        ;; string keys below the argument names, as the stream parser and replayed history decode them
+        {:a {"b" {"c" [{"d" [1 nil true "x" :kw]}]}}}
+        {:a {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}))
+    (testing "a string argument name is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {"a" 1}))))
+    (testing "a keyword key below the argument names is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {:a {"b" [{:c 1}]}}))))
     (testing "a value JSON cannot hold is rejected, however deep"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
-                            (replay {:a {"b" [{:c (java.time.Instant/now)}]}}))))))
+                            (replay {:a {"b" [{"c" (java.time.Instant/now)}]}}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -342,6 +345,78 @@
                                   :finish_reason "tool_calls"
                                   :usage         dual-location-usage}]}
                       {:choices [] :usage dual-location-usage}]))))))
+
+(def ^:private running-usage-chunks
+  "A reply from a server that repeats its running usage totals on every chunk."
+  [{:id      "chatcmpl-5"
+    :model   "qwen3-235b"
+    :choices [{:index 0 :delta {:role "assistant" :content "Hel"}}]
+    :usage   {:prompt_tokens 120 :completion_tokens 1}}
+   {:choices [{:index 0 :delta {:content "lo"}}]
+    :usage   {:prompt_tokens 120 :completion_tokens 2}}
+   {:choices [{:index 0 :delta {} :finish_reason "stop"}]
+    :usage   {:prompt_tokens 120 :completion_tokens 3}}])
+
+(deftest ^:parallel usage-once-counts-running-usage-once-test
+  (testing "a server that repeats its running totals on every chunk is counted once, with its last totals"
+    (is (= [:start :text-start :text-delta :text-delta :text-end :usage]
+           (chunk-types (chat-completions/usage-once running-usage-chunks))))
+    (is (=? [{:usage         {:promptTokens 120 :completionTokens 3}
+              :finish-reason "stop"}]
+            (usage-parts (chat-completions/usage-once running-usage-chunks))))))
+
+(defn- sse-stream
+  "An SSE body that sends `chunks`."
+  [chunks]
+  (java.io.ByteArrayInputStream.
+   (.getBytes ^String (str/join (map #(str "data: " (json/encode %) "\n\n") chunks)) "UTF-8")))
+
+(defn- failing-sse-stream
+  "An SSE body that sends `chunks`, then fails the way a reset connection does."
+  [chunks]
+  (java.io.SequenceInputStream.
+   (sse-stream chunks)
+   (proxy [java.io.InputStream] []
+     (read
+       ([] (throw (java.io.IOException. "Connection reset")))
+       ([_bytes _offset _length] (throw (java.io.IOException. "Connection reset")))))))
+
+(deftest ^:parallel usage-once-passes-on-usage-when-the-stream-fails-test
+  (testing "a stream that fails partway still counts the usage it received, once, before the failure"
+    (let [parts (atom [])]
+      (is (thrown-with-msg?
+           java.io.IOException #"Connection reset"
+           (transduce (chat-completions/chat-completions->aisdk-chunks-xf)
+                      (fn ([acc] acc) ([acc part] (swap! parts conj part) acc))
+                      nil
+                      (chat-completions/usage-once
+                       (self.core/sse-reducible (failing-sse-stream (pop running-usage-chunks)))))))
+      (is (=? [{:type :usage :usage {:promptTokens 120 :completionTokens 2}}]
+              (filterv #(= :usage (:type %)) @parts))))))
+
+(deftest ^:parallel usage-once-passes-on-usage-when-the-consumer-stops-test
+  (testing "a consumer that stops partway, as a disconnected client does, still counts the usage it received, once"
+    (let [parts (atom [])]
+      (transduce (chat-completions/chat-completions->aisdk-chunks-xf)
+                 (fn ([acc] acc)
+                   ([acc part]
+                    (swap! parts conj part)
+                    (cond-> acc (= "lo" (:delta part)) reduced)))
+                 nil
+                 (chat-completions/usage-once
+                  (self.core/sse-reducible (sse-stream running-usage-chunks))))
+      (is (=? [{:type :usage :usage {:promptTokens 120 :completionTokens 2}}]
+              (filterv #(= :usage (:type %)) @parts))))))
+
+(deftest ^:parallel count-reasoning-as-output-test
+  (testing "reasoning tokens reported next to completion_tokens count as output, whether or not they're inside it"
+    (are [usage completion-tokens] (= completion-tokens
+                                      (get-in (chat-completions/count-reasoning-as-output {:usage usage})
+                                              [:usage :completion_tokens]))
+      {:prompt_tokens 32 :completion_tokens 9 :total_tokens 135}   103
+      {:prompt_tokens 32 :completion_tokens 103 :total_tokens 135} 103
+      {:prompt_tokens 32 :completion_tokens 103 :total_tokens 100} 103
+      {:prompt_tokens 32 :completion_tokens 9}                     9)))
 
 (deftest ^:parallel chunks-xf-cache-reads-come-from-prompt-tokens-details-test
   (testing "cacheReadTokens is read from prompt_tokens_details, and cached tokens are a subset of promptTokens"
@@ -789,6 +864,10 @@
                :error    {:code "server_error" :message "Provider disconnected unexpectedly"}
                :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}
               "Provider disconnected unexpectedly"]
+             ["OpenRouter's error finish reason without an error envelope"
+              (openrouter/openrouter->aisdk-chunks-xf)
+              {:choices [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "The model provider failed to complete the response"]
              ["Mistral's error finish reason, which carries no message"
               (mistral/mistral->aisdk-chunks-xf)
               {:id      "cmpl-e5cc70bb28c444948073e77776eb30ef"
@@ -814,17 +893,45 @@
                           :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
                          error-chunk]))))
         (testing "without emitting any chunk of a half-streamed tool call"
-          (is (= [{:type :start :messageId "chatcmpl-5"}
-                  {:type :error :errorText message}]
-                 (into [] xf
-                       [{:id      "chatcmpl-5"
-                         :model   "kimi-k2.6"
-                         :choices [{:index 0
-                                    :delta {:tool_calls [{:index    0
-                                                          :id       "call-1"
-                                                          :type     "function"
-                                                          :function {:name "search" :arguments "{\"query\": \"rev"}}]}}]}
-                        error-chunk]))))))))
+          (is (=? [{:type :start :messageId "chatcmpl-5"}
+                   {:type :error :errorText message}]
+                  (into [] xf
+                        [{:id      "chatcmpl-5"
+                          :model   "kimi-k2.6"
+                          :choices [{:index 0
+                                     :delta {:tool_calls [{:index    0
+                                                           :id       "call-1"
+                                                           :type     "function"
+                                                           :function {:name "search" :arguments "{\"query\": \"rev"}}]}}]}
+                         error-chunk]))))))))
+
+(def ^:private openrouter-midstream-overflow-chunk
+  "OpenRouter's documented mid-stream error event for a context overflow.
+
+  The event is the Chat Completions example at https://openrouter.ai/docs/api_reference/errors-and-debugging, with
+  `error.code` 400, `error.message` \"Provider returned error\" and `error.metadata.error_type`
+  \"context_length_exceeded\" in place of the example's rate-limit values."
+  {:id       "gen-abc123"
+   :object   "chat.completion.chunk"
+   :created  1234567890
+   :model    "anthropic/claude-haiku-4.5"
+   :provider "Anthropic"
+   :error    {:code 400 :message "Provider returned error" :metadata {:error_type "context_length_exceeded"}}
+   :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]})
+
+(deftest ^:parallel chunks-xf-streamed-error-keeps-the-error-object-test
+  (testing "an error object sent partway through a stream rides on the error chunk, with its typed fields"
+    (is (= [{:type      :error
+             :errorText "Provider returned error"
+             :error     {:code     400
+                         :message  "Provider returned error"
+                         :metadata {:error_type "context_length_exceeded"}}}]
+           (filterv #(= :error (:type %)) (into [] (openrouter/openrouter->aisdk-chunks-xf)
+                                                [openrouter-midstream-overflow-chunk])))))
+  (testing "an error finish reason with no error object carries only the text"
+    (is (= [{:type :error :errorText "The model provider failed to complete the response"}]
+           (filterv #(= :error (:type %)) (into [] (openrouter/openrouter->aisdk-chunks-xf)
+                                                [{:choices [{:index 0 :delta {} :finish_reason "error"}]}]))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Error finish reason tests

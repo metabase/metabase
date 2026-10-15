@@ -18,6 +18,7 @@ import { useDefaultEmbeddingThemeSettings } from "metabase/embedding/themes/hook
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useSetting } from "metabase/settings";
+import { WHITELABEL_ACCENT_KEYS } from "metabase/ui/colors/constants/whitelabel-colors";
 import { suggestHarmonyColors } from "metabase/ui/colors/harmonies";
 import type { EmbeddingTheme } from "metabase-types/api";
 import type { ColorSettings } from "metabase-types/api/settings";
@@ -88,8 +89,8 @@ const seedDraftFromHarmony = (
   const harmony = suggestHarmonyColors(brand);
   const existingCharts = settings.colors?.charts ?? [];
   const charts: ChartColor[] = harmony.charts.map((harmonyChart, i) => {
-    const accentKey = `accent${i}`;
-    if (whitelabelColors[accentKey] !== undefined) {
+    const accentKey = WHITELABEL_ACCENT_KEYS[i];
+    if (accentKey !== undefined && whitelabelColors[accentKey] !== undefined) {
       return existingCharts[i] ?? harmonyChart;
     }
     return harmonyChart;
@@ -100,8 +101,8 @@ const seedDraftFromHarmony = (
       ...settings.colors,
       filter: whitelabelColors.filter ?? harmony.filter,
       summarize: whitelabelColors.summarize ?? harmony.summarize,
-      positive: whitelabelColors.success ?? harmony.positive,
-      negative: whitelabelColors.danger ?? harmony.negative,
+      positive: harmony.positive,
+      negative: harmony.negative,
       charts,
     },
   };
@@ -337,7 +338,7 @@ export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
       return updated;
     } catch (error) {
       console.error("Failed to save theme:", error);
-      sendToast({ message: t`Failed to save theme`, icon: "warning" });
+      sendToast({ message: t`Failed to save theme`, variant: "negative" });
       return null;
     }
   }, [currentTheme, isDraft, themeId, createTheme, updateTheme, sendToast]);

@@ -421,7 +421,7 @@ function UsefulLink({
       className={S.interactiveCard}
     >
       <Group gap="sm" wrap="nowrap">
-        <FixedSizeIcon name={icon} size={16} c="brand" />
+        <FixedSizeIcon name={icon} size={16} c="core-brand" />
         <Text fz="md" c="text-primary">
           {label}
         </Text>

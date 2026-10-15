@@ -6,6 +6,7 @@ import type {
   Dashboard,
   DashboardCard,
   DashboardId,
+  DashboardSubscription,
   DashboardTab,
   DashboardTabId,
   ParameterId,
@@ -61,11 +62,22 @@ export interface EventsSidebarState extends BaseSidebarState {
   props: EventsSidebarProps;
 }
 
+type SharingSidebarProps = {
+  dashcardId?: DashCardId;
+  subscriptionId?: DashboardSubscription["id"];
+};
+
+export interface SharingSidebarState extends BaseSidebarState {
+  name: "sharing";
+  props: SharingSidebarProps;
+}
+
 export type DashboardSidebarState =
   | BaseSidebarState
   | ClickBehaviorSidebarState
   | EditParameterSidebarState
-  | EventsSidebarState;
+  | EventsSidebarState
+  | SharingSidebarState;
 
 export type TimelineEventsSelection = {
   dashcardId?: DashCardId;

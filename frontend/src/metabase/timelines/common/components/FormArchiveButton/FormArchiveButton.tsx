@@ -19,7 +19,6 @@ const FormArchiveButton = ({
       type="button"
       variant="subtle"
       color="negative"
-      px={0}
       onClick={onClick}
     >
       {children}

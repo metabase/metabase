@@ -20,6 +20,7 @@
    [metabase.metabot.tools.explorations :as tools.explorations]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.resources :as tools.resources]
+   [metabase.metabot.tools.run-query :as tools.run-query]
    [metabase.metabot.tools.save-entity :as tools.save-entity]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared :as shared]
@@ -47,7 +48,11 @@
  [tools.entity-retrieval
   retrieve-library-entities-tool]
  [tools.construct
-  construct-notebook-query-tool]
+  construct-notebook-query-tool
+  without-show-chart]
+ [tools.run-query
+  run-query-tool
+  run-sql-query-tool]
  [tools.document
   document-schema-collect-tool
   document-construct-sql-chart-tool
@@ -120,7 +125,7 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query" "construct_notebook_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"
-    "read_resource"})
+    "read_resource" "run_query"})
 
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks
@@ -147,18 +152,18 @@
   the skill registry (`metabase.metabot.skills`) and are surfaced as a manifest
   in the system prompt, with full bodies loaded on demand via the `load_skill`
   tool."
-  [tools memory-atom metabot-id profile-id]
+  [tools memory-atom metabot profile-id]
   (reduce-kv
    (fn [acc tool-name tool-var]
      (let [m          (meta tool-var)
            base-fn    (if (contains? state-dependent-tools tool-name)
                         (fn [args]
                           (binding [shared/*memory-atom* memory-atom
-                                    shared/*metabot-id*  metabot-id
+                                    shared/*metabot*     metabot
                                     shared/*profile-id*  profile-id]
                             (tool-var args)))
                         (fn [args]
-                          (binding [shared/*metabot-id* metabot-id
+                          (binding [shared/*metabot* metabot
                                     shared/*profile-id* profile-id]
                             (tool-var args))))
            tool-scope (:scope m)

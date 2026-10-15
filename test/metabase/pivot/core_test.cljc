@@ -571,7 +571,7 @@
     ;; `SumIf` / `Share` aggregation cannot lift the aggregation's inner filter,
     ;; because the frontend has no way to enrich the click with the aggregation
     ;; column, and the backend drill therefore can't find the aggregation UUID.
-    (let [values-by-key {["A" 1] {:values [10 20]
+    (let [values-by-key {["A" 1] {:values (object-array [10 20])
                                   :valueColNames ["count" "sum"]
                                   :data [{:value 1 :colIdx 0}
                                          {:value "A" :colIdx 1}

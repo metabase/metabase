@@ -439,6 +439,35 @@ export async function sendPublishStartMessage({
   await sendSlackReply({ channelName, message, messageId: buildThread?.id });
 }
 
+export async function sendPublishFailureMessage({
+  channelName,
+  version,
+  runId,
+  owner,
+  repo,
+  details,
+}: {
+  channelName: string,
+  version: string,
+  runId: number,
+  owner: string,
+  repo: string,
+  details: string,
+}) {
+  const message = `:x: ${githubRunLink(`Publishing ${getGenericVersion(version)} failed`, runId.toString(), owner, repo)}\n${details}`;
+
+  const buildThread = await getExistingSlackMessage(version, channelName);
+
+  if (!buildThread?.id) {
+    // Without the release thread, say it in the channel rather than not at all.
+    await sendSlackMessage({ channelName, message });
+    return;
+  }
+
+  await sendSlackReply({ channelName, message, messageId: buildThread.id });
+  await addSlackReaction({ channelName, messageId: buildThread.id, emoji: 'warning' });
+}
+
 export async function sendPublishCompleteMessage({
   channelName,
   version,

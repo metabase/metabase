@@ -11,9 +11,7 @@
    [metabase-enterprise.mcp.db :as mcp.db]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,9 +33,11 @@
           (log/infof "MCP usage log cleanup complete. Deleted %d tool-call and %d session rows."
                      (or calls 0) (or sessions 0)))))))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Delete old MCP usage log rows"}
-  McpUsageTrimmer [_ctx]
+(task/defjob McpUsageTrimmer
+  "Delete old MCP usage log rows"
+  {:saved-class "metabase_enterprise.mcp.task.mcp_usage_trimmer.McpUsageTrimmer"
+   :concurrent? false}
+  [_ctx]
   (trim-old-mcp-usage-data!))
 
 (defmethod task/init! ::McpUsageTrimmer

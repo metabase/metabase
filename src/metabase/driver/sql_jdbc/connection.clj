@@ -4,7 +4,6 @@
   (:refer-clojure :exclude [get-in mapv select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.audit-app.core :as audit-app]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]

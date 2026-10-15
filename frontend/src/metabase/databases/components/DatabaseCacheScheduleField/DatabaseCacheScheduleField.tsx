@@ -82,7 +82,7 @@ export const DatabaseCacheScheduleField = ({
   };
 
   return (
-    <FormField title={title} description={description}>
+    <FormField mb="lg" title={title} description={description}>
       <ScheduleModePicker
         value={scheduleMode}
         onChange={handleScheduleModeChange}

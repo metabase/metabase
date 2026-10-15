@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
@@ -51,13 +52,11 @@
                       (initialize/initialize-if-needed! :db)
                       (thunk)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *save-chan*
   "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
   because of an Exception or if the byte threshold is passed."
   nil)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *purge-chan*
   "Gets a message whenever old entries are purged from the test backend."
   nil)
@@ -142,10 +141,8 @@
 (defmacro with-mock-cache! [[& bindings] & body]
   `(do-with-mock-cache! (fn [{:keys [~@bindings]}] ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *query-caching-min-ttl*
   "Set this to zero to prevent flakes - we don't want a query to slip under the wire here."
   0)
@@ -163,7 +160,6 @@
           :stages         [{:lib/type :mbql.stage/mbql, :source-table 2}]}
          query-kvs))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *rows*
   "Rows the mock query execution returns. Bind to `[]` to exercise the empty-result path."
   [[:toucan      71]
@@ -1010,6 +1006,34 @@
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query"
                      (run-forbidden-query)))))))))))
+
+(deftest cached-results-native-form-requires-native-query-perms-test
+  (testing "Cached results don't return the compiled query to a user without native query perms"
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+        (with-mock-cache! [save-chan]
+          (letfn [(run-query []
+                    (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                                             :cache-strategy (ttl-strategy))))]
+            (testing "Run query as superuser to populate the cache"
+              (request/with-current-user (mt/user->id :crowberto)
+                (is (=? {:data {:native_form some?}}
+                        (run-query)))))
+            (mt/wait-for-result save-chan)
+            (testing "Cached results for the superuser still include the compiled query"
+              (request/with-current-user (mt/user->id :crowberto)
+                (is (=? {:cache/details {:cached true}
+                         :data          {:native_form some?}}
+                        (run-query)))))
+            (testing "Cached results for a user without native query perms don't include the compiled query"
+              (mt/with-test-user :rasta
+                (let [result (run-query)]
+                  (is (=? {:cache/details {:cached true}
+                           :data          {:rows [[1000]]}}
+                          result))
+                  (is (nil? (get-in result [:data :native_form]))))))))))))
 
 (deftest ^:parallel cached-results-rff-preserves-fresh-accumulator-test
   (testing "On cache hit, the rff chain's accumulator (with any modifications from middlewares

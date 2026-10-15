@@ -102,7 +102,7 @@
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user? search-context))
+         (and (= model "indexed-entity") (search.permissions/sandboxed-impersonated-or-routed-user? search-context))
          [:= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
@@ -236,6 +236,18 @@
                            [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
     (sql.helpers/where query (cond-> [:or authoritative]
                                published-final (conj published-final)))))
+
+(doseq [model ["measure" "segment"]]
+  (defmethod build-optional-filter-query [:curated model]
+    [_filter _model query curated?]
+    (assert (true? curated?) "filter for non-curated content is not supported")
+    ;; A measure or segment is curated when its parent table is published into the Library.
+    ;; This engine has no index row to read the table's root collection type from, so it only checks that the
+    ;; parent table is published, and only with the :library feature, like the table filter above.
+    ;; The legacy query joins the parent table as `table`; see metabase.search.in-place.legacy/search-query-for-model.
+    (sql.helpers/where query (if (premium-features/has-feature? :library)
+                               [:= :table.is_published true]
+                               false-clause))))
 
 ;; Created at filters
 

@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { createDraft } from "immer";
 
+import { createMockMetabotMessage } from "__support__/server-mocks";
 import {
   type MetabotState,
   metabotActions,
@@ -156,6 +157,29 @@ describe("metabot reducer", () => {
       );
 
       expect(store.getState().metabot.conversations[abandoned]).toBeDefined();
+    });
+
+    it("rebuilds the display of a server-coded error from a snapshot", () => {
+      const store = createTestStore();
+      const conversationId = testConversationId("omnibot");
+      const error = { type: "ai_provider_context_full", message: "full" };
+      store.dispatch(
+        metabotActions.setConversationSnapshot({
+          conversationId,
+          messages: [
+            createMockMetabotMessage({
+              role: "agent",
+              status: { type: "errored", error },
+            }),
+          ],
+        }),
+      );
+
+      expect(convoForAgent(store, "omnibot").messages[0].status).toEqual({
+        type: "errored",
+        error,
+        display: { type: "message", message: "full" },
+      });
     });
   });
 

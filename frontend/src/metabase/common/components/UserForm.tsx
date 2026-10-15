@@ -22,6 +22,8 @@ import { Alert, Button } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { GroupId, GroupInfo, User, UserId } from "metabase-types/api";
 
+import S from "./UserForm.module.css";
+
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
   last_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
@@ -220,6 +222,7 @@ export const UserForm = ({
           {!hideAttributes && (
             <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes
               userId={userId}
+              className={S.loginAttributes}
             />
           )}
           <FormFooter>

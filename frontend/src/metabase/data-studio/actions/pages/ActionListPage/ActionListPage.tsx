@@ -2,6 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
@@ -9,10 +13,10 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   filterTreeByName,
   isCollectionData,
+  openNewCollectionModal,
 } from "metabase/data-studio/common/utils";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -24,10 +28,10 @@ import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useBuildActionTree } from "../../hooks/use-build-action-tree";
 import { canCreateActions } from "../../utils";
 
-import { RootDataActionsMenu } from "./RootDataActionsMenu";
-
 export function ActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [collectionModal, setCollectionModal] =
+    useState<CollectionRowModalState>();
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -39,6 +43,7 @@ export function ActionListPage() {
   const canCreate = canCreateActions(databases);
   const {
     tree,
+    rootCollection,
     isLoading: isLoadingActions,
     error: actionsError,
   } = useBuildActionTree({
@@ -51,9 +56,11 @@ export function ActionListPage() {
     () => (isSearchActive ? filterTreeByName(tree, searchQuery) : tree),
     [isSearchActive, tree, searchQuery],
   );
-  const defaultExpandedIds = useMemo(
-    () => tree.slice(0, 1).map((node) => node.id),
-    [tree],
+  const renderRowMenu = useCallback(
+    (item: TreeItem) => (
+      <ActionRowMenu item={item} onOpenModal={setCollectionModal} />
+    ),
+    [],
   );
 
   return (
@@ -64,22 +71,42 @@ export function ActionListPage() {
       isSearchActive={isSearchActive}
       searchQuery={searchQuery}
       emptyMessage={t`No actions yet`}
-      defaultExpandedIds={defaultExpandedIds}
       createMenu={canCreate && <ActionsCreateMenu />}
-      renderRowMenu={renderActionRowMenu}
+      pageMenu={{
+        label: t`Data action options`,
+        actions: [
+          {
+            label: t`View archived actions`,
+            icon: "view_archive",
+            to: Urls.dataStudioArchivedActions(),
+          },
+        ],
+        permissionsCollection: PLUGIN_LIBRARY.isEnabled
+          ? rootCollection
+          : undefined,
+        onOpenModal: setCollectionModal,
+      }}
+      renderRowMenu={renderRowMenu}
       onSearchQueryChange={setSearchQuery}
-    />
+    >
+      <CollectionRowModal
+        modal={collectionModal}
+        onClose={() => setCollectionModal(undefined)}
+      />
+    </LibraryTreePage>
   );
 }
 
-function renderActionRowMenu({ data }: TreeItem) {
+type ActionRowMenuProps = {
+  item: TreeItem;
+  onOpenModal: (modal: CollectionRowModalState) => void;
+};
+
+function ActionRowMenu({ item: { data }, onOpenModal }: ActionRowMenuProps) {
   if (!isCollectionData(data)) {
     return null;
   }
-  if (data.id === "root") {
-    return <RootDataActionsMenu />;
-  }
-  return <CollectionRowMenu collection={data} />;
+  return <CollectionRowMenu collection={data} onOpenModal={onOpenModal} />;
 }
 
 function ActionsCreateMenu() {
@@ -87,14 +114,10 @@ function ActionsCreateMenu() {
 
   const handleNewCollectionClick = useCallback(() => {
     dispatch(
-      setOpenModalWithProps({
-        id: "collection",
-        props: {
-          initialCollectionId: null,
-          namespaces: ACTION_COLLECTION_NAMESPACES,
-          pickerOptions: ACTION_COLLECTION_PICKER_OPTIONS,
-          showAuthorityLevelPicker: false,
-        },
+      openNewCollectionModal({
+        initialCollectionId: null,
+        namespaces: ACTION_COLLECTION_NAMESPACES,
+        pickerOptions: ACTION_COLLECTION_PICKER_OPTIONS,
       }),
     );
   }, [dispatch]);
