@@ -111,7 +111,7 @@ const setup = async ({
     }),
     createMockSettingDefinition({
       key: "metabot-query-execution-enabled?",
-      value: queryExecutionEnvName ? null : queryExecutionEnabled,
+      value: queryExecutionEnvName ? undefined : queryExecutionEnabled,
       is_env_setting: queryExecutionEnvName != null,
       env_name: queryExecutionEnvName,
     }),
