@@ -7,8 +7,7 @@
 (deftest matches?-test
   (testing "GHY-4942: nil token-scopes hold no scope, so they match nothing"
     (is (false? (mcp.scope/matches? nil "agent:read")))
-    (is (false? (mcp.scope/matches? nil nil)))
-    (is (false? (mcp.scope/matches? nil #{"agent:read"}))))
+    (is (false? (mcp.scope/matches? nil nil))))
   (testing "GHY-4942: the unrestricted sentinel is not an MCP scope, so it matches nothing"
     (is (false? (mcp.scope/matches? #{::scope/unrestricted} "agent:read")))
     (is (false? (mcp.scope/matches? #{::scope/unrestricted} nil))))
@@ -23,12 +22,7 @@
     (is (false? (mcp.scope/matches? #{"*"} "agent:read")))
     (is (false? (mcp.scope/matches? #{"agent:*"} "agent:read")))
     (is (false? (mcp.scope/matches? #{"agent:read:*"} "agent:read:x")))
-    (is (false? (mcp.scope/matches? #{"*" "agent:*"} #{"agent:read" "agent:write"})))
     (is (true? (mcp.scope/matches? #{"*" "agent:read"} "agent:read"))))
-  (testing "any required scope match"
-    (is (true? (mcp.scope/matches? #{"agent:read"} #{"agent:read" "agent:write"})))
-    (is (true? (mcp.scope/matches? #{"agent:write"} #{"agent:read" "agent:write"})))
-    (is (false? (mcp.scope/matches? #{"other:read"} #{"agent:read" "agent:write"}))))
   (testing "no match"
     (is (false? (mcp.scope/matches? #{"foo:bar"} "agent:read")))
     (is (false? (mcp.scope/matches? #{} "agent:read")))))

@@ -1,17 +1,14 @@
 (ns metabase.mcp.scope
   "Scope matching for MCP tools and resources.
 
-   Only a named scope string grants anything, and only by exact match. A wildcard such as `*` or `agent:*`,
-   nil token-scopes, and the `::api.scope/unrestricted` sentinel are not MCP scopes and match nothing.")
+   Only a named scope string grants anything, and only by exact match.")
 
 (defn matches?
-  "Does `token-scopes` hold `required-scope` exactly, or any member of a set of alternative scopes? nil
-   `token-scopes` and nil `required-scope` match nothing."
+  "Does `token-scopes` hold the scope string `required-scope` exactly? nil `token-scopes` and nil `required-scope`
+   match nothing."
   [token-scopes required-scope]
-  (if (set? required-scope)
-    (boolean (some #(matches? token-scopes %) required-scope))
-    (boolean (and (string? required-scope)
-                  (contains? token-scopes required-scope)))))
+  (boolean (and (string? required-scope)
+                (contains? token-scopes required-scope))))
 
 (defn public-or-matches?
   "Like [[matches?]] but treats a nil `required-scope` as \"public to any caller\"
