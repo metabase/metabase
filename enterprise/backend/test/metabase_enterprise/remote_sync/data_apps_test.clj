@@ -10,7 +10,9 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.actions.core :as actions]
    [metabase.collections.models.collection :as collection]
@@ -20,6 +22,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -507,9 +510,24 @@
       (is (= :error (:status result)))
       (is (str/includes? (:message result) "data_apps/first/data_app.yaml"))
       (is (str/includes? (:message result) "data_apps/second/data_app.yaml"))
+      (testing "a problem both apps find in the collection they share is listed once"
+        (is (apply distinct? (str/split-lines (:message result)))))
       (testing "nothing loaded"
         (is (not (t2/exists? :model/DataApp :name [:in ["first" "second"]])))
         (is (not (t2/exists? :model/Collection :entity_id shared)))))))
+
+(deftest pull-lists-each-problem-on-its-own-line-test
+  (testing "a pull refusing several apps names each problem's file once, one problem per line"
+    (with-data-apps-sync
+      (let [app    (fn [slug] (data-apps.tu/app-files slug {:name slug :path "index.js" :bundle "B" :collection nil}))
+            src    (test-helpers/versioned-source :trees {"v0" (merge (app "first") (app "second"))} :current "v0")
+            result (import-at! src "v0" :force? true)
+            [lead & problems] (str/split-lines (:message result))]
+        (is (= :error (:status result)))
+        (is (= "Failed to reload from git repository. Invalid data app files:" lead))
+        (is (= ["- data_apps/first/data_app.yaml must name the app's resource collection as `collection`."
+                "- data_apps/second/data_app.yaml must name the app's resource collection as `collection`."]
+               (sort problems)))))))
 
 (deftest pull-refuses-two-apps-that-define-one-card-test
   (with-data-apps-sync
@@ -1025,3 +1043,41 @@
               (is (= :success (:status result)) (:message result))))
           (testing "the export is recorded: the rows are synced"
             (is (empty? (remote-sync.object/dirty-rows)))))))))
+
+(defn- generated-app-tree
+  "The repo files of the `shop` app as `/api/apps/generate` writes them: its manifest and collection, a question
+  aggregating `metric-id`, the copy of that metric, the copy of `action-id`, and its bundle."
+  [metric-id action-id]
+  (let [{:keys [files]} (mt/user-http-request :crowberto :post 200 "apps/generate/app" {:name "Shop" :slug "shop"})
+        collection      (first (filter #(str/starts-with? (:path %) "collections/") files))
+        collection-eid  (:entity_id (yaml/parse-string (:yaml collection)))
+        folder          (str (str/replace (:path collection) #"\.yaml$" "") "/")
+        resources       (mt/user-http-request :crowberto :post 200 "apps/generate/resources"
+                                              {:queries [{:name          "VenueCount"
+                                                          :entity_id     (u/generate-nano-id)
+                                                          :collection_id collection-eid
+                                                          :query         {:stages [{:source       {:type "table" :id (mt/id :venues)}
+                                                                                    :aggregations [{:type "metric" :id metric-id}]}]}}]
+                                               :actions [{:action_id     action-id
+                                                          :entity_id     (u/generate-nano-id)
+                                                          :collection_id collection-eid}]})]
+    (merge (into {} (map (juxt :path :yaml)) files)
+           (into {} (map (fn [{:keys [file yaml]}] [(str folder file) yaml])) (mapcat resources [:queries :actions :metrics]))
+           {"data_apps/shop/dist/index.js" "BUNDLE"})))
+
+(deftest generated-files-are-what-an-export-writes-test
+  (testing "the files the generate endpoints write for an app are the ones an export writes once a pull saves them"
+    (with-data-apps-sync
+      (data-apps.tu/do-with-sources!
+       (fn [{:keys [metric-id action-id]}]
+         (t2/update! :model/Action action-id {:creator_id (mt/user->id :rasta)})
+         (let [tree (generated-app-tree metric-id action-id)
+               src  (test-helpers/versioned-source :trees {"v0" tree} :current "v0")]
+           (is (= 6 (count (app-files-in tree))))
+           (let [result (import-at! src "v0" :force? true)]
+             (is (= :success (:status result)) (:message result)))
+           (let [exported (into {}
+                                (map (juxt :path :content))
+                                (source/serialize-specs (spec/extract-entities-for-export (spec/exportable-entities)) nil))]
+             (is (= (select-keys tree (app-files-in tree))
+                    (select-keys exported (app-files-in exported)))))))))))

@@ -4,7 +4,6 @@ import { skipToken, useListDagTransformsQuery } from "metabase/api";
 import {
   Button,
   Center,
-  Group,
   List,
   Loader,
   Modal,
@@ -39,12 +38,7 @@ export function RunDagConfirmModal({
       : t`Run this and all downstream transforms?`;
 
   return (
-    <Modal
-      opened={direction != null}
-      title={title}
-      padding="xxl"
-      onClose={onClose}
-    >
+    <Modal opened={direction != null} title={title} onClose={onClose}>
       <Stack gap="xl">
         <Text>{t`These transforms will be run:`}</Text>
         {isFetching ? (
@@ -60,17 +54,17 @@ export function RunDagConfirmModal({
             </List>
           </ScrollArea.Autosize>
         )}
-        <Group justify="flex-end">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            variant="filled"
-            disabled={isFetching || isConfirming}
-            onClick={onConfirm}
-          >
-            {t`Run all`}
-          </Button>
-        </Group>
       </Stack>
+      <Modal.Footer>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button
+          variant="filled"
+          disabled={isFetching || isConfirming}
+          onClick={onConfirm}
+        >
+          {t`Run all`}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 }

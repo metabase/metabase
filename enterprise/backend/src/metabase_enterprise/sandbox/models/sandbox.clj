@@ -72,12 +72,13 @@
       (when-not (isa? col-base-type table-col-base-type)
         (let [msg (tru "Sandbox Questions can''t return columns that have different types than the Table they are sandboxing.")]
           (throw (ex-info msg
-                          {:type        qp.error-type/bad-configuration
-                           :status-code 400
-                           :message     msg
-                           :new-col     col
-                           :expected    table-col-base-type
-                           :actual      (:base_type col)})))))))
+                          {:type          qp.error-type/bad-configuration
+                           :status-code   400
+                           :message       msg
+                           :new-col       col
+                           :expected      table-col-base-type
+                           :actual        (:base_type col)
+                           :response/keys #{:expected :actual}})))))))
 
 (defn- merge-sandbox-into-graph
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,

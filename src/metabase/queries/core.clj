@@ -56,6 +56,7 @@
   batch-fetch-dashboard-metadata
   batch-fetch-query-metadata]
  [metabase.queries.models.card
+  current-card-schema-version
   fully-parameterized?
   maybe-unverify!
   model?

@@ -144,7 +144,7 @@
 
       ;; the validator names a file, whose path may hold any word the matches below look for
       (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
-      (str "Failed to reload from git repository: " message)
+      (str "Failed to reload from git repository. " message)
 
       (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
@@ -1651,7 +1651,8 @@
                        :conflicts true
                        ;; The un-pushed local changes a switch would discard, so the client can name exactly
                        ;; what would be lost without a second round-trip to /dirty.
-                       :dirty_objects (remote-sync.object/dirty-objects)})))
+                       :dirty_objects (remote-sync.object/dirty-objects)
+                       :response/keys #{:conflicts :dirty_objects}})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)

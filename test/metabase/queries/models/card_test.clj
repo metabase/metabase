@@ -1019,7 +1019,7 @@
 
 (deftest ^:parallel upgrade-card-schema-after-downgrade
   (testing "We exit the loop if a card_schema is higher than the current schema."
-    (let [card (assoc complete-card :card_schema (inc @#'card/current-schema-version))]
+    (let [card (assoc complete-card :card_schema (inc card/current-card-schema-version))]
       (is (= card
              (#'card/upgrade-card-schema-to-latest card))))))
 
@@ -1030,7 +1030,7 @@
                 "every instance rather than only the ones holding an out-of-date card.")
     (doseq [omitted (disj card-schema/schema-upgrade-triggers :card_schema)]
       (testing (str "omitting " omitted)
-        (let [card (dissoc (assoc complete-card :card_schema @#'card/current-schema-version) omitted)]
+        (let [card (dissoc (assoc complete-card :card_schema card/current-card-schema-version) omitted)]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Cannot SELECT a Card with card_schema columns without all columns needed for an upgrade"
@@ -1452,7 +1452,7 @@
       (mt/with-temp [:model/Card {card-id :id} {}]
         (age-card! card-id 20)
         (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query venues)})
-        (is (= @#'card/current-schema-version (stored-card-schema card-id))
+        (is (= card/current-card-schema-version (stored-card-schema card-id))
             (str "the bump must reach the database. t2/update! diffs changes against a baseline SELECT; if "
                  "the after-select schema upgrade runs on that baseline it already reads as current, the "
                  "diff drops :card_schema, and the row stays behind forever."))))))
@@ -2276,6 +2276,6 @@
           (testing ":dataset_query is still normalized to current MBQL"
             (is (=? {:lib/type :mbql/query} (:dataset_query card))))
           (testing "and the row still reports the current schema version"
-            (is (= @#'card/current-schema-version (:card_schema card))))))
+            (is (= card/current-card-schema-version (:card_schema card))))))
       (testing "the stored row is untouched by any of this"
         (is (= 23 (stored-card-schema card-id)))))))

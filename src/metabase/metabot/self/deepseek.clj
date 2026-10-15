@@ -52,8 +52,16 @@
 (def supported-models
   "DeepSeek models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/models` catalog."
-  {"deepseek-flash"  {:display-name "DeepSeek Flash"}
-   "deepseek-v4-pro" {:display-name "DeepSeek V4 Pro"}})
+  ;; Both models answer an overflow with "This model's maximum context length is 1048576 tokens" (probed
+  ;; 2026-10-09, https://github.com/metabase/metabase/pull/83989). DeepSeek's docs state "1M"
+  ;; (https://api-docs.deepseek.com/quick_start/pricing/).
+  {"deepseek-flash"  {:display-name "DeepSeek Flash"  :context-window 1048576}
+   "deepseek-v4-pro" {:display-name "DeepSeek V4 Pro" :context-window 1048576}})
+
+(mu/defn context-window-tokens :- [:maybe :int]
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model :- [:maybe :string]]
+  (get-in supported-models [model :context-window]))
 
 (def ^:private thinking-enabled-payload
   "Sent whenever thinking is allowed. Explicit rather than omitted: DeepSeek ignores an

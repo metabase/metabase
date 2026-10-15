@@ -37,8 +37,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     H.queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
       H.echartsContainer()
-        .should("contain.text", "July 2025")
-        .and("contain.text", "January 2026");
+        .should("contain.text", "April 2025")
+        .and("contain.text", "April 2026");
     });
 
     cy.log("Chart drills");
@@ -69,11 +69,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     H.echartsTriggerBlur();
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-    cy.log("Zoom-in on the left side, which corresponds to July 2025");
-    cy.findByTestId("query-visualization-root") // drag across to filter
-      .trigger("mousedown", 120, 200)
-      .trigger("mousemove", 230, 200)
-      .trigger("mouseup", 230, 200);
+    H.applyBrushToPoints(1, 3);
 
     // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
     //       It is enough that we assert that the filter exists.
@@ -119,12 +115,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByLabelText("Legend").findByText("Gadget").should("exist");
         H.echartsContainer().findByText(/Count/).should("exist");
       });
-      cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-
-      cy.findByTestId("query-visualization-root")
-        .trigger("mousedown", 240, 200)
-        .trigger("mousemove", 420, 200)
-        .trigger("mouseup", 420, 200);
+      H.applyBrushToPoints(5, 10);
 
       cy.wait("@dataset").its("response.body.error").should("not.exist");
 
@@ -307,7 +298,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    H.echartsContainer().contains("January 2028");
+    H.echartsContainer().contains("May 2028");
     // drill into a recent week
     H.cartesianChartCircle().should("have.length.gte", 4).eq(-4).click();
 

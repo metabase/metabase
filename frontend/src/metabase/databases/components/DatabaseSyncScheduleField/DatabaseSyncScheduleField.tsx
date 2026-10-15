@@ -36,7 +36,7 @@ const DatabaseSyncScheduleField = ({
   );
 
   return (
-    <FormField title={title} description={description}>
+    <FormField mb="lg" title={title} description={description}>
       <Schedule
         mt="lg"
         value={value ?? DEFAULT_SCHEDULE}

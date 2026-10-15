@@ -101,6 +101,7 @@
    "Dependency"
    "DependencyStatus"
    "DocumentBookmark"
+   "EmbeddingSdkReact18Host"
    "Exploration"
    "ExplorationBlock"
    "ExplorationBookmark"

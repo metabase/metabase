@@ -46,7 +46,8 @@
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
                     :actual-permissions   (perms/permissions-for-user api/*current-user-id*)
-                    :permissions-error?   true}
+                    :permissions-error?   true
+                    :response/keys        #{:required-permissions}}
                    additional-ex-data))))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
@@ -444,6 +445,11 @@
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB:
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
+      (throw (perms-exception required-perms)))
+    ;; Native queries bypass sandboxing, so a user with an enforced sandbox on the database can't run them there, even
+    ;; if one of their groups grants native access.
+    (when (and (= :query-builder-and-native (:perms/create-queries required-perms))
+               (perms/sandboxed-user-for-db? (:database query)))
       (throw (perms-exception required-perms)))
     true
     (catch clojure.lang.ExceptionInfo e
