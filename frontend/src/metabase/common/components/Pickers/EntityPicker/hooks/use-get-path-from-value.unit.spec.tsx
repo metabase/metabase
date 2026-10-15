@@ -952,12 +952,12 @@ describe("useGetPathFromValue", () => {
 
   describe("enterprise features", () => {
     beforeEach(() => {
-      setupLibraryEndpoints(true);
+      setupLibraryEndpoints({ hasLibrary: true });
     });
 
     it("warmup enterprise plugins", () => {
       // warm up enterprise plugins, without this, tests can time out in CI 😢
-      setupLibraryEndpoints(true);
+      setupLibraryEndpoints({ hasLibrary: true });
       const { result } = setup({
         enterprise: true,
       });
