@@ -9,6 +9,7 @@
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [metabase-enterprise.library-branching.remote-test-util :as remote.tu]
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.store.jgit :as store.jgit]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs])
@@ -37,18 +38,10 @@
 (defn- remote-url [^File dir]
   (str "file://" (.getAbsolutePath dir)))
 
-(defn- do-with-remote [f]
-  (let [dir (temp-dir "library-branching-remote-")]
-    (try
-      (with-open [git (-> (Git/init) (.setBare true) (.setDirectory dir) (.call))]
-        (f (.getRepository git) (remote-url dir)))
-      (finally
-        (FileUtils/deleteDirectory dir)))))
-
 (defmacro ^:private with-remote
   "Binds `repo` to a new empty bare repository and `url` to its file:// URL, as the arguments of a `fn`."
   [[repo url] & body]
-  `(do-with-remote (fn [~(vary-meta repo assoc :tag `Repository) ~url] ~@body)))
+  `(remote.tu/do-with-bare-remote (fn [~(vary-meta repo assoc :tag `Repository) ~url] ~@body)))
 
 (defn- do-with-store [url f]
   (let [s (store.jgit/open-store url)]
