@@ -147,6 +147,23 @@
             (is (= :ok (store/cas-ref! s "refs/heads/main" c1 c2)))
             (is (= c2 (remote-ref remote "refs/heads/main")))))))))
 
+(deftest cas-ref-refused-by-remote-test
+  (testing "cas-ref! throws when the remote refuses the update and the ref is still at the expected commit"
+    (with-remote [remote url]
+      (let [c0   (remote-commit! remote "refs/heads/main" [] "zero")
+            lock (io/file (.getDirectory remote) "refs" "heads" "main.lock")]
+        (with-store [s url]
+          (is (= c0 (store/head s "main")))
+          (let [c1 (store/write-commit s [c0] {"a.txt" (utf8 "one")} "one")]
+            ;; another process holds the lock of the ref on the remote
+            (spit lock "")
+            (try
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Git push of refs/heads/main to .* failed"
+                                    (store/cas-ref! s "main" c0 c1)))
+              (finally
+                (.delete lock)))
+            (is (= c0 (remote-ref remote "refs/heads/main")))))))))
+
 (defn- writer-op [writers w] (nth writers (mod w (count writers))))
 
 (def ^:private gen-cas-ops
