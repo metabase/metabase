@@ -220,7 +220,7 @@
 
 (def ^:private keyword-columns
   "The table settings columns whose model transform takes a keyword, not its name."
-  #{:entity_type :visibility_type :field_order :data_layer :data_source :data_authority})
+  #{:entity_type :field_order :data_layer :data_source :data_authority})
 
 (defn- column-value
   "The settings row value of table column `k` for the document value `v`."
@@ -228,27 +228,13 @@
   (cond-> v
     (and (string? v) (contains? keyword-columns k)) keyword))
 
-(defn- settings-row
-  [table-id]
-  (first (library-branching.db/table-user-settings-by-table-id [table-id])))
-
 (defn- update-table-settings!
-  "Sets the settings row columns `changes` of table `table-id`. Metabase keeps `visibility_type` and `data_layer` as
-  one choice: a save of one sets the other to the value that it implies, and a save of both is refused. So a change
-  of both is two saves, `data_layer` first, and the second save is left out when the first one gave the content's
-  `visibility_type`."
+  "Sets the settings row columns `changes` of table `table-id`. A change of `data_layer` also sets `visibility_type`,
+  which Metabase derives from it."
   [table-id changes]
-  (let [save!  (fn [u]
-                 (if (library-branching.db/table-settings-exist? table-id)
-                   (library-branching.db/update-table-settings! table-id u)
-                   (library-branching.db/insert-table-settings! (assoc u :table_id table-id))))
-        visibility (select-keys changes [:visibility_type :visibility_type_set])]
-    (if (every? (partial contains? changes) [:visibility_type :data_layer])
-      (do (save! (apply dissoc changes (keys visibility)))
-          (when (not= (:visibility_type changes)
-                      (some-> (settings-row table-id) :visibility_type))
-            (save! visibility)))
-      (save! changes))))
+  (if (library-branching.db/table-settings-exist? table-id)
+    (library-branching.db/update-table-settings! table-id changes)
+    (library-branching.db/insert-table-settings! (assoc changes :table_id table-id))))
 
 (defn write-published-table!
   "Makes the content of published table `id` equal to `item`, by the contract of `instance/write!`: the table is

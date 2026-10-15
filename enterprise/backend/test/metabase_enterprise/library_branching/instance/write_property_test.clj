@@ -4,7 +4,7 @@
   current content changes no row). Each trial writes in a transaction that rolls back.
 
   The generators are constructive. They pick among values that the instance can hold: a portable query that a real
-  metric has, a field that the table has, a pair of visibility type and data layer that Metabase keeps. A value that
+  metric has, a field that the table has, a data layer that Metabase stores as it is. A value that
   depends on the trial's app DB rows (a place, a query) is a keyword that [[resolve-item]] replaces. So the
   generators filter nothing, and a shrunk case has fewer writes and the first value of each choice."
   (:require
@@ -13,7 +13,11 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [clojure.walk :as walk]
+   [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
+   [metabase-enterprise.library-branching.format.kinds.published-table :as format.published-table]
+   [metabase-enterprise.library-branching.format.tree :as tree]
+   [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.instance.write-test :as write-test]
@@ -113,8 +117,8 @@
       (assoc body :description desc))))
 
 (def ^:private layer-choices
-  "Pairs of visibility type and data layer that Metabase keeps as they are."
-  [{} {:data_layer "final"} {:data_layer "hidden" :visibility_type "hidden"}])
+  "The data layers of a table: none, or a value that Metabase stores as it is."
+  [{} {:data_layer "final"} {:data_layer "internal"} {:data_layer "hidden"}])
 
 (def ^:private field-names
   "Top-level fields of the test tables."
@@ -219,4 +223,54 @@
       (is (some #(nil? (:place %)) (sample (collection-gen :snippets))) "a collection at the root level")
       (is (some #(get-in % [:attrs :template_tags]) (sample snippet-gen)) "a snippet with a tag")
       (is (some #(get-in % [:attrs :fields :CATEGORY_ID :fk_target]) tables) "a foreign key target")
-      (is (some #(= "hidden" (get-in % [:attrs :visibility_type])) tables) "a hidden table"))))
+      (is (some #(= "hidden" (get-in % [:attrs :data_layer])) tables) "a hidden table"))))
+
+;;; ------------------------------------------- Visibility type and data layer ------------------------------------------
+
+(def ^:private prior-saves
+  "The table settings that a person saved before a write, through the model: none, a value of the legacy visibility
+  type, or a data layer. Metabase completes the other column of each."
+  [nil {:visibility_type :technical} {:visibility_type :hidden} {:data_layer :final} {:data_layer :hidden}])
+
+(def ^:private layer-content-gen
+  "Generates `[prior attrs]`: a prior save of [[prior-saves]], and the attributes of a published table with one, both or
+  neither of the visibility type and the data layer. The first choice of each is absent."
+  (gen/tuple (gen/elements prior-saves)
+             (gen/let [visibility (gen/elements [nil "hidden" "technical"])
+                       layer      (gen/elements [nil "final" "internal" "hidden"])]
+               (into {} (remove (comp nil? val)) {:visibility_type visibility :data_layer layer}))))
+
+(defn- layer-laws-hold!
+  "True iff the format and `write!` agree on content with the attributes `attrs`, after the person's save `prior`: the
+  format accepts it iff `write!` does; `current` then returns it (PutGet), and else `write!` changes no row."
+  [prior attrs]
+  (do-with-world!
+   (fn [world]
+     (let [table-id (mt/id :venues)
+           id       (write-test/table-key :venues)
+           store    (get app-db/kind-stores :published-table)
+           item     (resolve-item world {:kind :published-table :name "Places" :place ::data :attrs attrs})
+           item     (assoc item :refs (format.kinds/refs :published-table id attrs))
+           accepted (contains? (tree/decode-file {"published-table" format.published-table/codec}
+                                                 (writer/write-yaml (codec/encode format.published-table/codec id item)))
+                               :item)]
+       (t2/delete! :model/TableUserSettings :table_id table-id)
+       (t2/delete! :model/FieldUserSettings :field_id [:in (t2/select-pks-set :model/Field :table_id table-id)])
+       (when prior
+         (t2/insert! :model/TableUserSettings (assoc prior :table_id table-id)))
+       (let [before  (rows id)
+             refused (write-test/refusal #(instance/write! store id item))]
+         (if accepted
+           (and (nil? refused) (= item (instance/current store id)))
+           (and (= :invalid-content refused) (= before (rows id)))))))))
+
+(defspec layer-content-laws-test trials
+  (prop/for-all [[prior attrs] layer-content-gen]
+    (layer-laws-hold! prior attrs)))
+
+(deftest layer-content-gen-covers-the-cases-test
+  (testing "the generator gives one, both and neither attribute, after each prior save"
+    (let [sample (gen/sample layer-content-gen 200)]
+      (is (= (set prior-saves) (set (map first sample))))
+      (is (= #{#{} #{:visibility_type} #{:data_layer} #{:visibility_type :data_layer}}
+             (set (map (comp set keys second) sample)))))))
