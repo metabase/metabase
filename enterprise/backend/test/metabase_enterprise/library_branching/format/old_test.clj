@@ -594,12 +594,10 @@
     (testing "with no card of that row on the instance, the file does not decode: the finding names the dashboard and
              the row id"
       (doseq [opts [{} {:card-ids (card-ids-of {77 "MetricCardXXXXXXXXXXX"})}]]
-        (is (=? {:findings [{:type    :unknown-row-id
-                             :id      "LinksDashboardXXXXXXX"
-                             :row-ids [76]
-                             :file    0
-                             :reason  #"LinksDashboardXXXXXXX.*76"}]}
-                (decode [metric-link] opts)))))
+        (let [{[f :as findings] :findings} (decode [metric-link] opts)]
+          (is (= [{:type :unknown-row-id :id "LinksDashboardXXXXXXX" :row-ids [76] :file 0}]
+                 (map #(dissoc % :reason) findings)))
+          (is (re-find #"LinksDashboardXXXXXXX.*76" (:reason f))))))
     (testing "the decode asks for the cards once, with the row ids of the link cards to a metric only"
       (let [calls (atom [])
             ids   (fn [row-ids] (swap! calls conj row-ids) {})]
@@ -609,15 +607,18 @@
                                  {:model "card" :id "QuestionCardXXXXXXXXX" :name "Q"})]
                 {:card-ids ids})
         (is (= [[5 76]] @calls))
-        (reset! calls [])
-        (is (= {:model "card" :id "QuestionCardXXXXXXXXX" :name "Q"}
-               (get-in (snapshot-of [(link-dashboard "QuestionLinksXXXXXXXX" "QuestionDashcardXXXXX"
-                                                     {:model "card" :id "QuestionCardXXXXXXXXX" :name "Q"})]
-                                    {:card-ids ids})
-                       ["QuestionLinksXXXXXXXX" :attrs :dashcards 0 :visualization_settings :link :entity])))
-        (is (= [] @calls))))
-    (testing "a dashboard in the trash asks for no card and gives no finding"
-      (is (= {} (snapshot-of [(str/replace metric-link "archived: false" "archived: true")]))))))
+        (testing "a link card that holds an entity id stays as it is, and asks for no card"
+          (reset! calls [])
+          (doseq [entity [{:model "card" :id "QuestionCardXXXXXXXXX" :name "Q"}
+                          {:model "metric" :id "MetricCardXXXXXXXXXXX" :name "Orders"}]]
+            (is (= entity
+                   (get-in (snapshot-of [(link-dashboard "QuestionLinksXXXXXXXX" "QuestionDashcardXXXXX" entity)]
+                                        {:card-ids ids})
+                           ["QuestionLinksXXXXXXXX" :attrs :dashcards 0 :visualization_settings :link :entity]))))
+          (is (= [] @calls)))
+        (testing "a dashboard in the trash asks for no card and gives no finding"
+          (is (= {} (snapshot-of [(str/replace metric-link "archived: false" "archived: true")] {:card-ids ids})))
+          (is (= [] @calls)))))))
 
 ;;; ------------------------------------------------- Claims -----------------------------------------------------------
 

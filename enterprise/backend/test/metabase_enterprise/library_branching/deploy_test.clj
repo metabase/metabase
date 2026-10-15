@@ -72,6 +72,7 @@
        (base [_] (instance/base inst))
        (base-digests [_ c] (instance/base-digests inst c))
        (table-names [_ ks] (instance/table-names inst ks))
+       (card-entity-ids [_ ids] (instance/card-entity-ids inst ids))
        (apply-plan! [_ plan opts] (swap! plans conj plan) (instance/apply-plan! inst plan opts))
        (set-base! [_ e n d] (instance/set-base! inst e n d)))
      plans]))

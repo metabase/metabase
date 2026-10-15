@@ -6,6 +6,7 @@
    [metabase-enterprise.library-branching.apply :as apply]
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.instance :as instance]
+   [metabase-enterprise.library-branching.instance.content :as content]
    [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
    [metabase-enterprise.library-branching.instance.kinds.dashboard :as kinds.dashboard]
@@ -133,6 +134,13 @@
           (throw e))))
     @result))
 
+(defn card-entity-ids
+  "`{row-id entity-id}` of the cards of `row-ids` in the app DB. A row id of no card has no entry."
+  [row-ids]
+  (into {}
+        (map (juxt :id :entity_id))
+        (content/in-chunks #(library-branching.db/entity-ids-by-id :model/Card %) (vec (distinct row-ids)))))
+
 (defrecord AppDbInstance [stores roots url]
   instance/Instance
   (read-snapshot [_]
@@ -140,6 +148,7 @@
   (base [_] (base url))
   (base-digests [_ commit] (base-digests url commit))
   (table-names [_ table-keys] (kinds.published-table/sync-display-names table-keys))
+  (card-entity-ids [_ row-ids] (card-entity-ids row-ids))
   (apply-plan! [_ plan opts] (apply-plan! stores roots url plan opts))
   (set-base! [_ expected new digests] (set-base! url expected new digests)))
 

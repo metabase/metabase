@@ -63,6 +63,7 @@
     (let [{:keys [base digests]} @state]
       (when (and (some? commit) (= commit base)) digests)))
   (table-names [_ table-keys] (select-keys (:table-names @state) table-keys))
+  (card-entity-ids [_ row-ids] (select-keys (:card-ids @state) row-ids))
   (apply-plan! [_ plan opts]
     ;; One lock for the whole instance stands for the row locks; the copy is the transaction.
     (locking state
@@ -80,8 +81,9 @@
 
 (defn memory-instance
   "An instance in memory over the atom `state`: `{:snapshot s :trash {id item} :outside #{id} :uses {user #{id}} :base b
-  :digests d :table-names n}`. `:outside` holds the identities of items outside the Library; `:uses` the items that
-  each user outside the Library uses; `:table-names` the display names of warehouse sync, `{table-key name}`."
+  :digests d :table-names n :card-ids c}`. `:outside` holds the identities of items outside the Library; `:uses` the
+  items that each user outside the Library uses; `:table-names` the display names of warehouse sync, `{table-key
+  name}`; `:card-ids` the entity ids of the card rows, `{row-id entity-id}`."
   [state]
   (->MemoryInstance state))
 

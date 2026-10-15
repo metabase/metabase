@@ -52,6 +52,9 @@
   (table-names [inst table-keys]
     "`{table-key display-name}`: the display name that warehouse sync gives each table of `table-keys` on this
     instance, with no value that a user set. A key of no table of the instance has no entry.")
+  (card-entity-ids [inst row-ids]
+    "`{row-id entity-id}`: the entity id of the card of each row id of `row-ids` on this instance, in the trash or
+    not. A row id of no card has no entry.")
   (apply-plan! [inst plan opts]
     "Carries out `plan`, the steps of `engine.plan/plan`, in one transaction: lock each item and check its
     precondition, then write, link or trash each item, then move the base from `(:base opts)` to `(:new-base opts)`

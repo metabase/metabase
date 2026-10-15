@@ -23,6 +23,8 @@
    [metabase-enterprise.library-branching.store :as store]
    [metabase-enterprise.library-branching.tasks-test-util :as tasks.tu]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -144,6 +146,11 @@
                                                  (update-in [:visualization_settings :link :entity :id] row-ids)))))))
         docs))
 
+(defn- count-query []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count)))))
+
 (deftest pull-of-old-format-link-card-to-a-metric-test
   (testing (str "a dashboard of the old format whose link card holds the row id of a metric: the pull links it to the "
                 "metric of that row, and a row id of no card is a finding that names the dashboard; app DB "
@@ -158,7 +165,7 @@
                                                        :creator_id             (mt/user->id :crowberto)
                                                        :display                :scalar
                                                        :visualization_settings {}
-                                                       :dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})})
+                                                       :dataset_query          (count-query)})
              dashboard (t2/insert-returning-instance! :model/Dashboard {:name          "Metric links"
                                                                         :collection_id (:id data)
                                                                         :creator_id    (mt/user->id :crowberto)})]
