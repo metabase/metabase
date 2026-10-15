@@ -1,3 +1,4 @@
+import { useLocalStorage } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -5,10 +6,14 @@ import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/Add
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useNavigate } from "metabase/router";
 import { Group, Stack, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { openInBlankWindow } from "metabase/utils/dom";
 import type { Card, ConcreteTableId } from "metabase-types/api";
 
 import type { AnalysisSettingsByKind } from "../analyses/types";
 import { buildAnalysisCard } from "../analysis-card";
+import type { Insight } from "../insights/types";
+import { useFunnelInsights } from "../insights/use-funnel-insights";
 import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
@@ -18,7 +23,10 @@ import { useSaveAnalysis } from "../use-save-analysis";
 
 import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisToolbar } from "./AnalysisToolbar";
+import { InsightsPanel } from "./InsightsPanel";
 import { SettingsPanel } from "./SettingsPanel";
+
+const INSIGHTS_OPEN_KEY = "metabase-product-analytics-insights-open";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
@@ -42,13 +50,41 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
     onSaved,
   } = useAnalysisState<AnalysisSettingsByKind[K]>(savedSettings);
-  const { config, table, widgets, missing, display, vizSettings, query } =
-    useAnalysis({
-      kind,
-      tableId,
-      stored,
-      onChangeSettings,
-    });
+  const {
+    config,
+    table,
+    context,
+    base,
+    widgets,
+    spec,
+    missing,
+    display,
+    vizSettings,
+    query,
+  } = useAnalysis({
+    kind,
+    tableId,
+    stored,
+    onChangeSettings,
+  });
+  const [isInsightsOpen, setIsInsightsOpen] = useLocalStorage({
+    key: INSIGHTS_OPEN_KEY,
+    defaultValue: false,
+  });
+  const hasInsights = kind === "funnel";
+  const insights = useFunnelInsights({
+    spec,
+    tableId,
+    base,
+    context,
+    isEnabled: hasInsights && isInsightsOpen,
+  });
+  const handleExplore = (insight: Insight) => {
+    const card = insights.getExploreCard(insight);
+    if (card !== undefined) {
+      openInBlankWindow(Urls.serializedQuestion(card));
+    }
+  };
 
   const tableName = table?.display_name ?? t`this table`;
   const title = savedCard?.name ?? t`${config.name} analysis on ${tableName}`;
@@ -102,8 +138,12 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           sql={query.sql}
           canSave={canSave}
           isSaveDisabled={isSaveDisabled}
+          isInsightsOpen={hasInsights ? isInsightsOpen : undefined}
           onPanelChange={setPanel}
           onSave={handleSave}
+          onToggleInsights={
+            hasInsights ? () => setIsInsightsOpen(!isInsightsOpen) : undefined
+          }
         />
       </Stack>
       <Group
@@ -133,6 +173,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           setupLabel={config.setupLabel}
           onOpenSetup={panel !== "setup" ? () => setPanel("setup") : undefined}
         />
+        {hasInsights && isInsightsOpen && (
+          <InsightsPanel
+            state={insights.state}
+            onExplore={handleExplore}
+            onClose={() => setIsInsightsOpen(false)}
+          />
+        )}
       </Group>
       {questionToCreate !== undefined && (
         <SaveQuestionModal

@@ -103,6 +103,8 @@ export const useAnalysis = <K extends AnalysisKind>({
   return {
     config,
     table,
+    context,
+    base,
     computed,
     widgets,
     spec,

@@ -77,12 +77,13 @@ const projectBase = (
   ].join("\n");
 };
 
+/** `plan` defaults to the analysis's own query. */
 export const buildSql = (
   spec: AnalysisSpec,
   baseSql: string,
   baseColumns: BaseColumns,
+  plan: QueryPlan = planAnalysis(spec),
 ): BuiltSql => {
-  const plan = planAnalysis(spec);
   const eventsBase: Cte = {
     name: "events_base",
     note: "MBQL-compiled event stream, with columns renamed for the planners",

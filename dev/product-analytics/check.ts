@@ -29,8 +29,13 @@ type GroundTruth = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const asNumber = (value: unknown, fallback = 0): number =>
-  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+// ClickHouse's JSON output quotes 64-bit integers, so counts arrive as strings.
+const asNumber = (value: unknown, fallback = 0): number => {
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return typeof parsed === "number" && Number.isFinite(parsed)
+    ? parsed
+    : fallback;
+};
 
 const parseTruth = (raw: unknown): GroundTruth => {
   if (!isRecord(raw) || !isRecord(raw.funnel) || !isRecord(raw.counts)) {
@@ -142,7 +147,8 @@ const run = async (
   if (kind === "funnel") {
     const byStep = new Map<number, number>();
     for (const row of rows) {
-      byStep.set(asNumber(row.step), asNumber(row.people));
+      // Labels are "<step>. <name>".
+      byStep.set(parseInt(String(row.label), 10), asNumber(row.people));
     }
     const step1 = byStep.get(1) ?? 0;
     const step2 = byStep.get(2) ?? 0;

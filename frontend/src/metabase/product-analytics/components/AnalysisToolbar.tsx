@@ -23,8 +23,11 @@ type AnalysisToolbarProps = {
   sql: string | null;
   canSave: boolean;
   isSaveDisabled: boolean;
+  /** Undefined when the analysis has no insights. */
+  isInsightsOpen?: boolean;
   onPanelChange: (panel: AnalysisPanel | null) => void;
   onSave: () => void;
+  onToggleInsights?: () => void;
 };
 
 /**
@@ -38,8 +41,10 @@ export const AnalysisToolbar = ({
   sql,
   canSave,
   isSaveDisabled,
+  isInsightsOpen,
   onPanelChange,
   onSave,
+  onToggleInsights,
 }: AnalysisToolbarProps) => {
   const [sendToast] = useToast();
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
@@ -93,6 +98,16 @@ export const AnalysisToolbar = ({
         <Group gap="sm">
           <ToolbarSetting setting={findSetting(widgets, "date_range")} />
           <ToolbarSetting setting={findSetting(widgets, "granularity")} />
+          {onToggleInsights && (
+            <Button
+              variant="default"
+              aria-pressed={isInsightsOpen}
+              leftSection={<Icon name="insight" />}
+              onClick={onToggleInsights}
+            >
+              {t`Insights`}
+            </Button>
+          )}
           <ActionIcon
             variant="subtle"
             size="lg"
