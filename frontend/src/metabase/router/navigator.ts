@@ -57,6 +57,21 @@ export function setRouter(router: DataRouter | null): void {
 }
 
 /**
+ * Clears every module-level router holder. These outlive a single React tree,
+ * so without a reset one test leaks router state into the next: a test that
+ * never mounts a router can queue a navigation (because `isRouterExpected`
+ * stayed true from an earlier test) that the next test's router then flushes.
+ * The jest harness calls this after each test.
+ */
+export function resetRouterForTests(): void {
+  currentNavigate = null;
+  pendingNavigations = [];
+  isRouterExpected = false;
+  currentRouter = null;
+  locationListeners.clear();
+}
+
+/**
  * Whether the router has accepted a navigation it has not committed yet.
  *
  * `useIsNavigating` answers the same question during a render. This is for the
