@@ -54,58 +54,14 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           script: | # js
-            const { execFileSync } = require('child_process');
             const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const { buildCrossVersionMatrix, excludeBlockedDowngrades } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
+            const { generateCrossVersionMatrix } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
 
             // run against all supported versions
             const supportedMajors = await getSupportedMajors();
             console.log("supported majors:", supportedMajors);
 
-            const pending = {};
-            for (const major of supportedMajors) {
-              try {
-                const output = execFileSync('cross-version/pending-changesets.sh', [String(major)], { encoding: 'utf8' });
-                const changesets = output
-                  .split('\n')
-                  .filter(Boolean)
-                  .map((line) => line.split(' '))
-                  .filter(([, status]) => status !== 'missing');
-                if (changesets.length > 0) {
-                  pending[major] = changesets;
-                }
-              } catch (error) {
-                core.warning(`Could not check v${major} for unreleased migrations: ${error.message}`);
-              }
-            }
-
-            const blockedMajors = Object.keys(pending).map(Number);
-            const { config } = buildCrossVersionMatrix(supportedMajors);
-            const gatedConfig = excludeBlockedDowngrades(config, blockedMajors);
-
-            if (blockedMajors.length > 0) {
-              const skipped = config.filter((entry) => !gatedConfig.includes(entry));
-              core.warning(`Skipping ${skipped.map((e) => `${e.source} → ${e.target}`).join(', ')}: master has migrations that these releases do not have yet`);
-              await core.summary
-                .addHeading('Cross-version downgrades skipped until release', 3)
-                .addTable([
-                  [{ data: 'Major', header: true }, { data: 'Changeset', header: true }, { data: 'Status', header: true }],
-                  ...Object.entries(pending).flatMap(([major, changesets]) =>
-                    changesets.map(([id, status]) => [`v${major}`, id, status])),
-                ])
-                .addList(skipped.map((e) => `${e.source} → ${e.target}`))
-                .write();
-            }
-
-            const awaitingRelease = Object.entries(pending).flatMap(([major, changesets]) =>
-              changesets
-                .filter(([, status]) => status === 'awaiting-release')
-                .map(([id, , file]) => ({ major: Number(major), id, file })));
-            core.setOutput("awaiting-release", JSON.stringify(awaitingRelease));
-
-            const matrix = JSON.stringify({ include: gatedConfig });
-            core.setOutput("matrix", matrix);
-            console.log("matrix:", matrix);
+            await generateCrossVersionMatrix({ core, supportedMajors });
 
   notify-release-needed:
     needs: generate-test-matrix
@@ -131,49 +87,17 @@ jobs:
         with:
           script: | # js
             const { findSlackMessage, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { notifyReleaseNeeded } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
 
-            const { owner, repo } = context.repo;
-            const channelName = process.env.SLACK_RELEASE_CHANNEL;
-            const changesets = JSON.parse(process.env.CHANGESETS);
-            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
-
-            const commits = new Map();
-            for (const { major, id, file } of changesets) {
-              const branch = `release-x.${major}.x`;
-              const { data } = await github.rest.repos.listCommits({ owner, repo, sha: branch, path: file, per_page: 100 });
-              const commit = data.at(-1);
-              if (!commit) {
-                core.warning(`No commit on ${branch} has ${file}`);
-                continue;
-              }
-
-              const key = `${major}:${commit.sha}`;
-              if (!commits.has(key)) {
-                const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({ owner, repo, commit_sha: commit.sha });
-                commits.set(key, { major, branch, sha: commit.sha, prs: prs.filter((pr) => pr.merged_at && pr.base.ref === branch), ids: [] });
-              }
-              commits.get(key).ids.push(id);
-            }
-
-            for (const { major, branch, sha, prs, ids } of commits.values()) {
-              const commitUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
-
-              const existing = await findSlackMessage({ channelName, text: commitUrl }).catch(console.error);
-              if (existing) {
-                console.log(`Already asked for a release of ${commitUrl}`);
-                continue;
-              }
-
-              const prLinks = prs.map((pr) => `<${pr.html_url}|#${pr.number}>`).join(', ') || 'no PR found';
-              const message = [
-                `:warning: *v${major} needs a release.*`,
-                `Commit <${commitUrl}|${sha.slice(0, 10)}> (${prLinks}) added ${ids.map((id) => `\`${id}\``).join(', ')} to \`${branch}\`, but no v${major} release has it yet.`,
-                `Cross-version downgrades from master to versions older than v${major} are skipped until a release has it. <${runUrl}|Run>`,
-              ].join('\n');
-
-              console.log(message);
-              await sendSlackMessage({ channelName, message }).catch(console.error);
-            }
+            await notifyReleaseNeeded({
+              github,
+              context,
+              core,
+              changesets: JSON.parse(process.env.CHANGESETS),
+              channelName: process.env.SLACK_RELEASE_CHANNEL,
+              findSlackMessage,
+              sendSlackMessage,
+            });
 
   test:
     needs: generate-test-matrix

@@ -73,4 +73,199 @@ function excludeBlockedDowngrades(config, blockedMajors) {
   });
 }
 
-module.exports = { buildCrossVersionMatrix, excludeBlockedDowngrades };
+function parsePendingChangesets(output) {
+  return output
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => line.split(" "))
+    .filter(([, status]) => status !== "missing");
+}
+
+function runPendingChangesetsScript(major) {
+  const { execFileSync } = require("child_process");
+  const path = require("path");
+  const script = path.join(
+    __dirname,
+    "../../cross-version/pending-changesets.sh",
+  );
+  return execFileSync(script, [String(major)], { encoding: "utf8" });
+}
+
+function findPendingChangesets({
+  supportedMajors,
+  listPendingChangesets = runPendingChangesetsScript,
+  warn = console.warn,
+}) {
+  const pending = {};
+  for (const major of supportedMajors) {
+    try {
+      const changesets = parsePendingChangesets(listPendingChangesets(major));
+      if (changesets.length > 0) {
+        pending[major] = changesets;
+      }
+    } catch (error) {
+      warn(
+        `Could not check v${major} for unreleased migrations: ${error.message}`,
+      );
+    }
+  }
+  return pending;
+}
+
+function buildGatedCrossVersionMatrix({ supportedMajors, pending }) {
+  const { config } = buildCrossVersionMatrix(supportedMajors);
+  const blockedMajors = Object.keys(pending).map(Number);
+  const gatedConfig = excludeBlockedDowngrades(config, blockedMajors);
+  const skipped = config.filter((entry) => !gatedConfig.includes(entry));
+  const awaitingRelease = Object.entries(pending).flatMap(
+    ([major, changesets]) =>
+      changesets
+        .filter(([, status]) => status === "awaiting-release")
+        .map(([id, , file]) => ({ major: Number(major), id, file })),
+  );
+
+  return { config: gatedConfig, skipped, awaitingRelease };
+}
+
+async function generateCrossVersionMatrix({
+  core,
+  supportedMajors,
+  listPendingChangesets,
+}) {
+  const pending = findPendingChangesets({
+    supportedMajors,
+    listPendingChangesets,
+    warn: core.warning,
+  });
+  const { config, skipped, awaitingRelease } = buildGatedCrossVersionMatrix({
+    supportedMajors,
+    pending,
+  });
+
+  if (skipped.length > 0) {
+    const skippedNames = skipped.map((e) => `${e.source} → ${e.target}`);
+    core.warning(
+      `Skipping ${skippedNames.join(", ")}: master has migrations that these releases do not have yet`,
+    );
+    await core.summary
+      .addHeading("Cross-version downgrades skipped until release", 3)
+      .addTable([
+        [
+          { data: "Major", header: true },
+          { data: "Changeset", header: true },
+          { data: "Status", header: true },
+        ],
+        ...Object.entries(pending).flatMap(([major, changesets]) =>
+          changesets.map(([id, status]) => [`v${major}`, id, status]),
+        ),
+      ])
+      .addList(skippedNames)
+      .write();
+  }
+
+  const matrix = JSON.stringify({ include: config });
+  core.setOutput("awaiting-release", JSON.stringify(awaitingRelease));
+  core.setOutput("matrix", matrix);
+  console.log("matrix:", matrix);
+}
+
+async function findCommitsToRelease({ github, owner, repo, changesets, warn }) {
+  const commits = new Map();
+  for (const { major, id, file } of changesets) {
+    const branch = `release-x.${major}.x`;
+    const { data } = await github.rest.repos.listCommits({
+      owner,
+      repo,
+      sha: branch,
+      path: file,
+      per_page: 100,
+    });
+    const commit = data.at(-1);
+    if (!commit) {
+      warn(`No commit on ${branch} has ${file}`);
+      continue;
+    }
+
+    const key = `${major}:${commit.sha}`;
+    if (!commits.has(key)) {
+      const { data: prs } =
+        await github.rest.repos.listPullRequestsAssociatedWithCommit({
+          owner,
+          repo,
+          commit_sha: commit.sha,
+        });
+      commits.set(key, {
+        major,
+        branch,
+        sha: commit.sha,
+        prs: prs.filter((pr) => pr.merged_at && pr.base.ref === branch),
+        ids: [],
+      });
+    }
+    commits.get(key).ids.push(id);
+  }
+  return [...commits.values()];
+}
+
+function commitUrl({ owner, repo, sha }) {
+  return `https://github.com/${owner}/${repo}/commit/${sha}`;
+}
+
+function formatReleaseNeededMessage({ owner, repo, runUrl, commit }) {
+  const { major, branch, sha, prs, ids } = commit;
+  const prLinks =
+    prs.map((pr) => `<${pr.html_url}|#${pr.number}>`).join(", ") ||
+    "no PR found";
+  return [
+    `:warning: *v${major} needs a release.*`,
+    `Commit <${commitUrl({ owner, repo, sha })}|${sha.slice(0, 10)}> (${prLinks}) added ${ids.map((id) => `\`${id}\``).join(", ")} to \`${branch}\`, but no v${major} release has it yet.`,
+    `Cross-version downgrades from master to versions older than v${major} are skipped until a release has it. <${runUrl}|Run>`,
+  ].join("\n");
+}
+
+async function notifyReleaseNeeded({
+  github,
+  context,
+  core,
+  changesets,
+  channelName,
+  findSlackMessage,
+  sendSlackMessage,
+}) {
+  const { owner, repo } = context.repo;
+  const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+  const commits = await findCommitsToRelease({
+    github,
+    owner,
+    repo,
+    changesets,
+    warn: core.warning,
+  });
+
+  for (const commit of commits) {
+    const url = commitUrl({ owner, repo, sha: commit.sha });
+    const existing = await findSlackMessage({ channelName, text: url }).catch(
+      console.error,
+    );
+    if (existing) {
+      console.log(`Already asked for a release of ${url}`);
+      continue;
+    }
+
+    const message = formatReleaseNeededMessage({ owner, repo, runUrl, commit });
+    console.log(message);
+    await sendSlackMessage({ channelName, message }).catch(console.error);
+  }
+}
+
+module.exports = {
+  buildCrossVersionMatrix,
+  excludeBlockedDowngrades,
+  parsePendingChangesets,
+  findPendingChangesets,
+  buildGatedCrossVersionMatrix,
+  generateCrossVersionMatrix,
+  findCommitsToRelease,
+  formatReleaseNeededMessage,
+  notifyReleaseNeeded,
+};
