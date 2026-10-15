@@ -241,14 +241,15 @@ export function getChartLayout({
   }
 
   const isAuto = position === "auto";
-  const { orientation, isBeforeChart } =
-    LEGEND_PLACEMENTS[isAuto ? autoPlacement : position];
-  return orientation === "vertical"
-    ? getSideLayout(area, { isLegendBeforeChart: isBeforeChart })
-    : getStackedLayout(area, {
-        isLegendBeforeChart: isBeforeChart,
-        isLegendSingleRow: !isAuto,
-      });
+  const placement = isAuto ? autoPlacement : position;
+  const { orientation, isBeforeChart } = LEGEND_PLACEMENTS[placement];
+  if (orientation === "vertical") {
+    return getSideLayout(area, { isLegendBeforeChart: isBeforeChart });
+  }
+  return getStackedLayout(area, {
+    isLegendBeforeChart: isBeforeChart,
+    isLegendSingleRow: !isAuto,
+  });
 }
 
 function getAutoPlacement(

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import _ from "underscore";
 
 import type { LegendTitle } from "metabase/visualizations/components/types";
 
@@ -23,7 +24,7 @@ interface UseLegendOverflowOptions {
  * Measures how many legend items overflow the container along `axis`.
  * `visibleCount` is how many leading items to render, leaving one slot for the
  * overflow label but never fewer than `minVisibleCount`. New titles discard the
- * previous measurement.
+ * previous measurement. A disabled hook measures nothing and shows every item.
  */
 export function useLegendOverflow({
   titles,
@@ -32,28 +33,30 @@ export function useLegendOverflow({
   isEnabled = true,
 }: UseLegendOverflowOptions) {
   const itemCount = titles.length;
-  const itemsKey = JSON.stringify(titles);
   const [overflowCount, setOverflowCount] = useState(0);
   const [size, setSize] = useState<DOMRect | null>(null);
   const containerRef = useRef<HTMLOListElement>(null);
   const itemRefs = useRef<Record<number, HTMLLIElement | null>>({});
   const prevOverflowCountRef = useRef(overflowCount);
-  const prevItemsKeyRef = useRef(itemsKey);
-  const { start, end, extent } = AXIS_EDGES[axis];
+  const prevItemsKeyRef = useRef<string | null>(null);
 
   // Runs after every render because the container can resize without any
   // prop or state change.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!isEnabled || !container) {
+      return;
+    }
+
     const prevOverflowCount = prevOverflowCountRef.current;
     prevOverflowCountRef.current = overflowCount;
+    const itemsKey = JSON.stringify(titles);
     const prevItemsKey = prevItemsKeyRef.current;
     prevItemsKeyRef.current = itemsKey;
 
-    const containerRect = containerRef.current?.getBoundingClientRect();
-    if (!isEnabled || !containerRect) {
-      return;
-    }
+    const { start, end, extent } = AXIS_EDGES[axis];
+    const containerRect = container.getBoundingClientRect();
 
     // check only the extent along the axis, the other one may fluctuate depending on the browser causing an infinite loop
     // check overflowCount, because after setting overflowCount the extent changes and it causing an infinite loop too
@@ -66,33 +69,36 @@ export function useLegendOverflow({
     if (isResized || hasStaleCount) {
       setOverflowCount(0);
       setSize(containerRect);
-    } else if (overflowCount === 0) {
-      let currentOverflowCount = 0;
-      for (let i = 0; i < itemCount; i++) {
-        const itemRect = itemRefs.current[i]?.getBoundingClientRect();
-        if (
-          itemRect &&
-          (containerRect[start] > itemRect[start] ||
-            containerRect[end] < itemRect[end])
-        ) {
-          currentOverflowCount++;
-        }
-      }
-      if (currentOverflowCount !== overflowCount) {
-        setOverflowCount(currentOverflowCount);
-        setSize(containerRect);
-      }
+      return;
+    }
+
+    // only a full render, with no items folded, can be measured
+    if (overflowCount > 0) {
+      return;
+    }
+
+    const measuredOverflowCount = _.range(itemCount).filter((index) => {
+      const itemRect = itemRefs.current[index]?.getBoundingClientRect();
+      return (
+        itemRect != null &&
+        (containerRect[start] > itemRect[start] ||
+          containerRect[end] < itemRect[end])
+      );
+    }).length;
+    if (measuredOverflowCount > 0) {
+      setOverflowCount(measuredOverflowCount);
+      setSize(containerRect);
     }
   });
 
-  const enabledOverflowCount = isEnabled ? overflowCount : 0;
+  const activeOverflowCount = isEnabled ? overflowCount : 0;
   const visibleCount =
-    enabledOverflowCount > 0
-      ? Math.max(itemCount - enabledOverflowCount - 1, minVisibleCount)
+    activeOverflowCount > 0
+      ? Math.max(itemCount - activeOverflowCount - 1, minVisibleCount)
       : itemCount;
 
   return {
-    overflowCount: enabledOverflowCount,
+    overflowCount: activeOverflowCount,
     visibleCount,
     containerRef,
     itemRefs,

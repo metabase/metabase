@@ -216,14 +216,13 @@ function measureLegend({
   const labelWidths = displayedItems.map((item) =>
     measureText(item.name, font),
   );
+  const dotWidth = getDotWidth(config);
   const availableWidth = width - config.horizontalPadding;
 
   return {
     config,
     labelWidths,
-    itemWidths: labelWidths.map(
-      (labelWidth) => getDotWidth(config) + labelWidth,
-    ),
+    itemWidths: labelWidths.map((labelWidth) => dotWidth + labelWidth),
     availableWidth,
     availableRowWidth: Math.min(
       availableWidth,
@@ -305,9 +304,10 @@ function getColumnLayout(
     alwaysVisible: boolean;
   },
 ): LegendLayoutResult {
-  if (isColumnMostlyTruncated(metrics) && !alwaysVisible) {
+  if (!alwaysVisible && isColumnMostlyTruncated(metrics)) {
     return HIDDEN_LEGEND_LAYOUT;
   }
+
   const visibleCount = getColumnVisibleCount(metrics, minVisibleCount);
   if (visibleCount === 0) {
     return HIDDEN_LEGEND_LAYOUT;
