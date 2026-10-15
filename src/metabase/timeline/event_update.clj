@@ -36,8 +36,8 @@
 (defrecord EventUpdate [user-id event-id changes new-timeline]
   validated/Validatable
   (checks [_]
-    [[::changes-match-schema (or (mr/validate changes-schema changes)
-                                 (me/humanize (mr/explain changes-schema changes)))]
+    [[::changes-match-schema (or (me/humanize (mr/explain changes-schema changes)) ; nil when valid
+                                 true)]
      [::new-timeline-checked (or (nil? new-timeline)
                                  (and (validated/validated? TimelineWrite new-timeline)
                                       (= user-id (.-user-id ^TimelineWrite new-timeline))))]])
