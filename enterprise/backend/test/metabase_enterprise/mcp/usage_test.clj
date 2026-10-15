@@ -337,7 +337,6 @@
 (deftest three-write-points-integration-test
   (testing "initialize -> tools/call -> DELETE records session, tool-call, and ended_at"
     ;; Collection runs on any EE instance (:feature :none), so no premium feature is needed here.
-    ;; GHY-4942: a cookie session reaches no scope-gated tool, so the calls carry a scoped bearer token.
     (v2.tu/do-with-bearer-token!
      v2.tu/all-scopes
      (fn [headers]
