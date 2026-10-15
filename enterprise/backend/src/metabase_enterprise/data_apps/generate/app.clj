@@ -35,14 +35,15 @@
    :yaml (serialization/entity-yaml entity)})
 
 (mu/defn generate :- ::data-apps.schema/app-files
-  "The `data_app.yaml` of a new app named `name`, served at `slug` (from the name by default), and its collection's
-  file, both with new entity IDs and the YAML an export writes for them once a pull saves them."
-  [{app-name :name :keys [slug description]} :- ::data-apps.schema/app-request]
+  "The `data_app.yaml` of an app named `name`, served at `slug` (from the name by default), and its collection's file,
+  with the entity IDs `entity_id` and `collection_id` of an existing app, or new ones, and the YAML an export writes
+  for them once a pull saves them."
+  [{app-name :name :keys [slug description entity_id collection_id]} :- ::data-apps.schema/app-request]
   (let [slug          (or slug (name->slug app-name))
         _             (when-not (mr/validate ::data-apps.schema/slug slug)
                         (throw (ex-info (tru "Pass a slug: \"{0}\" is not a valid one." slug) {:status-code 400})))
-        app-id        (u/generate-nano-id)
-        collection-id (u/generate-nano-id)
+        app-id        (or entity_id (u/generate-nano-id))
+        collection-id (or collection_id (u/generate-nano-id))
         created-at    (u.date/format (mi/current-timestamp))
         collection    {:name        (str "Data App: " slug)
                        :namespace   "data-apps"
