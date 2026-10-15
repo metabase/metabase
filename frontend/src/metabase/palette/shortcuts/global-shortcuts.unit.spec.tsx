@@ -81,7 +81,11 @@ describe("global keyboard shortcuts", () => {
 
       await userEvent.keyboard(keys);
 
-      await waitFor(() => expect(router?.location.pathname).toBe(pathname));
+      // The first case pays the suite's cold-start cost and lands close to the
+      // default wait, so give the navigation a generous window under CI load.
+      await waitFor(() => expect(router?.location.pathname).toBe(pathname), {
+        timeout: 5000,
+      });
     });
 
     it("does not navigate to Data Studio for users without access", async () => {
