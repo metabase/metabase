@@ -668,7 +668,7 @@
             (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
             (is (malli= [:map
                          [:message [:= "You do not have permissions to run this query."]]]
-                        (mt/user-http-request :rasta :post "dataset/native"
+                        (mt/user-http-request :rasta :post 403 "dataset/native"
                                               (mt/mbql-query venues
                                                 {:fields [$id $name]}))))))))))
 

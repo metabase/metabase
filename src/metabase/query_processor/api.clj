@@ -218,27 +218,27 @@
     (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
                     (dissoc :constraints :middleware)
                     lib/disable-default-limit)]
-      (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-      (qp.setup/with-qp-setup [query query]
-        (binding [driver/*compile-with-inline-parameters* true]
-          ;; Preprocess once, then run the same permission checks the run path (execute chain) runs, so both
-          ;; endpoints agree on which referenced cards and tables the caller may use. Preprocessing resolves
-          ;; `card__N` source tables and card/snippet template tags, so the referenced entities are known by
-          ;; the time we check.
-          (let [preprocessed (qp.preprocess/preprocess query)]
-            (try
+      (try
+        (qp.perms/check-current-user-has-adhoc-native-query-perms query)
+        (qp.setup/with-qp-setup [query query]
+          (binding [driver/*compile-with-inline-parameters* true]
+            ;; Preprocess once, then run the same permission checks the run path (execute chain) runs, so both
+            ;; endpoints agree on which referenced cards and tables the caller may use. Preprocessing resolves
+            ;; `card__N` source tables and card/snippet template tags, so the referenced entities are known by
+            ;; the time we check.
+            (let [preprocessed (qp.preprocess/preprocess query)]
               (qp.perms/check-query-permissions* preprocessed)
-              (catch clojure.lang.ExceptionInfo e
-                (throw (if (:permissions-error? (ex-data e))
-                         (ex-info (ex-message e) (assoc (ex-data e) :status-code 403) e)
-                         e))))
-            (let [compiled (qp.compile/compile-preprocessed preprocessed)
-                  driver (driver.u/database->driver database)]
-              ;; Return only the compiled query and its params, not the internal keys the compiler carries
-              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids). `:collection` is kept so
-              ;; the frontend can pre-select the source table when converting a MongoDB question to native.
-              (-> (select-keys compiled [:query :params :collection])
-                  (cond-> pretty (update :query #(driver/prettify-native-form driver %)))))))))))
+              (let [compiled (qp.compile/compile-preprocessed preprocessed)
+                    driver (driver.u/database->driver database)]
+                ;; Return only the compiled query and its params, not the internal keys the compiler carries
+                ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids). `:collection` is kept so
+                ;; the frontend can pre-select the source table when converting a MongoDB question to native.
+                (-> (select-keys compiled [:query :params :collection])
+                    (cond-> pretty (update :query #(driver/prettify-native-form driver %))))))))
+        (catch clojure.lang.ExceptionInfo e
+          (throw (if (:permissions-error? (ex-data e))
+                   (ex-info (ex-message e) (assoc (ex-data e) :status-code 403) e)
+                   e)))))))
 
 (api.macros/defendpoint :post "/pivot"
   :- (server/streaming-response-schema ::qp.schema/query-result)
