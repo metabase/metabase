@@ -305,7 +305,7 @@ function trends(p) {
     `${num(pt.cumNet, "net")}<td class="num">${pt.level}</td></tr>`);
   return section("Trends", "Each step is a commit that changed a budget. Hover a chart for the commit behind a step.",
     `<div class="callout"><p>The two charts measure different things, so they can move apart:</p><ul>` +
-    `<li><span class="term">Relevant changes</span> tracks actual fixes and regressions: suppressions removed or added.</li>` +
+    `<li><span class="term">Relevant changes</span> tracks fixes and regressions: suppressions removed or added, plus raises not yet settled.</li>` +
     `<li><span class="term">Total budget</span> also moves when what we measure changes, such as a new ratchet over existing debt.</li>` +
     `<li><span class="term">The breakdown under the charts</span> shows how the two add up.</li></ul></div>` +
     `<div class="grid2">` +
