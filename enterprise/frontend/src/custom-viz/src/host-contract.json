@@ -165,7 +165,10 @@
       "HTMLAnchorElement.set target",
       "HTMLFormElement.submit",
       "HTMLFormElement.requestSubmit"
-    ]
+    ],
+    "sanitizerForbiddenTags": ["form", "a", "style", "frame", "map", "area"],
+    "sanitizerForbiddenAttributes": ["target", "formaction", "action"],
+    "sanitizerAllowedUrlPattern": "/^(?:#|\\/|https?:|data:image\\/(?:png|jpeg|gif|svg\\+xml|webp);)/i"
   },
   "colors": {
     "text-primary": "Text: labels, values",

@@ -15,7 +15,7 @@ type ColorScheme = "light" | "dark";
 
 type HostContract = {
   contractVersion: number;
-  sandbox: Record<string, string[]>;
+  sandbox: Record<string, string[] | string>;
   colors: Record<string, string>;
   columns: Record<string, { column: object; predicates: string[] }>;
 };
@@ -75,6 +75,31 @@ const readBlocklist = (name: string) => {
   return found;
 };
 
+const findProperty = (file: string, name: string) => {
+  const found: ts.Expression[] = [];
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isPropertyAssignment(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === name
+    ) {
+      found.push(node.initializer);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(parse(file));
+  return found;
+};
+
+const readSanitizerList = (name: string) =>
+  findProperty("distortions-dom-mutate.ts", name).flatMap(collectStrings);
+
+const readSanitizerPattern = (name: string) =>
+  findProperty("distortions-dom-mutate.ts", name)
+    .filter(ts.isRegularExpressionLiteral)
+    .map((node) => node.text)
+    .join("");
+
 const toPattern = (template: string) =>
   template.slice(1, -1).replace(/\$\{(\w+)\}/g, "<$1>");
 
@@ -126,6 +151,9 @@ const computeContract = (): HostContract => ({
     blockedNavigatorGetters: readBlocklist("NAVIGATOR_BLOCKED_GETTERS"),
     urlValuedAttributes: readBlocklist("URL_VALUED_ATTRS"),
     blockedApiCalls: readBlockedApiCalls(),
+    sanitizerForbiddenTags: readSanitizerList("FORBID_TAGS"),
+    sanitizerForbiddenAttributes: readSanitizerList("FORBID_ATTR"),
+    sanitizerAllowedUrlPattern: readSanitizerPattern("ALLOWED_URI_REGEXP"),
   },
   colors: CONTRACT.colors,
   columns: Object.fromEntries(
