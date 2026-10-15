@@ -435,6 +435,36 @@
          (is (= [ptu/orders-id ptu/revenue-id ptu/metrics-id] (map :id steps)))
          (is (= #{ptu/library-id ptu/snippet-id} (set (keys (pltu/snapshot-of inst))))))))))
 
+(deftest trash-of-an-item-that-is-already-gone-test
+  (enabled
+   (with-remote [repo s]
+     (let [[inst c1] (pushed-instance! s ptu/sample)
+           h         (pltu/commit-snapshot! repo ptu/branch [c1] (dissoc ptu/sample ptu/orders-id))
+           reads     (atom 0)
+           racing    (ptu/wrap-instance inst {:read-snapshot (fn [read-snapshot]
+                                                               (let [r (read-snapshot)]
+                                                                 (when (= 1 (swap! reads inc))
+                                                                   ;; the person trashes the item that the head removes
+                                                                   (swap! (:state inst) #(-> %
+                                                                                             (update :snapshot dissoc ptu/orders-id)
+                                                                                             (assoc-in [:trash ptu/orders-id] (get ptu/sample ptu/orders-id)))))
+                                                                 r))})]
+       (testing "a trash step whose item is already out of scope is satisfied: the pull applies at the first try"
+         (is (= :pulled (:result (pltu/pull! racing s))))
+         (is (= 1 @reads))
+         (is (= h (instance/base inst)))
+         (is (= (dissoc ptu/sample ptu/orders-id) (pltu/snapshot-of inst))))))))
+
+(deftest fenced-apply-writes-nothing-test
+  (enabled
+   (with-remote [repo s]
+     (let [[inst c1] (pushed-instance! s ptu/sample)
+           h         (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed ptu/sample ptu/revenue-id "Theirs"))]
+       (testing "the task of the pull may not commit (a cancel): the apply writes nothing, and the base stays"
+         (is (= {:result :fenced :head h :reason :cancelled} (pltu/pull! inst s {:fence (constantly :cancelled)})))
+         (is (= ptu/sample (pltu/snapshot-of inst)))
+         (is (= c1 (instance/base inst))))))))
+
 ;;; ---------------------------------------------------- Properties ----------------------------------------------------
 
 (defspec pull-lands-the-head-property-test 25

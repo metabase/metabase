@@ -26,9 +26,8 @@
   [{:name   :nowitness
     :doc    "The apply checks no precondition (the TLA+ mutation nowitness): a save between the read of the pull and the
             apply is written over."
-    :target `apply/stale-ids
-    :edits  [[:replace '(remove (fn [{:keys [id pre] :as step}] (= pre (current (step-kind step) id))))
-              '(remove (constantly true))]]
+    :target `apply/satisfied?
+    :edits  [[:replace '(= pre content) true]]
     :tests  [#'pull-test/save-between-read-and-apply-is-not-lost-test]}
    {:name   :forcepush-norecheck
     :doc    "The apply does not read the branch head again (the TLA+ mutation forcepush-norecheck): after a rewrite of
@@ -36,6 +35,17 @@
     :target `apply/apply-plan
     :edits  [[:replace '(head-ok?) true]]
     :tests  [#'pull-test/force-push-during-the-pull-aborts-the-apply-test]}
+   {:name   :no-fence
+    :doc    "The apply does not ask whether its task may commit: a cancelled task still writes."
+    :target `apply/apply-plan
+    :edits  [[:replace '(fence) nil]]
+    :tests  [#'pull-test/fenced-apply-writes-nothing-test]}
+   {:name   :trash-needs-content
+    :doc    "A trash step needs its base content also when its item is already out of scope: the pull starts again for
+            no reason."
+    :target `apply/satisfied?
+    :edits  [[:replace '(and trash (nil? content)) false]]
+    :tests  [#'pull-test/trash-of-an-item-that-is-already-gone-test]}
    {:name   :pullnovalidate
     :doc    "The pull does not check the head at the structural level (the TLA+ mutation pullnovalidate): an ill-formed
             text merge is applied."
@@ -64,8 +74,8 @@
    {:name   :no-base-lost
     :doc    "The pull makes a three-way merge from a base that is not in the history of the head (a force push): items
             that the instance did not change take the content of the rewritten head with no conflict."
-    :target `pull/base-snapshot
-    :edits  [[:replace '(not (store/ancestor? store b h)) false]]
+    :target `pull/held?
+    :edits  [[:replace '(store/ancestor? store b h) true]]
     :tests  [#'pull-test/force-push-loses-the-base-test]}
    {:name   :digests-of-merge
     :doc    "The base cache gets the digests of the merge result, not of the head: a kept local change shows as synced."

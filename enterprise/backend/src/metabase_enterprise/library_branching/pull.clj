@@ -71,16 +71,29 @@
   [l r]
   (zipmap (distinct (concat (keys l) (keys r))) (repeat ::lost)))
 
+(defn held?
+  "True iff the pull of head `h` may merge against base commit `b`: `b` is an ancestor of `h`."
+  [store b h]
+  ;; A base that a remote ref other than the branch holds (after a branch switch) is still a safe merge base; this
+  ;; rule does not know it yet, and treats such a base as lost, which gives conflicts and never a lost save.
+  (store/ancestor? store b h))
+
+(defn no-base-snapshot
+  "The base snapshot of a pull when the instance has no base: empty, so every item of one side only is kept."
+  []
+  ;; An identity in the trash of the instance should have an unknown base here, so that a delete before the first
+  ;; sync is not undone; and the apply should refuse to write an identity in the trash. Neither rule exists yet.
+  {})
+
 (defn- base-snapshot
   "`{:snapshot b}` of base commit `b` for head `h`, or `{:lost reason}` when the three-way merge has no base: `b` is not
-  an ancestor of `h` (someone rewrote the branch), or its tree does not decode. With no base (nil), the base snapshot
-  is empty."
+  [[held?]] (`:rewritten`), or its tree does not decode (`:unreadable`). With no base (nil), [[no-base-snapshot]]."
   [store codecs b h]
   (cond
-    (nil? b)                    {:snapshot {}}
-    (not (store/ancestor? store b h)) {:lost :rewritten}
-    :else                       (let [{:keys [snapshot]} (decode-commit store codecs b)]
-                                  (if snapshot {:snapshot snapshot} {:lost :unreadable}))))
+    (nil? b)                {:snapshot (no-base-snapshot)}
+    (not (held? store b h)) {:lost :rewritten}
+    :else                   (let [{:keys [snapshot]} (decode-commit store codecs b)]
+                              (if snapshot {:snapshot snapshot} {:lost :unreadable}))))
 
 ;;; ------------------------------------------------------- Pull --------------------------------------------------------
 
@@ -91,7 +104,7 @@
 (defn- apply-merge!
   "Steps 4 to 6 of the pull of head `h` with remote snapshot `r`, against base commit `b`: read, merge, plan and apply,
   again after a stale precondition, at most `retries` times."
-  [inst store branch {:keys [codecs decisions retries]} b h r base]
+  [inst store branch {:keys [codecs decisions retries fence]} b h r base]
   (loop [attempt 0]
     (let [l       (:snapshot (instance/read-snapshot inst))
           lost    (:lost base)
@@ -107,7 +120,8 @@
                                                        :digests  (writer/item-digests codecs r)
                                                        :head-ok? #(boolean
                                                                    (when-let [now (store/head store branch)]
-                                                                     (store/ancestor? store h now)))})]
+                                                                     (store/ancestor? store h now)))
+                                                       :fence    (or fence (constantly nil))})]
           (cond
             (:ok result)
             {:result :pulled :head h :steps steps :trashed-in-use (get-in result [:ok :trashed-in-use])}
@@ -116,6 +130,7 @@
             (recur (inc attempt))
 
             (:stale result)    {:result :stale :head h :ids (:stale result)}
+            (:fenced result)   {:result :fenced :head h :reason (:fenced result)}
             (:rewritten result) {:result :rewritten :head h}
             (:refused result)  {:result :refused :head h :refused (:refused result)}
             :else              {:result :base-moved :head h :base (:base-moved result)}))))))
@@ -137,13 +152,14 @@
   - `{:result :rewritten :head h}`: the branch was rewritten during each of the attempts;
   - `{:result :refused :head h :refused [...]}`: the instance refused a write (`instance/refused`);
   - `{:result :base-moved :head h :base actual}`: another task moved the base;
+  - `{:result :fenced :head h :reason r}`: `(:fence opts)` returned `r` in the apply (the task may not commit);
   - `{:result :no-branch}`: the branch does not exist, and the instance has a base;
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
   Every result other than `:pulled` writes nothing. A pulled or invalid result has `:semantic`, the findings of
   `semantic/validate` against `:env`, when `opts` has one. `opts`: `:codecs` (default `kinds/codecs`), `:decisions`
-  (the keep-mine decisions, see [[decide]]), `:env` (an environment of `format.manifest`), `:retries` (default
-  [[default-retries]])."
+  (the keep-mine decisions, see [[decide]]), `:env` (an environment of `format.manifest`), `:fence` (as in
+  `apply/apply-plan`), `:retries` (default [[default-retries]])."
   ([inst store branch]
    (pull! inst store branch {}))
   ([inst store branch opts]
