@@ -264,7 +264,8 @@
           (is (nil? (t2/select-one-fn :collection_id :model/NativeQuerySnippet (:id snippet)))))
         (testing "a new snippet and a new collection at the area root"
           (t2/with-transaction [_ nil {:rollback-only true}]
-            (write! :snippet "lbAreaRootSnippet0001" (assoc (current :snippet (:entity_id snippet)) :name "Area snippet"))
+            (write! :snippet "lbAreaRootSnippet0001"
+                    (assoc (current :snippet (:entity_id snippet)) :name "Area snippet"))
             (is (nil? (t2/select-one-fn :collection_id :model/NativeQuerySnippet :entity_id "lbAreaRootSnippet0001")))
             (write! :collection "lbAreaRootFolder00001" (assoc inner-item :name "Area folder" :place snippets-root))
             (is (= "/" (t2/select-one-fn :location :model/Collection :entity_id "lbAreaRootFolder00001")))
@@ -274,7 +275,7 @@
                                           (assoc (current :collection (:entity_id leaf)) :place nil)))))
           (is (= :place (refusal #(write! :snippet (:entity_id snippet)
                                           (assoc (current :snippet (:entity_id snippet)) :place nil)))))
-          (is (= (children-location inner) (t2/select-one-fn :location :model/Collection (:id leaf)))))
+          (is (= (str "/" (:id inner) "/") (t2/select-one-fn :location :model/Collection (:id leaf)))))
         (testing "an area root of another namespace, or one that cannot hold the kind, refuses the write"
           (is (= :place (refusal #(write! :collection (:entity_id leaf)
                                           (assoc (current :collection (:entity_id leaf))

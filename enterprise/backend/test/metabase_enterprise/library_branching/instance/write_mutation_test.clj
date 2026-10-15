@@ -9,6 +9,7 @@
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
    [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
+   [metabase-enterprise.library-branching.instance.kinds.snippet :as kinds.snippet]
    [metabase-enterprise.library-branching.instance.lock-test]
    [metabase-enterprise.library-branching.instance.save-rule :as save-rule]
    [metabase-enterprise.library-branching.instance.save-rule-test]
@@ -57,6 +58,22 @@
             the Library."
     :target `tree/place-collection
     :edits  [[:replace '(scope/in-scope? :collection place) true]]}
+   {:name   :area-namespace-unchecked
+    :doc    "A collection of any namespace can be at an area root, so a pull puts a transforms collection into the
+            snippets namespace."
+    :target `kinds.collection/write-collection!
+    :edits  [[:replace '(not= (:namespace area) (:namespace attrs)) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test]}
+   {:name   :area-kinds-unchecked
+    :doc    "An area root holds an item of any kind, so a snippet at the root of the Transforms area is written."
+    :target `tree/place-area
+    :edits  [[:replace '(contains? (:kinds area) kind) true]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test]}
+   {:name   :unplaced-snippet-written
+    :doc    "A snippet with no place is written to no collection, as one at the root of the Snippets area."
+    :target `kinds.snippet/write-snippet!
+    :edits  [[:replace '(nil? place) false]]
+    :tests  [#'metabase-enterprise.library-branching.instance.write-test/move-to-the-root-level-test]}
    {:name   :root-level-anywhere
     :doc    "Any collection may be at the root level, not only a fixed root."
     :target `kinds.collection/write-collection!

@@ -58,7 +58,8 @@
 ;;; ---------------------------------------------------- Content ---------------------------------------------------
 
 (deftest glossary-content-test
-  (testing "a glossary term: its term as the name, the glossary area root as the place, no references, and its definition"
+  (testing "a glossary term: its term as the name, the Glossary area root as the place, no references, and its
+           definition"
     (t2/with-transaction [_ nil {:rollback-only true}]
       (let [row (insert-term! "lb churn" "The share of customers who cancel.")]
         (is (= (term-item "lb churn" "The share of customers who cancel.")

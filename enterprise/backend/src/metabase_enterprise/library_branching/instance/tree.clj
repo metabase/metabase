@@ -4,7 +4,8 @@
   (:require
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.instance :as instance]
-   [metabase-enterprise.library-branching.scope :as scope]))
+   [metabase-enterprise.library-branching.scope :as scope]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,12 +48,25 @@
     (instance/refuse! :outside-library id
                       "An item outside the Library has this identity, so a write cannot take it over.")))
 
+(defn place-area
+  "The area of `snapshot/area-roots` whose root is `place`, the place of item `id` of `kind`, or nil when `place` names
+  no area root. Throws ::instance/refused when the area root cannot contain an item of `kind`."
+  [kind id place]
+  (when-let [area (get snapshot/area-roots place)]
+    (when-not (contains? (:kinds area) kind)
+      (instance/refuse! :place id (str "The root of the " (:name area) " area cannot contain an item of the kind "
+                                       (name kind) ".")
+                        {:place place}))
+    area))
+
 (defn place-collection
   "The collection row (`{:id :entity_id :type :namespace :location :archived}`) of `place`, the container of item
-  `id`, or nil when `place` is nil. Throws ::instance/refused when `place` names no in-scope collection."
+  `id`, or nil when `place` is nil. Throws ::instance/refused when `place` names no in-scope collection; an area root
+  is no collection."
   [id place]
   (when place
-    (let [row (library-branching.db/collection-by-entity-id place)]
+    (let [row (when-not (contains? snapshot/area-roots place)
+                (library-branching.db/collection-by-entity-id place))]
       (when-not (and row (scope/in-scope? :collection place))
         (instance/refuse! :place id (str "The container " place " is not an in-scope collection on this instance.")
                           {:place place}))
