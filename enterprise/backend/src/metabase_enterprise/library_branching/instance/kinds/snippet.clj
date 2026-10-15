@@ -112,6 +112,11 @@
                    (content/attrs format.snippet/spec))]
     (assoc content :attrs attrs :refs (format.kinds/refs :snippet id attrs))))
 
+(def ^:private models-of-read
+  "The models whose tables a read of snippets reads: the snippets and their collections, and the snippets, cards and
+  fields that a template tag names, with the tables and databases of the natural keys of the fields."
+  #{:model/Card :model/Collection :model/Database :model/Field :model/NativeQuerySnippet :model/Table})
+
 (def kind-store
   "The `KindStore` of snippets."
   (reify
@@ -120,7 +125,7 @@
 
     instance/KindStore
     (read-all [_ ids] (read-snippets ids))
-    (read-models [_] #{})
+    (read-models [_] models-of-read)
     (current [_ id] (current-snippet id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-snippet! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-snippet! id)))))

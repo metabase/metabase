@@ -40,7 +40,8 @@
 (defn read-at-read-point
   "[[read-current]] in a new read-only transaction at REPEATABLE READ: one read point for the whole snapshot."
   [stores roots]
-  (library-branching.db/do-with-read-point #(read-current stores roots)))
+  (library-branching.db/do-with-read-point (into #{} (mapcat instance/read-models) (vals stores))
+                                           #(read-current stores roots)))
 
 (defn- base-row
   []

@@ -40,11 +40,15 @@
 
 ;;; --------------------------------------------------- Read point ---------------------------------------------------
 
+(defn- touch-table
+  [table]
+  (t2/query {:select [[1 :one]] :from [table] :limit 1}))
+
 (defn do-with-read-point
   "Calls `f` with no arguments in a new read-only transaction at REPEATABLE READ isolation, and returns its result:
-  every read of `f` on the app DB sees the database as of one moment. Throws when the calling thread holds an open
-  transaction, whose isolation cannot change."
-  [f]
+  every read of `f` of the table of a model of `models` sees the database as of one moment. Throws when the calling
+  thread holds an open transaction, whose isolation cannot change."
+  [models f]
   (when (mdb/in-transaction?)
     (throw (ex-info "A read point needs a new transaction, and this thread holds an open one." {})))
   (t2/with-connection [^Connection conn]
@@ -56,6 +60,9 @@
       (.setReadOnly conn true)
       (try
         (t2/with-transaction [_ conn]
+          ;; On H2 the snapshot of a table starts at the first read of that table in the transaction, not at the first
+          ;; read of the transaction. A read of each table before `f` puts every table at one moment.
+          (run! touch-table (into (sorted-set) (map t2/table-name) models))
           (f))
         (finally
           (.setReadOnly conn read-only?)

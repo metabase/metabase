@@ -71,7 +71,7 @@
   "The `KindStore` of glossary terms."
   (reify instance/KindStore
     (read-all [_ ids] (read-glossary-terms ids))
-    (read-models [_] #{})
+    (read-models [_] #{:model/Glossary})
     (current [_ id] (current-glossary-term id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-glossary-term! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-glossary-term! id)))))

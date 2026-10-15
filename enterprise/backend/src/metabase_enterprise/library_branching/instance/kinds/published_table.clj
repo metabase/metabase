@@ -276,11 +276,16 @@
       (update-table-settings! (:id table) {:is_published false :collection_id nil}))
     nil))
 
+(def ^:private models-of-read
+  "The models whose tables a read of published tables reads: the tables and fields with their settings rows, the
+  databases of their natural keys, and the collections."
+  #{:model/Collection :model/Database :model/Field :model/FieldUserSettings :model/Table :model/TableUserSettings})
+
 (def kind-store
   "The `KindStore` of published tables."
   (reify instance/KindStore
     (read-all [_ ids] (read-published-tables ids))
-    (read-models [_] #{})
+    (read-models [_] models-of-read)
     (current [_ id] (current-published-table id))
     (write! [_ id item] (library-branching.db/do-in-transaction #(write-published-table! id item)))
     (trash! [_ id] (library-branching.db/do-in-transaction #(trash-published-table! id)))))
