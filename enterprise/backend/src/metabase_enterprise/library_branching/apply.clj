@@ -75,8 +75,8 @@
   A trash step whose item is already out of scope does nothing. The caller rolls its transaction back unless the result
   is `:ok`. `opts`: `:base`, `:new-base`, `:digests`, `:head-ok?` (a function of no argument), `:fence` (a function
   of no argument that returns nil while the task may commit, else the reason; default: always nil), and `:on-commit`
-  (a function of no argument that is called last, only for an `:ok` result, so that its writes commit with the apply;
-  default: none). `ops`:
+  (a function of the `:ok` value that is called last, only for an `:ok` result, so that its writes commit with the
+  apply; default: none). `ops`:
 
   - `:current`   `(fn [kind id])`, as in [[check-steps]];
   - `:write!`    `(fn [kind id content])` and `:trash!` `(fn [kind id])`: `instance/write!` and `instance/trash!`;
@@ -101,8 +101,9 @@
                 (if (head-ok?)
                   ;; Last: a write that an app DB rollback cannot undo in full (a setting keeps its new value in the
                   ;; cache of this process) happens only when nothing more can refuse the apply.
-                  (do (on-commit)
-                      {:ok {:trashed-in-use in-use}})
+                  (let [ok {:trashed-in-use in-use}]
+                    (on-commit ok)
+                    {:ok ok})
                   {:rewritten new-base}))))
           (catch clojure.lang.ExceptionInfo e
             (let [{:keys [type reason id]} (ex-data e)]

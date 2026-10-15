@@ -288,7 +288,7 @@
      (testing "the hook of a switch runs once, inside the apply that moves the base"
        (let [{:keys [inst m1]} (switch-world! repo)
              seen   (atom [])
-             result (pull/pull! inst s "main" {:on-commit #(swap! seen conj (instance/base inst))})]
+             result (pull/pull! inst s "main" {:on-commit (fn [_] (swap! seen conj (instance/base inst)))})]
          (is (= :pulled (:result result)))
          ;; the memory instance moves its base when its transaction ends, so the hook sees the old base
          (is (= 1 (count @seen)))
@@ -297,5 +297,5 @@
        (let [{:keys [inst]} (switch-world! repo)
              _    (pltu/save! inst #(described % ptu/orders-id "Mine"))
              seen (atom 0)]
-         (is (= :conflicts (:result (pull/pull! inst s "main" {:on-commit #(swap! seen inc)}))))
+         (is (= :conflicts (:result (pull/pull! inst s "main" {:on-commit (fn [_] (swap! seen inc))}))))
          (is (zero? @seen)))))))

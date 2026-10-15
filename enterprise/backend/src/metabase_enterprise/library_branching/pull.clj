@@ -124,6 +124,8 @@
       (if-not (:ok merged)
         (assoc merged :result :conflicts :head h :base-lost lost)
         (let [steps  (plan/plan l (:ok merged) bs)
+              pulled (fn [{:keys [trashed-in-use]}]
+                       {:result :pulled :head h :steps steps :trashed-in-use trashed-in-use})
               result (instance/apply-plan! inst steps {:base     b
                                                        :new-base h
                                                        ;; The base cache holds the content of the base commit `h`,
@@ -136,10 +138,10 @@
                                                                      (and (store/ancestor? store h now)
                                                                           (or lost (nil? b) (held? store b branch now)))))
                                                        :fence     (or fence (constantly nil))
-                                                       :on-commit (or on-commit (constantly nil))})]
+                                                       :on-commit (comp (or on-commit (constantly nil)) pulled)})]
           (cond
             (:ok result)
-            {:result :pulled :head h :steps steps :trashed-in-use (get-in result [:ok :trashed-in-use])}
+            (pulled (:ok result))
 
             (and (:stale result) (< attempt retries))
             (recur (inc attempt))
@@ -174,8 +176,9 @@
 
   Every result other than `:pulled` writes nothing. A pulled or invalid result has `:semantic`, the findings of
   `semantic/validate` against `:env`, when `opts` has one. `opts`: `:codecs` (default `kinds/codecs`), `:decisions`
-  (the keep-mine decisions, see [[decide]]), `:env` (an environment of `format.manifest`), `:fence` and `:on-commit` (as
-  in `apply/apply-plan`), `:retries` (default [[default-retries]])."
+  (the keep-mine decisions, see [[decide]]), `:env` (an environment of `format.manifest`), `:fence` (as in
+  `apply/apply-plan`), `:on-commit` (a function of the `:pulled` result, without `:semantic`, that the apply calls last
+  in its transaction, so that its writes commit with the apply), `:retries` (default [[default-retries]])."
   ([inst store branch]
    (pull! inst store branch {}))
   ([inst store branch opts]

@@ -6,6 +6,8 @@
    [metabase-enterprise.library-branching.deploy :as deploy]
    [metabase-enterprise.library-branching.deploy-test :as deploy-test]
    [metabase-enterprise.library-branching.mutation.core :as mut]
+   [metabase-enterprise.library-branching.operations :as operations]
+   [metabase-enterprise.library-branching.operations-test :as operations-test]
    [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
@@ -29,7 +31,8 @@
     :doc    "The deploy applies a part of the plan (the TLA+ mutation prodbatched): the instance shows a mix of two
             commits."
     :target `deploy/apply-head!
-    :edits  [[:replace 'steps '(vec (take 1 steps)) {:nth 1}]]
+    ;; match 0 is the binding, match 1 the result of a success; match 2 is the plan that the apply gets
+    :edits  [[:replace 'steps '(vec (take 1 steps)) {:nth 2}]]
     :tests  [#'deploy-test/deploy-applies-the-head-in-full-test]}
    {:name   :drift-overwrite
     :doc    "The deploy does not check for drift (the TLA+ mutation drift-overwrite): it writes over a change that no
@@ -63,7 +66,13 @@
     :doc    "The base cache gets the digests of the local snapshot before the deploy, not of the head."
     :target `deploy/apply-head!
     :edits  [[:replace '(writer/item-digests codecs r) '(writer/item-digests codecs l)]]
-    :tests  [#'deploy-test/deploy-applies-the-head-in-full-test]}])
+    :tests  [#'deploy-test/deploy-applies-the-head-in-full-test]}
+   {:name   :deploy-ends-its-task-after-the-apply
+    :doc    "The task of a deploy ends after the apply transaction: a cancel between the commit and the end of the task
+            says cancelled, although the deploy applied."
+    :target `operations/deploy-task!
+    :edits  [[:replace '(end-in-apply id (partial deploy-task-result branch)) nil]]
+    :tests  [#'operations-test/apply-ends-its-task-test]}])
 
 (deftest deploy-mutations-test
   (mut/check mutations {:timeout-ms 180000}))

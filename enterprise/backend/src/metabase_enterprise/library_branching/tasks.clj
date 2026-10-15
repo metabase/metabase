@@ -7,8 +7,9 @@
   heartbeat. An open row with no heartbeat for the time limit is stale, and a reader ends it as interrupted; its
   worker can still wake up and go on. Three rules keep such a worker from an untruthful row:
 
-  - the fence: the commit of an operation runs in [[commit!]], one transaction that locks its own row and commits only
-    while the row is running, and ends the row in the same transaction;
+  - the fence: the commit of an operation runs in one transaction that locks its own row with [[fence]], commits only
+    while the row is running, and ends the row in the same transaction ([[commit!]], or [[succeed-fenced!]] in an
+    apply);
   - the commit point: a push moves its row to committing ([[mark-committing!]]) before its remote compare-and-swap,
     and a cancel of a committing row is refused;
   - [[cancel!]] is a compare-and-swap of a running row, under the same row lock as the fence.
@@ -247,6 +248,18 @@
   (let [status (:status (library-branching.db/lock-task-row id))]
     (when-not (= "running" status)
       {:fenced status})))
+
+(mu/defn succeed-fenced! :- :nil
+  "Ends task `id` as successful with `outcome`, in the current transaction, after [[fence]] of `id` in it returned
+  nil: a cancel or a supersede waits for the end of the transaction, and then finds the task ended. Throws, so that
+  the transaction rolls back, when no transaction is open or the task is not running."
+  [id      :- pos-int?
+   outcome :- [:maybe ::outcome]]
+  (when-not (mdb/in-transaction?)
+    (throw (ex-info "The end of a fenced task needs an open transaction." {:task-id id})))
+  (when-not (end-row! id #{"running"} "successful" {:outcome (some-> outcome json/encode) :progress 1.0})
+    (throw (ex-info "The task is not running, so the transaction cannot end it." {:task-id id :status (:status (task id))})))
+  nil)
 
 (defn commit!
   "Runs `f`, a function of no arguments, as the commit of task `id`, in one transaction that first runs [[fence]].

@@ -158,6 +158,17 @@
   [branch]
   (setting/set! :remote-sync-branch branch))
 
+(defn- end-in-apply
+  "The `:on-commit` hook of an apply that is the work of task `id`: a function of the result of the operation that ends
+  the task as successful with the outcome of `(task-result result)`, then calls `then` (a function of no argument), in
+  the transaction of the apply. So a cancel after the commit of the apply is refused."
+  ([id task-result]
+   (end-in-apply id task-result (constantly nil)))
+  ([id task-result then]
+   (fn [result]
+     (tasks/succeed-fenced! id (:outcome (task-result result)))
+     (then))))
+
 (defn push-task!
   "Runs the push to branch `branch` with the commit message `message` (nil: the default) as the work of task `id`, and
   returns its task result ([[push-task-result]]). With `(:new-branch? opts)`, the push creates `branch`, and the
@@ -175,23 +186,26 @@
 
 (defn pull-task!
   "Runs the pull of branch `branch` as the work of task `id`, and returns its task result ([[pull-task-result]]). The
-  apply of the pull commits only while task `id` is running."
+  apply of the pull commits only while task `id` is running, and ends the task as successful in its transaction."
   [id branch]
   (repository/do-with-store
    (fn [s]
-     (pull-task-result branch (pull/pull! (instance) s branch {:fence (fn [] (tasks/fence id))})))))
+     (pull-task-result branch (pull/pull! (instance) s branch {:fence     (fn [] (tasks/fence id))
+                                                               :on-commit (end-in-apply id (partial pull-task-result branch))})))))
 
 (defn switch-task!
   "Runs the switch of the instance to branch `branch` as the work of task `id`, and returns its task result
   ([[switch-task-result]]). The switch is the pull of `branch`: it merges against the base while a branch holds the
-  base, also when the base is not in the history of `branch`. The branch setting becomes `branch` in the transaction
-  of the apply, or, when the head of `branch` is the base, in a commit of the task; both commit only while task `id`
-  is running."
+  base, also when the base is not in the history of `branch`. The branch setting becomes `branch`, and the task ends
+  as successful, in the transaction of the apply, or, when the head of `branch` is the base, in a commit of the task;
+  both commit only while task `id` is running."
   [id branch]
   (repository/do-with-store
    (fn [s]
-     (let [{:keys [result head] :as pulled} (pull/pull! (instance) s branch {:fence     (fn [] (tasks/fence id))
-                                                                             :on-commit #(write-branch! branch)})]
+     (let [{:keys [result head] :as pulled}
+           (pull/pull! (instance) s branch {:fence     (fn [] (tasks/fence id))
+                                            :on-commit (end-in-apply id (partial switch-task-result branch)
+                                                                     #(write-branch! branch))})]
        (cond
          (not= :up-to-date result) (switch-task-result branch pulled)
          ;; with no base, a branch that does not exist is "up to date"
@@ -221,11 +235,14 @@
 
 (defn deploy-task!
   "Runs the deploy of branch `branch` as the work of task `id`, against the environment of this instance, and returns
-  its task result ([[deploy-task-result]]). The apply of the deploy commits only while task `id` is running."
+  its task result ([[deploy-task-result]]). The apply of the deploy commits only while task `id` is running, and
+  ends the task as successful in its transaction."
   [id branch]
   (repository/do-with-store
    (fn [s]
-     (deploy-task-result branch (deploy/deploy! (instance) s branch (instance-env) {:fence (fn [] (tasks/fence id))})))))
+     (deploy-task-result branch (deploy/deploy! (instance) s branch (instance-env)
+                                                {:fence     (fn [] (tasks/fence id))
+                                                 :on-commit (end-in-apply id (partial deploy-task-result branch))})))))
 
 (defn merge-branch-task!
   "Runs the merge of branch `from` into branch `into` as the work of task `id`, and returns its task result

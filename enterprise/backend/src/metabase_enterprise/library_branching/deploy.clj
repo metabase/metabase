@@ -66,24 +66,27 @@
 (defn- apply-head!
   "Read, the drift check, plan and apply of head `h` with snapshot `r`, against base commit `b`, again after a stale
   precondition, at most `retries` times."
-  [inst store branch {:keys [codecs retries fence]} b h r]
+  [inst store branch {:keys [codecs retries fence on-commit]} b h r]
   (loop [attempt 0]
     (let [l   (:snapshot (instance/read-snapshot inst))
           ids (drift inst store codecs b l r)]
       (if (seq ids)
         {:result :drift :head h :ids (vec ids)}
         ;; With no drift, the base content is the local content, so every step's precondition is the local content.
-        (let [steps  (plan/plan l r l)
-              result (instance/apply-plan! inst steps {:base     b
-                                                       :new-base h
-                                                       :digests  (writer/item-digests codecs r)
-                                                       :head-ok? #(boolean
-                                                                   (when-let [now (store/head store branch)]
-                                                                     (store/ancestor? store h now)))
-                                                       :fence    (or fence (constantly nil))})]
+        (let [steps    (plan/plan l r l)
+              deployed (fn [{:keys [trashed-in-use]}]
+                         {:result :deployed :head h :steps steps :trashed-in-use trashed-in-use})
+              result   (instance/apply-plan! inst steps {:base      b
+                                                         :new-base  h
+                                                         :digests   (writer/item-digests codecs r)
+                                                         :head-ok?  #(boolean
+                                                                      (when-let [now (store/head store branch)]
+                                                                        (store/ancestor? store h now)))
+                                                         :fence     (or fence (constantly nil))
+                                                         :on-commit (comp (or on-commit (constantly nil)) deployed)})]
           (cond
             (:ok result)
-            {:result :deployed :head h :steps steps :trashed-in-use (get-in result [:ok :trashed-in-use])}
+            (deployed (:ok result))
 
             (and (:stale result) (< attempt retries))
             (recur (inc attempt))
@@ -112,7 +115,8 @@
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
   Every result other than `:deployed` writes nothing. `opts`: `:codecs` (default `kinds/codecs`), `:fence` (as in
-  `apply/apply-plan`), `:retries` (default `pull/default-retries`)."
+  `apply/apply-plan`), `:on-commit` (a function of the `:deployed` result that the apply calls last in its
+  transaction, so that its writes commit with the apply), `:retries` (default `pull/default-retries`)."
   ([inst store branch env]
    (deploy! inst store branch env {}))
   ([inst store branch env opts]
