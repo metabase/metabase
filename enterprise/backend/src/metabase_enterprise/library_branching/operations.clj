@@ -239,11 +239,11 @@
 
 (defn merge-branch-task!
   "Runs the merge of branch `from` into branch `into` as the work of task `id`, and returns its task result
-  ([[merge-branch-task-result]])."
+  ([[merge-branch-task-result]]). The commits decode with `pull/decode-opts` of this instance."
   [_id into from]
   (repository/do-with-store
    (fn [s]
-     (merge-branch-task-result into from (merge-branch/merge-branch! s into from)))))
+     (merge-branch-task-result into from (merge-branch/merge-branch! s into from (pull/decode-opts (instance)))))))
 
 ;;; ------------------------------------------------------- Starts -----------------------------------------------------
 

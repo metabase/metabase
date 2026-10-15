@@ -87,9 +87,26 @@
     :tests  [#'old-test/table-settings-test]}
    {:name   :v64-fields-win
     :doc    "The entry of a field in a v64 table settings file wins over its own settings file."
-    :target `old.published-table/fields-attr
+    :target `old.published-table/by-field
     :edits  [[:replace '(some (fn [p] (when (from-file? p) p)) ps) nil]]
     :tests  [#'old-test/field-settings-sources-test]}
+   {:name   :no-remappings
+    :doc    "The remappings of the fields are not content."
+    :target `old.published-table/fields-attr
+    :edits  [[:replace '(assoc-in acc (conj (field-path k) :remapping) remapping) 'acc]]
+    :tests  [#'old-test/table-settings-test #'old-test/remapping-test]}
+   {:name   :remapping-files-not-unique
+    :doc    "Two Dimension files of one field give no finding, and one of them is lost in silence."
+    :target `old.published-table/assemble
+    :edits  [[:replace '(duplicates :key (filter from-file? remappings)) nil]]
+    :tests  [#'old-test/remapping-test]}
+   {:name   :external-remapping-without-target
+    :doc    "A foreign-key remapping has no target field."
+    :target `old.published-table/remapping
+    :edits  [[:replace '(field-key! (or (:human_readable_field_id doc)
+                                        (codec/invalid! "A foreign-key remapping has no target field.")))
+              nil]]
+    :tests  [#'old-test/remapping-test]}
    {:name   :field-files-not-unique
     :doc    "Two settings files of one field give no finding, and one of them is lost in silence."
     :target `old.published-table/assemble
