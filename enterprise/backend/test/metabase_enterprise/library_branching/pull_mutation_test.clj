@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.apply :as apply]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.merge-branch :as merge-branch]
    [metabase-enterprise.library-branching.merge-branch-test :as merge-branch-test]
@@ -16,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def mutations
   "Each mutation removes or weakens one rule of the apply, the pull or merge-branch."

@@ -10,6 +10,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [metabase-enterprise.library-branching.deploy :as deploy]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.kinds.metric :as format.metric]
@@ -24,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defmacro ^:private enabled
   [& body]

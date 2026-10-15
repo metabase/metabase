@@ -10,6 +10,7 @@
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
    [metabase-enterprise.library-branching.api]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.pull-test-util :as pltu]
@@ -26,7 +27,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
@@ -73,7 +74,7 @@
 
 (deftest switch-to-read-only-refuses-local-changes-test
   (testing (str "the switch of a creation instance to the consumption role; app DB " (mdb/db-type))
-    (mt/with-premium-features #{:remote-sync}
+    (mt/with-additional-premium-features #{:remote-sync}
       (rtu/with-synchronous-tasks
         (do-with-pushed-metric!
          (fn [metric c1 _repo]
@@ -155,7 +156,7 @@
 ;;; --------------------------------------------------- Deploy route ---------------------------------------------------
 
 (deftest discard-the-changes-through-the-deploy-route-test
-  (mt/with-premium-features #{:remote-sync}
+  (mt/with-additional-premium-features #{:remote-sync}
     (rtu/with-synchronous-tasks
       (do-with-pushed-metric!
        (fn [metric c1 repo]

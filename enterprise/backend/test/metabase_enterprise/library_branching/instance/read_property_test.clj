@@ -8,6 +8,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [metabase-enterprise.library-branching.engine.count :as engine.count]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.scope :as scope]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
@@ -20,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 ;;; ------------------------------------------------ The generated world ---------------------------------------------
 

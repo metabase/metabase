@@ -8,6 +8,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.deploy :as deploy]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.manifest :as format.manifest]
    [metabase-enterprise.library-branching.format.old-test-util :as old.tu]
    [metabase-enterprise.library-branching.instance :as instance]
@@ -29,7 +30,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))

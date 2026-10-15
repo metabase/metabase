@@ -6,6 +6,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.db :as library-branching.db]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.pull :as pull]
@@ -22,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
@@ -33,11 +34,12 @@
 
 (def ^:private created-ids
   "Entity ids of the rows that a pull of these tests creates."
-  ["lbPullNewMetric000001" "lbPullSnippetOne00001" "lbPullSnippetTwo00001"])
+  ["lbPullNewMetric000001" "lbPullSnippetOne00001" "lbPullSnippetTwo00001" "lbPullPlainFolder0001"])
 
 (defn- delete-created! []
   (t2/delete! :model/Card :entity_id [:in created-ids])
-  (t2/delete! :model/NativeQuerySnippet :entity_id [:in created-ids]))
+  (t2/delete! :model/NativeQuerySnippet :entity_id [:in created-ids])
+  (t2/delete! :model/Collection :entity_id [:in created-ids]))
 
 (defn- do-with-committed-content!
   "Calls `f` with a function `(insert! model row)` that inserts and commits a row and returns it, and the metrics
@@ -241,6 +243,31 @@
              (is (= [[(:entity_id personal) :outside-library]] (map (juxt :id :reason) refused)))
              (is (= "Before" (t2/select-one-fn :name :model/Card (:id metric))))
              (is (= "Personal" (t2/select-one-fn :name :model/Card (:id personal))))
+             (is (= c1 (instance/base inst))))))))))
+
+(deftest library-content-rule-refusal-writes-nothing-test
+  (testing (str "the head holds a collection with no Library type in the Metrics section, which the Library's content "
+                "rule refuses: the pull is refused with the rule's message, and rolls back the writes before it; app DB "
+                (mdb/db-type))
+    (do-with-committed-content!
+     (fn [insert! metrics]
+       (let [metric (insert! :model/Card (metric-row metrics "Before" :entity_id "lbPullAaaMetric000001"))
+             folder (last created-ids)]
+         (with-remote [repo s]
+           (let [[inst c1 base] (pushed! s)
+                 h              (pltu/commit-snapshot! repo ptu/branch [c1]
+                                                       (-> base
+                                                           (ptu/renamed (:entity_id metric) "After")
+                                                           (assoc folder {:kind  :collection :name "Plain folder"
+                                                                          :place (:entity_id metrics) :refs #{}
+                                                                          :attrs {}})))
+                 {:keys [result refused head]} (pull! inst s)]
+             (is (= :refused result))
+             (is (= h head))
+             (is (= [[folder :content-rule "Can only add metrics to the 'Metrics' collection"]]
+                    (map (juxt :id :reason :message) refused)))
+             (is (= "Before" (t2/select-one-fn :name :model/Card (:id metric))))
+             (is (not (t2/exists? :model/Collection :entity_id folder)))
              (is (= c1 (instance/base inst))))))))))
 
 (deftest identity-of-another-kind-test

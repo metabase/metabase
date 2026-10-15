@@ -4,6 +4,7 @@
   Library, the parameter keeps its values source."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.instance.write-test :as write-test]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
@@ -15,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :test-users) features.tu/with-features)
 
 (defn- values-source-param
   "A parameter `p1` whose values come from the column `sum` of card `card-id`."

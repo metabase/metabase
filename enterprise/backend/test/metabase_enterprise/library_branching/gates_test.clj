@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    ;; loads the settings of remote sync, which library branching reuses
    [metabase-enterprise.core.init]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.repository-test-util :refer [with-settings]]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
@@ -23,7 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db) features.tu/with-features)
 
 (def ^:private url "https://git.example.com/library.git")
 
@@ -146,7 +147,7 @@
        (with-role :consumption
          (testing "a cache policy is instance state, not content: a consumption instance takes it"
            (mt/with-model-cleanup [:model/CacheConfig]
-             (mt/with-premium-features #{:cache-granular-controls}
+             (mt/with-additional-premium-features #{:cache-granular-controls}
                (is (=? {:id pos-int?}
                        (mt/user-http-request :crowberto :put 200 "cache/"
                                              {:model "dashboard" :model_id dash-id :strategy {:type "nocache"}}))))))
@@ -202,7 +203,7 @@
    :target        {:database (mt/id) :type "table" :schema "public" :name "lb_gates_target"}})
 
 (deftest transforms-are-read-only-on-a-consumption-instance-test
-  (mt/with-premium-features #{:transforms-basic :hosting}
+  (mt/with-additional-premium-features #{:transforms-basic :hosting}
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms" :namespace :transforms}
                    :model/Transform  {transform-id :id} (transform-row coll-id)]
       (mt/with-current-user (mt/user->id :crowberto)
@@ -253,7 +254,7 @@
   "Calls `(f collection snippet)` with a snippets collection that all users can read and write, a snippet in it, and
   native query permissions for all users."
   [f]
-  (mt/with-premium-features #{:snippet-collections}
+  (mt/with-additional-premium-features #{:snippet-collections}
     (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
       (mt/with-temp [:model/Collection collection {:name "Snippets" :namespace "snippets"}
                      :model/NativeQuerySnippet snippet {:name "Original" :content "SELECT 1"

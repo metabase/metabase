@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.library-branching.apply :as apply]
+   [metabase-enterprise.library-branching.features-test-util :as features.tu]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as format.kinds]
    [metabase-enterprise.library-branching.format.writer :as writer]
@@ -24,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :test-users) features.tu/with-features)
 
 (def ^:private new-question-id "lbWriteQuestion000001")
 (def ^:private new-model-id "lbWriteModel000000001")
