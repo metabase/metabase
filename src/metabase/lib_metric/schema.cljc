@@ -429,9 +429,13 @@
 ;;; These schemas support dimensions as first-class metadata entities
 ;;; fetchable through the MetricContextMetadataProvider.
 
-(mr/def ::dimension-source-type
+(mr/def ::metadata-dimension.source-type
   "Source type indicating whether a dimension comes from a metric or measure."
   [:enum :metric :measure])
+
+(mr/def ::dimension-source-type
+  "Source type indicating whether a dimension comes from a metric or measure."
+  ::metadata-dimension.source-type)
 
 (mr/def ::metadata-dimension
   "Schema for dimension metadata fetchable via metadata provider.
@@ -452,7 +456,7 @@
    [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
    [:default          {:optional true} [:maybe :boolean]]
    ;; Source tracking
-   [:source-type      ::dimension-source-type]
+   [:source-type      ::metadata-dimension.source-type]
    [:source-id        pos-int?]
    ;; Optional mapping for field resolution
    [:dimension-mapping {:optional true} [:maybe ::dimension-mapping]]])

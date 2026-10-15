@@ -23,7 +23,10 @@
           (is (= (if (= :fn (first schema-form))
                    [:any {:typescript value}]
                    schema-form)
-                 (:schema (ex-data error)))))))))
+                 (:schema (ex-data error))))))))
+  (testing "valid :typescript metadata is honored on non-:any schemas"
+    (is (= "number" (schema/schema->ts [:or {:typescript "number"} :double :string])))
+    (is (= "Brand" (schema/schema->ts [:string {:typescript "Brand"}])))))
 
 (deftest ^:parallel collection-precedence-test
   (are [expected schema-form] (= expected (schema/schema->ts schema-form))
@@ -134,7 +137,7 @@
             :boolean])]
       (is (= #{::value} input-registry-refs)))))
 
-(deftest ^:parallel registry-resolution-failure-test
+(deftest registry-resolution-failure-test
   (with-redefs [mr/resolve-schema (fn [_]
                                     (throw (ex-info "broken registry schema" {})))]
     (let [{:keys [type diagnostics]} (schema/schema->result [:ref ::unresolved])]
@@ -159,16 +162,38 @@
               :branches [{:value :field, :value-string "\"field\"", :literal? true}
                          {:value :expression, :value-string "\"expression\"", :literal? true}]}
              multi-branches))))
-  (testing "branches that already declare the literal are flagged without duplication"
-    (let [{:keys [type multi-branches]}
+  (testing "branches that already declare the literal (including :ref, :and, and :merge) are flagged without duplication"
+    (let [registry {::field-branch [:map {:closed true} [:type [:= :field]] [:x :string]]}
+          {:keys [type multi-branches]}
           (schema/schema->result
            [:multi {:dispatch :type}
-            [:field [:map {:closed true} [:type [:= :field]] [:x :string]]]
-            [:other :string]])]
-      (is (= "{\n\ttype: \"field\";\n\tx: string;\n} | string" (type/render type)))
+            [:field [:ref ::field-branch]]
+            [:expression [:and [:map {:closed true} [:type [:= :expression]] [:y :int]] :any]]
+            [:merged [:merge [:map [:type [:= :merged]]] [:map [:z :boolean]]]]
+            [:other :string]]
+           {:registry registry})]
+      (is (= "T_field-branch | {\n\ttype: \"expression\";\n\ty: number;\n} | {\n\ttype: \"merged\";\n\t[key: string]: unknown;\n} & {\n\tz: boolean;\n\t[key: string]: unknown;\n} | string"
+             (type/render type {:ref-name #(str "T_" (name %))})))
       (is (= [{:value :field, :value-string "\"field\"", :literal? true}
+              {:value :expression, :value-string "\"expression\"", :literal? true}
+              {:value :merged, :value-string "\"merged\"", :literal? true}
               {:value :other, :value-string "\"other\"", :literal? false}]
              (:branches multi-branches)))))
+  (testing ":and wrapping a :multi preserves :multi-branches"
+    (let [{:keys [type multi-branches]}
+          (schema/schema->result
+           [:and
+            [:map [:common :boolean]]
+            [:multi {:dispatch :type}
+             [:a [:map {:closed true} [:x :string]]]
+             [:b [:map {:closed true} [:y :int]]]]])]
+      (is (= :intersection (:kind type)))
+      (is (= {:key-string "type"
+              :branches [{:value :a, :value-string "\"a\"", :literal? true}
+                         {:value :b, :value-string "\"b\"", :literal? true}]}
+             multi-branches)))))
+
+(deftest ^:parallel multi-function-and-default-dispatch-test
   (testing "function dispatch requires :ts/dispatch-key for synthesis"
     (let [{:keys [type multi-branches]}
           (schema/schema->result
@@ -492,3 +517,42 @@
             [:map {:closed true}
              [:first :string]
              [:second :int]])))))
+
+(mr/def ::test-descendant-options
+  [:map {:closed true}
+   [:lib/uuid :string]])
+
+(mr/def ::test-descendant-arg
+  :int)
+
+(mr/def ::test-descendant-repeated-args
+  [:repeat {:min 2} [:schema [:ref ::test-descendant-arg]]])
+
+(mr/def ::test-registered-parent
+  [:and
+   [:map {:closed true}
+    [:options ::test-descendant-options]]
+   [:catn
+    [:tag [:= :clause]]
+    [:options [:schema [:ref ::test-descendant-options]]]
+    [:args ::test-descendant-repeated-args]]])
+
+(deftest ^:parallel resolve-registered-schema-preserves-descendant-refs-test
+  (let [resolved (schema/resolve-registered-schema ::test-registered-parent)
+        {:keys [registry-refs]} (schema/schema->result resolved)]
+    (is (= #{::test-descendant-options ::test-descendant-arg} registry-refs))
+    (is (= (str "{\n\toptions: metabase.util.malli.typescript.schema-test/test-descendant-options;\n}"
+                " & [\"clause\", metabase.util.malli.typescript.schema-test/test-descendant-options,"
+                " metabase.util.malli.typescript.schema-test/test-descendant-arg,"
+                " metabase.util.malli.typescript.schema-test/test-descendant-arg,"
+                " ...metabase.util.malli.typescript.schema-test/test-descendant-arg[]]")
+           (schema/schema->ts resolved)))))
+
+(deftest ^:parallel multi-branch-literal-with-properties-test
+  (is (= "t/stage-native | t/stage-mbql"
+         (schema/schema->ts
+          [:multi {:dispatch :lib/type}
+           [:mbql.stage/native [:ref :t/stage-native]]
+           [:mbql.stage/mbql [:ref :t/stage-mbql]]]
+          {:registry {:t/stage-native [:map [:lib/type [:= {:decode/normalize identity} :mbql.stage/native]]]
+                      :t/stage-mbql   [:map [:lib/type [:= {:decode/normalize identity} :mbql.stage/mbql]]]}}))))

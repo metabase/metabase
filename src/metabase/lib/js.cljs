@@ -485,7 +485,7 @@
    (keyword "display-info-outer" (str "stage-" stage-number)) x
    #(display-info* a-query stage-number %)))
 
-(mu/defn ^:export order-by-clause :- ::lib.schema.mbql-clause/clause
+(mu/defn ^:export order-by-clause :- ::lib.schema.order-by/order-by
   "Create an `ORDER BY` clause and return it, independently of a query.
 
   `orderable` can be another [[order-by-clause]], a column, etc.
@@ -1040,14 +1040,14 @@
   [a-query stage-number an-aggregate-clause]
   (lib.core/aggregate a-query stage-number (js->clj an-aggregate-clause :keywordize-keys true)))
 
-(mu/defn ^:export aggregations :- [:any {:ts/array-of ::lib.schema.mbql-clause/clause}]
+(mu/defn ^:export aggregations :- [:any {:ts/array-of ::lib.schema.aggregation/aggregation}]
   "Return a JS array of aggregations on a given stage of `a-query`.
 
   > **Code health:** Healthy"
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
 
-(mu/defn ^:export aggregation-clause :- ::lib.schema.mbql-clause/clause
+(mu/defn ^:export aggregation-clause :- ::lib.schema.aggregation/aggregation
   "Returns a standalone aggregation clause for an `aggregation-operator` and a `column`.
 
   For aggregations requiring an argument, `column` is mandatory, otherwise it is optional.
@@ -1930,7 +1930,7 @@
   "Return a new expression clause like `an-expression-clause` but with name `new-name`.
 
   > **Code health:** Healthy"
-  [an-expression-clause :- [:sequential {:min 2} :any]
+  [an-expression-clause :- ::lib.schema.mbql-clause/clause
    new-name :- :string]
   ;; For normal expressions on a query stage, this sets the `:lib/expression-name` option.
   ;; For custom aggregation expressions this sets the `:display-name` option instead.

@@ -38,13 +38,6 @@
                 metabase.util.time
                 metabase.xrays.domain-entities.queries.util]}
 
-  :typescript-fixture
-  {:target     :npm-module
-   :output-dir "target/cljs_dts_fixture/"
-   :build-hooks [(metabase.util.malli.typescript/produce-dts)]
-   :compiler-options {:reader-features #{:cljs-dev}}
-   :entries    [metabase.util.malli.typescript.fixture]}
-
   :test
   {:target           :node-test
    :output-to        "target/node-tests.js"

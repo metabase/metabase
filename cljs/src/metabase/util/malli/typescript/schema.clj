@@ -1,6 +1,5 @@
 (ns metabase.util.malli.typescript.schema
   (:require
-   [cljs.compiler :as comp]
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.registry :as mregistry]
@@ -26,13 +25,20 @@
    :local-definitions (apply merge (map :local-definitions results))
    :diagnostics (into [] (mapcat :diagnostics) results)})
 
+(defn- union-or-intersected-union?
+  [type-node]
+  (or (= :union (:kind type-node))
+      (and (= :intersection (:kind type-node))
+           (some #(= :union (:kind %)) (:members type-node)))))
+
 (defn- with-type
   [type-node results]
   ;; `:multi-branches` must only survive when the parent type is itself the
-  ;; (possibly widened) union: `Extract<>` cannot distribute through arrays,
-  ;; tuples, maps, or intersections, and emitting it there yields `never`.
+  ;; (possibly widened) union or an intersection containing that union (e.g.,
+  ;; `[:and Common [:multi ...]]`): `Extract<>` distributes across `(Common & (B1 | B2))`,
+  ;; whereas arrays, tuples, and maps do not distribute and would yield `never`.
   (let [result (assoc (merge-result-metadata results) :type type-node)]
-    (if (and (= :union (:kind type-node))
+    (if (and (union-or-intersected-union? type-node)
              (some :multi-branches results))
       (assoc result :multi-branches (some :multi-branches results))
       (dissoc result :multi-branches))))
@@ -420,7 +426,7 @@
                :finite? true)))))
 
 (defn- map-of-key-result
-  [key-schema options]
+  [key-schema]
   (let [schema-type (mc/type (mc/schema key-schema))]
     (cond
       (contains? #{:string :keyword :qualified-keyword :symbol :qualified-symbol :uuid :re} schema-type)
@@ -439,7 +445,7 @@
 (defn- map-of-result
   [malli-schema options]
   (let [[key-schema value-schema] (mc/children malli-schema)
-        key-result (map-of-key-result key-schema options)
+        key-result (map-of-key-result key-schema)
         value-result (schema->result* value-schema options)
         record-type (type/generic "Record" [(:type key-result) (:type value-result)])
         map-type (if (:finite? key-result)
@@ -523,7 +529,7 @@
   "Munge a `:catn` label into a valid TypeScript tuple-element name, or nil
   when no valid identifier results."
   [child-name]
-  (let [munged (some-> child-name name symbol comp/munge str)]
+  (let [munged (some-> child-name name symbol type/cljs-munge str)]
     (when (and munged (re-matches typescript-identifier-pattern munged))
       munged)))
 
@@ -591,6 +597,11 @@
                                    :widened-type member-type}])
             (update :diagnostics conj {:type :composite-sequence-repetition}))))))
 
+(declare resolve-registry-schema)
+
+(def ^:private seqex-schema-types
+  #{:cat :catn :alt :altn :? :* :+ :repeat})
+
 (defn- seqex-result*
   [schema options]
   (let [malli-schema (mc/schema schema)
@@ -624,7 +635,20 @@
       :repeat
       (repeated-seqex-result (first children) properties 0 options)
 
-      (scalar-seqex-result schema options))))
+      (let [ref-key         (cond
+                              (= :ref schema-type)
+                              (first children)
+
+                              (and (= :malli.core/schema schema-type)
+                                   (qualified-keyword? (mc/form malli-schema)))
+                              (mc/form malli-schema))
+            resolved        (when (qualified-keyword? ref-key)
+                              (resolve-registry-schema ref-key options))
+            resolved-schema (when resolved (mc/schema resolved))]
+        (if (and resolved-schema
+                 (contains? seqex-schema-types (mc/type resolved-schema)))
+          (seqex-result* resolved-schema options)
+          (scalar-seqex-result schema options))))))
 
 (defn- fragment->tuple
   [{:keys [items rest widened-type]} options]
@@ -659,7 +683,7 @@
 (defn- parameter-name
   [raw-name index used-names]
   (let [fallback (str "arg" index)
-        munged   (some-> raw-name symbol comp/munge str)
+        munged   (some-> raw-name symbol type/cljs-munge str)
         preferred (if (and munged (re-matches typescript-identifier-pattern munged))
                     munged
                     fallback)]
@@ -795,10 +819,77 @@
           (update result :diagnostics conj (invalid-type-predicate-diagnostic predicate-value))
           result)))))
 
+(defn- try-require-ns!
+  [ns-sym]
+  (try
+    (locking clojure.lang.RT/REQUIRE_LOCK
+      #_{:clj-kondo/ignore [:metabase/modules]}
+      (require ns-sym))
+    true
+    (catch java.io.FileNotFoundException _
+      false)))
+
+(defn- ensure-registry-namespaces-loaded!
+  [form]
+  (when (coll? form)
+    (doseq [kw (filter qualified-keyword? (tree-seq coll? seq form))]
+      (when (nil? (mr/registered-schema kw))
+        (try-require-ns! (symbol (namespace kw))))))
+  form)
+
+(defn- preserved-ref-schema?
+  [schema]
+  (or (= :ref (mc/type schema))
+      (and (= :malli.core/schema (mc/type schema))
+           (qualified-keyword? (mc/form schema)))
+      (and (= :schema (mc/type schema))
+           (map? (:registry (mc/properties schema))))))
+
+(defn- deref-preserving-properties
+  [schema stop-at-refs?]
+  (letfn [(with-properties [schema properties]
+            (mc/-set-properties schema (merge (mc/properties schema) properties)))
+          (deref? [schema]
+            (and (mc/-ref-schema? schema)
+                 (not (and stop-at-refs? (preserved-ref-schema? schema)))))
+          (deref* [schema]
+            (let [dereffed   (-> schema mc/deref (deref-preserving-properties true))
+                  properties (mc/properties schema)]
+              (cond-> dereffed
+                (and (seq properties)
+                     (not (preserved-ref-schema? dereffed)))
+                (with-properties properties))))]
+    (cond-> schema
+      (deref? schema) deref*)))
+
+(defn resolve-registered-schema
+  "Like [[mr/resolve-schema]], but preserves descendant `:ref` and bare
+  registry keyword (`:malli.core/schema`) references instead of inlining them."
+  [schema-keyword]
+  (if (and (qualified-keyword? schema-keyword)
+           (or (some? (mr/registered-schema schema-keyword))
+               (when-let [ns-name (namespace schema-keyword)]
+                 (and (try-require-ns! (symbol ns-name))
+                      (some? (mr/registered-schema schema-keyword))))))
+    (do
+      (ensure-registry-namespaces-loaded! (mr/registered-schema schema-keyword))
+      (let [schema (-> schema-keyword mc/schema (deref-preserving-properties false))]
+        (mc/walk schema
+                 (fn [schema _path children _options]
+                   (cond (preserved-ref-schema? schema)
+                         schema
+
+                         (mc/-ref-schema? schema)
+                         (deref-preserving-properties (mc/-set-children schema children) true)
+
+                         :else
+                         (mc/-set-children schema children))))))
+    (mr/resolve-schema schema-keyword)))
+
 (defn- resolve-registry-schema
   [schema-keyword options]
   (or (get (:registry options) schema-keyword)
-      (mr/resolve-schema schema-keyword)))
+      (resolve-registered-schema schema-keyword)))
 
 (defn- schema-contains-maybe?
   "True when `schema` accepts an explicit undefined value in an argument
@@ -960,19 +1051,39 @@
       :else nil)))
 
 (defn- branch-declares-literal?
-  "True when a branch map already constrains `dispatch-key` to a literal equal
-  to `dispatch-value`, so discrimination works without synthesis."
-  [branch-form dispatch-key dispatch-value]
-  (when (vector? branch-form)
-    (let [{:keys [schema-type children]} (schema-form-parts branch-form)]
-      (and (= :map schema-type)
-           (some (fn [entry]
-                   (when (= dispatch-key (first entry))
-                     (let [value-schema (if (map? (second entry)) (nth entry 2) (second entry))]
-                       (and (vector? value-schema)
-                            (= := (first value-schema))
-                            (= dispatch-value (second value-schema))))))
-                 children)))))
+  "True when a branch map (or a referenced registry schema) already constrains
+  `dispatch-key` to a literal equal to `dispatch-value`, so discrimination
+  works without synthesis."
+  [branch-form dispatch-key dispatch-value options]
+  (let [resolved-form (cond
+                        (qualified-keyword? branch-form)
+                        (some-> (resolve-registry-schema branch-form options) mc/schema mc/form)
+
+                        (and (vector? branch-form)
+                             (= :ref (first branch-form))
+                             (qualified-keyword? (second branch-form)))
+                        (some-> (resolve-registry-schema (second branch-form) options) mc/schema mc/form)
+
+                        :else
+                        branch-form)]
+    (when (vector? resolved-form)
+      (let [{:keys [schema-type children]} (schema-form-parts resolved-form)]
+        (cond
+          (= :map schema-type)
+          (some (fn [entry]
+                  (when (= dispatch-key (first entry))
+                    (let [value-schema (if (map? (second entry)) (nth entry 2) (second entry))
+                          {:keys [schema-type children]} (when (vector? value-schema)
+                                                           (schema-form-parts value-schema))]
+                      (and (= := schema-type)
+                           (= dispatch-value (first children))))))
+                children)
+
+          (contains? #{:and :merge} schema-type)
+          (some #(branch-declares-literal? % dispatch-key dispatch-value options) children)
+
+          :else
+          false)))))
 
 (defn- multi-result
   "Compile a `:multi` as a discriminated union: synthesize the dispatch-key
@@ -988,11 +1099,11 @@
                                    branch-schema  (multi-child-schema child)
                                    branch-form    (mc/form branch-schema)
                                    synthesized    (when dispatch-key
-                                                    (or (synthesize-multi-discriminant
-                                                         branch-form dispatch-key dispatch-value)
-                                                        (when (branch-declares-literal?
-                                                               branch-form dispatch-key dispatch-value)
-                                                          branch-form)))]
+                                                    (if (branch-declares-literal?
+                                                         branch-form dispatch-key dispatch-value options)
+                                                      branch-form
+                                                      (synthesize-multi-discriminant
+                                                       branch-form dispatch-key dispatch-value)))]
                                {:result   (schema->result* (or synthesized branch-schema) options)
                                 :literal? (some? synthesized)}))
                            children)
@@ -1028,6 +1139,9 @@
     (when (contains? properties :typescript)
       (validate-typescript (:typescript properties) {:schema form}))
     (cond
+      (contains? properties :typescript)
+      (result (explicit-type (:typescript properties)))
+
       (contains? number-schema-types schema-type)
       (result (type/primitive "number"))
 
@@ -1149,7 +1263,10 @@
                                       (type/primitive "undefined")]))
             dissoc-multi-branches-unless-union))
 
-      (= schema-type :schema)
+      (or (= schema-type :schema)
+          (and (= schema-type :malli.core/schema)
+               (vector? form)
+               (= :schema (first form))))
       (let [local-registry (:registry properties)
             child-form     (last form)]
         ;; The alias closure resolves transitive local refs after this outer
@@ -1190,7 +1307,7 @@
       (registry-ref-result (first children) options)
 
       (= schema-type :malli.core/schema)
-      (registry-ref-result form options)
+      (registry-ref-result (if (qualified-keyword? form) form (last form)) options)
 
       (contains? properties :typescript)
       (result (explicit-type (:typescript properties)))

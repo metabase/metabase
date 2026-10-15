@@ -24,7 +24,7 @@
   :type/Boolean)
 
 (mr/def ::integer
-  [:or :int [:fn u.number/bigint?]])
+  [:or :int [:fn {:typescript "bigint"} u.number/bigint?]])
 
 (defmethod expression/type-of-method :dispatch-type/integer
   [x]
@@ -33,7 +33,7 @@
 ;;; we should probably also restrict this to disallow NaN and positive/negative infinity, I don't know in what
 ;;; universe we'd want to allow those if they're not disallowed already.
 (mr/def ::non-integer-real
-  #?(:clj [:or
+  #?(:clj [:or {:typescript "number"}
            :double
            :metabase.lib.schema.literal.jvm/float
            :metabase.lib.schema.literal.jvm/big-decimal]

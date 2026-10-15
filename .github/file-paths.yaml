@@ -117,6 +117,7 @@ backend_ci: &backend_ci
 backend_sources: &backend_sources
   - *shared_sources
   - "**deps.edn"
+  - "cljs/**"
   - "enterprise/backend/src/**"
   - "src/**"
   - "modules/drivers/{*,*/{*,!(test)/**}}"
@@ -160,7 +161,7 @@ project_tests_infra: &project_tests_infra
 
 project_backend_checks:
   - *project_tests_infra
-  - "{src,test,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
+  - "{src,test,cljs,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
   - "modules/**/*.clj"
   - "modules/**/*.cljc"
   - "modules/**/*.cljs"
@@ -273,6 +274,7 @@ i18n:
 cljs:
   - *shared_sources
   - *shared_specs
+  - "cljs/**"
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
 

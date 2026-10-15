@@ -1,6 +1,5 @@
 (ns metabase.util.malli.typescript.declaration
   (:require
-   [cljs.compiler :as comp]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -29,6 +28,14 @@
 (def ^:dynamic *shared-types*
   "Set of registry schemas emitted in the shared module. References to these schemas are prefixed with `Shared.`."
   #{})
+
+(def ^:dynamic ^:private *key-transform-name*
+  "Optional function qualifying key-transform helper names (e.g. `Camel` -> `Shared.Camel`)."
+  nil)
+
+(def ^:dynamic ^:private *camel-used?*
+  "Atom recording whether a `:key-transform` AST node was rendered."
+  nil)
 
 (def ^:dynamic *current-ns*
   "Current namespace being processed, used for diagnostics."
@@ -137,8 +144,10 @@
 
 (defn- render-options
   []
-  {:ref-name registry-type-name
-   :input-ref-name input-registry-type-name})
+  (cond-> {:ref-name registry-type-name
+           :input-ref-name input-registry-type-name}
+    *key-transform-name*
+    (assoc :key-transform-name *key-transform-name*)))
 
 (defn branch-type-name
   "Return the TypeScript suffix for a `:multi` branch alias, e.g.
@@ -192,6 +201,8 @@
       (swap! *input-registry-refs* into (:input-registry-refs compiled)))
     (when *local-definitions*
       (swap! *local-definitions* merge (:local-definitions compiled)))
+    (when (and *camel-used?* (type/uses-key-transform? (:type compiled)))
+      (reset! *camel-used?* true))
     (when *diagnostics*
       (swap! *diagnostics* into (:diagnostics compiled)))
     (when (seq (:diagnostics compiled))
@@ -230,7 +241,7 @@
 (defn- cljs-munge
   "Munge a symbol/string using ClojureScript's munge which handles JS reserved words."
   [s]
-  (comp/munge (if (symbol? s) s (symbol (str s)))))
+  (type/cljs-munge s))
 
 (defn- extract-arg-name
   "Extract a valid parameter name from an arglist element.
@@ -816,6 +827,7 @@
                    (symbol sym-ns)
                    ns-or-name)]
       (locking clojure.lang.RT/REQUIRE_LOCK
+        #_{:clj-kondo/ignore [:metabase/modules]}
         (require ns-sym))
       (find-ns ns-sym))
     ns-or-name))
@@ -1072,28 +1084,32 @@
           (throw e))))))
 
 (defn- declaration-result
-  [render defmeta {:keys [current-ns shared-types readonly?]
+  [render defmeta {:keys [current-ns shared-types key-transform-name readonly?]
                    :or {shared-types #{}}}]
-  (let [registry-refs     (atom #{})
+  (let [registry-refs       (atom #{})
         input-registry-refs (atom #{})
-        local-definitions (atom {})
-        diagnostics       (atom [])
-        weak-types        (atom {})]
-    (binding [*registry-refs*     registry-refs
+        local-definitions   (atom {})
+        diagnostics         (atom [])
+        weak-types          (atom {})
+        camel-used?         (atom false)]
+    (binding [*registry-refs*       registry-refs
               *input-registry-refs* input-registry-refs
-              *local-definitions* local-definitions
-              *diagnostics*       diagnostics
-              *shared-types*      shared-types
-              *current-ns*        current-ns
-              *current-def*       (some-> (:name defmeta) name)
-              *weak-types*        weak-types
-              *readonly?*         readonly?]
-      {:declaration       (render defmeta)
-       :registry-refs     @registry-refs
+              *local-definitions*   local-definitions
+              *diagnostics*         diagnostics
+              *shared-types*        shared-types
+              *key-transform-name*  key-transform-name
+              *camel-used?*         camel-used?
+              *current-ns*          current-ns
+              *current-def*         (some-> (:name defmeta) name)
+              *weak-types*          weak-types
+              *readonly?*           readonly?]
+      {:declaration         (render defmeta)
+       :registry-refs       @registry-refs
        :input-registry-refs @input-registry-refs
-       :local-definitions @local-definitions
-       :diagnostics       (vec (distinct @diagnostics))
-       :weak-types        @weak-types})))
+       :local-definitions   @local-definitions
+       :diagnostics         (vec (distinct @diagnostics))
+       :weak-types          @weak-types
+       :camel-used?         @camel-used?})))
 
 (defn fn->result
   "Compile function metadata into declaration text and its reference, local-alias,

@@ -1,22 +1,20 @@
 (ns metabase.util.malli.typescript.build-test
   (:require
-   [cljs.analyzer :as ana]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.typescript.build :as build]
-   [shadow.build.data :as b.data]))
+   [metabase.util.malli.typescript.build :as build]))
 
 (set! *warn-on-reflection* true)
 
 (mr/def ::global-ref :string)
 
 (def ^:private fake-state
-  {::b.data/config
+  {:shadow.build.data/config
    {:entries ['example.entry 'example.empty]}
 
    :compiler-env
-   {::ana/namespaces
+   {:cljs.analyzer/namespaces
     {'example.entry
      {:defs {'exported {:name 'example.entry/exported
                         :schema :string
@@ -41,7 +39,7 @@
   (is (= #{'exported 'untyped-export}
          (set (keys (build/exported-defs
                      (get-in fake-state
-                             [:compiler-env ::ana/namespaces 'example.entry :defs]))))))
+                             [:compiler-env :cljs.analyzer/namespaces 'example.entry :defs]))))))
   (is (= #{'example.entry 'example.empty}
          (set (keys (build/entry-definitions fake-state)))))
   (is (= ["example.empty" "example.entry"]
@@ -49,17 +47,17 @@
           (build/entry-definitions fake-state))))
   (is (nil? (build/module-reexports ['example.entry 'example.dependency]))))
 
-(deftest analyzer-alias-typescript-expression-test
+(deftest ^:parallel analyzer-alias-typescript-expression-test
   (let [state (-> fake-state
-                  (assoc-in [:compiler-env ::ana/namespaces 'example.entry :requires]
+                  (assoc-in [:compiler-env :cljs.analyzer/namespaces 'example.entry :requires]
                             {'birds 'clojure.string})
-                  (assoc-in [:compiler-env ::ana/namespaces 'example.entry :defs 'exported :schema]
+                  (assoc-in [:compiler-env :cljs.analyzer/namespaces 'example.entry :defs 'exported :schema]
                             [:any {:typescript '(birds/join " | " ["string" "number"])}]))
         defs (get (build/entry-definitions state) 'example.entry)
         result (#'build/ts-content 'example.entry defs #{} #{} false)]
     (is (str/includes? (:content result) "export const exported: string | number;"))))
 
-(deftest inline-registries-stay-local-test
+(deftest ^:parallel inline-registries-stay-local-test
   (let [defs {'value {:name 'example.entry/value
                       :schema [:schema
                                {:registry {::local-ref
@@ -73,13 +71,36 @@
     (is (re-find #"Shared.Metabase_Util_Malli_Typescript_BuildTest_GlobalRef" content))
     (is (not (re-find #"Shared.Metabase_Util_Malli_Typescript_BuildTest_LocalRef" content)))))
 
-(deftest shared-alias-diagnostics-test
+(deftest ^:parallel camel-helper-qualification-test
+  (testing "closed camelCase maps emit Shared.Camel<...> when shared module exists without corrupting string literals"
+    (let [defs {'transformed {:name 'example.entry/transformed
+                              :schema [:any {:ts/object-of [:map {:closed true} ["display-name" :string]]
+                                             :ts/key-transform :camelCase}]}
+                'literal {:name 'example.entry/literal
+                          :schema [:= "Camel<not-a-helper>"]}}
+          {:keys [content camel-used?]} (#'build/ts-content
+                                         'example.entry defs #{::global-ref} #{} true)]
+      (is (true? camel-used?))
+      (is (str/includes? content "import type * as Shared from './metabase.lib.shared';"))
+      (is (str/includes? content "Shared.Camel<"))
+      (is (str/includes? content "\"Camel<not-a-helper>\""))
+      (is (not (str/includes? content "Shared.Camel<not-a-helper>")))))
+  (testing "string literal containing Camel< does not trigger Camel helper import when no key-transform AST node is present"
+    (let [defs {'literal {:name 'example.entry/literal
+                          :schema [:= "Camel<not-a-helper>"]}}
+          {:keys [content camel-used?]} (#'build/ts-content
+                                         'example.entry defs #{::global-ref} #{} true)]
+      (is (false? camel-used?))
+      (is (not (str/includes? content "import type * as Shared")))
+      (is (str/includes? content "export const literal: \"Camel<not-a-helper>\";")))))
+
+(deftest ^:parallel shared-alias-diagnostics-test
   (let [result (#'build/generate-shared-types-result #{::missing-ref} false)]
     (is (re-find #"export type .*MissingRef = unknown;" (:content result)))
     (is (some #(= :unresolved-schema-ref (:type %))
               (:diagnostics result)))))
 
-(deftest conflicting-inline-registry-definitions-test
+(deftest ^:parallel conflicting-inline-registry-definitions-test
   (let [defs {'first {:name 'example.entry/first
                       :schema [:schema {:registry {::local-ref :string}} ::local-ref]}
               'second {:name 'example.entry/second
@@ -89,7 +110,7 @@
     (is (= 1 (count (filter #(= :conflicting-inline-registry-definition (:type %))
                             diagnostics))))))
 
-(deftest identical-inline-registry-definitions-test
+(deftest ^:parallel identical-inline-registry-definitions-test
   (let [defs {'first {:name 'example.entry/first
                       :schema [:schema {:registry {::local-ref :string}} ::local-ref]}
               'second {:name 'example.entry/second
@@ -98,7 +119,7 @@
     (is (re-find #"type .*LocalRef = string;" content))
     (is (not-any? #(= :conflicting-inline-registry-definition (:type %)) diagnostics))))
 
-(deftest registry-namespaces-load-on-demand-test
+(deftest ^:parallel registry-namespaces-load-on-demand-test
   (let [factory (ns-resolve 'metabase.util.malli.typescript.build 'registry-schema-resolver)]
     (is (some? factory))
     (when factory
@@ -115,7 +136,7 @@
         (is (nil? (resolver :example.missing/other)))
         (is (= ['example.missing] @attempts))))))
 
-(deftest registry-namespace-load-failures-remain-retryable-test
+(deftest ^:parallel registry-namespace-load-failures-remain-retryable-test
   (let [factory (ns-resolve 'metabase.util.malli.typescript.build 'registry-schema-resolver)
         loaded? (atom false)
         attempts (atom 0)
@@ -137,7 +158,7 @@
     (is (= :string (resolver :example.retry/schema)))
     (is (= 3 @attempts))))
 
-(deftest stale-declaration-cleanup-test
+(deftest ^:parallel stale-declaration-cleanup-test
   (let [directory (.toFile (java.nio.file.Files/createTempDirectory
                             "cljs-dts-test"
                             (make-array java.nio.file.attribute.FileAttribute 0)))
@@ -162,17 +183,18 @@
   (let [directory (.toFile (java.nio.file.Files/createTempDirectory
                             "cljs-dts-produce-test"
                             (make-array java.nio.file.attribute.FileAttribute 0)))
-        output-file (fn [_state filename] (java.io.File. directory filename))
+        output-file (fn [_state ^String filename] (java.io.File. directory filename))
         manifest (java.io.File. directory "cljs-dts-modules.txt")
         old-declaration (java.io.File. directory "old.module.d.ts")
         unrelated-declaration (java.io.File. directory "unrelated.d.ts")
         state (assoc-in fake-state
-                        [:compiler-env ::ana/namespaces 'example.entry :defs 'exported :schema]
+                        [:compiler-env :cljs.analyzer/namespaces 'example.entry :defs 'exported :schema]
                         ::global-ref)]
     (spit manifest "old.module\n")
     (spit old-declaration "old")
     (spit unrelated-declaration "unrelated")
-    (with-redefs [b.data/output-file output-file]
+    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+    (with-redefs [build/output-file output-file]
       (is (= state (build/produce-dts state))))
     (is (= #{"example.empty" "example.entry"}
            (set (str/split-lines (slurp manifest)))))
@@ -184,9 +206,10 @@
     (is (not (.exists old-declaration)))
     (is (.exists unrelated-declaration))
     (let [next-state (assoc-in state
-                               [:compiler-env ::ana/namespaces 'example.entry :defs 'exported :schema]
+                               [:compiler-env :cljs.analyzer/namespaces 'example.entry :defs 'exported :schema]
                                :int)]
-      (with-redefs [b.data/output-file output-file]
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [build/output-file output-file]
         (is (= next-state (build/produce-dts next-state))))
       (is (re-find #"export const exported: number;"
                    (slurp (java.io.File. directory "example.entry.d.ts"))))
@@ -196,17 +219,18 @@
   (let [directory (.toFile (java.nio.file.Files/createTempDirectory
                             "cljs-dts-failure-test"
                             (make-array java.nio.file.attribute.FileAttribute 0)))
-        output-file (fn [_state filename] (java.io.File. directory filename))
+        output-file (fn [_state ^String filename] (java.io.File. directory filename))
         manifest (java.io.File. directory "cljs-dts-modules.txt")
         shared-declaration (java.io.File. directory "metabase.lib.shared.d.ts")
         entry-declaration (java.io.File. directory "example.entry.d.ts")
         state (assoc-in fake-state
-                        [:compiler-env ::ana/namespaces 'example.entry :defs 'exported :schema]
+                        [:compiler-env :cljs.analyzer/namespaces 'example.entry :defs 'exported :schema]
                         ::global-ref)]
     (spit manifest "previous.module\n")
     (spit shared-declaration "previous shared")
     (spit entry-declaration "previous entry")
-    (with-redefs [b.data/output-file output-file]
+    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+    (with-redefs [build/output-file output-file]
       (with-redefs-fn {(ns-resolve 'metabase.util.malli.typescript.build 'ts-content)
                        (fn [& _]
                          (throw (ex-info "generation failed" {})))}

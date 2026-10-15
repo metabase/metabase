@@ -419,8 +419,9 @@
                                ;; it's supposed to be added to the top level. Investigate whether this was just a
                                ;; mistake or what.
                                :middleware)}
-   [:multi {:dispatch      lib-type
-            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
+   [:multi {:dispatch        lib-type
+            :ts/dispatch-key :lib/type
+            :error/message   "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
     [:mbql.stage/mbql   [:ref ::stage.mbql]]]
    (common/disallowed-keys
@@ -442,7 +443,8 @@
   [:multi {:dispatch      lib-type
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
    [:mbql.stage/native [:fn
-                        {:error/message "Native stages are only allowed as the first stage of a query or join."}
+                        {:error/message "Native stages are only allowed as the first stage of a query or join."
+                         :typescript    "never"}
                         (constantly false)]]
    [:mbql.stage/mbql   [:fn
                         {:error/message "Only the initial stage of a query can have a :source-table or :source-card"}
@@ -519,7 +521,7 @@
                  :decode/normalize normalize-stages
                  :default          []}
     [:ref ::stage]]
-   [:cat
+   [:cat {:typescript "unknown"}
     [:schema [:ref ::stage.initial]]
     [:* [:schema [:ref ::stage.additional]]]]
    [:ref ::stages.valid-refs]])

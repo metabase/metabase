@@ -199,7 +199,6 @@
    ::drill-thru.common
    [:map
     [:type       [:= :drill-thru/automatic-insights]]
-    [:lib/type   [:= :metabase.lib.drill-thru/drill-thru]]
     [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
     [:dimensions [:ref ::context.row]]]])
 

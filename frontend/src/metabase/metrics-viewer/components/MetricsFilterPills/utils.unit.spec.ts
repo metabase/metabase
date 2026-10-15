@@ -1,3 +1,7 @@
+import {
+  getDateFilterClause,
+  getDatePickerValue,
+} from "metabase/common/metrics/utils/dates";
 import * as LibMetric from "metabase-lib/metric";
 
 import {
@@ -28,8 +32,61 @@ describe("getFilterDisplayParts", () => {
         label: "Created At:",
         value: `Previous 2 ${unit}s`,
       });
+      expect(LibMetric.relativeDateFilterParts(definition, filter)?.unit).toBe(
+        unit,
+      );
+      expect(getDatePickerValue(definition, filter)).toEqual(
+        unit === "day"
+          ? {
+              type: "relative",
+              unit,
+              value: -2,
+              offsetUnit: undefined,
+              offsetValue: undefined,
+              options: undefined,
+            }
+          : undefined,
+      );
     },
   );
+
+  it("displays unsupported offset units without exposing them in the picker", () => {
+    const definition = setupDefinition(metadata, REVENUE_METRIC.id);
+    const [dimension] = LibMetric.filterableDimensions(definition);
+    const filter = LibMetric.relativeDateFilterClause({
+      dimension,
+      unit: "day",
+      value: -2,
+      offsetUnit: "second",
+      offsetValue: -1,
+    });
+    expect(getDatePickerValue(definition, filter)).toBeUndefined();
+    expect(getFilterDisplayParts(definition, filter)).toEqual({
+      label: "Created At:",
+      value: "Previous 2 days, starting 1 second ago",
+    });
+  });
+
+  it("keeps supported picker units and an omitted includeCurrent flag", () => {
+    const definition = setupDefinition(metadata, REVENUE_METRIC.id);
+    const [dimension] = LibMetric.filterableDimensions(definition);
+    const filter = getDateFilterClause(dimension, {
+      type: "relative",
+      unit: "day",
+      value: -2,
+    });
+    expect(getDatePickerValue(definition, filter)).toEqual({
+      type: "relative",
+      unit: "day",
+      value: -2,
+      offsetUnit: undefined,
+      offsetValue: undefined,
+      options: undefined,
+    });
+    expect(
+      LibMetric.relativeDateFilterParts(definition, filter)?.options,
+    ).toBeNull();
+  });
 
   it("does not crash on an unreadable persisted date", () => {
     const { definition, filter } =

@@ -1,24 +1,27 @@
 (ns metabase.util.malli.typescript.build
   (:require
-   [cljs.analyzer :as ana]
-   [cljs.compiler :as comp]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.typescript.declaration :as declaration]
    [metabase.util.malli.typescript.refs :as refs]
-   [shadow.build.data :as b.data]))
+   [metabase.util.malli.typescript.schema :as schema]
+   [metabase.util.malli.typescript.type :as type]))
 
 (set! *warn-on-reflection* true)
+
+(defn- output-file
+  ^java.io.File [state filename]
+  (let [f (requiring-resolve 'shadow.build.data/output-file)]
+    (f state filename)))
 
 (defn entry-namespaces
   "Return configured Shadow CLJS entry namespaces in declaration order."
   [state]
   (vec (or (get-in state [:shadow.build/config :entries])
-           (get-in state [::b.data/config :entries])
+           (get-in state [:shadow.build.data/config :entries])
            (get-in state [:build-config :entries])
            (get-in state [:config :entries])
            [])))
@@ -34,7 +37,7 @@
 (defn entry-definitions
   "Return exported schema defs for every configured Shadow entry namespace."
   [state]
-  (let [namespaces (get-in state [:compiler-env ::ana/namespaces])]
+  (let [namespaces (get-in state [:compiler-env :cljs.analyzer/namespaces])]
     (into (sorted-map-by #(compare (str %1) (str %2)))
           (map (fn [entry-ns]
                  (let [{:keys [defs requires]} (get namespaces entry-ns)]
@@ -82,14 +85,15 @@
 (defn- try-require-ns
   [ns-sym]
   (try
+    #_{:clj-kondo/ignore [:metabase/modules]}
     (require ns-sym)
     true
     (catch java.io.FileNotFoundException _
-      (log/debug "Skipping CLJS-only registry namespace" {:ns ns-sym})
+      (log/debug "Skipping CLJS-only registry namespace" {:ns-sym ns-sym})
       false)))
 
 (defonce ^:private resolve-global-schema
-  (registry-schema-resolver mr/resolve-schema try-require-ns))
+  (registry-schema-resolver schema/resolve-registered-schema try-require-ns))
 
 (defn- resolve-registry-schema
   [local-definitions schema-keyword]
@@ -98,14 +102,18 @@
 
 (defn- generate-type-alias-result
   ([initial-refs local-definitions expand? ref-name]
-   (generate-type-alias-result initial-refs #{} local-definitions expand? ref-name))
+   (generate-type-alias-result initial-refs #{} local-definitions expand? ref-name nil))
   ([initial-refs input-refs local-definitions expand? ref-name]
-   (let [options {:resolve-schema #(resolve-registry-schema local-definitions %)
-                  :compile-options {:registry local-definitions
-                                    :readonly? (readonly-enabled?)}
-                  :expand? expand?
-                  :type-name declaration/base-type-name
-                  :ref-name ref-name}
+   (generate-type-alias-result initial-refs input-refs local-definitions expand? ref-name nil))
+  ([initial-refs input-refs local-definitions expand? ref-name key-transform-name]
+   (let [options (cond-> {:resolve-schema #(resolve-registry-schema local-definitions %)
+                          :compile-options {:registry local-definitions
+                                            :readonly? (readonly-enabled?)}
+                          :expand? expand?
+                          :type-name declaration/base-type-name
+                          :ref-name ref-name}
+                   key-transform-name
+                   (assoc :key-transform-name key-transform-name))
          value-aliases (refs/type-aliases initial-refs options)
          ;; A value alias can expose a callback whose parameter needs an input
          ;; alias. Follow that contextual edge before deciding where aliases live.
@@ -119,22 +127,28 @@
                                  :contextual-input? true
                                  :dependency-refs :input-registry-refs
                                  :compile-options (assoc (:compile-options options)
-                                                         :argument-context? true))))]
+                                                         :argument-context? true))))
+         definitions (merge (:definitions value-aliases) (:definitions input-aliases))]
      {:declarations (into (:declarations value-aliases) (:declarations input-aliases))
-      :definitions (merge (:definitions value-aliases) (:definitions input-aliases))
+      :definitions definitions
       :refs-used (into (:refs-used value-aliases) (:refs-used input-aliases))
-      :diagnostics (into (:diagnostics value-aliases) (:diagnostics input-aliases))})))
+      :diagnostics (into (:diagnostics value-aliases) (:diagnostics input-aliases))
+      :camel-used? (boolean (some (comp type/uses-key-transform? :type) (vals definitions)))})))
 
 (defn- merge-weak-types
   [results]
   (apply merge-with into (map :weak-types results)))
 
 (defn- declaration-results
-  [ns defs shared-types]
-  (mapv #(declaration/def->result % {:current-ns ns
-                                     :shared-types shared-types
-                                     :readonly? (readonly-enabled?)})
-        (vals defs)))
+  ([ns defs shared-types]
+   (declaration-results ns defs shared-types false))
+  ([ns defs shared-types shared-exists?]
+   (let [key-transform-name (when shared-exists? #(str "Shared." %))]
+     (mapv #(declaration/def->result % {:current-ns ns
+                                        :shared-types shared-types
+                                        :key-transform-name key-transform-name
+                                        :readonly? (readonly-enabled?)})
+           (vals defs)))))
 
 (defn- merged-local-definitions
   [results]
@@ -202,16 +216,13 @@
        "\n"
        "export type Camel<T> = { [K in keyof T as CamelCase<K & string>]: T[K] };\n"))
 
-(defn- uses-camel-helper?
-  [content]
-  (boolean (str/includes? content "Camel<")))
-
 (defn- ts-content
   "Generate TypeScript content and diagnostics for one runtime entry namespace."
   ([ns defs shared-types ns-refs shared-exists?]
    (ts-content ns defs shared-types ns-refs #{} shared-exists?))
   ([ns defs shared-types ns-refs ns-input-refs shared-exists?]
-   (let [results        (declaration-results ns defs shared-types)
+   (let [key-transform-name (when shared-exists? #(str "Shared." %))
+         results        (declaration-results ns defs shared-types shared-exists?)
          declarations   (str/join "\n\n" (map :declaration results))
          direct-refs    (into (set ns-refs) (mapcat :registry-refs) results)
          direct-input-refs (into (set ns-input-refs) (mapcat :input-registry-refs) results)
@@ -222,10 +233,12 @@
                          local-input-refs
                          local-defs
                          #(not (contains? shared-types %))
-                         #(declaration/registry-type-name % shared-types))
+                         #(declaration/registry-type-name % shared-types)
+                         key-transform-name)
          type-aliases   (str/join "\n\n" (:declarations alias-result))
          shared-refs-used (filter shared-types (:refs-used alias-result))
-         camel-used?    (uses-camel-helper? (str type-aliases "\n" declarations))
+         camel-used?    (boolean (or (some :camel-used? results)
+                                     (:camel-used? alias-result)))
          import-stmt    (when (and shared-exists? (or (seq shared-refs-used) camel-used?))
                           "import type * as Shared from './metabase.lib.shared';\n\n")
          inline-helper  (when (and camel-used? (not shared-exists?))
@@ -236,13 +249,9 @@
                                (if (seq type-aliases)
                                  (str "// Type aliases for registry schemas\n" type-aliases "\n\n" declarations)
                                  declarations))
-                          "export {};")
-         ;; The Camel helper lives in the shared module; entry modules reach it as
-         ;; Shared.Camel so the identifier resolves under the namespace import.
-         content        (if (and shared-exists? camel-used?)
-                          (str/replace content "Camel<" "Shared.Camel<")
-                          content)]
+                          "export {};")]
      {:content content
+      :camel-used? camel-used?
       :diagnostics (vec (concat (mapcat :diagnostics results)
                                 local-diagnostics
                                 (:diagnostics alias-result)))
@@ -262,7 +271,7 @@
          declarations (str/join "\n\n" (:declarations alias-result))]
      {:content (str "// Shared type aliases for registry schemas reachable from generated declarations\n"
                     "// Auto-generated - do not edit\n\n"
-                    (when (or camel-used? (uses-camel-helper? declarations))
+                    (when (or camel-used? (:camel-used? alias-result))
                       (str camel-helper-content "\n"))
                     declarations)
       :diagnostics (:diagnostics alias-result)})))
@@ -304,7 +313,7 @@
 
 (defn- declaration-module-names
   [nses-defs]
-  (mapv #(comp/munge (str %)) (keys nses-defs)))
+  (mapv #(type/cljs-munge (str %)) (keys nses-defs)))
 
 (defn- cleanup-stale-declarations!
   [^java.io.File output-directory previous-modules current-modules shared?]
@@ -354,12 +363,12 @@
   "Shadow-cljs build hook that writes generated TypeScript declaration files for exported CLJS values."
   {:shadow.build/stage :flush}
   [state]
-  (let [nses         (get-in state [:compiler-env ::ana/namespaces])
+  (let [nses         (get-in state [:compiler-env :cljs.analyzer/namespaces])
         total        (count nses)
         nses-defs    (entry-definitions state)
         defs-count   (count nses-defs)
         module-names (declaration-module-names nses-defs)
-        manifest-file (b.data/output-file state "cljs-dts-modules.txt")
+        manifest-file (output-file state "cljs-dts-modules.txt")
         output-directory (.getParentFile ^java.io.File manifest-file)
         previous-modules (previous-module-names manifest-file)
         weak-types   (atom {})]
@@ -379,16 +388,15 @@
           module-results
           (mapv (fn [[ns defs]]
                   (let [t            (u/start-timer)
-                        fname        (comp/munge (str ns))
+                        fname        (type/cljs-munge (str ns))
                         this-ns-refs (get ns-refs ns #{})
                         result       (ts-content ns defs shared-refs this-ns-refs
-                                                 (get ns-input-refs ns #{}) shared-exists?)
-                        camel-used?  (uses-camel-helper? (:content result))]
+                                                 (get ns-input-refs ns #{}) shared-exists?)]
                     (swap! weak-types #(merge-with into % (:weak-types result)))
                     (log/debug "Type generation completed" {:ns ns :time (u/since-ms t)})
-                    {:file (b.data/output-file state (str fname ".d.ts"))
+                    {:file (output-file state (str fname ".d.ts"))
                      :ns ns
-                     :camel-used? camel-used?
+                     :camel-used? (:camel-used? result)
                      :result result}))
                 nses-defs)
           any-camel-used? (boolean (some :camel-used? module-results))
@@ -404,7 +412,7 @@
         (log/debug "TypeScript schema diagnostics" {:ns ns
                                                     :diagnostics (:diagnostics result)}))
       (when shared-result
-        (write-file-atomically! (b.data/output-file state "metabase.lib.shared.d.ts")
+        (write-file-atomically! (output-file state "metabase.lib.shared.d.ts")
                                 (:content shared-result))
         (log/debug "Generated shared types file" {:types (count shared-refs)}))
       (log/debug "Pass 2: Writing per-namespace type files")

@@ -44,7 +44,9 @@
                          (type/function-type [{:name "x", :type (type/unknown)}]
                                              (type/primitive "boolean"))
                          0
-                         (type/primitive "string"))))))
+                         (type/primitive "string")))))))
+
+(deftest ^:parallel readonly-and-raw-precedence-test
   (testing "readonly containers"
     (are [expected node] (= expected (type/render node))
       "readonly string[]"
@@ -76,9 +78,36 @@
       (type/generic "Promise" [(type/array (type/raw "string|number"))])
 
       "[...(string|number)[]]"
-      (type/tuple [] (type/raw "string|number"))))
+      (type/tuple [] (type/raw "string|number")))))
+
+(deftest ^:parallel simplification-and-key-transform-test
   (testing "key-transform helper node"
-    (is (= "Camel<{\n\t\"display-name\": string;\n}>"
-           (type/render (type/key-transform-type
-                         "Camel"
-                         (type/object [{:name "\"display-name\"", :type (type/primitive "string")}])))))))
+    (let [node (type/key-transform-type
+                "Camel"
+                (type/object [{:name "\"display-name\"", :type (type/primitive "string")}]))]
+      (is (true? (type/uses-key-transform? node)))
+      (is (false? (type/uses-key-transform? (type/literal "Camel<foo>"))))
+      (is (= "Camel<{\n\t\"display-name\": string;\n}>"
+             (type/render node)))
+      (is (= "Shared.Camel<{\n\t\"display-name\": string;\n}>"
+             (type/render node {:key-transform-name #(str "Shared." %)})))))
+  (testing "never and unknown simplification in unions and intersections"
+    (is (= "string"
+           (type/render (type/union [(type/primitive "string")
+                                     (type/raw "never")]))))
+    (is (= "never"
+           (type/render (type/union [(type/raw "never")
+                                     (type/primitive "never")]))))
+    (is (= "never"
+           (type/render (type/intersection [(type/primitive "string")
+                                            (type/raw "never")]))))
+    (is (= "\"drill-thru/pk\""
+           (type/render (type/union [(type/literal "drill-thru/pk")
+                                     (type/intersection [(type/literal "metabase.lib.drill-thru/drill-thru")
+                                                         (type/raw "never")])]))))
+    (is (= "string"
+           (type/render (type/intersection [(type/primitive "string")
+                                            (type/unknown)]))))
+    (is (= "unknown"
+           (type/render (type/intersection [(type/unknown)
+                                            (type/unknown)]))))))

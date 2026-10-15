@@ -1,9 +1,44 @@
 (ns metabase.util.malli.typescript.type
-  (:refer-clojure :exclude [array])
   (:require
    [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private js-reserved
+  #{"abstract" "arguments" "await" "boolean" "break" "byte" "case" "catch"
+    "char" "class" "const" "constructor" "continue" "debugger" "default"
+    "delete" "do" "double" "else" "enum" "export" "extends" "final"
+    "finally" "float" "for" "function" "goto" "if" "implements" "import"
+    "in" "instanceof" "int" "interface" "let" "long" "methods" "native"
+    "new" "null" "package" "private" "protected" "public" "return" "short"
+    "static" "super" "switch" "synchronized" "this" "throw" "throws"
+    "transient" "try" "typeof" "var" "void" "volatile" "while" "with"
+    "yield"})
+
+(def ^:private cljs-compiler-munge
+  (delay
+    (try
+      (requiring-resolve 'cljs.compiler/munge)
+      (catch Throwable _
+        nil))))
+
+(defn cljs-munge
+  "Munge a symbol or string using ClojureScript's munge rules (including JS reserved words).
+   Uses `cljs.compiler/munge` when ClojureScript is on the classpath, falling back to an
+   equivalent JVM implementation when running backend tests without `:cljs`."
+  [s]
+  (if-let [munge-fn @cljs-compiler-munge]
+    (munge-fn s)
+    (let [ss (-> (str s)
+                 (str/replace ".." "_DOT__DOT_")
+                 (str/replace #"\/(.)" ".$1"))
+          ss (->> (str/split ss #"\.")
+                  (map #(if (contains? js-reserved %) (str % "$") %))
+                  (str/join "."))
+          ms (clojure.lang.Compiler/munge ss)]
+      (if (symbol? s)
+        (symbol ms)
+        ms))))
 
 (defn primitive
   "Return a primitive TypeScript type node."
@@ -31,21 +66,33 @@
   [kind nodes]
   (mapcat #(if (= kind (:kind %)) (:members %) [%]) nodes))
 
+(defn- never?
+  [node]
+  (or (and (= :primitive (:kind node))
+           (= "never" (:name node)))
+      (and (= :raw (:kind node))
+           (= "never" (str/trim (:typescript node))))))
+
 (defn union
-  "Return a normalized TypeScript union node. Unknown absorbs every other member."
+  "Return a normalized TypeScript union node. Unknown absorbs every other member; never is identity."
   [members]
-  (let [members (vec (distinct (flatten-kind :union members)))]
+  (let [all-members (vec (distinct (flatten-kind :union members)))
+        members     (vec (remove never? all-members))]
     (cond
       (some #(= :unknown (:kind %)) members) (unknown)
-      (empty? members)                         (unknown)
-      (= 1 (count members))                    (first members)
-      :else                                    {:kind :union, :members members})))
+      (empty? all-members)                   (unknown)
+      (empty? members)                       (first all-members)
+      (= 1 (count members))                  (first members)
+      :else                                  {:kind :union, :members members})))
 
 (defn intersection
-  "Return a normalized TypeScript intersection node."
+  "Return a normalized TypeScript intersection node. Never absorbs every other member; unknown is identity."
   [members]
-  (let [members (vec (distinct (flatten-kind :intersection members)))]
+  (let [all-members (vec (distinct (flatten-kind :intersection members)))
+        members     (vec (remove #(= :unknown (:kind %)) all-members))]
     (cond
+      (empty? all-members)  (unknown)
+      (some never? members) (first (filter never? members))
       (empty? members)      (unknown)
       (= 1 (count members)) (first members)
       :else                 {:kind :intersection, :members members})))
@@ -257,7 +304,10 @@
                 (render-child (:return node) (precedence :function) options))))
 
        :key-transform
-       (let [rendered (str (:name node) "<" (render-child (:inner node) 0 options) ">")]
+       (let [helper-name (if-let [f (:key-transform-name options)]
+                           (f (:name node))
+                           (:name node))
+             rendered    (str helper-name "<" (render-child (:inner node) 0 options) ">")]
          (if (:readonly? node)
            (str "Readonly<" rendered ">")
            rendered))
@@ -270,6 +320,12 @@
          (throw (ex-info "Cannot render a TypeScript ref without :ref-name" {:node node})))
 
        (throw (ex-info "Unsupported TypeScript type node" {:node node})))}))
+
+(defn uses-key-transform?
+  "Return true when `node` or any descendant AST node is a `:key-transform` wrapper."
+  [node]
+  (boolean (some #(and (map? %) (= :key-transform (:kind %)))
+                 (tree-seq coll? seq node))))
 
 (defn render
   "Render a TypeScript type node to source text."

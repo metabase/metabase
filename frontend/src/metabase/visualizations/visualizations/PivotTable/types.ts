@@ -9,19 +9,12 @@ type PivotTableClickDataRow = Omit<ClickObjectDataRow, "col"> & {
   colIdx: number;
 };
 
-export type PivotTableClicked =
-  | {
-      value: RowValue;
-      colIdx: number;
-      data?: never;
-      dimensions?: never;
-    }
-  | {
-      value?: RowValue;
-      colIdx?: never;
-      data?: PivotTableClickDataRow[];
-      dimensions?: PivotTableClickDimension[];
-    };
+export type PivotTableClicked = {
+  value: RowValue;
+  colIdx: number;
+  data?: PivotTableClickDataRow[];
+  dimensions?: PivotTableClickDimension[];
+};
 
 export interface HeaderItem {
   clicked: PivotTableClicked | null;

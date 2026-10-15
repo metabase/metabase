@@ -63,10 +63,15 @@
         {::tagged [:multi {:dispatch :type}
                    [:field [:map {:closed true} [:x :string]]]
                    [:expression [:map {:closed true} [:y :int]]]]
+         ::intersected [:and
+                        [:map {:closed true} [:common :boolean]]
+                        [:multi {:dispatch :type}
+                         [:mbql [:map {:closed true} [:stages :int]]]
+                         [:native [:map {:closed true} [:query :string]]]]]
          ::other :string}
         {declarations :declarations}
         (refs/type-aliases
-         #{::tagged}
+         #{::tagged ::intersected}
          {:resolve-schema multi-schemas
           :compile-options {:registry multi-schemas}
           :type-name test-type-name
@@ -76,6 +81,10 @@
     (is (some #(= "export type T_tagged_Field = Extract<T_tagged, { \"type\": \"field\" }>;" %)
               declarations))
     (is (some #(= "export type T_tagged_Expression = Extract<T_tagged, { \"type\": \"expression\" }>;" %)
+              declarations))
+    (is (some #(= "export type T_intersected_Mbql = Extract<T_intersected, { \"type\": \"mbql\" }>;" %)
+              declarations))
+    (is (some #(= "export type T_intersected_Native = Extract<T_intersected, { \"type\": \"native\" }>;" %)
               declarations))))
 
 (deftest ^:parallel phantom-discriminant-test
@@ -115,7 +124,7 @@
                                :ref-name test-type-name})))]
       (is (contains? declarations "export type T_union-one = ({\n\tx: string;\n} | {\n\ty: number;\n}) & {\n\t__kind?: \"T_union-one\";\n};"))
       (is (contains? declarations "export type T_intersection-one = {\n\tx: string;\n} & {\n\ty: number;\n} & {\n\t__kind?: \"T_intersection-one\";\n};"))))
-  (testing "object intersections retain tags across opaque constraint refs"
+  (testing "object intersections retain tags and strip opaque constraint refs"
     (let [schemas {::constraint :any
                    ::query-one [:and [:map {:closed true} [:x :string]] [:ref ::constraint]]
                    ::query-two [:and [:map {:closed true} [:x :string]] [:ref ::constraint]]}
@@ -126,8 +135,10 @@
                           :compile-options {:registry schemas}
                           :type-name test-type-name
                           :ref-name test-type-name}))]
-      (is (some #(str/includes? % "__kind?: \"T_query-one\"") declarations))
-      (is (some #(str/includes? % "__kind?: \"T_query-two\"") declarations))))
+      (is (some #(= "export type T_query-one = {\n\tx: string;\n} & {\n\t__kind?: \"T_query-one\";\n};" %) declarations))
+      (is (some #(= "export type T_query-two = {\n\tx: string;\n} & {\n\t__kind?: \"T_query-two\";\n};" %) declarations)))))
+
+(deftest ^:parallel phantom-discriminant-tuples-test
   (testing "structurally identical tuples retain phantom distinctions"
     (let [schemas {::tuple-one [:tuple [:maybe :string] :int]
                    ::tuple-two [:tuple [:maybe :string] :int]}
@@ -139,7 +150,9 @@
                           :type-name test-type-name
                           :ref-name test-type-name}))]
       (is (some #(str/includes? % "export type T_tuple-one = [string | null, number] & {\n\t__kind?: \"T_tuple-one\";") declarations))
-      (is (some #(str/includes? % "export type T_tuple-two = [string | null, number] & {\n\t__kind?: \"T_tuple-two\";") declarations))))
+      (is (some #(str/includes? % "export type T_tuple-two = [string | null, number] & {\n\t__kind?: \"T_tuple-two\";") declarations)))))
+
+(deftest ^:parallel phantom-discriminant-exclusions-test
   (testing "nullable and mixed aliases retain their non-object alternatives"
     (let [colliding-schemas
           {::nullable-one [:maybe [:map {:closed true} [:x :string]]]
@@ -265,6 +278,20 @@
             :type-name test-type-name
             :ref-name test-type-name})]
       (is (re-find #"T_node\[\]" (first declarations)))
+      (is (empty? diagnostics))))
+  (testing "indirect recursion through a guarded target is retained"
+    (let [recursive-schemas {::ref [:or :string [:ref ::clause]]
+                             ::clause [:tuple [:= :op] [:ref ::ref]]}
+          {:keys [declarations diagnostics]}
+          (refs/type-aliases
+           #{::ref}
+           {:resolve-schema recursive-schemas
+            :compile-options {:registry recursive-schemas}
+            :type-name test-type-name
+            :ref-name test-type-name})]
+      (is (= ["export type T_clause = [\"op\", T_ref];"
+              "export type T_ref = string | T_clause;"]
+             declarations))
       (is (empty? diagnostics))))
   (testing "unguarded recursive refs become unknown"
     (let [recursive-schemas {::left [:or :string [:ref ::right]]

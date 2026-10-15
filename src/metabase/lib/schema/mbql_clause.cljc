@@ -30,7 +30,9 @@
   @tag-registry)
 
 (def ^:private invalid-clause-schema
-  [:fn {:error/message "not a known MBQL clause"} (constantly false)])
+  [:fn {:error/message "not a known MBQL clause"
+        :typescript "never"}
+   (constantly false)])
 
 (mu/defn- mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."

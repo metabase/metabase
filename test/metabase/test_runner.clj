@@ -81,6 +81,7 @@
 (def ^:private excluded-directories
   [".clj-kondo/src"
    "classes"
+   "cljs/src"
    "dev"
    "enterprise/backend/src"
    "local"

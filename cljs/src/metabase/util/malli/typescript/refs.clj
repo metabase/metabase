@@ -91,6 +91,15 @@
   (or (= schema-keyword ref-keyword)
       (reachable? graph ref-keyword schema-keyword)))
 
+(defn- unguarded-refs
+  "Return registry references reachable from `node` without crossing a guarded
+  TypeScript type constructor (object, array, tuple, generic, key-transform, or function)."
+  [node]
+  (case (:kind node)
+    :ref #{(:schema-keyword node)}
+    (:union :intersection) (into #{} (mapcat unguarded-refs) (:members node))
+    #{}))
+
 (defn- preserve-node-flags
   "Rebuilt nodes drop flags the constructors don't take; carry them over."
   [original rebuilt]
@@ -99,26 +108,39 @@
 
 (declare make-recursion-safe*)
 
+(defn- resolves-to-unknown?
+  ([node lookup-type]
+   (resolves-to-unknown? node lookup-type #{}))
+  ([node lookup-type seen]
+   (case (:kind node)
+     :unknown true
+     :ref (let [schema-keyword (:schema-keyword node)]
+            (and (not (contains? seen schema-keyword))
+                 (when-let [target (lookup-type schema-keyword)]
+                   (resolves-to-unknown? target lookup-type (conj seen schema-keyword)))))
+     :intersection (every? #(resolves-to-unknown? % lookup-type seen) (:members node))
+     false)))
+
 (defn- transform-tuple-item
-  [schema-keyword graph guarded? item]
+  [schema-keyword graph lookup-type guarded? item]
   (if (and (map? item) (contains? item :type))
     (let [[item-type diagnostics]
-          (make-recursion-safe* schema-keyword graph guarded? (:type item))]
+          (make-recursion-safe* schema-keyword graph lookup-type guarded? (:type item))]
       [(assoc item :type item-type) diagnostics])
-    (make-recursion-safe* schema-keyword graph guarded? item)))
+    (make-recursion-safe* schema-keyword graph lookup-type guarded? item)))
 
 (defn- transform-many
-  [schema-keyword graph guarded? nodes]
+  [schema-keyword graph lookup-type guarded? nodes]
   (reduce (fn [[transformed diagnostics] node]
             (let [[new-node node-diagnostics]
-                  (make-recursion-safe* schema-keyword graph guarded? node)]
+                  (make-recursion-safe* schema-keyword graph lookup-type guarded? node)]
               [(conj transformed new-node)
                (into diagnostics node-diagnostics)]))
           [[] []]
           nodes))
 
 (defn- make-recursion-safe*
-  [schema-keyword graph guarded? node]
+  [schema-keyword graph lookup-type guarded? node]
   (case (:kind node)
     :ref
     (let [ref-keyword (:schema-keyword node)]
@@ -132,36 +154,40 @@
 
     :union
     (let [[members diagnostics]
-          (transform-many schema-keyword graph guarded? (:members node))]
+          (transform-many schema-keyword graph lookup-type guarded? (:members node))]
       [(type/union members) diagnostics])
 
     :intersection
     (let [[members diagnostics]
-          (transform-many schema-keyword graph guarded? (:members node))]
-      [(type/intersection members) diagnostics])
+          (transform-many schema-keyword graph lookup-type guarded? (:members node))
+          non-unknown-members (vec (remove #(resolves-to-unknown? % lookup-type) members))]
+      [(type/intersection (if (seq non-unknown-members)
+                            non-unknown-members
+                            [(type/unknown)]))
+       diagnostics])
 
     :array
     (let [[element diagnostics]
-          (make-recursion-safe* schema-keyword graph true (:element node))]
+          (make-recursion-safe* schema-keyword graph lookup-type true (:element node))]
       [(preserve-node-flags node (type/array element)) diagnostics])
 
     :generic
     (let [[arguments diagnostics]
-          (transform-many schema-keyword graph true (:arguments node))]
+          (transform-many schema-keyword graph lookup-type true (:arguments node))]
       [(preserve-node-flags node (type/generic (:name node) arguments)) diagnostics])
 
     :tuple
     (let [[items item-diagnostics]
           (reduce (fn [[transformed diagnostics] item]
                     (let [[new-item new-diagnostics]
-                          (transform-tuple-item schema-keyword graph true item)]
+                          (transform-tuple-item schema-keyword graph lookup-type true item)]
                       [(conj transformed new-item)
                        (into diagnostics new-diagnostics)]))
                   [[] []]
                   (:items node))
           [rest-type rest-diagnostics]
           (if-let [rest-type (:rest node)]
-            (make-recursion-safe* schema-keyword graph true rest-type)
+            (make-recursion-safe* schema-keyword graph lookup-type true rest-type)
             [nil []])]
       [(preserve-node-flags node (type/tuple items rest-type))
        (into item-diagnostics rest-diagnostics)])
@@ -170,14 +196,14 @@
     (let [[properties property-diagnostics]
           (reduce (fn [[transformed diagnostics] property]
                     (let [[property-type new-diagnostics]
-                          (make-recursion-safe* schema-keyword graph true (:type property))]
+                          (make-recursion-safe* schema-keyword graph lookup-type true (:type property))]
                       [(conj transformed (assoc property :type property-type))
                        (into diagnostics new-diagnostics)]))
                   [[] []]
                   (:properties node))
           [index-value index-diagnostics]
           (if-let [index-signature (:index-signature node)]
-            (make-recursion-safe* schema-keyword graph true (:value index-signature))
+            (make-recursion-safe* schema-keyword graph lookup-type true (:value index-signature))
             [nil []])
           index-signature (when-let [signature (:index-signature node)]
                             (assoc signature :value index-value))]
@@ -186,25 +212,25 @@
 
     :key-transform
     (let [[inner diagnostics]
-          (make-recursion-safe* schema-keyword graph true (:inner node))]
+          (make-recursion-safe* schema-keyword graph lookup-type true (:inner node))]
       [(preserve-node-flags node (type/key-transform-type (:name node) inner)) diagnostics])
 
     :function
     (let [[parameters parameter-diagnostics]
           (reduce (fn [[transformed diagnostics] parameter]
                     (let [[parameter-type new-diagnostics]
-                          (make-recursion-safe* schema-keyword graph true (:type parameter))]
+                          (make-recursion-safe* schema-keyword graph lookup-type true (:type parameter))]
                       [(conj transformed (assoc parameter :type parameter-type))
                        (into diagnostics new-diagnostics)]))
                   [[] []]
                   (:parameters node))
           [return-type return-diagnostics]
-          (make-recursion-safe* schema-keyword graph true (:return node))
+          (make-recursion-safe* schema-keyword graph lookup-type true (:return node))
           rebuilt (type/function-type parameters return-type)
           [predicate predicate-diagnostics]
           (if-let [predicate (:predicate node)]
             (let [[predicate-type diagnostics]
-                  (make-recursion-safe* schema-keyword graph true (:type predicate))]
+                  (make-recursion-safe* schema-keyword graph lookup-type true (:type predicate))]
               [{:parameter (:parameter predicate), :type predicate-type} diagnostics])
             [nil []])]
       [(cond-> rebuilt predicate (type/function-predicate (:parameter predicate) (:type predicate)))
@@ -256,21 +282,34 @@
   "Generate deterministic TypeScript aliases for a registry dependency closure.
 
   Options extend `dependency-closure` and require `:type-name` and `:ref-name`."
-  [initial-refs {:keys [type-name ref-name contextual-input? input-ref-name] :as options}]
+  [initial-refs {:keys [type-name ref-name contextual-input? input-ref-name key-transform-name
+                        resolve-schema compile-options]
+                 :or {compile-options {}}
+                 :as options}]
   (let [input-ref-name (or input-ref-name
                            #(let [reference (ref-name %)]
                               (if (str/starts-with? reference "Shared.")
                                 (str "Shared.Input_" (subs reference (count "Shared.")))
                                 (str "Input_" reference))))
-        render-options {:ref-name ref-name
-                        :input-ref-name input-ref-name}
-        {:keys [definitions graph refs-used diagnostics] :as closure}
+        render-options (cond-> {:ref-name ref-name
+                                :input-ref-name input-ref-name}
+                         key-transform-name
+                         (assoc :key-transform-name key-transform-name))
+        {:keys [definitions local-definitions refs-used diagnostics] :as closure}
         (dependency-closure initial-refs options)
+        lookup-type (memoize
+                     (fn [schema-keyword]
+                       (or (get-in definitions [schema-keyword :type])
+                           (when-let [definition (resolve-definition resolve-schema local-definitions schema-keyword)]
+                             (:type (schema/schema->result
+                                     definition
+                                     (update compile-options :registry merge local-definitions)))))))
+        unguarded-graph (update-vals definitions #(unguarded-refs (:type %)))
         safe-types
         (into {}
               (map (fn [[schema-keyword compiled]]
                      (let [[safe-type recursion-diagnostics]
-                           (make-recursion-safe* schema-keyword graph false (:type compiled))]
+                           (make-recursion-safe* schema-keyword unguarded-graph lookup-type false (:type compiled))]
                        [schema-keyword {:type safe-type
                                         :diagnostics recursion-diagnostics
                                         :multi-branches (:multi-branches compiled)}])))
@@ -300,11 +339,13 @@
                                 type)
                 declaration (str "export type " alias-name " = "
                                  (type/render rendered-type render-options) ";")
-                ;; Extract<> only distributes over a plain union; skip it when the
-                ;; alias was phantom-wrapped into an intersection.
+                ;; Extract<> distributes over a union (including a union intersected with common fields);
+                ;; skip it when the alias was phantom-wrapped into an intersection.
                 extract-declarations
                 (when (and (nil? phantom)
-                           (= :union (:kind type))
+                           (or (= :union (:kind type))
+                               (and (= :intersection (:kind type))
+                                    (some #(= :union (:kind %)) (:members type))))
                            (:key-string multi-branches)
                            (<= 2 (count (filter :literal? (:branches multi-branches)))))
                   (keep (fn [{:keys [value value-string literal?]}]

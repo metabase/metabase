@@ -63,7 +63,13 @@
                                                                                 [:sequential [:map
                                                                                               [:clicked [:maybe [:map
                                                                                                                  [:value [:any {:typescript "string | number | boolean | null | object"}]]
-                                                                                                                 [:colIdx :int]]]]
+                                                                                                                 [:colIdx :int]
+                                                                                                                 [:data {:optional true} [:sequential [:map
+                                                                                                                                                       [:value [:any {:typescript "string | number | boolean | null | object"}]]
+                                                                                                                                                       [:colIdx :int]]]]
+                                                                                                                 [:dimensions {:optional true} [:sequential [:map
+                                                                                                                                                             [:value [:any {:typescript "string | number | boolean | null | object"}]]
+                                                                                                                                                             [:colIdx :int]]]]]]]
                                                                                               [:hasChildren :boolean]
                                                                                               [:depth :int]
                                                                                               [:maxDepthBelow :int]

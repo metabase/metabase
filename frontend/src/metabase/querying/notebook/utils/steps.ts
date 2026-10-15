@@ -82,12 +82,9 @@ const STEPS: NotebookStepDef[] = [
       return Lib.expressions(query, stageIndex).length > 0;
     },
     revert: (query, stageIndex) => {
-      return Lib.expressions(query, stageIndex).reduce<Lib.Query>(
-        (query, expression) => {
-          return Lib.removeClause(query, stageIndex, expression);
-        },
-        query,
-      );
+      return Lib.expressions(query, stageIndex).reduce((query, expression) => {
+        return Lib.removeClause(query, stageIndex, expression);
+      }, query);
     },
     canRevert: () => true,
   },
@@ -105,7 +102,7 @@ const STEPS: NotebookStepDef[] = [
       return Lib.filters(query, stageIndex).length > 0;
     },
     revert: (query, stageIndex) => {
-      return Lib.filters(query, stageIndex).reduce<Lib.Query>(
+      return Lib.filters(query, stageIndex).reduce(
         (query, filter) => Lib.removeClause(query, stageIndex, filter),
         query,
       );
@@ -135,7 +132,7 @@ const STEPS: NotebookStepDef[] = [
         ...Lib.aggregations(query, stageIndex),
       ];
 
-      return clauses.reduce<Lib.Query>(
+      return clauses.reduce(
         (query, clause) => Lib.removeClause(query, stageIndex, clause),
         query,
       );

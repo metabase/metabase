@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import console from "node:console";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,28 +9,6 @@ import { spawnSync } from "node:child_process";
 import ts from "typescript";
 
 const outputDirectory = path.resolve(process.argv[2] ?? "target/cljs_dev");
-const fixtureDirectory = path.resolve("target/cljs_dts_fixture");
-const fixtureDeclaration = path.join(
-  fixtureDirectory,
-  "metabase.util.malli.typescript.fixture.d.ts",
-);
-const consumerFixtures = [
-  path.resolve("bin/cljs-dts-consumer.ts"),
-  path.resolve("bin/cljs-dts-semantic-consumer.ts"),
-];
-if (process.env.MB_CLJS_TS_READONLY) {
-  consumerFixtures.push(path.resolve("bin/cljs-dts-readonly-consumer.ts"));
-}
-
-function buildSemanticFixtures() {
-  const result = spawnSync("bun", ["run", "build-cljs-dts-fixtures"], {
-    stdio: "inherit",
-  });
-  if (result.status !== 0) {
-    throw new Error("Failed to generate semantic declaration fixtures");
-  }
-}
-
 async function generatedDeclarations(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   return entries
@@ -66,11 +45,7 @@ const temporaryDirectory = await mkdtemp(
 const configPath = path.join(temporaryDirectory, "tsconfig.json");
 
 try {
-  buildSemanticFixtures();
-  const explicitAny = [
-    ...(await explicitAnyLocations(outputDirectory)),
-    ...(await explicitAnyLocations(fixtureDirectory)),
-  ];
+  const explicitAny = await explicitAnyLocations(outputDirectory);
   if (explicitAny.length > 0) {
     for (const location of explicitAny) {
       console.error(`Explicit any in generated declaration: ${location}`);
@@ -87,17 +62,12 @@ try {
           noEmit: true,
           paths: {
             "cljs/*": [path.join(outputDirectory, "*")],
-            "cljs/metabase.util.malli.typescript.fixture": [fixtureDeclaration],
           },
           exactOptionalPropertyTypes: true,
           skipLibCheck: false,
           strict: true,
         },
-        include: [
-          path.join(outputDirectory, "**/*.d.ts"),
-          fixtureDeclaration,
-          ...consumerFixtures,
-        ],
+        include: [path.join(outputDirectory, "**/*.d.ts")],
         exclude: [path.resolve("node_modules")],
       }),
     );
