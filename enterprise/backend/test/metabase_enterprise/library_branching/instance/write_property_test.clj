@@ -38,7 +38,7 @@
   "The world of the current test var, or nil."
   nil)
 
-(defn- do-with-world-rows!
+(defn- do-with-world-rows
   "Makes the rows of a world, calls `f` with `{keyword value}`, the values of the keywords of the generated items for
   its containers and metrics, and then deletes the rows."
   [f]
@@ -85,7 +85,7 @@
             ::users-name      (t2/select-one-fn :display_name :model/Table (mt/id :users))})))))
 
 ;; An :each fixture, so a run of the :once fixtures alone makes no rows.
-(use-fixtures :each (fn [t] (do-with-world-rows! (fn [world] (binding [*world* world] (t))))))
+(use-fixtures :each (fn [t] (do-with-world-rows (fn [world] (binding [*world* world] (t))))))
 
 (defn- do-with-world!
   "Calls `f` with the world of the current test var (a new world when there is none) in a transaction that rolls
@@ -94,7 +94,7 @@
   (let [in-tx #(t2/with-transaction [_ nil {:rollback-only true}] (f %))]
     (if *world*
       (in-tx *world*)
-      (do-with-world-rows! in-tx))))
+      (do-with-world-rows in-tx))))
 
 (defn- resolve-item
   "`item` with each keyword of this namespace replaced by its value in `world`."
