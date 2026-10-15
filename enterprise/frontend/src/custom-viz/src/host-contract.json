@@ -211,7 +211,7 @@
         "effective_type": "type/Text",
         "semantic_type": null
       },
-      "predicates": ["isAny", "isString"]
+      "predicates": ["isString"]
     },
     "category": {
       "column": {
@@ -220,7 +220,7 @@
         "effective_type": "type/Text",
         "semantic_type": "type/Category"
       },
-      "predicates": ["isAny", "isCategory", "isString"]
+      "predicates": ["isCategory", "isString"]
     },
     "title": {
       "column": {
@@ -229,7 +229,7 @@
         "effective_type": "type/Text",
         "semantic_type": "type/Title"
       },
-      "predicates": ["isAny", "isCategory", "isString", "isTitle"]
+      "predicates": ["isCategory", "isString", "isTitle"]
     },
     "url": {
       "column": {
@@ -238,7 +238,7 @@
         "effective_type": "type/Text",
         "semantic_type": "type/URL"
       },
-      "predicates": ["isAny", "isString", "isURL"]
+      "predicates": ["isString", "isURL"]
     },
     "email": {
       "column": {
@@ -247,7 +247,7 @@
         "effective_type": "type/Text",
         "semantic_type": "type/Email"
       },
-      "predicates": ["isAny", "isEmail", "isString"]
+      "predicates": ["isEmail", "isString"]
     },
     "integer": {
       "column": {
@@ -257,7 +257,6 @@
         "semantic_type": null
       },
       "predicates": [
-        "isAny",
         "isInteger",
         "isNumber",
         "isNumeric",
@@ -272,13 +271,7 @@
         "effective_type": "type/Float",
         "semantic_type": null
       },
-      "predicates": [
-        "isAny",
-        "isNumber",
-        "isNumeric",
-        "isNumericBaseType",
-        "isSummable"
-      ]
+      "predicates": ["isNumber", "isNumeric", "isNumericBaseType", "isSummable"]
     },
     "count": {
       "column": {
@@ -288,7 +281,6 @@
         "semantic_type": "type/Quantity"
       },
       "predicates": [
-        "isAny",
         "isInteger",
         "isNumber",
         "isNumeric",
@@ -304,13 +296,7 @@
         "effective_type": "type/Float",
         "semantic_type": null
       },
-      "predicates": [
-        "isAny",
-        "isNumber",
-        "isNumeric",
-        "isNumericBaseType",
-        "isSummable"
-      ]
+      "predicates": ["isNumber", "isNumeric", "isNumericBaseType", "isSummable"]
     },
     "currency": {
       "column": {
@@ -320,7 +306,6 @@
         "semantic_type": "type/Currency"
       },
       "predicates": [
-        "isAny",
         "isCurrency",
         "isFloat",
         "isNumber",
@@ -337,7 +322,6 @@
         "semantic_type": "type/Percentage"
       },
       "predicates": [
-        "isAny",
         "isFloat",
         "isNumber",
         "isNumeric",
@@ -354,7 +338,6 @@
         "semantic_type": "type/Score"
       },
       "predicates": [
-        "isAny",
         "isNumber",
         "isNumeric",
         "isNumericBaseType",
@@ -369,7 +352,7 @@
         "effective_type": "type/Boolean",
         "semantic_type": null
       },
-      "predicates": ["isAny", "isBoolean"]
+      "predicates": ["isBoolean"]
     },
     "date": {
       "column": {
@@ -378,7 +361,7 @@
         "effective_type": "type/Date",
         "semantic_type": null
       },
-      "predicates": ["isAny", "isDate", "isDateWithoutTime"]
+      "predicates": ["isDate", "isDateWithoutTime"]
     },
     "datetime": {
       "column": {
@@ -387,7 +370,7 @@
         "effective_type": "type/DateTime",
         "semantic_type": null
       },
-      "predicates": ["isAny", "isDate"]
+      "predicates": ["isDate"]
     },
     "date-breakout": {
       "column": {
@@ -397,7 +380,7 @@
         "semantic_type": "type/CreationTimestamp",
         "unit": "day"
       },
-      "predicates": ["isAny", "isDate"]
+      "predicates": ["isDate"]
     },
     "month-breakout": {
       "column": {
@@ -407,7 +390,7 @@
         "semantic_type": "type/CreationTimestamp",
         "unit": "month"
       },
-      "predicates": ["isAny", "isDate"]
+      "predicates": ["isDate"]
     },
     "day-of-week": {
       "column": {
@@ -418,7 +401,6 @@
         "unit": "day-of-week"
       },
       "predicates": [
-        "isAny",
         "isInteger",
         "isNumeric",
         "isNumericBaseType",
@@ -434,7 +416,6 @@
         "unit": "hour-of-day"
       },
       "predicates": [
-        "isAny",
         "isInteger",
         "isNumeric",
         "isNumericBaseType",
@@ -449,7 +430,6 @@
         "semantic_type": "type/PK"
       },
       "predicates": [
-        "isAny",
         "isID",
         "isInteger",
         "isNumeric",
@@ -465,7 +445,6 @@
         "semantic_type": "type/FK"
       },
       "predicates": [
-        "isAny",
         "isFK",
         "isID",
         "isInteger",
@@ -481,7 +460,6 @@
         "semantic_type": "type/Latitude"
       },
       "predicates": [
-        "isAny",
         "isCoordinate",
         "isFloat",
         "isLatitude",
@@ -499,7 +477,6 @@
         "semantic_type": "type/Longitude"
       },
       "predicates": [
-        "isAny",
         "isCoordinate",
         "isFloat",
         "isLongitude",
@@ -516,13 +493,7 @@
         "effective_type": "type/Text",
         "semantic_type": "type/Country"
       },
-      "predicates": [
-        "isAddress",
-        "isAny",
-        "isCategory",
-        "isCountry",
-        "isString"
-      ]
+      "predicates": ["isAddress", "isCategory", "isCountry", "isString"]
     },
     "state": {
       "column": {
@@ -531,7 +502,7 @@
         "effective_type": "type/Text",
         "semantic_type": "type/State"
       },
-      "predicates": ["isAddress", "isAny", "isCategory", "isState", "isString"]
+      "predicates": ["isAddress", "isCategory", "isState", "isString"]
     }
   }
 }

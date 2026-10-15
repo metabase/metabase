@@ -33,6 +33,8 @@ const CONTRACT: HostContract = JSON.parse(readFileSync(CONTRACT_PATH, "utf-8"));
 
 const COLOR_SCHEMES: ColorScheme[] = ["light", "dark"];
 
+const IGNORED_PREDICATES = ["isAny", "hasLatitudeAndLongitudeColumns"];
+
 const HOST_COLOR_NAMES = new Set<string>([
   ...Object.keys(colors),
   ...ALL_COLOR_NAMES,
@@ -108,7 +110,7 @@ const getHostPredicates = (kind: string, column: object) =>
   Object.entries(customVizColumnTypes)
     .filter(
       ([name, predicate]) =>
-        name !== "hasLatitudeAndLongitudeColumns" &&
+        !IGNORED_PREDICATES.includes(name) &&
         predicate({ name: kind, display_name: kind, source: "", ...column }),
     )
     .map(([name]) => name)
