@@ -2862,6 +2862,21 @@
           (migrate!)
           (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
 
+(deftest delete-table-and-field-remote-sync-objects-test
+  (testing "v58.2026-10-15T00:00:00: the RemoteSyncObject rows of Tables and Fields are deleted, other rows stay"
+    (impl/test-migrations ["v58.2026-10-15T00:00:00"] [migrate!]
+      (let [insert-rso! (fn [model-type]
+                          (t2/insert-returning-pk! :remote_sync_object {:model_type        model-type
+                                                                        :model_id          1
+                                                                        :model_name        model-type
+                                                                        :status            "update"
+                                                                        :status_changed_at :%now}))
+            kept        (mapv insert-rso! ["TableUserSettings" "FieldUserSettings" "Dimension" "Card"])]
+        (insert-rso! "Table")
+        (insert-rso! "Field")
+        (migrate!)
+        (is (= (set kept) (t2/select-pks-set :remote_sync_object)))))))
+
 (deftest retire-confirmed-at-v59-ids-test
   (testing "v59.2026-07-10T22:29:18 deletes the changelog rows of the confirmed_at changesets that moved to v63 ids"
     (impl/test-migrations "v59.2026-07-10T22:29:18" [migrate!]
@@ -3954,18 +3969,3 @@
         (is (t2/exists? :data_app :id app-id))
         (is (t2/exists? :permissions_group :id ordinary-group))
         (is (empty? (t2/select :data_app_group_assignment)))))))
-
-(deftest delete-table-and-field-remote-sync-objects-test
-  (testing "v58.2026-10-15T00:00:00: the RemoteSyncObject rows of Tables and Fields are deleted, other rows stay"
-    (impl/test-migrations ["v58.2026-10-15T00:00:00"] [migrate!]
-      (let [insert-rso! (fn [model-type]
-                          (t2/insert-returning-pk! :remote_sync_object {:model_type        model-type
-                                                                        :model_id          1
-                                                                        :model_name        model-type
-                                                                        :status            "update"
-                                                                        :status_changed_at :%now}))
-            kept        (mapv insert-rso! ["TableUserSettings" "FieldUserSettings" "Dimension" "Card"])]
-        (insert-rso! "Table")
-        (insert-rso! "Field")
-        (migrate!)
-        (is (= (set kept) (t2/select-pks-set :remote_sync_object)))))))
