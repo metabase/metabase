@@ -463,6 +463,22 @@
                 "Most introduced, by the budgets the new linters and measures started with"
                 "Shrinks no commit accounts for"]
                (headlines lines))))
+      (testing "lists the first six budgets of a commit and sums the rest"
+        (is (= ["  seed  Ada  Seed"
+                "    :l0  starting at 0"
+                "    :l1  starting at 1"
+                "    :l2  starting at 2"
+                "    :l3  starting at 3"
+                "    :l4  starting at 4"
+                "    :l5  starting at 5"
+                "    2 more budgets, starting at 13 in all"]
+               (->> (history/summary "of all time"
+                                     {:commits 1
+                                      :seeded  [{:commit {:sha "seed", :author "Ada", :subject "Seed"}
+                                                 :items  (for [i (range 8)]
+                                                           {:measure (str ":l" i), :budget (str i), :size i})}]})
+                    (drop-while #(not= "New ratchets over existing debt" %))
+                    rest))))
       (testing "ranks authors by net change and names what no commit explains"
         (is (= ["                shrunk  grown  net"
                 "Cy                  -7      0   -7"

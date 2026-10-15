@@ -1190,13 +1190,15 @@
                      (for [row totals] (cons (:measure row) (cells row)))
                      [(cons "total" (cells total))])))))
 
-(def ^:private biggest-shown 8)
+(def ^:private items-shown
+  "How many items of one commit a list shows, in the terminal and on the page, before it sums the rest."
+  6)
 
 (defn- biggest-lines
   "Lines for a `:best` or `:worst` of a [[report]]: the commit, its net change, then that change per linter.
-  The linters past [[biggest-shown]] are summed."
+  The linters past [[items-shown]] are summed."
   [{:keys [commit net measures]}]
-  (let [[shown more] (split-at biggest-shown measures)
+  (let [[shown more] (split-at items-shown measures)
         width        (apply max (map (comp count signed :delta) measures))
         row          (fn [delta label]
                        (str "  " (colored-delta delta) (apply str (repeat (- width (count (signed delta))) " "))
@@ -1217,29 +1219,33 @@
     line))
 
 (defn- seed-lines
-  "Lines for the `:seeded` commits of a [[report]].
-  Each budget gets a line, or the commit gets one line with their count and sum when there are many."
+  "Lines for the `:seeded` commits of a [[report]]: a line per budget, with those past [[items-shown]] summed."
   [groups]
   (for [{:keys [commit items]} groups
-        line (cons (commit-line commit)
-                   (if (< 5 (count items))
-                     [(format "  %d budgets, starting at %d in all" (count items) (reduce + (map :size items)))]
-                     (for [{:keys [measure budget]} items]
-                       (str "  " measure "  starting at " budget))))]
+        :let [[shown more] (split-at items-shown items)]
+        line (concat [(commit-line commit)]
+                     (for [{:keys [measure budget]} shown]
+                       (str "  " measure "  starting at " budget))
+                     (when (seq more)
+                       [(format "  %d more budgets, starting at %d in all" (count more) (reduce + (map :size more)))]))]
     line))
 
-(defn- suspect-lines [groups]
+(defn- suspect-lines
+  "Lines for the `:suspects` of a [[report]]: a line per raise, with those past [[items-shown]] summed, then how
+  to settle them."
+  [groups]
   (when (seq groups)
     (concat
      (for [{:keys [commit items]} groups
-           line (cons (commit-line commit)
-                      (if (< 5 (count items))
-                        [(format "  %s over %d budgets, with %d suppressions added"
-                                 (colored-delta (reduce + (map :delta items)))
-                                 (count items)
-                                 (reduce + (map :added items)))]
-                        (for [{:keys [measure delta added]} items]
-                          (format "  %s %s, with %d suppressions added" (colored-delta delta) measure added))))]
+           :let [[shown more] (split-at items-shown items)]
+           line (concat [(commit-line commit)]
+                        (for [{:keys [measure delta added]} shown]
+                          (format "  %s %s, with %d suppressions added" (colored-delta delta) measure added))
+                        (when (seq more)
+                          [(format "  %s over %d more budgets, with %d suppressions added"
+                                   (colored-delta (reduce + (map :delta more)))
+                                   (count more)
+                                   (reduce + (map :added more)))]))]
        line)
      ["Settle each with: ./bin/mage kondo-ratchets-history --pardon|--confirm <commit or PR> --why <reason>"])))
 
@@ -1438,6 +1444,7 @@
                          :generated today
                          :series    (series records settled)
                          :verdicts  (rulings entries record)
+                         :shown     items-shown
                          :excluded  (for [[linter why] uncounted-linters]
                                       {:linter (str linter), :why why})
                          :periods   (periods today settled)}))
