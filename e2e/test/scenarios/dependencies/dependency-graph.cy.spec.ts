@@ -889,7 +889,7 @@ function getSnippetTemplateTags({
   snippetName: string;
 }): TestNativeQuerySpec["templateTags"] {
   return {
-    [`snippet:${snippetName}`]: {
+    [`snippet: ${snippetName}`]: {
       type: "snippet",
       "snippet-id": snippetId,
       "snippet-name": snippetName,
@@ -1068,7 +1068,7 @@ function createSnippetBasedCard({
   snippetName: string;
 }) {
   return createWritableNativeQuery({
-    query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
+    query: `SELECT * FROM ${tableName} WHERE {{snippet: ${snippetName}}}`,
     templateTags: getSnippetTemplateTags({ snippetId, snippetName }),
   }).then((query) => H.createCard({ name, type, dataset_query: query }));
 }
@@ -1176,7 +1176,7 @@ function createSnippetBasedTransform({
   snippetName: string;
 }) {
   return createWritableNativeQuery({
-    query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
+    query: `SELECT * FROM ${tableName} WHERE {{snippet: ${snippetName}}}`,
     templateTags: getSnippetTemplateTags({ snippetId, snippetName }),
   }).then((query) =>
     createTransformFromQuery({
@@ -1259,7 +1259,7 @@ function createSnippetBasedAction({
 }) {
   return createDataAction({
     name: SNIPPET_BASED_ACTION_NAME,
-    query: `DELETE FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
+    query: `DELETE FROM ${tableName} WHERE {{snippet: ${snippetName}}}`,
     templateTags: getSnippetTemplateTags({ snippetId, snippetName }),
   });
 }
@@ -1290,7 +1290,7 @@ function createEmptySnippet() {
 function createSnippetBasedSnippet({ snippetName }: { snippetName: string }) {
   return H.createSnippet({
     name: SNIPPET_BASED_SNIPPET_NAME,
-    content: `{{snippet:${snippetName}}}`,
+    content: `{{snippet: ${snippetName}}}`,
   });
 }
 
