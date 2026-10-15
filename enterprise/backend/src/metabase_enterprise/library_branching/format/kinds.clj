@@ -16,7 +16,7 @@
    :snippet         snippet/spec})
 
 (def codecs
-  "One codec for each kind of `snapshot/kinds`, for `tree/encode-tree`, `tree/decode-tree` and `layout/layout`."
+  "One codec for each kind of `snapshot/kinds`, for `writer/encode-tree`, `tree/decode-tree` and `layout/layout`."
   [collection/codec metric/codec published-table/codec snippet/codec])
 
 (defn refs

@@ -1,0 +1,23 @@
+databases:
+- engine: h2
+  name: Sample Database
+  tables:
+  - fields:
+    - {base_type: type/DateTime, effective_type: type/DateTime, name: CREATED_AT}
+    - {base_type: type/BigInteger, effective_type: type/BigInteger, name: ID}
+    - {base_type: type/Integer, effective_type: type/Integer, name: PRODUCT_ID}
+    - {base_type: type/Float, effective_type: type/Float, name: TOTAL}
+    - {base_type: type/Integer, effective_type: type/Integer, name: USER_ID}
+    name: ORDERS
+    schema: PUBLIC
+  - fields:
+    - {base_type: type/BigInteger, effective_type: type/BigInteger, name: ID}
+    - {base_type: type/Text, effective_type: type/Text, name: NAME}
+    name: PEOPLE
+    schema: PUBLIC
+  - fields:
+    - {base_type: type/Text, effective_type: type/Text, name: CATEGORY}
+    - {base_type: type/BigInteger, effective_type: type/BigInteger, name: ID}
+    name: PRODUCTS
+    schema: PUBLIC
+format: library-branching-manifest/1

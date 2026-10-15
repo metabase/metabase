@@ -10,7 +10,8 @@
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase-enterprise.library-branching.test-util :as lb.tu]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,6 +69,19 @@
     (is (not (valid? (-> example (dissoc metric-id) (assoc ["Sample Database" "PUBLIC" "REVENUE"] metric)))))
     (is (not (valid? (-> example (dissoc orders-key) (assoc ["Sample Database" "ORDERS"] (get example orders-key))))))
     (is (valid? (-> example (dissoc orders-key) (assoc ["Sample Database" nil "ORDERS"] (get example orders-key)))))))
+
+(def ^:private entity-id-like-gen
+  "Strings near the NanoID form: 19 to 23 characters, mostly of the NanoID alphabet."
+  (gen/fmap (partial apply str)
+            (gen/bind (gen/choose 19 23)
+                      #(gen/vector (gen/frequency [[20 (gen/elements "ABCXYZabcxyz0189_-")]
+                                                   [1 (gen/elements [\. \space \~ \é \newline])]])
+                                   %))))
+
+(defspec entity-id-is-the-nano-id-schema-test 300
+  ;; `::snapshot/entity-id` is a copy, because babashka cannot load `metabase.util.malli.schema`.
+  (prop/for-all [s (gen/one-of [entity-id-like-gen lb.tu/entity-id-gen gen/string])]
+    (= (mr/validate ms/NanoIdString s) (mr/validate ::snapshot/entity-id s))))
 
 (deftest ^:parallel compare-identities-test
   (testing "entity ids come before table keys; entity ids by string order; table keys part by part, nil first"

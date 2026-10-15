@@ -6,6 +6,7 @@
    [metabase-enterprise.library-branching.engine.diff :as diff]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.kinds :as kinds]
+   [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
@@ -167,7 +168,7 @@
                   :let [c (get by-kind (:kind item))]]
             (testing (pr-str id)
               (is (mr/validate (codec/schema c) item))
-              (is (= [id item] (codec/decode c (codec/read-yaml (codec/write-yaml (codec/encode c id item)))))))))))))
+              (is (= [id item] (codec/decode c (codec/read-yaml (writer/write-yaml (codec/encode c id item)))))))))))))
 
 ;;; ------------------------------------------------- Local changes ------------------------------------------------
 

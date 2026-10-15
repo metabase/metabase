@@ -5,12 +5,12 @@
   (:require
    [metabase-enterprise.library-branching.format.kinds.common :as common]
    [metabase-enterprise.library-branching.format.kinds.portable :as portable]
-   [metabase-enterprise.library-branching.snapshot :as snapshot]
-   [metabase.util.malli.registry :as mr]))
+   [metabase-enterprise.library-branching.registry :as registry]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::query
+(registry/def ::query
   [:and
    [:map
     [:database :string]
@@ -64,7 +64,7 @@
    :decode-attrs #'decode-attrs
    :refs         #'refs})
 
-(mr/def ::item (common/item-schema spec))
+(registry/def ::item (common/item-schema spec))
 
 (def codec
   "The codec of the kind :metric."

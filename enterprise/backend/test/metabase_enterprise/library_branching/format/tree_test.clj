@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.format.layout :as layout]
    [metabase-enterprise.library-branching.format.toy-codec :as toy]
    [metabase-enterprise.library-branching.format.tree :as tree]
+   [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.mutation.core :as mut]))
 
 (set! *warn-on-reflection* true)
@@ -33,25 +34,25 @@
 
 (defspec round-trip-test 200
   (prop/for-all [s (toy/toy-snapshot-gen)]
-    (= {:snapshot s} (tree/decode-tree toy/codecs (vals (tree/encode-tree toy/codecs s))))))
+    (= {:snapshot s} (tree/decode-tree toy/codecs (vals (writer/encode-tree toy/codecs s))))))
 
 (defspec path-law-test 200
   ;; Alloy DecodeIgnoresPaths: the files at any other paths, a flat list `<n>.yaml` in a random order included, decode
   ;; to the same snapshot. decode-tree takes no path, so a renaming is a new order of the files.
   (prop/for-all [[s order] (gen/bind (toy/toy-snapshot-gen)
                                      (fn [s] (gen/tuple (gen/return s) (gen/shuffle (range (inc (count s)))))))]
-    (let [files (vec (vals (tree/encode-tree toy/codecs s)))
+    (let [files (vec (vals (writer/encode-tree toy/codecs s)))
           flat  (into {} (map-indexed (fn [n i] [(str n ".yaml") (nth files i)])) order)]
       (= {:snapshot s} (tree/decode-tree toy/codecs (vals flat))))))
 
 (defspec canonical-tree-test 200
   (prop/for-all [s (toy/toy-snapshot-gen)]
-    (trees= (tree/encode-tree toy/codecs s)
-            (tree/encode-tree (reverse toy/codecs) (scramble s)))))
+    (trees= (writer/encode-tree toy/codecs s)
+            (writer/encode-tree (reverse toy/codecs) (scramble s)))))
 
 (defspec tree-paths-test 100
   (prop/for-all [s (toy/toy-snapshot-gen)]
-    (let [t (tree/encode-tree toy/codecs s)]
+    (let [t (writer/encode-tree toy/codecs s)]
       (and (= (set (keys t)) (conj (set (vals (layout/layout toy/codecs s))) tree/format-path))
            (not (tree/old-format? (keys t)))))))
 
@@ -68,7 +69,7 @@
 
 (deftest encode-tree-test
   (testing "each item is at its layout path, and the format version file is at .metabase/format.yaml"
-    (let [t (tree/encode-tree toy/codecs example)]
+    (let [t (writer/encode-tree toy/codecs example)]
       (is (= #{".metabase/format.yaml" "area/birds/_folder.yaml" "area/birds/robin.leaf.yaml"} (set (keys t))))
       (is (= "format: library-branching/1\n" (String. ^bytes (get t ".metabase/format.yaml") "UTF-8")))
       (is (= (str "kind: leaf\n"
@@ -82,9 +83,9 @@
                   "- {role: card, target: fOlDeRfOlDeRfOlDeRfOl}\n")
              (String. ^bytes (get t "area/birds/robin.leaf.yaml") "UTF-8")))))
   (testing "a kind with no codec throws"
-    (is (thrown? clojure.lang.ExceptionInfo (tree/encode-tree (rest toy/codecs) example)))))
+    (is (thrown? clojure.lang.ExceptionInfo (writer/encode-tree (rest toy/codecs) example)))))
 
-(defn- example-files [] (vec (vals (tree/encode-tree toy/codecs example))))
+(defn- example-files [] (vec (vals (writer/encode-tree toy/codecs example))))
 
 (defn- findings [files] (:findings (tree/decode-tree toy/codecs files)))
 
@@ -136,6 +137,20 @@
   (testing "a tree with only the format file is the empty snapshot"
     (is (= {:snapshot {}} (tree/decode-tree toy/codecs [format-file])))))
 
+(defspec decode-files-test 100
+  (prop/for-all [s (toy/toy-snapshot-gen)]
+    (let [contents (vec (vals (writer/encode-tree toy/codecs s)))
+          r        (tree/decode-files toy/codecs contents)
+          by-name  (update-keys (codec/by-kind toy/codecs) name)]
+      (and (= (tree/decode-tree toy/codecs contents) (dissoc r :files))
+           (= (set (keys s)) (set (keys (:files r))))
+           (every? (fn [[id n]] (= id (first (:item (tree/decode-file by-name (nth contents n)))))) (:files r))))))
+
+(deftest decode-files-findings-test
+  (testing "a tree that does not decode gives the findings of decode-tree, and no files"
+    (let [contents (conj (example-files) leaf-file)]
+      (is (= (tree/decode-tree toy/codecs contents) (tree/decode-files toy/codecs contents))))))
+
 (deftest place-from-directory-fails-test
   ;; Alloy PlaceFromDirectoryFails: if a file does not hold its place, two different snapshots give the same files.
   (testing "without the place in the file, a nested folder and a root-level folder give the same file contents"
@@ -145,15 +160,15 @@
                              (decode [_ doc] (codec/decode c doc))
                              (schema [_] (codec/schema c))))
           folder   (no-place (first toy/codecs))
-          contents (fn [s] (frequencies (map (fn [[id item]] (seq (codec/write-yaml (codec/encode folder id item)))) s)))
+          contents (fn [s] (frequencies (map (fn [[id item]] (seq (writer/write-yaml (codec/encode folder id item)))) s)))
           a        {folder-id {:kind :folder :name "A" :place nil :refs #{} :attrs {}}
                     leaf-id   {:kind :folder :name "B" :place nil :refs #{} :attrs {}}}
           b        (assoc-in a [leaf-id :place] folder-id)]
       (is (not= a b))
       (is (= (contents a) (contents b)))
       (testing "with the place in the file, they differ"
-        (is (not= (vals (tree/encode-tree toy/codecs a)) (vals (tree/encode-tree toy/codecs b))))
-        (is (= {:snapshot b} (tree/decode-tree toy/codecs (vals (tree/encode-tree toy/codecs b)))))))))
+        (is (not= (vals (writer/encode-tree toy/codecs a)) (vals (writer/encode-tree toy/codecs b))))
+        (is (= {:snapshot b} (tree/decode-tree toy/codecs (vals (writer/encode-tree toy/codecs b)))))))))
 
 (deftest old-format-test
   (are [paths expected] (= expected (boolean (tree/old-format? paths)))
@@ -179,7 +194,7 @@
    {:name   :schema-unchecked
     :doc    "decode-tree takes what a codec returns without the check against the codec's schema."
     :target `tree/decode-file
-    :edits  [[:replace '(mr/validate (codec/schema c) item) true]]}])
+    :edits  [[:replace '(registry/validate (codec/schema c) item) true]]}])
 
 (deftest tree-mutations-test
   (mut/check mutations {:tests [#'duplicate-identity-test #'format-findings-test #'file-findings-test]}))

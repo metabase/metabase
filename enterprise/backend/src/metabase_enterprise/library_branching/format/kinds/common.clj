@@ -6,8 +6,8 @@
    [clojure.string :as str]
    [metabase-enterprise.library-branching.format.codec :as codec]
    [metabase-enterprise.library-branching.format.layout :as layout]
-   [metabase-enterprise.library-branching.snapshot :as snapshot]
-   [metabase.util.malli.registry :as mr]))
+   [metabase-enterprise.library-branching.registry :as registry]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,13 +31,13 @@
     (double? x) (Double/isFinite x)
     :else       false))
 
-(mr/def ::document
+(registry/def ::document
   [:fn {:error/message "a document value"} document?])
 
-(mr/def ::document-map
+(registry/def ::document-map
   [:and [:map-of :keyword :any] ::document])
 
-(mr/def ::document-vector
+(registry/def ::document-vector
   [:and [:vector :any] ::document])
 
 ;;; ---------------------------------------------------- Attributes ---------------------------------------------------
@@ -113,7 +113,7 @@
                            (str/join ", " (map #(subs (str %) 1) unknown))))))
   (let [id (:id doc)
         nm (get doc name-key)]
-    (when-not (mr/validate id-schema id)
+    (when-not (registry/validate id-schema id)
       (codec/invalid! (str "The id is not an identity of the kind " (clojure.core/name kind) ": " (pr-str id))))
     (when-not (and (string? nm) (seq nm))
       (codec/invalid! (str "The item has no " (clojure.core/name name-key) ".")))

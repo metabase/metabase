@@ -5,6 +5,7 @@
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.kinds.snippet :as snippet]
    [metabase-enterprise.library-branching.format.layout :as layout]
+   [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.mutation.core :as mut]))
 
 (set! *warn-on-reflection* true)
@@ -28,7 +29,7 @@
   ;; The remote-sync scenario of template tag ids that survive an export and an import: a changed tag id would show
   ;; as a false local change.
   (testing "a snippet with template tags decodes to the same tags, with their ids"
-    (let [[id decoded] (codec/decode snippet/codec (codec/read-yaml (codec/write-yaml
+    (let [[id decoded] (codec/decode snippet/codec (codec/read-yaml (writer/write-yaml
                                                                      (codec/encode snippet/codec snippet-id item))))]
       (is (= snippet-id id))
       (is (= (:template_tags attrs) (get-in decoded [:attrs :template_tags])))

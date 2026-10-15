@@ -1,0 +1,37 @@
+# An example GitHub Actions workflow for a repository that library branching syncs. It checks the files of each
+# pull request: every file decodes, the snapshot is well formed, and, with .metabase/manifest.yaml, every table and
+# field that the content names is in the manifest. It needs no Metabase instance.
+#
+# Copy it to .github/workflows/ of the repository. Pin `ref` to the Metabase release that production runs, and
+# refresh .metabase/manifest.yaml from production (GET /api/ee/library-branching/manifest) when its databases change.
+name: Library check
+
+on:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Check out the checker
+        uses: actions/checkout@v4
+        with:
+          repository: metabase/metabase
+          ref: master
+          path: .metabase-checker
+          sparse-checkout: enterprise/backend/src/metabase_enterprise/library_branching
+
+      - name: Install babashka
+        run: |
+          curl -sLO https://raw.githubusercontent.com/babashka/babashka/master/install
+          bash install --version 1.12.212 --dir "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Check
+        run: >-
+          bb -Sdeps '{:paths [".metabase-checker/enterprise/backend/src"]
+                      :deps {metosin/malli {:mvn/version "0.17.0"}}}'
+          -m metabase-enterprise.library-branching.check .

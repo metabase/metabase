@@ -12,6 +12,7 @@
    [metabase-enterprise.library-branching.format.kinds.test-util :as kinds.tu]
    [metabase-enterprise.library-branching.format.layout :as layout]
    [metabase-enterprise.library-branching.format.tree :as tree]
+   [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
    [metabase.util.malli.registry :as mr])
@@ -64,26 +65,26 @@
   (prop/for-all [s (kinds.tu/snapshot-gen 10)]
     (every? (fn [[id {:keys [kind] :as item}]]
               (let [c (get by-kind kind)]
-                (= [id item] (codec/decode c (codec/read-yaml (codec/write-yaml (codec/encode c id item)))))))
+                (= [id item] (codec/decode c (codec/read-yaml (writer/write-yaml (codec/encode c id item)))))))
             s)))
 
 (defspec tree-round-trip-test 200
   (prop/for-all [s (kinds.tu/snapshot-gen)]
-    (= {:snapshot s} (tree/decode-tree kinds/codecs (vals (tree/encode-tree kinds/codecs s))))))
+    (= {:snapshot s} (tree/decode-tree kinds/codecs (vals (writer/encode-tree kinds/codecs s))))))
 
 (defspec path-law-test 200
   ;; Alloy DecodeIgnoresPaths: the files as a flat list `<n>.yaml`, in a random order, decode to the same snapshot.
   (prop/for-all [[s order] (gen/bind (kinds.tu/snapshot-gen)
                                      (fn [s] (gen/tuple (gen/return s) (gen/shuffle (range (inc (count s)))))))]
-    (let [files (vec (vals (tree/encode-tree kinds/codecs s)))
+    (let [files (vec (vals (writer/encode-tree kinds/codecs s)))
           flat  (into {} (map-indexed (fn [n i] [(str n ".yaml") (nth files i)])) order)]
       (= {:snapshot s} (tree/decode-tree kinds/codecs (vals flat))))))
 
 (defspec canonical-bytes-test 200
   ;; Equal content gives equal bytes, whatever the order of the maps and sets of the input.
   (prop/for-all [s (kinds.tu/snapshot-gen)]
-    (= (text-tree (tree/encode-tree kinds/codecs s))
-       (text-tree (tree/encode-tree (reverse kinds/codecs) (scramble s))))))
+    (= (text-tree (writer/encode-tree kinds/codecs s))
+       (text-tree (writer/encode-tree (reverse kinds/codecs) (scramble s))))))
 
 (defspec unique-paths-test 200
   ;; Alloy UniquePaths, with the homes of the four kinds.
@@ -95,7 +96,7 @@
   (testing "the generator gives the cases that the laws must cover"
     (let [ss    (mapv #(gen/generate (kinds.tu/snapshot-gen) 30 %) (range 100))
           items (mapcat vals ss)
-          trees (mapv #(text-tree (tree/encode-tree kinds/codecs %)) ss)
+          trees (mapv #(text-tree (writer/encode-tree kinds/codecs %)) ss)
           paths (mapcat keys trees)
           texts (mapcat vals trees)]
       (is (= snapshot/kinds (set (map :kind items))) "every kind")
@@ -243,7 +244,7 @@
     (testing "the golden files decode to the golden snapshot"
       (is (= {:snapshot golden-snapshot} (tree/decode-tree kinds/codecs (vals files)))))
     (testing "the golden snapshot encodes to the golden files: the same paths and the same bytes"
-      (is (= (text-tree files) (text-tree (tree/encode-tree kinds/codecs golden-snapshot)))))
+      (is (= (text-tree files) (text-tree (writer/encode-tree kinds/codecs golden-snapshot)))))
     (testing "a file holds no :lib/type that the structure of the query implies"
       (is (not-any? #(str/includes? % "lib/type") (vals (text-tree files)))))))
 
@@ -359,7 +360,7 @@
    {:name   :identity-unchecked
     :doc    "Decode accepts an identity of another kind's form, so a metric can have a table key."
     :target `common/decode-doc
-    :edits  [[:replace '(mr/validate id-schema id) true]]}
+    :edits  [[:replace '(registry/validate id-schema id) true]]}
    {:name   :name-unchecked
     :doc    "Decode accepts a file with no name."
     :target `common/decode-doc

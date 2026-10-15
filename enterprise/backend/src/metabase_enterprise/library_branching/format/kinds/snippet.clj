@@ -4,8 +4,8 @@
   (:require
    [metabase-enterprise.library-branching.format.kinds.common :as common]
    [metabase-enterprise.library-branching.format.kinds.portable :as portable]
-   [metabase-enterprise.library-branching.snapshot :as snapshot]
-   [metabase.util.malli.registry :as mr]))
+   [metabase-enterprise.library-branching.registry :as registry]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +34,7 @@
                 :template_tags {:schema ::common/document-map :default {}}}
    :refs       #'refs})
 
-(mr/def ::item (common/item-schema spec))
+(registry/def ::item (common/item-schema spec))
 
 (def codec
   "The codec of the kind :snippet."
