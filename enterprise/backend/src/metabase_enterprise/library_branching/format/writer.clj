@@ -9,6 +9,7 @@
   (:import
    (java.io StringWriter)
    (java.nio.charset StandardCharsets)
+   (java.security MessageDigest)
    (org.yaml.snakeyaml DumperOptions DumperOptions$FlowStyle DumperOptions$LineBreak DumperOptions$ScalarStyle)
    (org.yaml.snakeyaml.emitter Emitter)
    (org.yaml.snakeyaml.nodes MappingNode Node NodeTuple ScalarNode SequenceNode Tag)
@@ -159,4 +160,23 @@
         paths   (layout/layout codecs s)]
     (into {tree/format-path (write-yaml {:format tree/format-version})}
           (map (fn [[id item]] [(get paths id) (encode-file (get by-kind (:kind item)) id item)]))
+          s)))
+
+(defn- sha-256-hex
+  ^String [^bytes b]
+  (format "%064x" (BigInteger. 1 (.digest (MessageDigest/getInstance "SHA-256") b))))
+
+(defn item-digests
+  "`{identity digest}` of snapshot `s`, with the codecs `codecs`: the SHA-256 of the canonical bytes of the file of each
+  item, as 64 lower-case hex digits. Two items of one identity have equal digests iff they are equal. Throws when a
+  kind of `s` has no codec."
+  [codecs s]
+  (let [by-kind (codec/by-kind codecs)]
+    (into {}
+          (map (fn [[id item]]
+                 [id (sha-256-hex (encode-file (or (get by-kind (:kind item))
+                                                   (throw (ex-info (str "No codec for the kind " (:kind item))
+                                                                   {:kind (:kind item)})))
+                                               id
+                                               item))]))
           s)))

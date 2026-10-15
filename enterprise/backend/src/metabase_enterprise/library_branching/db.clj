@@ -95,6 +95,32 @@
              :from   [(t2/table-name model)]
              :where  [:in :id ids]}))
 
+;;; ------------------------------------------------------ Base ------------------------------------------------------
+
+(mr/def ::base-row
+  [:map [:commit_id [:maybe :string]] [:digests [:maybe :string]]])
+
+(mu/defn base-row :- [:maybe ::base-row]
+  "`{:commit_id :digests}` of the base row, in the current transaction, or nil when there is no base row."
+  []
+  (t2/query-one {:select [:commit_id :digests]
+                 :from   [:library_branching_base]
+                 :where  [:= :id 1]}))
+
+(mu/defn compare-and-set-base! :- :int
+  "Sets the commit id of the base row to `commit-id` and its digests to `digests`, in one statement, iff its commit id
+  is `expected` (nil: null). Returns the number of rows that the statement changed, 1 or 0."
+  [expected  :- [:maybe :string]
+   commit-id :- :string
+   digests   :- :string]
+  (first (t2/query {:update :library_branching_base
+                    :set    {:commit_id commit-id :digests digests}
+                    :where  [:and
+                             [:= :id 1]
+                             (if expected
+                               [:= :commit_id [:auto/param expected]]
+                               [:= :commit_id nil])]})))
+
 ;;; ---------------------------------------------------- Content -----------------------------------------------------
 
 (mu/defn collections-by-entity-id :- [:sequential ::row]

@@ -30,11 +30,15 @@
     after the read point is not in `s`. Throws when the calling thread holds an open transaction.")
   (base [inst]
     "The base commit id, or nil before the first sync.")
+  (base-digests [inst commit]
+    "The digests that [[set-base!]] stored with the base, `{identity digest}`, when the base is `commit`; else nil.")
   (apply-plan! [inst plan new-base]
     "In one transaction: for each step, lock the item, check its precondition, write or trash it; then set the base
     to `new-base`. Returns {:ok {:trashed-in-use ids}}, or {:stale ids} and writes nothing.")
-  (set-base! [inst expected new]
-    "Moves the base from `expected` to `new`. Returns :ok or {:moved actual}."))
+  (set-base! [inst expected new digests]
+    "Moves the base from `expected` to `new` (`expected` nil: there is no base), and stores `digests`, the
+    `{identity digest}` of the content of `new`, with it, in one compare-and-swap. Returns :ok, or {:moved actual} and
+    changes nothing; `actual` is the base, or nil when there is none. Runs in the current transaction, if any."))
 
 (defn not-yet!
   "Throws: the instance does not implement `method` yet."
