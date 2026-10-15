@@ -31,7 +31,9 @@
 
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
-(defn- bytes-hash [^bytes b]
+(defn bytes-hash
+  "The SHA-256 hex of `b`, as `custom_viz_plugin.bundle_hash` stores it."
+  ^String [^bytes b]
   (-> b buddy-hash/sha256 codecs/bytes->hex))
 
 (defn- string-hash [^String s]
