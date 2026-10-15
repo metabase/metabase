@@ -100,9 +100,11 @@
       [{:level :structural :rule :place-inside :id golden/revenue-id :place golden/metrics-id
         :path "library/metrics/revenue/_collection.yaml"}]
 
-      ;; a containment cycle: the Library moves into one of its own subcollections
+      ;; a containment cycle: the Library moves into one of its own subcollections, which cannot hold it
       (golden/edit "library/_collection.yaml" #(str % "parent: cOlQuErIeS0ExAmPlE2x1\n"))
-      [{:level :structural :rule :acyclic :ids #{golden/library-id golden/metrics-id golden/revenue-id}}]
+      [{:level :structural :rule :acyclic :ids #{golden/library-id golden/metrics-id golden/revenue-id}}
+       {:level :structural :rule :library-content :id golden/library-id :place golden/revenue-id
+        :path "library/_collection.yaml"}]
 
       ;; a snippet inside a metric
       (golden/edit golden/base-filter-path

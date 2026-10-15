@@ -18,6 +18,7 @@
 (def ^:private metric (engine.tu/eid "metric"))
 (def ^:private snippet (engine.tu/eid "snippet"))
 (def ^:private gone (engine.tu/eid "gone"))
+(def ^:private data (engine.tu/eid "data"))
 (def ^:private orders ["Sample Database" "PUBLIC" "ORDERS"])
 
 (def ^:private library
@@ -25,7 +26,8 @@
    sub     (engine.tu/item :collection "Metrics" lib)
    metric  (engine.tu/item :metric "Revenue" sub #{[:snippet snippet] [:source-table [:env orders]] [:table orders]})
    snippet (engine.tu/item :snippet "Filter" lib)
-   orders  (engine.tu/item :published-table "Orders" lib)})
+   data    (assoc-in (engine.tu/item :collection "Data" lib) [:attrs :type] "library-data")
+   orders  (engine.tu/item :published-table "Orders" data)})
 
 (deftest ^:parallel well-formed-test
   (testing "a well-formed snapshot has no finding"
@@ -218,7 +220,8 @@
   (testing "a child of a collection of a namespace has that namespace"
     (let [s (-> library
                 (assoc-in [lib :attrs :namespace] "snippets")
-                (assoc-in [sub :attrs :namespace] "snippets"))]
+                (assoc-in [sub :attrs :namespace] "snippets")
+                (assoc-in [data :attrs :namespace] "snippets"))]
       (is (= [] (validate/validate s)))
       (is (= [{:rule :namespace :id sub :place lib}]
              (validate/validate (update-in s [sub :attrs] dissoc :namespace))))))
@@ -625,6 +628,54 @@
     :doc    "An environment object fits every role, so an action can name a table as its model."
     :target `validate/ref-kind-findings
     :edits  [[:replace '(env-target? target) false]]}])
+
+(def library-mutations
+  "Each mutation removes or weakens one Library rule of validate."
+  [{:name   :no-library-rules
+    :doc    "Validate checks no Library rule."
+    :target `validate/validate
+    :edits  [[:remove '(library-findings s library-content)]]}
+   {:name   :library-root-holds-collections
+    :doc    "The Library holds a collection of no type next to its sections."
+    :target `snapshot/library-content
+    :edits  [[:replace '#{"library-data" "library-metrics" "library-dashboards"}
+              '#{"library-data" "library-metrics" "library-dashboards" :collection}]]}
+   {:name   :section-collection-any-type
+    :doc    "A collection in a section can have any type, or none."
+    :target `validate/library-findings
+    :edits  [[:replace '(and holds (not (contains? holds (snapshot/content-type item))))
+              '(and holds (not= :collection kind) (not (contains? holds (snapshot/content-type item))))]]}
+   {:name   :data-holds-metrics
+    :doc    "Data holds metrics."
+    :target `snapshot/library-content
+    :edits  [[:replace '#{:table "library-data"} '#{:table :metric "library-data"}]]}
+   {:name   :metrics-holds-dashboards
+    :doc    "Metrics holds dashboards."
+    :target `snapshot/library-content
+    :edits  [[:replace '#{:metric "library-metrics"} '#{:metric :model/Dashboard "library-metrics"}]]}
+   {:name   :every-question-of-a-dashboard
+    :doc    "A question with no dashboard counts as a question of a dashboard, so Dashboards holds it."
+    :target `snapshot/content-type
+    :edits  [[:replace '(if (some? (:dashboard_id attrs)) :dashboard-question :question) :dashboard-question]]}
+   {:name   :timeline-by-kind
+    :doc    "A timeline has the content type :timeline, which no section holds."
+    :target `snapshot/content-type
+    :edits  [[:replace :model/Timeline :timeline]]}
+   {:name   :no-table-rule
+    :doc    "A published table can be in a collection of any type outside the Library."
+    :target `validate/library-findings
+    :edits  [[:replace '(and (= :published-table kind) (not= snapshot/table-collection-type t)) false]]}
+   {:name   :table-rule-in-library-only
+    :doc    "The table rule reads only Library collections, so a table in a collection of no type passes."
+    :target `validate/library-findings
+    :edits  [[:replace '(not= snapshot/table-collection-type t) '(and (some? holds) (not= snapshot/table-collection-type t))]]}])
+
+(deftest library-mutations-test
+  (mut/check library-mutations {:tests [#'library-well-formed-test #'library-root-test #'section-collection-type-test
+                                        #'data-section-test #'metrics-section-test #'dashboards-section-test
+                                        #'table-collection-test #'library-content-option-test
+                                        #'library-snapshot-no-findings-test #'library-misfit-one-finding-test
+                                        #'arbitrary-snapshot-findings-test]}))
 
 (deftest validate-mutations-test
   (mut/check mutations {:tests [#'well-formed-test #'place-inside-test #'acyclic-test #'kind-fits-test #'area-root-test
