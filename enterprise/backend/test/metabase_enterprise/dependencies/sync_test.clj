@@ -75,7 +75,7 @@
 (deftest ^:synchronized sync-removed-column-triggers-reanalysis-test
   (testing "When sync detects a removed column, re-analyzing the card shows errors"
     (with-syncable-db!
-      (fn [{:keys [card-id filter-field-id]}]
+      (fn [{:keys [card-id filter-field-id table-id]}]
         (let [initial-analysis-time (t2/select-one-fn :analyzed_at :model/AnalysisFinding
                                                       :analyzed_entity_type :card
                                                       :analyzed_entity_id card-id)]
@@ -87,6 +87,8 @@
           ;; Verify the field is now inactive
           (testing "Field is marked inactive after sync"
             (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id))))
+          (testing "The table is marked for the result metadata of the cards depending on it to be re-derived"
+            (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id)))
           ;; Step 6 & 7: The sync-end event marks dependents as stale and triggers the job.
           ;; Due to race conditions, the entity may be either stale (job hasn't run yet)
           ;; or already reanalyzed (job ran). Check for either valid outcome.
