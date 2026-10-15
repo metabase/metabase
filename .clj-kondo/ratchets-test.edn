@@ -51,6 +51,4 @@
                                 :search.entity-retrieval.mirror/search-unfiltered  1
                                 :test/with-temp                                    30}
  :comment-exempt               #{:deprecated-namespace
-                                 :discouraged-namespace
-                                 :discouraged-var
-                                 :metabase/discourage-dynamic-vars}}
+                                 :discouraged-var}}
