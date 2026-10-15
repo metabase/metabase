@@ -827,7 +827,7 @@ describe("admin > custom visualizations", () => {
         cy.intercept(bundleMatcher, {
           statusCode: 503,
           body: { error: "Bundle not available" },
-        }).as("bundleUnavailable");
+        });
 
         H.createQuestion(
           {
@@ -2537,6 +2537,16 @@ describe("sandbox", () => {
       "plugin observed mutations:",
       0,
     );
+  });
+});
+
+describe("sandbox > widget settings", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.updateSetting("csp-img-enabled", true);
+    H.updateSetting("custom-viz-enabled", true);
   });
 
   it("blocks forbidden apis in widget settings and sandboxes React component setting widgets", () => {

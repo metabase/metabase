@@ -538,6 +538,50 @@
                     {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{}"}
                     {:type :tool-input-available :toolCallId "call-1" :toolName "search"}])))))))
 
+(deftest ^:parallel aisdk-xf-nested-object-arguments-validate-test
+  (testing "a tool call with object-valued arguments replays as valid LLMRequestOpts input"
+    ;; The agent loop replays tool calls on its next iteration, where every adapter validates them against
+    ;; `LLMRequestOpts`.
+    (let [chunks [{:type :tool-input-start :toolCallId "call-1" :toolName "construct_notebook_query"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "{\"query\":{\"lib/type\":\"mbql/query\","}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"stages\":[{\"source-table\":[\"db\",\"public\",\"orders\"]}]},"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"visualization\":{\"chart_type\":\"line\"},"}
+                  {:type           :tool-input-delta
+                   :toolCallId     "call-1"
+                   :inputTextDelta "\"title\":\"Orders per month\",\"description\":\"Monthly orders in 2025\"}"}
+                  {:type :tool-input-available :toolCallId "call-1" :toolName "construct_notebook_query"}]
+          parts  (into [] (self.core/aisdk-xf) chunks)]
+      (is (= [{:type      :tool-input
+               :id        "call-1"
+               :function  "construct_notebook_query"
+               :arguments {:query         {"lib/type" "mbql/query"
+                                           "stages"   [{"source-table" ["db" "public" "orders"]}]}
+                           :visualization {"chart_type" "line"}
+                           :title         "Orders per month"
+                           :description   "Monthly orders in 2025"}}]
+             parts))
+      (is (nil? (mr/explain self.core/LLMRequestOpts {:input parts}))))))
+
+(deftest ^:parallel aisdk-xf-non-object-arguments-validate-test
+  (testing "a tool call whose arguments aren't a JSON object replays as valid LLMRequestOpts input"
+    ;; The executor rejects the call, and the agent loop replays it with that error on its next iteration.
+    (doseq [[raw decoded] [["[\"orders\"]" ["orders"]]
+                           ["false" false]
+                           ["[{\"a\":{\"b\":1}}]" [{"a" {"b" 1}}]]]]
+      (testing raw
+        (let [parts (into [] (self.core/aisdk-xf)
+                          [{:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                           {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta raw}
+                           {:type :tool-input-available :toolCallId "call-1" :toolName "search"}])]
+          (is (= {::self.core/non-object-arguments decoded} (:arguments (first parts))))
+          (is (nil? (mr/explain self.core/LLMRequestOpts {:input parts}))))))))
+
 ;;; tool executor
 
 (deftest ^:parallel tool-executor-xf-test
@@ -666,7 +710,7 @@
         (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
                 (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
         (testing "and a warning names the call that never ran"
-          (is (=? [{:level :warn :message #".*call-2.*"}] (messages))))))))
+          (is (=? [{:level :warn :message #".*call-2.*get-time.*"}] (messages))))))))
 
 ;;; tool argument validation tests
 
@@ -719,6 +763,43 @@
                          [{:type :tool-input-available :toolName "validated" :toolCallId "call-j"}])]
       (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
              (-> (into [] (self.core/tool-executor-xf tools) chunks) last :error :message))))))
+
+(deftest ^:parallel tool-non-object-arguments-test
+  (let [received (atom ::not-called)
+        tools    {"open" {:fn     (fn [args] (reset! received args) {:output "ok"})
+                          :doc    "accepts any object"
+                          :schema [:=> [:cat [:map]] :any]}
+                  "untyped" {:fn     (fn [args] (reset! received args) {:output "ok"})
+                             :doc    "declares no argument schema"
+                             :schema nil}}
+        run      (fn run
+                   ([raw] (run "open" raw))
+                   ([tool-name raw]
+                    (reset! received ::not-called)
+                    (-> (into [] (self.core/tool-executor-xf tools)
+                              [{:type :tool-input-start :toolName tool-name :toolCallId "call-n"}
+                               {:type :tool-input-delta :toolCallId "call-n" :inputTextDelta raw}
+                               {:type :tool-input-available :toolName tool-name :toolCallId "call-n"}])
+                        last :error :message)))]
+    (testing "valid JSON that isn't an object is rejected before it reaches a tool whose schema accepts any map"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (run "[\"orders\"]")))
+      (is (= ::not-called @received)))
+    (testing "a JSON string holding an object is reported as the string the model sent, not decoded into one"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received a string."
+             (run "\"{\\\"names\\\": [\\\"orders\\\"]}\"")))
+      (is (= ::not-called @received)))
+    (testing "a JSON boolean is rejected, not run as an empty argument map"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received a boolean."
+             (run "false")))
+      (is (= ::not-called @received)))
+    (testing "JSON null still runs the tool with an empty argument map"
+      (is (nil? (run "null")))
+      (is (= {} @received)))
+    (testing "a tool with no argument schema rejects a non-object too"
+      (is (= "Invalid tool arguments: expected an object of named arguments; received an array."
+             (run "untyped" "[\"orders\"]")))
+      (is (= ::not-called @received)))))
 
 (deftest ^:parallel tool-without-schema-is-not-validated-test
   (testing "a tool with no declared argument schema is left alone"
@@ -1405,7 +1486,7 @@
 
 (defn- malformed-tool-input-response
   "A reducible LLM stream whose forced tool call streams invalid JSON, so
-  `parse-tool-arguments` yields the `{:_raw_arguments ...}` sentinel.
+  `parse-tool-arguments` yields the raw-arguments sentinel.
   `trailing-parts` are appended after it, e.g. a [[usage-part]] carrying a finish reason."
   [& trailing-parts]
   (let [chunks (concat [{:type :start :messageId "m1"}
@@ -1463,8 +1544,28 @@
                                               0.3 1024 {:tag "metabot_agent"})
                     (catch clojure.lang.ExceptionInfo e e))]
             (is (instance? clojure.lang.ExceptionInfo e)
-                "malformed JSON must throw, not return the {:_raw_arguments ...} sentinel as a result")
-            (is (= "structured-output-invalid" (:error-code (ex-data e))))))))))
+                "malformed JSON must throw, not return the raw-arguments sentinel as a result")
+            (is (= "structured-output-invalid" (:error-code (ex-data e))))
+            (is (= "{not valid json" (:raw-arguments (ex-data e))))))))))
+
+(deftest call-llm-structured-rejects-non-object-json-test
+  (llm.tu/with-default-connections
+    (testing "valid JSON that isn't an object is rejected as an error, not returned as a bogus result"
+      (mt/with-dynamic-fn-redefs [self/retry-delay-ms   (constantly 0)
+                                  openrouter/openrouter (constantly
+                                                         (test-util/mock-llm-response
+                                                          [{:type :start :id "m1"}
+                                                           {:type :tool-input :id "c1" :function "json" :arguments ["orders"]}]))]
+        (let [e (try
+                  (self/call-llm-structured "openrouter/test-model"
+                                            [{:role "user" :content "test"}]
+                                            {:type "object" :properties {:answer {:type "string"}}}
+                                            0.3 1024 {:tag "metabot_agent"})
+                  (catch clojure.lang.ExceptionInfo e e))]
+          (is (instance? clojure.lang.ExceptionInfo e)
+              "a non-object payload must throw, not come back as the structured result")
+          (is (= "structured-output-invalid" (:error-code (ex-data e))))
+          (is (= ["orders"] (:non-object-arguments (ex-data e)))))))))
 
 (deftest call-llm-structured-surfaces-provider-error-test
   (llm.tu/with-default-connections
@@ -1705,6 +1806,42 @@
         (let [e (structured-call-error)]
           (is (= "structured-output-incomplete" (:error-code (ex-data e))))
           (is (= "length" (:finish-reason (ex-data e)))))))))
+
+(deftest call-llm-structured-nested-keys-test
+  (llm.tu/with-default-connections
+    (let [schema {:type       "object"
+                  :properties {"items" {:type  "array"
+                                        :items {:type       "object"
+                                                :properties {"name" {:type "string"}}
+                                                :required   ["name"]}}}
+                  :required   ["items"]}
+          answer {:items [{:name "x"}]}
+          call!  (fn [part]
+                   (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                               (constantly (test-util/mock-llm-response
+                                                            [{:type :start :id "m1"} part]))]
+                     (self/call-llm-structured "openrouter/test-model" [{:role "user" :content "test"}]
+                                               schema 0.3 1024 {:tag "metabot_agent"})))]
+      (testing "a tool call and a text reply give the same result: keyword argument names, string keys below them"
+        (are [part] (= {:items [{"name" "x"}]} (call! part))
+          {:type :tool-input :id "c1" :function "structured_output" :arguments answer}
+          {:type :text :id "t1" :text (json/encode answer)})))))
+
+(deftest ^:parallel stringify-nested-keys-test
+  (testing "keys below the top level become strings, and the top-level keys stay keywords"
+    (is (= {:query {"stages" [{"limit" 1}]}}
+           (self.core/stringify-nested-keys {:query {:stages [{:limit 1}]}}))))
+  (testing "a nested namespaced keyword key becomes \"ns/name\", the key json/encode writes"
+    (is (= {:a {"foo/bar" 1}}
+           (self.core/stringify-nested-keys {:a {:foo/bar 1}}))))
+  (testing "the parse sentinels come back unchanged"
+    (are [arguments] (= arguments (self.core/stringify-nested-keys arguments))
+      {::self.core/raw-arguments "{oops"}
+      {::self.core/non-object-arguments [{"a" 1} "x"]}))
+  (testing "a value that is not a map comes back unchanged"
+    (are [arguments] (= arguments (self.core/stringify-nested-keys arguments))
+      nil
+      "{oops")))
 
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
@@ -2073,6 +2210,21 @@
                                    "model_name" "claude-haiku-4-5"}}])
                   (filter #(contains? (:data %) "total_tokens")
                           (snowplow-test/pop-event-data-and-user-id!)))))))))
+
+(deftest call-llm-usage-log-profile-id-test
+  (testing "a profile the usage log does not list is logged without a profile id rather than failing the call"
+    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")]
+      (let [response (test-util/mock-llm-response
+                      [{:type :start :id "m1"}
+                       {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
+            logged   (atom [])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter          (constantly response)
+                                    usage/valid-usage-profile-id   #(when (= :internal %) %)
+                                    usage/log-ai-usage!            #(swap! logged conj %)]
+          (doseq [profile-id [:internal :internal-sql]]
+            (run! identity (self/call-llm "openrouter-1/anthropic/claude-sonnet-4.6" nil [] {}
+                                          {:tag "metabot_agent" :profile-id profile-id}))))
+        (is (= [:internal nil] (map :profile-id @logged)))))))
 
 ;;; ----- gating: usage-limit + permission checks in call-llm-structured-with-trace -----
 ;;; (UXW-4126) The structured-with-trace path enforces usage limits unconditionally and

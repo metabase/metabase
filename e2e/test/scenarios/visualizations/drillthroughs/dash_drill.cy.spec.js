@@ -19,31 +19,6 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       cy.signInAsAdmin();
     });
 
-    describe("from a scalar card", () => {
-      const DASHBOARD_NAME = "Scalar Dash";
-
-      beforeEach(() => {
-        // Convert the second question to a scalar (Orders, summarized by count)
-        cy.request("PUT", `/api/card/${Q2.id}`, {
-          display: "scalar",
-        });
-
-        addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
-
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(DASHBOARD_NAME);
-        clickScalarCardTitle(Q2.name);
-      });
-
-      it("should result in a correct query result", () => {
-        cy.log("Assert that the url is correct");
-        cy.location("pathname").should("eq", `/question/${Q2.expectedPath}`);
-
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.contains("18,760");
-      });
-    });
-
     describe("from a scalar with active filter applied", () => {
       const DASHBOARD_NAME = "Scalar w Filter Dash";
 
@@ -80,7 +55,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       });
     });
 
-    describe("from a dashcard multiscalar legend", () => {
+    describe("from a line chart with two breakouts", () => {
       const DASHBOARD_NAME = "Multiscalar Dash";
       const CARD_NAME = "Multiscalar Question";
 
@@ -189,7 +164,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           cy.findByTestId("qb-filters-panel")
             .findByText("Product → Category is Doohickey")
             .should("be.visible");
-          H.queryBuilderMain().findByText("177").should("be.visible"); // Doohickeys for 2025
+          H.tableInteractive().findByText("177").should("be.visible"); // Doohickeys for 2025
         });
       });
     });

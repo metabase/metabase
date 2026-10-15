@@ -16,6 +16,7 @@ export const renderingContext: RenderingContext = {
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
   fontFamily: "Lato",
+  isStatic: true,
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 

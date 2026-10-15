@@ -34,9 +34,20 @@
   (testing "defmethod t2/table-name inside <module>/models/<model>.clj is allowed"
     (is (empty? (lint-defmethod '(defmethod t2/table-name :model/Foo [_] :foo)
                                 "/repo/src/metabase/foo/models/bar.clj"))))
+  (testing "nested module directories are also allowed"
+    (is (empty? (lint-defmethod '(defmethod t2/table-name :model/Foo [_] :foo)
+                                "/repo/enterprise/backend/src/metabase_enterprise/foo/bar/models/baz.clj"))))
   (testing "enterprise modules are also allowed"
     (is (empty? (lint-defmethod '(defmethod t2/table-name :model/Foo [_] :foo)
                                 "/repo/enterprise/backend/src/metabase_enterprise/foo/models.clj"))))
+  (testing "a `metabase` directory above the source root doesn't make the legacy models directory pass"
+    (is (=? [{:type :metabase/toucan-model-ns}]
+            (lint-defmethod '(defmethod t2/table-name :model/Foo [_] :foo)
+                            "/home/runner/work/metabase/metabase/src/metabase/models/foo.clj"))))
+  (testing "nesting deeper than one module level is flagged"
+    (is (=? [{:type :metabase/toucan-model-ns}]
+            (lint-defmethod '(defmethod t2/table-name :model/Foo [_] :foo)
+                            "/repo/src/metabase/foo/bar/baz/models/qux.clj"))))
   (testing "toucan2.core/table-name is also recognized"
     (is (=? [{:type :metabase/toucan-model-ns}]
             (lint-defmethod '(defmethod toucan2.core/table-name :model/Foo [_] :foo)

@@ -6,19 +6,14 @@ import type { CollectionId } from "metabase-types/api";
 import type { LibrarySectionType, TreeItem } from "../types";
 
 type EmptyStateConfig = {
-  sectionType: LibrarySectionType;
   description: string;
   actionLabel: string;
-  actionUrl?: string;
 };
 
 const getEmptyStateConfig = (
   sectionType: LibrarySectionType,
-): Omit<EmptyStateConfig, "sectionType" | "actionUrl"> => {
-  const config: Record<
-    LibrarySectionType,
-    Omit<EmptyStateConfig, "sectionType" | "actionUrl">
-  > = {
+): EmptyStateConfig => {
+  const config: Record<LibrarySectionType, EmptyStateConfig> = {
     data: {
       description: t`Cleaned, pre-transformed data sources ready for exploring`,
       actionLabel: t`Publish a table`,
@@ -26,10 +21,6 @@ const getEmptyStateConfig = (
     metrics: {
       description: t`Standardized calculations with known dimensions`,
       actionLabel: t`New metric`,
-    },
-    dashboards: {
-      description: t`Curated dashboards built on the semantic layer`,
-      actionLabel: t`Create a dashboard`,
     },
     snippets: {
       description: t`Reusable bits of code that save your time`,
@@ -59,7 +50,7 @@ export const createEmptyStateItem = (
   } else if (sectionType === "actions" && !hideAction) {
     actionUrl = Urls.newDataStudioAction();
   }
-  // "data" and "dashboards" sections open a modal, so no actionUrl
+  // The "data" section opens a modal, so no actionUrl
 
   return {
     id: `empty-state:${sectionType}`,

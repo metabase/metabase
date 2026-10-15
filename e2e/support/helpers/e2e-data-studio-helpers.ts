@@ -174,9 +174,6 @@ export const DataStudio = {
       DataStudio.Library.libraryPage().should("be.visible");
       DataStudio.Library.collectionItem("Data").should("be.visible");
       DataStudio.Library.collectionItem("Metrics").should("be.visible");
-      DataStudio.Library.collectionItem("Dashboards")
-        .scrollIntoView()
-        .should("be.visible");
     },
     libraryPage,
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
