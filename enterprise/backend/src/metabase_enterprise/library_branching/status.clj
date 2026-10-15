@@ -6,7 +6,17 @@
   difference of the content of the base and the synced snapshot of the instance; the remote changes are the difference
   of the content of the base and of the head of the branch."
   (:require
-   [metabase-enterprise.library-branching.instance :as instance]))
+   [metabase-enterprise.library-branching.engine.diff :as diff]
+   [metabase-enterprise.library-branching.engine.merge :as merge]
+   [metabase-enterprise.library-branching.format.claims :as claims]
+   [metabase-enterprise.library-branching.format.codec :as codec]
+   [metabase-enterprise.library-branching.format.kinds :as kinds]
+   [metabase-enterprise.library-branching.format.tree :as tree]
+   [metabase-enterprise.library-branching.format.writer :as writer]
+   [metabase-enterprise.library-branching.instance :as instance]
+   [metabase-enterprise.library-branching.pull :as pull]
+   [metabase-enterprise.library-branching.snapshot :as snapshot]
+   [metabase-enterprise.library-branching.store :as store]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,8 +27,27 @@
 (defn changed?
   "True iff change set `changes` has a change."
   [changes]
-  (instance/not-yet! `changed?)
-  changes)
+  (boolean (some seq (vals changes))))
+
+(defn- codecs-of [opts]
+  (:codecs opts kinds/codecs))
+
+(defn- readable?
+  "True iff `commit` is in the local object store of `store`."
+  [store commit]
+  ;; `ancestor?` reads only the local object store, and throws for a commit that is not in it.
+  (try
+    (store/ancestor? store commit commit)
+    (catch clojure.lang.ExceptionInfo _
+      false)))
+
+(defn- fetched-tree
+  "The tree of `commit` in `store` after a fetch of branch `branch`, or nil when `commit` is not in the local object
+  store then: no branch of the remote holds it."
+  [store branch commit]
+  (store/head store branch)
+  (when (readable? store commit)
+    (store/read-tree store commit)))
 
 ;;; -------------------------------------------------- Local changes --------------------------------------------------
 
@@ -27,8 +56,21 @@
   where `:change` is `:created`, `:updated` or `:deleted`. The kind and the name come from the local snapshot `local`,
   and for a deleted item from the base snapshot `base`; they are nil for a deleted item that `base` (nil: unknown) does
   not hold."
-  [_changes _local _base]
-  (instance/not-yet! `change-list))
+  [changes local base]
+  (->> (for [change [:created :updated :deleted]
+             id     (get changes change)
+             :let   [item (get (if (= :deleted change) base local) id)]]
+         {:id id :kind (:kind item) :name (:name item) :change change})
+       (sort-by :id snapshot/compare-identities)
+       vec))
+
+(defn base-snapshot
+  "The snapshot of base commit `b`, read through `store` after a fetch of branch `branch`, or nil when the repository no
+  longer holds `b` or its tree does not decode. `opts`: `:codecs`."
+  [store branch b opts]
+  (some->> (fetched-tree store branch b)
+           (claims/decode (codecs-of opts))
+           :snapshot))
 
 (defn local-changes
   "The local changes of instance `inst`: `{:base b :local l :changes c}`, where `b` is the base, `l` the synced snapshot,
@@ -36,14 +78,19 @@
   `(with-store f)` calls `f` with a store of the repository, on branch `branch`; it is called only when the instance
   stored no digests with its base. Throws ex-info with `:status-code` 400 when the content of the base is not known.
   `opts`: `:codecs` (default `kinds/codecs`)."
-  [_inst _with-store _branch _opts]
-  (instance/not-yet! `local-changes))
-
-(defn base-snapshot
-  "The snapshot of base commit `b`, read through `store` after a fetch of branch `branch`, or nil when the repository no
-  longer holds `b` or its tree does not decode. `opts`: `:codecs`."
-  [_store _branch _b _opts]
-  (instance/not-yet! `base-snapshot))
+  [inst with-store branch opts]
+  (let [codecs  (codecs-of opts)
+        b       (instance/base inst)
+        l       (:snapshot (instance/read-snapshot inst))
+        digests (if b
+                  (or (instance/base-digests inst b)
+                      (with-store (fn [s]
+                                    (some->> (base-snapshot s branch b opts) (writer/item-digests codecs)))))
+                  {})]
+    (when-not digests
+      (throw (ex-info (format "The content of the base commit %s is not known: no branch of the repository holds it." b)
+                      {:status-code 400 :base b})))
+    {:base b :local l :changes (diff/diff digests (writer/item-digests codecs l))}))
 
 ;;; -------------------------------------------------- Remote changes -------------------------------------------------
 
@@ -52,8 +99,73 @@
   c}`, `{:findings f}` when the tree of `h` does not decode, or `{:unknown :base}` when the content of `b` is not known.
   The content of `b` is `(:base-digests opts)` when given, else the decode of the tree of `b`; `b` nil has no items.
   `opts`: `:codecs`, `:base-digests`."
-  [_store _b _h _opts]
-  (instance/not-yet! `full-remote-changes))
+  [store b h opts]
+  (let [codecs (codecs-of opts)
+        {r :snapshot :keys [findings]} (claims/decode codecs (store/read-tree store h))]
+    (if-not r
+      {:findings findings}
+      (let [base (cond
+                   (nil? b)              {}
+                   (:base-digests opts)  (:base-digests opts)
+                   (readable? store b)   (some->> (claims/decode codecs (store/read-tree store b))
+                                                  :snapshot
+                                                  (writer/item-digests codecs)))]
+        (if base
+          {:changes (diff/diff base (writer/item-digests codecs r))}
+          {:unknown :base})))))
+
+(def ^:private system-related
+  "The identities whose presence in a tree can change what `claims/decode` adds to its snapshot: the system items that
+  it completes, and their places."
+  (into (set (keys claims/system-items)) (keep :place) (vals claims/system-items)))
+
+(defn- read-doc
+  "The document of the bytes `b`, or nil when they are not one YAML document of the document model: a foreign file."
+  [b]
+  (try
+    (codec/read-yaml b)
+    (catch clojure.lang.ExceptionInfo e
+      (when-not (= ::codec/unreadable (:type (ex-data e)))
+        (throw e)))))
+
+(defn- changed-items
+  "`{identity item}` of the item files of tree `t` at `paths`, or ::full when a file there is a format file, an
+  old-format item file or an item file that does not decode, or when two of them hold one identity."
+  [by-name t paths]
+  (reduce (fn [acc p]
+            (if-let [b (get t p)]
+              (case (claims/claim (read-doc b))
+                (nil :manifest) acc
+                :item           (let [[id item] (:item (tree/decode-file by-name b))]
+                                  (if (or (nil? id) (contains? acc id))
+                                    (reduced ::full)
+                                    (assoc acc id item)))
+                (reduced ::full))
+              acc))
+          {}
+          paths))
+
+(defn- fast-remote-changes
+  "The remote changes from `b` to `h` from the files that `store/changed-paths` names, or ::full when that is not
+  exact. `base-ids` is the set of identities of the content of `b`."
+  [store codecs b h base-ids]
+  (let [{:keys [added modified deleted]} (store/changed-paths store b h)
+        by-name (update-keys (codec/by-kind codecs) name)
+        at-b    (changed-items by-name (store/read-tree store b) (concat modified deleted))
+        at-h    (changed-items by-name (store/read-tree store h) (concat added modified))]
+    (cond
+      (or (= ::full at-b) (= ::full at-h))
+      ::full
+
+      (some system-related (concat (keys at-b) (keys at-h)))
+      ::full
+
+      ;; an item of the base in a file that did not change stays in the head: a second file holds its identity
+      (some #(and (not (contains? at-b %)) (contains? base-ids %)) (keys at-h))
+      ::full
+
+      :else
+      {:changes (diff/diff at-b at-h)})))
 
 (defn remote-changes
   "The remote changes from base commit `b` to head `h` of `store`, as [[full-remote-changes]], which gives the same
@@ -61,16 +173,35 @@
   `store/changed-paths` names, at both commits, when that is exact: every changed file is a foreign file or an item file
   that decodes, no changed file holds a system item or the Library, and no new file holds an item of the base
   (`(:base-digests opts)`, required for this path). `opts`: `:codecs`, `:base-digests`."
-  [_store _b _h _opts]
-  (instance/not-yet! `remote-changes))
+  [store b h opts]
+  (let [codecs  (codecs-of opts)
+        digests (:base-digests opts)
+        fast    (when (and b digests (not= b h) (readable? store b))
+                  (fast-remote-changes store codecs b h (set (keys digests))))]
+    (cond
+      (= b h)                {:changes no-changes}
+      (and fast (map? fast)) fast
+      :else                  (full-remote-changes store b h opts))))
 
 (defn base-held?
   "True iff a branch of the remote of `store` holds commit `b`: `b` is the head, or an ancestor of the head, of a branch.
   `h` is the head of branch `branch` (nil: none), which is checked first; every other branch costs a fresh remote call."
-  [_store _b _branch _h]
-  (instance/not-yet! `base-held?))
+  [store b branch h]
+  (boolean
+   (and (readable? store b)
+        (or (and h (store/ancestor? store b h))
+            (some (fn [other]
+                    (when-let [x (and (not= other branch) (store/head store other))]
+                      (store/ancestor? store b x)))
+                  (store/branches store))))))
 
 ;;; ------------------------------------------------------ Status -----------------------------------------------------
+
+(defn- base-digests-of
+  "The digests that `inst` stored with its base `b`, or nil."
+  [inst b]
+  (when b
+    (instance/base-digests inst b)))
 
 (defn status
   "The status of instance `inst` and branch `branch` of `store`:
@@ -81,8 +212,47 @@
   ([[base-held?]]); then nothing shows as synced. `f` is nil, or the findings of the head (it does not decode, or breaks
   a structural rule). `lc` is the change set of [[local-changes]]; `rc` the remote changes, nil when the head has
   findings, does not exist, or the content of the base is not known. `opts`: `:codecs`."
-  [_inst _store _branch _opts]
-  (instance/not-yet! `status))
+  [inst store branch opts]
+  (let [codecs   (codecs-of opts)
+        h        (store/head store branch)
+        {b :base local :changes} (local-changes inst (fn [f] (f store)) branch opts)
+        checked  (when h (pull/check-commit store codecs h))
+        findings (:findings checked)
+        remote   (when (:snapshot checked)
+                   (:changes (remote-changes store b h (assoc opts :base-digests (base-digests-of inst b)))))]
+    {:base           b
+     :head           h
+     :branch-missing (nil? h)
+     :base-lost      (boolean (and b (not (base-held? store b branch h))))
+     :head-findings  findings
+     :local          local
+     :remote         remote}))
+
+;;; --------------------------------------------------- Push preview --------------------------------------------------
+
+(def ^:private no-summary
+  {:added 0 :updated 0 :removed 0})
+
+(defn- summary
+  "The numbers of items that a merge of `l` and `r` from base `b` takes from `r` over an unchanged item of `l`."
+  [b l r]
+  (reduce (fn [acc id]
+            (let [bi (get b id), li (get l id), ri (get r id)]
+              (if (and (= li bi) (not= ri bi))
+                (update acc (cond (nil? li) :added (nil? ri) :removed :else :updated) inc)
+                acc)))
+          no-summary
+          (distinct (concat (keys l) (keys r)))))
+
+(defn- conflict-entry
+  [{:keys [id base ours theirs]}]
+  (let [item (some #(when (map? %) %) [ours theirs base])]
+    {:id id :kind (:kind item) :name (:name item)}))
+
+(defn- lost-base
+  "A base in which each item of `l` and `r` is unknown, so that every difference of the two sides is a conflict."
+  [l r]
+  (zipmap (distinct (concat (keys l) (keys r))) (repeat :unknown)))
 
 (defn push-preview
   "What a push of instance `inst` to branch `branch` of `store` meets: the status, plus a merge of the base, the synced
@@ -95,8 +265,36 @@
   `{:id :kind :name}`; a violation is `{:rule :ours :theirs}`. `s` is `{:added :updated :removed}`: the numbers of
   items that the merge takes from the head over an unchanged local item. A base that no branch holds is lost: every
   difference of the two sides is a conflict. A head with findings is not clean, and has no merge. `opts`: `:codecs`."
-  [_inst _store _branch _opts]
-  (instance/not-yet! `push-preview))
+  [inst store branch opts]
+  (let [codecs (codecs-of opts)
+        b      (instance/base inst)
+        h      (store/head store branch)
+        lost?  (boolean (and b (not (base-held? store b branch h))))
+        result {:diverged       (not= b h)
+                :clean          true
+                :conflicts      []
+                :violations     []
+                :summary        no-summary
+                :branch-missing (nil? h)
+                :base-lost      lost?
+                :head-findings  nil}]
+    (if (or (= b h) (nil? h))
+      result
+      (let [{r :snapshot :keys [findings]} (pull/check-commit store codecs h)]
+        (if-not r
+          (assoc result :clean false :head-findings findings)
+          (let [l      (:snapshot (instance/read-snapshot inst))
+                base   (cond
+                         (nil? b) {}
+                         lost?    nil
+                         :else    (:snapshot (claims/decode codecs (store/read-tree store b))))
+                base   (or base (lost-base l r))
+                merged (merge/merge base l r {})]
+            (assoc result
+                   :clean      (contains? merged :ok)
+                   :conflicts  (mapv conflict-entry (:conflicts merged))
+                   :violations (mapv #(select-keys % [:rule :ours :theirs]) (:violations merged))
+                   :summary    (summary base l r))))))))
 
 ;;; ------------------------------------------------- Has remote changes ----------------------------------------------
 
@@ -108,14 +306,28 @@
   `c` is true iff the [[remote-changes]] from the base `b` to the head `h` are not empty, or are not known (the head does
   not decode, or the content of the base is not known). A branch that does not exist gives `c` false and `m` true.
   `opts`: `:codecs`."
-  [_inst _store _branch _opts]
-  (instance/not-yet! `check-remote-changes))
+  [inst store branch opts]
+  (let [b (instance/base inst)
+        h (store/head store branch)]
+    {:has-changes    (boolean
+                      (and h
+                           (not= b h)
+                           (let [{:keys [changes]} (remote-changes store b h
+                                                                   (assoc opts :base-digests (base-digests-of inst b)))]
+                             (or (nil? changes) (changed? changes)))))
+     :remote-version h
+     :local-version  b
+     :branch-missing (nil? h)}))
 
 (defn cached-answer
   "The answer of cache entry `entry` (`{:key k :at t :answer a}`, or nil) for key `key` at time `now-ms`, or nil when the
   entry is for another key or older than `ttl-ms`. Pure."
-  [_entry _key _now-ms _ttl-ms]
-  (instance/not-yet! `cached-answer))
+  [entry key now-ms ttl-ms]
+  (when (and entry (= key (:key entry)) (< (- now-ms (:at entry)) ttl-ms))
+    (:answer entry)))
+
+(defonce ^:private remote-changes-cache
+  (atom nil))
 
 (defn has-remote-changes!
   "[[check-remote-changes]] of instance `inst` and the store of `(with-store f)`, with `:cached` false, or the answer
@@ -124,5 +336,14 @@
   a pull that moves the base, miss it. `:force-refresh?` misses it. An answer for a branch that does not exist is not
   cached. A failure of the store throws, and is not cached. `opts`: `:url`, `:branch`, `:ttl-seconds`,
   `:force-refresh?`, `:now-ms` (default the clock), `:codecs`."
-  [_inst _with-store _opts]
-  (instance/not-yet! `has-remote-changes!))
+  [inst with-store {:keys [url branch ttl-seconds force-refresh? now-ms] :as opts}]
+  (let [now    (or now-ms (System/currentTimeMillis))
+        key    [url branch (instance/base inst)]
+        cached (when-not force-refresh?
+                 (cached-answer @remote-changes-cache key now (* 1000 ttl-seconds)))]
+    (if cached
+      (assoc cached :cached true)
+      (let [answer (with-store #(check-remote-changes inst % branch opts))]
+        (when-not (:branch-missing answer)
+          (reset! remote-changes-cache {:key key :at now :answer answer}))
+        (assoc answer :cached false)))))

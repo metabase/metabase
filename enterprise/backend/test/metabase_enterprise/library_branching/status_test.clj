@@ -331,6 +331,7 @@
        (testing "a base that only another branch holds is held: a switch of branch"
          (pltu/commit-snapshot! repo "dev" [c1] ptu/sample)
          (let [h (pltu/commit-snapshot! repo ptu/branch [] ptu/sample)]
+           (is (= h (store/head s ptu/branch)))
            (is (true? (status/base-held? s c1 ptu/branch h)))))
        (testing "after a force push of every branch that held it, the base is lost, also in a new store"
          (pltu/reset-branch! repo "dev" (store/head s ptu/branch))
