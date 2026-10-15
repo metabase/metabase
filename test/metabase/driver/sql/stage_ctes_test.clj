@@ -93,7 +93,9 @@
 (deftest ^:parallel multi-stage-questions-test
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql)
                            (mt/normal-drivers-with-feature :nested-queries :left-join :native-parameter-card-reference))
-    (let [mp         (qp.test-util/metadata-provider-with-cards-for-queries [(multi-stage-query (mt/metadata-provider))])
+    ;; SQL Server allows ORDER BY in a subquery only with TOP, so Card 1 has a limit
+    (let [mp         (qp.test-util/metadata-provider-with-cards-for-queries
+                      [(lib/limit (multi-stage-query (mt/metadata-provider)) 100)])
           use-ctes?  (sql.qp/use-ctes-for-stages? driver/*driver*)
           round-sums (partial mt/formatted-rows [str #(u/round-to-decimals 2 (double %))])]
       (testing "multi-stage question with joins"
