@@ -3,6 +3,7 @@
 
   position: relative;
   width: 20rem;
+  height: 100%;
   border: 1px solid var(--node-border-color);
   border-radius: 0.5rem;
   background: var(--mb-color-core-white);
@@ -14,7 +15,53 @@
 }
 
 .header {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 3.5rem;
+  padding: 1rem;
+  cursor: pointer;
   border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.title {
+  flex: 1;
+  overflow: hidden;
+  color: var(--mb-color-text-primary);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summaryBody {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100% - 3.5rem);
+}
+
+.summaryMetrics {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 70%;
+  color: var(--mb-color-text-secondary);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.summaryMetric {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.summaryDivider {
+  font-weight: 400;
 }
 
 .fields {

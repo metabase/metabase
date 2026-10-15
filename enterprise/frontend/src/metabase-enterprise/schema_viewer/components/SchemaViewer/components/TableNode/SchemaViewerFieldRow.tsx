@@ -1,4 +1,3 @@
-import { Handle, Position, useReactFlow } from "@xyflow/react";
 import cx from "classnames";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -8,8 +7,7 @@ import type { ErdField, IconName } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import { ROW_HEIGHT_PX } from "../../constants";
-import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../../types";
-import { getEdgeId, getFieldHandleId, getNodeId } from "../../utils";
+import { getEdgeId, getNodeId } from "../../utils";
 
 import S from "./SchemaViewerFieldRow.module.css";
 
@@ -25,27 +23,20 @@ function getFieldIcon(field: ErdField): IconName {
 
 type SchemaViewerFieldRowProps = {
   field: ErdField;
-  /** Field participates as the source side of at least one edge. */
-  isSource: boolean;
-  /** Field participates as the target side of at least one non-self-ref edge. */
-  isTarget: boolean;
-  isSelfRefTarget: boolean;
   isSelectedInEdge?: boolean;
 };
 
 export function SchemaViewerFieldRow({
   field,
-  isSource,
-  isTarget,
-  isSelfRefTarget,
   isSelectedInEdge,
 }: SchemaViewerFieldRowProps) {
-  const { visibleTableIds, expandingTableIds, expandToTable, zoomToNode } =
-    useSchemaViewerContext();
-  const { setEdges } = useReactFlow<
-    SchemaViewerFlowNode,
-    SchemaViewerFlowEdge
-  >();
+  const {
+    visibleTableIds,
+    expandingTableIds,
+    expandToTable,
+    zoomToNode,
+    selectEdges,
+  } = useSchemaViewerContext();
 
   const isFkField = Lib.isForeignKey(Lib.legacyColumnTypeInfo(field));
 
@@ -94,21 +85,11 @@ export function SchemaViewerFieldRow({
 
       // Same edge highlighting logic here.
       if (field.fk_target_field_id != null) {
-        const candidateEdgeIds = new Set([
-          getEdgeId(field.id, field.fk_target_field_id),
-          getEdgeId(field.fk_target_field_id, field.id),
-        ]);
-        setEdges((edges) =>
-          edges.map((edge) => {
-            const shouldSelect = candidateEdgeIds.has(edge.id);
-            if (shouldSelect && !edge.selected) {
-              return { ...edge, selected: true };
-            }
-            if (!shouldSelect && edge.selected) {
-              return { ...edge, selected: false };
-            }
-            return edge;
-          }),
+        selectEdges(
+          new Set([
+            getEdgeId(field.id, field.fk_target_field_id),
+            getEdgeId(field.fk_target_field_id, field.id),
+          ]),
         );
       }
     }
@@ -150,31 +131,6 @@ export function SchemaViewerFieldRow({
         </Box>
       )}
       {canExpand && !isExpanding && <Box className={S.expandIndicator} />}
-      {/* Handles are invisible but required for React Flow to draw edges. */}
-      {isSource && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          id={getFieldHandleId(field.id)}
-          className={S.handle}
-        />
-      )}
-      {isTarget && (
-        <Handle
-          type="target"
-          position={Position.Left}
-          id={getFieldHandleId(field.id)}
-          className={S.handle}
-        />
-      )}
-      {isSelfRefTarget && (
-        <Handle
-          type="target"
-          position={Position.Right}
-          id={getFieldHandleId(field.id, "right")}
-          className={S.handle}
-        />
-      )}
     </Group>
   );
 }

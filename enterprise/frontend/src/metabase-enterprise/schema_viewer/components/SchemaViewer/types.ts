@@ -1,16 +1,19 @@
 import type { Edge, Node } from "@xyflow/react";
 
+export type SchemaViewerNodeHandle = NonNullable<Node["handles"]>[number] & {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 import type { ErdNode, ErdRelationship, FieldId } from "metabase-types/api";
 
 export type SchemaViewerNodeData = ErdNode & {
-  // Fields that act as the source side of some edge on this table.
-  sourceFieldIds: Set<FieldId>;
-  // Fields that act as the target side of a non-self-referential edge.
-  targetFieldIds: Set<FieldId>;
-  // Fields that act as the target side of a self-referential edge — they
-  // render an extra handle on the right, since the matching source handle
-  // also sits on the right of the same node.
-  selfRefTargetFieldIds: Set<FieldId>;
+  // Fixed edge anchor geometry for every field that participates in an edge;
+  // the edge layer draws edges from these without mounting the node.
+  handles: SchemaViewerNodeHandle[];
+  foreignKeyCount: number;
   // Fields on this table that sit at either end of the currently selected
   // edge. Pre-computed at edge-click.
   selectedFieldIds: Set<FieldId>;

@@ -10,7 +10,6 @@ import {
   TextInput,
   useCombobox,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 import { useSchemaViewerContext } from "../../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../../types";
@@ -53,17 +52,14 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
   const allItems = useMemo<SearchItem[]>(
     () =>
       nodes.map((node) => {
-        const { name, display_name, fields } = node.data;
+        const { name, display_name, foreignKeyCount } = node.data;
         const label = formatTableLabel(name, display_name);
         const text = formatTableLabelText(name, display_name);
-        const fkCount = fields.filter((f) =>
-          Lib.isForeignKey(Lib.legacyColumnTypeInfo(f)),
-        ).length;
         return {
           id: node.id,
           label,
           text,
-          fkCount,
+          fkCount: foreignKeyCount,
           haystack: [text, name, display_name ?? ""]
             .filter(Boolean)
             .map((s) => s.toLowerCase()),

@@ -1,12 +1,11 @@
-import type { ReactFlowInstance } from "@xyflow/react";
+import { type Viewport, getViewportForBounds } from "@xyflow/react";
 
-import { MAX_ZOOM, NODE_WIDTH_PX } from "../constants";
-import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
+import { FIT_VIEW_OPTIONS, MAX_ZOOM, NODE_WIDTH_PX } from "../constants";
+import type { SchemaViewerFlowNode } from "../types";
 
-type ZoomTarget = Pick<
-  ReactFlowInstance<SchemaViewerFlowNode, SchemaViewerFlowEdge>,
-  "setCenter" | "getNodes"
->;
+import { getGraphBounds } from "./viewport-window";
+
+export type CanvasSize = { width: number; height: number };
 
 // (if this value changes, update the same constant in e2e/test/scenarios/schema-viewer/schema-viewer.cy.spec.ts)
 const MIN_ZOOM_FOR_TARGET = 0.5;
@@ -29,54 +28,58 @@ export const ZOOM_DURATION_MS = 500;
  *  - The camera is positioned so the TOP of the target bounding box
  *    below the viewport's top edge, rather than centered.
  */
-export function zoomToNode(instance: ZoomTarget, nodeId: string): boolean {
-  if (!nodeId) {
-    return false;
-  }
-  const target = instance.getNodes().find((n) => n.id === nodeId);
+export function getNodeFocusViewport(
+  nodes: readonly SchemaViewerFlowNode[],
+  nodeId: string,
+  size: CanvasSize,
+): Viewport | null {
+  // Read logical nodes: the target may not be rendered by React Flow yet.
+  const target = nodes.find((n) => n.id === nodeId);
   if (!target) {
-    return false;
+    return null;
   }
-
-  const viewportEl = document.querySelector(".react-flow");
-  const rect = viewportEl?.getBoundingClientRect();
-  if (rect == null || rect.width === 0 || rect.height === 0) {
-    return false;
-  }
-
-  // Bounding box of the target nodes in world coordinates.
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
   const width =
     typeof target.style?.width === "number"
       ? target.style.width
       : NODE_WIDTH_PX;
-  if (target.position.x < minX) {
-    minX = target.position.x;
-  }
-  if (target.position.y < minY) {
-    minY = target.position.y;
-  }
-  if (target.position.x + width > maxX) {
-    maxX = target.position.x + width;
-  }
-  const bboxWidth = maxX - minX;
-
-  const widthBasedZoom =
-    rect.width / (bboxWidth * (1 + 2 * HORIZONTAL_PADDING));
   const zoom = Math.max(
     MIN_ZOOM_FOR_TARGET,
-    Math.min(widthBasedZoom, MAX_ZOOM),
+    Math.min(size.width / (width * (1 + 2 * HORIZONTAL_PADDING)), MAX_ZOOM),
   );
+  const centerX = target.position.x + width / 2;
+  return {
+    x: size.width / 2 - centerX * zoom,
+    y: TOP_MARGIN_PX - target.position.y * zoom,
+    zoom,
+  };
+}
 
-  // Horizontally centered on the bbox.
-  const centerX = (minX + maxX) / 2;
-  // Vertically positioned so `minY` (the top of the topmost target, i.e.
-  // the start of its header) lands TOP_MARGIN_PX from the viewport top
-  // in screen space.
-  const centerY = minY + (rect.height / 2 - TOP_MARGIN_PX) / zoom;
+/**
+ * Fits all logical nodes. React Flow's `fitView` only sees rendered nodes,
+ * which is a subset once the graph is virtualized.
+ */
+export function getGraphFitViewport(
+  nodes: readonly SchemaViewerFlowNode[],
+  size: CanvasSize,
+): Viewport | null {
+  const bounds = getGraphBounds(nodes);
+  if (bounds == null) {
+    return null;
+  }
+  return getViewportForBounds(
+    bounds,
+    size.width,
+    size.height,
+    FIT_VIEW_OPTIONS.minZoom,
+    FIT_VIEW_OPTIONS.maxZoom,
+    FIT_VIEW_OPTIONS.padding,
+  );
+}
 
-  instance.setCenter(centerX, centerY, { zoom, duration: ZOOM_DURATION_MS });
-  return true;
+export function getCanvasSize(): CanvasSize | null {
+  const rect = document.querySelector(".react-flow")?.getBoundingClientRect();
+  if (rect == null || rect.width === 0 || rect.height === 0) {
+    return null;
+  }
+  return { width: rect.width, height: rect.height };
 }

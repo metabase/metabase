@@ -1,0 +1,27 @@
+/* Sits in React Flow's viewport portal at graph origin; nodes (z-index 2) stay on top. */
+.edgeLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.edge,
+.symbol {
+  fill: none;
+  stroke: var(--mb-color-border-neutral-strong);
+  stroke-width: 1;
+}
+
+.edge {
+  stroke-dasharray: 9 9;
+}
+
+.selected {
+  stroke: var(--mb-color-core-brand);
+  stroke-width: 2;
+}

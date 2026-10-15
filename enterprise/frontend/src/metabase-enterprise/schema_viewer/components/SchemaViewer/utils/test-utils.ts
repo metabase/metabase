@@ -47,6 +47,9 @@ export function makeFlowNode({
     id: idString,
     type: "schemaViewerTable",
     position,
+    width,
+    height: computedHeight,
+    measured: { width, height: computedHeight },
     data: {
       table_id: tableId,
       name: displayName,
@@ -56,6 +59,8 @@ export function makeFlowNode({
       schema: "public",
       visibility_type: null,
       db_id: 1,
+      handles: [],
+      foreignKeyCount: resolvedFields.filter((f) => f.isFK).length,
       fields: resolvedFields.map((f, i) => ({
         id: i + 1,
         name: f.name,
@@ -67,9 +72,6 @@ export function makeFlowNode({
         fk_target_field_id: null,
         fk_target_table_id: null,
       })),
-      sourceFieldIds: new Set<number>(),
-      targetFieldIds: new Set<number>(),
-      selfRefTargetFieldIds: new Set<number>(),
       selectedFieldIds: new Set<number>(),
     },
     style: { width, height: computedHeight, opacity },
