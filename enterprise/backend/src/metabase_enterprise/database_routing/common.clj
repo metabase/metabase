@@ -1,6 +1,7 @@
 (ns metabase-enterprise.database-routing.common
   (:require
    [metabase.api.common :as api]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -63,6 +64,41 @@
    (api/current-user-attributes)
    api/*is-superuser?*
    db-or-id))
+
+(defenterprise routed-user?
+  "Whether the current user's queries against ANY router database they can view data from resolve to a destination
+  database rather than the router itself, mirroring [[router-db-or-id->destination-db-id*]]. Routers whose
+  `:perms/view-data` is `:blocked` for the user are ignored: they cannot run anything against them, so routing there
+  doesn't change what they see. A user whose attribute is the `__METABASE_ROUTER__` sentinel is not routed. A superuser
+  missing the attribute defaults to the router, so is not routed, but a superuser whose attribute names a destination
+  database is routed like anyone else. A non-admin missing the attribute would be refused at query time, so counts as
+  routed here (fail closed). Uses `:feature :none` so a routed user is recognized even when the `:database-routing`
+  feature is momentarily unavailable. Throws if no current user is bound."
+  :feature :none
+  []
+  (boolean
+   (if api/*current-user-id*
+     (let [attributes     (api/current-user-attributes)
+           routes-user?   (fn [attribute-name]
+                            (let [value (get attributes attribute-name)]
+                              (if (nil? value)
+                                (not api/*is-superuser?*)
+                                (not= "__METABASE_ROUTER__" value))))
+           routing-db-ids (into []
+                                (keep (fn [[db-id attribute-name]]
+                                        (when (routes-user? attribute-name)
+                                          db-id)))
+                                (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter))]
+       (perms/prime-database-perms-cache {:db-ids routing-db-ids})
+       (some (fn [db-id]
+               (not= :blocked
+                     (perms/most-permissive-database-permission-for-user
+                      api/*current-user-id* :perms/view-data db-id)))
+             routing-db-ids))
+     ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid
+     ;; returning `false` for users who should actually be routed.
+     (throw (ex-info (str (tru "No current user found"))
+                     {:status-code 403})))))
 
 (defenterprise row-restricted-by-routing?
   "Whether the current user is routed from `db-or-id` to a destination database, without depending

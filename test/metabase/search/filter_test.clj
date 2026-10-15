@@ -30,10 +30,13 @@
          :enabled-transform-source-types #{"mbql"}))
 
 (defn- with-all-models-and-regular-user [search-ctx]
-  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false)))
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false :is-routed-user? false)))
 
 (defn- with-all-models-and-sandboxed-user [search-ctx]
-  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true)))
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true :is-routed-user? false)))
+
+(defn- with-all-models-and-routed-user [search-ctx]
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false :is-routed-user? true)))
 
 (defn- with-all-models-and-superuser [search-ctx]
   (-> search-ctx
@@ -72,6 +75,9 @@
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
     (is (= (disj search.config/all-models "indexed-entity" "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-sandboxed-user {:archived? false})))))
+  (testing "Indexed entities and transforms (which are admin-only) are not visible for users routed to a destination database"
+    (is (= (disj search.config/all-models "indexed-entity" "transform")
+           (search.filter/search-context->applicable-models (with-all-models-and-routed-user {:archived? false})))))
   (testing "All models including transforms are visible for superusers"
     (is (= search.config/all-models
            (search.filter/search-context->applicable-models (with-all-models-and-superuser {:archived? false})))))
