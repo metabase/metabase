@@ -1143,6 +1143,22 @@
       :email                  ["\"email\" IN ?" :email]
       [:lower :email]         ["\"email\" IN ?" [:lower :email]])))
 
+(deftest ^:parallel in-param-collection-preserves-order-test
+  (testing "a list or lazy seq bound to a `:param` keeps its order, the way a vector does"
+    ;; `(into (empty x) ...)` conjes onto the front of a list, so a list would come out reversed
+    (are [xs expected] (= expected
+                          (funnysql/format [:in :id [:param :p]] :postgres {:params {:p xs}}))
+      [1 2 3]                ["\"id\" IN (1, 2, 3)"]
+      (list 1 2 3)           ["\"id\" IN (1, 2, 3)"]
+      (map inc [0 1 2])      ["\"id\" IN (1, 2, 3)"]
+      (list "a" "b" "c")     ["\"id\" IN (?, ?, ?)" "a" "b" "c"]))
+  (testing "a list nested in a tuple keeps its order, since reversing it changes which rows match"
+    (are [xs expected] (= expected
+                          (funnysql/format [:in [:composite :a :b] [:param :p]] :postgres {:params {:p xs}}))
+      [[1 2] [3 4]]                ["(\"a\", \"b\") IN ((1, 2), (3, 4))"]
+      [(list 1 2) (list 3 4)]      ["(\"a\", \"b\") IN ((1, 2), (3, 4))"]
+      (list (list 1 2) (list 3 4)) ["(\"a\", \"b\") IN ((1, 2), (3, 4))"])))
+
 (deftest ^:parallel in-subquery-test
   (is (= ["WHERE \"dp\".\"group_id\" IN (SELECT \"group_id\" FROM \"permissions_group_membership\" WHERE \"user_id\" = 1)"]
          (funnysql/format {:where [:in :dp.group_id ^:allow-subquery {:select [:group_id]

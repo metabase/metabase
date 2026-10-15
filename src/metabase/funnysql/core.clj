@@ -790,7 +790,7 @@
     [:lift x]
 
     ((some-fn sequential? set?) x)
-    (into (empty x) (map lift-value) x)
+    (mapv lift-value x)
 
     :else
     x))
