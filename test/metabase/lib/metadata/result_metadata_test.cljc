@@ -1244,13 +1244,3 @@
                :table-id (symbol "nil #_\"key is not present.\"")}
               persisted-col)
           "the wrapped Field's ID must not leak into persisted result metadata"))))
-
-(deftest ^:parallel comparable-column-metadata-test
-  (testing "keeps only the given keys that have a value, with keywords as strings"
-    (is (= [{:name "TOTAL", :semantic_type "type/Currency", :field_ref ["field" 1 nil]}
-            {:name "TAX"}]
-           (lib/comparable-column-metadata
-            [{:name "TOTAL", :display_name "Total", :base_type :type/Float, :semantic_type :type/Currency
-              :field_ref [:field 1 nil], :fingerprint {:global {:distinct-count 3}}}
-             {:name "TAX", :display_name "Tax", :base_type :type/Float, :semantic_type nil}]
-            [:name :semantic_type :field_ref])))))

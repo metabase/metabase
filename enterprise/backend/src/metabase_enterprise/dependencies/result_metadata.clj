@@ -3,11 +3,13 @@
   marking the stale entities' dependents up front and processing each after its upstream entities, without re-deriving
   or passing native cards, whose result metadata comes from running them."
   (:require
+   [clojure.walk :as walk]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
    [metabase.lib.core :as lib]
    [metabase.queries.core :as queries]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -24,11 +26,22 @@
   the card gets right."
   [:name :display_name :description :semantic_type :fk_target_field_id :id :settings :visibility_type])
 
+(defn- comparable-metadata
+  "The [[compared-column-keys]] of the result metadata `cols` with a value, with keyword values as strings."
+  [cols]
+  (mapv (fn [col]
+          (into {}
+                (keep (fn [k]
+                        (when-some [v (get col k)]
+                          [k (walk/postwalk #(cond-> % (keyword? %) u/qualified-name) v)])))
+                compared-column-keys))
+        cols))
+
 (defn result-metadata-changed?
   "Whether the result metadata `before` and `after` differ in what the queries using the card as a source see."
   [before after]
-  (not= (lib/comparable-column-metadata before compared-column-keys)
-        (lib/comparable-column-metadata after compared-column-keys)))
+  (not= (comparable-metadata before)
+        (comparable-metadata after)))
 
 (defn- mark-transitive-dependents-stale!
   "Mark the MBQL cards and measures that transitively depend on the stale entities stale, without passing native

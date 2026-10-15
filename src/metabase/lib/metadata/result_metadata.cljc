@@ -38,7 +38,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty get-in postwalk #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -557,16 +557,3 @@
              (->> col
                   (lib.normalize/normalize :metabase.query-processor.schema/result-metadata.column)))
      :cljs (lib.normalize/normalize ::lib.schema.metadata/column col)))
-
-(mu/defn comparable-column-metadata :- [:sequential :map]
-  "The `column-keys` of each result metadata column in `cols` that have a value, with keywords as strings, so an equality
-  check tells whether any of those keys changed."
-  [cols        :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]
-   column-keys :- [:sequential :keyword]]
-  (mapv (fn [col]
-          (into {}
-                (keep (fn [k]
-                        (when-some [v (get col k)]
-                          [k (postwalk #(cond-> % (keyword? %) u/qualified-name) v)])))
-                column-keys))
-        cols))
