@@ -35,6 +35,16 @@ const PERSONAL_QUESTION_NAME = "Personal Source Question";
 const STUB_DATABASE_NAME = "Stub Postgres";
 const STUB_QUESTION_NAME = "Stub Database Question";
 
+const turnOffStrictMode = () =>
+  H.updateSetting("remote-sync-strict-mode", false);
+
+const configureGitWithoutStrictMode = (
+  syncType: "read-write" | "read-only",
+) => {
+  H.configureGitAndPullChanges(syncType);
+  turnOffStrictMode();
+};
+
 const setup = (snapshot = "default") => {
   H.restore(snapshot);
   H.resetSnowplow();
@@ -53,6 +63,7 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       setup("postgres-writable");
       H.updateSetting("transforms-enabled", true);
+      turnOffStrictMode();
     });
 
     it("can push and pull changes", () => {
@@ -178,7 +189,7 @@ describe("Remote Sync", () => {
       const NEW_BRANCH = `new-branch-${Date.now()}`;
       H.copySyncedCollectionFixture();
       H.commitToRepo();
-      H.configureGitAndPullChanges("read-write");
+      configureGitWithoutStrictMode("read-write");
       H.wrapSyncedCollection();
 
       cy.visit("/collection/root");
@@ -398,7 +409,7 @@ describe("Remote Sync", () => {
       beforeEach(() => {
         H.copySyncedCollectionFixture();
         H.commitToRepo();
-        H.configureGitAndPullChanges("read-write");
+        configureGitWithoutStrictMode("read-write");
         H.wrapSyncedCollection();
 
         cy.visit("/collection/root");
@@ -595,7 +606,8 @@ describe("Remote Sync", () => {
 
     describe("unsynced dependency modal", () => {
       beforeEach(() => {
-        H.configureGit("read-write");
+        turnOffStrictMode();
+        H.configureGitWithNewSyncedCollection("read-write");
         cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       });
 
@@ -887,13 +899,6 @@ describe("Remote Sync", () => {
   });
 
   describe("shared tenant collections", () => {
-    const configureGitWithoutStrictMode = (
-      syncType: "read-write" | "read-only",
-    ) => {
-      H.configureGitAndPullChanges(syncType);
-      H.updateSetting("remote-sync-strict-mode", false);
-    };
-
     beforeEach(() => {
       setup();
 
@@ -1090,6 +1095,8 @@ describe("Remote Sync", () => {
 
       // Set up in read-write mode without marking anything as synced and pull changes
       H.configureGit("read-write");
+      turnOffStrictMode();
+      H.updateSetting("remote-sync-transforms", false);
     });
 
     it("shows conflict modal with available options when remote would override local", () => {
