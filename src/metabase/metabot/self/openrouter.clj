@@ -190,15 +190,16 @@
   (str/starts-with? (str model) "anthropic/"))
 
 (defn- anthropic-current-gen?
-  "Current-generation Claude on OpenRouter: Fable, Opus >= 4.7, Sonnet >= 5."
+  "Current-generation Claude on OpenRouter: Fable, Opus >= 4.7, Sonnet >= 5, Haiku >= 5."
   [model]
   (or (str/starts-with? model "anthropic/claude-fable")
-      (when-let [[_ family major minor] (re-find #"^anthropic/claude-(opus|sonnet)-(\d+)(?:\.(\d+))?" model)]
+      (when-let [[_ family major minor] (re-find #"^anthropic/claude-(opus|sonnet|haiku)-(\d+)(?:\.(\d+))?" model)]
         (let [major (parse-long major)
               minor (or (some-> minor parse-long) 0)]
           (case family
             "opus"   (or (> major 4) (and (= major 4) (>= minor 7)))
-            "sonnet" (>= major 5))))))
+            "sonnet" (>= major 5)
+            "haiku"  (>= major 5))))))
 
 (defn- model-supports-temperature?
   "Whether an OpenRouter model id accepts an explicit `temperature`. Two families reject it: OpenAI's

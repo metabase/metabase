@@ -91,7 +91,8 @@
         (is (nil? (request-body-temperature model))))))
   (testing "neither does current-generation Claude, whose OpenRouter ids use dots for the minor version"
     (doseq [model ["anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
-                   "anthropic/claude-opus-4.7" "anthropic/claude-sonnet-5"]]
+                   "anthropic/claude-opus-4.7" "anthropic/claude-sonnet-5"
+                   "anthropic/claude-haiku-5.5"]]
       (testing model
         (is (nil? (request-body-temperature model)))))))
 
