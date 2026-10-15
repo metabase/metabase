@@ -255,7 +255,7 @@
          (try
            (with-remote [repo s]
              (let [[inst c1 base] (pushed! s)
-                   term           {:kind :glossary-term :name "lb kind change" :place nil :refs #{}
+                   term           {:kind :glossary-term :name "lb kind change" :place "glossaryglossarygloss" :refs #{}
                                    :attrs {:definition "A bird."}}
                    remote         (assoc base id term)
                    h1             (pltu/commit-snapshot! repo ptu/branch [c1] remote)

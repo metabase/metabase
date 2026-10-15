@@ -528,7 +528,7 @@
   (enabled
    (with-remote [repo s]
      (let [collection (ptu/item kind-change-id :collection "Robin" ptu/library-id {})
-           term       (ptu/item kind-change-id :glossary-term "Robin" nil {:definition "A bird."})
+           term       (ptu/item kind-change-id :glossary-term "Robin" "glossaryglossarygloss" {:definition "A bird."})
            local      (assoc ptu/sample kind-change-id collection)
            [inst c1]  (pushed-instance! s local)
            remote     (assoc ptu/sample kind-change-id term)
