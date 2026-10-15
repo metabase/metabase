@@ -23,6 +23,9 @@
   source/keep-me)
 
 (p/import-vars
+ [settings
+  remote-sync-enabled
+  remote-sync-strict-mode]
  [source]
  [source.p
   ->ingestable])

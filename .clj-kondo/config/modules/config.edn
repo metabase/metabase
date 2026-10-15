@@ -3550,6 +3550,7 @@
            util
            enterprise/advanced-config
            enterprise/mfa
+           enterprise/remote-sync
            enterprise/search.semantic
            enterprise/sso
            enterprise/sso.scim}

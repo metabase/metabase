@@ -14,8 +14,13 @@
 (deftest ^:parallel ee-snowplow-features-test
   (testing "Every feature returned by `ee-snowplow-features-data` has a corresponding OSS fallback"
     (let [ee-features (map :name (ee-stats/ee-snowplow-features-data))
-          oss-features (map :name (@#'stats/ee-snowplow-features-data'))]
+          oss-features (map :name (@#'stats/default-ee-snowplow-features-data))]
       (is (= (sort ee-features) (sort oss-features))))))
+
+(deftest ^:parallel ee-snowplow-settings-test
+  (testing "Every setting returned by `ee-snowplow-settings-data` has a corresponding OSS fallback with the same tags"
+    (is (= (map #(dissoc % :value) (@#'stats/default-ee-snowplow-settings-data))
+           (map #(dissoc % :value) (ee-stats/ee-snowplow-settings-data))))))
 
 (deftest metabase-analytics-metrics-test
   (testing "Metabase Analytics doesn't contribute to stats"

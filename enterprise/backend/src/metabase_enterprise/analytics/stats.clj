@@ -3,6 +3,7 @@
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase-enterprise.analytics.db :as analytics.db]
    [metabase-enterprise.mfa.core :as mfa]
+   [metabase-enterprise.remote-sync.core :as remote-sync]
    [metabase-enterprise.scim.core :as scim]
    [metabase-enterprise.search.semantic.core :as semantic-search]
    [metabase-enterprise.sso.settings :as ee-sso-settings]
@@ -38,4 +39,14 @@
     :enabled   (some? (advanced-config.settings/subscription-allowed-domains))}
    {:name      :semantic-search
     :available (premium-features/enable-semantic-search?)
-    :enabled   (semantic-search/supported?)}])
+    :enabled   (semantic-search/supported?)}
+   {:name      :remote-sync
+    :available (premium-features/enable-remote-sync?)
+    :enabled   (remote-sync/remote-sync-enabled)}])
+
+(defenterprise ee-snowplow-settings-data
+  "A subset of setting information included in the daily Snowplow stats report. This function only returns settings
+  which require calling EE code; other settings are defined in [[metabase.analytics.stats/snowplow-settings-metric-defs]]"
+  :feature :none
+  []
+  [{:key "remote_sync_strict_mode" :value (remote-sync/remote-sync-strict-mode) :tags ["remote-sync"]}])
