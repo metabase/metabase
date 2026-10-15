@@ -1,4 +1,6 @@
 (ns metabase-enterprise.library-branching.store.jgit-test
+  {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.store.jgit-test/with-remote clojure.core/fn
+                                 metabase-enterprise.library-branching.store.jgit-test/with-store  clojure.core/with-open}}}
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -38,7 +40,7 @@
         (FileUtils/deleteDirectory dir)))))
 
 (defmacro ^:private with-remote
-  "Binds `repo` to a new empty bare repository and `url` to its file:// URL."
+  "Binds `repo` to a new empty bare repository and `url` to its file:// URL, as the arguments of a `fn`."
   [[repo url] & body]
   `(do-with-remote (fn [~(vary-meta repo assoc :tag `Repository) ~url] ~@body)))
 
@@ -50,6 +52,7 @@
         (store/close s)))))
 
 (defmacro ^:private with-store
+  "Binds `binding` to a new store on `url`, and closes it after `body`."
   [[binding url] & body]
   `(do-with-store ~url (fn [~binding] ~@body)))
 
@@ -177,7 +180,7 @@
                            (gen/tuple (gen/return :reset) gen/nat)])
               1 12))
 
-(defn- run-cas-ops
+(defn- run-cas-ops!
   "Runs `ops` against the remote and returns the first operation that breaks the law of cas-ref! or of head,
   with what the model expected, or nil."
   [^Repository remote url ops]
@@ -224,7 +227,7 @@
 (defspec cas-ref-law-test 50
   (prop/for-all [ops gen-cas-ops]
     (with-remote [remote url]
-      (let [failure (run-cas-ops remote url ops)]
+      (let [failure (run-cas-ops! remote url ops)]
         (is (nil? failure))
         (nil? failure)))))
 
@@ -342,7 +345,7 @@
      :deleted  (set/difference from-paths to-paths)
      :modified (set (filter #(not= (vec (from %)) (vec (to %))) (set/intersection from-paths to-paths)))}))
 
-(defn- graph-law-failures
+(defn- graph-law-failures!
   "Every pair of commits of `graph` for which ancestor?, merge-base or changed-paths of `s` disagrees with the
   model of the graph, and every commit whose read-tree is not its tree."
   [s graph]
@@ -386,7 +389,7 @@
   (prop/for-all [graph gen-graph]
     (with-remote [_remote url]
       (with-store [s url]
-        (let [failures (vec (graph-law-failures s graph))]
+        (let [failures (vec (graph-law-failures! s graph))]
           (is (= [] failures))
           (empty? failures))))))
 
