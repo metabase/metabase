@@ -507,15 +507,33 @@
 
 ;;; ---------------------------------------------------- Properties ----------------------------------------------------
 
+(defn- trashed-name-clashes
+  "The pairs `#{i j}` of snippets where `i` is in `s2` and `j` is a snippet of `s1` that `s2` removes, so the pull of
+  `s2` over `s1` trashes `j`, which keeps its name, the name of `i`."
+  [s1 s2]
+  (set (for [[j item-j] s1
+             :when (and (= :snippet (:kind item-j)) (not (contains? s2 j)))
+             [i item-i] s2
+             :when (and (= :snippet (:kind item-i)) (= (:name item-i) (:name item-j)))]
+         #{i j})))
+
 (defspec pull-lands-the-head-property-test 25
   (prop/for-all [[s1 s2] (gen/tuple ptu/pushable-snapshot-gen ptu/pushable-snapshot-gen)]
     (enabled
      (with-remote [repo s]
        (let [[inst c1] (pushed-instance! s s1)
              h         (pltu/commit-snapshot! repo ptu/branch (if c1 [c1] []) s2)
-             {:keys [result]} (pltu/pull! inst s)]
-         ;; with no local change, the instance takes the head: get(A) = S after an apply of S
-         (and (= :pulled result)
-              (= s2 (pltu/snapshot-of inst))
-              (= h (instance/base inst))
-              (= none (ptu/local-changes inst))))))))
+             clashes   (trashed-name-clashes s1 s2)
+             {:keys [result key-clash]} (pltu/pull! inst s)]
+         (if (seq clashes)
+           ;; the head gives a snippet the name of a snippet that it removes: the trash keeps the removed one with its
+           ;; name, so the apply refuses with exactly those pairs, and writes nothing
+           (and (= :key-clash result)
+                (= clashes (set (map :ids key-clash)))
+                (= s1 (pltu/snapshot-of inst))
+                (= c1 (instance/base inst)))
+           ;; with no local change, the instance takes the head: get(A) = S after an apply of S
+           (and (= :pulled result)
+                (= s2 (pltu/snapshot-of inst))
+                (= h (instance/base inst))
+                (= none (ptu/local-changes inst)))))))))
