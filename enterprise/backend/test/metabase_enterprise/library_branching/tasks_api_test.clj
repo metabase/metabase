@@ -68,7 +68,18 @@
     (testing "a failed task, with its error"
       (let [task (tasks/start! "push" nil)]
         (tasks/run-task! (:id task) (fn [_] {:error "The remote moved"}))
-        (is (=? {:status "failed" :error_message "The remote moved" :ended_at string?}
+        (is (=? {:status "failed" :error_message "The remote moved" :ended_at string? :outcome nil}
+                (current-task :crowberto 200)))))
+    (testing "a pull that failed on conflicts, with the outcome that lists them"
+      (let [task     (tasks/start! "pull" nil)
+            conflict {:id ["Sample Database" "PUBLIC" "ORDERS"] :kind "published-table" :name "Orders"
+                      :ours "updated" :theirs "deleted"}]
+        (tasks/run-task! (:id task) (fn [_] {:error   "The pull has 1 conflict and 0 violations, so nothing was pulled."
+                                             :outcome {:kind "conflicts" :branch "main" :commit "h"
+                                                       :conflicts [conflict] :violations []}}))
+        (is (=? {:status        "failed"
+                 :error_message "The pull has 1 conflict and 0 violations, so nothing was pulled."
+                 :outcome       {:kind "conflicts" :branch "main" :commit "h" :conflicts [conflict] :violations []}}
                 (current-task :crowberto 200)))))
     (testing "a cancelled task"
       (let [task (tasks/start! "push" nil)]

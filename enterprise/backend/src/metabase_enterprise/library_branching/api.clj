@@ -1,5 +1,6 @@
 (ns metabase-enterprise.library-branching.api
   (:require
+   [metabase-enterprise.library-branching.instance.rows :as rows]
    [metabase-enterprise.library-branching.manifest :as manifest]
    [metabase-enterprise.library-branching.operations :as operations]
    [metabase-enterprise.library-branching.repository :as repository]
@@ -191,19 +192,31 @@
                                                                      [:id Identity]
                                                                      [:kind [:maybe :string]]
                                                                      [:name [:maybe :string]]
-                                                                     [:change [:enum "created" "updated" "deleted"]]]]]]
+                                                                     [:change [:enum "created" "updated" "deleted"]]
+                                                                     [:model [:maybe :string]]
+                                                                     [:model_id [:maybe pos-int?]]
+                                                                     [:collection_id [:maybe pos-int?]]
+                                                                     [:table_id [:maybe pos-int?]]]]]]
   "The local changes of the instance: for each changed item, its identity, kind, name and change type (created,
   updated or deleted), in the order of the identities. A deleted item has the kind and the name of the base, or none
-  when no branch holds the base. 400 when no repository or branch is configured. Superuser only."
+  when no branch holds the base. Each item also has what the sync screens show it by, from the row of the instance
+  that holds its identity now (in the trash or not): `model`, the model name of remote sync (card for a question, a
+  model or a metric); `model_id`, the row id; `collection_id`, the collection to group it under (a collection is its
+  own); `table_id`, the table of a published table, a segment or a measure. Each is nil when it does not apply or the
+  instance has no such row. 400 when no repository or branch is configured. Superuser only."
   []
   (api/check-superuser)
   (let [branch (status-branch)
         {:keys [base local changes]} (status/local-changes (operations/instance) with-store branch {})
         base-snapshot (when (seq (:deleted changes))
-                        (with-store #(status/base-snapshot % branch base {})))]
-    {:dirty (mapv (fn [{:keys [kind change] :as entry}]
-                    (assoc entry :kind (some-> kind name) :change (name change)))
-                  (status/change-list changes local base-snapshot))}))
+                        (with-store #(status/base-snapshot % branch base {})))
+        entries       (status/change-list changes local base-snapshot)
+        details       (rows/details entries)]
+    {:dirty (mapv (fn [{:keys [id kind change] :as entry}]
+                    (merge (assoc entry :kind (some-> kind name) :change (name change))
+                           {:model nil :model_id nil :collection_id nil :table_id nil}
+                           (get details id)))
+                  entries)}))
 
 (api.macros/defendpoint :get "/has-remote-changes" :- [:map
                                                        [:has_changes :boolean]
@@ -232,30 +245,50 @@
              :cached         cached}
       branch-missing (assoc :branch_missing true))))
 
+(def ^:private SideChange
+  [:enum "created" "updated" "deleted" "unchanged" "present" "absent"])
+
+(def ^:private Conflict
+  [:map
+   [:id Identity]
+   [:kind [:maybe :string]]
+   [:name [:maybe :string]]
+   [:ours SideChange]
+   [:theirs SideChange]])
+
+(defn- conflict-response
+  [conflict]
+  (-> conflict
+      (update :kind #(some-> % name))
+      (update :ours name)
+      (update :theirs name)))
+
 (api.macros/defendpoint :get "/push-preview" :- [:map
+                                                 [:head [:maybe :string]]
                                                  [:has_changes :boolean]
                                                  [:clean :boolean]
-                                                 [:conflicts [:sequential [:map
-                                                                           [:id Identity]
-                                                                           [:kind [:maybe :string]]
-                                                                           [:name [:maybe :string]]]]]
+                                                 [:conflicts [:sequential Conflict]]
                                                  [:violations [:sequential :map]]
                                                  [:summary [:map [:added :int] [:updated :int] [:removed :int]]]
                                                  [:branch_missing :boolean]
                                                  [:base_lost :boolean]
                                                  [:head_findings Findings]]
-  "What a push of the instance to the configured branch meets: whether the branch moved since the base
-  (`has_changes`), whether a merge of the base, the instance and the head is clean, its conflicts and violations, and
-  the numbers of items that the merge takes from the head. Writes nothing. 400 when no repository or branch is
-  configured, and with the message for the person when the remote call fails. Superuser only."
+  "What a push of the instance to the configured branch meets: the head of the branch (nil when it does not exist),
+  whether the branch moved since the base (`has_changes`), whether a merge of the base, the instance and the head is
+  clean, its conflicts and violations, and the numbers of items that the merge takes from the head. Each conflict has
+  the identity, the kind and the name of the item, and the change of each side against the base: `ours` (the
+  instance) and `theirs` (the head), each created, updated or deleted, or present or absent when the base is not
+  known. Writes nothing. 400 when no repository or branch is configured, and with the message for the person when the
+  remote call fails. Superuser only."
   []
   (api/check-superuser)
   (let [branch (status-branch)
-        {:keys [diverged clean conflicts violations summary branch-missing base-lost head-findings]}
+        {:keys [head diverged clean conflicts violations summary branch-missing base-lost head-findings]}
         (with-store #(status/push-preview (operations/instance) % branch {}))]
-    {:has_changes    diverged
+    {:head           head
+     :has_changes    diverged
      :clean          clean
-     :conflicts      (mapv #(update % :kind (fn [k] (some-> k name))) conflicts)
+     :conflicts      (mapv conflict-response conflicts)
      :violations     violations
      :summary        summary
      :branch_missing branch-missing
@@ -311,6 +344,15 @@
                         [:branch ms/NonBlankString]]]
   (api/check-superuser)
   (task-response (operations/start-switch! api/*current-user-id* branch)))
+
+(api.macros/defendpoint :post "/discard-changes" :- [:map [:task_id pos-int?]]
+  "Starts a discard of the local changes of this creation instance, as a task, and returns its id: the task writes the
+  content of the base over every local change, and the base stays. It is the choice that a switch to another branch
+  offers when the instance has local changes. 400 when library branching is off or not configured, on a read-only
+  instance, and while a task runs. Superuser only."
+  []
+  (api/check-superuser)
+  (task-response (operations/start-discard! api/*current-user-id*)))
 
 (api.macros/defendpoint :post "/merge-branch" :- [:map [:task_id pos-int?]]
   "Starts a merge of branch `from` into branch `into` (default: the configured branch) in the repository, as a task,
