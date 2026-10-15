@@ -5,6 +5,7 @@
   {:clj-kondo/config '{:lint-as {metabase-enterprise.library-branching.push-test-util/with-remote clojure.core/fn}}}
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.app-db :as app-db]
    [metabase-enterprise.library-branching.pull :as pull]
@@ -15,7 +16,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -153,6 +156,18 @@
              (is (= [(:entity_id metric)] (map :id conflicts)))
              (is (= "Saved" (t2/select-one-fn :name :model/Card (:id metric))))
              (is (= c1 (instance/base inst))))))))))
+
+(deftest apply-transaction-reads-committed-rows-test
+  (testing (str "the transaction of the apply is at READ COMMITTED, also on a connection at REPEATABLE READ; app DB "
+                (mdb/db-type))
+    (t2/with-connection [^Connection conn]
+      (let [old (.getTransactionIsolation conn)]
+        (try
+          (.setTransactionIsolation conn Connection/TRANSACTION_REPEATABLE_READ)
+          (is (= Connection/TRANSACTION_READ_COMMITTED
+                 (library-branching.db/do-in-locking-transaction #(.getTransactionIsolation conn))))
+          (finally
+            (.setTransactionIsolation conn old)))))))
 
 (defn- on-another-connection
   "The result of `(f)` on a new thread with no dynamic bindings of this one: its own app DB connection."

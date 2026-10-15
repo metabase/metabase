@@ -11,15 +11,9 @@
    [metabase-enterprise.library-branching.mutation.core :as mut]
    [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.pull-app-db-test :as pull-app-db-test]
-   [metabase-enterprise.library-branching.pull-test :as pull-test]
-   [metabase.app-db.core :as mdb]))
+   [metabase-enterprise.library-branching.pull-test :as pull-test]))
 
 (set! *warn-on-reflection* true)
-
-(defn- repeatable-read-default?
-  "True iff the app DB of this JVM reads at REPEATABLE READ by default."
-  []
-  (contains? #{:mysql} (mdb/db-type)))
 
 (def mutations
   "Each mutation removes or weakens one rule of the apply, the pull or merge-branch."
@@ -98,13 +92,14 @@
     :edits  [[:replace '(when-not (contains? r :ok) (throw (ex-info "The apply writes nothing." {::app-db/rollback true}))) nil]]
     :tests  [#'pull-app-db-test/refused-step-writes-nothing-test]}
    {:name   :repeatable-read
-    :doc    "The apply runs at the default isolation of the app DB. At REPEATABLE READ (MySQL, MariaDB) a read after a
-            lock sees the snapshot of the first read of the transaction, and a save that committed after it is written
-            over. Other app DBs read at READ COMMITTED by default, so the mutation survives there."
+    :doc    "The apply keeps the isolation of its connection. At REPEATABLE READ (the default of MySQL and MariaDB) a read
+            after a lock sees the snapshot of the first read of the transaction, and a save that committed after it is
+            written over. The app DB data source opens connections at READ COMMITTED, so only the direct test of the
+            isolation can see the mutation."
     :target `library-branching.db/do-in-locking-transaction
     :edits  [[:replace '(.setTransactionIsolation conn Connection/TRANSACTION_READ_COMMITTED) nil]]
-    :expect (if (repeatable-read-default?) :killed :survived)
-    :tests  [#'pull-app-db-test/save-of-an-item-not-locked-yet-is-seen-test]}
+    :tests  [#'pull-app-db-test/apply-transaction-reads-committed-rows-test
+             #'pull-app-db-test/save-of-an-item-not-locked-yet-is-seen-test]}
    {:name   :merge-branch-force
     :doc    "Merge-branch moves the branch from whatever head it has (a force push): a push during the merge is lost."
     :target `merge-branch/merge-branch!

@@ -79,7 +79,8 @@
     (t2/with-connection [^Connection conn]
       (let [isolation (.getTransactionIsolation conn)]
         ;; At REPEATABLE READ (the default of MySQL and MariaDB) a plain read after a lock reads the snapshot of the
-        ;; first read of the transaction, which can predate a commit to a row that the transaction locks later.
+        ;; first read of the transaction, which can predate a commit to a row that the transaction locks later. The app
+        ;; DB data source opens its connections at READ COMMITTED; a connection that a caller changed is set again.
         (.setTransactionIsolation conn Connection/TRANSACTION_READ_COMMITTED)
         (try
           (t2/with-transaction [_ conn]
