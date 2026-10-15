@@ -397,7 +397,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
       H.modal().within(() => {
         cy.findByText("Our analytics events").should("be.visible");
-        cy.button(/close/).click();
+        cy.button(/close/i).click();
       });
       H.main()
         .findByText(`${H.getFullName(admin)}'s Personal Collection`)
