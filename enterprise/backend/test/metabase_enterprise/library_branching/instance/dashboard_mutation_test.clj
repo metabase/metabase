@@ -135,19 +135,19 @@
     :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
    {:name   :dashboard-users-in-scope
     :doc    "The in-use report of a trashed dashboard names a user in the Library."
-    :target `in-use/dashboard-users
+    :target `in-use/link-users
     :edits  [[:replace '(remove in-scope candidates) 'candidates]]
     :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
    {:name   :dashboard-mentions-unchecked
     :doc    "The in-use report of a trashed dashboard names each card and dashboard whose settings text holds the id of
             the dashboard, also when it does not link to it."
-    :target `in-use/dashboard-users
-    :edits  [[:replace '(uses? :dashboard id refs) true]]
+    :target `in-use/link-users
+    :edits  [[:replace '(uses? kind id refs) true]]
     :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}
    {:name   :dashboard-link-cards-ignored
     :doc    "The in-use report of a trashed dashboard reads no dashboard outside the Library, so a link card is not
             reported."
-    :target `library-branching.db/dashboards-mentioning-dashboard
+    :target `library-branching.db/dashboards-with-settings-mentioning
     :edits  [[:replace '[:= :d.archived false] 'false]]
     :tests  [#'dashboard-test/trashed-dashboard-in-use-test]}])
 
