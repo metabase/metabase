@@ -85,7 +85,7 @@ export const MetabotGreeting = ({
             component={ForwardRefLink}
             to={Urls.newExploration()}
             bd="none"
-            leftSection={<Icon name="telescope" c="brand" />}
+            leftSection={<Icon name="telescope" c="core-brand" />}
           >
             {t`Research`}
           </Button>

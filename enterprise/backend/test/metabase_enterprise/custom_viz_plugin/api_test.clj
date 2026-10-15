@@ -167,8 +167,6 @@
           (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
               "dev-only plugins are exempt from version warnings but not from this one"))))))
 
-;;; ------------------------------------------------ Bundle bytes not exposed ------------------------------------------------
-
 (deftest bundle-bytes-not-exposed-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "bytes-sec"

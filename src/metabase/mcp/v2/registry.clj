@@ -224,8 +224,9 @@
 
 (def ^:private default-annotations
   "`readOnlyHint`, `destructiveHint`, and `openWorldHint` are always present — some MCP clients
-   (e.g. the ChatGPT Apps SDK) reject tools that omit them. `openWorldHint` is false because
-   Metabase tools stay within the user's own instance."
+   (e.g. the ChatGPT Apps SDK) reject tools that omit them.
+   `openWorldHint` defaults to false because most tools stay inside the user's own Metabase.
+   A tool that sends outside it sets it to true."
   {:readOnlyHint    false
    :destructiveHint false
    :openWorldHint   false})

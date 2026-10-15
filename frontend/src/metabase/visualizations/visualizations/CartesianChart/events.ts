@@ -881,13 +881,10 @@ export const getOtherSeriesTooltipModel = (
 
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
-  event: EChartsSeriesMouseEvent,
+  element: EventTarget | null,
   formatGoal?: AxisFormatter,
 ) => {
-  // Unjustified type cast. FIXME
-  const element = event.event.event.target as Element;
-
-  if (element?.nodeName !== "text") {
+  if (!(element instanceof Element)) {
     return null;
   }
 

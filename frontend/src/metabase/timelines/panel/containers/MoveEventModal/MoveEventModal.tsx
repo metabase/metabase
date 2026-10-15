@@ -4,7 +4,8 @@ import {
   useListTimelinesQuery,
 } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import MoveEventModal, {
+import {
+  MoveEventModal,
   type MoveEventModalProps,
 } from "metabase/timelines/common/components/MoveEventModal";
 import { useSetTimeline } from "metabase/timelines/common/hooks";

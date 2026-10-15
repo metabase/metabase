@@ -151,6 +151,7 @@
           (is (= [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
                   {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
                   {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
+                  {:id "google/gemini-3.8-flash" :display_name "Gemini 3.8 Flash"}
                   {:id "anthropic/claude-fable-5-1" :display_name "Claude Fable 5.1"}
                   {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
                   {:id "anthropic/claude-opus-5-5" :display_name "Claude Opus 5.5"}
@@ -159,7 +160,8 @@
                   {:id "anthropic/claude-sonnet-5-5" :display_name "Claude Sonnet 5.5"}
                   {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
                   {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                  {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
+                  {:id "anthropic/claude-haiku-5-5" :display_name "Claude Haiku 5.5"}
+                  {:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]
                  (:models google))))
         (testing "and the endpoint ID is the field that names a model in place of the catalog"
           (is (= ["endpoint-id"] (:model_fields google)))))
@@ -384,7 +386,7 @@
                                   (throw (ex-info "The vLLM server answered with text instead of calling a tool."
                                                   {:api-error true :status-code 400})))]
       (mt/with-temporary-setting-values [llm-providers []]
-        (is (=? {:message "The vLLM server answered with text instead of calling a tool."}
+        (is (=? "The vLLM server answered with text instead of calling a tool."
                 (mt/user-http-request :crowberto :post 400 "llm/providers"
                                       {:type   "vllm"
                                        :config {:base-url "http://vllm.internal:8000/v1"}})))
@@ -397,9 +399,9 @@
       (mt/with-temporary-setting-values [llm-providers []]
         (is (= (str "Could not reach the vLLM server at http://vllm.internal:8000/v1. "
                     "Check that it is running and that the base URL is correct.")
-               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                               {:type   "vllm"
-                                                :config {:base-url "http://vllm.internal:8000/v1"}}))))
+               (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                     {:type   "vllm"
+                                      :config {:base-url "http://vllm.internal:8000/v1"}})))
         (is (= [] (llm.provider/connections)))))))
 
 (deftest create-openai-compatible-connection-test
@@ -434,8 +436,8 @@
     (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
       (mt/with-temporary-setting-values [llm-providers []]
         (is (= "Anthropic returned an unexpected model list response"
-               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                               {:type "anthropic" :config {:api-key "sk-ant-nope"}}))))
+               (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                     {:type "anthropic" :config {:api-key "sk-ant-nope"}})))
         (is (= [] (llm.provider/connections)))))))
 
 (deftest a-refused-listing-logs-only-a-malformed-catalog-test
@@ -604,8 +606,8 @@
     (mt/with-temporary-setting-values [llm-providers []]
       (let [connect!   (fn [messages]
                          (mt/with-dynamic-fn-redefs [http/request (fn [_] (bedrock-test/runtime-response-for messages))]
-                           (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                                           bedrock-inference-profile-connection))))
+                           (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                                 bedrock-inference-profile-connection)))
             incomplete "AWS Bedrock returned an incomplete response from \"eu.anthropic.claude-sonnet-4-6\""]
         (are [messages error] (= error (connect! messages))
           [bedrock-test/message-start bedrock-test/stream-error] "Model stream error"
@@ -647,7 +649,7 @@
 (deftest create-does-not-save-when-credentials-are-rejected-test
   (mt/with-temporary-setting-values [llm-providers []]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (rejected-credentials "Anthropic API key expired or invalid")]
-      (is (=? {:message "Anthropic API key expired or invalid"}
+      (is (=? "Anthropic API key expired or invalid"
               (mt/user-http-request :crowberto :post 400 "llm/providers"
                                     {:type "anthropic" :config {:api-key "sk-ant-nope"}})))
       (is (= [] (llm.provider/connections))))))
@@ -1085,7 +1087,7 @@
 (deftest update-does-not-save-when-credentials-are-rejected-test
   (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic" {:api-key "sk-ant-stored"})]]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (rejected-credentials "Anthropic API key expired or invalid")]
-      (is (=? {:message "Anthropic API key expired or invalid"}
+      (is (=? "Anthropic API key expired or invalid"
               (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
                                     {:config {:api-key "sk-ant-rotated"}})))
       (is (= {:api-key "sk-ant-stored"} (stored-config "anthropic"))))))
@@ -1475,6 +1477,7 @@
                      :models [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}
                               {:id "google/gemini-3.6-flash" :display_name "Gemini 3.6 Flash"}
                               {:id "google/gemini-3.7-flash" :display_name "Gemini 3.7 Flash"}
+                              {:id "google/gemini-3.8-flash" :display_name "Gemini 3.8 Flash"}
                               {:id "anthropic/claude-fable-5-1" :display_name "Claude Fable 5.1"}
                               {:id "anthropic/claude-fable-5" :display_name "Claude Fable 5"}
                               {:id "anthropic/claude-opus-5-5" :display_name "Claude Opus 5.5"}
@@ -1483,7 +1486,8 @@
                               {:id "anthropic/claude-sonnet-5-5" :display_name "Claude Sonnet 5.5"}
                               {:id "anthropic/claude-sonnet-5" :display_name "Claude Sonnet 5"}
                               {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
-                              {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]}]
+                              {:id "anthropic/claude-haiku-5-5" :display_name "Claude Haiku 5.5"}
+                              {:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]}]
                    (mt/user-http-request :crowberto :get 200 "llm/models")))
             (is (= "google/gemini-3.5-flash" @probed))))))))
 
@@ -1500,9 +1504,33 @@
                                                                        :project-id         "my-project"
                                                                        :location           "us-east5"
                                                                        :probed-model       "anthropic/claude-sonnet-4-6"})]]
-          (is (=? [{:key "claude-only" :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]}]
+          (is (=? [{:key "claude-only" :models (llm.provider/fixed-models "google")}]
                   (mt/user-http-request :crowberto :get 200 "llm/models")))
           (is (= "anthropic/claude-sonnet-4-6" @probed)))))))
+
+(deftest models-propose-a-retired-probed-model-as-its-successor-test
+  (testing "a connection last probed with a model its provider has since retired proposes the model now serving it"
+    (let [config      {:oauth-access-token "ya29.token"
+                       :project-id         "my-project"
+                       :probed-model       "anthropic/claude-haiku-4-5@20251001"}
+          listed-with (atom nil)]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google" config)]]
+        (mt/with-temporary-raw-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
+          (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider opts]
+                                                                 (reset! listed-with opts)
+                                                                 {:models []})]
+            (mt/user-http-request :crowberto :get 200 "llm/models")
+            (is (= "anthropic/claude-haiku-4-5" (:proposed-model @listed-with)))))))))
+
+(deftest list-providers-shows-a-retired-probed-model-as-its-successor-test
+  (testing "the edit form gets the model now serving a retired probed model, so it can find it on the catalog"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                  {:oauth-access-token "ya29.token"
+                                                                   :project-id         "my-project"
+                                                                   :probed-model
+                                                                   "anthropic/claude-haiku-4-5@20251001"})]]
+      (is (= "anthropic/claude-haiku-4-5"
+             (-> (mt/user-http-request :crowberto :get 200 "llm/providers") first :config :probed-model))))))
 
 (deftest models-listing-probes-the-model-metabot-is-pointed-at-test
   (testing (str "an environment-configured connection is never written back to, so it carries no probed model — the "
@@ -1544,7 +1572,7 @@
                                                                      :project-id         "my-project"})]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider "wrong-model-google/anthropic/claude-opus-5"]
           (is (=? [{:key    "wrong-model-google"
-                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]
+                    :models (llm.provider/fixed-models "google")
                     :error  "Google API error: model not found"}]
                   (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
 
@@ -1560,7 +1588,7 @@
                                                                      :project-id         "my-project"})]]
         (mt/with-temporary-raw-setting-values [llm-metabot-provider "forbidden-model-google/anthropic/claude-opus-5"]
           (is (=? [{:key    "forbidden-model-google"
-                    :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]
+                    :models (llm.provider/fixed-models "google")
                     :error  "Google API error: PERMISSION_DENIED"}]
                   (mt/user-http-request :crowberto :get 200 "llm/models"))))))))
 
@@ -1577,7 +1605,7 @@
         (is (=? [{:key    "bad-key-google"
                   :name   "bad-key-google"
                   :type   "google"
-                  :models [{:id "google/gemini-3.5-flash"} some? some? some? some? some? some? some? some? some? some? some?]
+                  :models (llm.provider/fixed-models "google")
                   :error  "Google API error: invalid authentication credentials"}]
                 (mt/user-http-request :crowberto :get 200 "llm/models")))))))
 

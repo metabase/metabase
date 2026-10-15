@@ -1,0 +1,10 @@
+.card {
+  & :global(.CardVisualization) {
+    padding: 0;
+  }
+
+  /* Data grid cells and ECharts series (inline) set a pointer even when nothing is clickable */
+  & * {
+    cursor: default !important;
+  }
+}
