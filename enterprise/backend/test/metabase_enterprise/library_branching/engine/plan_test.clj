@@ -505,6 +505,12 @@
   (prop/for-all [snaps (engine.tu/key-move-snapshots-gen)]
     (plan-laws? snaps)))
 
+(defspec plan-laws-kind-change-test 300
+  ;; The random edits of plan-laws-test give a container another kind, after its content left it, rarely, so this
+  ;; property builds such a change in each case, with references between the container and its content.
+  (prop/for-all [snaps (engine.tu/kind-change-snapshots-gen)]
+    (plan-laws? snaps)))
+
 (defspec plan-never-writes-a-local-change-test 300
   (prop/for-all [[b l :as snaps] (engine.tu/related-snapshots-gen)]
     (if-let [m (merged snaps)]

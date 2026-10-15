@@ -260,6 +260,63 @@
                        (gen/vector (gen/tuple gen/nat gen/nat) 0 3)
                        gen/boolean)))
 
+(def ^:private content-kinds [:collection :dashboard :metric :question])
+
+(defn- container-items
+  "`{identity item}`: a collection at the root level and its content, one item for each `[kind place]` of `choices`.
+  The place of item `i` is the collection or a collection of the content before it. `refs` (`[from to]` pairs of
+  indices, 0 the collection) are the references among them."
+  [choices refs]
+  (let [ids   (mapv #(eid (str "kindchange" %)) (range (inc (count choices))))
+        kinds (into [:collection] (map #(nth content-kinds (mod (first %) (count content-kinds)))) choices)
+        n     (count ids)
+        place (fn [i k] (let [containers (filterv #(= :collection (kinds %)) (range i))]
+                          (nth ids (nth-of containers k))))]
+    (into {}
+          (map (fn [i]
+                 [(nth ids i)
+                  (item (kinds i)
+                        (str "Kind change " i)
+                        (when (pos? i) (place i (second (nth choices (dec i)))))
+                        (keep (fn [[from to]] (when (= i (mod from n)) [:card (nth ids (mod to n))])) refs))]))
+          (range n))))
+
+(defn- evict-and-rekind
+  "Snapshot `s` in which the collection `id` gives up its content, then takes the `k`th kind that [[rekind-edit]]
+  allows. Each item of the content goes to the trash with its own content (`(evictions i)` false) or moves out of
+  `id` ([[move-edit]] with `(evictions i)`, to the root level when that move keeps it in `id`)."
+  [s id evictions k]
+  (let [content (filter #(= id (:place (get s %))) (sorted-ids s))
+        s       (reduce (fn [s [i child]]
+                          (cond
+                            (not (contains? s child)) s
+                            (nth-of evictions i)      (let [s' (move-edit s child (nth-of evictions i))]
+                                                        (cond-> s'
+                                                          (= id (get-in s' [child :place])) (assoc-in [child :place] nil)))
+                            :else                     (delete-edit s child)))
+                        s
+                        (map-indexed vector content))]
+    (rekind-edit s id k)))
+
+(defn kind-change-snapshots-gen
+  "Generates `[b o t]`: `[b o t]` as [[related-snapshots-gen]] gives them, and a collection at the root level with a
+  content of 1 to 4 items, with references among them. In `t`, the content leaves the collection (to the trash, to the
+  root level, or to another container), and the collection takes a kind of another table. Either `b` and `o` hold the
+  collection and `t` the change, or the reverse. Each snapshot stays well formed."
+  []
+  (gen/fmap (fn [[[b o t] choices refs evictions k reverse?]]
+              (let [c      (container-items choices refs)
+                    change #(evict-and-rekind % (eid "kindchange0") evictions k)]
+                (if reverse?
+                  [(into b (change c)) (into o (change c)) (into t c)]
+                  [(into b c) (into o c) (change (into t c))])))
+            (gen/tuple (related-snapshots-gen)
+                       (gen/vector (gen/tuple gen/nat gen/nat) 1 4)
+                       (gen/vector (gen/tuple gen/nat gen/nat) 0 5)
+                       (gen/vector (gen/one-of [(gen/return false) gen/nat]) 1 4)
+                       gen/nat
+                       gen/boolean)))
+
 (defn with-unknown
   "Base snapshot `b` in which the base value of the `k`th identity of `ids`, for each `k` of `ks`, is `:unknown`."
   [b ids ks]
