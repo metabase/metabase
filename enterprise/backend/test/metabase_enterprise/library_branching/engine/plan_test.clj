@@ -46,11 +46,11 @@
     [(:kind it) k]))
 
 (defn- key-taken?
-  "True iff an item of `s` other than `id` has the unique key of `content`. An item in `later` does not count: its
-  trash keeps its key, so no order of the steps frees it, and the apply refuses such a plan."
-  [s later id content]
+  "True iff an item of `s` other than `id` has the unique key of `content`. An item that goes to the trash later
+  counts: its trash keeps its key."
+  [s id content]
   (when-some [k (unique-key content)]
-    (some (fn [[j it]] (and (not= j id) (not (later j)) (= k (unique-key it)))) s)))
+    (some (fn [[j it]] (and (not= j id) (= k (unique-key it)))) s)))
 
 (def ^:private card-kinds
   "The kinds whose items the app DB keeps in one table, the cards."
@@ -64,11 +64,11 @@
 (defn- put
   "`state` with `content` as the content of `id`; a fault when another item has its unique key. The item of `id` in
   another table stays, as the old item, until its trash."
-  [{:keys [s later] :as state} id content]
+  [{:keys [s] :as state} id content]
   (let [old (get s id)]
     (cond-> (assoc-in state [:s id] content)
       (and old (not (one-row? (:kind old) (:kind content)))) (assoc-in [:old id] old)
-      (key-taken? s later id content)                        (update :faults conj [:key-taken id]))))
+      (key-taken? s id content)                              (update :faults conj [:key-taken id]))))
 
 (defn- run-step
   "Applies `step` to the simulated instance `{:s snapshot :old {id item} :content {id write} :later #{ids to trash
@@ -374,10 +374,12 @@
           steps (plan/plan l m l)]
       (is (= [kc :interim] (first (step-forms steps))))
       (is (key-moves-apply? l m steps))))
-  (testing "a trash does not free a name: the plan writes the new holder and trashes the old one, with no interim step"
-    (let [l (snippets [kb "Filter a"])
-          m (snippets [ka "Filter a"])]
-      (is (= [[ka :write] [kb :trash]] (step-forms (plan/plan l m l)))))))
+  (testing "a trash does not free a name: the old holder takes a new name before the new holder writes it"
+    (let [l     (snippets [kb "Filter a"])
+          m     (snippets [ka "Filter a"])
+          steps (plan/plan l m l)]
+      (is (= [[kb :interim] [ka :write] [kb :trash]] (step-forms steps)))
+      (is (key-moves-apply? l m steps)))))
 
 (def ^:private robin (engine.tu/eid "robin"))
 
@@ -423,6 +425,54 @@
     (let [m (assoc with-system metrics-id (engine.tu/item :glossary-term "Metrics" nil))]
       (is (= {:system-ids [metrics-id]}
              (try (plan/plan with-system m with-system) (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+
+(defn- trashed-name [item-name id] (str item-name " (trashed " id ")"))
+
+(deftest ^:parallel trash-rename-test
+  (testing "an item that the target lacks, whose name a write takes: an interim step gives it the name with a suffix
+           that names it, before every write, and the trash keeps that name"
+    (let [l (snippets [kb "Filter a"])
+          m (snippets [ka "Filter a"])]
+      (is (= [{:id kb :interim (assoc (get l kb) :name (trashed-name "Filter a" kb))}
+              {:id ka :write (get m ka) :pre nil}
+              {:id kb :trash true :pre (get l kb)}]
+             (plan/plan l m l)))))
+  (testing "a name of one key counts: case and accents"
+    (let [l     (snippets [kb "Héron"])
+          m     (snippets [ka "HERON"])
+          steps (plan/plan l m l)]
+      (is (= [[kb :interim] [ka :write] [kb :trash]] (step-forms steps)))
+      (is (key-moves-apply? l m steps))))
+  (testing "an item that the target lacks and whose name no write takes is only trashed"
+    (let [l (snippets [kb "Filter a"])]
+      (is (= [[kb :trash]] (step-forms (plan/plan l (snippets) l))))))
+  (testing "the new name is the key of no item of either snapshot"
+    (let [taken (trashed-name "Filter a" kb)
+          l     (snippets [kb "Filter a"] [kc (u/upper-case-en taken)])
+          m     (snippets [ka "Filter a"] [kc (u/upper-case-en taken)])
+          steps (plan/plan l m l)]
+      (is (= (str taken "~") (:name (:interim (first steps)))))
+      (is (key-moves-apply? l m steps))))
+  (testing "a long name is cut, by characters, so that the new name has at most the length that the key can have"
+    (let [bird  "🐦"
+          l     (snippets [kb (apply str (repeat 254 bird))])
+          m     (snippets [ka (apply str (repeat 254 bird))])
+          ^String new-name (:name (:interim (first (plan/plan l m l))))]
+      (is (= 254 (.codePointCount new-name 0 (.length new-name))))
+      (is (= (trashed-name (apply str (repeat (- 254 (count (trashed-name "" kb))) bird)) kb) new-name))))
+  (testing "with a swap of names: a temporary name for the swap and a new name for the trash, each unique"
+    (let [l     (snippets [ka "A"] [kb "B"] [kc "C"])
+          m     (snippets [ka "B"] [kb "A"] [kd "C"])
+          steps (plan/plan l m l)]
+      (is (= [[ka :interim] [kc :interim] [kb :write] [ka :write] [kd :write] [kc :trash]] (step-forms steps)))
+      (is (= (trashed-name "C" kc) (:name (:interim (second steps)))))
+      (is (key-moves-apply? l m steps))))
+  (testing "an item whose kind changes to a kind of another table frees the name of its old item"
+    (let [l     (snippets [kb "Filter a"])
+          m     (-> (snippets [ka "Filter a"]) (assoc kb (engine.tu/item :metric "Filter a" lib)))
+          steps (plan/plan l m l)]
+      (is (= [[kb :interim] [ka :write] [kb :write] [kb :trash]] (step-forms steps)))
+      (is (reaches-target? l m steps)))))
 
 ;;; ---------------------------------------------------- Properties ----------------------------------------------
 
@@ -474,6 +524,12 @@
   ;; The random renames of plan-laws-test rarely move a name from one item to another, so this property builds the
   ;; moves: renames, swaps, rotations, new holders of a freed name, and references among the items.
   (prop/for-all [snaps (engine.tu/key-move-snapshots-gen)]
+    (plan-laws? snaps)))
+
+(defspec plan-laws-key-trash-test 300
+  ;; Writes that take the keys of snippets that the target removes: the trash keeps a key, so each such snippet takes
+  ;; a new name before the writes.
+  (prop/for-all [snaps (engine.tu/key-trash-snapshots-gen)]
     (plan-laws? snaps)))
 
 (defspec plan-never-writes-a-local-change-test 300
@@ -533,6 +589,14 @@
     :doc    "A temporary key can be the key of another item."
     :target `plan/temporary-keys
     :edits  [[:replace '(remove (comp taken snapshot/fold-name) candidates) 'candidates]]}
+   {:name   :no-trash-rename
+    :doc    "An item that the target lacks keeps its key in the trash, so a write that takes the key finds it taken."
+    :target `plan/plan
+    :edits  [[:replace '(trash-renames unique-keys l m removed written) []]]}
+   {:name   :trash-key-uncut
+    :doc    "The new key of a trashed item is not cut, so a long key with its suffix is longer than the app DB holds."
+    :target `plan/trash-key
+    :edits  [[:replace '(and room (> (.codePointCount k 0 (.length k)) room)) false]]}
    {:name   :no-defer
     :doc    "A reference cycle is written in one step per item, so a write refers to an item that does not exist yet."
     :target `plan/write-steps
@@ -558,6 +622,7 @@
 (deftest plan-mutations-test
   (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'trash-cycle-test
                                 #'local-change-test #'unknown-base-test #'system-item-test #'key-move-test
-                                #'kind-change-test
+                                #'kind-change-test #'trash-rename-test
                                 #'plan-laws-test #'plan-laws-ref-cycle-test #'plan-laws-key-move-test
+                                #'plan-laws-key-trash-test
                                 #'plan-unknown-base-test]}))

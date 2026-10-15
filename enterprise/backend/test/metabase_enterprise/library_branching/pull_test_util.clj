@@ -17,8 +17,21 @@
 
 ;;; ----------------------------------------------------- Instance -----------------------------------------------------
 
+(defn- key-holder
+  "An identity other than `id` of an item of the state `st` (in scope or in the trash) of the kind of `content` whose
+  unique key is the key of `content`, or nil."
+  [st id content]
+  (when-some [k (snapshot/unique-key snapshot/unique-keys content)]
+    (some (fn [[j item]]
+            (when (and (not= j id)
+                       (= (:kind content) (:kind item))
+                       (= k (snapshot/unique-key snapshot/unique-keys item)))
+              j))
+          (concat (:snapshot st) (:trash st)))))
+
 (defn- memory-ops!
-  "The item operations of `apply/apply-plan` on the instance state in the volatile `st`."
+  "The item operations of `apply/apply-plan` on the instance state in the volatile `st`. A write refuses a unique key
+  that another item has, also an item in the trash, as the app DB does."
   [st]
   {:current   (fn [kind id]
                 (let [item (get-in @st [:snapshot id])]
@@ -30,6 +43,8 @@
                            (not (contains? (:snapshot @st) place))
                            (not (contains? snapshot/area-roots place)))
                   (instance/refuse! :place id "The container is not in scope."))
+                (when-let [holder (key-holder @st id content)]
+                  (instance/refuse! :key-taken id (str "The item " holder " has the unique key of this item.")))
                 (vswap! st #(-> %
                                 (assoc-in [:snapshot id] content)
                                 (update :trash dissoc id))))
