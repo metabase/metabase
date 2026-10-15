@@ -173,8 +173,13 @@
                            [[(t2/table-name join-model) join-alias]
                             join-condition])))})))
 
-(def ^{:private true, :arglists '([search-model])} spec-index-query
-  (memoize spec-index-query*))
+(def ^:private spec-index-query-memo (memoize (fn [_db-type search-model] (spec-index-query* search-model))))
+
+(defn- spec-index-query
+  "The Honey SQL query selecting the indexable rows of `search-model` from its spec. Memoized per app-DB type since
+  the generated Honey SQL varies by engine (e.g. `searchable-value-trim-sql` emits LEFT/CAST only for Postgres and H2)."
+  [search-model]
+  (spec-index-query-memo (mdb/db-type) search-model))
 
 (defn- spec-index-query-where [search-model where-clause]
   (-> (spec-index-query search-model)
