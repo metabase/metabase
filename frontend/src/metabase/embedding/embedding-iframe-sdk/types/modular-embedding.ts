@@ -227,7 +227,7 @@ export interface MetabaseQuestionAttributes {
    *
    * @remarks Pro/Enterprise, Guest embed
    */
-  "entity-types"?: ("model" | "table" | "metric")[];
+  "entity-types"?: ("model" | "table" | "metric" | "library")[];
 
   /**
    * Optional custom context string passed through to the guest token endpoint.
@@ -296,9 +296,9 @@ export interface MetabaseBrowserAttributes {
 
   /**
    * An array of entity types to show in the question's data picker:
-   * `model`, `table`, `metric`.
+   * `model`, `table`, `metric`, `library`.
    */
-  "data-picker-entity-types"?: ("model" | "table" | "metric")[];
+  "data-picker-entity-types"?: ("model" | "table" | "metric" | "library")[];
 
   /**
    * Whether to show the "New question" button.
