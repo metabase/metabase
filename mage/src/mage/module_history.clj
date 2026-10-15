@@ -297,8 +297,13 @@
 
 ;;;; Entry point
 
+(defn- remote-branch
+  "The branch on `origin` that `ref` tracks, or nil for a local branch or a commit, which no fetch changes."
+  [ref]
+  (second (re-matches #"(?:refs/remotes/)?origin/(.+)" ref)))
+
 (defn cli-update
-  "Fetch master, measure its new commits, write the files, and publish them when asked."
+  "Fetch the ref to measure, measure its new commits, write the files, and publish them when asked."
   [{:keys [options]}]
   (let [{:keys [dir publish ref no-fetch no-measure dry-run]} options]
     (when (str/blank? dir)
@@ -315,8 +320,9 @@
         (u/exit (c/red (str "Not installed, but needed to publish: " (str/join ", " missing))) 1))
       (when-not no-measure
         (when-not no-fetch
-          (println "Fetching origin/master...")
-          (sh! {} ["git" "fetch" "--quiet" "origin" "master"]))
+          (when-let [branch (remote-branch (or ref "origin/master"))]
+            (println (str "Fetching origin/" branch "..."))
+            (sh! {} ["git" "fetch" "--quiet" "origin" branch])))
         (measure! dir ref))
       (when config
         (publish! (boolean dry-run) dir config (fs/parent (fs/absolutize config-file))))

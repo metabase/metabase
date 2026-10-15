@@ -159,16 +159,22 @@
   (update result :printed #(re-find pattern %)))
 
 (deftest measure-test
-  (testing "measuring runs in a fresh JVM, on another ref when one is given"
+  (testing "measuring runs in a fresh JVM after fetching the ref it measures, when that ref is on origin"
     (let [calls (atom [])]
       (with-out-str
         (with-redefs [shell/sh* (fake-sh calls {})]
           (module-history/cli-update {:options {:dir "/tmp/out", :no-fetch true}})
-          (module-history/cli-update {:options {:dir "/tmp/out", :ref "origin/stack-tip"}})))
+          (module-history/cli-update {:options {:dir "/tmp/out"}})
+          (module-history/cli-update {:options {:dir "/tmp/out", :ref "origin/stack-tip"}})
+          (module-history/cli-update {:options {:dir "/tmp/out", :ref "stack-tip"}})))
       (is (= [["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""]
               ["git" "fetch" "--quiet" "origin" "master"]
+              ["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""]
+              ["git" "fetch" "--quiet" "origin" "stack-tip"]
               ["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""
-               ":ref" "\"origin/stack-tip\""]]
+               ":ref" "\"origin/stack-tip\""]
+              ["clojure" "-X:dev" "dev.module-history-report/update!" ":dir" "\"/tmp/out\""
+               ":ref" "\"stack-tip\""]]
              @calls)))))
 
 (def ^:private card-get

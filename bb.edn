@@ -334,7 +334,7 @@
              ["-P" "--publish FILE" "Publish the files as this EDN file says; see the mage.module-history docstring for its shape"]
              ["-D" "--dry-run" "With --publish, print the commands that would change Metabase or a share instead of running them"]
              ["-r" "--ref REF" "Measure the first-parent history of this ref instead of origin/master"]
-             ["-F" "--no-fetch" "Measure up to the origin/master already fetched"]
+             ["-F" "--no-fetch" "Measure the ref as last fetched"]
              ["-M" "--no-measure" "Skip fetching and measuring; use the files already in DIR"]]
    :arg-schema [:tuple]
    :requires [[mage.module-history]]
