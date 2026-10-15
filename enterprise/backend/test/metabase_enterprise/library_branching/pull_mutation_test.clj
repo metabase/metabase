@@ -21,9 +21,8 @@
   []
   (contains? #{:mysql} (mdb/db-type)))
 
-(defn mutations
+(def mutations
   "Each mutation removes or weakens one rule of the apply, the pull or merge-branch."
-  []
   [{:name   :nowitness
     :doc    "The apply checks no precondition (the TLA+ mutation nowitness): a save between the read of the pull and the
             apply is written over."
@@ -115,4 +114,4 @@
     :tests  [#'merge-branch-test/merge-branch-test]}])
 
 (deftest pull-mutations-test
-  (mut/check (mutations) {:timeout-ms 180000}))
+  (mut/check mutations {:timeout-ms 180000}))

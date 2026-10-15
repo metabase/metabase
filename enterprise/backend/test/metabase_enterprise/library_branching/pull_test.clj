@@ -28,7 +28,7 @@
 (def ^:private none
   {:created #{} :deleted #{} :updated #{}})
 
-(defn- pushed-instance
+(defn- pushed-instance!
   "A memory instance that pushed `s` to the branch of store `st`, and the commit of the push."
   [st s & {:as more}]
   (let [inst (pltu/memory-instance (atom (merge {:snapshot s} more)))
@@ -50,7 +50,7 @@
 (deftest pull-applies-the-remote-changes-and-keeps-the-local-ones-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            remote    (-> ptu/sample
                          (ptu/renamed ptu/revenue-id "Revenue, net")
                          (dissoc ptu/orders-id)
@@ -73,7 +73,7 @@
 (deftest pull-of-the-base-is-up-to-date-test
   (enabled
    (with-remote [_repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)]
+     (let [[inst c1] (pushed-instance! s ptu/sample)]
        (pltu/save! inst #(ptu/renamed % ptu/revenue-id "Local"))
        (testing "the head is the base: nothing to do, and the local change stays"
          (is (= {:result :up-to-date :head c1} (pltu/pull! inst s)))
@@ -82,7 +82,7 @@
 (deftest pull-of-a-head-with-the-same-content-moves-the-base-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            h         (pltu/commit-snapshot! repo ptu/branch [c1] ptu/sample {"README.md" (ptu/utf8 "hi")})]
        (testing "a new head with the same content: no step, and the base moves"
          (is (= {:result :pulled :head h :steps [] :trashed-in-use {}} (pltu/pull! inst s)))
@@ -119,7 +119,7 @@
 (deftest pull-of-a-missing-branch-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)]
+     (let [[inst c1] (pushed-instance! s ptu/sample)]
        (.delete (doto (.updateRef ^org.eclipse.jgit.lib.Repository repo (str "refs/heads/" ptu/branch)) (.setForceUpdate true)))
        (is (= {:result :no-branch} (pltu/pull! inst s)))
        (is (= c1 (instance/base inst)))))))
@@ -127,7 +127,7 @@
 (deftest pull-after-a-crash-between-branch-and-base-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            local     (ptu/renamed ptu/sample ptu/revenue-id "Changed")
            crashes   (ptu/wrap-instance inst {:set-base! (fn [& _] (throw (ex-info "crash" {})))})]
        (pltu/save! inst (constantly local))
@@ -145,7 +145,7 @@
 (deftest pull-conflict-writes-nothing-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            h         (pltu/commit-snapshot! repo ptu/branch [c1] (-> ptu/sample
                                                                      (ptu/renamed ptu/revenue-id "Theirs")
                                                                      (ptu/renamed ptu/orders-id "Same")))]
@@ -168,7 +168,7 @@
 (deftest take-theirs-is-a-save-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            remote    (ptu/renamed ptu/sample ptu/revenue-id "Theirs")
            h         (pltu/commit-snapshot! repo ptu/branch [c1] remote)]
        (pltu/save! inst #(ptu/renamed % ptu/revenue-id "Mine"))
@@ -181,7 +181,7 @@
 (deftest aba-trace-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            remote    (ptu/renamed ptu/sample ptu/revenue-id "Theirs")
            h         (pltu/commit-snapshot! repo ptu/branch [c1] remote)]
        (pltu/save! inst #(ptu/renamed % ptu/revenue-id "a"))
@@ -204,7 +204,7 @@
 (deftest save-between-read-and-apply-is-not-lost-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            h         (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed ptu/sample ptu/revenue-id "Theirs"))
            saved?    (atom false)
            racing    (ptu/wrap-instance inst {:read-snapshot (fn [read-snapshot]
@@ -224,7 +224,7 @@
 (deftest stale-pull-gives-up-after-the-retries-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            _         (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed ptu/sample ptu/revenue-id "Theirs"))
            reads     (atom 0)
            racing    (ptu/wrap-instance inst {:read-snapshot (fn [read-snapshot]
@@ -245,7 +245,7 @@
 (deftest decisions-against-one-head-accumulate-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            h         (pltu/commit-snapshot! repo ptu/branch [c1] (-> ptu/sample
                                                                      (ptu/renamed ptu/revenue-id "Theirs 1")
                                                                      (ptu/renamed ptu/orders-id "Theirs 2")))]
@@ -263,7 +263,7 @@
 (deftest decision-is-bound-to-content-and-head-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            h1        (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed ptu/sample ptu/revenue-id "Theirs"))]
        (pltu/save! inst #(ptu/renamed % ptu/revenue-id "Mine"))
        (let [decisions (pull/decide [] ptu/revenue-id (get (pltu/snapshot-of inst) ptu/revenue-id) h1)]
@@ -283,7 +283,7 @@
 (deftest force-push-loses-the-base-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            ;; someone resets the branch to a commit of another history
            remote    (ptu/renamed ptu/sample ptu/revenue-id "Rewritten")
            h         (pltu/commit-snapshot! repo ptu/branch [] remote)
@@ -316,7 +316,7 @@
 (deftest force-push-during-the-pull-aborts-the-apply-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            ;; item 1 = a is the base content "Revenue". main has its own history, with item 1 = b; a text merge of main into the branch takes b
            main      (pltu/commit-snapshot! repo "upstream" [] (ptu/renamed ptu/sample ptu/revenue-id "b"))
            merged    (pltu/commit-snapshot! repo ptu/branch [c1 main] (ptu/renamed ptu/sample ptu/revenue-id "b"))
@@ -348,7 +348,7 @@
 (deftest pull-refuses-an-ill-formed-head-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            stray     "StrayCollection000001"
            ;; a text merge in git: one side removed the metrics collection, the other side added a metric in it
            bad       (-> ptu/sample
@@ -372,7 +372,7 @@
 (deftest pull-refuses-a-head-that-does-not-decode-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            files     (assoc (writer/encode-tree kinds/codecs ptu/sample) "library/broken.metric.yaml" (ptu/utf8 "kind: [\n"))
            _         (pltu/commit-on! repo ptu/branch [c1] files)
            {:keys [result findings]} (pltu/pull! inst s)]
@@ -383,7 +383,7 @@
 (deftest pull-refuses-an-identity-outside-the-library-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample :outside #{new-snippet-id})
+     (let [[inst c1] (pushed-instance! s ptu/sample :outside #{new-snippet-id})
            h         (pltu/commit-snapshot! repo ptu/branch [c1] (-> ptu/sample
                                                                      (ptu/renamed ptu/orders-id "Changed")
                                                                      (assoc new-snippet-id (new-snippet nil))))
@@ -400,7 +400,7 @@
 (deftest semantic-findings-are-reported-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            _         (pltu/commit-snapshot! repo ptu/branch [c1] (ptu/renamed ptu/sample ptu/revenue-id "x"))
            {:keys [result semantic]} (pltu/pull! inst s {:env {:databases {}}})]
        (is (= :pulled result))
@@ -411,7 +411,7 @@
 (deftest removed-item-in-use-goes-to-the-trash-and-comes-back-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample :uses {"OutsideQuestion000001" #{ptu/orders-id}})
+     (let [[inst c1] (pushed-instance! s ptu/sample :uses {"OutsideQuestion000001" #{ptu/orders-id}})
            h1        (pltu/commit-snapshot! repo ptu/branch [c1] (dissoc ptu/sample ptu/orders-id))]
        (testing "the head removes a metric that a question outside the Library uses: it goes to the trash, and the
                 pull reports it with its user"
@@ -427,7 +427,7 @@
 (deftest collection-removed-with-its-contents-test
   (enabled
    (with-remote [repo s]
-     (let [[inst c1] (pushed-instance s ptu/sample)
+     (let [[inst c1] (pushed-instance! s ptu/sample)
            _         (pltu/commit-snapshot! repo ptu/branch [c1] (dissoc ptu/sample ptu/metrics-id ptu/revenue-id ptu/orders-id))
            {:keys [result steps]} (pltu/pull! inst s)]
        (testing "the head removes a collection and the metrics in it: all go to the trash, the metrics first"
@@ -441,7 +441,7 @@
   (prop/for-all [[s1 s2] (gen/tuple ptu/pushable-snapshot-gen ptu/pushable-snapshot-gen)]
     (enabled
      (with-remote [repo s]
-       (let [[inst c1] (pushed-instance s s1)
+       (let [[inst c1] (pushed-instance! s s1)
              h         (pltu/commit-snapshot! repo ptu/branch (if c1 [c1] []) s2)
              {:keys [result]} (pltu/pull! inst s)]
          ;; with no local change, the instance takes the head: get(A) = S after an apply of S

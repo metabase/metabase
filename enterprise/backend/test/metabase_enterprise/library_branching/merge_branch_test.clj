@@ -29,7 +29,7 @@
   [s commit path]
   (some-> (get (store/read-tree s commit) path) (String. "UTF-8")))
 
-(defn- branches
+(defn- branches!
   "Main at a commit of `base`, and the feature branch made from it with `ours`; main then moves to `theirs`. Returns
   `[a f m]`, the three commits."
   [repo base ours theirs & {:keys [ours-foreign theirs-foreign]}]
@@ -44,7 +44,7 @@
    (with-remote [repo s]
      (let [ours   (ptu/renamed ptu/sample ptu/revenue-id "Ours")
            theirs (ptu/renamed ptu/sample ptu/orders-id "Theirs")
-           [_a f m] (branches repo ptu/sample ours theirs
+           [_a f m] (branches! repo ptu/sample ours theirs
                               :ours-foreign {"README.md" (ptu/utf8 "ours")}
                               :theirs-foreign {".github/check.yml" (ptu/utf8 "on: push")})
            {:keys [result commit]} (merge-branch/merge-branch! s feature main {:message "Merge main"})]
@@ -64,7 +64,7 @@
 (deftest merge-branch-refuses-conflicts-test
   (enabled
    (with-remote [repo s]
-     (let [[_a f _m] (branches repo ptu/sample
+     (let [[_a f _m] (branches! repo ptu/sample
                                (ptu/renamed ptu/sample ptu/revenue-id "Ours")
                                (ptu/renamed ptu/sample ptu/revenue-id "Theirs"))
            {:keys [result conflicts]} (merge-branch/merge-branch! s feature main)]
@@ -79,7 +79,7 @@
      (let [user-id  "UsesOrdersMetric00001"
            user     (ptu/item user-id :metric "Uses orders" ptu/metrics-id
                               {:display "scalar" :query (ptu/count-query ptu/orders-table ptu/orders-id)})
-           [_a f _m] (branches repo ptu/sample (assoc ptu/sample user-id user) (dissoc ptu/sample ptu/orders-id))
+           [_a f _m] (branches! repo ptu/sample (assoc ptu/sample user-id user) (dissoc ptu/sample ptu/orders-id))
            {:keys [result violations]} (merge-branch/merge-branch! s feature main)]
        (testing "main removes a metric, and the branch adds a metric that uses it: no item conflicts, the merge check
                 finds the dangling reference and names the pair"
@@ -92,7 +92,7 @@
   (enabled
    (with-remote [repo s]
      (let [stray     "StrayCollection000001"
-           [_a f _m] (branches repo ptu/sample ptu/sample (assoc ptu/sample stray (ptu/item stray :collection "Stray" nil {})))
+           [_a f _m] (branches! repo ptu/sample ptu/sample (assoc ptu/sample stray (ptu/item stray :collection "Stray" nil {})))
            {:keys [result findings]} (merge-branch/merge-branch! s feature main)]
        (testing "main has a collection at the root level that is no fixed root: the merge result breaks a structural rule,
                 and the merge refuses"
@@ -103,7 +103,7 @@
 (deftest merge-branch-refuses-a-conflict-of-foreign-files-test
   (enabled
    (with-remote [repo s]
-     (let [[_a f _m] (branches repo ptu/sample ptu/sample ptu/sample
+     (let [[_a f _m] (branches! repo ptu/sample ptu/sample ptu/sample
                                :ours-foreign {"README.md" (ptu/utf8 "ours")}
                                :theirs-foreign {"README.md" (ptu/utf8 "theirs")})]
        (is (= {:result :conflicts :conflicts [] :violations [] :foreign ["README.md"]}
@@ -113,7 +113,7 @@
 (deftest merge-branch-moves-the-branch-only-from-its-head-test
   (enabled
    (with-remote [repo s]
-     (let [[_a f _m] (branches repo ptu/sample (ptu/renamed ptu/sample ptu/revenue-id "Ours")
+     (let [[_a f _m] (branches! repo ptu/sample (ptu/renamed ptu/sample ptu/revenue-id "Ours")
                                (ptu/renamed ptu/sample ptu/orders-id "Theirs"))
            other     (promise)
            racing    (ptu/wrap-store s (fn []

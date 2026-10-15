@@ -163,7 +163,7 @@
     (let [r @p]
       (if (instance? Throwable r) (throw r) r))))
 
-(defn- racing-store
+(defn- racing-store!
   "The kind store `ks`, whose `current` of `id` runs `(f)` right after it locks and reads the item."
   [ks id f]
   (reify instance/KindStore
@@ -186,7 +186,7 @@
                                                                              (ptu/renamed (:entity_id first-m) "First, theirs")
                                                                              (ptu/renamed (:entity_id second-m) "Second, theirs")))
                  once        (atom false)
-                 stores      (update app-db/kind-stores :metric racing-store (:entity_id first-m)
+                 stores      (update app-db/kind-stores :metric racing-store! (:entity_id first-m)
                                      (fn []
                                        (when (compare-and-set! once false true)
                                          ;; another connection, so a thread that does not take the bindings of

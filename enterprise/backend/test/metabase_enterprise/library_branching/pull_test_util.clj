@@ -17,7 +17,7 @@
 
 ;;; ----------------------------------------------------- Instance -----------------------------------------------------
 
-(defn- memory-ops
+(defn- memory-ops!
   "The item operations of `apply/apply-plan` on the instance state in the volatile `st`."
   [st]
   {:current   (fn [kind id]
@@ -61,7 +61,7 @@
     ;; One lock for the whole instance stands for the row locks; the copy is the transaction.
     (locking state
       (let [st     (volatile! @state)
-            result (apply/apply-plan (memory-ops st) plan opts)]
+            result (apply/apply-plan (memory-ops! st) plan opts)]
         (when (contains? result :ok)
           (reset! state @st))
         result)))

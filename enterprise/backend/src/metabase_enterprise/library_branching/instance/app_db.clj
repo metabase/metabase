@@ -3,8 +3,10 @@
   in-scope items of the kinds of [[kind-stores]]."
   (:require
    [clojure.edn :as edn]
+   [metabase-enterprise.library-branching.apply :as apply]
    [metabase-enterprise.library-branching.db :as library-branching.db]
    [metabase-enterprise.library-branching.instance :as instance]
+   [metabase-enterprise.library-branching.instance.in-use :as in-use]
    [metabase-enterprise.library-branching.instance.kinds.collection :as kinds.collection]
    [metabase-enterprise.library-branching.instance.kinds.metric :as kinds.metric]
    [metabase-enterprise.library-branching.instance.kinds.published-table :as kinds.published-table]
@@ -64,13 +66,52 @@
     :ok
     {:moved (:commit_id (base-row))}))
 
+(defn- kind-store
+  [stores kind id]
+  (or (get stores kind)
+      (instance/refuse! :unknown-kind id (str "The instance has no kind " kind "."))))
+
+(defn- stub
+  [stores kind id content refs]
+  (let [ks (kind-store stores kind id)]
+    (if (satisfies? instance/Stub ks)
+      (instance/stub ks id content refs)
+      (instance/refuse! :reference-cycle id
+                        (str "A new item of the kind " (name kind) " cannot be written before the items it refers to.")))))
+
+(defn- ops
+  [stores roots]
+  {:current   (fn [kind id] (instance/current (kind-store stores kind id) id))
+   :write!    (fn [kind id content] (instance/write! (kind-store stores kind id) id content))
+   :trash!    (fn [kind id] (instance/trash! (kind-store stores kind id) id))
+   :stub      (partial stub stores)
+   :set-base! set-base!
+   :in-use    (partial in-use/trashed-in-use roots)})
+
+(defn apply-plan!
+  "`apply/apply-plan` of `plan` with the kind stores `stores`, in a transaction of [[library-branching.db/do-in-locking-transaction]]
+  that commits only an `:ok` result."
+  [stores roots plan opts]
+  (let [result (volatile! nil)]
+    (try
+      (library-branching.db/do-in-locking-transaction
+       (fn []
+         (let [r (apply/apply-plan (ops stores roots) plan opts)]
+           (vreset! result r)
+           (when-not (contains? r :ok)
+             (throw (ex-info "The apply writes nothing." {::rollback true}))))))
+      (catch clojure.lang.ExceptionInfo e
+        (when-not (::rollback (ex-data e))
+          (throw e))))
+    @result))
+
 (defrecord AppDbInstance [stores roots]
   instance/Instance
   (read-snapshot [_]
     {:snapshot (read-at-read-point stores roots)})
   (base [_] (:commit_id (base-row)))
   (base-digests [_ commit] (base-digests commit))
-  (apply-plan! [_ _plan _new-base] (instance/not-yet! `instance/apply-plan!))
+  (apply-plan! [_ plan opts] (apply-plan! stores roots plan opts))
   (set-base! [_ expected new digests] (set-base! expected new digests)))
 
 (defn app-db-instance
