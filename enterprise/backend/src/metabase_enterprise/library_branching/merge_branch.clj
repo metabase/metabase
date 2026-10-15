@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.pull :as pull]
+   [metabase-enterprise.library-branching.push :as push]
    [metabase-enterprise.library-branching.roots :as roots]
    [metabase-enterprise.library-branching.settings :as settings]
    [metabase-enterprise.library-branching.store :as store]))
@@ -51,13 +52,16 @@
   - `{:result :up-to-date :head h}`: the head of `from` is in the history of `into`;
   - `{:result :conflicts :conflicts [...] :violations [...] :foreign [path ...]}`: the merge of `merge/merge`, or of
     the foreign files by path, failed;
-  - `{:result :invalid :commit c :findings [f ...]}`: commit `c` (a head or the merge base) does not decode, or the
-    merge result breaks a structural rule (with the fixed roots of `roots/root-ids`);
+  - `{:result :invalid :commit c :findings [f ...]}`: commit `c` (a head or the merge base) does not decode; or, with
+    `c` nil, the merge result breaks a structural rule (with the fixed roots of `roots/root-ids`), or the merge commit
+    would overwrite a merged foreign file (`push/foreign-clashes`);
   - `{:result :no-branch :ref r}`, `{:result :no-merge-base}`;
   - `{:result :remote-moved :head actual}`: `into` moved during the merge; nothing changed;
   - `{:result :disabled}`: the setting `library-branching-enabled` is off.
 
-  Only `:merged` moves a ref. `opts`: `:codecs` (default `kinds/codecs`), `:message` (default [[default-message]])."
+  Only `:merged` moves a ref. The merged foreign files stay at their paths; an item whose path one of them holds gets
+  its identity as a suffix (`layout/layout`). `opts`: `:codecs` (default `kinds/codecs`), `:message` (default
+  [[default-message]])."
   ([store into from]
    (merge-branch! store into from {}))
   ([store into from {:keys [codecs message] :or {codecs kinds/codecs message default-message}}]
@@ -89,8 +93,13 @@
                        findings (validate/validate m {:roots (roots/root-ids m)})]
                    (if (seq findings)
                      {:result :invalid :commit nil :findings findings}
-                     (let [c     (store/write-commit store [c1 c2] (merge (:ok files) (writer/encode-tree codecs m)) message)
-                           moved (store/cas-ref! store into c1 c)]
-                       (if (= :ok moved)
-                         {:result :merged :commit c}
-                         {:result :remote-moved :head (:moved moved)})))))))))))))
+                     (let [kept    (:ok files)
+                           written (writer/encode-tree codecs m (set (keys kept)))
+                           clashes (push/foreign-clashes kept written)]
+                       (if (seq clashes)
+                         {:result :invalid :commit nil :findings clashes}
+                         (let [c     (store/write-commit store [c1 c2] (merge kept written) message)
+                               moved (store/cas-ref! store into c1 c)]
+                           (if (= :ok moved)
+                             {:result :merged :commit c}
+                             {:result :remote-moved :head (:moved moved)})))))))))))))))
