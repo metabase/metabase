@@ -603,6 +603,11 @@
                                                  [:not= :entity_id transforms-python/builtin-entity-id]
                                                  [:not= :updated_at :created_at]]}))))
 
+(mu/defn delete-transforms-rsos!
+  "Delete the RemoteSyncObjects of every Transform, TransformTag, TransformTest, and PythonLibrary."
+  []
+  (t2/delete! :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag" "TransformTest" "PythonLibrary"]]))
+
 (mu/defn transforms-tracked? :- :boolean
   "Whether any Transform, TransformTag, TransformTest, or PythonLibrary has a RemoteSyncObject."
   []

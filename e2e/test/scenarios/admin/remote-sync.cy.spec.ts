@@ -542,7 +542,7 @@ describe("Remote Sync", () => {
       cy.findByTestId("admin-layout-content").within(() => {
         cy.findByText("Sync branch").scrollIntoView().should("be.visible");
         cy.findByText("Collections to sync").should("not.exist");
-        cy.findByText(/unsaved changes/).should("not.exist");
+        cy.findByText(/unsaved change/).should("not.exist");
       });
     });
   });

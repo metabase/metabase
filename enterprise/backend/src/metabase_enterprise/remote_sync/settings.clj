@@ -114,10 +114,10 @@
                                :status_changed_at (t/offset-date-time)}))
 
 (defn sync-transform-tracking!
-  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when newly enabled with transforms
-  content to publish, dropped when disabled before it was pushed, 'delete' when disabled after transforms were tracked,
-  left alone when already in that state (the settings cache also calls this on every load), and absent on a read-only
-  instance, which has nothing to publish."
+  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when newly enabled with untracked
+  transforms content to publish, dropped when disabled before it was pushed, 'delete' (replacing the transforms'
+  own RSOs) when disabled after transforms were tracked, left alone when already in that state (the settings cache
+  also calls this on every load), and absent on a read-only instance, which has nothing to publish."
   [enabled?]
   (let [status (:status (remote-sync.db/rso "Collection" transforms-root-id))]
     (cond
@@ -127,6 +127,7 @@
 
       enabled?
       (when (and (not (#{"create" "synced"} status))
+                 (not (remote-sync.db/transforms-tracked?))
                  (remote-sync.db/transforms-content-exists?))
         (replace-transforms-root-rso! "create"))
 
@@ -135,7 +136,9 @@
 
       (and (or status (remote-sync.db/transforms-tracked?))
            (not= "delete" status))
-      (replace-transforms-root-rso! "delete"))))
+      (do
+        (remote-sync.db/delete-transforms-rsos!)
+        (replace-transforms-root-rso! "delete")))))
 
 (defn- sync-transform-tracking-on-change
   "Called when remote-sync-transforms setting changes."
@@ -161,6 +164,11 @@
   :visibility :admin
   :export? false
   :encryption :no)
+
+(defn transforms-set-by-env?
+  "Whether an environment variable sets [[remote-sync-transforms]]."
+  []
+  (= :env (setting/get-raw-value-source :remote-sync-transforms)))
 
 (defn strict-mode-set-by-env?
   "Whether an environment variable sets [[remote-sync-strict-mode]]."

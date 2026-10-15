@@ -45,11 +45,16 @@
   (remote-sync.task/supersede-stale-tasks!)
   (remote-sync.core/init-strict-mode!)
   (if (settings/remote-sync-enabled)
-    (let [first-import? (not (collection/has-remote-synced-collection?))]
-      (try
-        (remote-sync.core/enable-library-and-transforms-sync!)
-        (catch Exception e
-          (log/warnf "Could not set up the Library and transforms sync: %s" (ex-message e))))
+    (let [first-import? (not (collection/has-remote-synced-collection?))
+          import-first? (and first-import? (some? (settings/remote-sync-branch)))
+          enable!       (fn []
+                          (try
+                            (remote-sync.core/enable-library-and-transforms-sync!)
+                            (catch Exception e
+                              (log/warnf "Could not set up the Library and transforms sync: %s" (ex-message e)))))]
+      (if import-first?
+        (collection/ensure-library-collection!)
+        (enable!))
       (when (= :read-only (settings/remote-sync-type))
         (let [branch (settings/remote-sync-branch)]
           (when (str/blank? branch)
@@ -83,7 +88,8 @@
             (impl/async-import! branch true {}
                                 :on-success (fn [task-id _result]
                                               (impl/publish-sync-event! :event/remote-sync-import task-id
-                                                                        {:branch branch :auto true} nil)))))))
+                                                                        {:branch branch :auto true} nil)
+                                              (enable!)))))))
     (when (collection/has-remote-synced-collection?)
       (log/info "Remote sync is disabled but a remote-synced collection exists. Marking collections as not remote-sync.")
       (collection/clear-remote-synced-collection!))))

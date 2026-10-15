@@ -299,7 +299,8 @@
       (api/check-400 (not (and (seq collections) (settings/remote-sync-strict-mode)))
                      "Cannot change synced collections in strict mode, which always syncs the Library and transforms."))
     (try
-      (settings/check-and-update-remote-settings! (dissoc settings :collections))
+      (settings/check-and-update-remote-settings! (cond-> (dissoc settings :collections)
+                                                    (settings/remote-sync-strict-mode) (dissoc :remote-sync-transforms)))
       (catch Exception e
         (throw (ex-info (or (ex-message e) "Invalid settings")
                         {:error       (ex-message e)

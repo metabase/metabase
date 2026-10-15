@@ -1263,3 +1263,40 @@ serdes/meta:
                                    :model_id [:in (t2/select-pks-vec :model/Collection
                                                                      :entity_id [:in (vec collection/library-root-entity-ids)])]))
                   "and the Library's system collections stay untracked"))))))))
+
+(deftest transforms-root-ignores-tracked-and-replaces-tracking-on-disable-test
+  (testing "Enabling transforms sync doesn't record the Transforms root for transforms that are already tracked, and
+            disabling it replaces their tracking with the root's deletion"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "T"}]
+        (t2/insert! :model/RemoteSyncObject {:model_type "Transform" :model_id transform-id :model_name "T"
+                                             :status "synced" :status_changed_at (t/offset-date-time)})
+        (settings/sync-transform-tracking! true)
+        (is (nil? (transforms-root-status)))
+        (settings/sync-transform-tracking! false)
+        (is (= "delete" (transforms-root-status)))
+        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Transform")))))))
+
+(deftest pull-of-built-in-python-library-keeps-transforms-sync-off-test
+  (testing "A pull whose only transforms content is the built-in Python library doesn't turn on transforms sync"
+    (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                       remote-sync-transforms false]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+            files   {"main" {"python-libraries/common.yaml"
+                             (generate-python-library-yaml transforms-python/builtin-entity-id "common.py" "")}}]
+        (is (=? {:status :success}
+                (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)))
+        (is (false? (settings/remote-sync-transforms)))))))
+
+(deftest strict-mode-pull-keeps-transforms-sync-on-test
+  (testing "In strict mode, a pull without transforms keeps transforms sync on"
+    (mt/with-temporary-setting-values [remote-sync-type        :read-write
+                                       remote-sync-transforms  true
+                                       remote-sync-strict-mode true]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+            files   {"main" {"collections/main/plain/plain.yaml"
+                             (test-helpers/generate-collection-yaml "plain-collection-xxxx" "Plain")}}]
+        (is (=? {:status :success}
+                (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
+                              task-id :force? true)))
+        (is (true? (settings/remote-sync-transforms)))))))

@@ -2459,3 +2459,16 @@
                                        {:remote-sync-type :read-write
                                         :collections      {coll-id true}})))
           (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))
+
+(deftest settings-ignores-transforms-in-strict-mode-test
+  (testing "PUT /api/ee/remote-sync/settings ignores remote-sync-transforms in strict mode, which always syncs transforms"
+    (mt/with-temporary-setting-values [remote-sync-strict-mode true
+                                       remote-sync-transforms  true]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  impl/finish-remote-config!   (constantly nil)]
+        (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                              {:remote-sync-url        "https://github.com/test/repo.git"
+                               :remote-sync-type       :read-write
+                               :remote-sync-branch     "main"
+                               :remote-sync-transforms false})
+        (is (true? (settings/remote-sync-transforms)))))))

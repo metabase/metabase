@@ -2495,3 +2495,19 @@ serdes/meta:
       (is (= "main" (remote-sync.settings/remote-sync-branch)))
       (impl/run-task-body! (new-task-id) "feature" (fn [_] {:status :success}))
       (is (= "feature" (remote-sync.settings/remote-sync-branch))))))
+
+(deftest import!-library-conflict-for-a-synced-library-with-content-test
+  (testing "a first pull of the Library conflicts with a local Library that has content, even a synced one"
+    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+      (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+      (mt/with-temp [:model/Collection {library-id :id} {:name             "Library"
+                                                         :type             "library"
+                                                         :entity_id        collection/library-entity-id
+                                                         :location         "/"
+                                                         :is_remote_synced true}
+                     :model/Card _ {:name "Library Card" :collection_id library-id}]
+        (let [files {"main" {"collections/main/library/library.yaml"
+                             (test-helpers/generate-collection-yaml collection/library-entity-id "Library" :type "library")}}]
+          (let [result (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)]
+            (is (= :conflict (:status result)))
+            (is (some #(= :library-conflict (:type %)) (:conflict-details result)))))))))

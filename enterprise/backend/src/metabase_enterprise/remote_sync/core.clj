@@ -534,13 +534,17 @@
     (settings/remote-sync-strict-mode! false)))
 
 (defn enable-library-and-transforms-sync!
-  "Creates the Library when it's missing and, in strict mode on a read-write instance, turns on remote sync for
-  transforms and the Library, throwing when the Library can't sync. A read-only instance takes both from its pulls."
+  "Creates the Library when it's missing and, in strict mode, syncs it: on a read-write instance it turns on remote sync
+  for transforms, unless an environment variable sets that, and for the Library, throwing when the Library can't sync;
+  a read-only instance only marks the Library synced, and takes transforms from its pulls."
   []
   (let [library (collections/ensure-library-collection!)]
-    (when (and (settings/remote-sync-strict-mode)
-               (= :read-write (settings/remote-sync-type)))
-      (when-not (settings/remote-sync-transforms)
-        (settings/remote-sync-transforms! true))
-      (when-not (:is_remote_synced library)
-        (bulk-set-remote-sync {(:id library) true})))))
+    (when (settings/remote-sync-strict-mode)
+      (if (= :read-write (settings/remote-sync-type))
+        (do
+          (when-not (or (settings/remote-sync-transforms) (settings/transforms-set-by-env?))
+            (settings/remote-sync-transforms! true))
+          (when-not (:is_remote_synced library)
+            (bulk-set-remote-sync {(:id library) true})))
+        (when-not (:is_remote_synced library)
+          (remote-sync.db/mark-subtree-remote-synced! [library]))))))

@@ -16,6 +16,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -45,7 +46,10 @@
   [ingestable]
   (let [serdes-paths (serialization/ingest-list ingestable)
         models-present (spec/models-in-import serdes-paths)]
-    (or (some spec/transform-models models-present)
+    (or (some (disj spec/transform-models "PythonLibrary") models-present)
+        (some #(and (= "PythonLibrary" (:model (last %)))
+                    (not= transforms-python/builtin-entity-id (:id (last %))))
+              serdes-paths)
         ;; Check for non-built-in TransformTags
         (when (contains? models-present "TransformTag")
           (some (fn [path]
@@ -192,7 +196,7 @@
                                would wholesale-delete; these block on EVERY import, not just the first
 
    Conflict types detected:
-   - :library-conflict - First import only, an unsynced local Library with content, import has Library
+   - :library-conflict - First import only, a local Library with content, import has Library
    - :transforms-conflict / :snippets-conflict - import has matching content but local has unsynced entities
    - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
   [ingestable first-import?]
@@ -222,7 +226,6 @@
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
                                                  collection/library-entity-id)
-                                      (not (:is_remote_synced local-library))
                                       (library-has-content? local-library))
                              {:type :library-conflict
                               :category "Library"
@@ -439,9 +442,11 @@
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
     (when (and (not has-transforms?)
-               (settings/remote-sync-transforms))
+               (settings/remote-sync-transforms)
+               (not (settings/remote-sync-strict-mode)))
       (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
       (settings/remote-sync-transforms! false))
+    (remote-sync.core/maybe-switch-out-of-strict-mode!)
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
     (try
@@ -777,8 +782,6 @@
                  :outcome {:kind "pulled"
                            :count (pulled-change-count imported-data)
                            :branch (settings/remote-sync-branch)}}))]
-        (when (= :success (:status result))
-          (remote-sync.core/maybe-switch-out-of-strict-mode!))
         result)
       (catch Exception e
         ;; A cancellation isn't a failure: log it and return nil. Otherwise log the error, count it, and

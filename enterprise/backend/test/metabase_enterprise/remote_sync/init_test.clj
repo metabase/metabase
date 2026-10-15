@@ -417,7 +417,7 @@
          (is (false? (settings/remote-sync-transforms))))))))
 
 (deftest finish-remote-config-read-only-test
-  (testing "In strict mode, a read-only instance gets the Library but takes its sync state from its pulls"
+  (testing "In strict mode, a read-only instance gets the Library marked synced, and takes transforms from its pulls"
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                        :remote-sync-type :read-only
                                        :remote-sync-branch "main"
@@ -427,7 +427,7 @@
           (is (nil? (collection/library-collection)))
           (impl/finish-remote-config!)
           (is (some? (collection/library-collection)))
-          (is (not (library-synced?)))
+          (is (library-synced?))
           (is (false? (settings/remote-sync-transforms))))))))
 
 (deftest finish-remote-config-library-refused-test
@@ -449,19 +449,30 @@
                (is (= [["main" true {}]] @calls) "the rest of startup still runs")))))))))
 
 (deftest remote-sync-init-strict-mode-test
-  (testing "A read-write start without a strict mode value turns it on and syncs the Library and transforms, and still
-            runs the initial import of an instance with nothing synced"
+  (testing "A read-write start without a strict mode value turns it on, creates the Library, runs the initial import of
+            an instance with nothing synced, and only then syncs the Library and transforms"
     (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                        :remote-sync-type :read-write
                                        :remote-sync-branch "main"
                                        :remote-sync-strict-mode nil]
-      (let [[calls capture] (capture-async-import!)]
-        (mt/with-dynamic-fn-redefs [impl/async-import! capture]
+      (let [calls      (atom [])
+            on-success (atom nil)
+            capture    (fn [branch force? args & {:as opts}]
+                         (swap! calls conj [branch force? args])
+                         (reset! on-success (:on-success opts))
+                         nil)]
+        (mt/with-dynamic-fn-redefs [impl/async-import!        capture
+                                    impl/publish-sync-event! (constantly nil)]
           (#'init/remote-sync-init)
           (is (true? (settings/remote-sync-strict-mode)))
-          (is (library-synced?))
-          (is (true? (settings/remote-sync-transforms)))
+          (is (some? (collection/library-collection)))
+          (is (not (library-synced?)))
+          (is (false? (settings/remote-sync-transforms)))
           (is (= [["main" true {}]] @calls))
+          (testing "once the initial import succeeds"
+            (@on-success 1 {:status :success})
+            (is (library-synced?))
+            (is (true? (settings/remote-sync-transforms))))
           (testing "while a later start, with the Library synced, doesn't import again"
             (reset! calls [])
             (#'init/remote-sync-init)

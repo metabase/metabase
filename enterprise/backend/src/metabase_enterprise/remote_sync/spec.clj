@@ -560,7 +560,7 @@
   "Checks if imported entity_ids exist locally but are NOT in RemoteSyncObject.
    Returns map of {model-type #{conflicting-entity-ids}}.
 
-   Excludes the Library's system collections, which every instance with a Library has."
+   Excludes the Library collection entity_id since that's handled by the library-conflict check."
   [imported-entity-ids-by-model]
   (into {}
         (for [[model-type entity-ids] imported-entity-ids-by-model
@@ -577,7 +577,7 @@
                                                  (remote-sync.db/rsos-of-models model-type pks))))
                     conflicting-entity-ids (set/difference local-entity-ids (or tracked-entity-ids #{}))
                     conflicting-entity-ids (if (= model-type "Collection")
-                                             (into #{} (remove collection/library-root-entity-ids) conflicting-entity-ids)
+                                             (disj conflicting-entity-ids collection/library-entity-id)
                                              conflicting-entity-ids)]
               :when (seq conflicting-entity-ids)]
           [model-type conflicting-entity-ids])))
