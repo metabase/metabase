@@ -68,7 +68,10 @@
        (truncate-table! model timestamp-col)))
    (audit-models-to-truncate)))
 
-(task/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
+(task/defjob TruncateAuditTables
+  "Triggers the removal of `query_execution` rows older than the configured threshold."
+  {:saved-class "metabase.audit_app.task.truncate_audit_tables.TruncateAuditTables"}
+  [_]
   (truncate-audit-tables!))
 
 (def ^:private truncate-audit-tables-job-key "metabase.task.truncate-audit-tables.job")

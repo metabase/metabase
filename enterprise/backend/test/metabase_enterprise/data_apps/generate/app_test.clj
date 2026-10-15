@@ -25,7 +25,7 @@
     (testing "the manifest names the app, its bundle, its version and the collection it owns"
       (is (=? {:name        "Sales Ops"
                :slug        "sales-ops"
-               :path        "./dist/index.js"
+               :path        "dist/index.js"
                :version     data-apps.config/supported-app-version
                :collection  collection-id
                :entity_id   string?

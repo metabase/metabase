@@ -182,10 +182,11 @@
         active-triggers-count (try (count (qs/get-triggers-of-job scheduler job-key)) (catch Exception _))]
     (log/infof "Executing %s job. %s total triggers active." job-class active-triggers-count)))
 
-(task/defjob
-  ^{:doc "Backfill the dependency table."
-    org.quartz.DisallowConcurrentExecution true}
-  BackfillDependencies [ctx]
+(task/defjob BackfillDependencies
+  "Backfill the dependency table."
+  {:saved-class "metabase_enterprise.dependencies.task.backfill.BackfillDependencies"
+   :concurrent? false}
+  [ctx]
   (let [ctx ^JobExecutionContext ctx]
     (log-job-start ctx)
     (run-and-reschedule! (.getScheduler ctx))))

@@ -13,10 +13,10 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   filterTreeByName,
   isCollectionData,
+  openNewCollectionModal,
 } from "metabase/data-studio/common/utils";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -27,8 +27,6 @@ import {
 import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useBuildActionTree } from "../../hooks/use-build-action-tree";
 import { canCreateActions } from "../../utils";
-
-import { RootDataActionsMenu } from "./RootDataActionsMenu";
 
 export function ActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,6 +43,7 @@ export function ActionListPage() {
   const canCreate = canCreateActions(databases);
   const {
     tree,
+    rootCollection,
     isLoading: isLoadingActions,
     error: actionsError,
   } = useBuildActionTree({
@@ -56,10 +55,6 @@ export function ActionListPage() {
   const visibleTree = useMemo(
     () => (isSearchActive ? filterTreeByName(tree, searchQuery) : tree),
     [isSearchActive, tree, searchQuery],
-  );
-  const defaultExpandedIds = useMemo(
-    () => tree.slice(0, 1).map((node) => node.id),
-    [tree],
   );
   const renderRowMenu = useCallback(
     (item: TreeItem) => (
@@ -76,8 +71,21 @@ export function ActionListPage() {
       isSearchActive={isSearchActive}
       searchQuery={searchQuery}
       emptyMessage={t`No actions yet`}
-      defaultExpandedIds={defaultExpandedIds}
       createMenu={canCreate && <ActionsCreateMenu />}
+      pageMenu={{
+        label: t`Data action options`,
+        actions: [
+          {
+            label: t`View archived actions`,
+            icon: "view_archive",
+            to: Urls.dataStudioArchivedActions(),
+          },
+        ],
+        permissionsCollection: PLUGIN_LIBRARY.isEnabled
+          ? rootCollection
+          : undefined,
+        onOpenModal: setCollectionModal,
+      }}
       renderRowMenu={renderRowMenu}
       onSearchQueryChange={setSearchQuery}
     >
@@ -98,9 +106,6 @@ function ActionRowMenu({ item: { data }, onOpenModal }: ActionRowMenuProps) {
   if (!isCollectionData(data)) {
     return null;
   }
-  if (data.id === "root") {
-    return <RootDataActionsMenu collection={data} onOpenModal={onOpenModal} />;
-  }
   return <CollectionRowMenu collection={data} onOpenModal={onOpenModal} />;
 }
 
@@ -109,14 +114,10 @@ function ActionsCreateMenu() {
 
   const handleNewCollectionClick = useCallback(() => {
     dispatch(
-      setOpenModalWithProps({
-        id: "collection",
-        props: {
-          initialCollectionId: null,
-          namespaces: ACTION_COLLECTION_NAMESPACES,
-          pickerOptions: ACTION_COLLECTION_PICKER_OPTIONS,
-          showAuthorityLevelPicker: false,
-        },
+      openNewCollectionModal({
+        initialCollectionId: null,
+        namespaces: ACTION_COLLECTION_NAMESPACES,
+        pickerOptions: ACTION_COLLECTION_PICKER_OPTIONS,
       }),
     );
   }, [dispatch]);

@@ -338,6 +338,7 @@
                           (when-let [ids (seq (map u/the-id (vals (first (reset-vals! impersonation-databases {})))))]
                             ;; the linter's concern is a fixture racing tests that share the rows it touches; these
                             ;; ids were created by this namespace and are deleted after its last test finishes.
+                            ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                             #_{:clj-kondo/ignore [:metabase/validate-deftest]}
                             (t2/delete! :model/Database :id [:in ids]))))))
 

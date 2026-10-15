@@ -258,9 +258,11 @@
      :schedule-refreshed   schedule-refresh-count
      :duration-refreshed   duration-refresh-count}))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc                                   "Refresh 'schedule' caches"}
-  Cache [_ctx]
+(task/defjob Cache
+  "Refresh 'schedule' caches"
+  {:saved-class "metabase_enterprise.cache.task.refresh_cache_configs.Cache"
+   :concurrent? false}
+  [_ctx]
   (refresh-cache-configs!))
 
 (def ^:private cache-job
