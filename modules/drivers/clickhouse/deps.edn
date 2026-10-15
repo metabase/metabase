@@ -8,4 +8,4 @@
                                                org.apache.httpcomponents.core5/httpcore5
                                                org.apache.httpcomponents.core5/httpcore5-h2]}
   ;; original org.lz4:lz4-java project is discontinued, this is the maintained fork
-  at.yawk.lz4/lz4-java {:mvn/version "1.11.1"}}}
+  at.yawk.lz4/lz4-java {:mvn/version "1.11.4"}}}
