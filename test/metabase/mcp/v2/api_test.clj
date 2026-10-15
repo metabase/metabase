@@ -856,6 +856,28 @@
 
 ;;; ------------------------------------------------ Auth methods --------------------------------------------------
 
+(deftest session-and-api-key-cannot-authenticate-mcp-test
+  (testing "GHY-4941: MCP authenticates only with an OAuth bearer token. A session cookie or an API key gets the same
+            401 OAuth discovery challenge as a request with no credential, so the client goes through OAuth."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-model-cleanup [:model/ApiKey]
+        (let [{api-key :unmasked_key} (mt/user-http-request :crowberto :post 200 "api-key"
+                                                            {:group_id (:id (perms-group/admin))
+                                                             :name     (str (random-uuid))})]
+          (doseq [path                    ["metabase-mcp" "mcp"]
+                  [credential cookie headers] [["a session cookie" [(test.users/username->token :crowberto)] {}]
+                                               ["an API key" [] {"x-api-key" api-key}]]]
+            (testing (str path " with " credential)
+              (let [response (apply client/client-full-response
+                                    (concat cookie
+                                            [:post path
+                                             {:request-options {:headers headers}}
+                                             (jsonrpc-request "initialize" {:capabilities {}})]))]
+                (is (= 401 (:status response)))
+                (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
+                (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "")
+                                   (str "/.well-known/oauth-protected-resource/api/" path)))))))))))
+
 (deftest sso-provisioned-session-dispatches-test
   (testing "GHY-4287: the embedding integration path — a customer's backend signs a JWT per end user, exchanges
             it for a Metabase session at `/auth/sso`, and drives MCP with that session — must dispatch as that
