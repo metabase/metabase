@@ -111,7 +111,7 @@
   (deferred-tru "Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.")
   :type       :boolean
   :visibility :admin
-  :default    false
+  :default    true
   :export?    false)
 
 (defsetting metabot-sql-execution-enabled?
