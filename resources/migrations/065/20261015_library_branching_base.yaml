@@ -1,6 +1,7 @@
 ## Library branching: the base of the instance, one row. The base is the commit that the instance and its branch last
 ## agreed on. The row also holds the digests of the base content, a cache that moves with the base in one update.
-## The second changeset writes the row, so that a move of the base is always an update with a compare-and-swap.
+## The second changeset writes the row, so that a move of the base is always an update with a compare-and-swap. The
+## third adds the repository URL: the base is the base of one repository.
 
 databaseChangeLog:
   - changeSet:
@@ -53,3 +54,28 @@ databaseChangeLog:
         - delete:
             tableName: library_branching_base
             where: id = 1
+
+  - changeSet:
+      id: v65.b4seu1
+      author: Timothy Dean
+      comment: Library branching base keyed by the repository URL
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: library_branching_base
+                columnName: url
+      changes:
+        - addColumn:
+            tableName: library_branching_base
+            columns:
+              - column:
+                  name: url
+                  type: varchar(2048)
+                  remarks: The URL of the repository of the base commit, or null. An instance of another URL has no base.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: library_branching_base
+            columnName: url

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.library-branching.init
   (:require
    [metabase-enterprise.library-branching.settings]
+   [metabase-enterprise.library-branching.task-cleanup]
    [metabase-enterprise.library-branching.tasks :as tasks]
    [metabase.startup.core :as startup]))
 

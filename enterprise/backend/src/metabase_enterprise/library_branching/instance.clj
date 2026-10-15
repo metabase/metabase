@@ -44,7 +44,7 @@
     the instance, read in one read-only transaction: one read point for the whole snapshot. A save that commits
     after the read point is not in `s`. Throws when the calling thread holds an open transaction.")
   (base [inst]
-    "The base commit id, or nil before the first sync.")
+    "The base commit id, or nil before the first sync with the repository of the instance.")
   (base-digests [inst commit]
     "The digests that [[set-base!]] stored with the base, `{identity digest}`, when the base is `commit`; else nil.")
   (apply-plan! [inst plan opts]

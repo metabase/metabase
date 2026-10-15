@@ -16,11 +16,14 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- reset-base! []
   (t2/query {:update :library_branching_base :set {:commit_id nil :digests nil} :where [:= :id 1]}))
