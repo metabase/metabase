@@ -4,7 +4,15 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Icon, Select, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Icon,
+  Select,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { QuestionParameterTargetWidget } from "metabase-enterprise/sandboxes/containers/QuestionParameterTargetWidget";
 import type {
   DataAttributeMap,
@@ -125,15 +133,21 @@ export const DataAttributeMappingEditor = ({
                   )}
                 />
               </td>
-              <td className={CS.pb1} style={{ verticalAlign: "top" }}>
-                <Button
-                  leftSection={<Icon name="close" />}
+              <td
+                className={cx(CS.pb1, CS.pl1)}
+                style={{ verticalAlign: "middle" }}
+              >
+                <ActionIcon
                   variant="subtle"
+                  size="sm"
                   onClick={() =>
                     handleChange(removeEntry<ValueType>(entries, index))
                   }
                   data-testid="remove-mapping"
-                />
+                  aria-label={t`Remove mapping`}
+                >
+                  <Icon name="close" />
+                </ActionIcon>
               </td>
             </tr>
           );
@@ -144,7 +158,8 @@ export const DataAttributeMappingEditor = ({
               <td colSpan={2}>
                 <Button
                   leftSection={<Icon name="add" />}
-                  variant="subtle"
+                  variant="transparent"
+                  size="compact-md"
                   onClick={() => handleChange(addEntry<ValueType>(entries))}
                 >
                   {t`Add a filter`}

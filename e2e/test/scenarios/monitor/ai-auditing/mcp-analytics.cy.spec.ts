@@ -31,10 +31,17 @@ function seedMcpToolCall(
 
 function visitMcpAnalyticsPage(): void {
   cy.intercept("GET", "/api/database/13371337/metadata*").as("auditMetadata");
-  cy.intercept("POST", "/api/dataset").as("dataset");
 
   cy.visit(MCP_ANALYTICS_PATH);
   cy.wait("@auditMetadata");
+}
+
+function interceptEventsQuery(alias: string): void {
+  cy.intercept("POST", "/api/dataset", (req) => {
+    if (req.body?.stages?.[0]?.page) {
+      req.alias = alias;
+    }
+  });
 }
 
 describe("scenarios > monitor > ai auditing > mcp analytics", () => {
@@ -43,29 +50,20 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
     cy.signInAsAdmin();
   });
 
-  it("shows the audit-app nav item and a seeded tool call on the page", () => {
+  it("is hidden without the audit-app feature and shows seeded tool calls, their errors and the gated error message with it", () => {
+    cy.visit(MCP_ANALYTICS_PATH);
+
+    cy.log("The MCP analytics route is not registered without audit_app");
+    cy.findByLabelText("error page").should("be.visible");
+    cy.findByTestId("monitor-nav")
+      .findByRole("link", { name: /Background tasks/ })
+      .should("be.visible");
+    cy.findByRole("heading", { name: "MCP analytics" }).should("not.exist");
+    cy.findByRole("link", { name: "MCP analytics" }).should("not.exist");
+
+    cy.log("With audit_app, the page shows the seeded tool calls");
     H.activateToken("pro-self-hosted");
     seedMcpToolCall();
-
-    visitMcpAnalyticsPage();
-
-    cy.log("Nav item lives in the AI Auditing group");
-    cy.findByRole("link", { name: "MCP analytics" }).should("be.visible");
-
-    cy.log("The page renders with the seeded data (not the empty state)");
-    H.main().within(() => {
-      cy.findByRole("heading", { name: "MCP analytics" }).should("be.visible");
-      cy.findByText("No MCP activity").should("not.exist");
-    });
-
-    cy.log("The seeded tool call shows up in the Events table");
-    H.main().findByRole("link", { name: "Tool calls" }).click();
-    cy.wait("@dataset");
-    H.main().findByText(SEED_TOOL_NAME).should("be.visible");
-  });
-
-  it("surfaces a failed tool call's error type and message", () => {
-    H.activateToken("pro-self-hosted");
     // error_message is gated PII — the backend only records/shows it when retention is on.
     H.updateSetting("analytics-pii-retention-enabled", true);
     seedMcpToolCall({
@@ -74,8 +72,16 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
       error_code: SEED_ERROR_CODE,
       error_message: SEED_ERROR_MESSAGE,
     });
+    H.updateSetting("analytics-pii-retention-enabled", false);
 
     visitMcpAnalyticsPage();
+
+    cy.log("Nav item lives in the AI Auditing group");
+    cy.findByRole("link", { name: "MCP analytics" }).should("be.visible");
+
+    H.main()
+      .findByRole("heading", { name: "MCP analytics" })
+      .should("be.visible");
 
     cy.log(
       "The Usage tab surfaces an Errors section once there are failed calls",
@@ -85,24 +91,25 @@ describe("scenarios > monitor > ai auditing > mcp analytics", () => {
       .scrollIntoView()
       .should("be.visible");
 
-    cy.log(
-      "The Tool calls table shows the derived error type and gated message",
-    );
+    cy.log("The seeded tool calls show up in the Events table");
+    interceptEventsQuery("toolCalls");
     H.main().findByRole("link", { name: "Tool calls" }).click();
-    cy.wait("@dataset");
+    cy.wait("@toolCalls");
     H.main().within(() => {
+      cy.findByText(SEED_TOOL_NAME).scrollIntoView().should("be.visible");
       cy.findByText(SEED_ERROR_TOOL).scrollIntoView().should("be.visible");
       cy.findByText(SEED_ERROR_TYPE).scrollIntoView().should("be.visible");
+      cy.findByText(SEED_ERROR_MESSAGE).should("not.exist");
+    });
+
+    cy.log("The error message shows once PII retention is on");
+    H.updateSetting("analytics-pii-retention-enabled", true);
+    interceptEventsQuery("toolCallsWithPii");
+    cy.reload();
+    cy.wait("@toolCallsWithPii");
+    H.main().within(() => {
+      cy.findByText(SEED_ERROR_TOOL).scrollIntoView().should("be.visible");
       cy.findByText(SEED_ERROR_MESSAGE).scrollIntoView().should("be.visible");
     });
-  });
-
-  it("hides the nav item and the page without the audit-app feature", () => {
-    cy.visit(MCP_ANALYTICS_PATH);
-
-    cy.log("The MCP analytics route is not registered without audit_app");
-    cy.findByLabelText("error page").should("be.visible");
-    cy.findByRole("heading", { name: "MCP analytics" }).should("not.exist");
-    cy.findByRole("link", { name: "MCP analytics" }).should("not.exist");
   });
 });

@@ -17,7 +17,7 @@ function createQueryWithFilter() {
             type: "operator",
             operator: ">",
             args: [
-              { type: "column", sourceName: "ORDERS", name: "TOTAL" },
+              { type: "column", name: "TOTAL" },
               { type: "literal", value: 20 },
             ],
           },

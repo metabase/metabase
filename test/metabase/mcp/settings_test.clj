@@ -60,3 +60,17 @@
                 GC task on every run"
         (setting/set-value-of-type! :string :mcp-query-handle-ttl-hours "forever")
         (is (= 24 (mcp.settings/mcp-query-handle-ttl-hours)))))))
+
+(deftest inline-ui-enabled-for-client-test
+  (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients ["claude"]]
+    (testing "a client with its toggle on may render UI"
+      (is (true? (mcp.settings/inline-ui-enabled-for-client? "claude"))))
+    (testing "a client with its toggle off may not"
+      (is (false? (mcp.settings/inline-ui-enabled-for-client? "chatgpt")))
+      (is (false? (mcp.settings/inline-ui-enabled-for-client? "cursor-vscode"))))
+    (testing "VS Code follows the Cursor toggle"
+      (is (false? (mcp.settings/inline-ui-enabled-for-client? "vscode")))
+      (mt/with-temporary-setting-values [mcp.settings/mcp-apps-cors-enabled-clients ["cursor-vscode"]]
+        (is (true? (mcp.settings/inline-ui-enabled-for-client? "vscode")))))
+    (testing "a client with no toggle is not gated"
+      (is (true? (mcp.settings/inline-ui-enabled-for-client? "other"))))))

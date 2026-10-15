@@ -7,7 +7,20 @@ export type {
 import type { MetabaseColorKey, ProtectedColorKey } from "./color-keys";
 import type { ChartColorV2 } from "./theme";
 
-export type ColorPalette = Partial<Record<MetabaseColorKey, string>>;
+/**
+ * Color values keyed by color token name (`core-brand`, `text-primary`, `accent0`, …).
+ * A palette can be partial: missing tokens fall back to the theme defaults.
+ *
+ * Do not pass the raw `application-colors` setting (`ColorSettings`) as a palette.
+ * Its `brand`, `filter` and `summarize` keys are not token names, so convert it
+ * with `mapWhitelabelColorsToTokens` first. The `never` keys make TypeScript
+ * reject the raw setting here.
+ */
+export type ColorPalette = Partial<Record<MetabaseColorKey, string>> & {
+  brand?: never;
+  filter?: never;
+  summarize?: never;
+};
 export type ColorName = MetabaseColorKey;
 export type ColorGetter = (colorName: string) => string;
 

@@ -16,11 +16,12 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   ;; Trying to use metabase.search would cause a circular reference ;_;
+   [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -29,6 +30,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.provider-detection :as provider-detection]
+   [metabase.warehouses.schema]
    [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -238,9 +240,8 @@
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
-    ;; this is done this way to avoid circular dependencies
     (when (should-auto-sync? database)
-      ((requiring-resolve 'metabase.sync.task.sync-databases/check-and-schedule-tasks-for-db!) database))
+      (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
     (catch Throwable e
       (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
 
@@ -362,7 +363,7 @@
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
-    ((requiring-resolve 'metabase.sync.task.sync-databases/unschedule-tasks-for-db!) database)
+    (sync-databases-trigger/unschedule-tasks-for-db! database)
     (catch Throwable e
       (log/errorf "Error unscheduling tasks for DB: %s" (ex-message e)))))
 
@@ -387,6 +388,7 @@
     ;; self-heal.
     (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *normalizing-details*
   "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
   recursion. [[driver/normalize-db-details]] is actually done for side effects!"
@@ -405,6 +407,7 @@
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
+           (:id database)
            (driver.impl/registered? driver))
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
@@ -438,6 +441,7 @@
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
+  (warehouses.db/delete-query-actions-for-database! id)
   (->> (eduction
         (map t2.realize/realize)
         (partition-all 1000)
@@ -447,8 +451,7 @@
           (warehouses.db/delete-cards-for-database-returning-ids-reducible id)
           (warehouses.db/card-ids-for-database-reducible id)))
        (run! (fn [batch]
-               ;; damn circular deps
-               ((requiring-resolve 'metabase.search.core/delete!) :model/Card (map (comp str :id) batch)))))
+               (search/delete! :model/Card (map (comp str :id) batch)))))
   (when (not= :postgres (mdb/db-type))
     (warehouses.db/delete-cards-for-database! id))
   (try
@@ -475,21 +478,6 @@
   "Every place a Database stores a set of connection details."
   [:details :write_data_details :admin_details])
 
-(defn- exempt-audit-db?
-  "Whether `database` is the Audit DB as the analytics installer writes it: a clone of the *application* database
-  rather than a warehouse anybody pointed somewhere, carrying no details of its own and reached over the app-db
-  connection. There is no user-supplied host in it to police, and checking it anyway refuses the instance's own app
-  db -- empty details read as `localhost`, since every `:sql-jdbc` client substitutes that. The refusal lands during
-  init, so the instance fails to boot rather than failing a request.
-
-  Narrowed to a database with no details at all, which is the only shape the installer produces
-  ([[metabase-enterprise.audit-app.audit/install-database!]] writes none and nothing else adds any). `:is_audit`
-  alone would be too much to hang this on: it is not writable through the API, but it is in the Database serdes
-  `:copy` set, and serialization import is one of the routes this check exists to cover."
-  [database]
-  (and (:is_audit database)
-       (every? #(empty? (get database %)) details-keys)))
-
 (defn- validate-connection-hosts!
   "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
   the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
@@ -499,16 +487,15 @@
   [[metabase.driver.connection/effective-details]] resolves it -- merged onto `:details` -- since that, and not the
   overlay by itself, is what a connection is opened with: one holding nothing but credentials repoints nothing.
 
-  The Audit DB is exempt -- see [[exempt-audit-db?]]."
+  An empty details map configures no connection, so it is not checked."
   [engine database keys-to-check]
-  (when-not (exempt-audit-db? database)
-    (when-let [engine (some-> engine keyword)]
-      (driver.u/with-database-network-policy database
-        (doseq [k     keys-to-check
-                :let  [details (get database k)]
-                :when (map? details)]
-          (driver.u/validate-connection-hosts! engine (cond->> details
-                                                        (not= k :details) (merge (:details database)))))))))
+  (when-let [engine (some-> engine keyword)]
+    (driver.u/with-database-network-policy database
+      (doseq [k     keys-to-check
+              :let  [details (get database k)]
+              :when (and (map? details) (seq details))]
+        (driver.u/validate-connection-hosts! engine (cond->> details
+                                                      (not= k :details) (merge (:details database))))))))
 
 (t2/define-before-update :model/Database
   [database]
@@ -632,15 +619,17 @@
   driver can't be clearly determined, this simply returns the default set (driver.u/default-sensitive-fields)."
   [database]
   (if (and (some? database) (not-empty database))
-    (let [driver (driver.u/database->driver database)]
+    (let [driver (if-let [engine (:engine database)]
+                   (keyword engine)
+                   (driver.u/database->driver (:id database)))]
       (if (some? driver)
-        (driver.u/sensitive-fields (driver.u/database->driver database))
+        (driver.u/sensitive-fields driver)
         driver.u/default-sensitive-fields))
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details`, `write_data_details`, and `admin_details` for any User
-  without write perms for the DB. Users with write perms can see the details but remove anything resembling a
+  "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
+  `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
   Also remove settings that the User doesn't have read perms for."
@@ -653,7 +642,7 @@
     (next-method
      (let [db (if (not (mi/can-write? db))
                 (do (log/debug "Fully redacting database details during json encoding.")
-                    (dissoc db :details :write_data_details :admin_details))
+                    (dissoc db :details :write_data_details :admin_details :initial_sync_error))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")
                     (-> db
                         (secret/to-json-hydrate-redacted-secrets)
@@ -690,18 +679,27 @@
   (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub
-                 :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
+                 :default_schema :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
-                 :cache_ttl]
+                 :cache_ttl
+                 ;; describes a sync on the source instance, and may name its connection details
+                 :initial_sync_error]
      :transform {:created_at          (serdes/date)
                  :details             details-transform
                  :write_data_details  details-transform
                  :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)
                  :router_database_id  (serdes/fk :model/Database)
-                 :initial_sync_status {:export identity :import (constantly "complete")}}
+                 :initial_sync_status {:export identity :import (constantly "complete")}
+                 ;; Never trust an archive's `is_sample`: the real Sample Database is excluded from export
+                 ;; ([[warehouses.db/databases-for-serdes-reducible]]), so any incoming `is_sample true` is forged --
+                 ;; and marking an imported row as the sample DB would let it ride sample-only code paths. Import false.
+                 :is_sample           {:export-with-context (fn [_current _ _is-sample] ::serdes/skip)
+                                       :import              (constantly false)}
+                 :is_stub             {:export-with-context (fn [_current _ _is-stub] ::serdes/skip)
+                                       :import              (constantly false)}}
      :defaults  {:auto_run_queries true
                  :is_attached_dwh  false
                  :is_audit         false
@@ -711,6 +709,7 @@
                  :is_stub          false
                  :uploads_enabled  false}}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *include-h2-in-extract?*
   "When false (the default), [[serdes/extract-query]] skips H2 databases because they are rejected at import time
   by [[assert-not-h2!]]. Round-trip tests that exercise H2 throughout — and rebind `assert-not-h2!` accordingly —
@@ -744,9 +743,21 @@
     (throw (ex-info "h2 is not supported for serialization import"
                     {:engine (:engine ingested) :name (:name ingested)}))))
 
+(defn assert-sqlite-not-hosted!
+  "Refuse to import a SQLite Database on a hosted instance. SQLite is blocked as a warehouse on Metabase Cloud (only
+  the bundled Sample Database, which serdes never exports, is allowed); serialization import is the one write path
+  that never tests the connection, so without this an archive could persist a SQLite row whose attacker-chosen `:db`
+  path is later opened by sync. Mirrors [[assert-not-h2!]]. Self-hosted instances import SQLite normally."
+  [ingested]
+  (when (and (= :sqlite (keyword (:engine ingested)))
+             (premium-features/is-hosted?))
+    (throw (ex-info "SQLite is not available as a data warehouse on Metabase Cloud."
+                    {:engine (:engine ingested) :name (:name ingested) :status-code 400}))))
+
 (defmethod serdes/load-one! "Database"
   [ingested maybe-local]
   (assert-not-h2! ingested)
+  (assert-sqlite-not-hosted! ingested)
   (serdes/default-load-one! (cond-> ingested
                               (:details ingested)            (update :details driver/sanitize-db-details)
                               (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details)
@@ -773,7 +784,7 @@
                   :updated-at    true}
    :search-terms {:name        search.spec/explode-camel-case
                   :description true}
-   :where [:= :router_database_id nil]
+   :where [:and [:= :router_database_id nil] [:= :is_stub false]]
    :render-terms {:initial-sync-status true}})
 
 (defenterprise hydrate-router-user-attribute

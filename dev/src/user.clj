@@ -144,6 +144,7 @@
   (in-ns 'dev)
   :loaded)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^{:dynamic true
        :doc "When true, the backend code will be reloaded on every request.
              This value is set by the `--hot` command line argument to the `:dev-start` alias."}

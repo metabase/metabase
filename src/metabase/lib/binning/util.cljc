@@ -146,7 +146,7 @@
   "Humanize binning: extend interval to start and end on a \"nice\" number and, when number of bins is fixed, have a
   \"nice\" step (bin width)."
   [strategy                                         :- ::lib.schema.binning/strategy
-   {:keys [min-value max-value bin-width num-bins]} :- [:map
+   {:keys [min-value max-value bin-width num-bins]} :- [:map {:closed true}
                                                         [:min-value number?]
                                                         [:max-value number?]
                                                         [:bin-width {:optional true} ::lib.schema.binning/bin-width]
@@ -166,7 +166,11 @@
   "Make the current breakout a little nicer? Not 100% sure exactly how this is used, refer
   to [[metabase.query-processor.middleware.binning/update-binned-field]]."
   [strategy :- ::lib.schema.binning/strategy
-   opts     :- :map]
+   opts     :- [:map {:closed true}
+                [:min-value number?]
+                [:max-value number?]
+                [:bin-width {:optional true} ::lib.schema.binning/bin-width]
+                [:num-bins  {:optional true} ::lib.schema.binning/num-bins]]]
   (let [f (partial nicer-breakout* strategy)]
     ((fixed-point f) opts)))
 

@@ -1,16 +1,14 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { match } from "ts-pattern";
 
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
+import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
-import type { TransformId } from "metabase-types/api";
 
 import {
+  CONTEXT_FULL_ERROR_CODE,
   CONTEXT_WINDOW_WARNING_PERCENT,
-  FIXED_METABOT_IDS,
-  METABOT_REQUEST_IDS,
-  type MetabotProfileId,
+  FIXED_METABOT_ENTITY_IDS,
 } from "../constants";
 import {
   getContextWindowPercentUsage,
@@ -20,16 +18,26 @@ import {
 import type {
   MetabotAgentId,
   MetabotContextUsage,
+  MetabotIncompleteTurn,
   MetabotMessage,
+  MetabotState,
 } from "./types";
-import { hasInProgressMessage, isGeneratedCardPart, isTextPart } from "./utils";
+import {
+  getIncompleteTurnMessage,
+  getIncompleteTurnReason,
+  getIncompleteTurnResumePrompt,
+  hasInProgressMessage,
+  isGeneratedCardPart,
+  isTextPart,
+} from "./utils";
 
 /*
  * Top Level Selectors
  */
 
-export const getMetabotState = (state: State) => {
-  return state.metabot;
+export const getMetabotState = (state: { metabot: unknown }) => {
+  // Every store root registers `metabotReducer` under this key, so the value is always a `MetabotState`.
+  return state.metabot as MetabotState;
 };
 
 export const getActiveMetabotAgentIds = createSelector(
@@ -38,8 +46,10 @@ export const getActiveMetabotAgentIds = createSelector(
   (state) => Object.keys(state.agents) as MetabotAgentId[],
 );
 
-export const getMetabotId = () =>
-  isEmbedding() ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT;
+export const getMetabotEntityId = () =>
+  isEmbedding()
+    ? FIXED_METABOT_ENTITY_IDS.EMBEDDED
+    : FIXED_METABOT_ENTITY_IDS.DEFAULT;
 
 export const getDebugMode = createSelector(
   getMetabotState,
@@ -60,33 +70,6 @@ export const getMetabotReactionsState = createSelector(
 export const getNavigateToPath = createSelector(
   getMetabotReactionsState,
   (reactionsState) => reactionsState.navigateToPath,
-);
-
-export const getMetabotSuggestedTransforms = createSelector(
-  getMetabotReactionsState,
-  (reactionsState) => reactionsState.suggestedTransforms,
-);
-
-export const getMetabotSuggestedTransform = createSelector(
-  [
-    getMetabotSuggestedTransforms,
-    (_, transformId?: TransformId) => transformId,
-  ],
-  (suggestedTransforms, transformId) => {
-    return suggestedTransforms.findLast(
-      (t) => t.id === transformId && t.active,
-    );
-  },
-);
-
-export const getIsSuggestedTransformActive = createSelector(
-  [getMetabotSuggestedTransforms, (_, suggestionId: string) => suggestionId],
-  (suggestedTransforms, suggestionId) => {
-    const suggestion = suggestedTransforms.find(
-      (t) => t.suggestionId === suggestionId,
-    );
-    return suggestion?.active ?? false;
-  },
 );
 
 /*
@@ -275,10 +258,21 @@ export const getContextUsagePercent = createSelector(
   getContextWindowPercentUsage,
 );
 
+export const isContextFullError = (message: MetabotMessage | undefined) =>
+  message?.status.type === "errored" &&
+  message.status.error.type === CONTEXT_FULL_ERROR_CODE;
+
 export const getLongChatNotice = createSelector(
-  [getContextUsage, getContextUsagePercent],
-  (contextUsage, percentUsage): MetabotLongChatNoticeVariant | undefined => {
-    if (isContextWindowFull(contextUsage)) {
+  [getMessages, getContextUsage, getContextUsagePercent],
+  (
+    messages,
+    contextUsage,
+    percentUsage,
+  ): MetabotLongChatNoticeVariant | undefined => {
+    if (
+      isContextWindowFull(contextUsage) ||
+      isContextFullError(messages.at(-1))
+    ) {
       return "full";
     }
     return percentUsage >= CONTEXT_WINDOW_WARNING_PERCENT
@@ -287,39 +281,44 @@ export const getLongChatNotice = createSelector(
   },
 );
 
+const getMetabotName = (state: State) => getSetting(state, "metabot-name");
+
+// Only the latest turn can be continued; earlier incomplete turns are history.
+export const getIncompleteTurn = createSelector(
+  [getMessages, getMetabotName],
+  (messages, metabotName): MetabotIncompleteTurn | null => {
+    const lastMessage = messages.at(-1);
+    if (
+      lastMessage?.role !== "agent" ||
+      lastMessage.status.type !== "incomplete"
+    ) {
+      return null;
+    }
+    const reason = getIncompleteTurnReason(lastMessage.status);
+    return {
+      reason,
+      message: getIncompleteTurnMessage(reason, metabotName),
+      resumePrompt: getIncompleteTurnResumePrompt(reason),
+    };
+  },
+);
+
 export const getMetabotReqIdOverride = createSelector(
   getConversation,
   (convo) => convo.experimental.metabotReqIdOverride,
 );
 
-export const getMetabotRequestId = (state: State, conversationId: string) =>
+export const getMetabotRequestEntityId = (
+  state: State,
+  conversationId: string,
+) =>
   getMetabotReqIdOverride(state, conversationId) ??
-  (isEmbedding() ? METABOT_REQUEST_IDS.EMBEDDED : undefined);
+  (isEmbedding() ? FIXED_METABOT_ENTITY_IDS.EMBEDDED : undefined);
 
 export const getProfileOverride = createSelector(
   getConversation,
   (convo) => convo.profileOverride,
 );
-
-export const getProfile = (
-  state: State,
-  conversationId: string,
-  isTransformsPage: boolean,
-): MetabotProfileId | undefined => {
-  const profileOverride = getProfileOverride(state, conversationId);
-  const debugMode = getDebugMode(state);
-  return match({ debugMode, isTransformsPage })
-    .returnType<MetabotProfileId | undefined>()
-    .with(
-      { debugMode: false, isTransformsPage: true },
-      () => "transforms_codegen",
-    )
-    .with(
-      { debugMode: true, isTransformsPage: true },
-      () => profileOverride ?? "transforms_codegen",
-    )
-    .otherwise(() => profileOverride);
-};
 
 export const getAgentRequestMetadata = createSelector(
   [
@@ -327,8 +326,7 @@ export const getAgentRequestMetadata = createSelector(
       state: State,
       conversationId: string,
       _retryMessageId: string | undefined,
-      isTransformsPage: boolean,
-    ) => getProfile(state, conversationId, isTransformsPage),
+    ) => getProfileOverride(state, conversationId),
     getLastAgentMessageExternalId,
     (
       _state: State,

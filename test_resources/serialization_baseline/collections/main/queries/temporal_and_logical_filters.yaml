@@ -303,8 +303,6 @@ visualization_settings:
   column_settings: null
 card_schema: 24
 serdes/meta:
-- id: BMx-SlSPsSfGSKaEgOzn0
-  label: temporal_and_logical_filters
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

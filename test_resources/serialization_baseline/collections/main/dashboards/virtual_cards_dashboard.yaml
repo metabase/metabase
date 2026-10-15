@@ -5,9 +5,7 @@ creator_id: admin@example.com
 collection_id: cOlDaShBoArDs0ExAmPlx
 parameters: []
 serdes/meta:
-- id: Ylbpm_iPeEYav_o0kpUVD
-  label: virtual_cards_dashboard
-  model: Dashboard
+- model: Dashboard
 dashcards:
 - entity_id: WcNpxqVEO_rIeWZwjYv7Z
   created_at: '2026-04-02T02:59:02.778668Z'
@@ -23,11 +21,6 @@ dashcards:
     text: Sales Overview
     virtual_card:
       display: heading
-  serdes/meta:
-  - id: Ylbpm_iPeEYav_o0kpUVD
-    model: Dashboard
-  - id: WcNpxqVEO_rIeWZwjYv7Z
-    model: DashboardCard
 - entity_id: TF6Oiw2C13CgEKtPyHIow
   created_at: '2026-04-02T02:59:02.778668Z'
   row: 1
@@ -45,11 +38,6 @@ dashcards:
       Use the filters above to narrow down the data.
     virtual_card:
       display: text
-  serdes/meta:
-  - id: Ylbpm_iPeEYav_o0kpUVD
-    model: Dashboard
-  - id: TF6Oiw2C13CgEKtPyHIow
-    model: DashboardCard
 - entity_id: oGC6qBNiHOKo0tWAHWC1m
   created_at: '2026-04-02T02:59:02.778668Z'
   row: 1
@@ -65,11 +53,6 @@ dashcards:
       url: https://metabase.com/docs
     virtual_card:
       display: link
-  serdes/meta:
-  - id: Ylbpm_iPeEYav_o0kpUVD
-    model: Dashboard
-  - id: oGC6qBNiHOKo0tWAHWC1m
-    model: DashboardCard
 - entity_id: 7jlJ-VFISvhlHqxeW7rWp
   created_at: '2026-04-02T02:59:02.778668Z'
   row: 2
@@ -87,11 +70,6 @@ dashcards:
         model: dashboard
     virtual_card:
       display: link
-  serdes/meta:
-  - id: Ylbpm_iPeEYav_o0kpUVD
-    model: Dashboard
-  - id: 7jlJ-VFISvhlHqxeW7rWp
-    model: DashboardCard
 - entity_id: wn16Kfjjjik8153kj14yI
   created_at: '2026-04-02T02:59:02.778668Z'
   row: 4
@@ -106,11 +84,6 @@ dashcards:
     iframe: <iframe src="https://example.com/embed" width="100%" height="400"></iframe>
     virtual_card:
       display: iframe
-  serdes/meta:
-  - id: Ylbpm_iPeEYav_o0kpUVD
-    model: Dashboard
-  - id: wn16Kfjjjik8153kj14yI
-    model: DashboardCard
 - entity_id: HZ_JpYrkE8fMEYJg93RKd
   created_at: '2026-04-02T02:59:02.778668Z'
   row: 5
@@ -124,10 +97,5 @@ dashcards:
     column_settings: null
     virtual_card:
       display: placeholder
-  serdes/meta:
-  - id: Ylbpm_iPeEYav_o0kpUVD
-    model: Dashboard
-  - id: HZ_JpYrkE8fMEYJg93RKd
-    model: DashboardCard
 tabs: []
 width: fixed

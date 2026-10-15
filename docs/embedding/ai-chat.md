@@ -31,7 +31,7 @@ An admin sets up embedded Metabot in your Metabase:
 2. Select **Admin**.
 3. Click the **AI** tab.
 4. In the left sidebar, click **AI Settings**.
-5. The first card on the page is your AI provider connection. If the card says **Connect to an AI provider**, [set one up](../ai/settings.md#enable-ai-features). If you're self-hosting, that means [bringing your own API key](../ai/settings.md#bring-your-own-api-key). If the card says **AI providers**, you're already connected.
+5. The first card on the page is your AI provider connection. If the card says **Connect to an AI provider**, [set one up](../ai/settings.md#enable-ai-features). If you're self-hosting, that means [connecting one with your own credentials](../ai/settings.md#connect-to-an-ai-provider). If the card says **AI providers**, you're already connected.
 6. In the **Metabot settings** card, click the **Embedded** tab.
 7. Turn on **Enable Embedded Metabot**.
 8. Under **Collection Embedded Metabot can use**, click **Pick a different collection** and choose the collection that holds the metrics, models, and saved questions embedded Metabot should build on.
@@ -180,6 +180,10 @@ The `CurrentChart` component is bound to the latest chart the agent produced. Re
 ### Guard against null while the SDK bundle loads
 
 `useMetabot` returns `null` until the SDK bundle has loaded and `<MetabaseProvider>` has mounted, so always guard before you use it. The SDK ships its Metabot internals in a code-split chunk that isn't available synchronously, which means an unguarded first render throws `Cannot read properties of null` as soon as you reach for `metabot.messages`, `metabot.submitMessage`, or anything else on the hook.
+
+### Only one conversation per page
+
+Each page gets a single AI chat conversation, and every `MetabotQuestion` and `useMetabot` call on the page reads and writes that same conversation. You can't give each component its own conversation.
 
 ### Bring your own markdown renderer
 

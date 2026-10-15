@@ -362,10 +362,6 @@ describe("scenarios > custom column > boolean functions", () => {
       );
     }
 
-    beforeEach(() => {
-      cy.signInAsNormalUser();
-    });
-
     it("should be able setup an 'open question' click behavior", () => {
       createDashboardWithQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),

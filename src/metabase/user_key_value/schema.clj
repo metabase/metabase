@@ -7,15 +7,10 @@
 
 (mr/def ::user-key-value
   "A UserKeyValue as selected from the app DB: every column of `:user_key_value`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:user_id    ::lib.schema.id/user]
-   [:namespace  :string]
-   [:key        :string]
-   [:value      [:maybe :string]]
-   [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   [:expires_at [:maybe ms/TemporalInstant]]])
+  [:merge
+   ::user-key-value.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::user-key-value.update
   "What an update (or insert) of a UserKeyValue accepts: every column of `:user_key_value` except `id`, all optional."

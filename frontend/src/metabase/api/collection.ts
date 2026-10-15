@@ -147,9 +147,9 @@ export const collectionApi = Api.injectEndpoints({
           idTag("collection", collection.parent_id ?? "root"),
         ];
 
-        // Creating a shared tenant collection affects the embedding hub checklist
+        // Creating a shared tenant collection affects the setup guide checklist
         if (request.namespace === "shared-tenant-collection") {
-          tags.push(listTag("embedding-hub-checklist"));
+          tags.push(listTag("setup-guide-checklist"));
         }
 
         return invalidateTags(error, tags);
@@ -166,6 +166,8 @@ export const collectionApi = Api.injectEndpoints({
           listTag("collection"),
           idTag("collection", payload.id),
           idTag("collection", payload.parent_id ?? "root"),
+          // archiving a collection resolves content-diagnostics findings in its subtree
+          listTag("content-diagnostics-finding"),
         ];
 
         // When archiving/restoring a collection, invalidate bookmarks

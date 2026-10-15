@@ -28,11 +28,11 @@ import {
 } from "../constants/dataset";
 
 import {
-  NO_X_AXIS_VALUES_ERROR_MESSAGE,
   applyVisualizationSettingsDataTransformations,
   getDatasetExtents,
   getDatasetKey,
   getJoinedCardsDataset,
+  getNoXAxisValuesErrorMessage,
   replaceValues,
   sortDataset,
 } from "./dataset";
@@ -892,7 +892,7 @@ describe("dataset transform functions", () => {
             yAxisScaleTransforms,
             createMockComputedVisualizationSettings(),
           ),
-        ).toThrow(NO_X_AXIS_VALUES_ERROR_MESSAGE);
+        ).toThrow(getNoXAxisValuesErrorMessage());
       });
     });
 

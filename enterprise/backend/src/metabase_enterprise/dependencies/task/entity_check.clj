@@ -72,10 +72,11 @@
                     (deps.settings/dependency-entity-check-delay-minutes)
                     (deps.settings/dependency-entity-check-variance-minutes)))))
 
-(task/defjob
-  ^{:doc "Check all entities for validity"
-    org.quartz.DisallowConcurrentExecution true}
-  DependencyEntityCheck [ctx]
+(task/defjob DependencyEntityCheck
+  "Check all entities for validity"
+  {:saved-class "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
+   :concurrent? false}
+  [ctx]
   (log/info "Executing DependencyEntityCheck job...")
   (check-entities!)
   (reschedule-after-run! (.getScheduler ctx)))

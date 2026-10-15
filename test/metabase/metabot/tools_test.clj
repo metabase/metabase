@@ -2,14 +2,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
-   [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.channel.settings :as channel.settings]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]))
+   [metabase.notification.models :as models.notification]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest all-tools-test
   (testing "profile tools are vars with required metadata"
@@ -60,13 +63,19 @@
     (is (contains? tools "create_chart"))
     (is (contains? tools "create_dashboard_subscription"))))
 
-(deftest ^:parallel get-tools-for-transforms-codegen-profile-test
-  (let [tools (tools-for-profile :transforms_codegen)]
-    (is (map? tools))
-    (is (contains? tools "search"))
-    (is (contains? tools "list_available_fields"))
-    (is (contains? tools "todo_write"))
-    (is (contains? tools "todo_read"))))
+(deftest run-query-needs-query-execution-enabled-test
+  (testing "run_query is offered only once an admin enables query execution"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+      (is (not (contains? (tools-for-profile :internal) "run_query"))))
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (contains? (tools-for-profile :internal) "run_query")))))
+
+(deftest slackbot-profile-has-no-run-query-test
+  ;; Everyone in a Slack thread can read its stored tool output, so one person's rows would reach the others.
+  ;; Filter that output per reader before offering run_query there.
+  (testing "run_query is not offered in Slack even with query execution enabled"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (not (contains? (tools-for-profile :slackbot) "run_query"))))))
 
 (deftest ^:parallel get-tools-for-sql-profile-test
   (let [tools (tools-for-profile :sql)]
@@ -103,6 +112,8 @@
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))
+    (is (contains? tools "load_skill")
+        "the model chart tool's query skills make load_skill available")
     (testing "both SQL tools need the SQL capability, like the tools they delegate to"
       (is (not (contains? tools "document_construct_sql_chart")))
       (is (contains? sql-tools "document_construct_sql_chart")))
@@ -144,7 +155,7 @@
     (let [query-captured (atom nil)
           chart-called  (atom nil)]
       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
-                                  (fn [external-query]
+                                  (fn [external-query & _opts]
                                     (reset! query-captured external-query)
                                     {:structured-output {:query-id "q-1"
                                                          :query {:database 1}
@@ -178,11 +189,45 @@
           (is (= "Total order count."
                  (get-in result [:data-parts 0 :data :description]))))))))
 
+(deftest construct-notebook-query-tool-show-chart-test
+  (let [construct! (fn [tool-names show-chart-arg]
+                     (let [chart-created? (atom false)]
+                       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                                   (fn [_ _]
+                                                     {:structured-output {:query-id       "q-1"
+                                                                          :query          {:database 1}
+                                                                          :result-columns []}})
+                                                   create-chart-tools/create-chart
+                                                   (fn [_]
+                                                     (reset! chart-created? true)
+                                                     {:chart-id "c-1", :chart-type :table})]
+                         (let [result (binding [shared/*profile-id*  :nlq
+                                                shared/*memory-atom* (atom {:tool-names tool-names})]
+                                        (agent-tools/construct-notebook-query-tool
+                                         (merge {:query       {:lib/type "mbql/query", :stages []}
+                                                 :title       "Seat check"
+                                                 :description "Total order count."}
+                                                show-chart-arg)))]
+                           {:chart?   @chart-created?
+                            :shown?   (boolean (seq (:data-parts result)))
+                            :query-id (get-in result [:structured-output :query-id])
+                            :run-it?  (boolean (re-find #"call `run_query` with `query_id` `q-1`"
+                                                        (:output result)))}))))]
+    (testing "with run_query offered, the query is built and the user is shown nothing"
+      (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true}
+             (construct! #{"construct_notebook_query" "run_query"} {:show_chart false}))))
+    (testing "with run_query offered and the argument left out, the chart is shown"
+      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
+             (construct! #{"construct_notebook_query" "run_query"} {}))))
+    (testing "without run_query the chart is shown whatever the argument says"
+      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
+             (construct! #{"construct_notebook_query"} {:show_chart false}))))))
+
 (defn- construct-tool-output-for-thrown
-  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
-  the `:output` the LLM would see."
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`.
+  Returns the `:output` the LLM would see when the tool handles `e`; otherwise `e` propagates."
   [e]
-  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_] (throw e))]
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ _] (throw e))]
     (:output (binding [shared/*profile-id* :nlq]
                (agent-tools/construct-notebook-query-tool
                 {:query       {:lib/type "mbql/query" :stages []}
@@ -196,10 +241,10 @@
     (is (= "You don't have permissions to do that."
            (construct-tool-output-for-thrown
             (ex-info "You don't have permissions to do that." {:status-code 403})))))
-  (testing "anything else without `:agent-error?` still gets the generic wrapper"
-    (is (= "Failed to construct notebook query: something went sideways"
-           (construct-tool-output-for-thrown
-            (ex-info "something went sideways" {:status-code 400}))))))
+  (testing "an unexpected error propagates to the agent loop"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"something went sideways"
+                          (construct-tool-output-for-thrown
+                           (ex-info "something went sideways" {}))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"
@@ -211,8 +256,6 @@
     (is (contains? @#'agent-tools/state-dependent-tools "construct_notebook_query"))
     (is (contains? @#'agent-tools/state-dependent-tools "todo_write"))
     (is (contains? @#'agent-tools/state-dependent-tools "todo_read"))
-    (is (contains? @#'agent-tools/state-dependent-tools "write_transform_sql"))
-    (is (contains? @#'agent-tools/state-dependent-tools "write_transform_python"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_autogenerated_dashboard"))
     (is (contains? @#'agent-tools/state-dependent-tools "document_schema_collect"))
     (is (contains? @#'agent-tools/state-dependent-tools "document_construct_sql_chart"))
@@ -220,7 +263,8 @@
     (is (contains? @#'agent-tools/state-dependent-tools "create_alert"))
     (is (contains? @#'agent-tools/state-dependent-tools "create_dashboard_subscription"))
     (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))
-    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))))
+    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))
+    (is (contains? @#'agent-tools/state-dependent-tools "run_query"))))
 
 (deftest wrap-tools-with-state-test
   (testing "wraps state-dependent tools with state injection"
@@ -286,3 +330,27 @@
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :queries_state (first %)) (rest params)))
       (is (not-any? #(= :charts_state (first %)) (rest params))))))
+
+(deftest slackbot-schedules-keep-their-day-test
+  (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
+                              channel.settings/slack-cached-channels-and-usernames
+                              (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
+    (mt/with-model-cleanup [:model/Notification :model/Pulse]
+      (mt/with-temp [:model/Card      {card-id :id} {}
+                     :model/Dashboard {dash-id :id} {}]
+        (binding [shared/*memory-atom* (atom {:context {:slack_channel_id "C123"}})]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (doseq [schedule [{:frequency "weekly" :day_of_week "monday" :hour 9}
+                              {:frequency "monthly" :day_of_month "first-monday" :hour 9}]]
+              (agent-tools/create-alert-tool {:card_id card-id :send_condition "has_result" :schedule schedule})
+              (agent-tools/slackbot-create-dashboard-subscription-tool {:dashboard_id dash-id :schedule schedule}))))
+        (testing "alerts"
+          (is (= #{"0 0 9 ? * 2 *" "0 0 9 ? * 2#1 *"}
+                 (->> (models.notification/notifications-for-card card-id)
+                      (mapcat :subscriptions)
+                      (into #{} (map :cron_schedule))))))
+        (testing "dashboard subscriptions"
+          (is (= #{[:weekly "mon" nil] [:monthly "mon" :first]}
+                 (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
+                      (mapcat :channels)
+                      (into #{} (map (juxt :schedule_type :schedule_day :schedule_frame)))))))))))

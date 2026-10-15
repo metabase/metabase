@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { databaseApi, fieldApi, segmentApi, tableApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -8,19 +6,21 @@ import {
   tableFetched,
 } from "metabase/metadata-store";
 import type { Dispatch } from "metabase/redux/store";
-import type { Database, Field, Segment, Table } from "metabase-types/api";
-
-/**
- * The edit forms in this module submit the entity they rendered, which came
- * from `state.entities` and carries the nested records the mirror stitched onto
- * it. The API rejects those, so each one is dropped before the request.
- */
+import type {
+  Database,
+  Field,
+  Table,
+  UpdateDatabaseRequest,
+  UpdateFieldRequest,
+  UpdateSegmentRequest,
+  UpdateTableRequest,
+} from "metabase-types/api";
 
 export const updateDatabase =
-  (database: Database) =>
+  (request: UpdateDatabaseRequest) =>
   async (dispatch: Dispatch): Promise<unknown> => {
     const updated: Database = await runRtkEndpoint(
-      _.omit(database, "tables", "tables_lookup"),
+      request,
       dispatch,
       databaseApi.endpoints.updateDatabase,
     );
@@ -29,16 +29,10 @@ export const updateDatabase =
   };
 
 export const updateTable =
-  (table: Table) =>
+  (request: UpdateTableRequest) =>
   async (dispatch: Dispatch): Promise<unknown> => {
     const updated: Table = await runRtkEndpoint(
-      _.omit(
-        table,
-        "fields",
-        "fields_lookup",
-        "aggregation_operators",
-        "segments",
-      ),
+      request,
       dispatch,
       tableApi.endpoints.updateTable,
     );
@@ -47,10 +41,10 @@ export const updateTable =
   };
 
 export const updateField =
-  (field: Field) =>
+  (request: UpdateFieldRequest) =>
   async (dispatch: Dispatch): Promise<unknown> => {
     const updated: Field = await runRtkEndpoint(
-      _.omit(field, "filter_operators_lookup"),
+      request,
       dispatch,
       fieldApi.endpoints.updateField,
     );
@@ -59,6 +53,6 @@ export const updateField =
   };
 
 export const updateSegment =
-  (segment: Segment) =>
+  (request: UpdateSegmentRequest) =>
   (dispatch: Dispatch): Promise<unknown> =>
-    runRtkEndpoint(segment, dispatch, segmentApi.endpoints.updateSegment);
+    runRtkEndpoint(request, dispatch, segmentApi.endpoints.updateSegment);

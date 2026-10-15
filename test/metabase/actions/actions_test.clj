@@ -39,7 +39,7 @@
 
 (mu/defn- format-field-name :- :string
   "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
-  [field-name]
+  [field-name :- :keyword]
   (name (mt/format-name (name field-name))))
 
 (defn- categories-row-count []
@@ -86,7 +86,7 @@
         (is (= {:rows-updated 1}
                (actions/perform-action! :model.row/update
                                         (assoc (mt/mbql-query categories {:filter [:= $id 50]})
-                                               :update_row {(format-field-name :name) "updated_row"})))
+                                               :update-row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
         (is (= "updated_row"
                (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id 50]})) last last))
@@ -120,14 +120,14 @@
                                 result)))}
    {:action       :model.row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
-                         :update_row {(format-field-name :name) "updated_row"})
+                         :update-row {(format-field-name :name) "updated_row"})
     :expected     {:rows-updated 1}}
    {:action       :model.row/delete
     :request-body (mt/mbql-query categories {:filter [:= $id 1]})
     :expected     {:rows-deleted 1}}
    {:action       :model.row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
-                         :update_row {(format-field-name :name) "new-category-name"})
+                         :update-row {(format-field-name :name) "new-category-name"})
     :expected     {:rows-updated 1}}])
 
 (deftest feature-flags-test
@@ -168,7 +168,7 @@
                                                         test-scope
                                                         [{:database db-id
                                                           :table-id table-id
-                                                          :values   {:name "Toucannery"}}]))))))
+                                                          :values   {"name" "Toucannery"}}]))))))
 
 (defn- row-action? [action]
   (= (namespace action) "row"))
@@ -190,9 +190,9 @@
     (mt/with-actions-enabled
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
-                                                      :update_row {(format-field-name :name) "new-name"})
+                                                      :update-row {(format-field-name :name) "new-name"})
               query-that-returns-zero-row      (assoc (mt/mbql-query users {:filter [:= $id Integer/MAX_VALUE]})
-                                                      :update_row {(format-field-name :name) "new-name"})
+                                                      :update-row {(format-field-name :name) "new-name"})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
@@ -206,10 +206,8 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
       (binding [*current-user-permissions-set* (delay #{"/"})]
-        (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
-                                                      :update_row {(format-field-name :name) "new-name"})
-              query-that-returns-zero-row      (assoc (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
-                                                      :update_row {(format-field-name :name) "new-name"})
+        (let [query-that-returns-more-than-one (mt/mbql-query checkins {:filter [:>= $id 1]})
+              query-that-returns-zero-row      (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
@@ -702,7 +700,7 @@
                (actions/perform-action!
                 :model.row/update
                 (assoc (mt/mbql-query ants {:filter [:= $id "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]})
-                       :update_row {(format-field-name :name) "updated_row"})))
+                       :update-row {(format-field-name :name) "updated_row"})))
             "Update should return the right shape")
         (is (= "updated_row"
                (-> (mt/rows (mt/run-mbql-query ants
@@ -854,3 +852,25 @@
               (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
             (finally
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+
+(deftest implicit-action-audit-trail-test
+  (testing "an implicit action records one QueryExecution row holding an action descriptor, not SQL"
+    (with-actions-test-data-and-actions-permissively-enabled!
+      (let [since (mt/latest-query-execution-id)
+            _     (actions/perform-action! :model.row/create
+                                           (assoc (mt/mbql-query categories)
+                                                  :create-row {(format-field-name :name) "audited_row"}))
+            rows  (mt/action-executions since)]
+        (is (= 1 (count rows)))
+        (is (=? {:context     :action-execute
+                 :native      false
+                 :action_id   nil
+                 :result_rows 1
+                 :error       nil
+                 :database_id (mt/id)}
+                (first rows)))
+        (testing "the query row holds the internal descriptor"
+          (is (=? {:type     "internal"
+                   :action   "model.row/create"
+                   :database (mt/id)}
+                  (t2/select-one-fn :query :model/Query :query_hash (:hash (first rows))))))))))

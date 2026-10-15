@@ -81,7 +81,7 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
     seedUsageAuditingData();
   });
 
-  it("renders the usage stats charts from the audit views", () => {
+  it("renders the usage stats charts and opens the seeded conversations", () => {
     visitUsageStatsPage();
 
     H.main().within(() => {
@@ -94,9 +94,8 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
     });
 
     CONVERSATION_CHART_TITLES.forEach(assertChartRendered);
-  });
 
-  it("lists the seeded conversations and opens their details", () => {
+    cy.log("conversations list and details");
     visitConversationsPage();
 
     H.main()

@@ -172,6 +172,14 @@ export const globalShortcuts = {
     shortcutGroup: "global" as const,
   },
 
+  "navigate-data-apps": {
+    get name() {
+      return t`Go to Data Apps`;
+    },
+    shortcut: ["g Shift+a"],
+    shortcutGroup: "global" as const,
+  },
+
   "navigate-user-settings": {
     get name() {
       return t`Go to user settings`;

@@ -55,7 +55,7 @@ To create a metric:
 
    You can also create a new metric by going to **Browse > Metrics** in the navigation sidebar and clicking on **+**.
 
-   If you're creating a [Library metric](./library.md#metrics), you can also [navigate to the Library](./library.md) and click **+ New > Metric**.
+   If you're creating a [Library metric](./library.md#metrics), you can also go to [Data Studio > Semantic layer](./library.md) and click **+ New > Metric**.
 
 2. Select your starting data. You can start from a table, saved question, model, or another metric.
 

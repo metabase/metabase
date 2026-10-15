@@ -200,12 +200,10 @@ describe("parameters/utils/mapping-options", () => {
                       operator: "=",
                       left: {
                         type: "column",
-                        sourceName: "ORDERS",
                         name: "PRODUCT_ID",
                       },
                       right: {
                         type: "column",
-                        sourceName: "PRODUCTS",
                         name: "ID",
                       },
                     },
@@ -807,7 +805,6 @@ describe("getMappingOptionByTarget", () => {
             breakouts: [
               {
                 type: "column",
-                sourceName: "ORDERS",
                 name: "CREATED_AT",
                 unit: "month",
               },

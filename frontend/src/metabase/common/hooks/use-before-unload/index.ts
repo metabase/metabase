@@ -1,4 +1,4 @@
 export {
   useBeforeUnload,
-  BEFORE_UNLOAD_UNSAVED_MESSAGE,
+  getBeforeUnloadUnsavedMessage,
 } from "./use-before-unload";

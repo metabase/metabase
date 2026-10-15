@@ -25,7 +25,7 @@ jobs:
             echo "${{ github.event.workflow_run.html_url }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             .github

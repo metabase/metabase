@@ -30,22 +30,25 @@ import {
 
 export const DATA_MODEL_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`No`,
+    get label() {
+      return t`No`;
+    },
     value: DataPermissionValue.NONE,
     icon: "close",
     iconColor: "feedback-negative",
   },
   edit: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Yes`,
+    get label() {
+      return t`Yes`;
+    },
     value: DataPermissionValue.ALL,
     icon: "check",
     iconColor: "feedback-positive",
   },
   controlled: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    label: t`Granular`,
+    get label() {
+      return t`Granular`;
+    },
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
     iconColor: "feedback-warning",

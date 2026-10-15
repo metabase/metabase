@@ -14,8 +14,7 @@ const SDK_VERSION_WARNING = {
 };
 
 const warningToast = (message: string) => ({
-  icon: "warning_triangle_filled",
-  iconColor: "feedback-warning",
+  variant: "warning",
   message,
 });
 

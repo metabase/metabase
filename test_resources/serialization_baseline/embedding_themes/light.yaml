@@ -4,6 +4,4 @@ name: Light
 settings: {}
 updated_at: '2025-11-05T17:34:01.946143Z'
 serdes/meta:
-- id: WvRp2yy6Tk98WunjkA8aE
-  label: light
-  model: EmbeddingTheme
+- model: EmbeddingTheme

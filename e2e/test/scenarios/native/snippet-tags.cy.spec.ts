@@ -8,33 +8,6 @@ describe("scenarios > native > snippet tags", () => {
     cy.signInAsAdmin();
   });
 
-  it("should be able to create a snippet with variable tags", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("select id from products where ");
-
-    cy.log("create a snippet");
-    getEditorTopBar().icon("snippet").click();
-    getEditorSidebar().findByText("Create snippet").click();
-    H.modal().within(() => {
-      getSnippetContentInput().type("category = {{category}}", {
-        parseSpecialCharSequences: false,
-      });
-      getSnippetNameInput().type("variable-snippet");
-      cy.button("Save").click();
-    });
-
-    cy.log("verify that the snippet was inserted");
-    H.NativeEditor.get().should(
-      "contain",
-      "select id from products where {{snippet: variable-snippet}}",
-    );
-
-    cy.log("verify that the query can be run");
-    getEditorTopBar().findByPlaceholderText("Category").type("Widget");
-    H.runNativeQuery();
-    H.assertQueryBuilderRowCount(54);
-  });
-
   it("should be able to create a snippet with card tags", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from ");
@@ -61,9 +34,9 @@ describe("scenarios > native > snippet tags", () => {
     H.tableInteractive().should("be.visible");
   });
 
-  it("should be able to create a snippet with snippet tags", () => {
+  it("should be able to create a snippet with variable tags and snippet tags", () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("select * from ");
+    H.NativeEditor.type("select id from products where ");
 
     cy.log("create a snippet");
     getEditorTopBar().icon("snippet").click();
@@ -75,6 +48,17 @@ describe("scenarios > native > snippet tags", () => {
       getSnippetNameInput().type("snippet1");
       cy.button("Save").click();
     });
+
+    cy.log("verify that the snippet was inserted");
+    H.NativeEditor.get().should(
+      "contain",
+      "select id from products where {{snippet: snippet1}}",
+    );
+
+    cy.log("verify that the query can be run");
+    getEditorTopBar().findByPlaceholderText("Category").type("Widget");
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(54);
 
     cy.log("create a snippet that uses the previous snippet");
     getEditorTopBar().icon("snippet").click();
@@ -91,9 +75,9 @@ describe("scenarios > native > snippet tags", () => {
     cy.log("verify that the snippet can used");
     H.NativeEditor.clear();
     H.NativeEditor.type("select id from products where {{snippet: snippet2}}");
-    getEditorTopBar().findByLabelText("Category").type("Gizmo");
+    getEditorTopBar().findByLabelText("Category").clear().type("Gizmo");
     H.runNativeQuery();
-    H.tableInteractive().should("be.visible");
+    H.assertQueryBuilderRowCount(51);
   });
 
   it("should be able to update a snippet and change tags", () => {
@@ -103,6 +87,7 @@ describe("scenarios > native > snippet tags", () => {
 
     cy.log("update the snippet");
     getEditorVisibilityToggler().click();
+    getEditorTopBar().findByPlaceholderText("Filter").should("be.visible");
     getEditorTopBar().icon("snippet").click();
     getEditorSidebar().within(() => {
       cy.icon("chevrondown").click({ force: true });
@@ -137,8 +122,9 @@ describe("scenarios > native > snippet tags", () => {
     cy.log("change the type");
     getEditorVisibilityToggler().click();
     getEditorTopBar().icon("variable").click();
-    getVariableTypeSelect().click();
+    getVariableTypeSelect().should("have.value", "Text").click();
     H.popover().findByText("Number").click();
+    getVariableTypeSelect().should("have.value", "Number");
 
     cy.log("verify that the parameter can be used");
     getEditorTopBar().findByPlaceholderText("Filter").type("10");
@@ -224,10 +210,6 @@ function createQuestionAndSnippet({
             type: "text",
           },
         },
-      },
-      enable_embedding: true,
-      embedding_params: {
-        filter: "enabled",
       },
     }).then(({ body: card }) => {
       return { card, snippet };

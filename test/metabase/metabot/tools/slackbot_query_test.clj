@@ -19,6 +19,7 @@
    [malli.json-schema :as mjs]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.slackbot-query :as slackbot-query]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -84,12 +85,13 @@
 ;; adhoc_viz data part, instructions text, error passthrough).
 
 (defn- with-repr-stub! [stub-fn f]
-  (with-redefs [construct/execute-representations-query stub-fn
-                ;; `streaming/query->question-url` inspects the query; stub it too so the
-                ;; fake query doesn't have to satisfy the real function's expectations.
-                streaming/query->question-url
-                (fn [_q display]
-                  (str "/question#fake" (when display (str "?d=" display))))]
+  (mt/with-dynamic-fn-redefs
+    [construct/execute-representations-query stub-fn
+     ;; `streaming/query->question-url` inspects the query; stub it too so the
+     ;; fake query doesn't have to satisfy the real function's expectations.
+     streaming/query->question-url
+     (fn [_q display]
+       (str "/question#fake" (when display (str "?d=" display))))]
     (f)))
 
 (deftest slackbot-tool-happy-path-test
@@ -97,10 +99,12 @@
                 "execute-representations-query, wraps the result in an adhoc_viz data part\n"
                 "with the provided title + display, and returns structured-output + instructions.")
     (let [captured-query (atom nil)
+          captured-opts  (atom :not-called)
           fake-query     {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [external-query]
+        (fn [external-query & [opts]]
           (reset! captured-query external-query)
+          (reset! captured-opts opts)
           {:structured-output {:query-id       "q-1"
                                :query          fake-query
                                :result-columns []}
@@ -117,6 +121,10 @@
                               :display   "bar"})]
             (testing "external-query passed through verbatim"
               (is (= query-input @captured-query)))
+            (testing "the v1 recovery-hint fn is threaded into the pipeline as `:recovery-hint`"
+              ;; Guards F1's regression class: without this, dropping the `:recovery-hint` arg from
+              ;; the caller would leave every stubbed test green while agent errors lose their hint.
+              (is (= recovery-hints/recovery-hint (:recovery-hint @captured-opts))))
             (testing "structured-output is returned upstream"
               (is (= "q-1" (get-in result [:structured-output :query-id])))
               (is (= fake-query (get-in result [:structured-output :query]))))
@@ -137,7 +145,7 @@
                 "include them with nil values) but the link is still built and returned.")
     (let [fake-query {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [_external-query]
+        (fn [_external-query & _]
           {:structured-output {:query-id       "q-x"
                                :query          fake-query
                                :result-columns []}
@@ -162,7 +170,7 @@
                 "returns `{:output <message>}` so the message reaches the LLM verbatim -\n"
                 "no stack trace, no data-parts.")
     (with-repr-stub!
-      (fn [_external-query]
+      (fn [_external-query & _]
         (throw (ex-info "Unknown database: `Sample`. Use the exact database name as reported by search / read_resource."
                         {:agent-error? true
                          :status-code  400
@@ -179,20 +187,20 @@
             (is (nil? (:structured-output result)))
             (is (nil? (:data-parts result)))))))))
 
-(deftest slackbot-tool-unexpected-error-is-wrapped-test
-  (testing (str "A non-agent exception (e.g. a programming bug) gets wrapped with a generic\n"
-                "`Failed to construct notebook query: ...` prefix. Protects the LLM from\n"
-                "leaking internal stack-trace-style messages.")
-    (with-repr-stub!
-      (fn [_external-query]
-        (throw (RuntimeException. "something went sideways")))
-      (fn []
-        (let [result (slackbot-query/slackbot-construct-notebook-query-tool
-                      {:reasoning "test non-agent error path"
-                       :query     {:lib/type "mbql/query" :stages []}})]
-          (is (string? (:output result)))
-          (is (str/starts-with? (:output result) "Failed to construct notebook query:"))
-          (is (re-find #"something went sideways" (:output result))))))))
+(deftest slackbot-tool-non-agent-errors-test
+  (let [tool-result-for-thrown #(with-repr-stub!
+                                  (fn [_external-query & _] (throw %))
+                                  (fn []
+                                    (slackbot-query/slackbot-construct-notebook-query-tool
+                                     {:reasoning "test non-agent error path"
+                                      :query     {:lib/type "mbql/query" :stages []}})))]
+    (testing "a permission error goes back to the agent as output"
+      (is (= "You don't have permissions to do that."
+             (:output (tool-result-for-thrown
+                       (ex-info "You don't have permissions to do that." {:status-code 403}))))))
+    (testing "an unexpected error, e.g. a programming bug, propagates to the agent loop"
+      (is (thrown-with-msg? RuntimeException #"something went sideways"
+                            (tool-result-for-thrown (RuntimeException. "something went sideways")))))))
 
 ;;; ---------------------------------------- end-to-end test --------------------------------------------------------
 

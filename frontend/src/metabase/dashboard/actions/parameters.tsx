@@ -256,7 +256,7 @@ export const moveParameter =
           message: (
             <Text
               className={cx(CS.flex, CS.flexFull, CS.flexNoShrink)}
-              c="text-primary-inverse"
+              c="inherit"
               w="8rem"
             >{t`Filter moved`}</Text>
           ),
@@ -385,6 +385,108 @@ export function removeParameterAndReferences(
   });
 }
 
+/**
+ * Undoes `removeParameterAndReferences` for `parameterIds`, given the
+ * `originalParameters` from before the removal:
+ * - those parameters come back as they were, right after the parameter they
+ *   originally followed, minus references to parameters that no longer exist
+ * - other parameters get back their references to them, and otherwise keep
+ *   any changes made since, including their order, additions and removals
+ */
+export function restoreParametersAndReferences(
+  dispatch: Dispatch,
+  getState: GetState,
+  originalParameters: Parameter[],
+  parameterIds: ParameterId[],
+) {
+  const restoredIds = new Set(parameterIds);
+  const parametersToRestore = originalParameters.filter(({ id }) =>
+    restoredIds.has(id),
+  );
+
+  updateParameters(dispatch, getState, (parameters) => {
+    const nextParameters = parametersToRestore.reduce(
+      (result, parameter) =>
+        insertAfterOriginalPredecessor(result, parameter, originalParameters),
+      parameters.map((parameter) =>
+        restoreReferences(parameter, originalParameters, restoredIds),
+      ),
+    );
+
+    const nextIds = new Set(nextParameters.map(({ id }) => id));
+    return nextParameters.map((parameter) =>
+      restoredIds.has(parameter.id) && parameter.filteringParameters
+        ? {
+            ...parameter,
+            filteringParameters: parameter.filteringParameters.filter((id) =>
+              nextIds.has(id),
+            ),
+          }
+        : parameter,
+    );
+  });
+}
+
+/**
+ * Returns `parameters` with `parameter` inserted right after the nearest
+ * parameter that came before it in `originalParameters` and is still present,
+ * or at the start if there is none. Unchanged if `parameter` is already there.
+ */
+function insertAfterOriginalPredecessor(
+  parameters: Parameter[],
+  parameter: Parameter,
+  originalParameters: Parameter[],
+): Parameter[] {
+  const isPresent = (id: ParameterId) =>
+    parameters.some((current) => current.id === id);
+  if (isPresent(parameter.id)) {
+    return parameters;
+  }
+
+  const originalIndex = originalParameters.findIndex(
+    ({ id }) => id === parameter.id,
+  );
+  const predecessor = originalParameters
+    .slice(0, Math.max(originalIndex, 0))
+    .reverse()
+    .find(({ id }) => isPresent(id));
+  const insertAt = predecessor
+    ? parameters.findIndex(({ id }) => id === predecessor.id) + 1
+    : 0;
+
+  return [
+    ...parameters.slice(0, insertAt),
+    parameter,
+    ...parameters.slice(insertAt),
+  ];
+}
+
+/**
+ * Returns `parameter` with the references to `restoredIds` it had in
+ * `originalParameters` added back to its current ones.
+ */
+function restoreReferences(
+  parameter: Parameter,
+  originalParameters: Parameter[],
+  restoredIds: Set<ParameterId>,
+): Parameter {
+  const original = originalParameters.find(({ id }) => id === parameter.id);
+  const removedReferences = (original?.filteringParameters ?? []).filter((id) =>
+    restoredIds.has(id),
+  );
+  if (removedReferences.length === 0) {
+    return parameter;
+  }
+
+  return {
+    ...parameter,
+    filteringParameters: [
+      ...(parameter.filteringParameters ?? []),
+      ...removedReferences,
+    ],
+  };
+}
+
 export const removeParameter = createThunkAction(
   REMOVE_PARAMETER,
   (parameterId: ParameterId) => (dispatch, getState) => {
@@ -429,18 +531,9 @@ export const setParameterMapping = createThunkAction(
       const dashcards = Object.values(getDashcards(getState()));
       const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (
-        target !== null &&
-        isQuestionDashCard(dashcard) &&
-        !isDashcardInlineParameter(parameterId, dashcards)
-      ) {
-        const selectedTabId = getSelectedTabId(getState());
-
-        dispatch(
-          showAutoWireToast(parameterId, dashcard, target, selectedTabId),
-        );
-      }
-
+      // this has to run first so auto-wire can see the updated dashcard
+      // otherwise the toast will be shown when it shouldn't be shown
+      // and undo would wipe the mapping the user just set.
       dispatch(
         setDashCardAttributes({
           id: dashcardId,
@@ -454,6 +547,24 @@ export const setParameterMapping = createThunkAction(
           },
         }),
       );
+
+      if (
+        target !== null &&
+        isQuestionDashCard(dashcard) &&
+        !isDashcardInlineParameter(parameterId, dashcards)
+      ) {
+        const selectedTabId = getSelectedTabId(getState());
+
+        dispatch(
+          showAutoWireToast(
+            parameterId,
+            dashcardId,
+            cardId,
+            target,
+            selectedTabId,
+          ),
+        );
+      }
 
       // QUE2-326: when an ID parameter is mapped to a field, replace the
       // placeholder "id" type with a concrete type based on the field.
@@ -1089,11 +1200,12 @@ export const setParameterValuesFromQueryParams =
     dispatch(setParameterValues(parameterValues));
   };
 
-export const TOGGLE_AUTO_APPLY_FILTERS =
-  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
-export const toggleAutoApplyFilters = createThunkAction(
-  TOGGLE_AUTO_APPLY_FILTERS,
-  (isEnabled: boolean) => (dispatch, getState) => {
+/**
+ * Turns auto-apply filters on or off for the loaded dashboard without saving
+ * it, applying the pending filter values first.
+ */
+export const setAutoApplyFilters =
+  (isEnabled: boolean) => (dispatch: Dispatch, getState: GetState) => {
     const dashboardId = getDashboardId(getState());
 
     if (dashboardId) {
@@ -1104,6 +1216,18 @@ export const toggleAutoApplyFilters = createThunkAction(
           attributes: { auto_apply_filters: isEnabled },
         }),
       );
+    }
+  };
+
+export const TOGGLE_AUTO_APPLY_FILTERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
+export const toggleAutoApplyFilters = createThunkAction(
+  TOGGLE_AUTO_APPLY_FILTERS,
+  (isEnabled: boolean) => (dispatch, getState) => {
+    const dashboardId = getDashboardId(getState());
+
+    if (dashboardId) {
+      dispatch(setAutoApplyFilters(isEnabled));
       dispatch(updateDashboard({ attributeNames: ["auto_apply_filters"] }));
       if (!isEnabled) {
         trackAutoApplyFiltersDisabled(dashboardId);

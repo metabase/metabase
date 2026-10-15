@@ -12,7 +12,7 @@ import {
 } from "react-redux";
 
 import { api } from "metabase/api/client";
-import { metabaseReduxContext } from "metabase/redux";
+import { metabaseReduxContext } from "metabase/redux/context";
 
 import { TAG_TYPES } from "./tags";
 

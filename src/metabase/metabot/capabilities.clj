@@ -7,6 +7,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]))
 
@@ -17,8 +18,7 @@
   `:capabilities` metadata."
   {"frontend:navigate_user_v1"    :frontend-navigate-user-v1
    "permission:save_questions"    :permission-save-questions
-   "permission:write_sql_queries" :permission-write-sql-queries
-   "permission:write_transforms"  :permission-write-transforms})
+   "permission:write_sql_queries" :permission-write-sql-queries})
 
 (defn- capability->keyword
   "Normalize a capability value to a keyword.
@@ -33,8 +33,7 @@
 
 (def ^:private permission-capabilities
   #{:permission-save-questions
-    :permission-write-sql-queries
-    :permission-write-transforms})
+    :permission-write-sql-queries})
 
 (defn- granted-permission-capabilities
   "Nil user grants everything as a crash guard -- `query-creation-capabilities` throws there under
@@ -47,8 +46,7 @@
           (perms/query-creation-capabilities api/*current-user-id*)]
       (cond-> #{}
         can-create-queries        (conj :permission-save-questions)
-        can-create-native-queries (conj :permission-write-sql-queries)
-        api/*is-data-analyst?*    (conj :permission-write-transforms)))))
+        can-create-native-queries (conj :permission-write-sql-queries)))))
 
 (defn enforce-permissions
   "Drop every client-claimed `permission:*` capability the current user has not been granted."
@@ -74,15 +72,21 @@
         [(when (or (not (premium-features/is-hosted?))
                    (premium-features/has-feature? :transforms-basic))
            :feature-transforms)
-         (when (premium-features/has-feature? :transforms-python)
-           :feature-transforms-python)
          (when (premium-features/has-feature? :semantic-search)
-           :feature-semantic-search)]))
+           :feature-semantic-search)
+         (when (metabot.settings/metabot-query-execution-enabled?)
+           :feature-query-execution)]))
+
+(defn- feature-capability?
+  [cap]
+  (str/starts-with? (name cap) "feature-"))
 
 (defn capability-set
   "Build the full set of capability keywords for a request: the backend-inferred feature capabilities
-  unioned with the (normalized) capabilities from the API."
+  unioned with the (normalized) capabilities from the API.
+  Feature capabilities come only from the backend, so a claimed `feature:*` capability is dropped."
   [capabilities]
   (into (feature-capabilities)
-        (map capability->keyword)
+        (comp (map capability->keyword)
+              (remove feature-capability?))
         capabilities))

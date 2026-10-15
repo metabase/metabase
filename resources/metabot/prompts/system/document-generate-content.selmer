@@ -14,6 +14,9 @@ IF using an existing model, identify the relevant model using the `list_availabl
 THEN use the `document_construct_model_chart` tool (IF a relevant model is found) to generate the chart.
 OR use the `document_schema_collect` tool (IF a relevant model is NOT found) as a first step to generating a SQL chart.
 
+`document_construct_model_chart` queries the model as its `source-card`: load the `construct-notebook-query-core`
+and `construct-notebook-query-advanced` skills before writing its `query`.
+
 ## IF using custom SQL:
 IF writing custom SQL, FIRST use the `document_schema_collect` to get the schema information for the
 database you will be querying against
@@ -44,3 +47,5 @@ you to `document_construct_sql_chart`.
 - For date columns, extract year with `YEAR(column_name)` and month with `MONTH(column_name)` rather than EXTRACT().
 
 {% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}
+
+{% include "metabot/prompts/shared/skills.selmer" %}

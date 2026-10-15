@@ -2,17 +2,13 @@ import { useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { match } from "ts-pattern";
 import { t } from "ttag";
-
 import "react-resizable/css/styles.css";
-
 import noResultsSource from "assets/img/no_results.svg";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { isSiteUrlMatchingCurrentOrigin } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-site-url-matching-current-origin";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import { closeModal } from "metabase/redux/ui";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
 import { useSetting, useUpdateSettingsMutation } from "metabase/settings";
 import {
   Box,
@@ -36,7 +32,6 @@ import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 import { SdkIframeEmbedSiteUrlMismatchError } from "./SdkIframeEmbedSiteUrlMismatchError";
 
 export const SdkIframeEmbedSetupContent = () => {
-  const dispatch = useDispatch();
   const [updateSettings] = useUpdateSettingsMutation();
   const {
     currentStep,
@@ -48,6 +43,7 @@ export const SdkIframeEmbedSetupContent = () => {
     experience,
     resource,
     settings,
+    onClose,
   } = useSdkIframeEmbedSetupContext();
 
   const StepContent = useMemo(
@@ -57,7 +53,7 @@ export const SdkIframeEmbedSetupContent = () => {
   );
 
   function handleEmbedDone() {
-    // Embedding Hub: track step completion
+    // Setup guide: track step completion. The settings keep their embedding-hub names.
     // Test embed = guest or existing user session (for quick testing)
     // Production embed = full SSO setup
     const isTestEmbed = settings.isGuest || settings.useExistingUserSession;
@@ -68,7 +64,7 @@ export const SdkIframeEmbedSetupContent = () => {
 
     updateSettings({ [settingKey]: true });
 
-    dispatch(closeModal());
+    onClose();
   }
 
   const isQuestionOrDashboard = isQuestionOrDashboardSettings(
@@ -128,7 +124,6 @@ export const SdkIframeEmbedSetupContent = () => {
           <Group className={S.Navigation} justify="space-between">
             {canGoBack && (
               <Button
-                variant="default"
                 onClick={handleBack}
                 disabled={!allowPreviewAndNavigation}
               >
@@ -192,6 +187,12 @@ const SidebarResizer = ({ children }: { children: React.ReactNode }) => {
       {children}
     </ResizableBox>
   );
+};
+
+type SdkIframeEmbedSetupModalProps = {
+  opened: boolean;
+  onClose: () => void;
+  initialState?: SdkIframeEmbedSetupModalInitialState;
 };
 
 export const SdkIframeEmbedSetupModal = ({

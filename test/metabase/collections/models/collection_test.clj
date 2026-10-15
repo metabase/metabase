@@ -200,6 +200,42 @@
       (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
       (is (false? (t2/select-one-fn :archived :model/Card :id (u/the-id card)))))))
 
+(deftest archive-actions-test
+  (testing "archiving a Collection archives its Actions and keeps their dashboard buttons, and unarchiving restores
+            only the Actions archived along with it"
+    (mt/with-temp [:model/Collection    collection {}
+                   :model/Card          model      {:type :model :collection_id (u/the-id collection)}
+                   :model/Action        action     {:type :query :name "Rename" :model_id (u/the-id model)}
+                   :model/Action        old-action {:type :query :name "Old" :model_id (u/the-id model)
+                                                    :archived true :archived_directly true}
+                   :model/Dashboard     dashboard  {:collection_id (u/the-id collection)}
+                   :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard) :action_id (u/the-id action)}]
+      (archive-collection! collection)
+      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
+      (is (t2/exists? :model/DashboardCard :id (u/the-id dashcard)))
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
+      (is (false? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
+      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id old-action)))))))
+
+(deftest unarchive-collection-keeps-actions-of-archived-models-test
+  (testing "restoring a Collection does not restore the Actions of a model that is still in the trash"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       model      {:type :model :collection_id (u/the-id collection)}
+                   :model/Action     action     {:type :query :name "Rename" :model_id (u/the-id model)}]
+      (t2/update! :model/Card (u/the-id model) {:archived true :archived_directly true})
+      (archive-collection! collection)
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
+      (is (true? (t2/select-one-fn :archived :model/Card :id (u/the-id model))))
+      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id action)))))))
+
+(deftest delete-collection-deletes-actions-test
+  (testing "deleting a Collection deletes the Actions in it, including the ones without a model"
+    (mt/with-temp [:model/Collection collection {:namespace "data-actions"}
+                   :model/Action     action     {:type :query :name "No model" :model_id nil
+                                                 :collection_id (u/the-id collection)}]
+      (t2/delete! :model/Collection :id (u/the-id collection))
+      (is (not (t2/exists? :model/Action :id (u/the-id action)))))))
+
 (deftest validate-name-test
   (testing "check that collections' names cannot be blank"
     (is (thrown?
@@ -442,6 +478,24 @@
                    (visible-collection-ids {:archive-operation-id "1234"
                                             :include-archived-items :all
                                             :include-trash-collection? true})))))))))
+
+(deftest visible-collection-ids-root-namespace-test
+  (mt/with-temp [:model/Collection {default-id :id} {}
+                 :model/Collection {data-actions-id :id} {:namespace "data-actions"}]
+    (letfn [(visible-collection-ids* [config]
+              (into #{}
+                    (keep {default-id 'default, data-actions-id 'data-actions, "root" 'root})
+                    (visible-collection-ids (merge {:permission-level :read} config))))]
+      (with-current-user-perms-for-collections! [default-id data-actions-id]
+        (mt/with-non-admin-groups-no-root-collection-for-namespace-perms :data-actions
+          (testing "the default root needs the default root's permission"
+            (is (= '#{root default data-actions} (visible-collection-ids* {}))))
+          (testing "another namespace's root needs that root's permission"
+            (is (= '#{default data-actions} (visible-collection-ids* {:root-namespace :data-actions}))))
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-all-users-permission "/collection/namespace/data-actions/root/read/"
+              (is (= '#{root default data-actions} (visible-collection-ids* {:root-namespace :data-actions})))
+              (is (= '#{default data-actions} (visible-collection-ids* {}))))))))))
 
 (deftest effective-location-path-test
   (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)]
@@ -1331,6 +1385,15 @@
               (is (= nil (t2/hydrate nil :is_personal)))
               (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))))
 
+(deftest hydrate-is-personal-without-any-personal-collections-test
+  (testing "batched hydration works on a fresh instance where no Personal Collection has been created yet"
+    (mt/with-empty-h2-app-db!
+      (let [ids (t2/insert-returning-pks! :model/Collection [{:name "A" :location "/"}
+                                                             {:name "B" :location "/"}])]
+        (is (= [false false]
+               (map :is_personal (t2/hydrate (t2/select :model/Collection :id [:in ids] {:order-by [:id]})
+                                             :is_personal))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Moving Collections "Across the Boundary"                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1541,7 +1604,7 @@
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace "x"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" or :shared-tenant-collection or :tenant-specific or :analytics namespace."
+             #"A Card can only go in Collections in the \"default\" or :shared-tenant-collection or :tenant-specific or :analytics or :data-apps namespace."
              (collection/check-collection-namespace :model/Card collection-id)))))
     (testing "Should throw exception if Collection does not exist"
       (is (thrown-with-msg?
@@ -3264,12 +3327,31 @@
                                                                             non-archived-dash
                                                                             non-archived-card]))))))))
 
+(deftest ensure-library-dashboards-collection-test
+  (mt/with-empty-h2-app-db!
+    (testing "Without a Library there is nothing to restore"
+      (is (nil? (collection/ensure-library-dashboards-collection!))))
+    (let [library (collection/create-library-collection!)]
+      (testing "An existing Dashboards collection is kept"
+        (is (nil? (collection/ensure-library-dashboards-collection!))))
+      (testing "A missing Dashboards collection is recreated with the Library's permissions"
+        (t2/delete! :model/Collection :type collection/library-dashboards-collection-type)
+        (let [dashboards (collection/ensure-library-dashboards-collection!)]
+          (is (=? {:name     "Dashboards"
+                   :type     collection/library-dashboards-collection-type
+                   :location (str "/" (:id library) "/")}
+                  dashboards))
+          (binding [api/*current-user*                 (mt/user->id :rasta)
+                    api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
+            (is (true? (mi/can-read? dashboards)))
+            (is (false? (mi/can-write? dashboards)))))))))
+
 (deftest create-library
   (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
       (let [library (collection/create-library-collection!)]
         (is (= "Library" (:name library)))
-        (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
+        (is (= ["Dashboards" "Data" "Metrics"] (sort (map :name (collection/descendants library)))))
         (testing "Only admins can write to the library, all users can read"
           (binding [api/*current-user*                 (mt/user->id :rasta)
                     api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
@@ -3279,7 +3361,7 @@
               (is (true? (mi/can-read? sub)))
               (is (false? (mi/can-write? sub))))))))
     (testing "Creating a Layer when one already exists throws an exception"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Library already exists" (collection/create-library-collection!))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic layer already exists" (collection/create-library-collection!))))
     ;;cleanup created libraries
     (t2/delete! :model/Collection :type [:in [collection/library-collection-type
                                               collection/library-data-collection-type

@@ -25,7 +25,16 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private metabot-search-models
-  (sorted-set "card" "dashboard" "database" "dataset" "document" "metric" "table" "transform"))
+  (sorted-set "card"
+              "dashboard"
+              "database"
+              "dataset"
+              "document"
+              "measure"
+              "metric"
+              "segment"
+              "table"
+              "transform"))
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
@@ -78,6 +87,16 @@
           (m/assoc-some :curated curated
                         :can_write can_write))
 
+      ("measure" "segment")
+      ;; Measures and segments belong to a table, not a collection, so they carry the base table from the index row.
+      ;; Their `:portable_entity_id` comes later, from [[enrich-with-portable-entity-ids]].
+      (-> common-fields
+          (merge {:database_id       (:database_id result)
+                  :base_table_id     (:table_id result)
+                  :base_table_name   (:table_name result)
+                  :base_table_schema (:table_schema result)})
+          (m/assoc-some :curated curated))
+
       "transform"
       (merge common-fields
              {:database_id (:database_id result)})
@@ -120,25 +139,35 @@
                                  (m/assoc-some :database_engine engine)
                                  (m/assoc-some :database_name db-name))))))))
 
+(def ^:private entity-id-lookups
+  "Each pair holds the entity types that share an ID space and the function that looks up their entity IDs.
+  The function takes a seq of IDs and returns a map of ID to entity ID."
+  [[#{"metric" "model" "question"} metabot.db/card-entity-ids]
+   [#{"measure"}                   metabot.db/measure-entity-ids]
+   [#{"segment"}                   metabot.db/segment-entity-ids]])
+
 (defn- enrich-with-portable-entity-ids
-  "Attach `:portable_entity_id` (the card's `entity_id` NanoID) to saved-question, model,
-  and metric search results so the LLM can use it verbatim as `source-card:` (for
-  questions/models) or inside a `[metric, {}, <entity_id>]` aggregation clause (for
-  metrics) without a follow-up `read_resource` round-trip."
+  "Attach `:portable_entity_id` (the entity's `entity_id` NanoID) to saved-question, model, metric, measure and
+  segment search results that do not have one yet.
+  The LLM can then use it verbatim as `source-card:` (questions and models) or inside a
+  `[metric|measure|segment, {}, <entity_id>]` clause without a follow-up `read_resource` round-trip."
   [results]
-  (let [carded-types #{"question" "model" "metric"}
-        card-ids (->> results
-                      (filter #(carded-types (:type %)))
-                      (keep :id)
-                      distinct)
-        id->eid  (when (seq card-ids)
-                   (metabot.db/card-entity-ids card-ids))]
+  ;; The search index doesn't carry `entity_id`, so each lookup is one query for all the types that share it.
+  (let [type->id->eid (u/for-map [[types ids->eids] entity-id-lookups
+                                  :let [ids (->> results
+                                                 (filter (comp types :type))
+                                                 (remove :portable_entity_id)
+                                                 (keep :id)
+                                                 distinct)]
+                                  :when (seq ids)
+                                  :let [id->eid (ids->eids ids)]
+                                  type types]
+                        [type id->eid])]
     (cond->> results
-      (seq id->eid) (mapv (fn [r]
-                            (if-let [eid (and (carded-types (:type r))
-                                              (get id->eid (:id r)))]
-                              (assoc r :portable_entity_id eid)
-                              r))))))
+      (seq type->id->eid) (mapv (fn [{:keys [id type] :as r}]
+                                  (if-let [eid (get-in type->id->eid [type id])]
+                                    (assoc r :portable_entity_id eid)
+                                    r))))))
 
 (defn- enrich-with-metric-base-tables
   "Attach base-table info (`:base_table_id`, `:base_table_name`, `:base_table_schema`,
@@ -189,6 +218,17 @@
                   (assoc :base_table_portable_fk [database_name schema table-name]))
                 result))))))
 
+(defn- enrich-with-measure-segment-base-tables
+  "Attach `:base_table_portable_fk` (`[database_name schema table]`) to measure and segment results.
+  The agent queries a measure or segment against that table, as it does for a metric.
+  Requires `:database_name` to already be set on each result, by [[enrich-with-database-engines]]."
+  [results]
+  (mapv (fn [{:keys [type database_name base_table_schema base_table_name] :as r}]
+          (if (and (#{"measure" "segment"} type) database_name base_table_name)
+            (assoc r :base_table_portable_fk [database_name base_table_schema base_table_name])
+            r))
+        results))
+
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.
   This filters out transforms where the user doesn't have access to the source tables/database."
@@ -206,15 +246,16 @@
                                          (contains? readable-ids (:id result))))))))
 
 (defn- validate-and-enrich-documents
-  "Remove stale or unreadable document hits and attach live write permission.
+  "Remove stale or unreadable document hits and attach live write permission. `archived?` is the
+  archived state the search asked for: a hit is stale unless the live Document is in that set.
 
   Search indexes are updated asynchronously, so a deleted document can briefly remain
   searchable. Destination discovery must validate hits against the live model before the
   agent attempts to save into them."
-  [results]
+  [archived? results]
   (let [document-ids (->> results (filter #(= "document" (:type %))) (map :id) set)
         id->document (when (seq document-ids)
-                       (->> (metabot.db/unarchived-documents document-ids)
+                       (->> (metabot.db/documents-in-archived-state document-ids archived?)
                             (filter mi/can-read?)
                             (map (juxt :id identity))
                             (into {})))]
@@ -282,49 +323,71 @@
       (reciprocal-rank-fusion result-lists))))
 
 (defn search
-  "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
-  Abstracted from the API endpoint logic."
+  "Search for data sources (tables, models, cards, dashboards, metrics, measures, segments, transforms) in Metabase.
+  Abstracted from the API endpoint logic.
+
+  Optional filter keys threaded straight into the search context: `created-by` (set of user ids),
+  `archived`, `collection-id` (numeric, scopes to the collection subtree; overrides the metabot's
+  own confined collection), `offset`. `filters-only?` makes a call with no queries run a single
+  nil-query search — a pure listing over the active filters — instead of returning nothing.
+
+  Each query fetches its full ranked pool (`ranked-results`), the pools are fused by rank, and the
+  fused ranking is paginated (`offset`/`limit`) exactly once (`search-results`) — so paging a
+  multi-query search is coherent. The result carries the size of the fused, deduped match set as
+  `:total` metadata."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id profile-id search-native-query weights]}]
+           entity-types limit metabot profile-id search-native-query weights
+           created-by archived collection-id offset filters-only?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-query-count     (count term-queries)
               :semantic-query-count (count semantic-queries)
               :database-id          database-id
               :entity-types         entity-types
               :limit                limit
-              :metabot-id           metabot-id
+              :metabot-id           (:entity_id metabot)
               :profile-id           profile-id
               :search-native-query  search-native-query
-              :weights              weights})
+              :weights              weights
+              :created-by           created-by
+              :archived             archived
+              :collection-id        collection-id
+              :offset               offset
+              :filters-only?        filters-only?})
   (let [search-models   (if (seq entity-types)
                           (set (distinct (keep metabot.search-models/entity-type->search-model entity-types)))
                           metabot-search-models)
         _               (log/infof "[METABOT-SEARCH] Converted entity-types %s to search-models %s" entity-types search-models)
-        metabot         (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))
-        use-verified?   (if metabot-id
-                          (:use_verified_content metabot)
-                          false)
-        embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
-        collection-id   (when (or embedded-metabot? (= profile-id "nlq"))
+        use-verified?   (:use_verified_content metabot)
+        embedded-metabot? (= (:entity_id metabot) metabot.config/embedded-metabot-id)
+        ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
+        ;; collection. That is a containment boundary, not a default, so a caller-supplied
+        ;; collection-id — which the v2 search tool fills from a request filter — can never
+        ;; replace it. Unconfined, the caller's collection-id applies.
+        confined-id     (when (or embedded-metabot? (= profile-id "nlq"))
                           (:collection_id metabot))
+        ;; Measures and segments belong to a table, not a collection, so a search scoped to a collection
+        ;; never returns them, even though the search tools list them as entity types.
+        collection-id   (or confined-id collection-id)
         limit           (or limit 50)
-        search-fn       (fn [search-string search-engine]
+        ;; the user's data lens, computed once for every context built below
+        lens            {:is-impersonated-user? (perms/impersonated-user?)
+                         :is-sandboxed-user?    (perms/sandboxed-user?)
+                         :is-routed-user?       (perms/routed-user?)}
+        ranked-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
-                                                (cond-> {:search-string                       search-string
-                                                         :models                              search-models
-                                                         :table-db-id                         database-id
-                                                         :created-at                          created-at
-                                                         :last-edited-at                      last-edited-at
-                                                         :current-user-id                     api/*current-user-id*
-                                                         :is-impersonated-user?               (perms/impersonated-user?)
-                                                         :is-sandboxed-user?                  (perms/sandboxed-user?)
-                                                         :is-superuser?                       api/*is-superuser?*
-                                                         :current-user-perms                  @api/*current-user-permissions-set*
-                                                         :filter-items-in-personal-collection "exclude-others"
-                                                         :context                             :metabot
-                                                         :archived                            false
-                                                         :limit                               limit
-                                                         :offset                              0}
+                                                (cond-> (merge
+                                                         lens
+                                                         {:search-string                       search-string
+                                                          :models                              search-models
+                                                          :table-db-id                         database-id
+                                                          :created-at                          created-at
+                                                          :last-edited-at                      last-edited-at
+                                                          :current-user-id                     api/*current-user-id*
+                                                          :is-superuser?                       api/*is-superuser?*
+                                                          :current-user-perms                  @api/*current-user-permissions-set*
+                                                          :filter-items-in-personal-collection "exclude-others"
+                                                          :context                             :metabot
+                                                          :archived                            (boolean archived)})
                                                   ;; Don't include search-native-query key if nil so that we don't
                                                   ;; inadvertently filter out search models that don't support it
                                                   search-native-query
@@ -335,40 +398,71 @@
                                                   (assoc :weights weights)
                                                   search-engine
                                                   (assoc :search-engine (name search-engine))
+                                                  (seq created-by)
+                                                  (assoc :created-by (set created-by))
                                                   collection-id
                                                   (assoc :collection collection-id)))
                                 _              (log/infof "[METABOT-SEARCH] Search context models: %s"
                                                           (:models search-context))
-                                search-results (search/search search-context)
-                                data           (:data search-results)
-                                result-models  (frequencies (map :model data))]
-                            (log/infof "[METABOT-SEARCH] Query returned entity types: %s" result-models)
-                            data))
-        search-fn*      (fn [search-engine queries]
+                                ;; No :limit/:offset in the per-query context — ranked-results returns the
+                                ;; full ranked pool; the fused ranking is paginated once, below. Applying
+                                ;; offset per query before fusion would page the offset-N tail of each
+                                ;; ranking, which is not the tail of the fused ranking.
+                                ranked         (search/ranked-results search-context)]
+                            (log/infof "[METABOT-SEARCH] Query returned entity types: %s"
+                                       (frequencies (map :model ranked)))
+                            ranked))
+        ranked-fn*      (fn [search-engine queries]
                           (let [queries (search.engine/disjunction search-engine queries)]
-                            (join-results-by-rrf search-fn search-engine queries)))
+                            (join-results-by-rrf ranked-fn search-engine queries)))
         ;; NOTE: if we add more semantic engines, e.g. 3rd party vector dbs, we'll need to make this more maintainable
         semantic?       #{:search.engine/semantic}
         semantic-engine (u/seek semantic? (search.engine/active-engines))
         fallback-engine (when semantic-engine
                           (search.engine/fallback-engine semantic-engine))
-        fused-results   (if semantic-engine
+        fused-ranked    (cond
+                          ;; A pure listing over the filters: one search with no search string.
+                          (and filters-only?
+                               (empty? term-queries)
+                               (empty? semantic-queries))
+                          (ranked-fn nil nil)
+
                           ;; Perform semantic and non-semantic search respectively, then fuse results.
+                          semantic-engine
                           (reciprocal-rank-fusion
-                           (map (fn [[engine queries]] (when (seq queries) (search-fn* engine queries)))
+                           (map (fn [[engine queries]] (when (seq queries) (ranked-fn* engine queries)))
                                 {semantic-engine semantic-queries
                                  fallback-engine term-queries}))
+
                           ;; Search for all the terms on equal footing, using the default engine.
-                          (search-fn* nil (distinct (concat term-queries semantic-queries))))]
-    (->> fused-results
-         (take limit)
-         (map postprocess-search-result)
-         enrich-with-collection-descriptions
-         enrich-with-database-engines
-         enrich-with-portable-entity-ids
-         enrich-with-metric-base-tables
-         validate-and-enrich-documents
-         remove-unreadable-transforms)))
+                          :else
+                          (ranked-fn* nil (distinct (concat term-queries semantic-queries))))
+        ;; Paginate and hydrate the fused ranking exactly once. `search-results` slices to
+        ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
+        ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
+        {:keys [data total]} (search/search-results
+                              (search/search-context (merge lens
+                                                            {:search-string      nil
+                                                             :models             search-models
+                                                             :current-user-id    api/*current-user-id*
+                                                             :current-user-perms @api/*current-user-permissions-set*
+                                                             :is-superuser?      api/*is-superuser?*
+                                                             :offset             (or offset 0)
+                                                             :limit              limit}))
+                              search/model-set
+                              (vec fused-ranked))]
+    ;; validate-and-enrich-documents drops stale/unreadable document hits and attaches live write
+    ;; permission. Transforms need no such post-filter: they are :visibility :superuser in search, so
+    ;; a non-superuser never has one in results to begin with.
+    (-> (->> data
+             (map postprocess-search-result)
+             enrich-with-collection-descriptions
+             enrich-with-database-engines
+             enrich-with-portable-entity-ids
+             enrich-with-metric-base-tables
+             enrich-with-measure-segment-base-tables
+             (validate-and-enrich-documents (boolean archived)))
+        (vary-meta assoc :total total))))
 
 (defn- table-refs->results
   [ids]
@@ -443,17 +537,6 @@
                            :base_table_id      (:id t)
                            :base_table_name    (:name t)
                            :base_table_schema  (:schema t)))))))
-
-(defn- enrich-with-measure-segment-base-tables
-  "Assemble `:base_table_portable_fk [database_name schema table]` for measure/segment results once
-  `:database_name` is set (by [[enrich-with-database-engines]]), giving the agent the table to query a
-  measure/segment against — the same affordance metrics get from [[enrich-with-metric-base-tables]]."
-  [results]
-  (mapv (fn [{:keys [type database_name base_table_schema base_table_name] :as r}]
-          (if (and (#{"measure" "segment"} type) database_name base_table_name)
-            (assoc r :base_table_portable_fk [database_name base_table_schema base_table_name])
-            r))
-        results))
 
 (defn ref-model->entity-type
   "Normalize an entity ref's `:model` string to the agent-facing entity type: plain cards are
@@ -531,11 +614,13 @@
 (defn- search-result->item
   "Trim a search result to the fields the chain-of-thought results card renders.
   `:display` (a question's viz type) and `:moderated_status` let the client pick the
-  exact entity icon, matching the app's search/command-palette icons."
+  exact entity icon, matching the app's search/command-palette icons.
+  `:table_id` is the base table of a measure or segment, which the client needs to link to it."
   [r]
   (-> (select-keys r [:id :type :name :display_name :database_id :database_schema :database_name])
       (m/assoc-some :display (some-> (:display r) name)
                     :moderated_status (:moderated_status r)
+                    :table_id (when (#{"measure" "segment"} (:type r)) (:base_table_id r))
                     :collection (some-> (:collection r) (select-keys [:id :name])))))
 
 (defn- do-search
@@ -543,24 +628,20 @@
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
     {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
                   ". Allowed types: " (str/join ", " allowed-types) ".")}
-    (try
-      (let [results (search (merge {:semantic-queries semantic_queries
-                                    :term-queries    keyword_queries
-                                    :entity-types    (or (seq entity_types) (vec allowed-types))
-                                    :metabot-id      shared/*metabot-id*
-                                    :limit           (min max-search-limit
-                                                          (or limit default-search-limit))}
-                                   search-opts))]
-        {:output (format-search-output results)
-         :structured-output {:result-type :search
-                             :data results
-                             :total_count (count results)}
-         :data-parts [(streaming/search-results-part
-                       {:total_count (count results)
-                        :results (mapv search-result->item results)})]})
-      (catch Exception e
-        (log/error (str "Error in " label ": " (ex-message e)))
-        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
+    (let [results (search (merge {:semantic-queries semantic_queries
+                                  :term-queries    keyword_queries
+                                  :entity-types    (or (seq entity_types) (vec allowed-types))
+                                  :metabot         shared/*metabot*
+                                  :limit           (min max-search-limit
+                                                        (or limit default-search-limit))}
+                                 search-opts))]
+      {:output (format-search-output results)
+       :structured-output {:result-type :search
+                           :data results
+                           :total_count (count results)}
+       :data-parts [(streaming/search-results-part
+                     {:total_count (count results)
+                      :results (mapv search-result->item results)})]})))
 
 (def ^:private semantic-queries-schema
   [:sequential {:error/message "must be an array of strings"}
@@ -578,12 +659,22 @@
 (def ^:private limit-schema
   [:maybe [:int {:min 1 :max max-search-limit :description limit-desc}]])
 
+(def ^:private general-entity-types
+  "The entity types the general and NLQ search tools accept."
+  (sorted-set "dashboard"
+              "document"
+              "measure"
+              "metric"
+              "model"
+              "question"
+              "segment"
+              "table"))
+
 (def ^:private search-schema
   [:map {:closed true}
    [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
    [:keyword_queries {:optional true} keyword-queries-schema]
-   [:entity_types {:optional true}
-    (entity-types-schema "table" "model" "metric" "dashboard" "document" "question")]
+   [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
    [:limit {:optional true} limit-schema]])
 
 (defn- search-display
@@ -603,9 +694,9 @@
            :scope      scope/agent-search
            :title-fn   search-display}
   search-tool
-  "Find tables, models, metrics, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
+  "Find tables, models, metrics, measures, segments, dashboards, documents, and saved questions by topic across the instance. Use it when you don't know where something lives; once you have a hit, drill into it with read_resource rather than searching the same concept again."
   [args :- search-schema]
-  (do-search "search" (sorted-set "dashboard" "document" "metric" "model" "question" "table") {} args))
+  (do-search "search" general-entity-types {} args))
 
 (def ^:private sql-search-schema
   [:map {:closed true}
@@ -627,8 +718,7 @@
   [:map {:closed true}
    [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
    [:keyword_queries {:optional true} keyword-queries-schema]
-   [:entity_types {:optional true}
-    (entity-types-schema "table" "model" "metric" "question" "dashboard" "document")]
+   [:entity_types {:optional true} (apply entity-types-schema general-entity-types)]
    [:limit {:optional true} limit-schema]])
 
 (mu/defn ^{:tool-name  "search"
@@ -637,11 +727,10 @@
   nlq-search-tool
   "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
   [{:keys [entity_types] :as args} :- nlq-search-schema]
-  (let [allowed-types (sorted-set "dashboard" "document" "metric" "model" "question" "table")
-        args          (cond-> args
-                        (not (seq entity_types))
-                        (assoc :entity_types ["metric" "model" "question" "table"]))]
-    (do-search "NLQ search" allowed-types {:profile-id "nlq"} args)))
+  (let [args (cond-> args
+               (not (seq entity_types))
+               (assoc :entity_types ["metric" "measure" "segment" "model" "question" "table"]))]
+    (do-search "NLQ search" general-entity-types {:profile-id "nlq"} args)))
 
 (def ^:private transform-search-schema
   [:map {:closed true}

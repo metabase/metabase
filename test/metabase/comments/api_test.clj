@@ -8,7 +8,10 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.performance :refer [dropv]]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- relaxed-re [& s]
   (re-pattern (str "(?s).*" (str/join ".*" s) ".*")))
@@ -23,7 +26,7 @@
                     (name (first node)))
           block?  #{"paragraph"}
           attrs   (when (map? (second node)) (second node))
-          content (if attrs (drop 2 node) (drop 1 node))]
+          content (dropv (if attrs 2 1) node)]
       (u/remove-nils
        {:type    tag
         :attrs   (cond-> attrs
@@ -345,6 +348,45 @@
                                       :target_type "document"
                                       :target_id doc-id)))))))
 
+(defn- reactions-of
+  "The reactions on the Comment with `comment-id` on the Document with `doc-id`, as a set of `{:emoji :count}` maps."
+  [doc-id comment-id]
+  (let [{:keys [comments]} (mt/user-http-request :rasta :get 200 "comment/"
+                                                 :target_type "document" :target_id doc-id)]
+    (->> comments (filter #(= comment-id (:id %))) first :reactions
+         (map #(select-keys % [:emoji :count])) set)))
+
+(deftest long-emoji-reaction-test
+  ;; The limit is 10 Unicode code points, not 10 UTF-16 units: the England flag is 7 code points in 14 units, the
+  ;; kiss with skin tones 10 in 15. See ::comments.schema/reaction-emoji.
+  (testing "POST /api/comment/:comment-id/reaction accepts emoji longer than 10 UTF-16 units"
+    (let [england "\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F"
+          kiss    "\uD83D\uDC69\uD83C\uDFFD\u200D\u2764\uFE0F\u200D\uD83D\uDC8B\u200D\uD83D\uDC68\uD83C\uDFFC"]
+      (is (= [14 7] [(count england) (.codePointCount england 0 (count england))]))
+      (is (= [15 10] [(count kiss) (.codePointCount kiss 0 (count kiss))]))
+      (mt/with-temp [:model/Document {doc-id :id}     {}
+                     :model/Comment  {comment-id :id} {:target_id doc-id}]
+        (mt/with-model-cleanup [:model/CommentReaction]
+          (is (=? {:reacted true}
+                  (mt/user-http-request :rasta :post 200 (str "comment/" comment-id "/reaction") {:emoji england})))
+          (is (=? {:reacted true}
+                  (mt/user-http-request :rasta :post 200 (str "comment/" comment-id "/reaction") {:emoji kiss})))
+          (is (= #{{:emoji england :count 1} {:emoji kiss :count 1}}
+                 (reactions-of doc-id comment-id))))))))
+
+(deftest too-long-emoji-reaction-test
+  ;; The family of four with light skin tone is 11 code points in 19 UTF-16 units. It is a valid ZWJ sequence that the
+  ;; picker does not offer.
+  (testing "POST /api/comment/:comment-id/reaction rejects more than 10 code points"
+    (let [family "\uD83D\uDC68\uD83C\uDFFB\u200D\uD83D\uDC69\uD83C\uDFFB\u200D\uD83D\uDC67\uD83C\uDFFB\u200D\uD83D\uDC66\uD83C\uDFFB"]
+      (is (= [19 11] [(count family) (.codePointCount family 0 (count family))]))
+      (mt/with-temp [:model/Document {doc-id :id}     {}
+                     :model/Comment  {comment-id :id} {:target_id doc-id}]
+        (is (=? {:errors          {:emoji "Emoji must be 1 to 10 Unicode code points."}
+                 :specific-errors {:emoji [(str "must be 1 to 10 Unicode code points, received: " (pr-str family))]}}
+                (mt/user-http-request :rasta :post 400 (str "comment/" comment-id "/reaction")
+                                      {:emoji family})))))))
+
 (deftest multiple-emoji-reactions-test
   ;; Relies on comment_reaction.emoji using an exact (not linguistic) collation on MySQL/MariaDB -- see
   ;; migration v63.2026-07-06T00:00:00. Under the table's original utf8mb4_unicode_ci collation, distinct
@@ -356,11 +398,8 @@
       (mt/with-model-cleanup [:model/CommentReaction]
         (mt/user-http-request :rasta :post 200 (str "comment/" comment-id "/reaction") {:emoji "👍"})
         (mt/user-http-request :rasta :post 200 (str "comment/" comment-id "/reaction") {:emoji "🎉"})
-        (let [{:keys [comments]} (mt/user-http-request :rasta :get 200 "comment/"
-                                                       :target_type "document" :target_id doc-id)
-              reactions          (->> comments (filter #(= comment-id (:id %))) first :reactions
-                                      (map #(select-keys % [:emoji :count])) set)]
-          (is (= #{{:emoji "👍" :count 1} {:emoji "🎉" :count 1}} reactions)))))))
+        (is (= #{{:emoji "👍" :count 1} {:emoji "🎉" :count 1}}
+               (reactions-of doc-id comment-id)))))))
 
 (deftest multi-user-reaction-aggregation-test
   (testing "reactions from different users on the same emoji aggregate, and one user removing theirs doesn't affect the other's"

@@ -28,6 +28,7 @@ import type {
 } from "../../public/SdkQuestion/SdkQuestion";
 import { InteractiveDashboardContent } from "../../public/dashboard/InteractiveDashboard/InteractiveDashboard";
 import type { SdkDashboardInnerProps } from "../../public/dashboard/SdkDashboard";
+import { SdkAdHocQuestion } from "../SdkAdHocQuestion";
 
 import { SdkInternalNavigationBackButton } from "./SdkInternalNavigationBackButton";
 import {
@@ -193,6 +194,11 @@ const SdkInternalNavigationProviderInner = ({
     </Stack>
   ) : null;
 
+  // We try to infer question props from the starting dashboard when they have a 1:1 mapping
+  const questionPropsInferredFromDashboard: Partial<SdkQuestionProps> = {
+    withDownloads: dashboardProps?.withDownloads,
+  };
+
   const content = match({ activeEntry: entryToRender })
     .with({ activeEntry: { type: "dashboard" } }, ({ activeEntry }) => (
       <InteractiveDashboardContent
@@ -202,25 +208,29 @@ const SdkInternalNavigationProviderInner = ({
         enableEntityNavigation
       />
     ))
-    .with({ activeEntry: { type: "question" } }, ({ activeEntry }) => {
-      // We try to infer question props from the starting dashboard when they have a 1:1 mapping
-      const questionPropsInferredFromDashboard: Partial<SdkQuestionProps> = {
-        withDownloads: dashboardProps?.withDownloads,
-      };
-
-      return (
-        <SdkQuestion
-          questionId={activeEntry.id}
-          onNavigateBack={pop}
-          initialSqlParameters={activeEntry.parameters}
-          isSaveEnabled
-          {...questionPropsInferredFromDashboard}
-          {...drillThroughQuestionProps}
-        >
-          {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
-        </SdkQuestion>
-      );
-    })
+    .with({ activeEntry: { type: "ad-hoc-question" } }, ({ activeEntry }) => (
+      <SdkAdHocQuestion
+        questionPath={activeEntry.adHocQuestionPath}
+        onNavigateBack={pop}
+        isSaveEnabled
+        {...questionPropsInferredFromDashboard}
+        {...drillThroughQuestionProps}
+      >
+        {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
+      </SdkAdHocQuestion>
+    ))
+    .with({ activeEntry: { type: "question" } }, ({ activeEntry }) => (
+      <SdkQuestion
+        questionId={activeEntry.id}
+        onNavigateBack={pop}
+        initialSqlParameters={activeEntry.parameters}
+        isSaveEnabled
+        {...questionPropsInferredFromDashboard}
+        {...drillThroughQuestionProps}
+      >
+        {RenderDrillThroughQuestion && <RenderDrillThroughQuestion />}
+      </SdkQuestion>
+    ))
     .otherwise(() => children);
 
   return (

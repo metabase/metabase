@@ -58,4 +58,4 @@ Here are the IP addresses we use in each region.
 
 ## Changing regions
 
-To change regions, check out [Changing which region your Metabase is hosted in](./change-region.md).
+To change regions, check out [Changing which region your Metabase is hosted in](https://www.metabase.com/docs/latest/cloud/change-region).

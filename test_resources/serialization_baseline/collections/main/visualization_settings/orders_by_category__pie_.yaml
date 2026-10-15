@@ -89,8 +89,6 @@ visualization_settings:
   version: 2
 card_schema: 24
 serdes/meta:
-- id: dYD1j3pQtJdctg8duByUL
-  label: orders_by_category__pie_
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

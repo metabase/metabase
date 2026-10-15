@@ -60,7 +60,7 @@
 (mu/defn create-review!
   "Create a new ModerationReview"
   [params :-
-   [:map
+   [:map {:closed true}
     [:moderated_item_id       ms/PositiveInt]
     [:moderated_item_type     moderation/moderated-item-types]
     [:moderator_id            ms/PositiveInt]

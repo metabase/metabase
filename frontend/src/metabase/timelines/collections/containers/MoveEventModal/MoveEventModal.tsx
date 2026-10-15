@@ -5,7 +5,8 @@ import {
   useListTimelinesQuery,
 } from "metabase/api";
 import { useNavigate } from "metabase/router";
-import MoveEventModal, {
+import {
+  MoveEventModal,
   type MoveEventModalProps,
 } from "metabase/timelines/common/components/MoveEventModal";
 import { useSetTimeline } from "metabase/timelines/common/hooks";

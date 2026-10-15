@@ -98,7 +98,7 @@
             (identical? (get-method sql-jdbc.execute/do-with-connection-with-options :sql-jdbc)
                         (get-method sql-jdbc.execute/do-with-connection-with-options driver/*driver*))
 
-            orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source
+            orig-do-with-resolved-connection-data-source (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection-data-source)
             closed-conn (proxy [Connection] []
                           (isClosed [] true)
                           (close [] nil))
@@ -124,19 +124,18 @@
                          (vswap! connection-option-calls conj [:setHoldability holdability]))
                        (setNetworkTimeout [executor timeout-ms]
                          (vswap! connection-option-calls conj [:setNetworkTimeout timeout-ms])))]
-        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
-                      (fn [driver db options]
-                        (if (:keep-open? options)
-                          (reify javax.sql.DataSource
-                            (getConnection [_] new-conn))
-                          (orig-do-with-resolved-connection-data-source driver db options)))
-
-                      sql-jdbc.execute/recursive-connection?
-                      (let [original-recursive-fn sql-jdbc.execute/recursive-connection?]
-                        (fn []
-                          (let [ret (original-recursive-fn)]
-                            (vswap! connection-option-calls conj [:recursive-connection-check ret])
-                            ret)))]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [driver db options]
+                                      (if (:keep-open? options)
+                                        (reify javax.sql.DataSource
+                                          (getConnection [_] new-conn))
+                                        (orig-do-with-resolved-connection-data-source driver db options)))
+                                    sql-jdbc.execute/recursive-connection?
+                                    (let [original-recursive-fn (mt/original-fn #'sql-jdbc.execute/recursive-connection?)]
+                                      (fn []
+                                        (let [ret (original-recursive-fn)]
+                                          (vswap! connection-option-calls conj [:recursive-connection-check ret])
+                                          ret)))]
           (driver/do-with-resilient-connection
            driver/*driver* (mt/id)
            (fn [driver _db]
@@ -226,12 +225,12 @@
       ;; It's not straightforward to trigger a `.getConnection` error for some drivers (e.g. sqlite)
       ;; so just mock the exception. Also need to mock this h2 method so that the query doesn't fail
       ;; before it gets to `do-with-resolved-connection-data-source`.
-      (with-redefs [h2/check-read-only-statements (fn [_query] nil)
-                    sql-jdbc.execute/do-with-resolved-connection-data-source
-                    (fn [_driver _db-or-id-or-spec _options]
-                      (reify javax.sql.DataSource
-                        (getConnection [_]
-                          (throw (java.sql.SQLException. "connection error")))))]
+      (mt/with-dynamic-fn-redefs [h2/check-read-only-statements (fn [_query] nil)
+                                  sql-jdbc.execute/do-with-resolved-connection-data-source
+                                  (fn [_driver _db-or-id-or-spec _options]
+                                    (reify javax.sql.DataSource
+                                      (getConnection [_]
+                                        (throw (java.sql.SQLException. "connection error")))))]
         (let [query    {:database (:id tmp-db)
                         :type     :native
                         :native   {:query "SELECT 1"}}
@@ -245,14 +244,14 @@
       #_{:clj-kondo/ignore [:discouraged-var]}
       (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                              :engine  driver/*driver*}]
-        (with-redefs [h2/check-read-only-statements (fn [_query] nil)
-                      sql-jdbc.execute/do-with-resolved-connection-data-source
-                      (fn [_driver _db-or-id-or-spec _options]
-                        (reify javax.sql.DataSource
-                          (getConnection [_]
-                            (throw (java.sql.SQLException.
-                                    "An attempt by a client to checkout a Connection has timed out."
-                                    (com.mchange.v2.resourcepool.TimeoutException. "timed out"))))))]
+        (mt/with-dynamic-fn-redefs [h2/check-read-only-statements (fn [_query] nil)
+                                    sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [_driver _db-or-id-or-spec _options]
+                                      (reify javax.sql.DataSource
+                                        (getConnection [_]
+                                          (throw (java.sql.SQLException.
+                                                  "An attempt by a client to checkout a Connection has timed out."
+                                                  (com.mchange.v2.resourcepool.TimeoutException. "timed out"))))))]
           (let [query    {:database (:id tmp-db)
                           :type     :native
                           :native   {:query "SELECT 1"}}
@@ -284,12 +283,12 @@
       (mt/with-temp [:model/Database tmp-db {:details (tx/bad-connection-details driver/*driver*)
                                              :engine  driver/*driver*}]
         (mt/with-temporary-setting-values [jdbc-data-warehouse-connection-pool-max-pending-checkouts 1]
-          (with-redefs [h2/check-read-only-statements (fn [_query] nil)
-                        sql-jdbc.execute/do-with-resolved-connection-data-source
-                        (fn [_driver _db-or-id-or-spec _options]
-                          ;; a pool that already has more queries waiting than the configured max
-                          (reify com.mchange.v2.c3p0.PooledDataSource
-                            (getNumThreadsAwaitingCheckoutDefaultUser [_] 5)))]
+          (mt/with-dynamic-fn-redefs [h2/check-read-only-statements (fn [_query] nil)
+                                      sql-jdbc.execute/do-with-resolved-connection-data-source
+                                      (fn [_driver _db-or-id-or-spec _options]
+                                        ;; a pool that already has more queries waiting than the configured max
+                                        (reify com.mchange.v2.c3p0.PooledDataSource
+                                          (getNumThreadsAwaitingCheckoutDefaultUser [_] 5)))]
             (let [query    {:database (:id tmp-db)
                             :type     :native
                             :native   {:query "SELECT 1"}}

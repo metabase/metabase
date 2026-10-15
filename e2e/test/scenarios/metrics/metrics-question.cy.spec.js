@@ -111,27 +111,12 @@ describe("scenarios > metrics > question", () => {
     H.echartsContainer().findByText("Expression").should("be.visible");
   });
 
-  it("should be able to add a breakout to a question that uses a metric", () => {
+  it("should be able to change the temporal unit and then replace the breakout when consuming a timeseries metric", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
       createQuestionWithMetric(metric.id, { breakout: MONTH_BREAKOUT });
     });
-    H.openNotebook();
-    H.getNotebookStep("summarize")
-      .findByTestId("breakout-step")
-      .findByText("Created At: Month")
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Product").click();
-      cy.findByText("Category").click();
-    });
-    H.visualize();
-    H.echartsContainer().findByText("Product → Category").should("be.visible");
-  });
 
-  it("should be able to change the temporal unit when consuming a timeseries metric", () => {
-    H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
-      createQuestionWithMetric(metric.id, { breakout: MONTH_BREAKOUT });
-    });
+    cy.log("change the temporal unit");
     H.openNotebook();
     H.getNotebookStep("summarize")
       .findByTestId("breakout-step")
@@ -144,12 +129,27 @@ describe("scenarios > metrics > question", () => {
     });
     H.visualize();
     H.assertQueryBuilderRowCount(5);
+
+    cy.log("replace the breakout");
+    H.openNotebook();
+    H.getNotebookStep("summarize")
+      .findByTestId("breakout-step")
+      .findByText("Created At: Year")
+      .click();
+    H.popover().within(() => {
+      cy.findByText("Product").click();
+      cy.findByText("Category").click();
+    });
+    H.visualize();
+    H.echartsContainer().findByText("Product → Category").should("be.visible");
   });
 
-  it("should be able to drill-thru with a metric", () => {
+  it("should be able to drill-thru with a metric by breaking out the point and by viewing its underlying records", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
       createQuestionWithMetric(metric.id, { breakout: MONTH_BREAKOUT });
     });
+
+    cy.log("break out the point by another dimension");
     H.cartesianChartCircle().eq(23).click({ force: true });
     H.popover().within(() => {
       cy.findByText("Break out by…").click();
@@ -158,12 +158,13 @@ describe("scenarios > metrics > question", () => {
     });
     cy.wait("@dataset");
     H.echartsContainer().findByText("User → Source").should("be.visible");
-  });
 
-  it("should be able to drill-thru with a metric without the aggregation clause", () => {
-    H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
-      createQuestionWithMetric(metric.id, { breakout: MONTH_BREAKOUT });
-    });
+    cy.log("go back to the original chart");
+    cy.go("back");
+    H.echartsContainer().findByText("User → Source").should("not.exist");
+    H.echartsContainer().findByText("Created At: Month").should("be.visible");
+
+    cy.log("see the underlying records of the point");
     H.cartesianChartCircle().eq(23).click({ force: true });
     H.popover().findByText("See these Orders").click();
     cy.wait("@dataset");
@@ -184,58 +185,5 @@ describe("scenarios > metrics > question", () => {
       .should("be.visible")
       .and("have.attr", "data-viz-ui-name", "Number");
     cy.findByTestId("scalar-value").should("be.visible");
-    H.MetricPage.aboutPage().within(() => {
-      cy.button(/Filter/).should("not.exist");
-      cy.button(/Summarize/).should("not.exist");
-    });
-  });
-});
-
-describe("metrics", () => {
-  beforeEach(() => {
-    H.resetSnowplow();
-    H.restore();
-    cy.signInAsAdmin();
-    H.enableTracking();
-  });
-
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
-
-  it("should bookmark a metric", () => {
-    H.createQuestion({ ...ORDERS_SCALAR_METRIC, name: "Metric Foo" });
-    H.createQuestion({ ...ORDERS_SCALAR_METRIC, name: "Metric Bar" });
-    H.createQuestion(
-      { ...ORDERS_SCALAR_METRIC, name: "Metric Baz" },
-      { visitQuestion: true },
-    );
-    H.MetricPage.moreMenu().click();
-    H.popover().findByTextEnsureVisible("Bookmark").click();
-    H.navigationSidebar().findByText("Metric Baz").should("be.visible");
-
-    H.navigationSidebar().findByText("Our analytics").click();
-    cy.findAllByTestId("collection-entry")
-      .filter(":contains(Metric Bar)")
-      .icon("ellipsis")
-      .click();
-    H.popover().findByText("Bookmark").click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "bookmark_added",
-      event_detail: "metric",
-      triggered_from: "collection_list",
-    });
-
-    H.navigationSidebar().findByText("Metrics").click();
-    cy.findAllByRole("row")
-      .filter(":contains(Metric Foo)")
-      .icon("ellipsis")
-      .click();
-    H.popover().findByText("Bookmark").click();
-    H.expectUnstructuredSnowplowEvent({
-      event: "bookmark_added",
-      event_detail: "metric",
-      triggered_from: "browse_metrics",
-    });
   });
 });

@@ -9,7 +9,6 @@ describe("scenarios > models list view", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
       cy.intercept("POST", "/api/dataset").as("dataset");
 
       H.createNativeQuestion(
@@ -20,11 +19,11 @@ describe("scenarios > models list view", () => {
             query: "SELECT * FROM ORDERS LIMIT 5",
           },
         },
-        { visitQuestion: true },
+        { visitQuestion: true, wrapId: true },
       );
     });
 
-    it("should allow to change default view", () => {
+    it("should allow to change default view, keep it on duplicates, and drop it for questions", () => {
       H.openQuestionActions();
 
       H.popover().findByTextEnsureVisible("Edit metadata").click();
@@ -55,10 +54,36 @@ describe("scenarios > models list view", () => {
       cy.wait("@dataset");
 
       cy.log("Display data as list after saving");
+      cy.findByTestId("dataset-edit-bar").should("not.exist");
       cy.findByTestId("list-view").should("be.visible");
+
+      cy.log("Preserve list view after model duplication");
+      H.openQuestionActions();
+      H.popover().findByTextEnsureVisible("Duplicate").click();
+      H.modal().findByTextEnsureVisible("Duplicate").click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("qb-header").within(() => {
+        cy.findByText("Native Model - Duplicate").should("be.visible");
+      });
+      cy.findByTestId("list-view").should("be.visible");
+
+      cy.log("Change list view to table when saved as question");
+      cy.get("@questionId").then((id) => H.visitModel(id));
+      cy.findByTestId("qb-header")
+        .findByText("Native Model")
+        .should("be.visible");
+      cy.findByTestId("list-view").should("be.visible");
+      H.openQuestionActions();
+      H.popover()
+        .findByTextEnsureVisible("Turn back to saved question")
+        .click();
+      H.undoToast().should("contain.text", "This is a question now");
+      H.tableInteractive().should("be.visible");
+      cy.findByTestId("list-view").should("not.exist");
     });
 
-    it("should allow to customize list view", () => {
+    it("should allow to customize list view, and filter and drag-n-drop its columns", () => {
       H.openQuestionActions();
 
       H.popover().findByTextEnsureVisible("Edit metadata").click();
@@ -111,6 +136,57 @@ describe("scenarios > models list view", () => {
         cy.findByText("37.65").should("be.visible");
         cy.findByText("2.07").should("be.visible");
       });
+
+      cy.log("Filter and drag-n-drop columns");
+      cy.findByTestId("sidebar-right").as("sidebarRight");
+
+      cy.log("Check that used column is not present in unused columns list.");
+      cy.get("@sidebarRight").findByText("CREATED_AT").should("be.visible");
+      cy.get("@sidebarRight").findByText("PRODUCT_ID").should("not.exist");
+
+      cy.get("@rightColumns").within(() => {
+        cy.get("input").type("{Backspace}{Backspace}");
+      });
+
+      cy.log(
+        "Find a draggable element with 'SUBTOTAL' text in sidebarRight panel and drag it into @rightColumns input",
+      );
+
+      cy.get("@sidebarRight").within(() => {
+        cy.findByText("SUBTOTAL").should("be.visible");
+      });
+
+      cy.get("@listPreview").within(() => {
+        cy.findByText("37.65").should("not.exist");
+      });
+
+      cy.get("@sidebarRight").find("input").type("SUB");
+
+      H.dragAndDropByElement(
+        cy.get("@sidebarRight").findByText("SUBTOTAL"),
+        cy.get("@rightColumns").find("input"),
+        { dragend: false },
+      );
+
+      cy.log("Verify that drag was handled correctly");
+      cy.get("@rightColumns").within(() => {
+        cy.findByText("SUBTOTAL").should("be.visible");
+      });
+      cy.get("@sidebarRight").within(() => {
+        cy.findByText("SUBTOTAL").should("not.exist");
+        cy.findByText("No available columns").should("be.visible");
+      });
+      cy.get("@listPreview").within(() => {
+        cy.findByText("37.65").should("be.visible");
+      });
+
+      cy.log("Restore the TAX column removed with the backspaces");
+      cy.get("@rightColumns").within(() => {
+        cy.get("input").type("TAX");
+      });
+      H.popover().findByText("TAX").click();
+      cy.get("@rightColumns").findByText("TAX").should("be.visible");
+      cy.get("@listPreview").findByText("2.07").should("be.visible");
 
       cy.log("Add CREATED_AT column to right columns");
       cy.get("@rightColumns").within(() => {
@@ -208,154 +284,9 @@ describe("scenarios > models list view", () => {
         cy.findByText("2.07").should("not.exist");
       });
     });
-
-    it("should allow to filter and drag-n-drop columns", () => {
-      H.openQuestionActions();
-
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
-
-      cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
-
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("List").click();
-      });
-
-      cy.findByRole("button", { name: "Customize the List layout" }).click();
-
-      // Alias the main elements for reuse
-      cy.findByTestId("list-view-right-columns").as("rightColumns");
-      cy.findByTestId("list-view-preview").as("listPreview");
-      cy.findByTestId("sidebar-right").as("sidebarRight");
-
-      cy.log("Check that used column is not present in unused columns list.");
-      cy.get("@sidebarRight").findByText("PRODUCT_ID").should("not.exist");
-
-      cy.get("@rightColumns").within(() => {
-        cy.get("input").type("{Backspace}{Backspace}");
-      });
-
-      cy.log(
-        "Find a draggable element with 'SUBTOTAL' text in sidebarRight panel and drag it into @rightColumns input",
-      );
-
-      cy.get("@sidebarRight").within(() => {
-        cy.findByText("SUBTOTAL").should("be.visible");
-      });
-
-      cy.get("@listPreview").within(() => {
-        cy.findByText("37.65").should("not.exist");
-      });
-
-      cy.get("@sidebarRight").find("input").type("SUB");
-
-      H.dragAndDropByElement(
-        cy.get("@sidebarRight").findByText("SUBTOTAL"),
-        cy.get("@rightColumns").find("input"),
-        { dragend: false },
-      );
-
-      cy.log("Verify that drag was handled correctly");
-      cy.get("@rightColumns").within(() => {
-        cy.findByText("SUBTOTAL").should("be.visible");
-      });
-      cy.get("@sidebarRight").within(() => {
-        cy.findByText("SUBTOTAL").should("not.exist");
-        cy.findByText("No available columns").should("be.visible");
-      });
-      cy.get("@listPreview").within(() => {
-        cy.findByText("37.65").should("be.visible");
-      });
-    });
   });
 
   describe("advanced scenarios", () => {
-    it("should preserve list view after model duplication", () => {
-      H.restore();
-      cy.signInAsAdmin();
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
-      H.createNativeQuestion(
-        {
-          name: "Native Model",
-          type: "model",
-          native: {
-            query: "SELECT * FROM ORDERS LIMIT 5",
-          },
-        },
-        { visitQuestion: true },
-      );
-      H.openQuestionActions();
-
-      // Going through full flow, because for some reason `display: list` is not preserved on BE.
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
-
-      cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
-
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("List").click();
-      });
-
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-      cy.wait("@dataset");
-
-      cy.findByTestId("list-view").should("be.visible");
-
-      H.openQuestionActions();
-
-      H.popover().findByTextEnsureVisible("Duplicate").click();
-      H.modal().findByTextEnsureVisible("Duplicate").click();
-      cy.wait("@dataset");
-
-      cy.log("Display data as list after duplication");
-      cy.findByTestId("qb-header").within(() => {
-        cy.findByText("Native Model - Duplicate").should("be.visible");
-      });
-      cy.findByTestId("list-view").should("be.visible");
-    });
-
-    it("should change list view to table when saved as question", () => {
-      H.restore();
-      cy.signInAsAdmin();
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
-      H.createNativeQuestion(
-        {
-          name: "Native Model",
-          type: "model",
-          native: {
-            query: "SELECT * FROM ORDERS LIMIT 5",
-          },
-        },
-        { visitQuestion: true },
-      );
-      H.openQuestionActions();
-
-      // Going through full flow, because for some reason `display: list` is not preserved on BE.
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
-
-      cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
-
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("List").click();
-      });
-
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-      cy.wait("@dataset");
-
-      cy.findByTestId("list-view").should("be.visible");
-
-      H.openQuestionActions();
-
-      H.popover()
-        .findByTextEnsureVisible("Turn back to saved question")
-        .click();
-      cy.wait("@dataset");
-      H.undoToast().should("contain.text", "This is a question now");
-      cy.findByTestId("list-view").should("not.exist");
-    });
-
     it("should consider mini bar chart setting for quantity/score columns", () => {
       H.restore();
       cy.signInAsAdmin();
@@ -407,7 +338,13 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
       cy.wait("@dataset");
 
-      cy.findByTestId("mini-bar-container").should("not.exist");
+      cy.findByTestId("dataset-edit-bar").should("not.exist");
+      cy.findByTestId("list-view")
+        .should("be.visible")
+        .within(() => {
+          cy.findAllByText("37.65").should("be.visible");
+          cy.findByTestId("mini-bar-container").should("not.exist");
+        });
     });
   });
 });

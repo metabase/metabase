@@ -486,7 +486,7 @@
 (deftest ^:parallel placeholder-no-card-refs-test
   (testing "Queries with tables named as placeholder produce expected validation results"
     (let [mp     (lib.tu/mock-metadata-provider
-                  {:database {:id 100 :engine :h2}
+                  {:database {:id 100 :engine :h2 :default-schema "PUBLIC"}
                    :tables   [{:name   "MB__VALIDAT_CARD__10330"
                                :schema "PUBLIC"
                                :id     333
