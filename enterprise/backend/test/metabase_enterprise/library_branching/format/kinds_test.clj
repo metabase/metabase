@@ -49,8 +49,9 @@
   (testing "one codec for each kind of the snapshot"
     (is (= snapshot/kinds (set (keys by-kind)))))
   (testing "the words and directory kinds of the layout"
-    (is (= {:collection ["collection" true] :glossary-term ["term" false] :measure ["measure" false]
-            :metric ["metric" false] :published-table ["table" false] :segment ["segment" false]
+    (is (= {:collection ["collection" true] :dashboard ["dashboard" false] :glossary-term ["term" false]
+            :measure ["measure" false] :metric ["metric" false] :model ["model" false]
+            :published-table ["table" false] :question ["question" false] :segment ["segment" false]
             :snippet ["snippet" false]}
            (update-vals by-kind (juxt layout/word layout/directory?))))))
 
@@ -121,14 +122,13 @@
                              (comp (mapcat #(tree-seq coll? seq (get-in % [:attrs :fields])))
                                    (keep #(when (map? %) (:remapping %))))
                              items)]
-        (is (some #(and (= "internal" (:type %)) (:values %)) remappings) "an internal remapping with its values")
-        (is (some #(and (= "internal" (:type %)) (not (:values %))) remappings) "an internal remapping with no values"))
+        (is (some #(and (= "internal" (:type %)) (:labels %)) remappings) "an internal remapping with labels")
+        (is (some #(and (= "internal" (:type %)) (not (:labels %))) remappings) "an internal remapping with no labels"))
       (is (some #(< 3 (count (:refs %))) items) "an item with several references")
       (doseq [[area-id {:keys [kinds]}] snapshot/area-roots
               kind                      (filter snapshot/kinds kinds)]
         (is (some #(and (= area-id (:place %)) (= kind (:kind %))) items)
             (str "an item of kind " kind " at " area-id))))))
-
 
 ;;; ---------------------------------------------------- Golden files -------------------------------------------------
 
@@ -163,6 +163,8 @@
 (def ^:private snippets-root "snippetssnippetssnipp")
 (def ^:private transforms-root "transformstransformst")
 (def ^:private glossary-root "glossaryglossarygloss")
+(def ^:private dashboards-id "dAsHbOaRdScOlLeCtIoN1")
+(def ^:private overview-id "7RZUq1g5o1C5ws_e3ppKf")
 
 (defn- collection [nm place & {:as attrs}]
   {:kind :collection :name nm :place place :refs #{} :attrs (or attrs {})})
@@ -174,6 +176,7 @@
    metrics-id  (collection "Metrics" library-id :type "library-metrics")
    revenue-id  (collection "Revenue" metrics-id :description "Revenue metrics that finance signs off on.")
    filters-id  (collection "Filters" snippets-root :namespace "snippets")
+   dashboards-id (collection "Dashboards" library-id :type "library-dashboards")
    finance-id  (collection "Finance" transforms-root :namespace "transforms")
 
    total-revenue-id
@@ -271,6 +274,34 @@
                                                      ["field" {:base-type "type/Float"} [sd "PUBLIC" "ORDERS" "TOTAL"]]
                                                      ["segment" {} large-orders-id]]]}]}}}
 
+   overview-id
+   {:kind  :dashboard
+    :name  "Revenue overview"
+    :place dashboards-id
+    :refs  #{[:card total-revenue-id] [:field [:env [sd "PUBLIC" "ORDERS" "CREATED_AT"]]]}
+    :attrs {:description "Revenue at a glance."
+            :width       "full"
+            :parameters  [{:id "b0000001" :name "Month" :slug "month" :type "date/all-options"}]
+            :tabs        [{:id "XcmNByL-bsDQ15jLHBUwr" :name "Overview"} {:id "frlnbZFzBEzun9_GwdiZd" :name "Details"}]
+            :dashcards   [{:id                 "_Bv8Qc16SHr8CtmMHBEub"
+                           :card_id            total-revenue-id
+                           :dashboard_tab_id   "XcmNByL-bsDQ15jLHBUwr"
+                           :row                0
+                           :col                0
+                           :size_x             12
+                           :size_y             6
+                           :parameter_mappings [{:parameter_id "b0000001"
+                                                 :card_id      total-revenue-id
+                                                 :target       ["dimension"
+                                                                ["field" [sd "PUBLIC" "ORDERS" "CREATED_AT"] nil]]}]}
+                          {:id                     "nOtEsCaRdNoTeScArD001"
+                           :dashboard_tab_id       "frlnbZFzBEzun9_GwdiZd"
+                           :row                    0
+                           :col                    0
+                           :size_x                 12
+                           :size_y                 2
+                           :visualization_settings {:text "Revenue is in US dollars." :virtual_card {:display "text"}}}]}}
+
    base-filter-id
    {:kind :snippet :name "Base filter" :place snippets-root :refs #{} :attrs {:content "products.deleted_at IS NULL"}}
 
@@ -347,12 +378,14 @@
   (doseq [k [:public_uuid :made_public_by_id :enable_embedding :embedding_params :embedding_type :entity_id
              :created_at :updated_at :creator_id :archived :result_metadata :card_schema]
           [kind item] [[:metric (get golden-snapshot total-revenue-id)]
+                       [:question (assoc (get golden-snapshot total-revenue-id) :kind :question)]
                        [:collection (get golden-snapshot revenue-id)]
                        [:snippet (get golden-snapshot base-filter-id)]
                        [:published-table (get golden-snapshot orders)]
                        [:glossary-term (get golden-snapshot churn-id)]
                        [:segment (get golden-snapshot large-orders-id)]
-                       [:measure (get golden-snapshot order-total-id)]]]
+                       [:measure (get golden-snapshot order-total-id)]
+                       [:dashboard (get golden-snapshot overview-id)]]]
     (testing (str kind " with " k)
       (is (not (mr/validate (codec/schema (get by-kind kind)) (assoc-in item [:attrs k] "x"))))))
   (testing "a metric file with a public link or the embedding settings is invalid, and decode-tree reports it"

@@ -136,6 +136,12 @@
 (def ^:private entity-id-prefix
   (gen/fmap str/join (gen/vector (gen/elements nano-id-chars) 16)))
 
+(def ^:private item-id-prefix
+  "The prefix of the identity of a generated item: mostly random, and now and then one of a small pool, so that two
+  snapshots of one generator share identities, also for items of two kinds."
+  (gen/frequency [[3 entity-id-prefix]
+                  [1 (gen/elements ["AAAAAAAAAAAAAAAA" "BBBBBBBBBBBBBBBB"])]]))
+
 (defn- entity-id
   "A 21-character entity id: `prefix` (16 characters) and the code of `n`. Ids with different `n` are different."
   [prefix n]
@@ -328,7 +334,7 @@
   [{:keys [kinds attrs]} place-gen target-gen]
   (gen/hash-map :place place-gen
                 :kind  gen/nat
-                :id    entity-id-prefix
+                :id    item-id-prefix
                 :table table-key-gen
                 :name  name-gen
                 :refs  (gen/vector (gen/tuple role-gen target-gen) 0 3)
@@ -356,8 +362,9 @@
 (defn well-formed-snapshot-gen
   "Generates snapshots that satisfy [[well-formed?]] with `:may-contain`, by construction. A snapshot has at most
   min(size, `:max-items`) items. Every root-level item has a kind of `:root-kinds`. A published table's identity is a
-  table natural key; every other identity is an entity id. Siblings with one name and one kind occur, but no two
-  items of a kind of `:unique-keys` have one key. With the default options, every snapshot validates against
+  table natural key; every other identity is an entity id. Two snapshots of the generator share identities now and
+  then, also for items of two kinds. Siblings with one name and one kind occur, but no two items of a kind of
+  `:unique-keys` have one key. With the default options, every snapshot validates against
   `::snapshot/snapshot` and satisfies [[well-formed?]].
 
   Options, each with a default:

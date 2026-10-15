@@ -52,15 +52,27 @@
   (when-some [k (unique-key content)]
     (some (fn [[j it]] (and (not= j id) (not (later j)) (= k (unique-key it)))) s)))
 
+(def ^:private card-kinds
+  "The kinds whose items the app DB keeps in one table, the cards."
+  #{:metric :model :question})
+
+(defn- one-row?
+  "True iff an item of kind `a` and an item of kind `b` with one identity are one row of the app DB."
+  [a b]
+  (or (= a b) (and (card-kinds a) (card-kinds b))))
+
 (defn- put
-  "`state` with `content` as the content of `id`; a fault when another item has its unique key."
+  "`state` with `content` as the content of `id`; a fault when another item has its unique key. The item of `id` in
+  another table stays, as the old item, until its trash."
   [{:keys [s later] :as state} id content]
-  (cond-> (assoc-in state [:s id] content)
-    (key-taken? s later id content) (update :faults conj [:key-taken id])))
+  (let [old (get s id)]
+    (cond-> (assoc-in state [:s id] content)
+      (and old (not (one-row? (:kind old) (:kind content)))) (assoc-in [:old id] old)
+      (key-taken? s later id content)                        (update :faults conj [:key-taken id]))))
 
 (defn- run-step
-  "Applies `step` to the simulated instance `{:s snapshot :content {id write} :later #{ids to trash later} :faults []}`
-  as the apply does, and records each order rule that the step breaks. A write with `:defer` leaves an item that exists
+  "Applies `step` to the simulated instance `{:s snapshot :old {id item} :content {id write} :later #{ids to trash
+  later} :faults []}` as the apply does, and records each order rule that the step breaks. A write with `:defer` leaves an item that exists
   as it is, and writes a new one without the deferred references; its link writes the whole content."
   [{:keys [s later content] :as state} {:keys [id write pre defer link interim trash]}]
   (let [fault (fn [state why] (update state :faults conj [why id]))]
@@ -90,20 +102,31 @@
         (fault :interim-not-a-rename))
 
       trash
-      (let [s'    (dissoc s id)
+      (let [it    (get s id)
             later (disj later id)]
-        (cond-> (assoc state :s s' :later later)
-          (some #(= id (:place %)) (vals s'))
-          (fault :container-before-content)
+        (if (and it (not (one-row? (:kind it) (:kind pre))))
+          ;; the old item of another table: the item of `id` in `s` is the new one, and stays
+          (cond-> (-> state (update :old dissoc id) (assoc :later later))
+            (not (contains? (:old state) id))
+            (fault :trash-of-no-old-item)
 
-          (some (fn [[j c]] (and (contains? (ref-targets c) id) (not (and (later j) (reaches? s id j))))) s')
-          (fault :target-before-user))))))
+            (some #(and (= id (:place %)) (not (contains? (get snapshot/may-contain (:kind it)) (:kind %)))) (vals s))
+            (fault :container-before-content))
+          (let [s' (dissoc s id)]
+            (cond-> (assoc state :s s' :later later)
+              (some #(= id (:place %)) (vals s'))
+              (fault :container-before-content)
+
+              (some (fn [[j c]] (and (contains? (ref-targets c) id) (not (and (later j) (reaches? s id j))))) s')
+              (fault :target-before-user))))))))
 
 (defn- simulate
-  "`{:s snapshot :faults [...]}` after the steps of `steps`, in order, from snapshot `l`."
+  "`{:s snapshot :old {id item} :faults [...]}` after the steps of `steps`, in order, from snapshot `l`. `:old` holds
+  the old items of the identities whose kind changed to another table, until their trash."
   [l steps]
   (reduce run-step
           {:s       l
+           :old     {}
            :content (into {} (keep (fn [{:keys [id write]}] (when write [id write]))) steps)
            :later   (set (keep #(when (:trash %) (:id %)) steps))
            :faults  []}
@@ -356,6 +379,51 @@
           m (snippets [ka "Filter a"])]
       (is (= [[ka :write] [kb :trash]] (step-forms (plan/plan l m l)))))))
 
+(def ^:private robin (engine.tu/eid "robin"))
+
+(defn- reaches-target?
+  "True iff the simulated apply of `steps` from `l` reaches `m` with no fault and no old item left."
+  [l m steps]
+  (= {:s m :old {} :faults []} (select-keys (simulate l steps) [:s :old :faults])))
+
+(deftest ^:parallel kind-change-test
+  (testing "an identity whose kind changes to a kind of another table: a write of the new item with no content as its
+           precondition, then a trash of the old item with its base content"
+    ;; The shrunk case of deploy-shows-the-head-property-test: a collection, then a glossary term with its identity.
+    (let [l     (assoc base robin (engine.tu/item :collection "Robin" nil))
+          m     (assoc base robin (engine.tu/item :glossary-term "Robin" nil))
+          steps (plan/plan l m l)]
+      (is (= [{:id robin :write (get m robin) :pre nil}
+              {:id robin :trash true :pre (get l robin)}]
+             steps))
+      (is (reaches-target? l m steps))
+      (testing "and back"
+        (is (= [{:id robin :write (get l robin) :pre nil}
+                {:id robin :trash true :pre (get m robin)}]
+               (plan/plan m l m))))))
+  (testing "the content of the old item moves out before its trash, and a user of the new item comes after its write"
+    (let [l     (assoc base
+                       robin (engine.tu/item :collection "Robin" lib)
+                       m2    (engine.tu/item :metric "Count" robin))
+          m     (assoc base
+                       robin (engine.tu/item :snippet "Robin" lib)
+                       m2    (engine.tu/item :metric "Count" lib #{[:snippet robin]}))
+          steps (plan/plan l m l)]
+      (is (= [[robin :write] [m2 :write] [robin :trash]] (step-forms steps)))
+      (is (= nil (:pre (first steps))))
+      (is (reaches-target? l m steps))))
+  (testing "a kind change inside one table (a card that changes its type) is one write with the base content as its
+           precondition"
+    (doseq [[from to] [[:question :model] [:model :question] [:question :metric] [:metric :model]]]
+      (testing [from to]
+        (let [l (assoc base robin (engine.tu/item from "Robin" lib))
+              m (assoc base robin (engine.tu/item to "Robin" lib))]
+          (is (= [{:id robin :write (get m robin) :pre (get l robin)}] (plan/plan l m l)))))))
+  (testing "a system item whose kind changes to another table is refused, as its removal is"
+    (let [m (assoc with-system metrics-id (engine.tu/item :glossary-term "Metrics" nil))]
+      (is (= {:system-ids [metrics-id]}
+             (try (plan/plan with-system m with-system) (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+
 ;;; ---------------------------------------------------- Properties ----------------------------------------------
 
 (defn- merged
@@ -364,21 +432,32 @@
   (let [keep (into {} (map (juxt :id :ours)) (:conflicts (merge/merge b l r {})))]
     (:ok (merge/merge b l r keep))))
 
+(defn- other-table
+  "The identities of items of both `l` and `m` whose kinds there are kinds of two tables."
+  [l m]
+  (set (filter (fn [id] (and (contains? m id) (not (one-row? (:kind (get l id)) (:kind (get m id)))))) (keys l))))
+
 (defn- plan-laws?
-  "True iff the plan of the merge of `[b l r]` writes each changed item once, with the base content as its
-  precondition, and the simulated apply reaches the merge result with no fault; or the merge has a violation."
+  "True iff the plan of the merge of `[b l r]` writes each changed item of the merge result once and trashes each
+  changed item of `l` that the result lacks, or has with a kind of another table, once; each step with the base content
+  as its precondition, except the write of an item of another table, which has none; and the simulated apply reaches
+  the merge result with no fault. Or the merge has a violation."
   [[b l :as snaps]]
   (if-let [m (merged snaps)]
     (let [steps   (plan/plan l m b)
-          writes  (remove (some-fn :link :interim) steps)
-          written (set (map :id writes))]
-      (and (= written (engine.tu/changed l m))
-           (every? (fn [{:keys [id pre] :as step}]
-                     (or (:link step) (:interim step) (and (= pre (get b id)) (= pre (get l id)))))
-                   steps)
-           (= (count written) (count writes))
-           (let [{:keys [s faults]} (simulate l steps)]
-             (and (= [] faults) (= m s)))))
+          changed (engine.tu/changed l m)
+          moved   (other-table l m)
+          writes  (filter :write steps)
+          trashes (filter :trash steps)]
+      (and (= (set (map :id writes)) (set (filter #(contains? m %) changed)))
+           (= (set (map :id trashes)) (into moved (remove #(contains? m %)) changed))
+           (apply distinct? nil (map :id writes))
+           (apply distinct? nil (map :id trashes))
+           (every? (fn [{:keys [id pre]}]
+                     (if (moved id) (nil? pre) (and (= pre (get b id)) (= pre (get l id)))))
+                   writes)
+           (every? (fn [{:keys [id pre]}] (and (= pre (get b id)) (= pre (get l id)))) trashes)
+           (= {:s m :old {} :faults []} (select-keys (simulate l steps) [:s :old :faults]))))
     true))
 
 (defspec plan-laws-test 300
@@ -457,7 +536,7 @@
    {:name   :no-defer
     :doc    "A reference cycle is written in one step per item, so a write refers to an item that does not exist yet."
     :target `plan/write-steps
-    :edits  [[:replace '(cyclic-refs m ids) '(constantly #{})]]}
+    :edits  [[:replace '(cyclic-refs m ids stub-kinds) '(constantly #{})]]}
    {:name   :pre-is-local
     :doc    "A step has no precondition."
     :target `plan/write-step
@@ -466,6 +545,11 @@
     :doc    "An unknown base counts as equal to the local content, so a plan writes over a trash before the first sync."
     :target `plan/check-base-equal!
     :edits  [[:replace '(not= (get l id) (get b id)) '(and (not= :unknown (get b id)) (not= (get l id) (get b id)))]]}
+   {:name   :kind-change-in-place
+    :doc    "A kind change to another table is a write of the item in place, with the old item as its precondition: the
+            apply reads the new kind, finds no item, and the precondition fails on each attempt."
+    :target `plan/plan
+    :edits  [[:replace '(kind-changes l m changed) ()]]}
    {:name   :system-trash
     :doc    "A plan trashes a system item that the target lacks."
     :target `plan/plan
@@ -474,5 +558,6 @@
 (deftest plan-mutations-test
   (mut/check mutations {:tests [#'plan-steps-test #'plan-order-test #'reference-cycle-test #'trash-cycle-test
                                 #'local-change-test #'unknown-base-test #'system-item-test #'key-move-test
+                                #'kind-change-test
                                 #'plan-laws-test #'plan-laws-ref-cycle-test #'plan-laws-key-move-test
                                 #'plan-unknown-base-test]}))

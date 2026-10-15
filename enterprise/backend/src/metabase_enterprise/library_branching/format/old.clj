@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.format.old.card :as old.card]
    [metabase-enterprise.library-branching.format.old.collection :as old.collection]
    [metabase-enterprise.library-branching.format.old.common :as common]
+   [metabase-enterprise.library-branching.format.old.dashboard :as old.dashboard]
    [metabase-enterprise.library-branching.format.old.glossary :as old.glossary]
    [metabase-enterprise.library-branching.format.old.published-table :as old.published-table]
    [metabase-enterprise.library-branching.format.old.snippet :as old.snippet]
@@ -28,6 +29,7 @@
   It throws `codec/invalid!` for a document that it refuses."
   {"Card"               #'old.card/decode
    "Collection"         #'old.collection/decode
+   "Dashboard"          #'old.dashboard/decode
    "Dimension"          #'old.published-table/decode-dimension
    "Field"              #'old.published-table/decode-field
    "FieldUserSettings"  #'old.published-table/decode-field-settings

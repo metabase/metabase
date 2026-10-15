@@ -1,71 +1,24 @@
 (ns metabase-enterprise.library-branching.format.kinds.metric
-  "The codec of the kind :metric: a card of type metric, as the file `<name>.metric.yaml`. The place is the
-  collection, under `collection`. The query is MBQL 5 in its portable JSON form; the file omits the `:lib/type` keys
-  that the query's structure implies."
+  "The codec of the kind :metric: a card of type metric, as the file `<name>.metric.yaml` (`format.kinds.card`)."
   (:require
+   [metabase-enterprise.library-branching.format.kinds.card :as card]
    [metabase-enterprise.library-branching.format.kinds.common :as common]
-   [metabase-enterprise.library-branching.format.kinds.portable :as portable]
-   [metabase-enterprise.library-branching.format.kinds.visualization :as visualization]
-   [metabase-enterprise.library-branching.registry :as registry]
-   [metabase-enterprise.library-branching.snapshot :as snapshot]))
+   [metabase-enterprise.library-branching.registry :as registry]))
 
 (set! *warn-on-reflection* true)
 
-(registry/def ::query
-  [:and
-   [:map
-    [:database :string]
-    [:stages [:vector {:min 1} [:map-of :keyword :any]]]]
-   [:fn {:error/message "every stage and join of the query has its :lib/type"} portable/implied-keys?]])
-
 (defn home
   "A root-level metric is in `library/`."
-  [_item]
-  {:dir ["library"]})
-
-(defn refs
-  "The references of a metric's query, of its visualization settings, and of the other attributes that hold portable
-  references (parameters, parameter mappings, dimensions)."
-  [_id attrs]
-  (-> (portable/query-refs (:query attrs))
-      (into (visualization/refs (:visualization_settings attrs)))
-      (into (portable/refs (dissoc attrs :query :visualization_settings)))))
-
-(defn encode-attrs
-  "The attributes as the file holds them: the query without its implied keys."
-  [attrs]
-  (cond-> attrs
-    (contains? attrs :query) (update :query portable/omit-implied)))
-
-(defn decode-attrs
-  "The inverse of [[encode-attrs]]."
-  [attrs]
-  (cond-> attrs
-    (contains? attrs :query) (update :query portable/restore-implied)))
+  [item]
+  (card/home item))
 
 (def spec
-  "The spec of the metric codec. Derived values (`result_metadata`, `card_schema`, `query_type`, `database_id`) and
-  instance-local attributes (the public link, the embedding settings) are not attributes."
-  {:kind         :metric
-   :word         "metric"
-   :directory?   false
-   :home         #'home
-   :id-schema    ::snapshot/entity-id
-   :name-key     :name
-   :place-key    :collection
-   :attrs        {:description            {:schema :string}
-                  :display                {:schema [:string {:min 1}] :required? true}
-                  :query                  {:schema ::query :required? true}
-                  :visualization_settings {:schema ::common/document-map :default {}}
-                  :parameters             {:schema ::common/document-vector :default []}
-                  :parameter_mappings     {:schema ::common/document-vector :default []}
-                  :collection_position    {:schema :int}
-                  :collection_preview     {:schema :boolean :default true}
-                  :dimensions             {:schema ::common/document-vector}
-                  :dimension_mappings     {:schema ::common/document-vector}}
-   :encode-attrs #'encode-attrs
-   :decode-attrs #'decode-attrs
-   :refs         #'refs})
+  "The spec of the metric codec: the attributes of every card, and the dimensions of a metric. Derived values
+  (`result_metadata`, `card_schema`, `query_type`, `database_id`) and instance-local attributes (the public link, the
+  embedding settings) are not attributes."
+  (card/spec :metric "metric"
+             {:dimensions         {:schema ::common/document-vector}
+              :dimension_mappings {:schema ::common/document-vector}}))
 
 (registry/def ::item (common/item-schema spec))
 

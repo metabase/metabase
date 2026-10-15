@@ -81,7 +81,8 @@
                                                  :type     "library-data"
                                                  :location (children-location library)})
              folder  (insert! :model/Collection {:name "Count snippets" :namespace "snippets" :location "/"})
-             outside (insert! :model/Collection {:name "Count outside" :location "/"})]
+             outside (insert! :model/Collection {:name "Count outside" :location "/"})
+             app     (insert! :model/Collection {:name "Count app" :namespace "data-apps" :location "/"})]
          (insert! :model/Card {:name "In" :type :metric :collection_id (:id metrics) :creator_id user
                                :display :scalar :visualization_settings {} :dataset_query (sum-query :venues :price)})
          (insert! :model/Card {:name "Trashed" :type :metric :collection_id (:id metrics) :creator_id user
@@ -89,11 +90,22 @@
                                :dataset_query (sum-query :venues :price)})
          (insert! :model/Card {:name "Outside" :type :metric :collection_id (:id outside) :creator_id user
                                :display :scalar :visualization_settings {} :dataset_query (sum-query :venues :price)})
+         (insert! :model/Card {:name "Question" :type :question :collection_id (:id app) :creator_id user
+                               :display :table :visualization_settings {} :dataset_query (sum-query :venues :price)})
+         (insert! :model/Card {:name "Model" :type :model :collection_id (:id app) :creator_id user
+                               :display :table :visualization_settings {} :dataset_query (sum-query :venues :price)})
          (insert! :model/NativeQuerySnippet {:name (str "Count root snippet " (random-uuid)) :content "1 = 1" :creator_id user})
          (insert! :model/NativeQuerySnippet {:name (str "Count folder snippet " (random-uuid)) :content "2 = 2" :creator_id user
                                              :collection_id (:id folder)})
          (insert! :model/TableUserSettings {:table_id (mt/id :venues) :is_published true :collection_id (:id data)})
          (insert! :model/Glossary {:term (str "Count term " (random-uuid)) :definition "Counted." :creator_id user})
+         (let [dashboards (insert! :model/Collection {:name     "Count dashboards"
+                                                      :type     "library-dashboards"
+                                                      :location (children-location library)})]
+           (insert! :model/Dashboard {:name "Count dashboard" :collection_id (:id dashboards) :creator_id user
+                                      :parameters []})
+           (insert! :model/Dashboard {:name "Count trashed dashboard" :collection_id (:id dashboards) :creator_id user
+                                      :parameters [] :archived true}))
          (insert! :model/Segment {:name "Count segment" :table_id (mt/id :venues) :creator_id user
                                   :definition (let [mp (mt/metadata-provider)]
                                                 (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :venues)))

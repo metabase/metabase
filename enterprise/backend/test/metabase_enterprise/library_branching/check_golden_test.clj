@@ -65,8 +65,8 @@
                                (-> (checked (golden/tree-with changes))
                                    (select-keys [:green? :findings])
                                    (update :findings (partial mapv shape))))
-      {"library/overview.dashboard.yaml" "kind: dashboard\nid: 7RZUq1g5o1C5ws_e3ppKf\nname: Overview\n"}
-      [{:level :decode :type :unknown-kind :kind :dashboard :path "library/overview.dashboard.yaml"}]
+      {"library/overview.document.yaml" "kind: document\nid: dOcUmEnTdOcUmEnTdOc01\nname: Overview\n"}
+      [{:level :decode :type :unknown-kind :kind :document :path "library/overview.document.yaml"}]
 
       {golden/total-revenue-path "kind: metric\nid: IW8kbqZVaMxdGtCM2F4U6\nname: Total Revenue\n"}
       [{:level :decode :type :invalid :path golden/total-revenue-path}]
