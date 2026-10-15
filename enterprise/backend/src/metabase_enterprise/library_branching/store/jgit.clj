@@ -42,15 +42,18 @@
                  (make-array FileAttribute 0))]
     (.toFile (Files/createTempDirectory ^Path tmp "metabase-library-branching-" ^"[Ljava.nio.file.attribute.FileAttribute;" attrs))))
 
-(defn- open-transport ^Transport [^Repository repo ^String url token timeout-seconds]
-  (let [transport (Transport/open repo (URIish. url))]
-    (.setTimeout transport (int timeout-seconds))
-    (when token
-      (.setCredentialsProvider transport (UsernamePasswordCredentialsProvider. "x-access-token" ^String token)))
-    transport))
-
-(defn- transport-failure [op url ^Exception e]
-  (ex-info (format "Git %s of %s failed: %s" op url (ex-message e)) {:operation op :url url} e))
+(defn- remote-op
+  "Calls `(f transport)` on a new transport to the remote, and closes it. Throws an ex-info that names `op` when
+  the transport fails."
+  [^Repository repo ^String url token timeout-seconds op f]
+  (try
+    (with-open [transport (Transport/open repo (URIish. url))]
+      (.setTimeout transport (int timeout-seconds))
+      (when token
+        (.setCredentialsProvider transport (UsernamePasswordCredentialsProvider. "x-access-token" ^String token)))
+      (f transport))
+    (catch Exception e
+      (throw (ex-info (format "Git %s of %s failed: %s" op url (ex-message e)) {:operation op :url url} e)))))
 
 (defn- parse-commit ^RevCommit [^RevWalk rw ^String commit]
   (try
@@ -62,12 +65,10 @@
   (= FileMode/TYPE_FILE (bit-and (.getBits mode) FileMode/TYPE_MASK)))
 
 (defn- fetch-head [^Repository repo url token timeout-seconds ref]
-  (let [^FetchResult result (with-open [transport (open-transport repo url token timeout-seconds)]
-                              (.setRemoveDeletedRefs transport true)
-                              (try
-                                (.fetch transport NullProgressMonitor/INSTANCE [fetch-spec])
-                                (catch Exception e
-                                  (throw (transport-failure "fetch" url e)))))]
+  (let [^FetchResult result (remote-op repo url token timeout-seconds "fetch"
+                                       (fn [^Transport transport]
+                                         (.setRemoveDeletedRefs transport true)
+                                         (.fetch transport NullProgressMonitor/INSTANCE [fetch-spec])))]
     (some-> (.getAdvertisedRef result (qualify ref)) ^Ref identity .getObjectId .name)))
 
 (defn- read-tree* [^Repository repo commit]
@@ -154,11 +155,9 @@
   (let [ref        (qualify ref)
         update     (RemoteRefUpdate. repo nil (ObjectId/fromString new) ref true nil
                                      (if expected (ObjectId/fromString expected) (ObjectId/zeroId)))
-        ^PushResult result (with-open [transport (open-transport repo url token timeout-seconds)]
-                             (try
-                               (.push transport NullProgressMonitor/INSTANCE [update])
-                               (catch Exception e
-                                 (throw (transport-failure "push" url e)))))
+        ^PushResult result (remote-op repo url token timeout-seconds "push"
+                                      (fn [^Transport transport]
+                                        (.push transport NullProgressMonitor/INSTANCE [update])))
         remote     (.getRemoteUpdate result ref)
         advertised (some-> (.getAdvertisedRef result ref) .getObjectId .name)
         status     (.getStatus remote)]
@@ -218,7 +217,17 @@
   [url & {:keys [token timeout-seconds] :or {timeout-seconds 60}}]
   (let [dir (owner-only-temp-dir)
         git (try
-              (-> (Git/init) (.setBare true) (.setDirectory dir) (.call))
+              (let [git (-> (Git/init) (.setBare true) (.setDirectory dir) (.call))]
+                (doto (.getConfig (.getRepository git))
+                  ;; A fetch starts an automatic gc, by default on another thread, which races with `close`
+                  (.setInt "gc" nil "auto" 0)
+                  (.setInt "gc" nil "autoPackLimit" 0)
+                  (.setBoolean "gc" nil "autoDetach" false)
+                  ;; A push runs the pre-push hook of `core.hooksPath`. This repository's own value overrides the
+                  ;; user's and the system's, and names a directory that is never created.
+                  (.setString "core" nil "hooksPath" (.getAbsolutePath (io/file dir "no-hooks")))
+                  (.save))
+                git)
               (catch Throwable e
                 (FileUtils/deleteDirectory dir)
                 (throw e)))]

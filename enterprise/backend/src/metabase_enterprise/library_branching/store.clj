@@ -5,7 +5,16 @@
 
 (defprotocol Store
   "A git repository: commits, trees and refs. The local object store holds the commits that `head` fetched and
-  the commits that `write-commit` wrote; the other methods read only the local object store."
+  the commits that `write-commit` wrote; the other methods read only the local object store.
+
+  Laws:
+  - `(cas-ref! s r e n)` is :ok iff the remote `r` was `e`; then `r` is `n`. Else it returns {:moved actual},
+    and `r` stays `actual`.
+  - `write-commit` changes no ref, local or remote.
+  - `(read-tree s (write-commit s ps t m))` = `t`.
+  - `changed-paths` agrees with the difference of the two `read-tree` results.
+  - `ancestor?` is the reflexive, transitive closure of the parent relation.
+  - `(merge-base s a b)` is an ancestor of `a` and of `b`, and no other common ancestor has it as an ancestor."
   (head [store ref]
     "The commit id that `ref` names on the remote now (after a fetch), or nil.")
   (read-tree [store commit]
