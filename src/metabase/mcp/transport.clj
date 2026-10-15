@@ -721,10 +721,10 @@
   [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes] :as opts}]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [origin-error  (validate-origin request)
-           bearer-token  (oauth-server/extract-bearer-token request)
-           session-auth  api/*current-user-id*
-           token-scopes  (:token-scopes request)
+     (let [origin-error    (validate-origin request)
+           bearer-token    (oauth-server/extract-bearer-token request)
+           current-user-id api/*current-user-id*
+           token-scopes    (:token-scopes request)
            ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose token
            ;; expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
            invalid-token (delay (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
@@ -770,8 +770,8 @@
            ;; dispatching should one arrive anyway. It gets the 401 discovery challenge below. An `mb:full` token
            ;; carries the unrestricted sentinel next to its other granted scopes; the sentinel is not an MCP scope, so
            ;; only those strings reach MCP.
-           (and session-auth (:authenticated-via-oauth? request))
-           (dispatch session-auth (into #{} (filter string?) token-scopes))
+           (and current-user-id (:authenticated-via-oauth? request))
+           (dispatch current-user-id (into #{} (filter string?) token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer
