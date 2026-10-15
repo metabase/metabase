@@ -533,11 +533,11 @@
       (finally
         (close-object-reader reader)))))
 
-(def ^:private backend-pathspecs
-  "Pathspecs for the backend sources [[source-path]] matches, plus the module config."
+(def ^:private source-pathspecs
+  "Pathspecs for the backend sources [[source-path]] matches."
   ;; A `*` in a plain pathspec does not stop at `/`, so `modules/drivers/*/src` matches no file under a driver's
   ;; `src` directory. The glob form does.
-  ["src" "enterprise/backend/src" ":(glob)modules/drivers/*/src/**" "modules/embedder/src" modules-config-path])
+  ["src" "enterprise/backend/src" ":(glob)modules/drivers/*/src/**" "modules/embedder/src"])
 
 (defn- midnight-utc
   "The instant `date` starts in UTC, in the form git reads."
@@ -554,13 +554,12 @@
 (defn- config-commits
   "Commits of `ref` since `date` that changed the module config.
   Before [[modules-config-path]] existed that is a change to [[legacy-config-path]], which is followed only
-  up to the commit that moved the config out of it."
+  up to the commit that moved the config out of it, or to `ref` when `ref` predates that commit."
   [ref date]
   (let [introduced (last (str/split-lines (git! ["log" "--first-parent" "--diff-filter=A" "--format=%H" ref
                                                  "--" modules-config-path])))]
     (concat (commits-since ref date [modules-config-path])
-            (when-not (str/blank? introduced)
-              (commits-since (str introduced "^") date [legacy-config-path])))))
+            (commits-since (if (str/blank? introduced) ref (str introduced "^")) date [legacy-config-path]))))
 
 (defn- last-commit-before
   "The last first-parent commit of `ref` before each of `dates`."
@@ -585,7 +584,8 @@
   Dates are days in UTC."
   [{:keys [ref since backend-since weekly-since monthly-since extra], :or {ref "origin/master"}}]
   (let [changed  (concat (when since (config-commits ref since))
-                         (when backend-since (commits-since ref backend-since backend-pathspecs)))
+                         (when backend-since (concat (commits-since ref backend-since source-pathspecs)
+                                                     (config-commits ref backend-since))))
         weeks    (when weekly-since
                    (dates-from (LocalDate/parse weekly-since) #(.plusWeeks ^LocalDate % 1)))
         months   (when monthly-since
