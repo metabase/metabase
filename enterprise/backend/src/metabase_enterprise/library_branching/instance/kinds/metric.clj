@@ -10,6 +10,10 @@
    [metabase-enterprise.library-branching.instance :as instance]
    [metabase-enterprise.library-branching.instance.content :as content]
    [metabase-enterprise.library-branching.instance.portable :as portable]
+   [metabase-enterprise.library-branching.instance.tree :as tree]
+   [metabase-enterprise.library-branching.scope :as scope]
+   [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
@@ -66,10 +70,74 @@
                cards
                contents))))
 
+(defn import-fns
+  "`{attribute import-fn}`: for each attribute of the metric format whose card column the serdes spec of Card imports
+  with a transform, that import, the inverse of its entry in [[export-fns]]."
+  []
+  (let [transforms (:transform (serdes/make-spec "Card" {}))]
+    (into {}
+          (keep (fn [k] (when-let [f (get-in transforms [(column k) :import])] [k f])))
+          (keys (:attrs format.metric/spec)))))
+
+(defn current-metric
+  "The content of the in-scope metric `id`, after a lock on its row, or nil."
+  [id]
+  (library-branching.db/lock-card id)
+  (when (scope/in-scope? :metric id)
+    (get (read-metrics [id]) id)))
+
+(defn- columns
+  "The card columns of the attributes `ks` of `attrs`, an absent one at its default, through the imports `imports`."
+  [imports attrs ks]
+  (into {}
+        (map (fn [k]
+               (let [v (content/attr-value format.metric/spec attrs k)]
+                 [(column k) (if (some? v) ((get imports k identity) v) v)])))
+        ks))
+
+(defn write-metric!
+  "Makes the content of metric `id` equal to `item`, by the contract of `instance/write!`."
+  [id {:keys [name place attrs] :as item}]
+  (content/check-item! :metric id item)
+  (let [row     (library-branching.db/lock-card id)
+        _       (when row
+                  (tree/check-in-tree! id (tree/collection-id-in-tree? (:collection_id row)))
+                  (when-not (= "metric" (some-> (:type row) clojure.core/name))
+                    (instance/refuse! :other-kind id "A card of another kind has this identity.")))
+        _       (when (nil? place)
+                  (instance/refuse! :place id "A metric is in a collection of the Library."))
+        parent  (tree/place-collection id place)
+        imports (import-fns)]
+    (if-not row
+      (library-branching.db/insert-card!
+       (merge {:entity_id     id
+               :name          name
+               :type          :metric
+               :collection_id (:id parent)
+               :creator_id    (or api/*current-user-id* config/internal-mb-user-id)}
+              (columns imports attrs (keys (:attrs format.metric/spec)))))
+      (let [old     (get (read-metrics [id]) id)
+            changes (cond-> (columns imports attrs (content/changed-attrs format.metric/spec (:attrs old) attrs))
+                      (not= name (:name old))                    (assoc :name name)
+                      (not= (:id parent) (:collection_id row))   (assoc :collection_id (:id parent))
+                      (:archived row)                            (assoc :archived false :archived_directly false))]
+        (when (seq changes)
+          (library-branching.db/update-card! (:id row) changes))))
+    nil))
+
+(defn trash-metric!
+  "Moves metric `id` to the trash."
+  [id]
+  (when-let [row (library-branching.db/lock-card id)]
+    (tree/check-in-tree! id (tree/collection-id-in-tree? (:collection_id row)))
+    (when-not (:archived row)
+      (library-branching.db/update-card! (:id row) {:archived true :archived_directly true}))
+    nil))
+
 (def kind-store
   "The `KindStore` of metrics."
   (reify instance/KindStore
     (read-all [_ ids] (read-metrics ids))
-    (current [_ _id] (instance/not-yet! `instance/current))
-    (write! [_ _id _content] (instance/not-yet! `instance/write!))
-    (trash! [_ _id] (instance/not-yet! `instance/trash!))))
+    (current [_ id] (current-metric id))
+    (write! [_ id item] (library-branching.db/do-in-transaction #(write-metric! id item)))
+    (trash! [_ id] (library-branching.db/do-in-transaction #(trash-metric! id)))))

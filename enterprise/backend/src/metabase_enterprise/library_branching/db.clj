@@ -60,6 +60,15 @@
           (.setReadOnly conn read-only?)
           (.setTransactionIsolation conn isolation))))))
 
+;;; ---------------------------------------------------- Transaction ------------------------------------------------
+
+(defn do-in-transaction
+  "Calls `f` with no arguments in a transaction (a savepoint inside an open one), and returns its result. A throw of
+  `f` rolls the transaction back."
+  [f]
+  (t2/with-transaction [_]
+    (f)))
+
 ;;; ------------------------------------------------ Reference lookups -----------------------------------------------
 
 (mu/defn fields-by-id :- [:sequential ::row]
@@ -146,3 +155,154 @@
   "The user settings rows of the fields of the tables of `ids`, as instances of `:model/FieldUserSettings`."
   [ids :- ::ids]
   (t2/select :model/FieldUserSettings {:where [:in :field_id (fields-of-tables ids)]}))
+
+;;; ------------------------------------------------- Locks and writes -------------------------------------------------
+
+(mu/defn lock-collection :- [:maybe ::row]
+  "`{:id :entity_id :name :type :namespace :location :archived :personal_owner_id}` of the collection of `entity-id`,
+  after a lock on its row until the current transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (t2/query-one {:select [:id :entity_id :name :type :namespace :location :archived :personal_owner_id]
+                 :from   [(t2/table-name :model/Collection)]
+                 :where  [:= :entity_id [:auto/param entity-id]]
+                 :for    [:update]}))
+
+(mu/defn collection-by-entity-id :- [:maybe ::row]
+  "`{:id :entity_id :type :namespace :location :archived}` of the collection of `entity-id`, or nil."
+  [entity-id :- :string]
+  (t2/query-one {:select [:id :entity_id :type :namespace :location :archived]
+                 :from   [(t2/table-name :model/Collection)]
+                 :where  [:= :entity_id [:auto/param entity-id]]}))
+
+(mu/defn collections-by-id :- [:sequential ::row]
+  "`{:id :entity_id :type :namespace :location :archived}` of each collection of `ids`."
+  [ids :- ::ids]
+  (t2/query {:select [:id :entity_id :type :namespace :location :archived]
+             :from   [(t2/table-name :model/Collection)]
+             :where  [:in :id ids]}))
+
+(mu/defn insert-collection! :- ::row
+  "Inserts a collection with the columns `row` through the Collection model, and returns it."
+  [row :- ::row]
+  (t2/insert-returning-instance! :model/Collection row))
+
+(mu/defn update-collection! :- :int
+  "Sets the columns `changes` of the collection `id` through the Collection model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/Collection id changes))
+
+(mu/defn move-descendant-collections! :- :int
+  "Replaces the location prefix `from` with `to` in the location of each collection whose location starts with `from`;
+  returns the number of rows."
+  [from :- :string
+   to   :- :string]
+  (t2/query-one {:update (t2/table-name :model/Collection)
+                 :set    {:location [:replace :location from to]}
+                 :where  [:like :location (str from "%")]}))
+
+(mu/defn select-collection :- [:maybe ::row]
+  "The collection `id`, as an instance of `:model/Collection`."
+  [id :- pos-int?]
+  (t2/select-one :model/Collection id))
+
+(mu/defn lock-card :- [:maybe ::row]
+  "`{:id :type :collection_id :archived}` of the card of `entity-id`, after a lock on its row until the current
+  transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (t2/query-one {:select [:id :type :collection_id :archived]
+                 :from   [(t2/table-name :model/Card)]
+                 :where  [:= :entity_id [:auto/param entity-id]]
+                 :for    [:update]}))
+
+(mu/defn insert-card! :- ::row
+  "Inserts a card with the columns `row` through the Card model, and returns it."
+  [row :- ::row]
+  (t2/insert-returning-instance! :model/Card row))
+
+(mu/defn update-card! :- :int
+  "Sets the columns `changes` of the card `id` through the Card model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/Card id changes))
+
+(mu/defn lock-snippet :- [:maybe ::row]
+  "`{:id :collection_id :archived}` of the snippet of `entity-id`, after a lock on its row until the current
+  transaction ends; nil when there is none."
+  [entity-id :- :string]
+  (t2/query-one {:select [:id :collection_id :archived]
+                 :from   [(t2/table-name :model/NativeQuerySnippet)]
+                 :where  [:= :entity_id [:auto/param entity-id]]
+                 :for    [:update]}))
+
+(mu/defn insert-snippet! :- ::row
+  "Inserts a snippet with the columns `row` through the NativeQuerySnippet model, and returns it."
+  [row :- ::row]
+  (t2/insert-returning-instance! :model/NativeQuerySnippet row))
+
+(mu/defn update-snippet! :- :int
+  "Sets the columns `changes` of the snippet `id` through the NativeQuerySnippet model; returns the number of rows."
+  [id      :- pos-int?
+   changes :- ::row]
+  (t2/update! :model/NativeQuerySnippet id changes))
+
+(mu/defn lock-table-settings :- [:sequential ::row]
+  "`{:table_id}` of the user settings row of table `table-id` and `{:field_id}` of the user settings rows of its fields,
+  after a lock on each of these rows until the current transaction ends."
+  [table-id :- pos-int?]
+  (into (vec (t2/query {:select [:table_id]
+                        :from   [(t2/table-name :model/TableUserSettings)]
+                        :where  [:= :table_id [:auto/param table-id]]
+                        :for    [:update]}))
+        (t2/query {:select [:field_id]
+                   :from   [(t2/table-name :model/FieldUserSettings)]
+                   :where  [:in :field_id (fields-of-tables [table-id])]
+                   :for    [:update]})))
+
+(mu/defn table-fields :- [:sequential ::row]
+  "`{:id :name :parent_id :active}` of each field of table `table-id`, by the values that warehouse sync writes."
+  [table-id :- pos-int?]
+  (t2/query {:select [:id :name :parent_id :active]
+             :from   [(warehouse-schema-overlay/field-query {:user-settings? false})]
+             :where  [:= :table_id [:auto/param table-id]]}))
+
+(mu/defn table-row :- [:maybe ::row]
+  "The row of table `table-id` as warehouse sync writes it, with no user value."
+  [table-id :- pos-int?]
+  (t2/query-one {:select [:*]
+                 :from   [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                 :where  [:= :id [:auto/param table-id]]}))
+
+(mu/defn table-settings-exist? :- :boolean
+  "True iff table `table-id` has a user settings row."
+  [table-id :- pos-int?]
+  (t2/exists? :model/TableUserSettings :table_id table-id))
+
+(mu/defn insert-table-settings! :- :any
+  "Inserts the user settings row `row` of a table through the TableUserSettings model."
+  [row :- ::row]
+  (t2/insert! :model/TableUserSettings row))
+
+(mu/defn update-table-settings! :- :int
+  "Sets the columns `changes` of the user settings row of table `table-id` through the TableUserSettings model;
+  returns the number of rows."
+  [table-id :- pos-int?
+   changes  :- ::row]
+  (t2/update! :model/TableUserSettings table-id changes))
+
+(mu/defn field-settings-exist? :- :boolean
+  "True iff field `field-id` has a user settings row."
+  [field-id :- pos-int?]
+  (t2/exists? :model/FieldUserSettings :field_id field-id))
+
+(mu/defn insert-field-settings! :- :any
+  "Inserts the user settings row `row` of a field through the FieldUserSettings model."
+  [row :- ::row]
+  (t2/insert! :model/FieldUserSettings row))
+
+(mu/defn update-field-settings! :- :int
+  "Sets the columns `changes` of the user settings row of field `field-id` through the FieldUserSettings model;
+  returns the number of rows."
+  [field-id :- pos-int?
+   changes  :- ::row]
+  (t2/update! :model/FieldUserSettings field-id changes))
