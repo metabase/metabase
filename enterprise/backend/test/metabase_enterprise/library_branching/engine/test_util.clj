@@ -6,10 +6,10 @@
   deleted, renamed, moved and changed. The edits are random choices, so test.check shrinks them directly."
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.test.check.generators :as gen]
    [metabase-enterprise.library-branching.snapshot :as snapshot]
-   [metabase-enterprise.library-branching.test-util :as lb.tu]))
+   [metabase-enterprise.library-branching.test-util :as lb.tu]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -145,7 +145,7 @@
                  (if (contains? o ours)
                    (assoc-in o [ours :name] clash)
                    (assoc o ours (item :snippet clash nil)))
-                 (assoc t theirs (item :snippet (cond-> clash upper? str/upper-case) nil))
+                 (assoc t theirs (item :snippet (cond-> clash upper? u/upper-case-en) nil))
                  ours
                  theirs]))
             (gen/tuple (related-snapshots-gen) gen/nat gen/boolean)))

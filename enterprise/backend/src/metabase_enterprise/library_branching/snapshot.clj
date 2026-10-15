@@ -3,7 +3,11 @@
 
   A snapshot maps the identity of each item to the item's content. Two items are equal iff their values are equal."
   (:require
-   [metabase-enterprise.library-branching.registry :as registry]))
+   [clojure.string :as str]
+   [metabase-enterprise.library-branching.registry :as registry])
+  (:import
+   (java.text Normalizer Normalizer$Form)
+   (java.util Locale)))
 
 (set! *warn-on-reflection* true)
 
@@ -25,9 +29,16 @@
   {:snippet {:path [:name] :name? true}})
 
 (defn fold-name
-  "Name `s` in the form in which two names are one key."
+  "Name `s` in the form in which two names are one key: Unicode NFKD, with no combining mark, in lower case."
   ^String [^String s]
-  s)
+  ;; MySQL and MariaDB compare names with utf8mb4_unicode_ci, which ignores case and accents. The engine compares
+  ;; names in this one form on every app DB, so a snapshot that validates on one app DB validates on all. The collation
+  ;; also makes some names one key that this form keeps apart: ß and ss, ς and σ, Œ and OE, a name with trailing
+  ;; spaces and the name without them, a name with an ignorable character (U+200B) and the name without it, and any two
+  ;; supplementary characters, such as two emoji.
+  (let [s (Normalizer/normalize s Normalizer$Form/NFKD)
+        s ^String (str/replace s #"\p{M}" "")]
+    (.toLowerCase s Locale/ROOT)))
 
 (defn unique-key
   "The unique key of `item` by `unique-keys` (in the form of [[unique-keys]]), in the form in which keys compare; nil
