@@ -276,10 +276,11 @@
                                                            :display       :scalar
                                                            :collection_id personal
                                                            :dataset_query (sum-query :venues :price)}
+                       :model/Collection         app      {:name "A state app" :namespace "data-apps" :location "/"}
                        :model/Card               question {:name          "A state question"
                                                            :type          :question
                                                            :display       :table
-                                                           :collection_id (:id metrics)
+                                                           :collection_id (:id app)
                                                            :dataset_query (sum-query :venues :price)}
                        :model/Collection         outside  {:name "My states" :location (str "/" personal "/")}
                        :model/NativeQuerySnippet snip     {:name "State snippet" :content "1 = 1"}]
