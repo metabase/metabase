@@ -253,8 +253,10 @@ function chart(id, title, sub, pts, span, series, start, zero, detail) {
 
 function trends(p) {
   const pts = points(p);
-  if (pts.length < 2) return "";
+  if (!pts.length) return "";
   const before = data.series[data.series.findIndex(s => s.sha === pts[0].sha) - 1];
+  // one step draws no line, but its parts still need adding up
+  if (pts.length < 2) return section("Trends", "One commit changed a budget in this period.", reconcile(pts, before));
   const end = Math.min(p.to ? Date.parse(p.to) : Infinity, Date.parse(data.generated) + 864e5);
   const span = [p.from ? Date.parse(p.from) : pts[0].t, Math.max(end, pts[pts.length - 1].t)];
   const rows = pts.map(pt => `<tr><td>${esc(pt.date.slice(0, 10))} ${commitLink(pt)}</td>${num(pt.shrunk)}${num(pt.grown)}` +
@@ -324,8 +326,16 @@ function wire() {
 
 function render(p) {
   const r = p.report;
-  const head = `<header><h2>${esc(p.label)}</h2><p>${r.commits} commit${r.commits === 1 ? "" : "s"} changed a ratchet budget</p></header>`;
-  if (!r.commits) return head + `<p class="none">No ratchet budget changed in this period.</p>`;
+  // every commit that moved a budget, credited or not, so the count agrees with the charts
+  const n = points(p).filter(pt => ["shrunk", "grown", ...uncredited.map(([k]) => k)].some(k => pt[k] !== 0)).length;
+  const head = `<header><h2>${esc(p.label)}</h2><p>${n} commit${n === 1 ? "" : "s"} changed a ratchet budget</p></header>`;
+  if (!r.commits) {
+    // a period can move the total with no credited change, such as the automation taking back a pardoned raise
+    const moved = points(p).some(pt => uncredited.some(([k]) => pt[k] !== 0));
+    return head + (moved
+      ? `<p class="question">No change in this period is credited to anyone, but the total budget moved.</p>` + trends(p)
+      : `<p class="none">No ratchet budget changed in this period.</p>`);
+  }
   const t = r.total;
   const linters = r.introduced.reduce((a, g) => a + g.items.length, 0);
   const tile = (k, v, cls) => `<div class="tile"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`;
