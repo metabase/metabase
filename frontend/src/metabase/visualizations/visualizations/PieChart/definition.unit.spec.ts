@@ -1,5 +1,11 @@
+import { registerVisualizations } from "metabase/visualizations/register";
 import { PIE_CHART_DEFINITION } from "metabase/visualizations/visualizations/PieChart/definition";
-import type { RawSeries, RowValues } from "metabase-types/api";
+import { getComputedSettingsForSeries } from "metabase/viz-core";
+import type {
+  RawSeries,
+  RowValues,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -57,5 +63,46 @@ describe("PieChart pie.rows caching", () => {
     const rebuilt: RawSeries = JSON.parse(JSON.stringify(series));
 
     expect(readPieRows(rebuilt)).not.toBe(readPieRows(series));
+  });
+});
+
+describe("PieChart legend.position", () => {
+  registerVisualizations();
+
+  const computeLegend = (settings: VisualizationSettings) =>
+    getComputedSettingsForSeries([
+      {
+        ...makeSeries()[0],
+        card: createMockCard({
+          display: "pie",
+          visualization_settings: settings,
+        }),
+      },
+    ])["legend.position"];
+
+  it("places the legend automatically by default", () => {
+    expect(computeLegend({})).toBe("auto");
+  });
+
+  it("turns the legend off for a card saved with pie.show_legend false", () => {
+    expect(computeLegend({ "pie.show_legend": false })).toBe("off");
+  });
+
+  it("keeps auto for a card saved with pie.show_legend true", () => {
+    expect(computeLegend({ "pie.show_legend": true })).toBe("auto");
+  });
+
+  it("prefers legend.position over pie.show_legend", () => {
+    expect(
+      computeLegend({ "pie.show_legend": false, "legend.position": "right" }),
+    ).toBe("right");
+  });
+
+  it("falls back to auto for a stored value outside the enum", () => {
+    const stored: VisualizationSettings = JSON.parse(
+      '{"legend.position":"middle"}',
+    );
+
+    expect(computeLegend(stored)).toBe("auto");
   });
 });

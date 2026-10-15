@@ -256,6 +256,13 @@ export type TableColumnOrderSetting = {
 };
 
 export type StackType = "stacked" | "normalized" | null;
+export type LegendPosition =
+  | "auto"
+  | "top"
+  | "bottom"
+  | "left"
+  | "right"
+  | "off";
 export type StackValuesDisplay = "total" | "all" | "series";
 export type StackValueFormat = "value" | "percentage";
 
@@ -418,6 +425,14 @@ export type VisualizationSettings = {
   "graph.split_panels"?: boolean;
 
   /**
+   * Where the legend sits on charts that have one: cartesian, row, scatter,
+   * and box plot charts with several series or a breakout, pies, bar-type
+   * funnels, and region maps. "auto" lets the chart pick a side that fits;
+   * "off" hides the legend.
+   */
+  "legend.position"?: LegendPosition;
+
+  /**
    * Result column names used for the x-axis, category, or grouping dimension.
    * Prefer Metabase defaults unless the query needs a specific split.
    */
@@ -502,7 +517,7 @@ export type VisualizationSettings = {
   /** Sort pie slices by metric value. */
   "pie.sort_rows"?: boolean;
 
-  /** Show the pie legend. */
+  /** @deprecated Use `legend.position`. Read only as the pie's fallback. */
   "pie.show_legend"?: boolean;
 
   /** Show the total value in the center of the pie. */

@@ -2,6 +2,10 @@
   overflow: hidden;
 }
 
+.pinnedRowItem {
+  flex-shrink: 0;
+}
+
 .overflowLabel {
   cursor: pointer;
   white-space: nowrap;

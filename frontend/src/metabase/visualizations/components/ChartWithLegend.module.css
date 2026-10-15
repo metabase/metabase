@@ -43,8 +43,17 @@
 }
 
 /* VERTICAL */
-.ChartWithLegend.vertical {
+.ChartWithLegend.vertical.legendBeforeChart {
+  flex-direction: column;
+}
+
+.ChartWithLegend.vertical.legendAfterChart {
   flex-direction: column-reverse;
+}
+
+.ChartWithLegend.vertical.legendBeforeChart .Legend {
+  margin-top: 0;
+  margin-bottom: 1em;
 }
 
 .ChartWithLegend.vertical .Legend {
@@ -68,8 +77,17 @@
 }
 
 /* HORIZONTAL */
-.ChartWithLegend.horizontal {
+.ChartWithLegend.horizontal.legendBeforeChart {
   flex-direction: row;
+}
+
+.ChartWithLegend.horizontal.legendAfterChart {
+  flex-direction: row-reverse;
+}
+
+.ChartWithLegend.horizontal.legendAfterChart .Legend {
+  margin-right: 0;
+  margin-left: 1em;
 }
 
 .ChartWithLegend.horizontal .Legend {
