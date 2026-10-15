@@ -86,7 +86,6 @@ type Section = (typeof SECTIONS)[number];
 const [CLI_SECTION] = SECTIONS;
 const EVENTS_TABLE_ID = 2001;
 const GROUP_MEMBERS_TABLE_ID = 2002;
-// The date column is the second field of the events table.
 const DATE_FIELD_ID = EVENTS_TABLE_ID * 100 + 1;
 const FILTERED_ROUTE_SEARCH =
   "?date=past7days~&user=1&group=2&api_key=9&page=2";
@@ -127,7 +126,6 @@ function requestBody(call: CallLog | undefined): unknown {
     : null;
 }
 
-/** Returns the legacy `query` or the first MBQL 5 stage of a dataset request. */
 function requestStage(call: CallLog | undefined): unknown {
   const body = requestBody(call);
   if (body === null || typeof body !== "object") {
@@ -143,7 +141,6 @@ function requestStage(call: CallLog | undefined): unknown {
   return stages[0];
 }
 
-// Only the tab counter sends a legacy MBQL query; table queries use MBQL 5 stages.
 function isCounterQuery(call: CallLog): boolean {
   const body = requestBody(call);
   return body !== null && typeof body === "object" && "query" in body;
@@ -153,8 +150,6 @@ function countCalls() {
   return fetchMock.callHistory.calls("audit-row-count");
 }
 
-// TreeTable briefly renders cell text in hidden column-measuring nodes, so wait
-// for the rendered row rather than the first matching text.
 function findEventRow() {
   return screen.findByRole("row", { name: /Visible event/ });
 }
@@ -340,8 +335,6 @@ describe.each(SECTIONS)("$label tab count", (section) => {
   });
 });
 
-// The three sections share one counter hook, so its freshness and failure
-// handling is covered once through the CLI section.
 describe("audit tab count freshness and failures", () => {
   it("shows a zero count rather than hiding it", async () => {
     setup({ getCountResponse: () => countDataset(0) });

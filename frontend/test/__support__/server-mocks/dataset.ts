@@ -10,10 +10,6 @@ import { createMockDataset } from "metabase-types/api/mocks";
 
 import type { MockResponse } from "./types";
 
-/**
- * Mocks `POST /api/dataset`. Pass `options.name` and `options.matcherFunction`
- * to register several routes that answer different ad-hoc queries.
- */
 export function setupAdhocQueryEndpoint(
   response: MockResponse<Dataset | Response>,
   options?: UserRouteConfig,

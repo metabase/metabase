@@ -41,14 +41,12 @@ export function setupDatabaseEndpoints(db: Database) {
   setupUpdateDatabaseEndpoint(db);
 }
 
-/** Mocks `GET /api/database/:id/metadata` with the database's tables and fields. */
 export function setupDatabaseMetadataEndpoint(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}/metadata`, db, {
     name: `database-${db.id}-metadata`,
   });
 }
 
-/** Mocks a failed `GET /api/database/:id/metadata`. */
 export function setupDatabaseMetadataErrorEndpoint(databaseId: DatabaseId) {
   fetchMock.get(`path:/api/database/${databaseId}/metadata`, 500, {
     name: `database-${databaseId}-metadata`,

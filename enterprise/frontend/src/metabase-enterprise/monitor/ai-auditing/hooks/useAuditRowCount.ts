@@ -10,12 +10,6 @@ import { applyDateFilter } from "metabase-enterprise/monitor/ai-auditing/metabot
 import type { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
 import * as Lib from "metabase-lib";
 
-/**
- * Counts an audit view's rows in the default 30-day date window, ignoring the
- * section's optional filters. Call it from a persistent section layout: the
- * count refreshes on section entry and when ad-hoc dataset tags are invalidated.
- * Missing audit metadata, failed queries, and non-count results hide the badge.
- */
 export function useAuditRowCount(
   {
     provider,
@@ -36,14 +30,10 @@ export function useAuditRowCount(
       DEFAULT_DATE_FILTER,
       dateColumn,
     );
-    // Legacy MBQL keeps this scalar query's cache key stable across metadata UUID changes.
     return Lib.toLegacyQuery(Lib.aggregateByCount(query, 0));
   }, [provider, table, dateColumn]);
   const { currentData: data, error } = useGetAdhocQueryQuery(
     query ?? skipToken,
-    {
-      refetchOnMountOrArgChange: true,
-    },
   );
   const value = data?.data?.rows?.[0]?.[0];
   const isValidCount =
