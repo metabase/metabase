@@ -8,6 +8,7 @@
    [metabase-enterprise.library-branching.format.kinds :as kinds]
    [metabase-enterprise.library-branching.format.writer :as writer]
    [metabase-enterprise.library-branching.instance :as instance]
+   [metabase-enterprise.library-branching.pull :as pull]
    [metabase-enterprise.library-branching.roots :as roots]
    [metabase-enterprise.library-branching.settings :as settings]
    [metabase-enterprise.library-branching.store :as store]))
@@ -40,22 +41,24 @@
     {}))
 
 (defn- commit!
-  "Writes the commit of snapshot `s` on base `b`, moves `branch` to it from `b`, then moves the base to it with the
-  digests of `s`."
-  [inst store codecs branch message b base-tree s digests]
+  "Writes the commit of snapshot `s` with `parents`, moves `branch` to it (from base `b`, or from no ref when
+  `new-branch?`), then moves the base from `b` to it with the digests of `s`, inside `record`."
+  [inst store codecs branch message b parents new-branch? base-tree s digests record]
   ;; Foreign files of the base stay at their paths. An item file is written again from `s`, so it leaves the tree
   ;; when its item left `s`, and it moves to its canonical path when someone moved it.
   (let [files (merge (foreign-files @base-tree) (writer/encode-tree codecs s))
-        c     (store/write-commit store (if b [b] []) files message)
-        moved (store/cas-ref! store branch b c)]
-    (if (not= :ok moved)
-      {:result :remote-moved :base b :head (:moved moved)}
+        c     (store/write-commit store parents files message)
+        moved (store/cas-ref! store branch (when-not new-branch? b) c)]
+    (cond
+      (not= :ok moved) (if new-branch?
+                         {:result :branch-exists :head (:moved moved)}
+                         {:result :remote-moved :base b :head (:moved moved)})
       ;; The digests are those of the snapshot that the commit holds, never of a later read: a save after the read
       ;; point stays a local change against `c`.
-      (let [set-base (instance/set-base! inst b c digests)]
-        (if (= :ok set-base)
-          {:result :pushed :commit c}
-          {:result :base-moved :commit c :base (:moved set-base)})))))
+      :else            (let [set-base (record #(instance/set-base! inst b c digests))]
+                         (if (= :ok set-base)
+                           {:result :pushed :commit c}
+                           {:result :base-moved :commit c :base (:moved set-base)})))))
 
 (defn push!
   "Pushes the synced snapshot of instance `inst` to branch `branch` of `store`. Returns one of:
@@ -64,6 +67,7 @@
     branch is at `c`, and the base is `c`;
   - `{:result :nothing-to-push :commit b}`: the snapshot equals the content of the base `b`;
   - `{:result :remote-moved :base b :head h}`: the branch is not at the base, so the caller pulls first;
+  - `{:result :branch-exists :head h}`: a push to a new branch, and the branch exists at `h`;
   - `{:result :invalid :findings [f ...]}`: the snapshot breaks a structural rule (`validate/validate`, with the
     fixed roots of `roots/root-ids`), for example a Library item that refers to a trashed item;
   - `{:result :base-moved :commit c :base actual}`: the branch is at `c`, and something else moved the base;
@@ -71,22 +75,35 @@
 
   Only `:pushed` and `:base-moved` change the branch, and only `:pushed` changes the base. A first push to a tree in
   the old format writes the new layout and the format version file in one commit. The [[foreign-files]] of the base
-  tree stay. `opts`: `:codecs` (default `kinds/codecs`), `:message` (default [[default-message]])."
+  tree stay. `opts`:
+
+  - `:codecs` (default `kinds/codecs`), `:message` (default [[default-message]]);
+  - `:new-branch?`: push to a new branch: `branch` must not exist, and the push creates it at a commit whose parent
+    is the base, also when the snapshot equals the content of the base; the branch of the base does not move;
+  - `:record`: a function of one argument, a function of no argument that moves the base and returns :ok or
+    `{:moved actual}`; it calls it once and returns its result, so that other writes can commit with the move of the
+    base (default: it calls it)."
   ([inst store branch]
    (push! inst store branch {}))
-  ([inst store branch {:keys [codecs message] :or {codecs kinds/codecs message default-message}}]
+  ([inst store branch {:keys [codecs message new-branch? record]
+                       :or   {codecs kinds/codecs message default-message record (fn [set-base] (set-base))}}]
    (if-not (settings/library-branching-enabled)
      {:result :disabled}
      (let [b (instance/base inst)
            h (store/head store branch)]
-       (if (not= b h)
-         {:result :remote-moved :base b :head h}
+       (cond
+         (and new-branch? h)                {:result :branch-exists :head h}
+         (and (not new-branch?) (not= b h)) {:result :remote-moved :base b :head h}
+         :else
          (let [s         (:snapshot (instance/read-snapshot inst))
                digests   (writer/item-digests codecs s)
-               base-tree (delay (some->> b (store/read-tree store)))]
-           (if (= digests (base-digests inst codecs base-tree b))
+               base-tree (delay (when (and b (pull/readable? store b)) (store/read-tree store b)))]
+           (if (and (not new-branch?) (= digests (base-digests inst codecs base-tree b)))
              {:result :nothing-to-push :commit b}
              (let [findings (validate/validate s {:roots (roots/root-ids s)})]
                (if (seq findings)
                  {:result :invalid :findings findings}
-                 (commit! inst store codecs branch message b base-tree s digests))))))))))
+                 ;; A base that the store does not hold (no branch held it at the fetch) cannot be the parent of
+                 ;; a push to a new branch: the commit has no parent then.
+                 (commit! inst store codecs branch message b (if @base-tree [b] []) new-branch? base-tree s digests
+                          record))))))))))

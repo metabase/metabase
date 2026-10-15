@@ -190,7 +190,7 @@
         m1      (pltu/commit-snapshot! repo "main" [m0] (described ptu/sample ptu/orders-id "From main"))]
     {:inst (synced-instance feature f1) :m0 m0 :f1 f1 :m1 m1}))
 
-(defn- saving-during-read
+(defn- saving-during-read!
   "`inst`, a memory instance, wrapped so that a save `f` by a person lands right after the first read of the synced
   snapshot: a save during the switch."
   [inst f]
@@ -208,7 +208,7 @@
      (with-remote [repo s]
        (let [{:keys [inst f1 m1]} (switch-world! repo)
              save   #(described % ptu/snippet-id "Saved during the switch.")
-             result (pull/pull! (saving-during-read inst save) s "main")]
+             result (pull/pull! (saving-during-read! inst save) s "main")]
          (is (not (store/ancestor? s f1 m1)))
          (is (=? {:result :pulled :head m1} result))
          (testing "the instance holds the content of main, with the save"

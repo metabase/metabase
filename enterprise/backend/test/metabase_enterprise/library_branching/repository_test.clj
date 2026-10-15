@@ -326,7 +326,7 @@
       (rtu/do-recording-stores
        (fn [calls]
          (testing "the obfuscated token keeps the stored token, and the check uses the stored token"
-           (is (= :ok (save! {url-key url token-key (setting/obfuscate-value "full-token") branch-key "dev"})))
+           (is (= :ok (save! {url-key url token-key (setting/obfuscate-value "full-token") branch-key "main"})))
            (is (= "full-token" (setting/get token-key)))
            (is (= {:url url :token "full-token"} (last @calls))))
          (testing "a switch to read-only with no token in the body keeps the token"
@@ -334,8 +334,8 @@
            (is (= "full-token" (setting/get token-key)))
            (is (= :read-only (setting/get :remote-sync-type))))
          (testing "a change of the branch of a read-only instance with no token keeps the token"
-           (is (= :ok (save! {branch-key "main"})))
-           (is (= "main" (setting/get branch-key)))
+           (is (= :ok (save! {branch-key "dev"})))
+           (is (= "dev" (setting/get branch-key)))
            (is (= "full-token" (setting/get token-key))))
          (testing "another token replaces it"
            (is (= :ok (save! {token-key "other-token"})))

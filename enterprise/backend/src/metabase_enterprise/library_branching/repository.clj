@@ -149,9 +149,24 @@
                                     (not (contains? env :remote-sync-branch))))}))
 
 (defn branch-change-refused?
-  "Not implemented yet."
-  [_body _saved _env]
-  (throw (ex-info "Not implemented yet." {})))
+  "True iff a save of `body` over the saved values `saved`, with the keys `env` from environment variables (as in
+  [[save-plan]]), changes or blanks the branch of a creation instance that has a branch, for the same repository. Such
+  a change must be a branch switch, which keeps the local changes. Pure. A save that turns library branching off, sets
+  the first branch, makes a consumption instance, or names another repository is not refused."
+  [body saved env]
+  (let [current (present (:remote-sync-branch saved))
+        type    (or (:remote-sync-type body) (:remote-sync-type saved))
+        url-now (present (:remote-sync-url saved))
+        url-new (if (contains? body :remote-sync-url) (present (:remote-sync-url body)) url-now)]
+    (boolean
+     (and (= :read-write type)
+          current
+          url-new
+          ;; another repository has no base on this instance, so its branch is a first setup
+          (= url-new url-now)
+          (contains? body :remote-sync-branch)
+          (not (contains? env :remote-sync-branch))
+          (not= current (:remote-sync-branch body))))))
 
 (defn- check-connection!
   "Checks `connection` of [[save-plan]] with one fresh remote call, and returns the writes that it adds: the default
@@ -198,11 +213,14 @@
   has a connection to check, one fresh remote call checks it first: the URL rule, the access, a read-only branch that
   must exist, and the default branch when the branch is blank. Returns the writes.
 
-  Throws ex-info with `:status-code` 400, and changes nothing, while a task runs (then it calls no remote), and when the
-  check fails (with the message for the person)."
+  Throws ex-info with `:status-code` 400, and changes nothing, while a task runs and for a change of the branch that
+  [[branch-change-refused?]] refuses (then it calls no remote), and when the check fails (with the message for the
+  person)."
   [body user-id]
   (when (tasks/live-task)
     (refuse! (tru "Library branching task in progress")))
+  (when (branch-change-refused? body (saved-values) (env-keys))
+    (refuse! (tru "The branch of a read-write instance changes only with a branch switch, which keeps the local changes.")))
   (let [{:keys [writes check default-branch?]} (save-plan body (saved-values) (env-keys))
         writes (cond-> writes
                  check (merge (check-connection! check default-branch?)))]
