@@ -64,6 +64,39 @@
         :when               (not (closed? s (second ref)))]
     {:rule :refs-closed :id id :ref ref}))
 
+(defn- unique-key-findings
+  [s unique-keys]
+  (let [holders (reduce (fn [acc [id {:keys [kind] :as item}]]
+                          (if-some [k (some->> (get unique-keys kind) (get-in item))]
+                            (update acc [kind k] (fnil conj []) id)
+                            acc))
+                        {}
+                        (sorted-items s))]
+    (for [[[kind k] ids] (sort-by (comp first val) snapshot/compare-identities holders)
+          :when (next ids)]
+      {:rule :unique-key :kind kind :key k :ids (set ids)})))
+
+(defn- namespace-findings
+  [s]
+  (for [[id {:keys [kind place attrs]}] (sorted-items s)
+        :let  [container (get s place)]
+        :when (and (= :collection kind (:kind container))
+                   (not= (:namespace attrs) (:namespace (:attrs container))))]
+    {:rule :namespace :id id :place place}))
+
+(defn- ref-kind-findings
+  [s ref-kinds]
+  (for [[id {:keys [kind refs]}] (sorted-items s)
+        :let                     [roles (get ref-kinds kind)]
+        :when                    roles
+        [role target :as ref]    (sort-by str refs)
+        :let                     [allowed (get roles role)]
+        :when                    (and allowed
+                                      (or (env-target? target)
+                                          (and (contains? s target)
+                                               (not (contains? allowed (:kind (get s target)))))))]
+    {:rule :ref-kind :id id :ref ref}))
+
 (defn- root-findings
   [s roots]
   (when roots
@@ -79,15 +112,27 @@
   - `{:rule :acyclic :ids #{i ...}}`: the items of one containment cycle;
   - `{:rule :kind-fits :id i :place p}`: the kind of container `p` cannot contain the kind of `i`;
   - `{:rule :refs-closed :id i :ref [role target]}`: `target` is neither an item of `s` nor `[:env natural-key]`;
+  - `{:rule :unique-key :kind k :key v :ids #{i ...}}`: the items of kind `k` whose unique key is `v`, two or more;
+  - `{:rule :namespace :id i :place p}`: collection `i` is in collection `p`, and the two `:namespace` attributes
+    differ (absent is one value);
+  - `{:rule :ref-kind :id i :ref [role target]}`: `target` is an environment object or an item of `s` whose kind
+    `:ref-kinds` does not allow for `role` from the kind of `i`;
   - `{:rule :root :id i}`: item `i` is at the root level and is not one of `:roots`.
 
-  `opts`: `:roots`, the set of identities that may be at the root level (no check when absent); `:may-contain`,
-  `{kind #{kind}}` (default [[snapshot/may-contain]])."
+  `opts`, each with a default: `:roots`, the set of identities that may be at the root level (no check when absent);
+  `:may-contain`, `{kind #{kind}}` ([[snapshot/may-contain]]); `:unique-keys`, `{kind path}`, the path of a key in an
+  item ([[snapshot/unique-keys]]); `:ref-kinds`, `{kind {role #{kind}}}` ([[snapshot/ref-kinds]]). These tables can
+  name kinds that are not in [[snapshot/kinds]]: validate reads only the kind, place, references, `:namespace` and
+  unique key of an item."
   ([s]
    (validate s {}))
-  ([s {:keys [roots may-contain] :or {may-contain snapshot/may-contain}}]
+  ([s {:keys [roots may-contain unique-keys ref-kinds]
+       :or   {may-contain snapshot/may-contain unique-keys snapshot/unique-keys ref-kinds snapshot/ref-kinds}}]
    (vec (concat (place-findings s)
                 (cycle-findings s)
                 (kind-findings s may-contain)
                 (ref-findings s)
+                (unique-key-findings s unique-keys)
+                (namespace-findings s)
+                (ref-kind-findings s ref-kinds)
                 (root-findings s roots)))))

@@ -113,14 +113,24 @@
 
 (defn- check-base-equal!
   [l b changed]
-  (when-let [ids (not-empty (filterv #(not= (get l %) (get b %)) changed))]
+  (when-let [ids (not-empty (filterv (fn [id] (not= (get l id) (get b id))) changed))]
     (throw (ex-info (str "The target snapshot changes items that have a local change: " (pr-str ids))
                     {:ids ids}))))
 
+(defn- check-system-kept!
+  [system removed]
+  (when-let [ids (not-empty (filterv system removed))]
+    (throw (ex-info (str "The target snapshot removes system items: " (pr-str ids))
+                    {:system-ids ids}))))
+
 (defn plan
-  "The steps that turn the local snapshot `l` into the target snapshot `m`, given the base snapshot `b`. `m` must not
-  change an item whose content in `l` differs from `b` (a merge result of `l` never does); else this throws an
-  ex-info with `:ids`. `m` must be well formed.
+  "The steps that turn the local snapshot `l` into the target snapshot `m`, given the base snapshot `b`. `m` must be
+  well formed, and:
+  - `m` must not change an item whose content in `l` differs from `b` (a merge result of `l` never does); else this
+    throws an ex-info with `:ids`. A value of `b` can be `:unknown`, which equals no content, so an item with an
+    unknown base that `m` changes is such an item, and no step has `:pre :unknown`;
+  - `m` must hold each system item of `l` (`opts` `:system`, a set of identities; default [[snapshot/system-ids]]);
+    else this throws an ex-info with `:system-ids`, the identities of those that it lacks.
 
   Steps, in this order:
   - writes `{:id i :write m(i) :pre b(i)}`: a container and a reference target before the items that use them. In a
@@ -131,10 +141,14 @@
 
   Of the steps that may come next, the step of the least identity comes first. Each `:pre` is the content that the
   item must have when the step runs (nil: no item)."
-  [l m b]
-  (let [changed (sort snapshot/compare-identities
-                      (filter #(not= (get l %) (get m %)) (set/union (set (keys l)) (set (keys m)))))]
-    (check-base-equal! l b changed)
-    (let [[writes links] (write-steps m b (filter #(contains? m %) changed))
-          trashes        (trash-steps l b (remove #(contains? m %) changed))]
-      (vec (concat writes links trashes)))))
+  ([l m b]
+   (plan l m b {}))
+  ([l m b {:keys [system] :or {system snapshot/system-ids}}]
+   (let [changed (sort snapshot/compare-identities
+                       (filter #(not= (get l %) (get m %)) (set/union (set (keys l)) (set (keys m)))))
+         removed (remove #(contains? m %) changed)]
+     (check-base-equal! l b changed)
+     (check-system-kept! system removed)
+     (let [[writes links] (write-steps m b (filter #(contains? m %) changed))
+           trashes        (trash-steps l b removed)]
+       (vec (concat writes links trashes))))))

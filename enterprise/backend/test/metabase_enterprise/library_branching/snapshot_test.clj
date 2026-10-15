@@ -127,7 +127,8 @@
       (is (some (complement lb.tu/acyclic?) ss) "a containment cycle")
       (is (some (complement lb.tu/places-inside?) ss) "a place outside the snapshot")
       (is (some (complement lb.tu/refs-closed?) ss) "a dangling reference")
-      (is (some (complement lb.tu/kinds-fit?) ss) "a kind that its container cannot contain"))))
+      (is (some (complement lb.tu/kinds-fit?) ss) "a kind that its container cannot contain")
+      (is (some (complement lb.tu/unique-keys?) ss) "two snippets with one name"))))
 
 (deftest ^:parallel well-formed-snapshot-gen-coverage-test
   (testing "the well-formed generator gives the structures that the format and the engine must handle"
