@@ -278,19 +278,31 @@
             oauth-info   "oauth"
             mcp-ui-info  "mcp-ui")))
 
-(defn- merge-current-user-info
+(defn- bearer-only-credentials
+  "The credential a request on a bearer-only path authenticates with: its OAuth bearer token, and nothing else."
+  [{:keys [oauth-bearer]} request]
+  {:oauth-info (current-user-info-for-oauth-token oauth-bearer request)})
+
+(defn- credentials
+  "The first credential on `request` that authenticates: session, then API key, then OAuth bearer token, then MCP UI
+  credential."
   [{:keys [oauth-bearer mcp-ui-credentials]}
-   {:keys [metabase-session-key anti-csrf-token uri], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
-  (let [bearer-only? (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
-        session-info (when-not bearer-only?
-                       (current-user-info-for-session metabase-session-key anti-csrf-token))
-        api-key-info (when-not (or bearer-only? session-info)
-                       (current-user-info-for-api-key x-api-key))
+   {:keys [metabase-session-key anti-csrf-token], {:strs [x-api-key]} :headers, :as request}]
+  (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
+        api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
         ;; Bearer and MCP UI credentials are consulted only when no normal session/API key authenticated.
         oauth-info   (when-not (or session-info api-key-info)
                        (current-user-info-for-oauth-token oauth-bearer request))
-        mcp-ui-info  (when-not (or bearer-only? session-info api-key-info oauth-info)
-                       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))
+        mcp-ui-info  (when-not (or session-info api-key-info oauth-info)
+                       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))]
+    {:session-info session-info, :api-key-info api-key-info, :oauth-info oauth-info, :mcp-ui-info mcp-ui-info}))
+
+(defn- merge-current-user-info
+  [{:keys [oauth-bearer] :as options} {:keys [uri], {:strs [x-metabase-locale]} :headers, :as request}]
+  (let [{:keys [session-info api-key-info oauth-info mcp-ui-info]}
+        (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
+          (bearer-only-credentials options request)
+          (credentials options request))
         embedding-route (analytics/get-route)
         auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info embedding-route)]
     (merge
