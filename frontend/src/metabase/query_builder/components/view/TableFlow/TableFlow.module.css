@@ -1,0 +1,94 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+}
+
+.card {
+  flex-shrink: 0;
+  background-color: var(--mb-color-background_page-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-md);
+}
+
+.searchCard {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+}
+
+.searchInput {
+  flex: 1;
+}
+
+.tableCard {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 20rem;
+  overflow: hidden;
+}
+
+.galleryStrip {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--mantine-spacing-md);
+  overflow-x: auto;
+  padding-bottom: var(--mantine-spacing-xs);
+}
+
+.galleryCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 15rem;
+  height: 11rem;
+  padding: var(--mantine-spacing-sm);
+  gap: var(--mantine-spacing-xs);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+
+  &:hover {
+    box-shadow: var(--mantine-shadow-sm);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 2px;
+  }
+}
+
+.galleryCardSelected {
+  border-color: var(--mb-color-core-brand);
+  box-shadow: 0 0 0 1px var(--mb-color-core-brand);
+}
+
+.chartArea {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Thumbnails are selection targets, so the chart beneath must not receive pointer events. */
+.thumbnailChart {
+  pointer-events: none;
+
+  & :global(.CardVisualization) {
+    padding: 0;
+  }
+}
+
+.detailChartCard {
+  display: flex;
+  flex-direction: column;
+  height: 25rem;
+  padding: var(--mantine-spacing-md);
+  gap: var(--mantine-spacing-sm);
+}

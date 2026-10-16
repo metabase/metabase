@@ -1,5 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
+import { useMemo, useState } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
@@ -8,7 +9,10 @@ import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPro
 import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
 import { Mode } from "metabase/querying/click-actions/Mode";
 import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
-import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
+import {
+  QueryVisualization,
+  type QueryVisualizationProps,
+} from "metabase/querying/components/QueryVisualization";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
@@ -27,6 +31,8 @@ import type {
 import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { ViewFooter } from "../../ViewFooter";
+import { TableFlow } from "../../TableFlow/TableFlow";
+import { searchRows } from "../../TableFlow/utils";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
@@ -37,6 +43,8 @@ const clickActionMode = new Mode(getQueryMode, {
 
 interface ViewMainContainerProps {
   question: Question;
+  result?: QueryVisualizationProps["result"];
+  rawSeries?: QueryVisualizationProps["rawSeries"];
   query: NativeQuery;
 
   nativeEditorSelectedText?: string;
@@ -103,9 +111,34 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     setParameterValue,
     isLiveResizable,
     updateQuestion,
+    result,
+    rawSeries,
   } = props;
 
-  const visualizationResultProps = useVisualizationResultQBProps();
+  const { onZoomRow, ...visualizationResultProps } =
+    useVisualizationResultQBProps();
+  const [searchText, setSearchText] = useState("");
+  const searchedResultProps = useMemo(() => {
+    const rowSearch = result?.data
+      ? searchRows(result.data.rows, searchText)
+      : null;
+    if (!rowSearch) {
+      return { result, rawSeries, onZoomRow };
+    }
+    return {
+      result: result && {
+        ...result,
+        data: { ...result.data, rows: rowSearch.rows },
+      },
+      rawSeries: rawSeries?.map((series) => ({
+        ...series,
+        data: { ...series.data, rows: rowSearch.rows },
+      })),
+      // map back to the unfiltered row so object detail opens the right record
+      onZoomRow: (rowIndex: number) =>
+        onZoomRow(rowSearch.sourceIndexes[rowIndex] ?? rowIndex),
+    };
+  }, [result, rawSeries, onZoomRow, searchText]);
 
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
@@ -115,10 +148,29 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     return;
   }
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
   const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;
+  const sourceId = isNative ? null : Lib.sourceTableOrCardId(query);
+
+  const visualization = (
+    <QueryVisualization
+      {...props}
+      {...visualizationResultProps}
+      {...searchedResultProps}
+      noHeader
+      className={CS.spread}
+      mode={clickActionMode}
+      hasColumnReordering
+      noResultsAction={
+        !isDirty && <HasResultsAlertPrompt question={question} />
+      }
+      errorAction={<FixSqlQueryButton />}
+      onUpdateQuestion={updateQuestion}
+    />
+  );
 
   return (
     <Box
@@ -141,25 +193,29 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         />
       )}
 
-      <DebouncedFrame
-        className={ViewMainContainerS.StyledDebouncedFrame}
-        enabled={!isLiveResizable}
-        resetKey={props.isRunning}
-      >
-        <QueryVisualization
-          {...props}
-          {...visualizationResultProps}
-          noHeader
-          className={CS.spread}
-          mode={clickActionMode}
-          hasColumnReordering
-          noResultsAction={
-            !isDirty && <HasResultsAlertPrompt question={question} />
-          }
-          errorAction={<FixSqlQueryButton />}
-          onUpdateQuestion={updateQuestion}
-        />
-      </DebouncedFrame>
+      {isNative ? (
+        <DebouncedFrame
+          className={ViewMainContainerS.StyledDebouncedFrame}
+          enabled={!isLiveResizable}
+          resetKey={props.isRunning}
+        >
+          {visualization}
+        </DebouncedFrame>
+      ) : (
+        <TableFlow
+          tableId={typeof sourceId === "number" ? sourceId : null}
+          searchText={searchText}
+          onSearchTextChange={setSearchText}
+        >
+          <DebouncedFrame
+            className={CS.spread}
+            enabled={!isLiveResizable}
+            resetKey={props.isRunning}
+          >
+            {visualization}
+          </DebouncedFrame>
+        </TableFlow>
+      )}
       <ObjectDetailSidesheet />
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />

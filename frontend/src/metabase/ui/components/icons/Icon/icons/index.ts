@@ -137,6 +137,7 @@ import history_component from "./history.svg?component";
 import home_component from "./home.svg?component";
 import horizontal_bar_component from "./horizontal_bar.svg?component";
 import hourglass_component from "./hourglass.svg?component";
+import image_component from "./image.svg?component";
 import index_component from "./index.svg?component";
 import info_component from "./info.svg?component";
 import info_outline_component from "./info_outline.svg?component";
@@ -440,6 +441,7 @@ export const Icons: Record<IconName, React.VFC> = {
   home: home_component,
   horizontal_bar: horizontal_bar_component,
   hourglass: hourglass_component,
+  image: image_component,
   info: info_component,
   info_outline: info_outline_component,
   insight: insight_component,

@@ -136,6 +136,7 @@ export type IconName =
   | "home"
   | "horizontal_bar"
   | "hourglass"
+  | "image"
   | "info"
   | "info_outline"
   | "insight"
