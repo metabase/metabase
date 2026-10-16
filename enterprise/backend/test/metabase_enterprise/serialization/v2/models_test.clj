@@ -8,12 +8,20 @@
    [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [toucan2.core :as t2]))
 
 (comment
   metabase-enterprise.impersonation.models/keep-me)
+
+(use-fixtures :once
+  (fixtures/initialize :db)
+  (fn [thunk]
+    (doseq [model (keys models.resolution/model->namespace)]
+      (t2/resolve-model model))
+    (thunk)))
 
 (defn- parse-default-value
   "Parse a default value string into a Clojure value.
@@ -37,6 +45,20 @@
                                       serdes.models/excluded-models))]
         (is (= (set known-models)
                (set (map name (keys models.resolution/model->namespace)))))))))
+
+(deftest ^:parallel timestamps-are-skipped-test
+  (testing "Serialized models skip the created_at and updated_at their timestamp hooks set, so an entity serializes the
+           same way on every instance"
+    (doseq [m      (-> (methods serdes/make-spec) (dissoc :default) keys)
+            :let   [model  (keyword "model" m)
+                    skip   (set (:skip (serdes/make-spec m nil)))
+                    hooked (cond-> #{}
+                             (isa? model :hook/timestamped?)            (conj :created_at :updated_at)
+                             (isa? model :hook/created-at-timestamped?) (conj :created_at)
+                             (isa? model :hook/updated-at-timestamped?) (conj :updated_at))]
+            column hooked]
+      (testing (format "%s.%s" m (name column))
+        (is (contains? skip column))))))
 
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db!

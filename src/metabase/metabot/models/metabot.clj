@@ -52,8 +52,7 @@
 
 (defmethod serdes/make-spec "Metabot" [_model-name opts]
   {:copy      [:name :description :entity_id :use_verified_content]
-   :transform {:created_at    (serdes/date)
-               :updated_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
+   :skip [:created_at :updated_at]
+   :transform {:collection_id (serdes/fk :model/Collection)
                :prompts       (serdes/nested :model/MetabotPrompt :metabot_id (merge {:sort-by (juxt :prompt :created_at)} opts))}
    :defaults  {:use_verified_content false}})

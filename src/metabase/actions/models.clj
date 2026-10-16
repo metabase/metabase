@@ -637,9 +637,8 @@
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
    :skip      [;; always re-derived from public_uuid on import
-               :public_uuid_prefix]
-   :transform {:created_at             (serdes/date)
-               :type                   (serdes/kw)
+               :public_uuid_prefix :created_at :updated_at]
+   :transform {:type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :collection_id          (serdes/fk :model/Collection)
