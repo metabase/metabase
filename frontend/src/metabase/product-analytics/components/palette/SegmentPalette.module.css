@@ -3,6 +3,7 @@
   height: 100%;
   background-color: var(--mb-color-background-secondary);
   border-right: 1px solid var(--mb-color-border);
+  transition: border-color 120ms ease;
   box-shadow: inset -8px 0 10px -10px var(--mb-color-shadow);
 }
 
@@ -11,8 +12,9 @@
   z-index: 1;
 }
 
-.handle:hover {
-  background-color: var(--mb-color-border-brand);
+/* Hovering the grab strip only darkens the panel's edge. */
+.root:has(.handle:hover) {
+  border-right-color: var(--mb-color-border-strong);
 }
 
 .section {
