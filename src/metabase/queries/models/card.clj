@@ -136,7 +136,8 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
@@ -1022,25 +1023,6 @@
                              (str/join ", " (sort outside)))
                         {:status-code 400}))))))
 
-(defn data-app-card-reader
-  "The ID of a card in the data app's collection `collection-id` that reads the card with `card-id`, if one does."
-  [collection-id card-id]
-  (when (and (some? collection-id)
-             (perms/data-app-collection? collection-id))
-    (some (fn [other]
-            (when (some #(= {:model "Card" :id card-id} (select-keys (last %) [:model :id]))
-                        (serdes/serialization-dependencies "Card" other))
-              (:id other)))
-          (queries.db/other-cards-in-collection collection-id card-id))))
-
-(defn- check-data-app-card-stays
-  "Throws when the card with `id` leaves the data app's collection `from` while another card there reads it."
-  [id from]
-  ;; the next export would write the reader into a file every pull refuses
-  (when-let [reader (data-app-card-reader from id)]
-    (throw (ex-info (tru "Card {0} in the data app''s collection reads this card, so it can''t leave the collection." reader)
-                    {:status-code 400}))))
-
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-visibility-permissions! card *copy-source-card*)
@@ -1129,8 +1111,6 @@
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
     (check-allowed-content card changes)
-    (when (contains? changes :collection_id)
-      (check-data-app-card-stays (:id card) (:collection_id original)))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)

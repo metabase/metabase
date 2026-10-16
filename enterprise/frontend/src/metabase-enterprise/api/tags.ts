@@ -10,6 +10,7 @@ import {
   provideUserTags,
 } from "metabase/api/tags";
 import {
+  type ActionDependencyNode,
   type CardDependencyNode,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
@@ -193,6 +194,18 @@ function provideMeasureDependencyNodeTags(
   ];
 }
 
+function provideActionDependencyNodeTags(
+  node: ActionDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("action", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+  ];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -215,6 +228,8 @@ export function provideDependencyNodeTags(
       return provideSegmentDependencyNodeTags(node);
     case "measure":
       return provideMeasureDependencyNodeTags(node);
+    case "action":
+      return provideActionDependencyNodeTags(node);
   }
 }
 

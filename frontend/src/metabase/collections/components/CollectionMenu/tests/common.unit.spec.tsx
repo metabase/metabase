@@ -43,6 +43,18 @@ describe("CollectionMenu", () => {
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
+  it("should not be able to edit permissions for a data app's collection", () => {
+    setup({
+      collection: createMockCollection({
+        namespace: "data-apps",
+        can_write: false,
+      }),
+      isAdmin: true,
+    });
+
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
   it("should not be able to edit permissions for personal subcollections", async () => {
     setup({
       collection: createMockCollection({
