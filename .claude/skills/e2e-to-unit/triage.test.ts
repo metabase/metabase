@@ -160,6 +160,12 @@ describe("rules beyond the pilot", () => {
     expect(triage(body(`{ body: [] }`)).bucket).toBe("A");
   });
 
+  it("puts a visit to a page that runs queries in C?", () => {
+    expect(triage("cy.visit(`/dashboard/${id}`);").bucket).toBe("C?");
+    expect(triage(`H.visitDashboardAndCreateTab({ dashboardId: 1 });`).bucket).toBe("C?");
+    expect(triage("cy.visit(`/collection/${id}`);").bucket).toBe("B");
+  });
+
   it("follows local functions", () => {
     const header = `function save() { cy.button("Save").click(); }`;
     expect(triage(`cy.visit("/"); save();`, header).bucket).toBe("C?");

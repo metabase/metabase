@@ -510,6 +510,9 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
     if (suggestion) {
       events.push({ kind: "anti", what: `raw cy.visit, use ${suggestion}` });
     }
+    if (root === "cy" && method === "visit" && /^\/?(model|question|dashboard|metric)\//.test(urlText)) {
+      events.push({ kind: "query", name: `cy.visit ${urlText.split(/[?#]/)[0]}` });
+    }
   }
   // Inline edits often save when the input loses focus.
   if (method === "blur") {
@@ -611,7 +614,11 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
   if (helper && BACKEND_HELPERS.has(helper)) {
     events.push({ kind: "backend", name: `H.${helper}` });
   }
-  if (helper && QUERY_HELPERS.has(helper)) {
+  if (
+    helper &&
+    (QUERY_HELPERS.has(helper) ||
+      (root === "H" && /^visit(Dashboard|Question|Model|Metric)./.test(helper)))
+  ) {
     events.push({ kind: "query", name: `H.${helper}` });
   }
   if (helper && QUERY_SEED_HELPERS.has(helper)) {
