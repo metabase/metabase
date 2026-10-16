@@ -20,6 +20,8 @@ export interface ChartBoundsCoords {
 export type TicksRotation = "horizontal" | "vertical";
 
 export interface ChartLayout {
+  negativeDataLabelsWidth?: number;
+  negativeDataLabelsInset?: number;
   padding: Padding;
   ticksDimensions: TicksDimensions;
   bounds: ChartBoundsCoords;
