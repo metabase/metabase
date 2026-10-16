@@ -188,7 +188,10 @@ export const updateRemoteQuestion = (
     // Unjustified type cast. FIXME
     const questionFilePath = (
       syncedCollectionFiles as unknown as string[]
-    ).find((file) => file.includes("remote_sync_test_question.yaml"));
+    ).find((file) =>
+      // the kind layout's name, or the name of a repo written before it
+      /remote_sync_test_question(\.question)?\.yaml$/.test(file),
+    );
 
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 

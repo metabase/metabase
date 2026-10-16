@@ -1219,7 +1219,7 @@ describe("Remote Sync", () => {
           const glossaryFile = (files as unknown as string[]).find((file) =>
             file.includes("glossary/"),
           );
-          expect(glossaryFile).to.match(/glossary\/arr\.yaml$/);
+          expect(glossaryFile).to.match(/glossary\/arr\.term\.yaml$/);
 
           cy.readFile(`${H.LOCAL_GIT_PATH}/${glossaryFile}`).then((str) => {
             // Unjustified type cast. FIXME

@@ -96,7 +96,7 @@ describe(
           [{ sourceActionId: source.id, entityId: copy }],
           COLLECTION,
         ).then(([file]) => {
-          expect(file.file).to.eq("add_team.yaml");
+          expect(file.file).to.eq("add_team.action.yaml");
 
           const entity = yaml.load(file.yaml);
           expect(entity).to.deep.include({
