@@ -4,6 +4,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.schema]
    [metabase.metabot.db :as metabot.db]
@@ -27,6 +28,65 @@
 
 ;;; Query/Chart URL Generation
 
+;;; Orphaned aggregation refs
+;;;
+;;; An MBQL 5 aggregation is identified by the `:lib/uuid` in its options map; an
+;;; `[:aggregation opts "<uuid>"]` ref in the same stage points at it by that uuid. The frontend's viewing context
+;;; (`user_is_viewing` / `chart_configs`) sends queries back with their `:lib/*` keys stripped, which breaks that
+;;; binding on one side only: the aggregation's uuid is a key and goes, the ref's copy is a value in slot 2 and stays.
+;;; Normalizing then mints a fresh uuid for the aggregation, leaving the ref pointing at nothing, and the query fails
+;;; `->legacy-MBQL` conversion ("Invalid :aggregation reference: no aggregation with uuid ...").
+;;;
+;;; The stages are walked by hand rather than with `lib.walk/walk-stages`, which validates its input against
+;;; `::lib.schema/query` and so rejects exactly the queries being repaired here.
+
+(defn- aggregation-ref?
+  "True if `x` is an `[:aggregation {opts} \"<uuid>\"]` reference clause. Callers normalize first, so clause heads are
+  keywords."
+  [x]
+  (and (vector? x)
+       (= 3 (count x))
+       (= :aggregation (nth x 0))
+       (map? (nth x 1))
+       (string? (nth x 2))))
+
+(defn- rebind-orphaned-refs
+  "Point `stage`'s orphaned aggregation refs back at its only aggregation. Expects `:joins` already removed: a join's
+  refs resolve against the join's aggregations, not this stage's.
+
+  With several aggregations nothing in the query records which one a ref named, so the stage is returned unchanged
+  rather than guessed at: a wrong rebind would silently change what the query computes. A stage whose aggregation has
+  no `:lib/uuid` is likewise returned unchanged."
+  [{aggs :aggregation :as stage}]
+  (let [uuids   (into #{} (keep #(get-in % [1 :lib/uuid])) aggs)
+        orphan? (every-pred aggregation-ref? #(not (uuids (nth % 2))))
+        target  (when (= 1 (count aggs))
+                  (get-in aggs [0 1 :lib/uuid]))]
+    (if (and target (some orphan? (tree-seq coll? seq stage)))
+      (do
+        (log/debug "Rebinding orphaned MBQL 5 aggregation refs to the stage's only aggregation")
+        (walk/postwalk #(cond-> % (orphan? %) (assoc 2 target)) stage))
+      stage)))
+
+(declare ^:private repair-orphaned-aggregation-refs)
+
+(defn- repair-stage
+  "Repair `stage`'s own aggregation refs, then recurse into its joins."
+  [stage]
+  ;; A join's stages carry their own aggregations, so they are repaired separately: this stage's uuids must not reach a
+  ;; join's refs.
+  (let [joins (some->> (:joins stage) (mapv repair-orphaned-aggregation-refs))]
+    (cond-> (rebind-orphaned-refs (dissoc stage :joins))
+      joins (assoc :joins joins))))
+
+(defn- repair-orphaned-aggregation-refs
+  "Rebind `[:aggregation opts \"<uuid>\"]` refs in normalized MBQL 5 `query` (or a join) that name a uuid no
+  aggregation in their stage carries. See the comment block above. Queries with no orphaned refs, and stages whose
+  orphaned refs are ambiguous, are returned unchanged."
+  [query]
+  (cond-> query
+    (seq (:stages query)) (update :stages (partial mapv repair-stage))))
+
 (defn ->legacy-mbql
   "Normalize a MBQL 5 query to legacy MBQL. Frontend /question# URLs require legacy
   MBQL format; non-MBQL 5 values pass through unchanged. A MBQL 5 query that fails
@@ -43,12 +103,15 @@
            ;; "Stage 0 does not exist" (BOT-1604 follow-up).
            (or (:lib/type query) (:stages query)))
     (try
-      (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+      (-> (lib/normalize :metabase.lib.schema/query query)
+          ;; Normalizing a `:lib/*`-stripped query orphans its aggregation refs. Rebind before
+          ;; converting: otherwise conversion throws, the catch below emits raw MBQL 5, and the
+          ;; frontend posts that to `/api/dataset` for an "Invalid :aggregation reference" 400.
+          repair-orphaned-aggregation-refs
+          lib/->legacy-MBQL)
       (catch Exception e
-        ;; Normalizing a `:lib/*`-stripped query can mint fresh `:lib/uuid`s that don't
-        ;; match positional aggregation/expression refs embedded elsewhere in the query
-        ;; (e.g. an order-by on the query's own aggregation), which fails conversion.
-        ;; Fall back to the raw query rather than failing the whole agent turn over a link.
+        ;; Refs the repair can't disambiguate still fail here. Fall back to the raw query rather
+        ;; than failing the whole agent turn over a link.
         (log/warn e "Failed to convert MBQL 5 query to legacy MBQL for link resolution")
         query))
     query))
