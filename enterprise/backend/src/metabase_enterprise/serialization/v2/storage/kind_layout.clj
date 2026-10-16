@@ -161,9 +161,10 @@
 ;;; -------------------------------------------------- Names ---------------------------------------------------------
 
 (defn- slug
-  "The file or folder name of the label `s`."
+  "The file or folder name of the label `s`: today's rule, with `.` also turned into `_`, so that no name ends in
+  `.<kind>` and a collection's folder cannot be taken for an item's `<name>.<kind>/` folder."
   [s]
-  (or (storage.util/slugify-name s) ""))
+  (str/replace (or (storage.util/slugify-name s) "") "." "_"))
 
 (defn- rows-of
   "The `columns` (with `:entity_id`, `:name` and `:created_at`) of the instances of `model` that match `where`."

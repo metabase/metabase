@@ -212,6 +212,24 @@
         (t2/update! :model/Card older {:archived true})
         (is (= "collections/ops/orders.question.yaml" (path-of (ctx!) newer)))))))
 
+(deftest dots-in-names-become-underscores-test
+  (testing "a name cannot end in .<kind>, so a collection named like a contained-items folder does not clash with it"
+    (mt/with-empty-h2-app-db!
+      (let [ops     (ts/create! :model/Collection :name "Ops" :location "/")
+            daily   (ts/create! :model/Dashboard :name "Daily" :collection_id (:id ops))
+            clash   (ts/create! :model/Collection :name "daily.dashboard" :location (str "/" (:id ops) "/"))
+            dotted  (ts/create! :model/Card :name "v1.2 totals.question" :collection_id (:id ops))
+            ctx     (storage.util/storage-context kind-layout/kind-layout)
+            path-of (fn [model instance]
+                      (storage.util/entity-file-path ctx (serdes/extract-one model {} instance)))]
+        (is (= "collections/ops/daily.dashboard.yaml"
+               (storage.util/entity-file-path ctx {:serdes/meta   [{:model "Dashboard" :id (:entity_id daily)}]
+                                                   :entity_id     (:entity_id daily)
+                                                   :name          "Daily"
+                                                   :collection_id (:entity_id ops)})))
+        (is (= "collections/ops/daily_dashboard/_collection.yaml" (path-of "Collection" clash)))
+        (is (= "collections/ops/v1_2_totals_question.question.yaml" (path-of "Card" dotted)))))))
+
 (deftest kind-layout-is-not-the-default-test
   (testing "a storage context without a layout, and plain serdes export, keep today's layout"
     (is (= storage.util/default-layout (:layout (storage.util/storage-context))))
