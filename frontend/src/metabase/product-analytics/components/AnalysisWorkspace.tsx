@@ -99,7 +99,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     stored,
     onChangeSettings,
   });
-  const supporting = useSupportingAnalyses({ spec, tableId, base, context });
+  const supporting = useSupportingAnalyses({
+    spec,
+    tableId,
+    base,
+    context,
+    query,
+  });
   const drillQueries = useDrillQueries({
     spec,
     compiledBase: query.compiledBase,

@@ -2,6 +2,7 @@ import type { SupportingAnalyses as SupportingAnalysesState } from "../../suppor
 
 import { FunnelPathsPanel } from "./FunnelPathsPanel";
 import { InsightsPanel } from "./InsightsPanel";
+import { RetentionCurvesPanel } from "./RetentionCurvesPanel";
 
 type SupportingAnalysesProps = {
   supporting: SupportingAnalysesState;
@@ -9,7 +10,10 @@ type SupportingAnalysesProps = {
 
 /** The panels below the primary chart, in the order they're read. */
 export const SupportingAnalyses = ({ supporting }: SupportingAnalysesProps) => {
-  const { funnel } = supporting;
+  const { funnel, cohorts } = supporting;
+  if (cohorts !== undefined) {
+    return <RetentionCurvesPanel cohorts={cohorts} />;
+  }
   if (funnel === undefined) {
     return null;
   }

@@ -3,17 +3,15 @@ import { noop } from "underscore";
 
 import { Alert, Box, Group, Loader, Select, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { ClickActionsMode } from "metabase/visualizations/types";
 
 import type { FunnelPaths } from "../../funnel-paths/use-funnel-paths";
 import type { Step } from "../../spec/types";
 import { getFunnelStepLabel } from "../../sql/analyses/funnel";
 import type { FunnelPathsRange } from "../../sql/analyses/funnel-paths";
 
-import { SupportingPanel } from "./SupportingPanel";
+import { NO_CLICK_ACTIONS, SupportingPanel } from "./SupportingPanel";
 
 const CHART_HEIGHT_PX = 480;
-const NO_CLICK_ACTIONS: ClickActionsMode = { actionsForClick: () => [] };
 
 type FunnelPathsPanelProps = {
   steps: readonly Step[];

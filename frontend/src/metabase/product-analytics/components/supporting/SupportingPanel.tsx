@@ -2,6 +2,10 @@ import { type ReactNode, useEffect, useRef } from "react";
 
 import { Warnings } from "metabase/common/components/Warnings";
 import { Group, Paper, Stack, Title } from "metabase/ui";
+import type { ClickActionsMode } from "metabase/visualizations/types";
+
+/** For charts in a panel that have nothing to drill into. */
+export const NO_CLICK_ACTIONS: ClickActionsMode = { actionsForClick: () => [] };
 
 type SupportingPanelProps = {
   title: string;

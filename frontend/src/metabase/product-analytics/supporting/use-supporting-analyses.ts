@@ -1,10 +1,18 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
-import type { ConcreteTableId } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  SingleSeries,
+  UnsavedCard,
+} from "metabase-types/api";
 
 import type { AnalysisContext } from "../analyses/types";
 import type { BaseQueryInput } from "../base-query";
+import {
+  getRetentionCurvesData,
+  getRetentionCurvesSettings,
+} from "../cohorts/retention-curves";
 import type { InsightsFocus } from "../components/supporting/InsightsPanel";
 import {
   getFunnelPathsRange,
@@ -24,7 +32,9 @@ import {
   useFunnelInsights,
 } from "../insights/use-funnel-insights";
 import type { AnalysisSpec, FunnelSpec } from "../spec/types";
+import { periodOf } from "../sql/analyses/cohorts";
 import type { FunnelPathsRange } from "../sql/analyses/funnel-paths";
+import type { AnalysisQueryResult } from "../use-analysis-query";
 
 import { getShowInsightsAction, getShowPathsAction } from "./click-actions";
 
@@ -34,6 +44,8 @@ type UseSupportingAnalysesArgs = {
   /** Must keep its identity while unchanged. */
   base: BaseQueryInput;
   context: AnalysisContext;
+  /** The primary query, for supporting charts that re-read its result. */
+  query: AnalysisQueryResult;
 };
 
 /** The paths through a funnel's steps, for a chosen range of them. */
@@ -58,9 +70,19 @@ export type FunnelSupport = {
   insights: FunnelInsightsSupport;
 };
 
+/** The retention curves below the cohort table, from the table's own result. */
+export type CohortsSupport = {
+  /** The line chart, once the cohort query's result is in. */
+  series: SingleSeries<UnsavedCard> | undefined;
+  isLoading: boolean;
+  error: string | undefined;
+};
+
 export type SupportingAnalyses = {
   /** Set while the analysis is a funnel. */
   funnel: FunnelSupport | undefined;
+  /** Set while the analysis is cohorts. */
+  cohorts: CohortsSupport | undefined;
   /** The chart click actions that lead to a supporting analysis. */
   getClickActions: (clicked: ClickObject) => ClickAction[];
 };
@@ -68,16 +90,37 @@ export type SupportingAnalyses = {
 /**
  * The supporting analyses below an analysis's primary chart, and the chart
  * click actions that bring one of them into view. Each kind of analysis
- * contributes its own; so far, a funnel shows the paths between its steps
- * and the insights into who converts.
+ * contributes its own: a funnel shows the paths between its steps and the
+ * insights into who converts, and cohorts show their retention curves.
  */
 export const useSupportingAnalyses = ({
   spec,
   tableId,
   base,
   context,
+  query,
 }: UseSupportingAnalysesArgs): SupportingAnalyses => {
   const isFunnel = spec?.kind === "funnel";
+  const isCohorts = spec?.kind === "cohorts";
+
+  const { dataset, datasetQuery } = query;
+  const cohortsSeries = useMemo((): SingleSeries<UnsavedCard> | undefined => {
+    if (
+      spec?.kind !== "cohorts" ||
+      dataset?.data === undefined ||
+      datasetQuery === undefined
+    ) {
+      return undefined;
+    }
+    return {
+      card: {
+        display: "line",
+        dataset_query: datasetQuery,
+        visualization_settings: getRetentionCurvesSettings(spec),
+      },
+      data: getRetentionCurvesData(dataset.data, periodOf(spec)),
+    };
+  }, [spec, dataset, datasetQuery]);
 
   const insights = useFunnelInsights({ spec, tableId, base, context });
   const [insightsFocus, setInsightsFocus] = useState<InsightsFocus>();
@@ -140,6 +183,13 @@ export const useSupportingAnalyses = ({
                 }
               : undefined,
           insights: { insights, focus: insightsFocus },
+        }
+      : undefined,
+    cohorts: isCohorts
+      ? {
+          series: cohortsSeries,
+          isLoading: query.isLoading,
+          error: query.error,
         }
       : undefined,
     getClickActions,
