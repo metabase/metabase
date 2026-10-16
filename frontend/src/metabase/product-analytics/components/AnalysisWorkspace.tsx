@@ -173,6 +173,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         bg="background-secondary"
       >
         <Stack flex={1} miw={0} h="100%" gap={0}>
+          {onKindChange !== undefined && (
+            <AnalysisTabs kind={kind} onChange={onKindChange} />
+          )}
           <Stack
             gap="md"
             pl="xxl"
@@ -182,9 +185,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             bg="background-primary"
             style={{ borderBottom: "1px solid var(--mb-color-border)" }}
           >
-            {onKindChange !== undefined && (
-              <AnalysisTabs kind={kind} onChange={onKindChange} />
-            )}
             <Title order={3} fw="normal">
               {title}
             </Title>
