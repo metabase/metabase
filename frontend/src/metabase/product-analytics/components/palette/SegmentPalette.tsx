@@ -191,14 +191,18 @@ const PaletteSection = ({
 }: PaletteSectionProps) => {
   const [sendToast] = useToast();
   const tableQuery = useTableQuery(table);
-  const { drafts, addDraft, removeDraft } = useSegmentDrafts(table?.id);
+  const { drafts, addDraft, updateDraft, removeDraft } = useSegmentDrafts(
+    table?.id,
+  );
   const { saved, drafted, isLoading } = usePaletteSegments(
     table?.id,
     source,
     drafts,
   );
   const [isDrafting, setIsDrafting] = useState(false);
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
+  const findDraft = (key: string) => drafts.find((d) => d.id === key);
   // An event dragged out of the setup panel lands here as a draft.
   const takesEvents = source === "event" && table !== undefined;
   const eventDrop = useEventDropTarget({
@@ -227,22 +231,53 @@ const PaletteSection = ({
           {t`Drop to draft a segment from it`}
         </Text>
       )}
-      {items.map((segment) => (
-        <PaletteSegmentItem
-          key={segment.key}
-          segment={segment}
-          onSelect={
-            onSelect !== undefined ? () => onSelect(segment) : undefined
+      {items.map((segment) => {
+        const editingDraft =
+          segment.status === "draft" && segment.key === editingDraftId
+            ? findDraft(segment.key)
+            : undefined;
+        if (editingDraft !== undefined && tableQuery !== undefined) {
+          return (
+            <EventDefinitionEditor
+              key={segment.key}
+              value={editingDraft}
+              tableQuery={tableQuery}
+              namePlaceholder={t`Name this draft`}
+              onCancel={() => setEditingDraftId(null)}
+              onSubmit={(event) => {
+                updateDraft(editingDraft.id, event);
+                setEditingDraftId(null);
+              }}
+            />
+          );
+        }
+        // A click on an event draft reopens it; people segments have their
+        // own click, so their drafts are edited from the menu.
+        const handleSelect = (() => {
+          if (onSelect !== undefined) {
+            return () => onSelect(segment);
           }
-          onSaveDraft={() => {
-            const draft = drafts.find((d) => d.id === segment.key);
-            if (draft !== undefined) {
-              setModal({ draft });
-            }
-          }}
-          onDiscardDraft={() => removeDraft(segment.key)}
-        />
-      ))}
+          if (segment.status === "draft") {
+            return () => setEditingDraftId(segment.key);
+          }
+          return undefined;
+        })();
+        return (
+          <PaletteSegmentItem
+            key={segment.key}
+            segment={segment}
+            onSelect={handleSelect}
+            onEditDraft={() => setEditingDraftId(segment.key)}
+            onSaveDraft={() => {
+              const draft = findDraft(segment.key);
+              if (draft !== undefined) {
+                setModal({ draft });
+              }
+            }}
+            onDiscardDraft={() => removeDraft(segment.key)}
+          />
+        );
+      })}
       {items.length === 0 && !isDrafting && !isLoading && (
         <Text c="text-tertiary">{emptyMessage}</Text>
       )}

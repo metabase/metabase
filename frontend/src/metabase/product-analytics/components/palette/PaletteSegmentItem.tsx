@@ -11,6 +11,7 @@ type PaletteSegmentItemProps = {
   segment: PaletteSegment;
   /** Makes a click use the segment, as a drop would. */
   onSelect?: () => void;
+  onEditDraft?: () => void;
   onSaveDraft?: () => void;
   onDiscardDraft?: () => void;
 };
@@ -19,6 +20,7 @@ type PaletteSegmentItemProps = {
 export const PaletteSegmentItem = ({
   segment,
   onSelect,
+  onEditDraft,
   onSaveDraft,
   onDiscardDraft,
 }: PaletteSegmentItemProps) => {
@@ -90,6 +92,12 @@ export const PaletteSegmentItem = ({
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<Icon name="pencil" />}
+              onClick={onEditDraft}
+            >
+              {t`Edit draft`}
+            </Menu.Item>
             <Menu.Item
               leftSection={<Icon name="bookmark" />}
               onClick={onSaveDraft}

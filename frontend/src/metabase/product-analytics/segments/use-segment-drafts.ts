@@ -75,10 +75,18 @@ export const useSegmentDrafts = (tableId: TableId | undefined) => {
     [update],
   );
 
+  const updateDraft = useCallback(
+    (id: string, changes: Omit<SegmentDraft, "id">) =>
+      update((current) =>
+        current.map((d) => (d.id === id ? { id, ...changes } : d)),
+      ),
+    [update],
+  );
+
   const removeDraft = useCallback(
     (id: string) => update((current) => current.filter((d) => d.id !== id)),
     [update],
   );
 
-  return { drafts, addDraft, removeDraft };
+  return { drafts, addDraft, updateDraft, removeDraft };
 };
