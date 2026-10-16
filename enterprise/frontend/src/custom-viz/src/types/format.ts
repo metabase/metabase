@@ -1,7 +1,7 @@
 import type { Column, RowValue } from "./data";
 
 export type FormatValueOptions = {
-  column?: Column;
+  column: Column;
   compact?: boolean;
   currency?: string;
   currency_style?: Intl.NumberFormatOptionsCurrencyDisplay;
@@ -22,5 +22,5 @@ export type FormatValueOptions = {
 
 export type FormatValue = (
   value: RowValue,
-  options?: FormatValueOptions,
+  options: FormatValueOptions,
 ) => string;

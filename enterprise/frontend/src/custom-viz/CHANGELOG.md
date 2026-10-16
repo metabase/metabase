@@ -2,6 +2,13 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
+## Unreleased
+
+### ⚠ BREAKING CHANGES
+
+- `formatValue` now requires options with a `column`. Metabase formats a value according to its column's type, so number options like `number_style` and `decimals` had no effect without one. Pass the column the value comes from, or the result of `settings.column(col)`: `formatValue(row[1], settings.column(cols[1]))` ([#84606](https://github.com/metabase/metabase/pull/84606)).
+- `ColumnVisualizationSettings` no longer includes `column`. `settings.column` is no longer optional, since Metabase always provides it, and is typed to return `FormatValueOptions`, which always includes the column ([#84606](https://github.com/metabase/metabase/pull/84606)).
+
 ## 2.0.0
 
 ### ⚠ BREAKING CHANGES

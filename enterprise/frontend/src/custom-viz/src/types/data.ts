@@ -107,4 +107,4 @@ export type Column = {
   settings?: ColumnVisualizationSettings;
 };
 
-export type ColumnVisualizationSettings = FormatValueOptions;
+export type ColumnVisualizationSettings = Omit<FormatValueOptions, "column">;
