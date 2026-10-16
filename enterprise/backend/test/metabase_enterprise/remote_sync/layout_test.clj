@@ -9,6 +9,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -136,3 +137,57 @@
         (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-a} {:status "update"})
         (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "edit again"))))
         (is (= "apply-changes-version" (written-version)))))))
+
+(def ^:private kind-layout-paths
+  "Where the kind layout puts each file a full export of [[with-kind-layout-content!]] writes today."
+  {"collections/main/bench.yaml"                "collections/bench/_collection.yaml"
+   "collections/main/bench/card_a.yaml"         "collections/bench/card_a.question.yaml"
+   "collections/main/bench/dash.yaml"           "collections/bench/dash.dashboard.yaml"
+   "collections/main/bench/dash/dq.yaml"        "collections/bench/dash.dashboard/dq.question.yaml"
+   "collections/main/bench/sub.yaml"            "collections/bench/sub/_collection.yaml"
+   "collections/transforms/staging.yaml"        "transforms/staging/_collection.yaml"
+   "collections/transforms/staging/dedupe.yaml" "transforms/staging/dedupe.transform.yaml"
+   "transforms/transform_tags/nightly.yaml"     "transform_tags/nightly.transform_tag.yaml"
+   "python_libraries/common.py.yaml"            "python_library/common.py.yaml"})
+
+(defn- with-kind-layout-content!
+  "Calls `f` with remote-synced content of each kind whose folder the kind layout changes."
+  [f]
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                       remote-sync-enabled    true
+                                       remote-sync-transforms true]
+      (mt/with-model-cleanup [:model/PythonLibrary :model/TransformTag :model/Transform :model/Card :model/Dashboard
+                              :model/Collection]
+        (mt/with-temp [:model/Collection {bench :id}   {:name "Bench" :is_remote_synced true :location "/"}
+                       :model/Collection _sub          {:name "Sub" :is_remote_synced true :location (str "/" bench "/")}
+                       :model/Card       _card         {:name "Card A" :collection_id bench}
+                       :model/Dashboard  {dash :id}    {:name "Dash" :collection_id bench}
+                       :model/Card       _dq           {:name "DQ" :collection_id bench :dashboard_id dash}
+                       :model/Collection {staging :id} {:name "Staging" :namespace collection/transforms-ns :location "/"}
+                       :model/Transform  _transform    {:name "Dedupe" :collection_id staging}
+                       :model/TransformTag _tag        {:name "Nightly"}]
+          (when-not (t2/exists? :model/PythonLibrary :path "common.py")
+            (t2/insert! :model/PythonLibrary {:path "common.py" :source "# shared"}))
+          (f))))))
+
+(defn- full-export-files!
+  "The files of a forced full export into an empty MockSource."
+  []
+  (let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
+    (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
+    (get @(:files-atom mock) "main")))
+
+(deftest import-reads-the-kind-layout-test
+  (testing "an export rewritten to the kind layout's paths loads to the same app-DB state"
+    (with-kind-layout-content!
+      (fn []
+        (let [before    (full-export-files!)
+              _         (is (= (set (keys kind-layout-paths)) (set (keys before)))
+                            "the export writes the files the test rewrites")
+              rewritten (update-keys before kind-layout-paths)
+              mock      (rs.test/create-mock-source :initial-files {"main" rewritten})
+              result    (impl/import! (source.p/snapshot mock) (new-task!) :force? true)]
+          (is (= :success (:status result)) (:message result))
+          (is (= before (full-export-files!))
+              "a new export of the loaded content writes the same files"))))))

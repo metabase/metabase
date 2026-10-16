@@ -1164,7 +1164,8 @@
   "Top-level repo directories whose content is disabled by the current settings."
   []
   (cond-> #{}
-    (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
+    (not (settings/remote-sync-transforms))    (into ["transforms" "transform_tags" "python-libraries" "python_libraries"
+                                                      "python_library"])
     (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
 (defn- stage-write

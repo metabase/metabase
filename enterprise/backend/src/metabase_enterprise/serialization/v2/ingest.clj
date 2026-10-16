@@ -6,6 +6,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.serialization.v2.storage.kind-layout :as kind-layout]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -101,15 +102,31 @@
                                           paths))
     entity))
 
-(def legal-top-level-paths
-  "Known top-level paths for directory with serialization output.
-  We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
+(def ^:private legacy-top-level-paths
+  "The top-level paths of the layout every export wrote before the kind layout. We support both \"python-libraries\"
+  and \"python_libraries\" for backwards compatibility."
   #{"actions" "channels" "collections" "custom_viz_plugins" "data_apps" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "osi_ai_context" "snippets" "transforms"})
 
+(defn- data-app-entity-file?
+  "Whether `path`, under `data_apps/`, names an entity file: an app's `data_app.yaml`, or a YAML file in the folder of
+  its resource collection, `data_apps/<slug>/resources/`."
+  [^String path]
+  (or (str/ends-with? path "/data_app.yaml")
+      (boolean (re-matches #"data_apps/[^/]+/resources/.+\.yaml" path))))
+
+(def legal-top-level-paths
+  "Known top-level paths for directory with serialization output: those of the layout every export wrote before the
+  kind layout, and those of the kind layout."
+  (into legacy-top-level-paths kind-layout/top-level-folders))
+
 (def shared-top-level-paths
-  "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
-  source code, to the name of the entity files in them."
-  {"data_apps" "data_app.yaml"})
+  "The [[legal-top-level-paths]] whose directories may also hold files serialization does not own, such as a data
+  app's source code, to a predicate of a `.yaml` file's path that says whether it is an entity file. The kind layout's
+  new folders are shared, so that a full export deletes only the files serialization owns in a folder a repository may
+  already use for something else."
+  (into {"data_apps" data-app-entity-file?}
+        (for [folder (remove legacy-top-level-paths kind-layout/top-level-folders)]
+          [folder (constantly true)])))
 
 (def replaced-top-level-paths
   "The [[legal-top-level-paths]] a full export may replace wholesale."
@@ -117,7 +134,7 @@
 
 (defn entity-file-path?
   "Whether the `/`-separated relative `path` names an entity YAML file: a `.yaml` file that isn't a dotfile under one
-  of the [[legal-top-level-paths]], with the entity file name of its directory when that is one of the
+  of the [[legal-top-level-paths]], which its folder's predicate accepts when that is one of the
   [[shared-top-level-paths]]."
   [^String path]
   (let [top       (first (str/split path #"/" 2))
@@ -126,8 +143,8 @@
                   (str/ends-with? file-name ".yaml")
                   (not (str/starts-with? file-name "."))
                   (contains? legal-top-level-paths top)
-                  (if-let [entity-file-name (get shared-top-level-paths top)]
-                    (= entity-file-name file-name)
+                  (if-let [entity-file? (get shared-top-level-paths top)]
+                    (entity-file? path)
                     true)))))
 
 (defn- path-interner
