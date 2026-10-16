@@ -1,8 +1,19 @@
 import { t } from "ttag";
 
-import { ActionIcon, Group, Icon, Text, UnstyledButton } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Group,
+  Icon,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 
-import { useSegmentDropTarget } from "../../segments/drag-context";
+import type { EventDefinition } from "../../events/types";
+import {
+  useSegmentDrag,
+  useSegmentDropTarget,
+} from "../../segments/drag-context";
 import type { PaletteSegment } from "../../segments/types";
 
 import S from "./EventDefinitionSummary.module.css";
@@ -27,6 +38,8 @@ type EventDefinitionSummaryProps = {
   dropTarget?: SegmentDropTarget;
   /** A slot still to fill: drawn dashed, with its placeholder. */
   empty?: boolean;
+  /** The event shown, so it can be dragged to the palette as a draft. */
+  draggableEvent?: EventDefinition;
   onEdit: () => void;
   onRemove?: () => void;
 };
@@ -40,23 +53,45 @@ export const EventDefinitionSummary = ({
   removeLabel = t`Remove`,
   dropTarget = NO_DROP_TARGET,
   empty = false,
+  draggableEvent,
   onEdit,
   onRemove,
 }: EventDefinitionSummaryProps) => {
+  const { isPaletteOpen, startEventDrag, endDrag } = useSegmentDrag();
   const { isActive, isOver, dropProps } = useSegmentDropTarget(dropTarget);
   const label = isOver ? t`Drop to use this segment` : (name ?? placeholder);
+  // Only worth dragging while there's a palette to drop it on.
+  const isDraggable = draggableEvent !== undefined && isPaletteOpen;
 
   return (
     <Group
       id={id}
       className={S.root}
       data-empty={empty}
+      data-draggable={isDraggable}
+      draggable={isDraggable}
       gap="xs"
       wrap="nowrap"
       p="sm"
       bdrs="sm"
+      onDragStart={(event) => {
+        if (draggableEvent !== undefined) {
+          startEventDrag(draggableEvent, event);
+        }
+      }}
+      onDragEnd={endDrag}
       {...dropProps}
     >
+      {isDraggable && (
+        <Box
+          className={S.grabber}
+          c="text-tertiary"
+          display="flex"
+          style={{ flexShrink: 0 }}
+        >
+          <Icon name="grabber" size={12} />
+        </Box>
+      )}
       <UnstyledButton
         className={S.editButton}
         flex={1}

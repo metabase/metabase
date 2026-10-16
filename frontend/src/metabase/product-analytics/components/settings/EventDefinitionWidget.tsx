@@ -85,6 +85,7 @@ export const EventDefinitionWidget = ({
       name={value?.name}
       placeholder={placeholder}
       empty={value === null}
+      draggableEvent={value ?? undefined}
       disabled={tableQuery === undefined}
       removeLabel={t`Clear`}
       dropTarget={{ accepts: isEventSegment, onDrop: handleDropSegment }}

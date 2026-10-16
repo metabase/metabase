@@ -29,3 +29,11 @@
 .root[data-drop-active="true"] * {
   pointer-events: none;
 }
+
+.root[data-draggable="true"] {
+  cursor: grab;
+}
+
+.root[data-draggable="true"]:active {
+  cursor: grabbing;
+}

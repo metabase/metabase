@@ -166,6 +166,7 @@ export const EventDefinitionListWidget = ({
                   ) : (
                     <EventDefinitionSummary
                       name={item.event.name}
+                      draggableEvent={item.event}
                       disabled={tableQuery === undefined}
                       dropTarget={{
                         accepts: isEventSegment,

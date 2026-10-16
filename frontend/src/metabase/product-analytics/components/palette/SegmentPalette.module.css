@@ -14,3 +14,23 @@
 .handle:hover {
   background-color: var(--mb-color-border-brand);
 }
+
+.section {
+  border: 1px dashed transparent;
+  border-radius: var(--mantine-radius-sm);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.section[data-drop-active="true"] {
+  border-color: var(--mb-color-border-brand);
+}
+
+.section[data-drop-over="true"] {
+  background-color: var(--mb-color-background-brand);
+}
+
+.section[data-drop-active="true"] * {
+  pointer-events: none;
+}

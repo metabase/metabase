@@ -24,7 +24,8 @@ export const PaletteSegmentItem = ({
 }: PaletteSegmentItemProps) => {
   const { dragging, hovering, startDrag, endDrag, setHovering } =
     useSegmentDrag();
-  const isDragging = dragging?.key === segment.key;
+  const isDragging =
+    dragging?.kind === "segment" && dragging.segment.key === segment.key;
 
   return (
     <Group

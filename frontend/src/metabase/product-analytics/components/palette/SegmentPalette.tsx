@@ -19,6 +19,7 @@ import {
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
 import type { UsersTable } from "../../analyses/types";
+import { useEventDropTarget } from "../../segments/drag-context";
 import type {
   PaletteSegment,
   SamplePaletteSegment,
@@ -198,6 +199,16 @@ const PaletteSection = ({
   );
   const [isDrafting, setIsDrafting] = useState(false);
   const [modal, setModal] = useState<ModalState>(null);
+  // An event dragged out of the setup panel lands here as a draft.
+  const takesEvents = source === "event" && table !== undefined;
+  const eventDrop = useEventDropTarget({
+    onDrop: (event) => {
+      if (takesEvents) {
+        addDraft(event);
+      }
+    },
+  });
+  const eventDropProps = takesEvents ? eventDrop.dropProps : {};
   const items: PaletteSegment[] = [...saved, ...drafted, ...samples];
   const canEdit = table !== undefined && tableQuery !== undefined;
   const disabledHint =
@@ -206,11 +217,16 @@ const PaletteSection = ({
       : undefined;
 
   return (
-    <Stack gap="xs" px="md">
+    <Stack className={S.section} gap="xs" px="md" py="xs" {...eventDropProps}>
       <Group justify="space-between" wrap="nowrap" mb="xs">
         <Text fw="bold">{title}</Text>
         {isLoading && <Loader size="xs" />}
       </Group>
+      {takesEvents && eventDrop.isActive && (
+        <Text c="text-brand" fw="bold">
+          {t`Drop to draft a segment from it`}
+        </Text>
+      )}
       {items.map((segment) => (
         <PaletteSegmentItem
           key={segment.key}

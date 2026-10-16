@@ -9,15 +9,26 @@ import {
   useState,
 } from "react";
 
+import type { EventDefinition } from "../events/types";
+
 import type { PaletteSegment } from "./types";
+
+/** What's in the air: a palette segment, or an event dragged out of the setup panel. */
+export type DragItem =
+  | { kind: "segment"; segment: PaletteSegment }
+  | { kind: "event"; event: EventDefinition };
 
 type SegmentDragState = {
   /** Whether the palette is showing, so slots can say to drag from it. */
   isPaletteOpen: boolean;
-  dragging: PaletteSegment | null;
+  dragging: DragItem | null;
   /** The palette item under the pointer, so targets can hint before a drag. */
   hovering: PaletteSegment | null;
   startDrag: (segment: PaletteSegment, event: DragEvent<HTMLElement>) => void;
+  startEventDrag: (
+    definition: EventDefinition,
+    event: DragEvent<HTMLElement>,
+  ) => void;
   endDrag: () => void;
   setHovering: (segment: PaletteSegment | null) => void;
   /** Uses a people segment as a filter, from a drop or a click. */
@@ -29,6 +40,7 @@ const SegmentDragContext = createContext<SegmentDragState>({
   dragging: null,
   hovering: null,
   startDrag: () => undefined,
+  startEventDrag: () => undefined,
   endDrag: () => undefined,
   setHovering: () => undefined,
   onPeopleSegment: () => undefined,
@@ -36,33 +48,43 @@ const SegmentDragContext = createContext<SegmentDragState>({
 
 const DATA_TYPE = "application/x-metabase-segment";
 
-/**
- * Tracks the palette segment being dragged, using the browser's own drag and
- * drop. The segment lives here rather than in the drag data, so drop targets
- * can light up while it's still in the air.
- */
 type SegmentDragProviderProps = {
   isPaletteOpen: boolean;
   onPeopleSegment: (segment: PaletteSegment) => void;
   children: ReactNode;
 };
 
+/**
+ * Tracks what's being dragged between the palette and the setup panel, using
+ * the browser's own drag and drop. The item lives here rather than in the
+ * drag data, so drop targets can light up while it's still in the air.
+ */
 export const SegmentDragProvider = ({
   isPaletteOpen,
   onPeopleSegment,
   children,
 }: SegmentDragProviderProps) => {
-  const [dragging, setDragging] = useState<PaletteSegment | null>(null);
+  const [dragging, setDragging] = useState<DragItem | null>(null);
   const [hovering, setHovering] = useState<PaletteSegment | null>(null);
 
-  const startDrag = useCallback(
-    (segment: PaletteSegment, event: DragEvent<HTMLElement>) => {
+  const begin = useCallback(
+    (item: DragItem, key: string, event: DragEvent<HTMLElement>) => {
       // Firefox only starts a drag that carries data.
-      event.dataTransfer.setData(DATA_TYPE, segment.key);
+      event.dataTransfer.setData(DATA_TYPE, key);
       event.dataTransfer.effectAllowed = "copy";
-      setDragging(segment);
+      setDragging(item);
     },
     [],
+  );
+  const startDrag = useCallback(
+    (segment: PaletteSegment, event: DragEvent<HTMLElement>) =>
+      begin({ kind: "segment", segment }, segment.key, event),
+    [begin],
+  );
+  const startEventDrag = useCallback(
+    (definition: EventDefinition, event: DragEvent<HTMLElement>) =>
+      begin({ kind: "event", event: definition }, definition.name, event),
+    [begin],
   );
   const endDrag = useCallback(() => setDragging(null), []);
 
@@ -72,11 +94,20 @@ export const SegmentDragProvider = ({
       dragging,
       hovering,
       startDrag,
+      startEventDrag,
       endDrag,
       setHovering,
       onPeopleSegment,
     }),
-    [isPaletteOpen, dragging, hovering, startDrag, endDrag, onPeopleSegment],
+    [
+      isPaletteOpen,
+      dragging,
+      hovering,
+      startDrag,
+      startEventDrag,
+      endDrag,
+      onPeopleSegment,
+    ],
   );
 
   return (
@@ -88,25 +119,15 @@ export const SegmentDragProvider = ({
 
 export const useSegmentDrag = () => useContext(SegmentDragContext);
 
-type DropTargetOptions = {
-  accepts: (segment: PaletteSegment) => boolean;
-  onDrop: (segment: PaletteSegment) => void;
-};
-
 /**
- * Makes an element a drop target for palette segments. Spread `dropProps` on
- * it. `isActive` while a segment it accepts is being dragged anywhere,
- * `isOver` while that segment is over it.
+ * The drag and drop handlers for a target, active while `isActive`. Spread
+ * `dropProps` on the element. `isOver` while the item is over it.
  */
-export const useSegmentDropTarget = ({
-  accepts,
-  onDrop,
-}: DropTargetOptions) => {
-  const { dragging, endDrag } = useSegmentDrag();
+const useDropHandlers = (isActive: boolean, onDrop: () => void) => {
+  const { endDrag } = useSegmentDrag();
   const [isOver, setIsOver] = useState(false);
   // Enter and leave fire for every child the pointer crosses.
   const enterCountRef = useRef(0);
-  const isActive = dragging !== null && accepts(dragging);
 
   useEffect(() => {
     if (!isActive) {
@@ -143,14 +164,14 @@ export const useSegmentDropTarget = ({
   };
 
   const handleDrop = (event: DragEvent<HTMLElement>) => {
-    if (!isActive || dragging === null) {
+    if (!isActive) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
     enterCountRef.current = 0;
     setIsOver(false);
-    onDrop(dragging);
+    onDrop();
     endDrag();
   };
 
@@ -166,4 +187,44 @@ export const useSegmentDropTarget = ({
       "data-drop-over": isActive && isOver,
     },
   };
+};
+
+type SegmentDropTargetOptions = {
+  accepts: (segment: PaletteSegment) => boolean;
+  onDrop: (segment: PaletteSegment) => void;
+};
+
+/**
+ * Makes an element a drop target for palette segments. `isActive` while a
+ * segment it accepts is being dragged anywhere.
+ */
+export const useSegmentDropTarget = ({
+  accepts,
+  onDrop,
+}: SegmentDropTargetOptions) => {
+  const { dragging } = useSegmentDrag();
+  const segment =
+    dragging?.kind === "segment" && accepts(dragging.segment)
+      ? dragging.segment
+      : null;
+  return useDropHandlers(segment !== null, () => {
+    if (segment !== null) {
+      onDrop(segment);
+    }
+  });
+};
+
+type EventDropTargetOptions = {
+  onDrop: (event: EventDefinition) => void;
+};
+
+/** Makes an element a drop target for events dragged out of the setup panel. */
+export const useEventDropTarget = ({ onDrop }: EventDropTargetOptions) => {
+  const { dragging } = useSegmentDrag();
+  const event = dragging?.kind === "event" ? dragging.event : null;
+  return useDropHandlers(event !== null, () => {
+    if (event !== null) {
+      onDrop(event);
+    }
+  });
 };
