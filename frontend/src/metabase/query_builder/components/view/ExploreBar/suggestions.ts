@@ -1214,3 +1214,61 @@ export function getStarterBreakouts(
     .slice(0, limit)
     .map((column) => withBucket(context, column));
 }
+
+/* ---------------------------------------------------------------------------------------------
+ * Comparisons: other calculations to show next to the current ones
+ * ------------------------------------------------------------------------------------------- */
+
+function getAggregationDisplayNames({
+  query,
+  stageIndex,
+}: ExploreSuggestionContext): Set<string> {
+  return new Set(
+    Lib.aggregations(query, stageIndex).map(
+      (aggregation) =>
+        Lib.displayInfo(query, stageIndex, aggregation).displayName,
+    ),
+  );
+}
+
+/** Other calculations to plot next to the current ones: metrics first, then common ones. */
+export function getCompareSuggestions(
+  context: ExploreSuggestionContext,
+  limit = 4,
+): ExploreSuggestion[] {
+  const { query, stageIndex } = context;
+  const takenNames = getAggregationDisplayNames(context);
+  const metrics = getNamedMetrics(context).map(
+    ({ displayName, aggregable }): AggregationCandidate => ({
+      key: `metric:${displayName}`,
+      label: displayName,
+      aggregable,
+      score: 0,
+    }),
+  );
+  const count = getCountCandidate(context, 0);
+  const calculations = [
+    ...(count ? [count] : []),
+    ...getOperatorCandidates(context, "sum", ""),
+    ...getOperatorCandidates(context, "avg", "").slice(0, 1),
+  ];
+
+  return [...metrics, ...calculations]
+    .filter((candidate) => {
+      const nextQuery = Lib.aggregate(query, stageIndex, candidate.aggregable);
+      const added = Lib.aggregations(nextQuery, stageIndex).at(-1);
+      const addedName = added
+        ? Lib.displayInfo(nextQuery, stageIndex, added).displayName
+        : candidate.label;
+      return !takenNames.has(addedName);
+    })
+    .slice(0, limit)
+    .map((candidate) => ({
+      id: `compare:${candidate.key}`,
+      kind: "aggregation",
+      label: candidate.label,
+      icon: candidate.key.startsWith("metric:") ? "metric" : "sum",
+      score: 0,
+      apply: aggregate(stageIndex, candidate.aggregable),
+    }));
+}

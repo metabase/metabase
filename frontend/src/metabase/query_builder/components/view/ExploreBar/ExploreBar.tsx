@@ -12,9 +12,7 @@ import { Box, Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import { PinButton } from "../ExplorePins";
-
-import { CutStrip } from "./CutStrip";
+import { ExploreActions } from "./ExploreActions";
 import S from "./ExploreBar.module.css";
 import { ExplorePill, type ExplorePillItem } from "./ExplorePill";
 import {
@@ -23,7 +21,6 @@ import {
   getExploreSuggestions,
 } from "./suggestions";
 import { useColumnValues } from "./use-column-values";
-import { useExploreHistory } from "./use-explore-history";
 import { useExploreUpdate } from "./use-explore-update";
 import { STAGE_INDEX, withExploreQuery } from "./utils";
 
@@ -32,10 +29,10 @@ type ExploreBarProps = {
 };
 
 /**
- * The one bar that drives the query builder. The bar holds the slice: what you're looking at,
- * narrowed by typing ("gadget", "last 30 days", "price over 50") or by clicking the result.
- * Below it, the cut strip moves the same slice between rows, a total, and groupings, and
- * between views, without touching the slice. Typing a calculation or "by state" works too.
+ * The bar above the view on screen: its clauses as pills, typing to search, filter, or
+ * summarize ("gadget", "last 30 days", "sum of total by state"), and the view's actions.
+ * Clicking the result narrows the view too. Every change makes a new temporary view in the
+ * views panel, which Save keeps.
  */
 export function ExploreBar({ question }: ExploreBarProps) {
   const query = question.query();
@@ -46,10 +43,7 @@ export function ExploreBar({ question }: ExploreBarProps) {
     () => ({ query, stageIndex: STAGE_INDEX, columnValues }),
     [query, columnValues],
   );
-  const pills = useMemo(() => getFilterPills(query), [query]);
-  const history = useExploreHistory(question, (restoredQuestion) =>
-    updateExploreQuestion(question, restoredQuestion),
-  );
+  const pills = useMemo(() => getPills(query), [query]);
 
   const handleQueryChange = (nextQuery: Lib.Query) => {
     updateExploreQuestion(question, withExploreQuery(question, nextQuery));
@@ -64,46 +58,44 @@ export function ExploreBar({ question }: ExploreBarProps) {
 
   return (
     <Box className={S.root} data-testid="explore-bar">
-      <Flex className={S.bar} align="center" gap="xs" wrap="wrap">
-        <Icon name="search" className={S.leadingIcon} />
-        {pills.length === 0 && (
-          <Text className={S.sliceLabel}>{t`All rows`}</Text>
-        )}
-        {pills.map((pill) => (
-          <ExplorePill
-            key={pill.key}
-            pill={pill}
-            query={query}
-            onQueryChange={handleQueryChange}
+      <Flex align="center" gap="sm">
+        <Flex className={S.bar} align="center" gap="xs" wrap="wrap" flex={1}>
+          <Icon name="search" className={S.leadingIcon} />
+          {pills.map((pill, index) => (
+            <PillWithJoiner
+              key={pill.key}
+              pill={pill}
+              previousPill={pills[index - 1]}
+              query={query}
+              onQueryChange={handleQueryChange}
+            />
+          ))}
+          <ExploreInput
+            context={context}
+            hasPills={pills.length > 0}
+            onFocus={() => setHasFocused(true)}
+            onApply={(suggestion) =>
+              suggestion.apply && handleQueryChange(suggestion.apply(query))
+            }
+            onRemoveLastPill={handleRemoveLastPill}
           />
-        ))}
-        <ExploreInput
+        </Flex>
+        <ExploreActions
+          question={question}
           context={context}
-          hasPills={pills.length > 0}
-          onFocus={() => setHasFocused(true)}
-          onApply={(suggestion) =>
-            suggestion.apply && handleQueryChange(suggestion.apply(query))
+          isSaved={question.isSaved()}
+          onQueryChange={handleQueryChange}
+          onQuestionChange={(nextQuestion) =>
+            updateExploreQuestion(question, nextQuestion)
           }
-          onRemoveLastPill={handleRemoveLastPill}
         />
-        <Box ml="auto">
-          <PinButton question={question} />
-        </Box>
       </Flex>
-      <CutStrip
-        question={question}
-        history={history}
-        onQueryChange={handleQueryChange}
-        onQuestionChange={(nextQuestion) =>
-          updateExploreQuestion(question, nextQuestion)
-        }
-      />
     </Box>
   );
 }
 
-function getFilterPills(query: Lib.Query): ExplorePillItem[] {
-  return Lib.filters(query, STAGE_INDEX).map(
+function getPills(query: Lib.Query): ExplorePillItem[] {
+  const filters = Lib.filters(query, STAGE_INDEX).map(
     (clause, index): ExplorePillItem => ({
       key: `filter:${index}`,
       kind: "filter",
@@ -111,6 +103,53 @@ function getFilterPills(query: Lib.Query): ExplorePillItem[] {
       index,
       label: Lib.displayInfo(query, STAGE_INDEX, clause).displayName,
     }),
+  );
+  const aggregations = Lib.aggregations(query, STAGE_INDEX).map(
+    (clause, index): ExplorePillItem => ({
+      key: `aggregation:${index}`,
+      kind: "aggregation",
+      clause,
+      index,
+      label: Lib.displayInfo(query, STAGE_INDEX, clause).displayName,
+    }),
+  );
+  const breakouts = Lib.breakouts(query, STAGE_INDEX).map(
+    (clause, index): ExplorePillItem => ({
+      key: `breakout:${index}`,
+      kind: "breakout",
+      clause,
+      index,
+      label: Lib.displayInfo(query, STAGE_INDEX, clause).displayName,
+    }),
+  );
+  return [...filters, ...aggregations, ...breakouts];
+}
+
+type PillWithJoinerProps = {
+  pill: ExplorePillItem;
+  previousPill: ExplorePillItem | undefined;
+  query: Lib.Query;
+  onQueryChange: (query: Lib.Query) => void;
+};
+
+/** Pills read like a sentence: "Category is Gadget · Sum of Total by Created At: Month". */
+function PillWithJoiner({
+  pill,
+  previousPill,
+  query,
+  onQueryChange,
+}: PillWithJoinerProps) {
+  const isFirstOfKind = previousPill?.kind !== pill.kind;
+  const hasJoiner = pill.kind === "breakout" && isFirstOfKind;
+  const hasDivider =
+    isFirstOfKind && previousPill != null && pill.kind === "aggregation";
+
+  return (
+    <>
+      {hasDivider && <Box className={S.divider} />}
+      {hasJoiner && <Text className={S.joiner}>{t`by`}</Text>}
+      <ExplorePill pill={pill} query={query} onQueryChange={onQueryChange} />
+    </>
   );
 }
 

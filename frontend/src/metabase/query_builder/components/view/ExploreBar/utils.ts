@@ -49,7 +49,8 @@ export function isSummarized(query: Lib.Query): boolean {
 
 /**
  * The question with a new query, showing it in a way that fits its new shape: a pivot stays a
- * pivot while it has groupings, any other display picks itself unless someone chose it.
+ * pivot while it has groupings; any other display picks itself unless someone chose it and the
+ * groupings didn't change, since a chosen chart may not fit the new groupings.
  */
 export function withExploreQuery(
   question: Question,
@@ -57,9 +58,14 @@ export function withExploreQuery(
 ): Question {
   const nextQuestion = question.setQuery(nextQuery);
   const breakoutCount = Lib.breakouts(nextQuery, STAGE_INDEX).length;
+  const hasNewGroupings =
+    breakoutCount !== Lib.breakouts(question.query(), STAGE_INDEX).length;
   const isPivot = nextQuestion.display() === "pivot";
 
   if (!isSummarized(nextQuery) || (isPivot && breakoutCount === 0)) {
+    return nextQuestion.setDisplayIsLocked(false).setDefaultDisplay();
+  }
+  if (hasNewGroupings && !isPivot) {
     return nextQuestion.setDisplayIsLocked(false).setDefaultDisplay();
   }
   if (isPivot) {
