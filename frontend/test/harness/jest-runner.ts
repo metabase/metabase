@@ -7,6 +7,7 @@ import path from "node:path";
 import { root } from "./jest-config.ts";
 import { createPool } from "./pool.ts";
 import type {
+  ConsoleOutputDetail,
   FileDone,
   SourceFrame,
   TestFailure,
@@ -278,10 +279,16 @@ function assertion(
     fullName: [...identity.ancestors, identity.title].join(" "),
     status,
     failureMessages: failure ? [stackOf(failure) || failure.message] : [],
-    failureDetails: [],
+    failureDetails: failure?.output
+      ? [consoleOutputDetail(failure.output)]
+      : [],
     numPassingAsserts: 0,
     location: null,
   };
+}
+
+function consoleOutputDetail(consoleOutput: string): ConsoleOutputDetail {
+  return { consoleOutput };
 }
 
 /**

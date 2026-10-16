@@ -68,6 +68,14 @@ export type FileResult = {
   snapshot?: SnapshotSummary;
 };
 
+/**
+ * What the jest runner puts in a failed test's failureDetails, so that a jest
+ * reporter can show the test's console output.
+ */
+export type ConsoleOutputDetail = {
+  consoleOutput: string;
+};
+
 export type FileStarted = {
   file: string;
 };

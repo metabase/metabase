@@ -6,6 +6,7 @@ import path from "node:path";
 import { isProjectSource, root } from "./jest-config.ts";
 import { type Reporter, createReporter } from "./reporters.ts";
 import type {
+  ConsoleOutputDetail,
   FileDone,
   SourceFrame,
   TestFailure,
@@ -22,6 +23,7 @@ type AssertionResult = {
   title: string;
   status: string;
   failureMessages: string[];
+  failureDetails: unknown[];
 };
 
 type TestResult = {
@@ -75,8 +77,13 @@ export default class AgentReporter {
     return undefined;
   }
 
-  // The same jest command with the failed files in place of the patterns.
+  // The same script, or the same jest command, with the failed files in place
+  // of the patterns.
   #rerunCommand(files: string[]): string {
+    const script = process.env.npm_lifecycle_event;
+    if (script) {
+      return `bun run ${script} ${files.join(" ")}`;
+    }
     const [, jest, ...rest] = process.argv;
     const options = rest.filter((arg) => !this.#patterns.includes(arg));
     return [path.relative(process.cwd(), jest), ...files, ...options].join(" ");
@@ -100,6 +107,7 @@ function toFileDone(testResult: TestResult): FileDone {
             [...assertion.ancestorTitles, assertion.title].join(" > "),
             assertion.failureMessages.join("\n"),
             { ancestors: assertion.ancestorTitles, title: assertion.title },
+            consoleOutputOf(assertion.failureDetails),
           ),
         );
   return {
@@ -121,6 +129,7 @@ function failureOf(
   test: string,
   stack: string,
   identity?: TestIdentity,
+  output = "",
 ): TestFailure {
   const lines = stack.split("\n");
   const firstFrame = lines.findIndex((line) => STACK_LINE.test(line));
@@ -133,8 +142,26 @@ function failureOf(
     message,
     stack,
     frames: projectFrames(lines),
-    output: "",
+    output,
   };
+}
+
+// Only the node:test runner gives a test's console output. jest's own runner
+// prints it as the test runs.
+function consoleOutputOf(failureDetails: unknown[]): string {
+  return failureDetails
+    .filter(isConsoleOutputDetail)
+    .map((detail) => detail.consoleOutput)
+    .join("\n");
+}
+
+function isConsoleOutputDetail(detail: unknown): detail is ConsoleOutputDetail {
+  return (
+    typeof detail === "object" &&
+    detail !== null &&
+    "consoleOutput" in detail &&
+    typeof detail.consoleOutput === "string"
+  );
 }
 
 function projectFrames(lines: string[]): SourceFrame[] {
