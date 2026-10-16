@@ -397,12 +397,17 @@ function useExpression({
   );
 
   const handleBlur = useCallback(() => {
-    // `source` is stale until formatting settles; updating now would overwrite the formatted result
-    if (isFormatting) {
+    // `source` is stale until formatting settles; updating now would overwrite
+    // the formatted result. Blur also fires when focus leaves for the
+    // aggregation name field: until the user edits the expression the opened
+    // clause still stands, so an unedited source (which under React 19 can be
+    // the empty document a failed initial format left behind) must not
+    // propagate and clear that clause.
+    if (isFormatting || source === initialSource) {
       return;
     }
     handleUpdate(source, true);
-  }, [handleUpdate, source, isFormatting]);
+  }, [handleUpdate, source, initialSource, isFormatting]);
 
   const handleFormatExpression = useCallback(() => {
     formatExpression({ initial: false });
