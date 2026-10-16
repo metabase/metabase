@@ -33,6 +33,8 @@ interface LegendLayoutProps {
     index: number,
     isReversed?: boolean,
   ) => void;
+  /** When set, series titles render as links to the returned URL. */
+  getSeriesHref?: (index: number) => string | undefined;
   onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
   isReversed?: boolean;
 }
@@ -55,6 +57,7 @@ export const LegendLayout = ({
   children,
   onHoverChange,
   onSelectSeries,
+  getSeriesHref,
   onToggleSeriesVisibility,
   isReversed,
 }: LegendLayoutProps) => {
@@ -96,6 +99,7 @@ export const LegendLayout = ({
     size,
     onHoverChange,
     onSelectSeries,
+    getSeriesHref,
     onToggleSeriesVisibility,
     isReversed,
   };

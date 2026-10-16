@@ -93,7 +93,10 @@ import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
-import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import type {
+  DashCardGetHref,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import {
   getCardsFromSeries,
   getMissingColumnsFromVisualizationSettings,
@@ -128,7 +131,7 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: DashCardSeries;
   question: Question | null;
-  getHref?: () => string | undefined;
+  getHref?: DashCardGetHref;
 
   gridSize: {
     width: number;
@@ -443,6 +446,19 @@ export function DashCardVisualization({
     [onChangeCardAndRun, findCardById],
   );
 
+  const getCardHref = useMemo(
+    () =>
+      getHref &&
+      ((nextCard?: SeriesCard) => {
+        if (!nextCard) {
+          return getHref();
+        }
+        const previousCard = findCardById(nextCard.id);
+        return previousCard ? getHref({ nextCard, previousCard }) : undefined;
+      }),
+    [getHref, findCardById],
+  );
+
   const onOpenQuestion = useCallback(
     (cardId: CardId | null) => {
       const card = findCardById(cardId);
@@ -638,7 +654,7 @@ export function DashCardVisualization({
               : undefined
           }
           mode={clickActionMode ?? dashboardClickActionMode}
-          getHref={getHref}
+          getHref={getCardHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}
           headerIcon={headerIcon}

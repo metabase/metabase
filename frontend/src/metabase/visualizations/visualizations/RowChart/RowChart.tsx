@@ -6,6 +6,7 @@ import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { assignLazily } from "metabase/utils/merge-lazily";
+import { canLinkLegendSeries } from "metabase/visualizations/components/legend/links";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   getClickData,
@@ -229,6 +230,16 @@ const RowChartVisualization = ({
     }
   };
 
+  const canLinkSeries = canLinkLegendSeries({
+    getHref,
+    onChangeCardAndRun,
+    isDashboard,
+    hasMultipleCards: rawMultipleSeries.length > 1,
+    hasBreakout: "breakout" in chartColumns,
+  });
+  // Row charts plot only the first card, so every series opens it.
+  const getSeriesHref = () => getHref?.(card);
+
   const hoverData: HoveredData | null =
     hovered?.index != null
       ? {
@@ -299,6 +310,7 @@ const RowChartVisualization = ({
         fontFamily={fontFamily}
         measureText={textMeasurer}
         onSelectSeries={handleSelectSeries}
+        getSeriesHref={canLinkSeries ? getSeriesHref : undefined}
       >
         <RowChartRenderer
           className={CS.flexFull}

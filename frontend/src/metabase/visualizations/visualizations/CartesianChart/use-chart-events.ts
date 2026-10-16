@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
 import { useStore } from "metabase/redux";
+import { canLinkLegendSeries } from "metabase/visualizations/components/legend/links";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -28,11 +29,12 @@ import {
   buildBrushMirrorGraphics,
   buildClearBrushMirrorGraphics,
   getVisualizerSeriesCardIndex,
+  isBreakoutSeries,
   isGoalLineSeriesId,
   isLineXBrushRange,
   useClickedStateTooltipSync,
 } from "metabase/viz-core";
-import type { CardId } from "metabase-types/api";
+import type { CardId, SeriesCard } from "metabase-types/api";
 
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
@@ -87,6 +89,7 @@ export const useChartEvents = (
     onHoverChange,
     clicked,
     isDashboard,
+    getHref,
   }: VisualizationProps,
   // The ECharts instance, mirrored into state by the caller. Used as a signal
   // to re-run chart-instance-dependent effects (e.g. brush) once it is ready,
@@ -99,25 +102,24 @@ export const useChartEvents = (
   const isBrushing = useRef<boolean>();
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
-  const onOpenQuestion = useCallback(
-    (cardId?: CardId) => {
+  const getQuestionCard = useCallback(
+    (cardId?: CardId): SeriesCard => {
       if (isVisualizerCard) {
         const index = getVisualizerSeriesCardIndex(cardId);
-        const nextCard = visualizerRawSeries[index].card;
-        onChangeCardAndRun?.({ nextCard });
-      } else {
-        const nextCard =
-          rawSeries.find((series) => series.card.id === cardId)?.card ?? card;
-        onChangeCardAndRun?.({ nextCard });
+        return visualizerRawSeries[index].card;
       }
+      return (
+        rawSeries.find((series) => series.card.id === cardId)?.card ?? card
+      );
     },
-    [
-      card,
-      rawSeries,
-      visualizerRawSeries,
-      isVisualizerCard,
-      onChangeCardAndRun,
-    ],
+    [card, rawSeries, visualizerRawSeries, isVisualizerCard],
+  );
+
+  const onOpenQuestion = useCallback(
+    (cardId?: CardId) => {
+      onChangeCardAndRun?.({ nextCard: getQuestionCard(cardId) });
+    },
+    [getQuestionCard, onChangeCardAndRun],
   );
 
   const isSplitPanels =
@@ -457,8 +459,27 @@ export const useChartEvents = (
     ],
   );
 
+  const getSeriesHref = useCallback(
+    (seriesIndex: number) => {
+      const seriesModel = chartModel.seriesModels[seriesIndex];
+      return seriesModel
+        ? getHref?.(getQuestionCard(seriesModel.cardId))
+        : undefined;
+    },
+    [chartModel.seriesModels, getHref, getQuestionCard],
+  );
+
+  const canLinkSeries = canLinkLegendSeries({
+    getHref,
+    onChangeCardAndRun,
+    isDashboard,
+    hasMultipleCards: rawSeries.length > 1,
+    hasBreakout: chartModel.seriesModels.some(isBreakoutSeries),
+  });
+
   return {
     onSelectSeries,
+    getSeriesHref: canLinkSeries ? getSeriesHref : undefined,
     onOpenQuestion,
     eventHandlers,
   };

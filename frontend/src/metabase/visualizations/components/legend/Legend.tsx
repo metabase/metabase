@@ -33,6 +33,8 @@ interface LegendProps {
     index: number,
     isReversed?: boolean,
   ) => void;
+  /** When set, series titles render as links to the returned URL. */
+  getSeriesHref?: (index: number) => string | undefined;
   onToggleSeriesVisibility?: (event: React.MouseEvent, index: number) => void;
   isReversed?: boolean;
 }
@@ -47,6 +49,7 @@ export const Legend = ({
   size = "sm",
   onHoverChange,
   onSelectSeries,
+  getSeriesHref,
   onToggleSeriesVisibility,
   isReversed,
 }: LegendProps) => {
@@ -84,6 +87,7 @@ export const Legend = ({
             isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
+            getSeriesHref={getSeriesHref}
             onToggleSeriesVisibility={onToggleSeriesVisibility}
           />
         );
@@ -116,6 +120,7 @@ export const Legend = ({
                 size={size}
                 onHoverChange={onHoverChange}
                 onSelectSeries={onSelectSeries}
+                getSeriesHref={getSeriesHref}
                 onToggleSeriesVisibility={onToggleSeriesVisibility}
                 isReversed={isReversed}
               />

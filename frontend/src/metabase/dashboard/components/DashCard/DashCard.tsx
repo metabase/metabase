@@ -6,7 +6,11 @@ import { isActionCard } from "metabase/actions/utils";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { addParameter, duplicateCard } from "metabase/dashboard/actions";
+import {
+  addParameter,
+  duplicateCard,
+  getNewCardUrlFromDashboard,
+} from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
@@ -50,7 +54,10 @@ import {
 import S from "./DashCard.module.css";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
-import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import type {
+  DashCardGetHref,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import { useAutoScrollIntoView } from "./use-auto-scroll-into-view";
 
 function preventDragging(event: React.SyntheticEvent) {
@@ -124,9 +131,12 @@ function DashCardInner({
   );
   const store = useStore();
   const dispatch = useDispatch();
-  const getHref = useCallback(
-    () => getDashcardHref(store.getState(), dashcard.id),
-    [store, dashcard.id],
+  const getHref = useCallback<DashCardGetHref>(
+    (opts) =>
+      opts
+        ? getNewCardUrlFromDashboard(store.getState(), { ...opts, dashcard })
+        : getDashcardHref(store.getState(), dashcard.id),
+    [store, dashcard],
   );
   const [isPreviewingCard, setIsPreviewingCard] = useState(!dashcard.justAdded);
   const cardRootRef = useRef<HTMLDivElement>(null);

@@ -130,7 +130,11 @@ type VisualizationOwnProps = {
   getExtraDataForClick?: (
     clicked: ClickObject | null,
   ) => Record<string, unknown>;
-  getHref?: () => string | undefined;
+  /**
+   * Returns the URL for opening `nextCard` (the main card when omitted),
+   * or `undefined` when it can't be opened.
+   */
+  getHref?: (nextCard?: SeriesCard) => string | undefined;
   gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
