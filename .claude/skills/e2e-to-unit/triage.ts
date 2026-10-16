@@ -8,9 +8,9 @@
  * Cypress or call the network.
  *
  * Usage:
- *   bun .claude/skills/e2e-to-unit/triage.ts [spec ...] [--flakes <file.json>] [--json]
+ *   bun .claude/skills/e2e-to-unit/triage.ts [spec or folder ...] [--flakes <file.json>] [--json]
  *
- * With no spec, it reads all of `e2e/test/scenarios/**\/*.cy.spec.{js,ts}`.
+ * With no argument, it reads all of `e2e/test/scenarios/**\/*.cy.spec.{js,ts}`.
  * The output is Markdown, or JSON with `--json`.
  *
  * The flakes file is a JSON object keyed by spec path. Each value is a number
@@ -1187,19 +1187,27 @@ const parseArgs = (argv: string[]) => {
   return { specs, flakesFile, json: argv.includes("--json") };
 };
 
-const allSpecs = (): string[] =>
+const specsIn = (dir: string): string[] =>
   [
-    ...new Bun.Glob(`${SCENARIOS_PREFIX}**/*.cy.spec.{js,ts}`).scanSync({
+    ...new Bun.Glob(`${dir}/**/*.cy.spec.{js,ts}`).scanSync({
       cwd: REPO_ROOT,
     }),
   ].sort();
+
+// A spec path, or each spec in a folder.
+const expandArg = (arg: string): string[] => {
+  const relative = path.relative(REPO_ROOT, path.resolve(arg));
+  return fs.statSync(path.join(REPO_ROOT, relative)).isDirectory()
+    ? specsIn(relative)
+    : [relative];
+};
 
 if (import.meta.main) {
   const { specs, flakesFile, json } = parseArgs(process.argv.slice(2));
   const specPaths =
     specs.length > 0
-      ? specs.map((spec) => path.relative(REPO_ROOT, path.resolve(spec)))
-      : allSpecs();
+      ? specs.flatMap(expandArg)
+      : specsIn(SCENARIOS_PREFIX.replace(/\/$/, ""));
   const result = triageSpecs({
     specPaths,
     flakes: flakesFile ? readFlakes(flakesFile) : new Map(),
