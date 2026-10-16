@@ -20,12 +20,7 @@ export const getSamplePeopleSegments = (): SamplePaletteSegment[] =>
     { key: "sample-new", name: t`Signed up in the last 30 days` },
     { key: "sample-enterprise", name: t`Enterprise accounts` },
     { key: "sample-dormant", name: t`Inactive for 14+ days` },
-  ].map((sample) => ({
-    ...sample,
-    source: "people",
-    status: "sample",
-    description: t`Sample segment. Link a Customers or Users table to the person column to see its real segments.`,
-  }));
+  ].map((sample) => ({ ...sample, source: "people", status: "sample" }));
 
 /** The saved segments on a table plus this session's drafts, as palette items. */
 export const usePaletteSegments = (

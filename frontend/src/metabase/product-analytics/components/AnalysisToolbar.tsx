@@ -147,14 +147,8 @@ const PeopleDropTarget = ({ onDrop, children }: PeopleDropTargetProps) => {
   const isHinted = isActive || (hovering !== null && isPeopleSegment(hovering));
 
   return (
-    <Tooltip
-      label={t`Drop a customer segment here to filter who's counted`}
-      opened={isHinted}
-      position="bottom"
-    >
-      <Box className={S.peopleDrop} data-hinted={isHinted} {...dropProps}>
-        {children}
-      </Box>
-    </Tooltip>
+    <Box className={S.peopleDrop} data-hinted={isHinted} {...dropProps}>
+      {children}
+    </Box>
   );
 };

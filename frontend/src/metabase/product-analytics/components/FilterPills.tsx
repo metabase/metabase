@@ -81,17 +81,13 @@ export const FilterPills = ({
   return (
     <Flex align="center" wrap="wrap" gap="sm" data-testid="analysis-filters">
       {value.people.map((people) => (
-        <Tooltip
+        <FilterPill
           key={people.key}
-          label={t`Prototype: people segments aren't applied to the query yet.`}
+          readOnly={onChange === undefined}
+          onRemoveClick={() => removePeople(people)}
         >
-          <FilterPill
-            readOnly={onChange === undefined}
-            onRemoveClick={() => removePeople(people)}
-          >
-            {t`People in ${people.label}`}
-          </FilterPill>
-        </Tooltip>
+          {t`People in ${people.label}`}
+        </FilterPill>
       ))}
       {value.cohorts.map((cohort, index) => (
         <Tooltip
