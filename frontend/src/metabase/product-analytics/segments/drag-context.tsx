@@ -20,6 +20,8 @@ type SegmentDragState = {
   startDrag: (segment: PaletteSegment, event: DragEvent<HTMLElement>) => void;
   endDrag: () => void;
   setHovering: (segment: PaletteSegment | null) => void;
+  /** Uses a people segment as a filter, from a drop or a click. */
+  onPeopleSegment: (segment: PaletteSegment) => void;
 };
 
 const SegmentDragContext = createContext<SegmentDragState>({
@@ -29,6 +31,7 @@ const SegmentDragContext = createContext<SegmentDragState>({
   startDrag: () => undefined,
   endDrag: () => undefined,
   setHovering: () => undefined,
+  onPeopleSegment: () => undefined,
 });
 
 const DATA_TYPE = "application/x-metabase-segment";
@@ -40,11 +43,13 @@ const DATA_TYPE = "application/x-metabase-segment";
  */
 type SegmentDragProviderProps = {
   isPaletteOpen: boolean;
+  onPeopleSegment: (segment: PaletteSegment) => void;
   children: ReactNode;
 };
 
 export const SegmentDragProvider = ({
   isPaletteOpen,
+  onPeopleSegment,
   children,
 }: SegmentDragProviderProps) => {
   const [dragging, setDragging] = useState<PaletteSegment | null>(null);
@@ -69,8 +74,9 @@ export const SegmentDragProvider = ({
       startDrag,
       endDrag,
       setHovering,
+      onPeopleSegment,
     }),
-    [isPaletteOpen, dragging, hovering, startDrag, endDrag],
+    [isPaletteOpen, dragging, hovering, startDrag, endDrag, onPeopleSegment],
   );
 
   return (

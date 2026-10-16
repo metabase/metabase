@@ -1,16 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { ActionIcon, Box, Button, Group, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Button, Group, Icon, Tooltip } from "metabase/ui";
 
 import type { CommonSettings } from "../analyses/types";
-import { useSegmentDrag, useSegmentDropTarget } from "../segments/drag-context";
-import { isPeopleSegment } from "../segments/to-event-definition";
-import type { PaletteSegment } from "../segments/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
 import type { AnalysisPanel } from "../use-analysis-state";
 
-import S from "./AnalysisToolbar.module.css";
 import { SqlModal } from "./SqlModal";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
@@ -30,8 +26,6 @@ type AnalysisToolbarProps = {
   onTogglePalette: () => void;
   onPanelChange: (panel: AnalysisPanel | null) => void;
   onSave: () => void;
-  /** A people segment dropped on the counting button. */
-  onAddPeopleFilter: (segment: PaletteSegment) => void;
 };
 
 /**
@@ -49,7 +43,6 @@ export const AnalysisToolbar = ({
   onTogglePalette,
   onPanelChange,
   onSave,
-  onAddPeopleFilter,
 }: AnalysisToolbarProps) => {
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
 
@@ -99,9 +92,7 @@ export const AnalysisToolbar = ({
             )}
           </Button.Group>
           <Button.Group>
-            <PeopleDropTarget onDrop={onAddPeopleFilter}>
-              <ToolbarSetting setting={findSetting(widgets, "counting")} />
-            </PeopleDropTarget>
+            <ToolbarSetting setting={findSetting(widgets, "counting")} />
             <ToolbarSetting setting={findSetting(widgets, "filters")} />
           </Button.Group>
         </Group>
@@ -126,29 +117,5 @@ export const AnalysisToolbar = ({
       </Group>
       <SqlModal sql={sql} opened={sqlOpened} onClose={closeSql} />
     </>
-  );
-};
-
-type PeopleDropTargetProps = {
-  onDrop: (segment: PaletteSegment) => void;
-  children: React.ReactNode;
-};
-
-/**
- * Wraps the counting button so it lights up while a people segment is
- * hovered or dragged in the palette, and takes the drop.
- */
-const PeopleDropTarget = ({ onDrop, children }: PeopleDropTargetProps) => {
-  const { hovering } = useSegmentDrag();
-  const { isActive, dropProps } = useSegmentDropTarget({
-    accepts: isPeopleSegment,
-    onDrop,
-  });
-  const isHinted = isActive || (hovering !== null && isPeopleSegment(hovering));
-
-  return (
-    <Box className={S.peopleDrop} data-hinted={isHinted} {...dropProps}>
-      {children}
-    </Box>
   );
 };

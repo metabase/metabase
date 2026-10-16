@@ -158,7 +158,10 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     handleFiltersChange(withPeopleFilter(computed.filters, segment));
 
   return (
-    <SegmentDragProvider isPaletteOpen={isPaletteOpen}>
+    <SegmentDragProvider
+      isPaletteOpen={isPaletteOpen}
+      onPeopleSegment={handleAddPeopleFilter}
+    >
       {/* Keeps the app-wide react-dnd backend out of the palette's native drags. */}
       <Group
         className={DND_IGNORE_CLASS_NAME}
@@ -196,7 +199,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               onTogglePalette={() => setIsPaletteOpen((isOpen) => !isOpen)}
               onPanelChange={setPanel}
               onSave={handleSave}
-              onAddPeopleFilter={handleAddPeopleFilter}
             />
             <FilterPills
               value={computed.filters}
