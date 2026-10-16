@@ -47,8 +47,8 @@
 
 (def ^:private identifier-pattern
   "The identifiers the representation format accepts: an identifier names the plugin's directory in a repository, so
-   no path separators, whitespace, or leading `.`."
-  #"[^:/\\\s.][^:/\\\s]*")
+   letters, digits, `.`, `_` and `-`, starting with a letter or digit."
+  #"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 (defn identifier-error
   "Why `identifier` can't name a plugin, or nil. `:` separates the parts of `custom:<identifier>:<setting id>`
@@ -60,7 +60,8 @@
       (format "Plugin identifier \"%s\" must not contain \":\"" identifier)
 
       (not (re-matches identifier-pattern identifier))
-      (format "Plugin identifier \"%s\" must not contain \"/\", \"\\\" or whitespace, or start with \".\"" identifier))))
+      (format "Plugin identifier \"%s\" must be letters, digits, \".\", \"_\" or \"-\", starting with a letter or digit"
+              identifier))))
 
 ;;; ------------------------------------------------ Version ------------------------------------------------
 
