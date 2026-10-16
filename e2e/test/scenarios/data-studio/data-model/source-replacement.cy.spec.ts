@@ -740,7 +740,10 @@ function openReplacementModal(sourceTableLabel: string) {
 
 function pickTarget(targetTableLabel: string) {
   SourceReplacement.getTargetPickerButton().click();
-  H.entityPickerModal().findByRole("searchbox").type(targetTableLabel);
+  H.entityPickerModal().within(() => {
+    cy.findByRole("searchbox").type(targetTableLabel);
+    cy.findByTestId("search-scope-selector").findByText("Everywhere").click();
+  });
   cy.findByTestId("result-item")
     .contains(targetTableLabel)
     .closest("a")

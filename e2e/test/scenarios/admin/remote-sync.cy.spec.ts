@@ -685,7 +685,7 @@ describe("Remote Sync", () => {
         });
       });
 
-      it("leaves a snippet dependency with nothing to act on when no Library exists", () => {
+      it("offers the Library for a snippet dependency", () => {
         createSnippetDependencyFixture().then(({ blocked }) => {
           cy.visit("/admin/settings/remote-sync");
 
@@ -701,21 +701,14 @@ describe("Remote Sync", () => {
             expect(required.blocks.map((collection) => collection.id)).to.eql([
               blocked.id,
             ]);
-            // With no Library there is no collection to name, so the remedy carries only its type.
-            expect(required.remedy).to.deep.equal({ type: "library" });
-            expect(required.syncable).to.be.false;
-            expect(required.dependencies).to.have.length(1);
+            expect(required.remedy.type).to.eq("collection");
+            expect(required.syncable).to.be.true;
             expect(required.dependencies[0].model).to.eq("snippet");
             expect(required.dependencies[0].name).to.eq(SNIPPET_NAME);
           });
 
           H.modal().within(() => {
-            cy.findByText("Couldn’t sync selected collection").should(
-              "be.visible",
-            );
-            cy.findByText(/sync with the Library/).should("be.visible");
-            cy.findByRole("switch").should("not.exist");
-
+            cy.findByRole("switch", { name: "Sync Library" }).should("exist");
             cy.button("Back").click();
           });
 
