@@ -12,8 +12,6 @@ export type RouteParams = {
 
 export type NotificationsTab = "all" | "failing" | "ownerless";
 
-export type { TabCountState } from "metabase/common/components/PillTabNavigation";
-
 export type NotificationsUrlState = {
   page: number;
   active: boolean | null;
