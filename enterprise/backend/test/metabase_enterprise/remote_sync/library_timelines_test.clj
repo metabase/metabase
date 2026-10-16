@@ -32,7 +32,7 @@
 (deftest library-dashboards-timelines-do-not-sync-test
   (mt/with-temporary-setting-values [remote-sync-type       :read-write
                                      remote-sync-transforms false]
-    (collection/ensure-library-collection!)
+    (rs.test/ensure-library!)
     (rs.test/set-library-remote-synced! true)
     (let [dashboards-id (t2/select-one-pk :model/Collection :entity_id collection/library-dashboards-entity-id)]
       (mt/with-temp [:model/Collection {bench-id :id}             {:name "Bench" :is_remote_synced true :location "/"}

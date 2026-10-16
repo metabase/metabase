@@ -7,9 +7,27 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.collections.models.collection :as collection]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn ensure-library!
+  "The Library collection, created with its system collections when the instance has none. Remote sync assumes the
+  Library exists."
+  []
+  (or (collection/library-collection) (collection/create-library-collection!)))
+
+(defn set-library-remote-synced!
+  "Marks the Library and every collection in it remote-synced, or not. Writes the rows directly: the collection hooks
+  refuse a synced child under an unsynced parent part way through."
+  [synced?]
+  (when-let [library (collection/library-collection)]
+    (t2/query {:update (t2/table-name :model/Collection)
+               :set    {:is_remote_synced synced?}
+               :where  [:or
+                        [:= :id (:id library)]
+                        [:like :location (str "/" (:id library) "/%")]]})))
 
 (defn generate-collection-yaml
   "Generate YAML content for a collection with the given `entity-id` and `name`.

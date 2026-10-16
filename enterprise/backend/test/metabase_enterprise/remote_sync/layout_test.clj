@@ -341,16 +341,6 @@
           (is (= before (full-export-files!))
               "a new export of the loaded content writes the same files"))))))
 
-(defn- ensure-library!
-  "The Library collection, created with its system collections when the instance has none."
-  []
-  (or (collection/library-collection) (collection/create-library-collection!)))
-
-(defn- set-library-remote-synced!
-  "Marks the Library and its system collections remote-synced, or not."
-  [synced?]
-  (t2/update! :model/Collection {:type [:in collection/library-collection-types]} {:is_remote_synced synced?}))
-
 (defn- export-library-metric!
   "With the kind layout, creates a synced Library holding a metric, exports it into a fresh MockSource, and calls `f`
   with the source and the metric's id."
@@ -358,8 +348,8 @@
   (mt/with-temporary-setting-values [remote-sync-type       :read-write
                                      remote-sync-transforms false]
     (with-redefs [remote-sync.layout/layout kind-layout/kind-layout]
-      (ensure-library!)
-      (set-library-remote-synced! true)
+      (rs.test/ensure-library!)
+      (rs.test/set-library-remote-synced! true)
       (let [metrics-id (t2/select-one-pk :model/Collection :entity_id "librarylibrarymetrics")]
         (mt/with-temp [:model/Card {card-id :id} {:name "MRR" :type :metric :collection_id metrics-id}]
           (t2/delete! :model/RemoteSyncObject)
@@ -375,7 +365,7 @@
   (testing "a pull of a kind-layout repo that holds Library content turns Library sync on"
     (export-library-metric!
      (fn [mock _card-id]
-       (set-library-remote-synced! false)
+       (rs.test/set-library-remote-synced! false)
        (let [result (impl/import! (source.p/snapshot mock) (new-task!) :force? true)]
          (is (= :success (:status result)) (:message result))
          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection
@@ -383,8 +373,8 @@
   (testing "but not when the repo holds only a user's own file in a Library folder"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (with-redefs [remote-sync.layout/layout kind-layout/kind-layout]
-        (ensure-library!)
-        (set-library-remote-synced! false)
+        (rs.test/ensure-library!)
+        (rs.test/set-library-remote-synced! false)
         (let [mock   (rs.test/create-mock-source :initial-files {"main" {"data/notes.yaml" "notes: true\n"}})
               result (impl/import! (source.p/snapshot mock) (new-task!) :force? true)]
           (is (= :success (:status result)) (:message result))
@@ -398,7 +388,7 @@
   [layout f]
   (mt/with-temporary-setting-values [remote-sync-type       :read-write
                                      remote-sync-transforms false]
-    (collection/ensure-library-collection!)
+    (rs.test/ensure-library!)
     (rs.test/set-library-remote-synced! true)
     (let [data-id (t2/select-one-pk :model/Collection :entity_id "librarylibrarydatadat")]
       (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:is_published true :collection_id data-id}

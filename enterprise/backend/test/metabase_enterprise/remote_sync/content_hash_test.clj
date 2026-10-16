@@ -430,7 +430,8 @@
       (mt/with-model-cleanup [:model/Glossary :model/Collection]
         ;; The Library has no files; the glossary entry is Library content, so the pull syncs the Library and the
         ;; Glossary spec is enabled when the ledger is rebuilt.
-        (t2/delete! :model/Collection :entity_id collection/library-entity-id)
+        (test-helpers/ensure-library!)
+        (test-helpers/set-library-remote-synced! false)
         (let [eid   "test-glossary-xxxxxxx"
               files {"main" {"collections/main/test_coll/collection.yaml"
                              (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
