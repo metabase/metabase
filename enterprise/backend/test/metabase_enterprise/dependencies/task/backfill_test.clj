@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.task.backfill-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.task.backfill-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
@@ -9,7 +10,7 @@
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase-enterprise.dependencies.test-util :as deps.test]
-   [metabase.events.core :as events]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -34,7 +35,7 @@
 (defn- mark-stale!
   "Mark an entity as stale in dependency_status for testing."
   [entity-type entity-id]
-  (deps.dependency-status/mark-stale! entity-type [entity-id]))
+  (deps.dependency-status/mark-stale! {entity-type #{entity-id}}))
 
 (defn- assert-processed
   "Assert that an entity has been processed (not stale, current version)."
@@ -374,33 +375,6 @@
             (assert-processed :card card-id)
             (is (= 1 deps-after))))))))
 
-(deftest ^:synchronized backfill-dependencies-on-serdes-load-test
-  (testing "Serdes load triggers the backfill job (entities remain stale until job runs)"
-    (backfill-all-existing-entities!)
-    (let [query (mt/mbql-query orders)]
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {card1-id :id} {:dataset_query query}
-                       :model/Card {card2-id :id} {:dataset_query query}
-                       :model/Card {card3-id :id} {:dataset_query query}]
-          ;; Mark all as stale
-          (mark-stale! :card card1-id)
-          (mark-stale! :card card2-id)
-          (mark-stale! :card card3-id)
-          ;; serdes-load triggers the async job, not synchronous processing
-          (events/publish-event! :event/serdes-load {})
-          ;; entities are still stale (job hasn't run yet in this test)
-          (is (= 3 (t2/count :model/DependencyStatus
-                             :entity_type :card
-                             :entity_id [:in [card1-id card2-id card3-id]]
-                             :stale true)))
-          ;; manually run the backfill to verify it processes them
-          (backfill-all-existing-entities!)
-          (is (= 3 (t2/count :model/DependencyStatus
-                             :entity_type :card
-                             :entity_id [:in [card1-id card2-id card3-id]]
-                             :stale false
-                             :dependency_analysis_version dependencies.model/current-dependency-analysis-version))))))))
-
 (deftest ^:synchronized backfill-dependencies-on-token-update-test
   (testing "Token update triggers the backfill job (entities remain stale until job runs)"
     (backfill-all-existing-entities!)
@@ -414,7 +388,7 @@
           (mark-stale! :card card2-id)
           (mark-stale! :card card3-id)
           ;; token update triggers the async job, not synchronous processing
-          (events/publish-event! :event/set-premium-embedding-token {})
+          (dependencies.hooks/after-premium-token-update)
           ;; entities are still stale (job hasn't run yet in this test)
           (is (= 3 (t2/count :model/DependencyStatus
                              :entity_type :card
@@ -485,7 +459,10 @@
                          (reset! scheduled [])
                          (thunk)
                          (count @scheduled))]
-      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args]
+                                                        (when (some #(str/includes? (str %) "dependency-backfill") args)
+                                                          (swap! scheduled conj args))
+                                                        nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
           (testing "the 1-second event-driven trigger is suppressed"
             (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!))))

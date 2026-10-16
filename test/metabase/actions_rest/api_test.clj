@@ -629,11 +629,10 @@
             (is (= model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))
 
 (deftest action-without-model-collection-guards-test
-  (testing "an action without a model can only go in the data actions root or an existing, unarchived data actions or data app collection"
+  (testing "an action without a model can only go in the data actions root or an existing, unarchived data actions collection"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-model-cleanup [:model/Action]
         (mt/with-temp [:model/Collection {coll-id :id}     {:namespace "data-actions"}
-                       :model/Collection {app-id :id}      {:namespace "data-apps"}
                        :model/Collection {default-id :id}  {}
                        :model/Collection {snippets-id :id} {:namespace "snippets"}
                        :model/Collection {archived-id :id} {:namespace "data-actions" :archived true}]
@@ -643,8 +642,6 @@
                        (str (mt/user-http-request :crowberto :post 400 "action" (model-less-query-action default-id)))))
           (is (= "Not found."
                  (mt/user-http-request :crowberto :post 404 "action" (model-less-query-action Integer/MAX_VALUE))))
-          (is (=? {:collection_id app-id}
-                  (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action app-id))))
           (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id))))]
             (mt/user-http-request :crowberto :put 400 path {:collection_id archived-id})
             (mt/user-http-request :crowberto :put 400 path {:collection_id default-id})

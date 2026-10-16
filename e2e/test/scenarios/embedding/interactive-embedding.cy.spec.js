@@ -172,6 +172,8 @@ describe("scenarios > embedding > full app", () => {
         url: "/question/" + ORDERS_QUESTION_ID,
         qs: { additional_info: false },
       });
+      // the app bar only shows breadcrumbs while the navbar is closed
+      H.closeNavigationSidebar();
 
       cy.findByTestId("app-bar")
         .findByText("Our analytics")
@@ -1075,6 +1077,8 @@ describe("scenarios > embedding > full app", () => {
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { additional_info: false },
       });
+      // the app bar only shows breadcrumbs while the navbar is closed
+      H.closeNavigationSidebar();
 
       cy.findByTestId("dashboard-header")
         .findByText("Orders in a dashboard")
@@ -1189,9 +1193,8 @@ describe("scenarios > embedding > full app", () => {
       cy.log("Navigate to a dashboard via in-app navigation");
       H.navigationSidebar().findByText("Our analytics").click();
       cy.findByRole("main").findByText(dashboardDetails.name).click();
-      H.navigationSidebar()
-        .findByText("Our analytics")
-        .should("not.be.visible");
+      H.navigationSidebar().should("be.visible");
+      H.closeNavigationSidebar();
 
       cy.get("main header")
         .findByText(dashboardDetails.name)
@@ -1299,6 +1302,34 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
+    it("should keep the navbar open when navigating, and only close it when the user toggles it", () => {
+      const dashboardName = "Navbar dashboard";
+      H.createDashboard({ name: dashboardName });
+
+      H.visitFullAppEmbeddingUrl({ url: "/" });
+      H.navigationSidebar().should("be.visible");
+
+      cy.log("navigating to a dashboard keeps the navbar open");
+      H.navigationSidebar().findByText("Our analytics").click();
+      cy.findByRole("main").findByText(dashboardName).click();
+      cy.findByTestId("dashboard-name-heading").should(
+        "have.value",
+        dashboardName,
+      );
+      H.navigationSidebar().should("be.visible");
+      H.appBar().findByText("Our analytics").should("not.be.visible");
+
+      cy.log("the toggle closes the navbar, and it stays closed on navigation");
+      H.appBar().findByTestId("sidebar-toggle").click();
+      H.navigationSidebar().should("not.be.visible");
+      H.appBar().findByText("Our analytics").click();
+      cy.findByTestId("collection-name-heading").should(
+        "have.text",
+        "Our analytics",
+      );
+      H.navigationSidebar().should("not.be.visible");
+    });
+
     it("should send `frame` message with dashboard height when the dashboard is resized (metabase#37437)", () => {
       const TAB_1 = { id: 1, name: "Tab 1" };
       const TAB_2 = { id: 2, name: "Tab 2" };
@@ -1345,6 +1376,8 @@ describe("scenarios > embedding > full app", () => {
         },
       });
 
+      // the app bar only shows breadcrumbs while the navbar is closed
+      H.closeNavigationSidebar();
       cy.get("@postMessage").invoke("resetHistory");
       cy.findByTestId("app-bar").findByText("Our analytics").click();
 

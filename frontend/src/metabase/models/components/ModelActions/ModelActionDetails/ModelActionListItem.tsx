@@ -160,13 +160,7 @@ export function ModelActionListItem({
           <>
             <Box pos="absolute" top="0.5rem" right="0.5rem">
               <Tooltip label={t`Run`}>
-                <ActionIcon
-                  variant="subtle"
-                  bg="background_page-primary"
-                  c="text-primary"
-                  aria-label={t`Run`}
-                  onClick={openExecuteModal}
-                >
+                <ActionIcon aria-label={t`Run`} onClick={openExecuteModal}>
                   <Icon name="play" />
                 </ActionIcon>
               </Tooltip>

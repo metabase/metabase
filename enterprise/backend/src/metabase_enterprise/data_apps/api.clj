@@ -7,7 +7,6 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.data-apps.access :as data-app.access]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
@@ -20,6 +19,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -109,13 +109,8 @@
    [:url [:maybe :string]]])
 
 (def ^:private AddGroupsRequest
-  [:map {:closed true
-         :decode/api (fn [body]
-                       (when (map? body)
-                         (api/check-400 (every? #{:group_ids} (keys body))
-                                        (tru "Only group_ids can be specified.")))
-                       body)}
-   [:group_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
+  [:map {:closed true}
+   [:group_ids [:sequential {:min 1 :max 100} ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -198,7 +193,8 @@
    available, and otherwise listed only to superusers, who see it badged."
   [_route-params
    {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-app.access/readable-apps {:user-id api/*current-user-id* :superuser? api/*is-superuser?*} available)
+  (->> (data-apps.db/data-apps available)
+       (filter mi/can-read?)
        (remove #(and (or available (not api/*is-superuser?*))
                      (data-app.config/outdated? %)))
        (mapv data-app-response)))
@@ -264,9 +260,10 @@
   nil)
 
 (api.macros/defendpoint :post "/generate/app" :- ::data-apps.schema/app-files
-  "A new data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
-  YAML a remote-sync export writes, with new entity IDs. For superusers: the files are written into the app's
-  repository, which only an admin works with."
+  "A data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
+  YAML a remote-sync export writes. An existing app passes its `entity_id` and `collection_id` to keep them; a new app
+  gets new entity IDs. For superusers: the files are written into the app's repository, which only an admin works
+  with."
   [_route-params
    _query-params
    body :- ::data-apps.schema/app-request]
