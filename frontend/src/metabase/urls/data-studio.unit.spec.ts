@@ -1,5 +1,11 @@
 import {
   dataStudio,
+  dataStudioDashboard,
+  dataStudioDashboardContents,
+  dataStudioDashboardDependencies,
+  dataStudioDashboardSubscriptions,
+  dataStudioDashboardUsage,
+  dataStudioDashboards,
   dataStudioData,
   dataStudioDataModelSegment,
   dataStudioDataModelSegmentDependencies,
@@ -104,6 +110,39 @@ describe("urls > data-studio", () => {
   describe("dataStudioLibrary", () => {
     it("should return library URL", () => {
       expect(dataStudioLibrary()).toBe("/data-studio/library");
+    });
+  });
+
+  describe("dataStudioDashboards", () => {
+    it("should return the dashboards URL", () => {
+      expect(dataStudioDashboards()).toBe("/data-studio/dashboards");
+    });
+
+    it("should carry expanded collection ids", () => {
+      expect(dataStudioDashboards({ expandedIds: [1, 2] })).toBe(
+        "/data-studio/dashboards?expandedId=1&expandedId=2",
+      );
+    });
+  });
+
+  describe("dataStudioDashboard", () => {
+    it("should return the dashboard tab URLs", () => {
+      expect(dataStudioDashboard(7)).toBe("/data-studio/dashboards/7");
+      expect(dataStudioDashboardContents(7)).toBe(
+        "/data-studio/dashboards/7/contents",
+      );
+      expect(dataStudioDashboardDependencies(7)).toBe(
+        "/data-studio/dashboards/7/dependencies",
+      );
+      expect(dataStudioDashboardUsage(7)).toBe(
+        "/data-studio/dashboards/7/usage",
+      );
+      expect(dataStudioDashboardSubscriptions(7)).toBe(
+        "/data-studio/dashboards/7/subscriptions",
+      );
+      expect(dataStudioDashboardSubscriptions(7, 3)).toBe(
+        "/data-studio/dashboards/7/subscriptions/3",
+      );
     });
   });
 

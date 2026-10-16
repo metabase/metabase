@@ -64,6 +64,7 @@
   flex-shrink: 0;
 
   &:focus,
+  &[data-loading],
   .item:hover &,
   .item:focus &,
   .item.selected &,
@@ -77,6 +78,7 @@
   opacity: 0;
 
   &:focus,
+  &[data-loading],
   .item:hover &,
   .item:focus &,
   .item.selected {

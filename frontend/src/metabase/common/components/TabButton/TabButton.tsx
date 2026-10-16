@@ -1,8 +1,4 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import { css } from "@emotion/react";
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import styled from "@emotion/styled";
 import cx from "classnames";
 import type {
   ChangeEventHandler,
@@ -23,7 +19,8 @@ import {
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { ActionIcon, Icon, Popover } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { ActionIcon, Box, Flex, Icon, Popover } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -34,12 +31,6 @@ import {
 } from "../Tab";
 
 import S from "./TabButton.module.css";
-import {
-  TabButtonInput,
-  TabButtonInputResizer,
-  TabButtonInputWrapper,
-  TabButtonRoot,
-} from "./TabButton.styled";
 import { TabButtonMenu } from "./TabButtonMenu";
 
 export const INPUT_WRAPPER_TEST_ID = "tab-button-input-wrapper";
@@ -64,9 +55,11 @@ export interface TabButtonProps extends HTMLAttributes<HTMLDivElement> {
   isRenaming?: boolean;
   onInputDoubleClick?: MouseEventHandler<HTMLSpanElement>;
   disabled?: boolean;
+  /** Frames the label on hover while the tab is selected, hinting that a double click renames it */
+  canRename?: boolean;
 }
 
-const _TabButton = forwardRef(function TabButton(
+const PlainTabButton = forwardRef(function PlainTabButton(
   {
     value,
     menuItems,
@@ -77,7 +70,9 @@ const _TabButton = forwardRef(function TabButton(
     onInputDoubleClick,
     disabled = false,
     isRenaming = false,
+    canRename = false,
     showMenu: showMenuProp = true,
+    className,
     ...props
   }: TabButtonProps,
   inputRef: Ref<HTMLInputElement>,
@@ -122,11 +117,21 @@ const _TabButton = forwardRef(function TabButton(
     );
 
   return (
-    <TabButtonRoot
+    <Flex
       {...props}
+      className={cx(
+        S.root,
+        {
+          [S.selected]: isSelected && !disabled,
+          [S.disabled]: disabled,
+        },
+        disabled ? CS.cursorDefault : CS.cursorPointer,
+        className,
+      )}
+      pos="relative"
+      fz="md"
+      fw={700}
       onClick={handleButtonClick}
-      isSelected={isSelected}
-      disabled={disabled}
       role="tab"
       aria-selected={isSelected}
       aria-controls={getTabPanelId(idPrefix, value)}
@@ -134,20 +139,36 @@ const _TabButton = forwardRef(function TabButton(
       aria-label={label}
       id={getTabId(idPrefix, value)}
     >
-      <TabButtonInputWrapper
+      <Box
+        component="span"
+        className={cx(S.inputWrapper, {
+          [S.renaming]: isRenaming,
+          [S.renameable]: canRename && isSelected,
+        })}
+        pos="relative"
+        p="xxs"
+        bdrs="xs"
+        lh={1.15}
         onDoubleClick={onInputDoubleClick}
-        isSelected={isSelected}
-        disabled={disabled}
         data-testid={INPUT_WRAPPER_TEST_ID}
       >
-        <TabButtonInputResizer aria-hidden="true">
+        <Box component="span" className={S.resizer} aria-hidden="true">
           {label}
-        </TabButtonInputResizer>
-        <TabButtonInput
+        </Box>
+        <Box
+          component="input"
+          className={S.input}
+          pos="absolute"
+          left={0}
+          bottom="-1px"
+          w="100%"
+          p="xxs"
+          bdrs="xxs"
+          fw="bold"
+          ta="center"
           maxLength={75}
           type="text"
           value={label}
-          isSelected={isSelected}
           disabled={!isRenaming}
           onChange={onRename}
           onKeyPress={handleInputKeyPress}
@@ -157,7 +178,7 @@ const _TabButton = forwardRef(function TabButton(
           id={getTabButtonInputId(idPrefix, value)}
           ref={inputRef}
         />
-      </TabButtonInputWrapper>
+      </Box>
       {showMenu && (
         <Popover
           opened={isMenuOpen}
@@ -188,7 +209,7 @@ const _TabButton = forwardRef(function TabButton(
           </Popover.Dropdown>
         </Popover>
       )}
-    </TabButtonRoot>
+    </Flex>
   );
 });
 
@@ -203,23 +224,6 @@ export interface RenameableTabButtonProps extends Omit<
   value: UniqueIdentifier;
 }
 
-// These styles need to be here instead of .styled to avoid circular dependency
-const getBorderStyle = () => css`
-  box-shadow: 0px 0px 2px 1px var(--mb-color-core-brand);
-`;
-export const RenameableTabButtonStyled = styled(_TabButton)<{
-  isRenaming: boolean;
-  isSelected: boolean;
-  canRename: boolean;
-}>`
-  ${TabButtonInputWrapper} {
-    ${(props) => props.isRenaming && getBorderStyle()}
-    :hover {
-      ${(props) => props.canRename && props.isSelected && getBorderStyle()}
-    }
-  }
-`;
-
 export function RenameableTabButton({
   label: labelProp,
   menuItems: originalMenuItems = [],
@@ -231,9 +235,6 @@ export function RenameableTabButton({
   ...props
 }: RenameableTabButtonProps) {
   const tc = useTranslateContent();
-
-  const { value: selectedValue } = useContext(TabContext);
-  const isSelected = props.value === selectedValue;
 
   // Only translate the label if it is not editable
   const maybeTranslatedLabelProp = canRename ? labelProp : tc(labelProp);
@@ -282,9 +283,8 @@ export function RenameableTabButton({
   }
 
   return (
-    <RenameableTabButtonStyled
+    <PlainTabButton
       label={label}
-      isSelected={isSelected}
       isRenaming={canRename && isRenaming}
       canRename={canRename}
       onRename={(e) => setLabel(e.target.value)}
@@ -297,7 +297,6 @@ export function RenameableTabButton({
   );
 }
 
-export const TabButton = Object.assign(_TabButton, {
-  Root: TabButtonRoot,
+export const TabButton = Object.assign(PlainTabButton, {
   Renameable: RenameableTabButton,
 });

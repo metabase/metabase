@@ -78,8 +78,14 @@
                               :native-pivot-tables             true
                               :now                             true
                               :database-routing                true
-                              :connection-impersonation        true}]
+                              :connection-impersonation        true
+                              :jdbc/set-query-timeout          false
+                              :regex/lookaheads-and-lookbehinds false}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
+
+(defmethod sql.qp/use-ctes-for-stages? :starburst
+  [_driver]
+  true)
 
 (defn- format-field
   [name value]
@@ -522,7 +528,8 @@
 
 (defmethod driver/describe-database* :starburst
   [driver database]
-  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)
+        catalog (u/lower-case-en catalog)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database
@@ -918,7 +925,23 @@
    :kerberos-config-path "KerberosConfigPath"
    :kerberos-delegation "KerberosDelegation"})
 
+(defn- check-kerberos-file-paths!
+  "The keytab, config and credential-cache paths are files on the Metabase host that an admin types in, so they have
+  to be somewhere `readable-paths` allows. A credential cache may also be named by type: `FILE:`/`DIR:` name a path,
+  the others (`KEYRING:`, `MEMORY:`, `KCM:`, ...) name no file."
+  [details]
+  (doseq [k     [:kerberos-keytab-path :kerberos-config-path :kerberos-credential-cache-path]
+          :let  [v    (some-> (get details k) str str/trim)
+                 path (cond
+                        (str/blank? v)                    nil
+                        (re-find #"(?i)^(FILE|DIR):" v)   (str/replace v #"(?i)^(FILE|DIR):" "")
+                        (re-find #"^[A-Za-z]{2,}:" v)     nil
+                        :else                             v)]
+          :when path]
+    (driver-api/ensure-readable-path! path)))
+
 (defn- details->kerberos-url-params [details]
+  (check-kerberos-file-paths! details)
   (let [remove-blank-vals (fn [m] (into {} (remove (comp str/blank? val) m)))
         ks                (keys kerb-props->url-param-names)]
     (-> (select-keys details ks)

@@ -60,21 +60,6 @@
                        [:show-column-totals {:optional true} [:maybe :boolean]]
                        [:column-sort-order  {:optional true} [:maybe ::column-sort-order]]]])
 
-(defn- validate-pivot-indices!
-  "Throw an `:invalid-query` error if any index in `pivot-rows` or `pivot-cols` falls outside
-  `[0, num-breakouts)`."
-  [num-breakouts pivot-rows pivot-cols]
-  (doseq [[k pivots] [[:pivot-rows pivot-rows]
-                      [:pivot-cols pivot-cols]]
-          i          pivots]
-    (when (or (neg? i) (>= i num-breakouts))
-      (throw (ex-info (tru "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
-                           (name k) i num-breakouts)
-                      {:type          qp.error-type/invalid-query
-                       :num-breakouts num-breakouts
-                       :pivot-rows    pivot-rows
-                       :pivot-cols    pivot-cols})))))
-
 (defmacro ^:private wrapping-pivot-generation-errors
   "Rewrap any throw from `body` as `\"Error generating pivot queries\"` of type `:qp`, matching the
   outer error shape every pivot path presents to the QP's error handling."
@@ -436,7 +421,7 @@
             (and (nil? rows-idxs) (nil? cols-idxs)))
       stripped
       (let [breakouts   (vec (:breakout (lib.util/query-stage query -1)))
-            _           (validate-pivot-indices! (count breakouts) rows-idxs cols-idxs)
+            _           (pivot.common/validate-pivot-indices! (count breakouts) rows-idxs cols-idxs)
             index->uuid (fn [i]
                           (when (nat-int? i)
                             (lib.options/uuid (nth breakouts i))))

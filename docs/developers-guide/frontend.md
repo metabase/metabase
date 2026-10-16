@@ -42,7 +42,7 @@ You'll note several styling patterns in the codebase. Currently you should prefe
 2. [CSS Modules](https://github.com/css-modules/css-modules) for more complex styling
 3. Global utility classes (in `/css/core`) should only be used where Mantine style props cannot be used.
 
-Other patterns, such as emotion styled components should not be used for new code. Where convenient, please updated deprecated styling patterns to the updated ones.
+Don't use Emotion styled components in new, moved, or otherwise edited code. Untouched legacy usage may remain; editing a neighboring line doesn't require a whole-file migration. When moving or editing the usage itself, use Mantine style props or CSS Modules instead.
 
 Familiarize yourself with Mantine's Layout components. You can often save a lot of CSS with built-in components like [`Center`](https://mantine.dev/core/center/) and [`SimpleGrid`](https://mantine.dev/core/simple-grid/)
 
@@ -143,7 +143,7 @@ describe("Component", () => {
 Key points:
 
 - `setup` function
-- Call helpers from `__support__/server-mocks` to setup endpoints for your data
+- Call helpers from `__support__/server-mocks` to setup endpoints for your data instead of registering raw `fetchMock` routes in component tests. For a new endpoint, add a helper in the appropriate shared server-mock owner and preserve existing callers.
 
 ## Localization
 

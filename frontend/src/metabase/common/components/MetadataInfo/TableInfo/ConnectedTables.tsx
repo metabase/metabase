@@ -2,12 +2,13 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
-import { Box } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { NormalizedTable } from "metabase-types/api";
 
-import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
+import { Label, LabelContainer } from "../MetadataInfo";
 import { TableLabel } from "../TableLabel/TableLabel";
 
 import S from "./ConnectedTables.module.css";
@@ -24,8 +25,8 @@ type Props = {
 
 export function ConnectedTables({ tables, onConnectedTableClick }: Props) {
   return tables.length ? (
-    <Container>
-      <LabelContainer color="text-primary">
+    <Stack className={CS.overflowAuto} pos="relative" gap="sm">
+      <LabelContainer c="text-primary">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
       {tables.slice(0, 8).map((fkTable) => {
@@ -39,7 +40,7 @@ export function ConnectedTables({ tables, onConnectedTableClick }: Props) {
           <ConnectedTableLink key={fkTable.id} table={fkTable} />
         );
       })}
-    </Container>
+    </Stack>
   ) : null;
 }
 
@@ -58,7 +59,7 @@ function ConnectedTableButton({
       ta="left"
       onClick={() => onClick(table)}
     >
-      <TableLabel className={S.label} table={table} color="text-disabled" />
+      <TableLabel className={S.label} table={table} />
     </Box>
   );
 }
@@ -79,7 +80,7 @@ function ConnectedTableLink({ table }: { table: ConnectedTable }) {
 
   return (
     <Link className={S.connectedTable} to={url}>
-      <TableLabel className={S.label} table={table} color="text-disabled" />
+      <TableLabel className={S.label} table={table} />
     </Link>
   );
 }

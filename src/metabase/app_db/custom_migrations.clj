@@ -2337,3 +2337,21 @@
         (t2/reducible-query {:select [:id :name]
                              :from   [:data_app]
                              :where  [:= :resource_collection_id nil]})))
+
+(define-migration DeleteDataAppDrafts
+  ;; A draft reserved a data app's slug and resources before the app existed, for the SDK's query sync, which is
+  ;; gone. A draft has no bundle and can never be served, so the row goes, with the permission group made for it,
+  ;; as deleting an app deletes both. Its collection goes too when nothing was put in it; one that holds content
+  ;; stays for an admin to look at.
+  (doseq [{:keys [id resource_collection_id permission_group_id]} (t2/select :data_app :draft true)]
+    (t2/query {:delete-from :data_app :where [:= :id id]})
+    (when permission_group_id
+      (t2/query {:delete-from :permissions_group :where [:= :id permission_group_id]}))
+    (when resource_collection_id
+      (let [in-collection (fn [table] (t2/exists? table :collection_id resource_collection_id))
+            location      (str "/" resource_collection_id "/")]
+        (when-not (or (some in-collection [:report_card :action :report_dashboard :document :timeline :pulse
+                                           :native_query_snippet :metabase_table :transform])
+                      (t2/exists? :collection :location [:like (str location "%")]))
+          (t2/query {:delete-from :permissions :where [:= :collection_id resource_collection_id]})
+          (t2/query {:delete-from :collection :where [:= :id resource_collection_id]}))))))

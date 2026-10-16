@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  Icon,
   SegmentedControl,
   type SegmentedControlItem,
   type SegmentedControlProps,
@@ -82,6 +81,7 @@ function getIconOnlyItem({
   return {
     value,
     ariaLabel: label,
-    icon: <Icon name={iconName} tooltip={label} />,
+    icon: iconName,
+    withTooltip: true,
   };
 }

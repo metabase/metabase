@@ -2,6 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
+import { canManageSubscriptions, getUserIsAdmin } from "metabase/current-user";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
@@ -24,6 +25,8 @@ import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
+  EventsSidebarState,
+  SharingSidebarState,
   State,
   StoreDashboard,
   StoreDashcard,
@@ -41,6 +44,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
+  ChannelApiResponse,
   DashCardId,
   Dashboard,
   DashboardCard,
@@ -77,6 +81,26 @@ function isClickBehaviorSidebar(
 ): sidebar is ClickBehaviorSidebarState {
   return sidebar.name === SIDEBAR_NAME.clickBehavior;
 }
+
+function isEventsSidebar(sidebar: SidebarState): sidebar is EventsSidebarState {
+  return sidebar.name === SIDEBAR_NAME.events;
+}
+
+export const getEventsSidebarProps = (state: State) => {
+  const { sidebar } = state.dashboard;
+  return isEventsSidebar(sidebar) ? sidebar.props : null;
+};
+
+function isSharingSidebar(
+  sidebar: SidebarState,
+): sidebar is SharingSidebarState {
+  return sidebar.name === SIDEBAR_NAME.sharing;
+}
+
+export const getSharingSubscriptionId = (state: State) => {
+  const { sidebar } = state.dashboard;
+  return isSharingSidebar(sidebar) ? sidebar.props.subscriptionId : undefined;
+};
 
 function isEditParameterSidebar(
   sidebar: SidebarState,
@@ -147,6 +171,32 @@ export const getIsSharing = createSelector(
   [getSidebar],
   (sidebar) => sidebar.name === SIDEBAR_NAME.sharing,
 );
+
+/**
+ * Whether the current user can set up and edit this dashboard's
+ * subscriptions. It takes the Subscriptions permission and a card with data
+ * to send, and for a non-admin a configured email or Slack channel, since
+ * only an admin can set one up. `channelInfo` is `undefined` while it loads
+ * or when its request fails, which leaves only an admin able to manage them.
+ */
+export const getCanManageDashboardSubscriptions = (
+  state: State,
+  dashboard: Pick<Dashboard, "dashcards">,
+  channelInfo: ChannelApiResponse | undefined,
+): boolean => {
+  const hasDataCards = dashboard.dashcards.some(
+    (dashcard) => !["text", "heading"].includes(dashcard.card.display),
+  );
+  const hasConfiguredChannel =
+    channelInfo?.channels.email?.configured === true ||
+    channelInfo?.channels.slack?.configured === true;
+
+  return (
+    canManageSubscriptions(state) &&
+    hasDataCards &&
+    (getUserIsAdmin(state) || hasConfiguredChannel)
+  );
+};
 
 export const getShowAddQuestionSidebar = createSelector(
   [getSidebar],

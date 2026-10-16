@@ -6,9 +6,11 @@
    [clojure.test :refer :all]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
@@ -230,19 +232,49 @@
 (deftest query-action-without-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (testing "a query action can be inserted and updated without a model, and keeps its own collection"
-      (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}
+                     :model/Collection {app-id :id}  {:namespace "data-apps"}]
         (mt/with-model-cleanup [:model/Action]
-          (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                         {:type          :query
-                                                          :name          "No model"
-                                                          :collection_id coll-id
-                                                          :database_id   (mt/id)
-                                                          :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
+          (let [insert!   (fn [collection-id]
+                            (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                           {:type          :query
+                                                            :name          "No model"
+                                                            :collection_id collection-id
+                                                            :database_id   (mt/id)
+                                                            :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})))
+                action-id (insert! coll-id)]
             (is (=? {:model_id nil :collection_id coll-id :database_id (mt/id)}
                     (action/select-action :id action-id)))
             (action/update! {:id action-id :name "Renamed"} (action/select-action :id action-id))
             (is (=? {:name "Renamed" :model_id nil :collection_id coll-id}
-                    (action/select-action :id action-id)))))))))
+                    (action/select-action :id action-id)))
+            (testing "a data app collection takes one too"
+              (is (=? {:model_id nil :collection_id app-id}
+                      (action/select-action :id (insert! app-id)))))))))))
+
+(deftest action-in-a-data-apps-collection-is-read-only-test
+  (testing "Nobody writes an action in a collection of the data apps namespace, administrators included"
+    (mt/with-temp [:model/Collection {app-id :id}  {:namespace "data-apps"}
+                   :model/Collection {coll-id :id} {:namespace "data-actions"}]
+      (mt/with-model-cleanup [:model/Action]
+        (let [action-in (fn [collection-id]
+                          (lib/normalize ::actions.schema/action.for-insert
+                                         {:type          :query
+                                          :name          "No model"
+                                          :collection_id collection-id
+                                          :database_id   (mt/id)
+                                          :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
+              action    (action/select-action :id (action/insert! (action-in app-id)))
+              elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
+          (mt/with-test-user :crowberto
+            (is (false? (mi/can-write? action)))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                  (api/write-check :model/Action (:id action))))
+            (is (false? (:can_write (t2/hydrate action :can_write))))
+            (testing "nor creates one there, or moves one in"
+              (is (false? (mi/can-create? :model/Action (action-in app-id))))
+              (is (true? (mi/can-write? elsewhere)))
+              (is (false? (mi/can-update? elsewhere {:collection_id app-id}))))))))))
 
 (deftest implicit-action-requires-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -447,3 +479,14 @@
                          :serdes/meta [{:model "Action" :id entity-id}]}
                         nil)
       (is (not (t2/exists? :model/Action :entity_id entity-id))))))
+
+(deftest storage-path-test
+  (testing "actions without a model in the data actions root or namespace are stored in the data-actions folder"
+    (mt/with-temp [:model/Collection {folder-eid :entity_id} {:namespace "data-actions"}
+                   :model/Collection {app-eid :entity_id}    {:namespace "data-apps"}]
+      (let [folder-label (fn [action]
+                           (:label (second (serdes/storage-path (assoc action :serdes/meta [{:model "Action"}]) {}))))]
+        (is (= "data-actions" (folder-label {:name "At root" :entity_id "x" :model_id nil :collection_id nil})))
+        (is (= "data-actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
+        (is (= "main" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
+        (is (= "main" (folder-label {:name "On a model" :entity_id "x" :model_id "model-eid" :collection_id nil})))))))

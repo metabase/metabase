@@ -155,7 +155,8 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by the collection-items endpoints.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card"                              ; SavedQuestion
+  #{"action"
+    "card"                              ; SavedQuestion
     "dataset"                           ; Model. TODO : update this
     "document"
     "exploration"
@@ -483,6 +484,27 @@
                 [:=
                  [:inline 0]
                  [:inline 1]])]}))
+
+(defmethod collection-children-query :action
+  [_model collection {:keys [archived? pinned-state]}]
+  {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
+            :action.archived :action.archived_directly [(h2x/literal "action") :model]]
+   :from   [[:action :action]]
+   :where  [:and
+            (poison-when-pinned-clause pinned-state)
+            [:= :action.collection_id (:id collection)]
+            [:= :action.model_id nil]
+            [:= :action.archived (boolean archived?)]]})
+
+(defmethod post-process-collection-children :action
+  [_ _options _collection rows]
+  (for [row rows]
+    (-> (dissoc row
+                :collection_position :display :authority_level :moderated_status :icon :personal_owner_id
+                :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)
+        (update :archived api/bit->boolean)
+        (update :archived_directly api/bit->boolean)
+        (assoc :collection_namespace "data-actions"))))
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -818,6 +840,12 @@
              (map :collection_id)
              (into #{}))
 
+        collections-containing-actions
+        (->> (when (seq descendant-collection-ids)
+               (collections.db/unarchived-action-collection-ids-in descendant-collection-ids))
+             (map :collection_id)
+             (into #{}))
+
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
         (->> (t2/hydrate descendant-collections :effective_parent :is_remote_synced)
@@ -831,7 +859,8 @@
                {:table collections-containing-tables
                 :collection collections-containing-collections
                 :dashboard collections-containing-dashboards
-                :transform collections-containing-transforms})
+                :transform collections-containing-transforms
+                :action collections-containing-actions})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
@@ -911,6 +940,7 @@
     :exploration :model/Exploration
     :pulse       :model/Pulse
     :snippet     :model/NativeQuerySnippet
+    :action      :model/Action
     :table       :model/Table
     :timeline    :model/Timeline
     :transform   :model/Transform))
@@ -1123,7 +1153,8 @@
   [collection-namespace]
   (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                    ;; Tables in collections are an EE feature (library)
-                   (premium-features/has-feature? :library) (conj :table))
+                   (premium-features/has-feature? :library) (conj :table)
+                   (= "data-actions" (some-> collection-namespace name)) (conj :action))
         :let     [toucan-model       (model-name->toucan-model model-kw)
                   allowed-namespaces (collection/allowed-namespaces toucan-model)]
         :when    (or (= model-kw :collection)
@@ -1136,7 +1167,8 @@
    {:keys [models created-by-id], :as options}       :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                                       ;; Tables in collections are an EE feature (library)
-                                      (premium-features/has-feature? :library) (conj :table))
+                                      (premium-features/has-feature? :library) (conj :table)
+                                      (= "data-actions" (some-> collection-namespace name)) (conj :action))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            ;; a creator filter drops models that don't index a creator
@@ -1214,4 +1246,4 @@
   If you're looking in the root collection of one of these namespaces, we'll allow you to list any type of model.
 
   Otherwise, we'll just show you collections."
-  #{nil "snippets" "transforms"})
+  #{nil "snippets" "transforms" "data-actions"})

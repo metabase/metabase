@@ -8,12 +8,18 @@ import { useActionInitialValues } from "metabase/actions/hooks/use-action-initia
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 import { actionApi, publicApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import CS from "metabase/css/core/index.css";
 import {
   ActionCreator,
   loadActionCreator,
 } from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
-import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
+import {
+  Modal,
+  PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
+  Paper,
+  Title,
+} from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -26,7 +32,6 @@ import type {
 } from "metabase-types/api";
 
 import ActionButtonView from "./ActionButtonView";
-import { FormTitle, FormWrapper } from "./ActionForm.styled";
 import { shouldShowConfirmation } from "./utils";
 
 export interface ActionFormProps {
@@ -46,7 +51,7 @@ export interface ActionFormProps {
   onActionEdit?: (newAction: WritebackAction) => void;
 }
 
-function ActionVizForm({
+export function ActionVizForm({
   action,
   dashcard,
   dashboard,
@@ -177,7 +182,7 @@ function ActionVizForm({
         >
           <ActionCreator
             action={action}
-            modelId={action.model_id}
+            modelId={action.model_id ?? undefined}
             databaseId={action.database_id}
             actionId={action.id}
             onSubmit={onActionEdit}
@@ -189,8 +194,20 @@ function ActionVizForm({
   }
 
   return (
-    <FormWrapper>
-      <FormTitle>{title}</FormTitle>
+    // A zero flex basis lets the form fill the dashcard and scroll instead of growing past it
+    // The md radius matches the dashcard, which clips its content to its own corners
+    <Paper
+      className={CS.overflowYAuto}
+      flex="1 1 0"
+      mih={0}
+      p="xl"
+      radius="md"
+      shadow="none"
+      withBorder
+    >
+      <Title order={4} size="h5" lh="normal" mb="xl">
+        {title}
+      </Title>
       <ActionParametersInputForm
         action={action}
         mappedParameters={mappedParameters}
@@ -198,9 +215,6 @@ function ActionVizForm({
         onSubmit={onSubmit}
         onSubmitSuccess={handleSubmitSuccess}
       />
-    </FormWrapper>
+    </Paper>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ActionVizForm;

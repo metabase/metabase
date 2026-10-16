@@ -841,9 +841,9 @@
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
                                                   :settings {:api-test-disabled-for-database false}}]
         (is (= "Setting api-test-disabled-for-database is not enabled for this database"
-               (:message (mt/user-http-request :crowberto :put 400
-                                               (format "database/%s" db-id)
-                                               {:settings {:api-test-disabled-for-database true}}))))))
+               (mt/user-http-request :crowberto :put 400
+                                     (format "database/%s" db-id)
+                                     {:settings {:api-test-disabled-for-database true}})))))
     (testing "should not validate settings being reset to nil (default)"
       ;; Resetting a setting to nil should always be allowed, even if the setting would fail validation
       (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
@@ -1233,27 +1233,39 @@
               (is (= expected-keys
                      (set (keys db)))))))))))
 
-(deftest ^:parallel databases-caching
+(defn- database-list-call-count
+  "The number of app-db queries a `GET /api/database` by Rasta makes once its caches are warm."
+  []
+  ;; The first request fills caches that outlive it, so only the second one counts.
+  (mt/user-http-request :rasta :get 200 "database")
+  (t2/with-call-count [call-count]
+    (mt/user-http-request :rasta :get 200 "database")
+    (call-count)))
+
+;; Not ^:parallel: `GET /api/database` lists every Database in the app DB, so Databases that concurrently running
+;; tests create or delete (and any caches they invalidate) can change the query count between the warm-up request
+;; and the counted one.
+(deftest ^:synchronized databases-caching
   (testing "GET /api/database"
     (testing "Testing that listing all databases does not make excessive queries with multiple databases"
-      (mt/with-temp [:model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}
-                     :model/Database _ {:engine ::test-driver}]
-        (mt/user-http-request :rasta :get 200 "database")
-        (t2/with-call-count [call-count]
-          (mt/user-http-request :rasta :get 200 "database")
-          (is (< (call-count) 10)))))))
+      (let [baseline (database-list-call-count)]
+        (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}
+                       :model/Database _ {:engine ::test-driver}]
+          ;; What a listing costs depends on the token's features and on the databases other tests leave behind.
+          ;; A query per database would add at least 14, and the two allowed are a settings cache refresh.
+          (is (<= (database-list-call-count) (+ baseline 2))))))))
 
 (deftest databases-list-test-2
   (testing "GET /api/database"
@@ -3290,7 +3302,7 @@
               (is (= "new-write-host" (get-in db [:write_data_details :host])))
               (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
     (testing "Returns 402 without :writable-connection feature"
-      (with-redefs [premium-features/has-feature? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/has-feature? (constantly false)]
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
           (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)

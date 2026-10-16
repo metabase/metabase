@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { EmptyState } from "metabase/common/components/EmptyState";
 import type { PillTab } from "metabase/common/components/PillTabNavigation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { Outlet, useLocation } from "metabase/router";
@@ -19,7 +20,6 @@ import {
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
 
-import { CliAnalyticsEmptyState } from "./CliAnalyticsEmptyState";
 import {
   CliAnalyticsContextProvider,
   type CliAnalyticsContextValue,
@@ -143,7 +143,13 @@ export function CliAnalyticsSectionLayout() {
           hasTenants={hasTenants}
         />
       }
-      emptyState={<CliAnalyticsEmptyState />}
+      emptyState={
+        <EmptyState
+          icon="audit"
+          title={t`No CLI activity`}
+          message={t`Calls from the CLI and other Agent API clients will show up here. Try widening the date range or check back once clients start making requests.`}
+        />
+      }
       error={error}
       isInitialLoading={isInitialLoading}
       isTableRoute={isCallsRoute}

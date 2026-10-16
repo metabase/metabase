@@ -53,6 +53,7 @@ export const DatabaseFormFooter = ({
             {isNew && (
               <Tooltip label={t`Need help connecting?`}>
                 <ActionIcon
+                  variant="subtle"
                   component={ExternalLink}
                   href={docsUrl}
                   aria-label={t`Need help connecting?`}

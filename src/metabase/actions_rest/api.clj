@@ -11,6 +11,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.util :as u]
@@ -21,18 +22,23 @@
 (set! *warn-on-reflection* true)
 
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
-  "Returns the unarchived actions in collections the current user can read. Pass optional `?model-id=<model-id>` to
-  limit to the actions of a particular model."
+  "Returns the actions the current user can read, unarchived unless `?archived=true`. Pass optional
+  `?model-id=<model-id>` to limit to the actions of a particular model, and optional `?type=<type>` to limit to actions
+  of that type."
   {:scope api-scope/data-app}
   [_route-params
-   {:keys [model-id]} :- [:map {:closed true}
-                          [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
-  (let [actions (if model-id
-                  (let [model (api/read-check :model/Card model-id)]
-                    (actions/select-actions-for-models [model] [model-id]))
-                  (when-let [action-ids (seq (actions-rest.db/unarchived-action-ids-visible-to-user))]
-                    (actions/select-actions-for-ids nil (vec action-ids))))]
-    (t2/hydrate (vec actions) :creator)))
+   {:keys [model-id archived]
+    action-type :type} :- [:map {:closed true}
+                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
+                           [:type     {:optional true} [:maybe ::actions.schema/type]]
+                           [:archived {:default false} :boolean]]]
+  (let [model      (when model-id
+                     (api/read-check :model/Card model-id))
+        action-ids (actions-rest.db/action-ids-visible-to-user
+                    {:type action-type, :model-id model-id, :archived archived})
+        actions    (when (seq action-ids)
+                     (actions/select-actions-for-ids (when model [model]) action-ids))]
+    (t2/hydrate (filterv mi/can-read? actions) :creator :can_write)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
@@ -47,7 +53,7 @@
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
-      (t2/hydrate :creator)
+      (t2/hydrate :creator :can_write)
       api/read-check))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -73,7 +79,7 @@
    _query-params
    {:keys [parameters database_id]
     action-type :type
-    :as action} :- ::actions.schema/action.for-insert]
+    :as action} :- ::actions.schema/action.create-request]
   (when (and (nil? database_id)
              (= action-type :query))
     (throw (ex-info (tru "Must provide a database_id for query actions")
@@ -100,11 +106,12 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ::actions.schema/id]]
    _query-params
-   action :- ::actions.schema/action.for-update]
+   action :- ::actions.schema/action.update-request]
   (let [existing-action (api/write-check :model/Action id)
         action          (api/updates-with-archived-directly existing-action action)]
     (api/update-check existing-action action)
-    (actions/check-action-databases-enabled (merge (actions/select-action :id id) action))
+    (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id])
+      (actions/check-action-databases-enabled (merge (actions/select-action :id id) action)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (events/publish-event! :event/action-update {:object action :user-id api/*current-user-id*})
@@ -152,7 +159,6 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
-  (actions/check-actions-enabled id)
   (actions-rest.db/set-action-public-uuid! id nil nil)
   {:status 204, :body nil})
 

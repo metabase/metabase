@@ -718,6 +718,10 @@
           {:lib/original-ref-style-for-result-metadata-purposes (if (pos-int? id-or-name)
                                                                   :original-ref-style/id
                                                                   :original-ref-style/name)}])
+        (as-> $col (cond-> $col
+                     (:lib/ref-name $col) (-> (assoc :name              (:lib/ref-name $col)
+                                                     :lib/original-name (:lib/ref-name $col))
+                                              (dissoc :lib/deduplicated-name))))
         (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col))
           (cond-> $col
             (and (contains? #{nil :type/*} (:effective-type $col))

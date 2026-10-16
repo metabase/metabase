@@ -1,0 +1,46 @@
+# Record why a Metabot turn stopped early, so that a truncated, content-filtered or step-limited turn
+# reloads as incomplete instead of as a normal completed turn. `finished` is untouched and keeps its
+# meaning: NULL while in flight, true once completed, false if the client aborted.
+#
+# The second changeset records, once at save time, whether a turn that stopped at `length` had filled
+# the context window of the model that ran it. Reload, fork and analytics read that verdict back, so a
+# later change of the configured model does not change how an old turn reads.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-08T00:00:00
+      author: prascuna
+      comment: Add finish_reason to metabot_message
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: finish_reason
+                  remarks: "Why a turn stopped early: length, content-filter or tool-calls. NULL when it ran to a normal stop."
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_message
+            columnName: finish_reason
+
+  - changeSet:
+      id: v65.2026-10-08T00:00:01
+      author: prascuna
+      comment: Add context_window_full to metabot_message
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: context_window_full
+                  remarks: "True when the turn stopped at length with its context at or past the window of the model that ran it, so the next turn cannot fit. Metabase's judgement at save time, not a provider value. NULL otherwise."
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabot_message
+            columnName: context_window_full

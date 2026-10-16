@@ -320,13 +320,15 @@
   `list-models` returns the intersection of this map with the mantle `/v1/models` catalog.
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes.
   Context windows are from the per-model cards at https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html"
-  {"anthropic.claude-fable-5"    {:display-name "Claude Fable 5"        :context-window 1000000}
+  {"anthropic.claude-fable-5-1"  {:display-name "Claude Fable 5.1"      :context-window 1000000}
+   "anthropic.claude-fable-5"    {:display-name "Claude Fable 5"        :context-window 1000000}
    "anthropic.claude-opus-5-5"   {:display-name "Claude Opus 5.5"       :context-window 1000000}
    "anthropic.claude-opus-5"     {:display-name "Claude Opus 5"         :context-window 1000000}
    "anthropic.claude-opus-4-8"   {:display-name "Claude Opus 4.8"       :context-window 1000000}
    "anthropic.claude-opus-4-7"   {:display-name "Claude Opus 4.7"       :context-window 1000000}
    "anthropic.claude-sonnet-5-5" {:display-name "Claude Sonnet 5.5"     :context-window 1000000}
    "anthropic.claude-sonnet-5"   {:display-name "Claude Sonnet 5"       :context-window 1000000}
+   "anthropic.claude-haiku-5-5"  {:display-name "Claude Haiku 5.5"      :context-window 1000000}
    "anthropic.claude-haiku-4-5"  {:display-name "Claude Haiku 4.5"      :context-window 200000}
    ;; Astra's input window is its 1,050,000 token context minus up to 128,000 output tokens.
    "openai.gpt-6-astra"          {:display-name "GPT-6 Astra"           :context-window 922000}
@@ -417,6 +419,16 @@
   [body]
   (dissoc body :cache_control))
 
+(defn ->mantle-openai-body
+  "Adapt a canonical OpenAI Responses request body for the mantle endpoint.
+
+  A body without `max_output_tokens` gets [[core/chat-max-output-tokens]]."
+  [body]
+  ;; Unlike OpenAI direct, an unset cap costs quota here: mantle's quota check counts "the value of `max_tokens` (or
+  ;; the model-specific maximum if `max_tokens` is not set)"
+  ;; (https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-mantle.html).
+  (update body :max_output_tokens #(or % core/chat-max-output-tokens)))
+
 (mu/defn bedrock-raw
   "Perform a streaming request to Bedrock: the mantle endpoint for a mantle catalog ID, `bedrock-runtime` for a
   Claude model only it serves (see [[runtime-model?]]).
@@ -438,7 +450,7 @@
                                     (claude/claude-request-body (assoc opts :model (runtime-base-model model))))
                       :read-stream runtime-events}
           :openai    {:path    "/openai/v1/responses"
-                      :req     (openai/openai-request-body opts)})]
+                      :req     (->mantle-openai-body (openai/openai-request-body opts))})]
     (adapter/stream! (if (= :runtime family) runtime-provider provider) opts
                      {:path        path
                       :body        req

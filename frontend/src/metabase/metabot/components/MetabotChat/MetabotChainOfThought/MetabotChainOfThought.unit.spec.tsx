@@ -149,6 +149,34 @@ describe("MetabotChainOfThought", () => {
     expect(screen.queryByText(/Worked/)).not.toBeInTheDocument();
   });
 
+  it("displays thinking >= 60 seconds in minutes and seconds", () => {
+    setup(
+      chain({
+        steps: [{ kind: "reasoning", text: "Weighing the join order" }],
+        startedAtMs: 1000,
+        endedAtMs: 697000,
+      }),
+      false,
+    );
+    expect(
+      screen.getAllByText("Thought for 11 minutes 36 seconds").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("displays even minute thinking durations without seconds", () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "t1", name: "analyze_data", status: "ended" },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 61000,
+      }),
+      false,
+    );
+    expect(screen.getByText("Worked for 1 minute")).toBeInTheDocument();
+  });
+
   it("rolls a sub-5s thinking-only turn up to Thought briefly", () => {
     setup(
       chain({
@@ -379,6 +407,52 @@ describe("MetabotChainOfThought", () => {
     expect(screen.queryByText("orders")).not.toBeInTheDocument();
     expect(screen.getByText("Sample DB", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("PUBLIC", { exact: false })).toBeInTheDocument();
+  });
+
+  it("links measures to the explorer and segments through their base table", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "search",
+            title: "revenue",
+            status: "ended",
+            searchResults: {
+              totalCount: 2,
+              results: [
+                {
+                  id: 7,
+                  type: "measure",
+                  name: "Total revenue",
+                  database_id: 1,
+                  table_id: 9,
+                },
+                {
+                  id: 8,
+                  type: "segment",
+                  name: "Big orders",
+                  database_id: 1,
+                  table_id: 9,
+                },
+              ],
+            },
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    await userEvent.click(screen.getByText("2 results"));
+    expect(
+      screen.getByRole("link", { name: /Total revenue/, hidden: true }),
+    ).toHaveAttribute("href", "/explore?measureId=7");
+    expect(
+      screen.getByRole("link", { name: /Big orders/, hidden: true }),
+    ).not.toHaveAttribute("href", "/404");
   });
 
   it("labels an empty search with No results", async () => {
