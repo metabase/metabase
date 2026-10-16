@@ -426,7 +426,6 @@ describe("analysis settings", () => {
     it.each([
       { kind: "habit", key: "habit.active" },
       { kind: "lifecycle", key: "lifecycle.active" },
-      { kind: "cohorts", key: "cohorts.return" },
     ] as const)(
       "reports $key as missing when it has no event",
       ({ kind, key }) => {
@@ -451,16 +450,26 @@ describe("analysis settings", () => {
       expect(getMissingKeys(specResult)).toEqual(["lifecycle.shown"]);
     });
 
-    it("reports every missing cohorts setting at once", () => {
+    it("counts any event as returning when cohorts have no return event", () => {
+      const { specResult, allocation } = setup({
+        kind: "cohorts",
+        stored: { ...REQUIRED_EVENTS.cohorts, "cohorts.return": null },
+      });
+
+      expect(specResult.status).toBe("ready");
+      expect(
+        specResult.status === "ready" ? specResult.spec.cohorts?.return : null,
+      ).toBeUndefined();
+      expect(allocation.events).toHaveLength(0);
+    });
+
+    it("reports the missing cohorts attribute", () => {
       const { specResult } = setup({
         kind: "cohorts",
         stored: { "cohorts.by": "attribute", "cohorts.return": null },
       });
 
-      expect(getMissingKeys(specResult)).toEqual([
-        "cohorts.attribute",
-        "cohorts.return",
-      ]);
+      expect(getMissingKeys(specResult)).toEqual(["cohorts.attribute"]);
     });
 
     it("only requires the paths events the direction uses", () => {

@@ -125,7 +125,8 @@ export interface CohortsSpec {
    * their clock started; see `planCohorts`.
    */
   by: "startDate" | "attribute";
-  return: FlagRef;
+  /** What counts as coming back. Undefined: any event does. */
+  return?: FlagRef;
   returnRule: "exactly" | "onOrAfter";
   horizon: number;
 }
