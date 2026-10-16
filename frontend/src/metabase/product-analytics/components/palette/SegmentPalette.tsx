@@ -74,6 +74,9 @@ export const SegmentPalette = ({
 
   const handleResize = (_event: unknown, data: ResizeCallbackData) =>
     setWidth(data.size.width);
+  // The drag crosses text everywhere; keep it from selecting any.
+  const handleResizeStart = () => document.body.classList.add(S.noSelect);
+  const handleResizeStop = () => document.body.classList.remove(S.noSelect);
 
   return (
     <Resizable
@@ -85,6 +88,8 @@ export const SegmentPalette = ({
       resizeHandles={["e"]}
       handle={<PaletteResizeHandle />}
       onResize={handleResize}
+      onResizeStart={handleResizeStart}
+      onResizeStop={handleResizeStop}
     >
       <Stack className={S.root} w={width} pos="relative" gap={0}>
         <Text fw="bold" c="text-secondary" px="md" pt="md" pb="xs">

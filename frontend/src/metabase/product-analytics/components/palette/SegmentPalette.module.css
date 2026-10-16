@@ -36,3 +36,9 @@
 .section[data-drop-active="true"] * {
   pointer-events: none;
 }
+
+/* On the body while the panel is being resized. */
+.noSelect {
+  user-select: none;
+  -webkit-user-select: none;
+}
