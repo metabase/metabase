@@ -235,3 +235,47 @@
               combined (counting #(remote-sync.merge/merge-with-casualties base ours theirs))]
           (is (= (+ (count base) (count ours) (count theirs))
                  (- separate combined))))))))
+
+(defn- at
+  "`spec` moved to `path`, with the same content."
+  [spec path]
+  (assoc spec :path path))
+
+(deftest ^:parallel move-alone-is-not-a-change-test
+  (testing "the same entity with the same content at two paths is not a change"
+    (let [result (remote-sync.merge/three-way-merge
+                  [(card "A" "a")]
+                  [(at (card "A" "a") "cards/a.question.yaml")]
+                  [(card "A" "a")])]
+      (is (empty? (:conflicts result)))
+      (is (= {:added 0 :updated 0 :removed 0} (:summary result)))
+      (testing "the merged file is at ours' new path"
+        (is (= ["cards/a.question.yaml"] (map :path (:merged result)))))))
+  (testing "ours moves A while theirs edits it: no conflict; theirs' content at ours' path"
+    (let [result (remote-sync.merge/three-way-merge
+                  [(card "A" "a")]
+                  [(at (card "A" "a") "cards/a.question.yaml")]
+                  [(card "A" "a" "x: theirs\n")])]
+      (is (empty? (:conflicts result)))
+      (is (= {:added 0 :updated 1 :removed 0} (:summary result)))
+      (is (= [(at (card "A" "a" "x: theirs\n") "cards/a.question.yaml")] (:merged result)))))
+  (testing "theirs moves A while ours edits it: no conflict; ours' content at theirs' path"
+    (let [result (remote-sync.merge/three-way-merge
+                  [(card "A" "a")]
+                  [(card "A" "a" "x: ours\n")]
+                  [(at (card "A" "a") "cards/a.question.yaml")])]
+      (is (empty? (:conflicts result)))
+      (is (= [(at (card "A" "a" "x: ours\n") "cards/a.question.yaml")] (:merged result)))))
+  (testing "both sides move A to different paths: no conflict; ours' path wins"
+    (let [result (remote-sync.merge/three-way-merge
+                  [(card "A" "a")]
+                  [(at (card "A" "a") "ours/a.yaml")]
+                  [(at (card "A" "a") "theirs/a.yaml")])]
+      (is (empty? (:conflicts result)))
+      (is (= ["ours/a.yaml"] (map :path (:merged result))))))
+  (testing "a move alone on the remote is not a force-push casualty"
+    (is (= {:deleted [] :overwritten []}
+           (remote-sync.merge/force-push-casualties
+            [(card "A" "a")]
+            [(card "A" "a")]
+            [(at (card "A" "a") "cards/a.question.yaml")])))))

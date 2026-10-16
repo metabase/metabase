@@ -73,17 +73,21 @@
            specs)))
 
 (defn- same?
-  "Two sides are the same when both are absent, or both present with equal path and content. Path equality
-  matters so that a rename with otherwise identical content still counts as a change.
-
-  Known conservative edge: the storage path embeds the names of containing collections, so renaming a
-  shared parent collection on one side changes the path of every descendant. Those descendants therefore
-  read as changed (path differs) even if their content is identical; if the other side also edited one of
-  them, that surfaces as a conflict rather than auto-merging the rename with the edit. This is safe (never
-  silently wrong) but more conservative than git would be. Revisit by comparing content separately from
-  path if it proves noisy in practice."
+  "Two sides are the same when both are absent, or both present with equal content. The path does not count: a
+  change in path alone (a new layout, a renamed parent collection) is a move, not an edit, and [[merged-path]] carries
+  it into the merged file."
   [a b]
-  (= a b))
+  (= (some-> a :content) (some-> b :content)))
+
+(defn- merged-path
+  "The path of the merged file for an entity whose sides are `bv`, `ov` and `tv`: ours when ours moved it from the
+  base, else theirs when theirs moved it, else where it is."
+  [bv ov tv]
+  (let [moved? (fn [side] (and side (not= (:path side) (:path bv))))]
+    (cond
+      (moved? ov) (:path ov)
+      (moved? tv) (:path tv)
+      :else       (:path (or ov tv bv)))))
 
 (defn conflict-label
   "Renders a single conflict from [[three-way-merge]] into a human-readable string for display, e.g.
@@ -111,19 +115,20 @@
              ov (get o k)
              tv (get t k)
              ours-changed? (not (same? ov bv))
-             theirs-changed? (not (same? tv bv))]
+             theirs-changed? (not (same? tv bv))
+             merged (fn [side] (assoc side :path (merged-path bv ov tv)))]
          (cond
            ;; neither side changed -> keep base (if present)
            (and (not ours-changed?) (not theirs-changed?))
-           (cond-> acc bv (update :merged conj bv))
+           (cond-> acc bv (update :merged conj (merged bv)))
 
            ;; only ours changed -> take ours
            (and ours-changed? (not theirs-changed?))
-           (cond-> acc ov (update :merged conj ov))
+           (cond-> acc ov (update :merged conj (merged ov)))
 
            ;; only theirs changed -> take theirs, and record it as folded-in remote change
            (and theirs-changed? (not ours-changed?))
-           (-> (cond-> acc tv (update :merged conj tv))
+           (-> (cond-> acc tv (update :merged conj (merged tv)))
                (update-in [:summary (cond (nil? bv) :added
                                           (nil? tv) :removed
                                           :else     :updated)]
@@ -131,7 +136,7 @@
 
            ;; both changed the same way -> take it (no conflict)
            (same? ov tv)
-           (cond-> acc ov (update :merged conj ov))
+           (cond-> acc ov (update :merged conj (merged ov)))
 
            ;; both changed differently -> conflict
            :else
