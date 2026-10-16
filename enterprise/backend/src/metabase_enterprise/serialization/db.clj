@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn all-users
@@ -51,3 +52,34 @@
   (t2/select-pks-set :model/Card {:where [:and
                                           [:in :id card-ids]
                                           [:in :collection_id collection-ids]]}))
+
+(mu/defn layout-collections
+  "The `:id`, `:entity_id`, `:name`, `:location`, `:namespace`, `:type` and `:created_at` of every Collection."
+  []
+  (t2/select [:model/Collection :id :entity_id :name :location :namespace :type :created_at]))
+
+(mu/defn data-app-slugs-by-collection-id
+  "The slug (the `:name`) of each DataApp, keyed by the id of its resource collection."
+  []
+  (t2/select-fn->fn :resource_collection_id :name :model/DataApp {:where [:not= :resource_collection_id nil]}))
+
+(mu/defn layout-rows
+  "The `columns` of every instance of `model` that matches the HoneySQL `where` clause, or of every instance when it
+  is nil."
+  [model   :- :keyword
+   columns :- [:sequential :keyword]
+   where   :- [:maybe vector?]]
+  (t2/select (into [model] columns) (cond-> {} where (assoc :where where))))
+
+(mu/defn published-tables
+  "The `:id`, `:name`, `:schema`, `:db_id`, `:collection_id` and `:created_at` of every published Table, with its
+  user settings applied."
+  []
+  (t2/select [:model/Table :t.id :t.name :t.schema :t.db_id :t.collection_id :t.created_at]
+             {:from  [(warehouse-schema-overlay/table-query {:alias :t})]
+              :where [:= :t.is_published true]}))
+
+(mu/defn database-names-by-id
+  "The `:name` of every Database, keyed by its id."
+  []
+  (t2/select-pk->fn :name :model/Database))

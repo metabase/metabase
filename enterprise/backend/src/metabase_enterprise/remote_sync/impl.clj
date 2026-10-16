@@ -966,8 +966,15 @@
 
 (defn- dependency->incremental-export-plan [snapshot opts [row entity]]
   (let [path (serialization/entity-file-path opts entity)]
-    (if (path-free? (entity-path-info snapshot path (:entity_id entity)))
+    (cond
+      ;; the layout gives it no file
+      (nil? path)
+      {}
+
+      (path-free? (entity-path-info snapshot path (:entity_id entity)))
       {:writes [(assoc row :file_path path)]}
+
+      :else
       :remote-sync/incremental-not-possible)))
 
 (defn- dependency-chunk->incremental-export-plan
@@ -1169,7 +1176,8 @@
     (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
 (defn- stage-write
-  "Stage `entity` at the path `(path-fn row entity)`; returns its synced write-row when `row` has an `:id`."
+  "Stage `entity` at the path `(path-fn row entity)`, or nothing when that is nil (the item has no file of its own);
+  returns its synced write-row when `row` has an `:id`."
   [commit path-fn [row entity]]
   (let [path  (path-fn row entity)
         fspec (source/entity->file-spec-at path entity)]
@@ -1221,14 +1229,14 @@
       {:model_type model :model_id id :id rso-id :status status :stored-path file_path})))
 
 (defn- full-export-path
-  "The path a full export writes `entity` (of the WriteRow `row`) at, from the move rule."
+  "The path a full export writes `entity` (of the WriteRow `row`) at, from the move rule; nil when the item has no
+  file of its own."
   [opts {:keys [model_type status stored-path]} entity]
-  (or (:write (remote-sync.layout/move-rule {:export        :full
-                                             :model-type    model_type
-                                             :status        (or status "create")
-                                             :stored-path   stored-path
-                                             :computed-path (delay (serialization/entity-file-path opts entity))}))
-      (throw (ex-info "The move rule gave no path for an item of a full export" {:model-type model_type}))))
+  (:write (remote-sync.layout/move-rule {:export        :full
+                                         :model-type    model_type
+                                         :status        (or status "create")
+                                         :stored-path   stored-path
+                                         :computed-path (delay (serialization/entity-file-path opts entity))})))
 
 (def ^:private user-settings-model-types
   "The model types tracked by the user-settings event handlers rather than a remote-sync spec."

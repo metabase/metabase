@@ -1,0 +1,189 @@
+(ns metabase-enterprise.serialization.v2.kind-layout-test
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
+   [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase-enterprise.serialization.v2.storage :as storage]
+   [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase-enterprise.serialization.v2.storage.kind-layout :as kind-layout]
+   [metabase-enterprise.serialization.v2.storage.util :as storage.util]
+   [metabase.actions.core :as actions]
+   [metabase.collections.core :as collections]
+   [metabase.models.serialization :as serdes]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(defn- create-world!
+  "Creates one item of each kind the kind layout places, and returns the entity_id of each, by a name the tests use."
+  []
+  (collections/create-library-collection!)
+  (let [library    (t2/select-one :model/Collection :type collections/library-collection-type)
+        coll-of    (fn [coll-type] (t2/select-one :model/Collection :type coll-type :location (str "/" (:id library) "/")))
+        data       (coll-of collections/library-data-collection-type)
+        metrics    (coll-of collections/library-metrics-collection-type)
+        dashboards (coll-of collections/library-dashboards-collection-type)
+        user       (ts/create! :model/User :email "maker@example.com")
+        db         (ts/create! :model/Database :name "My DB" :engine :postgres)
+        sales      (ts/create! :model/Collection :name "Sales" :type collections/library-data-collection-type
+                               :location (str (:location data) (:id data) "/"))
+        orders     (ts/create! :model/Table :name "orders" :schema "PUBLIC" :db_id (:id db)
+                               :is_published true :collection_id (:id sales))
+        total      (ts/create! :model/Field :name "TOTAL" :table_id (:id orders) :base_type :type/Integer)
+        _customers (ts/create! :model/Table :name "customers" :schema "PUBLIC" :db_id (:id db))
+        segment    (ts/create! :model/Segment :name "Big Orders" :table_id (:id orders) :creator_id (:id user)
+                               :definition {:source-table (:id orders) :filter [:> [:field (:id total) nil] 100]})
+        query      {:database (:id db) :type :query :query {:source-table (:id orders)}}
+        mrr        (ts/create! :model/Card :name "MRR" :type :metric :collection_id (:id metrics)
+                               :dataset_query query :creator_id (:id user))
+        kpis       (ts/create! :model/Dashboard :name "KPIs" :collection_id (:id dashboards) :creator_id (:id user))
+        ops        (ts/create! :model/Collection :name "Ops" :location "/")
+        daily      (ts/create! :model/Dashboard :name "Daily" :collection_id (:id ops) :creator_id (:id user))
+        weekly     (ts/create! :model/Card :name "Weekly Actives" :collection_id (:id ops)
+                               :dashboard_id (:id daily) :dataset_query query :creator_id (:id user))
+        model      (ts/create! :model/Card :name "Orders Model" :type :model :collection_id (:id ops)
+                               :dataset_query query :creator_id (:id user))
+        refund     (ts/create! :model/Action :name "Refund" :type :implicit :model_id (:id model)
+                               :creator_id (:id user))
+        launches   (ts/create! :model/Timeline :name "Launches" :collection_id (:id ops) :creator_id (:id user))
+        question   (ts/create! :model/Card :name "Orders" :collection_id (:id ops) :dataset_query query
+                               :creator_id (:id user))
+        notes      (ts/create! :model/Document :name "Q3 Notes" :collection_id (:id ops) :creator_id (:id user)
+                               :document {:type "doc" :content []} :content_type "application/json+vnd.prose-mirror")
+        top        (ts/create! :model/Card :name "Top Customers" :collection_id (:id ops) :document_id (:id notes)
+                               :dataset_query query :creator_id (:id user))
+        active     (ts/create! :model/NativeQuerySnippet :name "Active Users" :content "1" :creator_id (:id user))
+        shared     (ts/create! :model/Collection :name "Shared" :namespace :snippets :location "/")
+        spenders   (ts/create! :model/NativeQuerySnippet :name "Big Spenders" :content "2" :creator_id (:id user)
+                               :collection_id (:id shared))
+        restart    (t2/select-one :model/Action
+                                  :id (actions/insert! {:name          "Restart Job"
+                                                        :type          :query
+                                                        :database_id   (:id db)
+                                                        :dataset_query {:lib/type :mbql/query
+                                                                        :database (:id db)
+                                                                        :stages   [{:lib/type :mbql.stage/native
+                                                                                    :native   "SELECT 1"}]}
+                                                        :creator_id    (:id user)}))
+        transform  (ts/create! :model/Transform :name "Dedupe Users" :creator_id (:id user)
+                               :source {:type  "query"
+                                        :query {:database (:id db) :type "native" :native {:query "SELECT 1 AS ID"}}}
+                               :target {:database (:id db) :type "table" :schema "PUBLIC" :name "deduped"})
+        tt         (ts/create! :model/TransformTest :name "Nulls Dropped" :transform_id (:id transform)
+                               :creator_id (:id user) :inputs [] :expectations [])
+        tag        (ts/create! :model/TransformTag :name "Nightly")
+        arr        (ts/create! :model/Glossary :term "ARR" :definition "Annual recurring revenue" :creator_id (:id user))]
+    {:library    (:entity_id library)
+     :data       (:entity_id data)
+     :metrics    (:entity_id metrics)
+     :dashboards (:entity_id dashboards)
+     :sales      (:entity_id sales)
+     :segment    (:entity_id segment)
+     :mrr        (:entity_id mrr)
+     :kpis       (:entity_id kpis)
+     :daily      (:entity_id daily)
+     :weekly     (:entity_id weekly)
+     :ops        (:entity_id ops)
+     :model      (:entity_id model)
+     :refund     (:entity_id refund)
+     :launches   (:entity_id launches)
+     :question   (:entity_id question)
+     :notes      (:entity_id notes)
+     :top        (:entity_id top)
+     :active     (:entity_id active)
+     :shared     (:entity_id shared)
+     :spenders   (:entity_id spenders)
+     :restart    (:entity_id restart)
+     :transform  (:entity_id transform)
+     :tt         (:entity_id tt)
+     :tag        (:entity_id tag)
+     :arr        (:entity_id arr)}))
+
+(def ^:private expected-paths
+  "The path the kind layout gives each item of [[create-world!]]; nil for an item with no file."
+  {:library    nil
+   :data       nil
+   :metrics    nil
+   :dashboards nil
+   :sales      "data/sales/_collection.yaml"
+   :segment    "data/sales/orders.table/big_orders.segment.yaml"
+   :mrr        "metrics/mrr.metric.yaml"
+   :kpis       "dashboards/kpis.dashboard.yaml"
+   :daily      "collections/ops/daily.dashboard.yaml"
+   :weekly     "collections/ops/daily.dashboard/weekly_actives.question.yaml"
+   :ops        "collections/ops/_collection.yaml"
+   :model      "collections/ops/orders_model.model.yaml"
+   :refund     "collections/ops/refund.action.yaml"
+   :launches   "collections/ops/launches.timeline.yaml"
+   :question   "collections/ops/orders.question.yaml"
+   :notes      "collections/ops/q3_notes.document.yaml"
+   :top        "collections/ops/q3_notes.document/top_customers.question.yaml"
+   :active     "snippets/active_users.snippet.yaml"
+   :shared     "snippets/shared/_collection.yaml"
+   :spenders   "snippets/shared/big_spenders.snippet.yaml"
+   :restart    "data_actions/restart_job.action.yaml"
+   :transform  "transforms/dedupe_users.transform.yaml"
+   :tt         "transforms/dedupe_users.transform/nulls_dropped.transform_test.yaml"
+   :tag        "transform_tags/nightly.transform_tag.yaml"
+   :arr        "glossary/arr.term.yaml"})
+
+(def ^:private expected-data-model-paths
+  "The path the kind layout gives each table, field and database of [[create-world!]]."
+  #{"data/sales/orders.table.yaml"
+    "data/sales/orders.table/fields/total.field.yaml"
+    "databases/my_db/public/customers.table.yaml"
+    "databases/my_db.database.yaml"})
+
+(defn- extract-all []
+  (serdes/with-cache (into [] (extract/extract {:no-settings true :include-field-values false}))))
+
+(deftest kind-layout-paths-test
+  (mt/with-premium-features #{:transforms-basic :library}
+    (ts/with-random-dump-dir [dump-dir "kind-layout-"]
+      (ts/with-dbs [source-db dest-db]
+        (let [eids     (ts/with-db source-db (create-world!))
+              entities (ts/with-db source-db (extract-all))
+              ctx      (ts/with-db source-db (storage.util/storage-context kind-layout/kind-layout))
+              paths    (ts/with-db source-db
+                         (into {} (map (juxt identity #(storage.util/entity-file-path ctx %))) entities))
+              by-eid   (into {} (for [[entity path] paths
+                                      :when (:entity_id entity)]
+                                  [(:entity_id entity) path]))]
+          (testing "each item is at the path of its kind"
+            (doseq [[k eid] eids]
+              (testing k
+                (is (contains? by-eid eid) "the item is extracted")
+                (is (= (expected-paths k) (by-eid eid))))))
+          (testing "tables, fields and databases"
+            (is (every? (set (vals paths)) expected-data-model-paths)))
+          (testing "no two items share a path"
+            (let [written (remove nil? (vals paths))]
+              (is (= (count written) (count (distinct written))))))
+          (testing "only the Library's collections have no file"
+            (is (= #{(:library eids) (:data eids) (:metrics eids) (:dashboards eids)}
+                   (into #{} (comp (filter (comp nil? val)) (map (comp :entity_id key))) paths))))
+          (testing "every path is in a folder the import reads"
+            (is (every? ingest/entity-file-path? (remove nil? (vals paths)))))
+          (testing "export then import gives the same items"
+            (ts/with-db source-db
+              (storage/store! entities (storage.files/file-writer dump-dir kind-layout/kind-layout)))
+            (is (not (.exists (io/file dump-dir "collections" "main"))))
+            (ts/with-db dest-db
+              (collections/create-library-collection!)
+              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (let [loaded (into #{} (comp (map :entity_id) (remove nil?)) (extract-all))]
+                (doseq [[k eid] eids]
+                  (testing k
+                    (is (contains? loaded eid))))))))))))
+
+(deftest kind-layout-is-not-the-default-test
+  (testing "a storage context without a layout, and plain serdes export, keep today's layout"
+    (is (= storage.util/default-layout (:layout (storage.util/storage-context))))
+    (is (str/starts-with? (storage.util/entity-file-path (serdes/storage-base-context)
+                                                         {:serdes/meta [{:model "Card" :id "A"}] :name "A"})
+                          "collections/main/"))))

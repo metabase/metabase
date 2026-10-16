@@ -4439,7 +4439,8 @@
            server
            settings
            setup
-           util}
+           util
+           warehouse-schema-overlay}
    :model-imports :bypass}
 
   enterprise/session-management

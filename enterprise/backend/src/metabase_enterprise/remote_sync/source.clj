@@ -78,11 +78,12 @@
 
 (defn entity->file-spec-at
   "Serializes a single extracted entity at the YAML `path` into a `{:path :content :resources}` file spec;
-  `:resources` holds the `{:path :content}` specs of its resource files."
+  `:resources` holds the `{:path :content}` specs of its resource files. A nil `path` (an entity with no file of its
+  own) gives a spec with no resources, whose [[file-specs]] are empty."
   [path entity]
   {:path      path
    :content   (serialization/entity-yaml entity)
-   :resources (vec (resource-specs path entity))})
+   :resources (if path (vec (resource-specs path entity)) [])})
 
 (defn entity->file-spec
   "[[entity->file-spec-at]] the path storage context `opts` (from [[remote-sync.layout/storage-context]]) gives `entity`."
@@ -90,9 +91,11 @@
   (entity->file-spec-at (serialization/entity-file-path opts entity) entity))
 
 (defn file-specs
-  "The `{:path :content}` specs of every file a `file-spec` from [[entity->file-spec]] writes."
+  "The `{:path :content}` specs of every file a `file-spec` from [[entity->file-spec]] writes: none when it has no
+  `:path`."
   [file-spec]
-  (cons (select-keys file-spec [:path :content]) (:resources file-spec)))
+  (when (:path file-spec)
+    (cons (select-keys file-spec [:path :content]) (:resources file-spec))))
 
 (defn content-hash
   "SHA-256 (hex) of a serialized YAML `content` string."

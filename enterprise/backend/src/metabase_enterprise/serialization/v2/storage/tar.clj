@@ -34,14 +34,14 @@
     (.setBigNumberMode tar TarArchiveOutputStream/BIGNUMBER_POSIX)
     (reify protocols/ExportWriter
       (store-entity! [_ entity]
-        (let [resolved   (storage.util/resolve-storage-path ctx entity)
-              path       (str dirname "/" (storage.util/yaml-file-path resolved))
-              content    (.getBytes ^String (storage.util/entity-yaml entity) "UTF-8")]
-          (log/trace "Storing" {:path (serdes/log-path-str (:serdes/meta entity))})
-          (put-entry! tar path content)
-          (doseq [[segments ^String resource] (storage.util/resource-files resolved entity)]
-            (put-entry! tar (str dirname "/" (str/join "/" segments)) (.getBytes resource "UTF-8")))
-          (:serdes/meta entity)))
+        (when-let [resolved (storage.util/resolve-storage-path ctx entity)]
+          (let [path    (str dirname "/" (storage.util/yaml-file-path resolved))
+                content (.getBytes ^String (storage.util/entity-yaml entity) "UTF-8")]
+            (log/trace "Storing" {:path (serdes/log-path-str (:serdes/meta entity))})
+            (put-entry! tar path content)
+            (doseq [[segments ^String resource] (storage.util/resource-files resolved entity)]
+              (put-entry! tar (str dirname "/" (str/join "/" segments)) (.getBytes resource "UTF-8")))))
+        (:serdes/meta entity))
 
       (store-settings! [_ settings]
         (when (seq settings)

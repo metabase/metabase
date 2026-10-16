@@ -46,6 +46,12 @@
         (recur (rest remaining)
                (conj resolved unique-name))))))
 
+(defn resolve-segments
+  "Resolves the storage path `segments` (see [[serdes/storage-path]]) to strings with deduplication per folder, as
+  [[default-layout]] does, in storage context `ctx`."
+  [ctx segments]
+  (resolve-path (:unique-name-fns ctx) segments))
+
 (defn default-layout
   "The layout every export writes unless its context names another: `entity`'s [[serdes/storage-path]] segments in
   storage context `ctx`, slugified and deduplicated per folder in the order of resolution."
@@ -55,7 +61,7 @@
 (defn storage-context
   "A storage context (see [[serdes/storage-base-context]]) whose paths come from `layout`, a function of a storage
   context and an extracted entity that returns the entity's resolved path (a vector of strings, the last one the file
-  name without its extension). `:layout-cache` is an atom a layout may use for
+  name without its extension), or nil when the entity has no file of its own. `:layout-cache` is an atom a layout may use for
   data it reads once per context."
   ([]
    (storage-context default-layout))
@@ -66,7 +72,8 @@
 
 (defn resolve-storage-path
   "Given ctx and entity, returns a vector of resolved (slugified, deduplicated) path strings, from the ctx's
-  `:layout` ([[default-layout]] when it has none). The last element is the filename (without extension)."
+  `:layout` ([[default-layout]] when it has none). The last element is the filename (without extension). Nil when the
+  layout gives the entity no file."
   [ctx entity]
   ((or (:layout ctx) default-layout) ctx entity))
 
@@ -76,9 +83,10 @@
   (str/join "/" (concat (drop-last resolved) [(str (last resolved) ".yaml")])))
 
 (defn entity-file-path
-  "The path, relative to the export root, of the YAML file the extracted `entity` serializes to in storage context `ctx`."
+  "The path, relative to the export root, of the YAML file the extracted `entity` serializes to in storage context
+  `ctx`, or nil when the context's layout gives it no file."
   [ctx entity]
-  (yaml-file-path (resolve-storage-path ctx entity)))
+  (some-> (resolve-storage-path ctx entity) yaml-file-path))
 
 (defn without-resources
   "The `entity` as written to its YAML file: [[serdes/storable]], without its `:serdes/resources`."

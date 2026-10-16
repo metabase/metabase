@@ -14,32 +14,36 @@
 (set! *warn-on-reflection* true)
 
 (defn file-writer
-  "Create a filesystem storage backend rooted at `root-dir`."
-  [root-dir]
-  (let [ctx (serdes/storage-base-context)]
-    (reify protocols/ExportWriter
-      (store-entity! [_ entity]
-        (let [resolved (storage.util/resolve-storage-path ctx entity)
-              ^File f  (io/file root-dir (storage.util/yaml-file-path resolved))]
-          (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
-                               :file (str (.relativize (Path/of (str root-dir) (make-array String 0))
-                                                       (.toPath f)))})
-          (spit-yaml! f (storage.util/without-resources entity))
-          (doseq [[segments content] (storage.util/resource-files resolved entity)
-                  :let [resource (apply io/file root-dir segments)]]
-            (io/make-parents resource)
-            (spit resource content))
-          (:serdes/meta entity)))
+  "Create a filesystem storage backend rooted at `root-dir`, writing each entity at the path `layout` gives it (see
+  [[storage.util/storage-context]]), [[storage.util/default-layout]] by default. An entity the layout gives no file is
+  not written."
+  ([root-dir]
+   (file-writer root-dir storage.util/default-layout))
+  ([root-dir layout]
+   (let [ctx (storage.util/storage-context layout)]
+     (reify protocols/ExportWriter
+       (store-entity! [_ entity]
+         (when-let [resolved (storage.util/resolve-storage-path ctx entity)]
+           (let [^File f (io/file root-dir (storage.util/yaml-file-path resolved))]
+             (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
+                                  :file (str (.relativize (Path/of (str root-dir) (make-array String 0))
+                                                          (.toPath f)))})
+             (spit-yaml! f (storage.util/without-resources entity))
+             (doseq [[segments content] (storage.util/resource-files resolved entity)
+                     :let [resource (apply io/file root-dir segments)]]
+               (io/make-parents resource)
+               (spit resource content))))
+         (:serdes/meta entity))
 
-      (store-settings! [_ settings]
-        (when (seq settings)
-          (let [as-map (into (sorted-map)
-                             (for [{:keys [key value]} settings]
-                               [key value]))]
-            (spit-yaml! (io/file root-dir "settings.yaml") as-map))))
+       (store-settings! [_ settings]
+         (when (seq settings)
+           (let [as-map (into (sorted-map)
+                              (for [{:keys [key value]} settings]
+                                [key value]))]
+             (spit-yaml! (io/file root-dir "settings.yaml") as-map))))
 
-      (store-log! [_ _content]
-        nil)
+       (store-log! [_ _content]
+         nil)
 
-      (finish! [_]
-        nil))))
+       (finish! [_]
+         nil)))))

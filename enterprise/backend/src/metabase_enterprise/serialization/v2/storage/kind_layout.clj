@@ -1,18 +1,104 @@
 (ns metabase-enterprise.serialization.v2.storage.kind-layout
-  "The kind layout of an export: each item is a file `<name>.<kind>.yaml`, each collection a folder `<name>/` with its
-  own `_collection.yaml`, and the items an item contains are in the folder `<name>.<kind>/` beside it."
+  "The kind layout of an export (`REPRESENTATIONS_LAYOUT_SPEC.md`): each item is a file `<name>.<kind>.yaml`, each
+  collection a folder `<name>/` with its own `_collection.yaml`, and the items an item contains are in the folder
+  `<name>.<kind>/` beside it. [[kind-layout]] is the layout function (see [[storage.util/storage-context]]); it needs a
+  storage context with a `:layout-cache`, where it keeps what it reads from the app DB."
   (:require
    [clojure.string :as str]
-   [metabase.collections.core :as collections]))
+   [metabase-enterprise.serialization.db :as serialization.db]
+   [metabase-enterprise.serialization.v2.storage.util :as storage.util]
+   [metabase.collections.core :as collections]
+   [metabase.lib.core :as lib]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
+
+;;; ------------------------------------------------ Open items ------------------------------------------------------
+;;; Each open item of the layout spec that this layout needs is answered in one place below, with the spec's proposed
+;;; answer, or with a choice where the spec proposes none.
+
+(def kind-words
+  "The word of each kind of item, in its file name `<name>.<word>.yaml`."
+  ;; Open item 1: the proposed list. `field`, `field_settings`, `dimension` and `field_values` are not in it: they
+  ;; name the files a table has until one file holds a table and its field settings (its table settings are the file
+  ;; `_table_settings.yaml` in the table's folder until then).
+  {:table             "table"
+   :segment           "segment"
+   :measure           "measure"
+   :metric            "metric"
+   :question          "question"
+   :model             "model"
+   :dashboard         "dashboard"
+   :document          "document"
+   :timeline          "timeline"
+   :term              "term"
+   :snippet           "snippet"
+   :action            "action"
+   :transform         "transform"
+   :transform-test    "transform_test"
+   :transform-tag     "transform_tag"
+   :transform-job     "transform_job"
+   :database          "database"
+   :metabot           "metabot"
+   :channel           "channel"
+   :embedding-theme   "embedding_theme"
+   :custom-viz-plugin "custom_viz_plugin"
+   :osi-ai-context    "osi_ai_context"
+   :field             "field"
+   :field-settings    "field_settings"
+   :dimension         "dimension"
+   :field-values      "field_values"})
+
+(defn- python-library-file
+  "The file stem of the Python library at `path` (`common.py`): the path itself, without a kind word."
+  ;; Open item 2: the fixed file names stay exceptions to rule 1 (`common.py.yaml`; `data_app.yaml` comes from the
+  ;; DataApp's own storage path; `settings.yaml` is not an entity file).
+  [path]
+  (storage.util/slugify-name path))
+
+(def ^:private resource-collection-has-file?
+  "Whether a data app's resource collection has its own file, `data_apps/<slug>/resources/_collection.yaml`."
+  ;; Open item 3: yes. The app's manifest names the collection by entity_id, and the import needs the collection's
+  ;; file to create it before the app.
+  true)
 
 (defn namespace-folder
   "The top-level folder of the collections of `collection-namespace`, a namespace without a folder of its own: its
   name with `-` turned into `_`."
-  ;; Open item 4 of the layout spec: the proposed rule.
+  ;; Open item 4: the proposed rule.
   [collection-namespace]
   (str/replace (name collection-namespace) "-" "_"))
+
+(defn- schema-folders
+  "The folders of the schema `schema` inside its database's folder."
+  ;; Open item 5: a table of a database without schemas is directly in the database's folder.
+  [schema]
+  (if (str/blank? schema) [] [schema]))
+
+;; Open item 6 (field values in a serdes export): until one file holds a table, a field's values are the file
+;; `<field>.field_values.yaml` beside the field's own file, in the table's `fields/` folder.
+
+(def ^:private library-section-folders
+  "The top-level folder of each of the Library's section collections, which have no file of their own, by type."
+  ;; Open item 8: the Library has no Documents collection yet, so nothing goes in `documents/`.
+  {collections/library-data-collection-type       "data"
+   collections/library-metrics-collection-type    "metrics"
+   collections/library-dashboards-collection-type "dashboards"})
+
+(def ^:private action-in-model-folder?
+  "Whether an action on a model goes in the model's folder `<name>.model/`, rather than in the model's collection."
+  ;; Open item 10: no; it stays in the model's collection, as today.
+  false)
+
+;;; ------------------------------------------------- Folders --------------------------------------------------------
+
+(def ^:private namespace-root-folders
+  "The top-level folder of the root collections of each namespace with a folder of its own."
+  {nil           "collections"
+   :snippets     "snippets"
+   :transforms   "transforms"
+   :data-actions "data_actions"})
 
 (def other-namespace-folders
   "The top-level folders of the namespaces the default-namespace content may also go in."
@@ -24,3 +110,285 @@
           "python_library" "data_apps" "collections" "databases" "transform_jobs" "metabots" "channels"
           "embedding_themes" "custom_viz_plugins" "osi_ai_context"}
         other-namespace-folders))
+
+;;; ------------------------------------------------- Context --------------------------------------------------------
+
+(defn- cached
+  "The value under `k` in the `:layout-cache` of `ctx`, computed by `(f)` the first time."
+  [ctx k f]
+  (let [cache (or (:layout-cache ctx)
+                  (throw (ex-info "The kind layout needs a storage context with a :layout-cache" {})))]
+    (if-let [[_ v] (find @cache k)]
+      v
+      (let [v (f)]
+        (swap! cache assoc k v)
+        v))))
+
+(defn- collections-index [ctx]
+  (cached ctx ::collections
+          #(let [rows (serialization.db/layout-collections)]
+             {:by-eid (u/index-by :entity_id rows)
+              :by-id  (u/index-by :id rows)})))
+
+(defn- collection-eid
+  "The entity_id of the collection with id `id`, or nil."
+  [ctx id]
+  (get-in (collections-index ctx) [:by-id id :entity_id]))
+
+(defn- data-app-slugs [ctx]
+  (cached ctx ::data-app-slugs serialization.db/data-app-slugs-by-collection-id))
+
+(defn- containers
+  "The `:entity_id`, `:name`, `:collection_id` (an entity_id) and `:created_at` of every instance of `model`, by
+  entity_id."
+  [ctx model]
+  (cached ctx [::containers model]
+          #(u/index-by :entity_id
+                       (map (fn [row] (update row :collection_id (partial collection-eid ctx)))
+                            (serialization.db/layout-rows model [:entity_id :name :collection_id :created_at] nil)))))
+
+(defn- published-tables
+  "Each published Table's `:collection_id` (an entity_id) and `:created_at`, keyed by `[db-name schema table-name]`."
+  [ctx]
+  (cached ctx ::published-tables
+          #(let [db-names (serialization.db/database-names-by-id)]
+             (into {}
+                   (for [{:keys [db_id schema collection_id] table-name :name :as row} (serialization.db/published-tables)
+                         :when collection_id]
+                     [[(db-names db_id) schema table-name]
+                      (assoc row :collection_id (collection-eid ctx collection_id))])))))
+
+;;; -------------------------------------------------- Names ---------------------------------------------------------
+
+(defn- slug
+  "The file or folder name of the label `s`."
+  [s]
+  (or (storage.util/slugify-name s) ""))
+
+(defn- unique-stem
+  "The name, unique among the items of `kind` in `folder`, of the item with dedup key `key` and label `label`."
+  [ctx folder kind key label]
+  (let [gen (cached ctx [::names folder kind] lib/non-truncating-unique-name-generator)]
+    (gen key (slug label))))
+
+(defn- item-file
+  "`folder` with the file stem `<name>.<kind>` of the item with dedup key `key` and label `label` appended."
+  [ctx folder kind key label]
+  (conj (vec folder) (str (unique-stem ctx folder kind key label) "." (kind-words kind))))
+
+;;; ------------------------------------------------ Collections -----------------------------------------------------
+
+(defn- parent-id
+  "The id of the parent of a collection at `location`, or nil for a root collection."
+  [location]
+  (some-> (re-seq #"\d+" (str location)) last parse-long))
+
+(defn- library-section-folder
+  "The top-level folder of `coll` when it is one of the Library's section collections, else nil."
+  [ctx coll]
+  (when-let [parent (get-in (collections-index ctx) [:by-id (parent-id (:location coll))])]
+    (when (= collections/library-collection-type (:type parent))
+      (library-section-folders (:type coll)))))
+
+(defn- library-root? [coll]
+  (= collections/library-collection-type (:type coll)))
+
+(defn- collection-folder
+  "The folder (a vector of strings) that the collection with entity_id `eid` stands for, where its contents go; nil
+  when there is no such collection."
+  [ctx eid]
+  (when-let [{coll-ns :namespace :as coll} (get-in (collections-index ctx) [:by-eid eid])]
+    (let [coll-ns (some-> coll-ns keyword)
+          parent  (get-in (collections-index ctx) [:by-id (parent-id (:location coll))])]
+      (if-let [section (library-section-folder ctx coll)]
+        [section]
+        (let [parent-folder (cond
+                              parent
+                              (collection-folder ctx (:entity_id parent))
+
+                              (= collections/data-apps-ns coll-ns)
+                              nil
+
+                              (contains? namespace-root-folders coll-ns)
+                              [(namespace-root-folders coll-ns)]
+
+                              :else
+                              [(namespace-folder coll-ns)])]
+          (if (and (nil? parent) (= collections/data-apps-ns coll-ns))
+            ;; a data app's resource collection is the app's resources/ folder
+            ["data_apps" (slug (or (get (data-app-slugs ctx) (:id coll)) (:name coll))) "resources"]
+            (conj parent-folder (unique-stem ctx parent-folder :collection eid (:name coll)))))))))
+
+(defn- collection-file
+  "The resolved path of the file of the collection with entity_id `eid`, or nil when it has no file: the Library and
+  its section collections stand for themselves by their folders."
+  [ctx eid]
+  (let [coll (get-in (collections-index ctx) [:by-eid eid])]
+    (when-not (or (library-root? coll)
+                  (library-section-folder ctx coll)
+                  (and (not resource-collection-has-file?)
+                       (= collections/data-apps-ns (some-> (:namespace coll) keyword))
+                       (nil? (parent-id (:location coll)))))
+      (conj (collection-folder ctx eid) "_collection"))))
+
+(defn- item-folder
+  "The folder of an item in the collection with entity_id `coll-eid`, or `root-folder` when it has none."
+  [ctx coll-eid root-folder]
+  (or (some->> coll-eid (collection-folder ctx))
+      root-folder))
+
+;;; ------------------------------------------------- Tables ---------------------------------------------------------
+
+(defn- table-ref
+  "The `[db schema table]` names of the table in the serdes `path` (a table's, or a descendant's)."
+  [path]
+  (let [by-model (into {} (map (juxt :model :id)) (take-while #(not= "Field" (:model %)) path))]
+    [(get by-model "Database") (get by-model "Schema") (get by-model "Table")]))
+
+(defn- database-folder [ctx db-name]
+  ["databases" (unique-stem ctx ["databases"] :database db-name db-name)])
+
+(defn- table-path
+  "The resolved path of the file of the table `[db schema table]`, whose folder holds what it contains: in the
+  folder of its collection when it is published, else in its database's folder."
+  [ctx [db-name schema table-name :as ref]]
+  (let [published (get (published-tables ctx) ref)
+        folder    (if published
+                    (item-folder ctx (:collection_id published) ["data"])
+                    (into (database-folder ctx db-name) (map slug) (schema-folders schema)))]
+    (item-file ctx folder :table ref table-name)))
+
+(defn- field-names
+  "The names of the fields in the serdes `path`, from the outermost."
+  [path]
+  (into [] (comp (filter #(= "Field" (:model %))) (map :id)) path))
+
+(defn- field-file
+  "The resolved path of the file of `kind` for the field in the serdes `path`, in its table's `fields/` folder."
+  [ctx path kind]
+  (let [names  (field-names path)
+        folder (-> (table-path ctx (table-ref path))
+                   (conj "fields")
+                   (into (map slug) (butlast names)))]
+    (item-file ctx folder kind names (last names))))
+
+;;; ------------------------------------------------- Layout ---------------------------------------------------------
+
+(defn- model-of [entity]
+  (-> entity :serdes/meta last :model))
+
+(defmulti ^:private item-path
+  "The resolved path of the file of the extracted `entity` in the kind layout, or nil when it has no file."
+  {:arglists '([ctx entity])}
+  (fn [_ctx entity] (model-of entity)))
+
+(defmethod item-path :default [ctx entity]
+  (storage.util/default-layout ctx entity))
+
+(defn- serdes-only-path
+  "The today's storage path of `entity`, its file name followed by the word of `kind`."
+  [ctx entity kind]
+  (let [segments (vec (serdes/storage-path entity ctx))]
+    (storage.util/resolve-segments ctx (update segments (dec (count segments))
+                                               assoc :suffix (str "." (kind-words kind))))))
+
+(doseq [[model kind] {"Metabot"         :metabot
+                      "Channel"         :channel
+                      "EmbeddingTheme"  :embedding-theme
+                      "CustomVizPlugin" :custom-viz-plugin
+                      "OsiAiContext"    :osi-ai-context}]
+  (defmethod item-path model [ctx entity]
+    (serdes-only-path ctx entity kind)))
+
+(defmethod item-path "Collection" [ctx {:keys [entity_id]}]
+  (collection-file ctx entity_id))
+
+(defn- contained-folder
+  "The folder of the items an instance of `model` with entity_id `eid` contains, or nil when there is none."
+  [ctx model model-name eid]
+  (when-let [{:keys [collection_id] :as row} (get (containers ctx model) eid)]
+    (item-path ctx (assoc row :serdes/meta [{:model model-name :id eid}] :collection_id collection_id))))
+
+(defmethod item-path "Card" [ctx {:keys [collection_id dashboard_id document_id] card-type :type :as card}]
+  (let [folder (or (some->> dashboard_id (contained-folder ctx :model/Dashboard "Dashboard"))
+                   (some->> document_id (contained-folder ctx :model/Document "Document"))
+                   (item-folder ctx collection_id ["collections"]))]
+    (item-file ctx folder (keyword (or (some-> card-type name) "question")) (:entity_id card) (:name card))))
+
+(defmethod item-path "Dashboard" [ctx entity]
+  (item-file ctx (item-folder ctx (:collection_id entity) ["collections"]) :dashboard (:entity_id entity) (:name entity)))
+
+(defmethod item-path "Document" [ctx entity]
+  (item-file ctx (item-folder ctx (:collection_id entity) ["collections"]) :document (:entity_id entity) (:name entity)))
+
+(defmethod item-path "Timeline" [ctx entity]
+  (item-file ctx (item-folder ctx (:collection_id entity) ["collections"]) :timeline (:entity_id entity) (:name entity)))
+
+(defmethod item-path "Action" [ctx {:keys [model_id collection_id] :as action}]
+  (let [folder (cond
+                 (and model_id action-in-model-folder?) (contained-folder ctx :model/Card "Card" model_id)
+                 model_id                               (item-folder ctx collection_id ["collections"])
+                 :else                                  (item-folder ctx collection_id ["data_actions"]))]
+    (item-file ctx folder :action (:entity_id action) (:name action))))
+
+(defmethod item-path "NativeQuerySnippet" [ctx entity]
+  (item-file ctx (item-folder ctx (:collection_id entity) ["snippets"]) :snippet (:entity_id entity) (:name entity)))
+
+(defmethod item-path "Transform" [ctx entity]
+  (item-file ctx (item-folder ctx (:collection_id entity) ["transforms"]) :transform (:entity_id entity) (:name entity)))
+
+(defmethod item-path "TransformTest" [ctx {:keys [transform_id] :as entity}]
+  (let [folder (or (contained-folder ctx :model/Transform "Transform" transform_id) ["transforms"])]
+    (item-file ctx folder :transform-test (:entity_id entity) (:name entity))))
+
+(defmethod item-path "TransformTag" [ctx entity]
+  (item-file ctx ["transform_tags"] :transform-tag (:entity_id entity) (:name entity)))
+
+(defmethod item-path "TransformJob" [ctx entity]
+  (item-file ctx ["transform_jobs"] :transform-job (:entity_id entity) (:name entity)))
+
+(defmethod item-path "PythonLibrary" [_ctx entity]
+  ["python_library" (python-library-file (:path entity))])
+
+(defmethod item-path "Glossary" [ctx entity]
+  (item-file ctx ["glossary"] :term (:entity_id entity) (:term entity)))
+
+(defmethod item-path "Database" [ctx {db-name :name}]
+  ["databases" (str (unique-stem ctx ["databases"] :database db-name db-name) "." (kind-words :database))])
+
+(defmethod item-path "Table" [ctx entity]
+  (table-path ctx (table-ref (serdes/path entity))))
+
+(defmethod item-path "TableUserSettings" [ctx entity]
+  (let [table (table-path ctx (table-ref (serdes/path entity)))]
+    (conj table "_table_settings")))
+
+(defmethod item-path "Field" [ctx entity]
+  (field-file ctx (serdes/path entity) :field))
+
+(defmethod item-path "FieldUserSettings" [ctx entity]
+  (field-file ctx (serdes/path entity) :field-settings))
+
+(defmethod item-path "Dimension" [ctx entity]
+  (field-file ctx (serdes/path entity) :dimension))
+
+(defmethod item-path "FieldValues" [ctx entity]
+  (field-file ctx (serdes/path entity) :field-values))
+
+(defn- definition-table-path
+  "The resolved path of the file of the table the `definition` of a segment or measure reads."
+  [ctx definition]
+  (let [[db-name schema table-name] (serdes/serialized-query-source-table definition)]
+    (table-path ctx [db-name schema table-name])))
+
+(defmethod item-path "Segment" [ctx entity]
+  (item-file ctx (definition-table-path ctx (:definition entity)) :segment (:entity_id entity) (:name entity)))
+
+(defmethod item-path "Measure" [ctx entity]
+  (item-file ctx (definition-table-path ctx (:definition entity)) :measure (:entity_id entity) (:name entity)))
+
+(defn kind-layout
+  "The kind layout: the resolved path of the file of the extracted `entity` in storage context `ctx` (which needs a
+  `:layout-cache`), or nil when the entity has no file of its own (the Library and its section collections)."
+  [ctx entity]
+  (item-path ctx entity))
