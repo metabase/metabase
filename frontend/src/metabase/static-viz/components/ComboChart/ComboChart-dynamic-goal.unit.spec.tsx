@@ -111,9 +111,10 @@ function getTickY(svg: string, label: string) {
 }
 
 function getGoalLineY(svg: string) {
-  const match = svg.match(
-    /<path d="M[\d.]+ ([\d.]+)L[^"]*"[^>]*stroke-dasharray=/,
-  );
+  // the goal line is drawn over its shadow
+  const match = Array.from(
+    svg.matchAll(/<path d="M[\d.]+ ([\d.]+)L[^"]*"[^>]*stroke-dasharray=/g),
+  ).at(-1);
 
   if (match == null) {
     throw new Error(`no goal line in ${svg}`);

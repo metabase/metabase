@@ -1,6 +1,9 @@
 import fetchMock from "fetch-mock";
 
-import { DYNAMIC_GOAL_CARTESIAN_DISPLAYS } from "__support__/dynamic-goals";
+import {
+  DYNAMIC_GOAL_CARTESIAN_DISPLAYS,
+  queryEChartsGoalLine,
+} from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -67,7 +70,7 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
     it("draws the goal line at the value answered by the dataset", async () => {
       await setup(createSeries(display, ANSWERED));
 
-      expect(getGoalLineLabel()).toBeInTheDocument();
+      expect(queryEChartsGoalLine()).toBeInTheDocument();
       // the goal is far above every data point, so it stretches the y-axis up to it
       expect(screen.getByText("250")).toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
@@ -88,9 +91,9 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       await setup(createSeries(display));
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+      expect(queryEChartsGoalLine()).not.toBeInTheDocument();
 
-      await waitFor(() => expect(getGoalLineLabel()).toBeInTheDocument());
+      await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
       expect(screen.getByText("250")).toBeInTheDocument();
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
@@ -105,14 +108,14 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
 
       await setup(createSeries(display));
 
-      expect(await screen.findByText(GOAL_LABEL)).toBeInTheDocument();
+      await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
       expect(screen.getByText("Jan")).toBeInTheDocument();
     });
 
     it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
       await setup(createSeries(display, FAILED));
 
-      expect(screen.getByText(GOAL_LABEL)).toBeInTheDocument();
+      expect(queryEChartsGoalLine()).toBeInTheDocument();
       expect(screen.getByText("Jan")).toBeInTheDocument();
       expect(screen.queryByText("250")).not.toBeInTheDocument();
       expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
@@ -143,8 +146,4 @@ function createSeries(
       }),
     },
   ];
-}
-
-function getGoalLineLabel() {
-  return screen.getByText(GOAL_LABEL);
 }
