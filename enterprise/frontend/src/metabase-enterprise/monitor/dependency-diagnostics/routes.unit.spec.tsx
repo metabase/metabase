@@ -46,14 +46,12 @@ import { getDependencyDiagnosticsRoutes } from "./routes";
 const COUNTS: DependencyCountsResponse = { breaking: 137, unreferenced: 0 };
 
 interface SetupOpts {
-  countsError?: boolean;
   nodes?: DependencyNode[];
   total?: number;
   initialRoute?: string;
+  countsResponse?: DependencyCountsResponse | Promise<DependencyCountsResponse>;
   withMutations?: boolean;
-  getCounts?: () =>
-    | DependencyCountsResponse
-    | Promise<DependencyCountsResponse>;
+  withCountsError?: boolean;
 }
 
 function DeleteQuestionButton() {
@@ -61,7 +59,7 @@ function DeleteQuestionButton() {
   const handleDelete = async () => {
     await deleteCard(1).unwrap();
   };
-  return <Button onClick={handleDelete}>{"Delete question"}</Button>;
+  return <Button onClick={handleDelete}>Delete question</Button>;
 }
 
 function ArchiveCollectionButton() {
@@ -69,21 +67,23 @@ function ArchiveCollectionButton() {
   const handleArchive = async () => {
     await updateCollection({ id: 1, archived: true }).unwrap();
   };
-  return <Button onClick={handleArchive}>{"Archive collection"}</Button>;
+  return <Button onClick={handleArchive}>Archive collection</Button>;
 }
 
 function setup({
-  getCounts = () => COUNTS,
-  countsError = false,
   nodes = [],
   total = nodes.length,
   initialRoute = Urls.brokenDependencies(),
+  countsResponse = COUNTS,
   withMutations = false,
+  withCountsError = false,
 }: SetupOpts = {}) {
-  if (countsError) {
+  if (withCountsError) {
     setupDependencyCountsErrorEndpoint();
   } else {
-    setupDependencyCountsEndpoint(getCounts, { name: "dependency-counts" });
+    setupDependencyCountsEndpoint(() => countsResponse, {
+      name: "dependency-counts",
+    });
   }
   setupListBreakingGraphNodesEndpoint(
     createMockListBrokenGraphNodesResponse({ data: nodes, total }),
@@ -211,7 +211,7 @@ describe("dependency diagnostics section counts", () => {
   });
 
   it("keeps navigation working and hides badges when counts fail", async () => {
-    setup({ countsError: true });
+    setup({ withCountsError: true });
     expect(
       await screen.findByText("No broken dependencies found"),
     ).toBeVisible();
@@ -235,25 +235,18 @@ describe("dependency diagnostics section counts", () => {
 
   it("shares the pending count request without blocking tab navigation", async () => {
     const pendingCounts = defer<DependencyCountsResponse>();
-    setup({ getCounts: () => pendingCounts.promise });
-    try {
-      expect(
-        await screen.findByText("No broken dependencies found"),
-      ).toBeVisible();
-      await visitBothTabs();
-      expect(getCountCalls()).toHaveLength(1);
-      await act(async () => pendingCounts.resolve(COUNTS));
-      expect(
-        await within(getTab("Broken dependencies")).findByText("137"),
-      ).toBeVisible();
-      await switchTab(
-        "Unreferenced entities",
-        "No unreferenced entities found",
-      );
-      expect(getCountCalls()).toHaveLength(1);
-    } finally {
-      pendingCounts.resolve(COUNTS);
-    }
+    setup({ countsResponse: pendingCounts.promise });
+    expect(
+      await screen.findByText("No broken dependencies found"),
+    ).toBeVisible();
+    await visitBothTabs();
+    expect(getCountCalls()).toHaveLength(1);
+    await act(async () => pendingCounts.resolve(COUNTS));
+    expect(
+      await within(getTab("Broken dependencies")).findByText("137"),
+    ).toBeVisible();
+    await switchTab("Unreferenced entities", "No unreferenced entities found");
+    expect(getCountCalls()).toHaveLength(1);
   });
 
   it("retains counts across tab changes while a question deletion refreshes them", async () => {
@@ -268,31 +261,24 @@ describe("dependency diagnostics section counts", () => {
     fetchMock.modifyRoute("dependency-counts", {
       response: () => pendingCounts.promise,
     });
-    try {
-      await userEvent.click(
-        screen.getByRole("button", { name: "Delete question" }),
-      );
-      await waitFor(() => expect(getCountCalls()).toHaveLength(2));
-      await switchTab(
-        "Unreferenced entities",
-        "No unreferenced entities found",
-      );
-      expect(
-        within(getTab("Broken dependencies")).getByText("137"),
-      ).toBeVisible();
-      await act(async () =>
-        pendingCounts.resolve({ breaking: 136, unreferenced: 1 }),
-      );
-      expect(
-        await within(getTab("Broken dependencies")).findByText("136"),
-      ).toBeVisible();
-      expect(
-        within(getTab("Unreferenced entities")).getByText("1"),
-      ).toBeVisible();
-      expect(getCountCalls()).toHaveLength(2);
-    } finally {
-      pendingCounts.resolve(COUNTS);
-    }
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete question" }),
+    );
+    await waitFor(() => expect(getCountCalls()).toHaveLength(2));
+    await switchTab("Unreferenced entities", "No unreferenced entities found");
+    expect(
+      within(getTab("Broken dependencies")).getByText("137"),
+    ).toBeVisible();
+    await act(async () =>
+      pendingCounts.resolve({ breaking: 136, unreferenced: 1 }),
+    );
+    expect(
+      await within(getTab("Broken dependencies")).findByText("136"),
+    ).toBeVisible();
+    expect(
+      within(getTab("Unreferenced entities")).getByText("1"),
+    ).toBeVisible();
+    expect(getCountCalls()).toHaveLength(2);
   });
 
   it("refreshes counts when a collection is archived", async () => {
