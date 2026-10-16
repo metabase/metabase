@@ -181,6 +181,37 @@
                   (testing k
                     (is (contains? loaded eid))))))))))))
 
+(defn- path-of
+  "The kind layout's path of the card with `card-id`, in storage context `ctx`."
+  [ctx card-id]
+  (storage.util/entity-file-path ctx (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))))
+
+(deftest name-clashes-number-items-in-creation-order-test
+  (mt/with-empty-h2-app-db!
+    (let [ops    (ts/create! :model/Collection :name "Ops" :location "/")
+          card!  (fn [card-name created-at]
+                   (:id (ts/create! :model/Card :name card-name :collection_id (:id ops) :created_at created-at)))
+          ;; the newer card is created first
+          newer  (card! "Orders" #t "2026-02-01T00:00:00Z")
+          older  (card! "Orders" #t "2026-01-01T00:00:00Z")
+          model  (:id (ts/create! :model/Card :name "Orders" :type :model :collection_id (:id ops)
+                                  :created_at #t "2026-03-01T00:00:00Z"))
+          expect {older "collections/ops/orders.question.yaml"
+                  newer "collections/ops/orders_2.question.yaml"
+                  model "collections/ops/orders.model.yaml"}
+          ctx!   #(storage.util/storage-context kind-layout/kind-layout)]
+      (testing "the older card keeps the name; the newer one gets _2; another kind does not count"
+        (let [ctx (ctx!)]
+          (is (= expect (into {} (map (juxt identity (partial path-of ctx))) [older newer model])))))
+      (testing "the order in which an export resolves the paths does not change them"
+        (let [ctx (ctx!)]
+          (is (= expect (into {} (map (juxt identity (partial path-of ctx))) [model newer older])))))
+      (testing "one item at a time, as an incremental export resolves it, gives the same names"
+        (is (= expect (into {} (map (juxt identity #(path-of (ctx!) %))) [newer older model]))))
+      (testing "an archived card does not count"
+        (t2/update! :model/Card older {:archived true})
+        (is (= "collections/ops/orders.question.yaml" (path-of (ctx!) newer)))))))
+
 (deftest kind-layout-is-not-the-default-test
   (testing "a storage context without a layout, and plain serdes export, keep today's layout"
     (is (= storage.util/default-layout (:layout (storage.util/storage-context))))

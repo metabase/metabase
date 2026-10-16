@@ -165,11 +165,88 @@
   [s]
   (or (storage.util/slugify-name s) ""))
 
+(defn- rows-of
+  "The `columns` (with `:entity_id`, `:name` and `:created_at`) of the instances of `model` that match `where`."
+  [model columns where]
+  (fn [_ctx]
+    (serialization.db/layout-rows model (into [:entity_id :name :created_at] columns) where)))
+
+(def ^:private not-archived [:= :archived false])
+
+(def ^:private rank-specs
+  "How to number the items of each kind that share a name in a folder: `:rows` reads every instance (a function of the
+  storage context), `:group` gives the folder an instance is in, as the app DB says it. `:id` (default `:entity_id`)
+  and `:label` (default `:name`) read the instance's identity and name."
+  (let [by-collection {:group :collection_id}
+        card          {:rows  (rows-of :model/Card [:collection_id :dashboard_id :document_id :type] not-archived)
+                       :group (fn [{:keys [collection_id dashboard_id document_id] card-type :type}]
+                                (cond
+                                  dashboard_id [:dashboard dashboard_id]
+                                  document_id  [:document document_id]
+                                  :else        [:collection collection_id (keyword card-type)]))}]
+    {:collection     {:rows  (rows-of :model/Collection [:location :namespace] not-archived)
+                      :group (juxt :location :namespace)}
+     :question       card
+     :model          card
+     :metric         card
+     :dashboard      (assoc by-collection :rows (rows-of :model/Dashboard [:collection_id] not-archived))
+     :document       (assoc by-collection :rows (rows-of :model/Document [:collection_id] not-archived))
+     :timeline       (assoc by-collection :rows (rows-of :model/Timeline [:collection_id] not-archived))
+     :snippet        (assoc by-collection :rows (rows-of :model/NativeQuerySnippet [:collection_id] not-archived))
+     :transform      (assoc by-collection :rows (rows-of :model/Transform [:collection_id] nil))
+     :action         {:rows  (rows-of :model/Action [:collection_id :model_id] not-archived)
+                      ;; with no collection, an action on a model is in collections/, one on no model in data_actions/
+                      :group (fn [{:keys [collection_id model_id]}]
+                               [collection_id (and (nil? collection_id) (some? model_id))])}
+     :transform-test {:rows (rows-of :model/TransformTest [:transform_id] nil) :group :transform_id}
+     :transform-tag  {:rows (rows-of :model/TransformTag [] nil) :group (constantly nil)}
+     :transform-job  {:rows (rows-of :model/TransformJob [] nil) :group (constantly nil)}
+     :segment        {:rows (rows-of :model/Segment [:table_id] not-archived) :group :table_id}
+     :measure        {:rows (rows-of :model/Measure [:table_id] not-archived) :group :table_id}
+     :term           {:rows  (fn [_ctx] (serialization.db/layout-rows :model/Glossary [:entity_id :term :created_at] nil))
+                      :group (constantly nil)
+                      :label :term}
+     :table          {:rows  (fn [ctx] (for [[ref row] (published-tables ctx)] (assoc row :ref ref)))
+                      :group :collection_id
+                      :id    :ref}}))
+
+(defn- rank-index
+  "For the kind `kind`: `:key-of`, each instance's `[group slug]` by identity, and `:order`, the identities of the
+  instances with each `[group slug]` in creation order (`created_at`, then identity)."
+  [ctx kind]
+  (let [{:keys [rows group id label] :or {id :entity_id label :name}} (rank-specs kind)]
+    ;; the card kinds (question, model, metric) share one spec, and so one index
+    (cached ctx [::ranks (if (#{:question :model :metric} kind) :card kind)]
+            #(let [keyed (for [row (rows ctx)]
+                           {:id         (id row)
+                            :key        [(group row) (slug (get row label))]
+                            :created-at (:created_at row)})]
+               {:key-of (into {} (map (juxt :id :key)) keyed)
+                :order  (update-vals (group-by :key keyed)
+                                     (fn [items] (mapv :id (sort-by (juxt :created-at (comp str :id)) items))))}))))
+
+(defn- ranked-slug
+  "The slug of `label` for the item of `kind` with identity `id`, with `_2`, `_3` when it is the second, third item of
+  its kind with that slug in its folder, in creation order. The app DB says which items share the folder, so every
+  export numbers an item the same way whatever it exports and in what order. An item the app DB does not list (such
+  as an archived one) gets no number."
+  [ctx kind id label]
+  (let [base (slug label)]
+    (if-let [{:keys [key-of order]} (when (rank-specs kind) (rank-index ctx kind))]
+      (let [^java.util.List ids (some-> (key-of id) order)
+            position            (if ids (.indexOf ids id) -1)]
+        (if (pos? position)
+          (str base "_" (inc position))
+          base))
+      base)))
+
 (defn- unique-stem
-  "The name, unique among the items of `kind` in `folder`, of the item with dedup key `key` and label `label`."
+  "The name, unique among the items of `kind` in `folder`, of the item with identity `key` and label `label`: its
+  [[ranked-slug]], with a further number only when that name is already taken (an item named `Orders 2` beside two
+  named `Orders`)."
   [ctx folder kind key label]
   (let [gen (cached ctx [::names folder kind] lib/non-truncating-unique-name-generator)]
-    (gen key (slug label))))
+    (gen key (ranked-slug ctx kind key label))))
 
 (defn- item-file
   "`folder` with the file stem `<name>.<kind>` of the item with dedup key `key` and label `label` appended."

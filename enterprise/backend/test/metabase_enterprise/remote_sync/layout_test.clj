@@ -9,6 +9,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.serialization.v2.storage.kind-layout :as kind-layout]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
@@ -177,6 +178,34 @@
   (let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
     (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
     (get @(:files-atom mock) "main")))
+
+(deftest kind-layout-full-and-incremental-exports-agree-on-names-test
+  (testing "with the kind layout, full and incremental exports give two items of one name the same files"
+    (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                       remote-sync-transforms false]
+      (with-redefs [remote-sync.layout/layout kind-layout/kind-layout]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
+                       :model/Card       {older :id}   {:name "Orders" :collection_id coll-id
+                                                        :created_at #t "2026-01-01T00:00:00Z"}]
+          (t2/delete! :model/RemoteSyncObject)
+          (seed-create-row! "Collection" coll-id)
+          (seed-create-row! "Card" older)
+          (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
+                files #(set (keys (get @(:files-atom mock) "main")))]
+            (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "first"))))
+            (is (= #{"collections/bench/_collection.yaml" "collections/bench/orders.question.yaml"} (files)))
+            (mt/with-temp [:model/Card {newer :id} {:name "Orders" :collection_id coll-id
+                                                    :created_at #t "2026-02-01T00:00:00Z"}]
+              (seed-create-row! "Card" newer)
+              (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "incremental"))))
+              (is (= "apply-changes-version" (written-version)))
+              (let [incremental (files)]
+                (is (= #{"collections/bench/_collection.yaml"
+                         "collections/bench/orders.question.yaml"
+                         "collections/bench/orders_2.question.yaml"}
+                       incremental))
+                (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
+                (is (= incremental (files)) "a full export gives the same names")))))))))
 
 (deftest import-reads-the-kind-layout-test
   (testing "an export rewritten to the kind layout's paths loads to the same app-DB state"
