@@ -3,7 +3,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.2026-10-15T00:00:00
+      id: v65.2026-10-17T00:00:00
       author: ranquild
       comment: Create result_metadata_status for re-deriving the result metadata of dependent cards
       changes:
@@ -74,7 +74,7 @@ databaseChangeLog:
             tableName: result_metadata_status
 
   - changeSet:
-      id: v65.2026-10-15T00:00:01
+      id: v65.2026-10-17T00:00:01
       author: ranquild
       comment: Unique constraint to prevent duplicate result_metadata_status entries
       changes:
@@ -88,7 +88,7 @@ databaseChangeLog:
             constraintName: idx_unique_result_metadata_status
 
   - changeSet:
-      id: v65.2026-10-15T00:00:02
+      id: v65.2026-10-17T00:00:02
       author: ranquild
       comment: Add partial index on result_metadata_status.stale for efficient polling
       changes:
