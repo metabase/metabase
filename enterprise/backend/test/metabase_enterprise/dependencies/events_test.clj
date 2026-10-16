@@ -582,6 +582,89 @@
              (deps.test/synchronously-run-backfill!)
              (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))))))
 
+(deftest action-update-sets-correct-dependencies
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (let [action-deps (fn [action-id]
+                         (t2/select-fn-set (juxt :to_entity_type :to_entity_id)
+                                           :model/Dependency :from_entity_type :action :from_entity_id action-id))
+           sql-query   #(lib/native-query mp (str "DELETE FROM " % " WHERE id = 1"))]
+       (mt/with-temp [:model/Action {action-id :id} {:type :query, :name "Delete row"}
+                      :model/QueryAction _ {:action_id     action-id
+                                            :database_id   (mt/id)
+                                            :dataset_query (sql-query "venues")}]
+         (testing "creating an action creates dependencies on the tables its query reads"
+           (assert-stale :action action-id)
+           (deps.test/synchronously-run-backfill!)
+           (is (= #{[:table (mt/id :venues)]}
+                  (action-deps action-id))))
+         (testing "updating an action's query recalculates its dependencies"
+           (t2/update! :model/QueryAction action-id {:dataset_query (sql-query "checkins")})
+           (assert-stale :action action-id)
+           (deps.test/synchronously-run-backfill!)
+           (is (= #{[:table (mt/id :checkins)]}
+                  (action-deps action-id))))
+         (testing "deleting an action removes its dependencies and status"
+           (t2/delete! :model/Action action-id)
+           (deps.test/synchronously-run-backfill!)
+           (is (empty? (action-deps action-id)))
+           (is (not (t2/exists? :model/DependencyStatus :entity_type :action :entity_id action-id)))))))))
+
+(defn- action-dependency-rows
+  "The Dependency and DependencyStatus rows of the actions with `action-ids`."
+  [action-ids]
+  {:dependencies (set (t2/select-fn-set :from_entity_id :model/Dependency
+                                        :from_entity_type :action :from_entity_id [:in action-ids]))
+   :statuses     (set (t2/select-fn-set :entity_id :model/DependencyStatus
+                                        :entity_type :action :entity_id [:in action-ids]))})
+
+(deftest model-delete-removes-dependency-rows-of-its-actions-test
+  (run-with-dependencies-setup!
+   (fn [mp]
+     (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                                :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                    :model/Action {implicit-id :id} {:type :implicit, :name "Create venue", :model_id model-id}
+                    :model/ImplicitAction _ {:action_id implicit-id, :kind "row/create"}
+                    :model/Action {query-id :id} {:type :query, :name "Delete venue", :model_id model-id}
+                    :model/QueryAction _ {:action_id     query-id
+                                          :database_id   (mt/id)
+                                          :dataset_query (lib/native-query mp "DELETE FROM venues WHERE id = 1")}]
+       (deps.test/synchronously-run-backfill!)
+       (testing "the model's actions have dependency rows"
+         (is (= {:dependencies #{implicit-id query-id}, :statuses #{implicit-id query-id}}
+                (action-dependency-rows [implicit-id query-id]))))
+       (testing "deleting the model removes the dependency rows of its actions"
+         (t2/delete! :model/Card model-id)
+         (deps.test/synchronously-run-backfill!)
+         (is (= {:dependencies #{}, :statuses #{}}
+                (action-dependency-rows [implicit-id query-id]))))))))
+
+(deftest database-delete-removes-dependency-rows-of-its-models-actions-test
+  (run-with-dependencies-setup!
+   (fn [_mp]
+     (mt/with-temp [:model/Database {db-id :id} {:engine :h2, :details (:details (mt/db))}
+                    :model/Table {table-id :id} {:db_id db-id, :name "VENUES", :schema "PUBLIC"}]
+       (let [db-mp (lib-be/application-database-metadata-provider db-id)]
+         (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                                    :database_id   db-id
+                                                    :dataset_query (lib/native-query db-mp "SELECT * FROM venues")}
+                        :model/Action {implicit-id :id} {:type :implicit, :name "Create venue", :model_id model-id}
+                        :model/ImplicitAction _ {:action_id implicit-id, :kind "row/create"}
+                        :model/Action {query-id :id} {:type :query, :name "Delete venue", :model_id model-id}
+                        :model/QueryAction _ {:action_id     query-id
+                                              :database_id   db-id
+                                              :dataset_query (lib/native-query db-mp "DELETE FROM venues WHERE id = 1")}]
+           (deps.test/synchronously-run-backfill!)
+           (testing "the actions of the database's model have status rows"
+             (is (= #{implicit-id query-id}
+                    (:statuses (action-dependency-rows [implicit-id query-id])))))
+           (testing "deleting the database removes the dependency rows of the actions of its models"
+             (t2/delete! :model/Database db-id)
+             (deps.test/synchronously-run-backfill!)
+             (is (= {:dependencies #{}, :statuses #{}}
+                    (action-dependency-rows [implicit-id query-id]))))
+           (is (some? table-id))))))))
+
 (deftest measure-with-measure-dependencies
   (run-with-dependencies-setup!
    (fn [mp]

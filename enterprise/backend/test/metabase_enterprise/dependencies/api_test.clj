@@ -918,6 +918,63 @@
                 (is (= 1 (count response)))
                 (is (= (:id card) (:id (first response))))))))))))
 
+(deftest graph-action-dependents-test
+  (testing "GET /api/ee/dependencies/graph/dependents returns the actions a user can read"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection readable-collection   {}
+                       :model/Collection unreadable-collection {:namespace "data-actions"}
+                       :model/Card {model-id :id} (assoc (basic-card "Venues model" :venues)
+                                                         :type          :model
+                                                         :collection_id (:id readable-collection))
+                       :model/Action {readable-id :id} {:type     :implicit
+                                                        :name     "Create venue"
+                                                        :model_id model-id}
+                       :model/ImplicitAction _ {:action_id readable-id, :kind "row/create"}
+                       :model/Action {unreadable-id :id} {:type          :query
+                                                          :name          "Delete venue"
+                                                          :collection_id (:id unreadable-collection)}
+                       :model/Action {root-id :id} {:type :query
+                                                    :name "Archive venue"}
+                       :model/QueryAction _ {:action_id     root-id
+                                             :database_id   (mt/id)
+                                             :dataset_query (-> (lib/native-query (mt/metadata-provider)
+                                                                                  (str "DELETE FROM venues WHERE id IN "
+                                                                                       "(SELECT id FROM {{#" model-id "}})"))
+                                                                (lib/with-template-tags
+                                                                  {(str "#" model-id) {:id           "model-tag"
+                                                                                       :type         :card
+                                                                                       :name         (str "#" model-id)
+                                                                                       :display-name "Venues model"
+                                                                                       :card-id      model-id}}))}
+                       :model/QueryAction _ {:action_id     unreadable-id
+                                             :database_id   (mt/id)
+                                             :dataset_query (-> (lib/native-query (mt/metadata-provider)
+                                                                                  (str "DELETE FROM venues WHERE id IN "
+                                                                                       "(SELECT id FROM {{#" model-id "}})"))
+                                                                (lib/with-template-tags
+                                                                  {(str "#" model-id) {:id           "model-tag"
+                                                                                       :type         :card
+                                                                                       :name         (str "#" model-id)
+                                                                                       :display-name "Venues model"
+                                                                                       :card-id      model-id}}))}]
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+            (deps.test/synchronously-run-backfill!)
+            (let [dependents (fn [user]
+                               (->> (mt/user-http-request user :get 200 "ee/dependencies/graph/dependents"
+                                                          :id model-id
+                                                          :type "card"
+                                                          :dependent-types "action")
+                                    (map (juxt :type :id (comp :name :data) (comp (juxt :name :namespace) :collection :data)))
+                                    set))]
+              (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]
+                       ["action" unreadable-id "Delete venue" [(:name unreadable-collection) "data-actions"]]
+                       ["action" root-id "Archive venue" ["Data actions" "data-actions"]]}
+                     (dependents :crowberto)))
+              (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]}
+                     (dependents :rasta))))))))))
+
 (deftest graph-measure-root-test
   (testing "GET /api/ee/dependencies/graph with measure as root node"
     (mt/with-test-user :crowberto
@@ -2796,3 +2853,60 @@
             (testing "analyst-wide visibility pauses while advanced-permissions is unavailable"
               (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
                 (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))
+
+(defn- delete-venue-query []
+  (lib/native-query (mt/metadata-provider) "DELETE FROM venues WHERE id = {{id}}"))
+
+(deftest graph-root-data-action-permissions-test
+  (testing "the graph shows a data action at the data-actions root only to users who can read that root"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-for-namespace-perms :data-actions
+        (mt/with-temp [:model/Action {action-id :id} {:type :query :name "Root data action permtest"}
+                       :model/QueryAction _ {:action_id     action-id
+                                             :database_id   (mt/id)
+                                             :dataset_query (delete-venue-query)}]
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+            (deps.test/synchronously-run-backfill!)
+            (let [dependent-ids    (fn []
+                                     (->> (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                                :id (mt/id :venues)
+                                                                :type "table"
+                                                                :dependent-types "action")
+                                          (into #{} (map :id))))
+                  unreferenced-ids (fn []
+                                     (->> (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/unreferenced"
+                                                                :types "action"
+                                                                :query "permtest")
+                                          :data
+                                          (into #{} (map :id))))]
+              (testing "a user who can read the default root but not the data-actions root"
+                (is (not (contains? (dependent-ids) action-id)))
+                (is (not (contains? (unreferenced-ids) action-id))))
+              (testing "a user who can read the data-actions root"
+                (perms/grant-collection-read-permissions! (perms/all-users-group)
+                                                          (assoc collection/root-collection :namespace "data-actions"))
+                (is (contains? (dependent-ids) action-id))
+                (is (contains? (unreferenced-ids) action-id))))))))))
+
+(deftest ^:synchronized unreferenced-root-data-action-location-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced locates a data action at the data-actions root in that root"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Action {action-id :id} {:type :query :name "Root data action locationtest"}
+                     :model/QueryAction _ {:action_id     action-id
+                                           :database_id   (mt/id)
+                                           :dataset_query (delete-venue-query)}]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (deps.test/synchronously-run-backfill!)
+          (let [unreferenced (fn [query]
+                               (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
+                                                     :types "action"
+                                                     :query query))
+                matches?     (fn [query]
+                               (contains? (into #{} (map :id) (:data (unreferenced query))) action-id))]
+            (testing "the response names the data-actions root"
+              (is (=? {:data [{:id   action-id
+                               :data {:collection {:name "Data actions" :namespace "data-actions"}}}]}
+                      (unreferenced "locationtest"))))
+            (testing "a search for the data-actions root name finds the action"
+              (is (matches? "Data actions"))
+              (is (not (matches? "Our analytics"))))))))))
