@@ -749,11 +749,13 @@ describe("issue 31628", () => {
     scalarContainer(card("scalar2x2")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
-    cy.log(
-      "scalar 2x2: should show the title tooltip on hover because the smallest cards hide the inline title",
-    );
+    cy.log("scalar 2x2: should keep the title visible without hovering");
+    card("scalar2x2")
+      .findByTestId("scalar-title")
+      .should("contain", SCALAR_QUESTION.name)
+      .and("be.visible");
     scalarContainer(card("scalar2x2")).realHover();
-    cy.findByRole("tooltip").findByText(SCALAR_QUESTION.name).should("exist");
+    cy.findByRole("tooltip").should("not.exist");
     moveMouseAway();
 
     cy.log(
@@ -770,13 +772,13 @@ describe("issue 31628", () => {
     scalarContainer(card("smart2x2")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
-    cy.log(
-      "smart scalar 2x2: should show the title tooltip on hover because the smallest cards hide the inline title",
-    );
+    cy.log("smart scalar 2x2: should keep the title visible without hovering");
+    card("smart2x2")
+      .findByTestId("scalar-title")
+      .should("contain", SMART_SCALAR_QUESTION.name)
+      .and("be.visible");
     scalarContainer(card("smart2x2")).realHover();
-    cy.findByRole("tooltip")
-      .findByText(SMART_SCALAR_QUESTION.name)
-      .should("exist");
+    cy.findByRole("tooltip").should("not.exist");
     moveMouseAway();
 
     cy.log(
@@ -817,7 +819,7 @@ describe("issue 31628", () => {
       moveMouseAway();
 
       cy.log(`${key}: should show description tooltip on hover`);
-      card(key).findByTestId("scalar-title").icon("info").realHover();
+      card(key).icon("info").realHover();
       cy.findByRole("tooltip")
         .findByText(SMART_SCALAR_QUESTION.description)
         .should("exist");
