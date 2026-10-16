@@ -3956,8 +3956,8 @@
         (is (empty? (t2/select :data_app_group_assignment)))))))
 
 (deftest python-library-is-default-test
-  (testing "v65.2026-10-16T12:00:00-01: python_library.is_default is added, true for a library with an empty source"
-    (impl/test-migrations ["v65.2026-10-16T12:00:00" "v65.2026-10-16T12:00:01"] [migrate!]
+  (testing "v65.pyld7a-b: python_library.is_default is added, true for a library with an empty source"
+    (impl/test-migrations ["v65.pyld7a" "v65.pyld7b"] [migrate!]
       (t2/delete! :python_library)
       (let [library! (fn [path source]
                        (t2/insert-returning-pk! :python_library {:path       path

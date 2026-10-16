@@ -1,8 +1,6 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
    [clojure.string :as str]
-   [java-time.api :as t]
-   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
@@ -98,70 +96,13 @@
   :encryption :no
   :default 60)
 
-(def ^:const transforms-root-id
-  "Sentinel value for the virtual Transforms root collection.
-   Used to represent the entire transforms feature being enabled/disabled."
-  -1)
-
-(defn- replace-transforms-root-rso!
-  "Replaces the Transforms root RSO with one in `status`."
-  [status]
-  (remote-sync.db/delete-rso-of! "Collection" transforms-root-id)
-  (remote-sync.db/insert-rso! {:model_type        "Collection"
-                               :model_id          transforms-root-id
-                               :model_name        "Transforms"
-                               :status            status
-                               :status_changed_at (t/offset-date-time)}))
-
-(defn sync-transform-tracking!
-  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when enabled with untracked
-  transforms content to publish or a pending deletion to undo, dropped along with the transforms' own RSOs when
-  disabled before it was pushed, 'delete' (replacing the transforms' own RSOs) when disabled after transforms were
-  tracked, left alone when already in that state, and absent on a read-only instance, which has nothing to publish."
-  [enabled?]
-  (let [status (:status (remote-sync.db/rso "Collection" transforms-root-id))]
-    (cond
-      (= :read-only (remote-sync-type))
-      (when status
-        (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
-
-      enabled?
-      (when (or (= "delete" status)
-                (and (nil? status)
-                     (not (remote-sync.db/transforms-tracked?))
-                     (remote-sync.db/transforms-content-exists?)))
-        (replace-transforms-root-rso! "create"))
-
-      (= "create" status)
-      (do
-        (remote-sync.db/delete-transforms-rsos!)
-        (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
-
-      (and (or status (remote-sync.db/transforms-tracked?))
-           (not= "delete" status))
-      (do
-        (remote-sync.db/delete-transforms-rsos!)
-        (replace-transforms-root-rso! "delete")))))
-
-(defn- sync-transform-tracking-on-change
-  "Called when remote-sync-transforms setting changes, and with no old value when the settings cache loads, which only
-  ever enables tracking."
-  [old-value new-value]
-  ;; new-value may be a string "true"/"false" or a boolean, so we need to parse it
-  (let [enabled? (if (string? new-value)
-                   (parse-boolean new-value)
-                   (boolean new-value))]
-    (when (or enabled? (some? old-value))
-      (sync-transform-tracking! enabled?))))
-
 (defsetting remote-sync-transforms
   (deferred-tru "Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).")
   :type :boolean
   :visibility :admin
   :export? false
   :encryption :no
-  :default false
-  :on-change sync-transform-tracking-on-change)
+  :default false)
 
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")

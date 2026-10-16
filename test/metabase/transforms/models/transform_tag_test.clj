@@ -28,7 +28,7 @@
              (:name (t2/select-one :model/TransformTag (:id tag)))))
       (is (nil? (t2/select-one-fn :built_in_type :model/TransformTag (:id tag)))))))
 
-(deftest initial-tags-kept-on-noop-update
+(deftest initial-tags-kept-on-noop-update-test
   (testing "An update that only touches the timestamp leaves a tag built in"
     (doseq [type ["hourly" "daily" "weekly" "monthly"]]
       (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
