@@ -3833,6 +3833,7 @@
            request
            settings
            system
+           users
            util
            warehouse-schema-overlay
            enterprise/serialization}
