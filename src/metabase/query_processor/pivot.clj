@@ -525,6 +525,8 @@
         pivot-opts  (pivot-opts-from-query query)
         pivot-limit (pivot-query-max-rows query)
         query       (-> query
+                        ;; the sub-queries are no pivot queries
+                        (lib.util/update-query-stage -1 dissoc :pivot)
                         (assoc-in [:middleware :pivot-options] pivot-opts)
                         (assoc-in [:constraints :max-results] pivot-limit)
                         (cond-> (get-in query [:constraints :max-results-bare-rows])
