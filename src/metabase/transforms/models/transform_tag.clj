@@ -63,7 +63,8 @@
 
 (t2/define-before-update :model/TransformTag [tag]
   (if (or (nil? (:built_in_type tag))
-          mi/*deserializing?*)
+          mi/*deserializing?*
+          (empty? (dissoc (t2/changes tag) :updated_at)))
     tag
     (-> (merge (translate-name tag) ;; translated default names
                {:built_in_type nil} ;; never translate this again

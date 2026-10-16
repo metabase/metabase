@@ -585,18 +585,18 @@
     (is (nil? (spec/removal-conditions {})))))
 
 (deftest python-library-spec-conditions-test
-  (testing "PythonLibrary spec has :removal-conditions but no :conditions or :export-conditions"
+  (testing "PythonLibrary spec has :removal-conditions and :export-conditions but no :conditions"
     (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
       (is (nil? (:conditions spec))
           "PythonLibrary should have no :conditions")
-      (is (nil? (:export-conditions spec))
-          "PythonLibrary should have no :export-conditions")
+      (is (= {:is_default false} (:export-conditions spec))
+          "PythonLibrary should export only libraries that aren't the default one")
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (:removal-conditions spec))
           "PythonLibrary should have :removal-conditions protecting builtin entity")))
-  (testing "export-conditions returns nil for PythonLibrary (no export filtering)"
+  (testing "export-conditions leaves the default library out of exports"
     (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
-      (is (nil? (spec/export-conditions spec)))))
+      (is (= {:is_default false} (spec/export-conditions spec)))))
   (testing "removal-conditions returns the builtin protection for PythonLibrary"
     (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
