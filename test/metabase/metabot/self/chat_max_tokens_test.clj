@@ -94,6 +94,7 @@
                        "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
+                       "claude-haiku-5-5"             32000
                        "claude-opus-4-5-20251101"     32000
                        "claude-sonnet-4-5-20250929"   32000
                        "claude-haiku-4-5-20251001"    32000
@@ -124,6 +125,7 @@
                        "anthropic.claude-opus-4-7"    32000
                        "anthropic.claude-sonnet-5-5"  32000
                        "anthropic.claude-sonnet-5"    32000
+                       "anthropic.claude-haiku-5-5"   32000
                        "anthropic.claude-haiku-4-5"   32000}
    :bedrock-openai    {"openai.gpt-6-astra"           32000
                        "openai.gpt-5.4"               32000
@@ -143,6 +145,7 @@
                        "claude-sonnet-4-6"            32000
                        "claude-opus-4-5"              32000
                        "claude-sonnet-4-5"            32000
+                       "claude-haiku-5-5"             32000
                        "claude-haiku-4-5"             32000
                        "claude-opus-4-1"              32000
                        "Claude-Opus-4-8"              32000
@@ -168,6 +171,7 @@
                        "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
+                       "claude-haiku-5-5"             32000
                        "claude-haiku-4-5"             32000
                        "claude-haiku-4-5@20251001"    32000}
    :gemini            {"google/gemini-3.5-flash"      32000

@@ -202,8 +202,7 @@ result_metadata:
   lib/source: source/previous-stage
   lib/source-column-alias: total_revenue
   qp/implicit-field?: true
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
 - model: Card

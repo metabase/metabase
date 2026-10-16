@@ -214,7 +214,7 @@ describe(
          * It will go in order from top to the bottom, which scrolls the
          * sidebar naturally. This prevents acting on an element that's not visible.
          */
-        const sortedCards = TEST_QUESTIONS.sort((a, b) =>
+        const sortedCards = TEST_QUESTIONS.toSorted((a, b) =>
           a.name.localeCompare(b.name),
         );
 
@@ -484,6 +484,7 @@ describe("issue 29304", () => {
         window.Cypress = undefined;
       },
     });
+    H.closeNavigationSidebar();
   };
 
   beforeEach(() => {

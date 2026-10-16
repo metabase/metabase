@@ -74,7 +74,6 @@ result_metadata:
   lib/source: source/aggregations
   lib/source-column-alias: count
 visualization_settings:
-  column_settings: null
   pie.colors:
     Doohickey: '#ED6E6E'
     Gadget: '#88BF4D'

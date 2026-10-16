@@ -1319,7 +1319,7 @@ describe("scenarios > metrics > explorer", () => {
         H.MetricsViewer.assertVizType("Bar");
 
         cy.log("should allow changing display types");
-        H.MetricsViewer.changeVizType("line");
+        H.MetricsViewer.changeVizType("Line");
         H.MetricsViewer.assertVizType("Line");
       });
 
@@ -1680,7 +1680,7 @@ describe("scenarios > metrics > explorer", () => {
       selectDimensionBreakout("Category");
       H.MetricsViewer.assertVizType("Bar");
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
-      H.MetricsViewer.changeVizType("line");
+      H.MetricsViewer.changeVizType("Line");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
         8,
@@ -1860,10 +1860,6 @@ describe("scenarios > metrics > explorer", () => {
   });
 
   describe("Segments", () => {
-    beforeEach(() => {
-      H.MetricsViewer.goToViewer();
-    });
-
     it("should apply a segment as a filter to a metric", () => {
       const SEGMENT_NAME = "Big orders";
 
@@ -1879,6 +1875,9 @@ describe("scenarios > metrics > explorer", () => {
           },
         },
       });
+      // Open the viewer only once the segment exists, so it can't load and
+      // cache the segment list before the segment is created.
+      H.MetricsViewer.goToViewer();
 
       addMetric("Count of orders");
 
@@ -2309,6 +2308,7 @@ describe("scenarios > metrics > explorer > shared dimensions", () => {
     // changed hash would hand the new state to the previous test's stale app.
     viewerVisitCount += 1;
     cy.visit(`/explore?visit=${viewerVisitCount}#${hash}`);
+    H.closeNavigationSidebar();
     H.MetricsViewer.searchBarPills().should("have.length", names.length);
     H.MetricsViewer.getAllMetricVisualizations().should(
       "have.length.at.least",

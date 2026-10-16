@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { c } from "ttag";
+import { c, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Box, Ellipsified, Flex, Group, Icon } from "metabase/ui";
@@ -48,9 +48,9 @@ export const ModalHeader = ({
             {title}
           </Ellipsified>
         </Flex>
-        {children && <Box mr="lg">{children}</Box>}
+        {children}
         {onClose && (
-          <ActionIcon onClick={onClose}>
+          <ActionIcon variant="subtle" onClick={onClose} aria-label={t`Close`}>
             <Icon name="close" />
           </ActionIcon>
         )}

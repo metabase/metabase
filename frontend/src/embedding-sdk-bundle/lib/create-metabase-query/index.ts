@@ -18,6 +18,7 @@ import type {
   TestBreakoutSpec,
   TestColumnSpec,
   TestExpressionSpec,
+  TestOperatorArgSpec,
   TestQuerySpec,
   TestStageSpec,
   TestStageWithSourceSpec,
@@ -239,10 +240,22 @@ function toResultColumnExpressionSpec(
   }
 
   if (spec.type === "operator") {
-    return { ...spec, args: spec.args?.map(toResultColumnExpressionSpec) };
+    return { ...spec, args: spec.args?.map(toResultColumnArgSpec) };
   }
 
   return spec;
+}
+
+function toResultColumnArgSpec(spec: TestOperatorArgSpec): TestOperatorArgSpec {
+  if (
+    spec.type === "segment" ||
+    spec.type === "measure" ||
+    spec.type === "metric"
+  ) {
+    return spec;
+  }
+
+  return toResultColumnExpressionSpec(spec);
 }
 
 async function loadSourceMetadata(

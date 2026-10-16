@@ -3,6 +3,7 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import {
+  actionApi,
   cardApi,
   collectionApi,
   dashboardApi,
@@ -603,6 +604,10 @@ function getItemByModel(value: OmniPickerValue, dispatch: DispatchFn) {
     case "transform":
       return dispatch(
         transformApi.endpoints.getTransform.initiate(Number(value.id)),
+      ).unwrap();
+    case "action":
+      return dispatch(
+        actionApi.endpoints.getAction.initiate({ id: Number(value.id) }),
       ).unwrap();
     default:
       return Promise.resolve(null);

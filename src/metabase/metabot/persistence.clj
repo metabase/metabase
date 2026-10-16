@@ -9,7 +9,6 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
-   [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
@@ -49,7 +48,7 @@
   "The stored `:output` value for a v2 tool part. A map result is trimmed to
   `:output` (the LLM-facing text adapters read on history replay) plus the
   `persisted-structured-output-keys` subset of structured output, canonicalized
-  to `:structured_output`; everything else (`:resources`, `:data-parts`,
+  to `:structured_output`; everything else (`:data-parts`,
   `:reactions`, …) is dropped — that's where the bulk of the bloat lives. A
   non-map result (a tool that returned a bare string/scalar) is stored as-is —
   the v2 part schema types `:output` as any JSON value — so readers must
@@ -82,7 +81,10 @@
                          :text {:type "text" :text (:text part) :state "done"}
                          :tool-input
                          (let [output (get outputs (:id part))
-                               error  (:error output)]
+                               ;; From the result, not the part: a failed call carries its `:error`
+                               ;; there and nowhere else. Reading the part stored every failure as
+                               ;; `output-available`, so history and replay saw a success.
+                               error  (get-in output [:result :error])]
                            (cond-> {:type       (str "tool-" (:function part))
                                     :toolCallId (:id part)
                                     :state      (cond
@@ -94,7 +96,14 @@
                              (assoc :output (tool-result->storable-output (:result output)))
 
                              (some? error)
-                             (assoc :errorText (migrate/error->text error))))
+                             ;; The model-facing text, not the reader-facing one. `:errorText` is
+                             ;; what [[tool-part->llm-messages]] replays to the model for a failed
+                             ;; step, so storing a generic sentence here would lose the authored
+                             ;; failure — the table that was missing, the argument to repair — on
+                             ;; every replay. One field, two audiences; the model wins, because the
+                             ;; live SSE channel has its own and the whole point of the text is that
+                             ;; the agent can act on it.
+                             (assoc :errorText (str (get-in output [:result :output])))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"

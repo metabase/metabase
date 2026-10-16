@@ -1475,10 +1475,16 @@
           (is (= ""
                  (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
                                 {:type :tool-output :id "c1" :result nil}]))))
-        (testing "errored tool output uses the error text"
-          (is (= "kaboom"
+        (testing (str "a failed tool output replays the model-facing text from its result. The "
+                      "error lives in `:result`, not on the part, and `:errorText` is what the "
+                      "model reads again on replay — so it is the authored failure text, not the "
+                      "sentence the live UI channel shows.")
+          (is (= "Table 7 was not found. Call `search` for a table id."
                  (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
-                                {:type :tool-output :id "c1" :error {:message "kaboom"}}]))))))))
+                                {:type   :tool-output :id "c1"
+                                 :result {:output "Table 7 was not found. Call `search` for a table id."
+                                          :error  {:class :recoverable
+                                                   :code  :metabase.metabot.tools.recoverable.common/not-found}}}]))))))))
 
 (deftest history-hides-query-results-while-query-execution-is-off-test
   (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"
