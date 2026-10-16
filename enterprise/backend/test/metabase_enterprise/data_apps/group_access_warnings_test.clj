@@ -254,18 +254,17 @@
                      :model/Table albatrosses {:db_id (:id zoo) :name "albatrosses"
                                                :display_name "Albatrosses" :schema nil}
                      :model/TableUserSettings _ {:table_id (:id finches) :display_name "Finches"}
-                     :model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"
-                                         :table_ids [(:id albatrosses) (:id owls) (:id finches)]}
                      :model/PermissionsGroup group {}]
-        (doseq [group-id [(:id (perms/all-users-group)) (:id group)]
-                database-id [(:id aviary) (:id zoo)]]
-          (perms/set-database-permission! group-id database-id :perms/view-data :blocked))
-        (group-access/add-groups! app [(:id group)])
-        (is (= [{:group_id (:id group)
-                 :missing_tables [{:id (:id finches) :name "Finches" :schema "PUBLIC"
-                                   :database_id (:id aviary) :database_name "Aviary"}
-                                  {:id (:id owls) :name "Owls" :schema "PUBLIC"
-                                   :database_id (:id aviary) :database_name "Aviary"}
-                                  {:id (:id albatrosses) :name "Albatrosses" :schema nil
-                                   :database_id (:id zoo) :database_name "Zoo"}]}]
-               (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings")))))))
+        (with-app-reading! [app [(:id albatrosses) (:id owls) (:id finches)]]
+          (doseq [group-id [(:id (perms/all-users-group)) (:id group)]
+                  database-id [(:id aviary) (:id zoo)]]
+            (perms/set-database-permission! group-id database-id :perms/view-data :blocked))
+          (group-access/add-groups! app [(:id group)])
+          (is (= [{:group_id (:id group)
+                   :missing_tables [{:id (:id finches) :name "Finches" :schema "PUBLIC"
+                                     :database_id (:id aviary) :database_name "Aviary"}
+                                    {:id (:id owls) :name "Owls" :schema "PUBLIC"
+                                     :database_id (:id aviary) :database_name "Aviary"}
+                                    {:id (:id albatrosses) :name "Albatrosses" :schema nil
+                                     :database_id (:id zoo) :database_name "Zoo"}]}]
+                 (mt/user-http-request :crowberto :get 200 "apps/birds/group-permission-warnings"))))))))
