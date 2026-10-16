@@ -9,16 +9,20 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write, Agent, Skill
 
 This skill moves e2e coverage to Jest without loss. A migration must keep or increase coverage. A regression that a deleted e2e test would have caught is a failure of this skill.
 
-The work has three stages. Each PR does all three.
+## Input
 
-| Stage | Question | Section |
+The user gives a spec path, and optionally a list of candidate tests in that spec. The list can come from any source. Treat it as candidates, not as verdicts: triage still classifies each test. With no list, triage each test in the spec.
+
+The skill has three modes. Each PR does all three.
+
+| Mode | Question | Section |
 |---|---|---|
-| 1. Choose | Which tests can move? | [Mode: triage](#mode-triage) |
-| 2. Move | How do we move a test and keep each thing that it asserted? | [Mode: migrate](#mode-migrate) |
-| 3. Verify | Is there behavior that no test protects after the move? | [Mode: verify](#mode-verify) |
+| Triage | Which of the candidates can move? | [Mode: triage](#mode-triage) |
+| Migrate | How do we move a test and keep each thing that it asserted? | [Mode: migrate](#mode-migrate) |
+| Verify | Is there behavior that no test protects after the move? | [Mode: verify](#mode-verify) |
 
 ```
-/e2e-to-unit triage  e2e/test/scenarios/<area>/<spec>.cy.spec.ts
+/e2e-to-unit triage  e2e/test/scenarios/<area>/<spec>.cy.spec.ts ["<it title>" ...]
 /e2e-to-unit migrate e2e/test/scenarios/<area>/<spec>.cy.spec.ts ["<it title>" ...]
 /e2e-to-unit verify  [--base <ref>]
 ```
@@ -66,8 +70,8 @@ Do one PR for each feature folder, so that the tests share one coverage map and 
 
 ## Mode: triage
 
-1. If a static triage report is available for the spec, start from it, and process only the tests that it flags. Else read the full spec before you judge a test. Note the shared `before` and `beforeEach`: the snapshot that they restore, the token that they activate, and what they create through `cy.request`.
-2. For each `it()`, write the layers that it touches and its bucket, with a one-line reason.
+1. Read the full spec before you judge a test, also when the user gave a list of candidates. Note the shared `before` and `beforeEach`: the snapshot that they restore, the token that they activate, and what they create through `cy.request`.
+2. For each candidate `it()` (or each `it()` when there is no list), write the layers that it touches and its bucket, with a one-line reason. If your bucket does not agree with the reason given in the input, write both.
 3. For each test that references an issue (`metabase#NNNNN`, `(#NNNNN)`), find the fix:
    `gh issue view NNNNN --repo metabase/metabase --json title,body,closedByPullRequestsReferences`
    `gh pr diff <fix PR> --repo metabase/metabase --name-only`
