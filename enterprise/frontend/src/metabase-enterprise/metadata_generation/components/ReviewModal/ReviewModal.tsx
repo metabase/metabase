@@ -261,7 +261,6 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
       <RunHeader
         runId={runId}
         totals={getRunTotals(tables)}
-        decideState={decideState}
         onApply={setApplyResult}
         onRegenerate={onRegenerate}
       />
@@ -312,18 +311,11 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
 type RunHeaderProps = {
   runId: MetadataGenerationRunId;
   totals: RunTotals;
-  decideState: DecideState;
   onApply: (result: MetadataGenerationApplyResult) => void;
   onRegenerate?: (run: MetadataGenerationRun) => void;
 };
 
-function RunHeader({
-  runId,
-  totals,
-  decideState: { decide, isDeciding },
-  onApply,
-  onRegenerate,
-}: RunHeaderProps) {
+function RunHeader({ runId, totals, onApply, onRegenerate }: RunHeaderProps) {
   const [applyRun, { isLoading: isApplying }] =
     useApplyMetadataGenerationRunMutation();
   const { regenerate, canRegenerate, isRegenerating } = useRegenerate(
@@ -336,7 +328,6 @@ function RunHeader({
   ] = useDisclosure();
   const { sendErrorToast } = useMetadataToasts();
   const { counts, humanSetPending } = totals;
-  const notAccepted = getNotAcceptedCount(counts);
 
   const handleRegenerate = async () => {
     await regenerate();
@@ -356,13 +347,7 @@ function RunHeader({
 
   return (
     <Group justify="space-between" wrap="nowrap" align="flex-start">
-      <Stack gap={4}>
-        <Group gap="xs" data-testid="metadata-generation-review-totals">
-          <StatusCount label={t`Not accepted`} count={notAccepted} />
-          <StatusCount label={t`Accepted`} count={counts.accepted} />
-          <StatusCount label={t`Stale`} count={counts.stale} />
-          <StatusCount label={t`Applied`} count={counts.applied} />
-        </Group>
+      <Box>
         {humanSetPending > 0 && (
           <Text size="sm" c="text-secondary">
             {ngettext(
@@ -372,7 +357,7 @@ function RunHeader({
             )}
           </Text>
         )}
-      </Stack>
+      </Box>
       <Group gap="sm" wrap="nowrap">
         {onRegenerate != null && (
           <Tooltip label={t`Regenerate suggestions`}>
@@ -394,17 +379,6 @@ function RunHeader({
           onConfirm={handleRegenerate}
           onClose={closeRegenerateConfirm}
         />
-        <Tooltip
-          label={t`Accepts every suggestion, except those that would replace a value a person set.`}
-        >
-          <Button
-            variant="default"
-            disabled={notAccepted === 0 || isDeciding}
-            onClick={() => decide({ decision: "accept", all: true })}
-          >
-            {t`Accept all`}
-          </Button>
-        </Tooltip>
         <Button
           variant="filled"
           loading={isApplying}
@@ -415,14 +389,6 @@ function RunHeader({
         </Button>
       </Group>
     </Group>
-  );
-}
-
-function StatusCount({ label, count }: { label: string; count: number }) {
-  return (
-    <Text size="sm" span>
-      {label}: <strong>{count}</strong>
-    </Text>
   );
 }
 
@@ -763,11 +729,9 @@ function SuggestionRow({
           label={isDetailOpen ? t`Hide field details` : t`Field details`}
         >
           <ActionIcon
-            variant="subtle"
-            size="sm"
             aria-label={t`Field details of ${fieldLabel}`}
             aria-pressed={isDetailOpen}
-            c={isDetailOpen ? "text-brand" : "text-secondary"}
+            selected={isDetailOpen}
             onClick={() => onToggleFieldDetails(suggestion.field_id)}
           >
             <Icon name="info" />
