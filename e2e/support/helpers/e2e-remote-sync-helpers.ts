@@ -55,20 +55,21 @@ export const copySyncedStubDatabaseFixture = () => {
   });
 };
 
+const git = (...args: string[]) =>
+  cy.task("runCommand", {
+    command: "git",
+    args: ["-C", LOCAL_GIT_PATH, ...args],
+  });
+
 export const checkoutSyncedCollectionBranch = (branch: string) => {
-  cy.exec("git -C " + LOCAL_GIT_PATH + ` checkout -b  '${branch}'`);
+  git("checkout", "-b", branch);
 };
 
 export const commitToRepo = (
   message = "Adding content to synced collection",
 ) => {
-  cy.exec(
-    "git -C " +
-      LOCAL_GIT_PATH +
-      " add .; git -C " +
-      LOCAL_GIT_PATH +
-      ` commit -am '${message}'`,
-  );
+  git("add", ".");
+  git("commit", "-am", message);
 };
 
 // Setup remote sync via the API
@@ -123,23 +124,22 @@ export function configureGitWithNewSyncedCollection(
 
 // Prepare the local git repo and initializing with an empty commit
 export function setupGitSync() {
-  cy.exec("rm -rf " + LOCAL_GIT_PATH);
-  cy.exec("git config --global init.defaultBranch main");
-  cy.exec("git init " + LOCAL_GIT_PATH);
-  cy.exec(
-    `git -C ${LOCAL_GIT_PATH} config user.email 'toucan@metabase.com'; git -C ${LOCAL_GIT_PATH} config user.name 'Toucan Cam'`,
-  );
-  cy.exec(
-    "git -C " + LOCAL_GIT_PATH + " commit --allow-empty -m 'Initial Commit'",
-  );
+  cy.task("removeDirectory", LOCAL_GIT_PATH);
+  cy.task("runCommand", {
+    command: "git",
+    args: ["init", "--initial-branch=main", LOCAL_GIT_PATH],
+  });
+  git("config", "user.email", "toucan@metabase.com");
+  git("config", "user.name", "Toucan Cam");
+  git("commit", "--allow-empty", "-m", "Initial Commit");
 }
 
 // This is a bit strange, but when working locally we write directly to the .git folder, not the working
 // directory. git will see an empty working directory and assume we have deleted files, so by stashing
 // unstaged changes, we will reset the working directory to what is in the .git folder
 export const stashChanges = () => {
-  cy.exec("git -C " + LOCAL_GIT_PATH + " add .");
-  cy.exec("git -C " + LOCAL_GIT_PATH + " stash");
+  git("add", ".");
+  git("stash");
 };
 
 // function to examine the working directory and return an array of the files present
@@ -201,7 +201,7 @@ export const updateRemoteQuestion = (
       const updatedDoc = updateFn(doc);
 
       cy.writeFile(fullPath, yaml.dump(updatedDoc));
-      cy.exec(`git -C ${LOCAL_GIT_PATH} commit -am '${commitMessage}'`);
+      git("commit", "-am", commitMessage);
     });
   });
 };

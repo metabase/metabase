@@ -384,15 +384,14 @@ export const mockEmbedJsToDevServer = () => {
     return;
   }
 
-  // We use `cy.exec` with curl because both `fetch` and `cy.request` have downsides:
+  // We check from the config process because both `fetch` and `cy.request` have downsides:
   // - if we use `fetch`, it will show up as failed request in the browser polluting the logs
   // - if we use `cy.request`, it will fail the test even if `failOnStatusCode` is false
-  cy.exec("curl --silent --head --fail http://localhost:8080/app/embed.js", {
-    failOnNonZeroExit: false,
-    log: false,
-  }).then((result) => {
-    const isHotReloadAvailable = result.code === 0;
-
+  cy.task<boolean>(
+    "isUrlReachable",
+    { url: "http://localhost:8080/app/embed.js" },
+    { log: false },
+  ).then((isHotReloadAvailable) => {
     if (isHotReloadAvailable) {
       cy.intercept("GET", EMBED_JS_PATH, (req) => {
         req.redirect("http://localhost:8080/app/embed.js");
