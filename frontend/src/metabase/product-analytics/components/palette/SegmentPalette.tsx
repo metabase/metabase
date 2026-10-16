@@ -42,6 +42,9 @@ import S from "./SegmentPalette.module.css";
 const DEFAULT_WIDTH = 272;
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 400;
+/** The main header's title line-height and toolbar button height. */
+const TITLE_ROW_HEIGHT = "1.5rem";
+const BUTTON_HEIGHT = "2.25rem";
 
 type SegmentPaletteProps = {
   tableId: ConcreteTableId | undefined;
@@ -92,10 +95,14 @@ export const SegmentPalette = ({
       onResizeStop={handleResizeStop}
     >
       <Stack className={S.root} w={width} pos="relative" gap={0}>
-        <Text fw="bold" c="text-secondary" px="md" pt="md" pb="xs">
-          {t`Event data`}
-        </Text>
-        <Box px="md">
+        {/* Mirrors the main header's rhythm (title row, gap, 36px buttons,
+            padding) so the divider lines up with the header's border. */}
+        <Stack gap="md" px="md" pt="lg" pb="md">
+          <Group h={TITLE_ROW_HEIGHT} align="center">
+            <Text fw="bold" c="text-secondary">
+              {t`Event data`}
+            </Text>
+          </Group>
           {onTableChange !== undefined ? (
             <EventTablePicker
               tableId={tableId}
@@ -105,7 +112,7 @@ export const SegmentPalette = ({
               fullWidth
             />
           ) : (
-            <Group gap="sm" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap" h={BUTTON_HEIGHT} align="center">
               <Icon name="database" />
               <Text fw="bold" truncate>
                 {table?.display_name ?? t`Loading…`}
@@ -113,14 +120,14 @@ export const SegmentPalette = ({
             </Group>
           )}
           {tableError !== undefined && (
-            <Alert mt="sm" color="error" icon={<Icon name="warning" />}>
+            <Alert color="error" icon={<Icon name="warning" />}>
               {tableError}
             </Alert>
           )}
-        </Box>
-        <Divider my="md" />
+        </Stack>
+        <Divider />
         <ScrollArea flex={1} mih={0}>
-          <Stack gap="xl" pb="lg">
+          <Stack gap="xl" pt="md" pb="lg">
             <PaletteSection
               title={t`Event segments`}
               source="event"
