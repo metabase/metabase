@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Box, Stack, Text, rem } from "metabase/ui";
+import { Box, Stack, Text } from "metabase/ui";
 import { assignLazily } from "metabase/utils/merge-lazily";
 import {
   ScalarCardShell,
@@ -20,9 +20,9 @@ import type {
 
 import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
+import { TrendCardComparison } from "./TrendCardComparison";
 import { TrendComparisonList } from "./TrendComparisonList";
 import { TrendComparisonRow } from "./TrendComparisonRow";
-import { TrendComparisonStack } from "./TrendComparisonStack";
 import { TrendSymbol } from "./TrendSymbol";
 import { computeTrend, getComparisonDisplay } from "./compute";
 import { SMART_SCALAR_CHART_DEFINITION } from "./definition";
@@ -46,15 +46,6 @@ function SmartScalarComponent(
   } = props;
 
   const scalarRef = useRef(null);
-  const {
-    tier,
-    rootFontScale,
-    availableWidth,
-    title,
-    titleElement,
-    showsTitleTooltip,
-    innerTooltipHoverHandlers,
-  } = useScalarCardShell(props);
   const { getColor } = useBrowserRenderingContext({ fontFamily });
 
   const insights = rawSeries?.[0].data?.insights;
@@ -68,6 +59,12 @@ function SmartScalarComponent(
       onRenderError(error.message);
     }
   }, [error, onRenderError]);
+
+  const { tier, rootFontScale, availableWidth, titleElement, description } =
+    useScalarCardShell(props, {
+      shouldHideDescription: (tier) =>
+        tier.size === 150 && (trend?.comparisons.length ?? 0) > 1,
+    });
 
   if (trend == null) {
     return null;
@@ -93,7 +90,7 @@ function SmartScalarComponent(
     }
   };
 
-  const isSmallestTier = !tier.showsTitle;
+  const isCompact = tier.size < 200;
   const listsAllComparisons =
     comparisons.length > 1 &&
     tier.multiComparisonMinHeight != null &&
@@ -101,7 +98,7 @@ function SmartScalarComponent(
 
   const primaryComparison = comparisons[0];
   const symbolDirection =
-    isSmallestTier || primaryComparison == null
+    isCompact || primaryComparison == null
       ? null
       : getComparisonDisplay(primaryComparison, formatOptions).symbolDirection;
 
@@ -120,8 +117,6 @@ function SmartScalarComponent(
     tier.valueFontSize,
     formatOptions,
   );
-
-  const hasValueTooltip = fullScalarValue !== displayValue;
 
   const valueElement = (
     <ScalarValueContainer
@@ -204,44 +199,23 @@ function SmartScalarComponent(
   }
 
   return (
-    <ScalarCardShell
-      tier={tier}
-      title={title}
-      showsTitleTooltip={showsTitleTooltip}
-      actionButtons={actionButtons}
-      innerTooltipHoverHandlers={innerTooltipHoverHandlers}
-    >
+    <ScalarCardShell tier={tier} actionButtons={actionButtons}>
       <Box
         pos="relative"
         // measured pixels, not a design size — must not be rem-scaled
         maw={`${valueMaxWidth}px`}
-        {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
       >
         {valueElement}
         {symbolElement}
       </Box>
-      {titleElement}
-      {comparisons.length > 0 && (
-        <Box
-          pos="absolute"
-          top={`calc(100% + ${rem(tier.comparisonGap)})`}
-          left="50%"
-          // measured pixels, not a design size — must not be rem-scaled
-          w={`${availableWidth}px`}
-          style={{ transform: "translateX(-50%)" }}
-          {...innerTooltipHoverHandlers}
-        >
-          {listsAllComparisons ? (
-            <TrendComparisonStack trend={trend} formatOptions={formatOptions} />
-          ) : (
-            <TrendComparisonRow
-              trend={trend}
-              formatOptions={formatOptions}
-              percentOnly={isSmallestTier}
-            />
-          )}
-        </Box>
-      )}
+      <TrendCardComparison
+        tier={tier}
+        title={titleElement}
+        description={description}
+        trend={trend}
+        availableWidth={availableWidth}
+        listsAllComparisons={listsAllComparisons}
+      />
     </ScalarCardShell>
   );
 }
