@@ -6,6 +6,7 @@ import { useMetadataProvider } from "metabase/metadata-store";
 import type { Table } from "metabase-types/api";
 
 import type { EventDefinition } from "../../events/types";
+import { useSegmentDrag } from "../../segments/drag-context";
 import {
   isEventSegment,
   segmentToEventDefinition,
@@ -18,21 +19,24 @@ import { useTableQuery } from "../events/use-table-query";
 
 type EventDefinitionWidgetProps = SettingWidgetProps<EventDefinition | null> & {
   table: Table | undefined;
-  placeholder?: string;
 };
 
 /**
  * A collapsed summary of an event definition that expands into an editor, or
- * takes a segment dropped from the palette.
+ * takes a segment dropped from the palette. Empty, it's a well that says to
+ * drag from the palette while it's open, and to click when it isn't.
  */
 export const EventDefinitionWidget = ({
   id,
   value,
   onChange,
   table,
-  placeholder = t`Define the conditions`,
 }: EventDefinitionWidgetProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  const { isPaletteOpen } = useSegmentDrag();
+  const placeholder = isPaletteOpen
+    ? t`Drag an event segment here`
+    : t`Click to define this`;
   const [sendToast] = useToast();
   const tableQuery = useTableQuery(table);
   const metadataProvider = useMetadataProvider(table?.db_id ?? null);
@@ -80,6 +84,7 @@ export const EventDefinitionWidget = ({
       id={id}
       name={value?.name}
       placeholder={placeholder}
+      empty={value === null}
       disabled={tableQuery === undefined}
       removeLabel={t`Clear`}
       dropTarget={{ accepts: isEventSegment, onDrop: handleDropSegment }}
