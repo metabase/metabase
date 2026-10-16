@@ -1831,6 +1831,7 @@ serdes/meta:
      (list-files [_] [])
      (list-dir [_ _] [])
      (read-file [_ _] nil)
+     (read-bytes [_ _] nil)
      (open-commit [_]
        (reify source.p/CommitBuilder
          (stage-upsert! [_ _] nil)

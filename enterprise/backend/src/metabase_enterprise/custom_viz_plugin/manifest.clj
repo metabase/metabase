@@ -150,6 +150,18 @@
     (when (and (image-file? icon) (safe-relative-path? icon))
       [icon])))
 
+(defn packed-asset-names
+  "The file names under `dist/assets/` that `npx @metabase/custom-viz pack` archives for `manifest`: the `icon`
+   and the `assets` list, in that order, without repeats. A name that isn't a safe relative path is left out."
+  [manifest]
+  (into []
+        (comp (filter string?)
+              (remove str/blank?)
+              (filter safe-relative-path?)
+              (distinct))
+        (cons (:icon manifest) (let [assets (:assets manifest)]
+                                 (when (sequential? assets) assets)))))
+
 (defn asset-content-type
   "Return the MIME content type for an image asset file, or nil if not recognized.
    Only the plugin icon is served, so only image types are allowed."

@@ -13,7 +13,9 @@
    [metabase.util.memoize :as u.memo]
    [metabase.util.yaml :as yaml]
    [potemkin.types :as p])
-  (:import (java.io File)))
+  (:import
+   (java.io File)
+   (java.nio.file Files)))
 
 (set! *warn-on-reflection* true)
 
@@ -91,14 +93,20 @@
     (throw (ex-info (format "Invalid resource file path: %s" path) {:path path}))))
 
 (defn read-resources
-  "The ingested `entity` with each of its [[serdes/resource-paths]] read by `read-fn` into `:serdes/resources`."
-  [entity read-fn]
-  (if-let [paths (seq (serdes/resource-paths entity))]
-    (assoc entity :serdes/resources (into {}
-                                          (map (fn [path]
-                                                 (check-resource-path! path)
-                                                 [path (read-fn path)]))
-                                          paths))
+  "The ingested `entity` with each of its [[serdes/resource-paths]] read into `:serdes/resources`: by `read-bytes` when
+  the entity's [[serdes/binary-resources?]], otherwise by `read-text`. Both take a path relative to the entity's
+  directory and return nil for a file that isn't there. An entity with resource files owns its directory, so it also
+  gets the directory's name as `:serdes/directory`."
+  [entity ^String directory-name read-text read-bytes]
+  (if-let [paths (seq (serdes/resource-paths entity read-text))]
+    (let [read-fn (if (serdes/binary-resources? entity) read-bytes read-text)]
+      (assoc entity
+             :serdes/directory directory-name
+             :serdes/resources (into {}
+                                     (map (fn [path]
+                                            (check-resource-path! path)
+                                            [path (read-fn path)]))
+                                     paths)))
     entity))
 
 (def legal-top-level-paths
@@ -110,8 +118,8 @@
   "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
   source code, to the name of the entity files in them."
   {"data_apps"          "data_app.yaml"
-   ;; remote sync does not export plugins, so a full remote-sync export would otherwise delete every plugin from the
-   ;; repository; the representation format also keeps other YAML under a plugin's directory out of the import
+   ;; a plugin's directory holds only files serialization owns, but remote sync does not export plugins, so a full
+   ;; remote-sync export would otherwise delete every plugin from the repository
    "custom_viz_plugins" "custom_viz_plugin.yaml"})
 
 (def replaced-top-level-paths
@@ -207,13 +215,17 @@
       (if (= ["Setting"] (mapv :model serdes-meta))
         (when (contains? settings kw-id)
           {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
-        (when-let [file (get @cache (strip-labels serdes-meta))]
+        (when-let [^File file (get @cache (strip-labels serdes-meta))]
           (try
-            (read-resources (ingest-file file)
-                            (fn [path]
-                              (let [resource (io/file (.getParentFile ^File file) ^String path)]
-                                (when (.isFile resource)
-                                  (slurp resource)))))
+            (let [dir      (.getParentFile file)
+                  resource (fn [^String path]
+                             (let [f (io/file dir path)]
+                               (when (.isFile f)
+                                 f)))]
+              (read-resources (ingest-file file)
+                              (.getName dir)
+                              #(some-> (resource %) slurp)
+                              #(some-> ^File (resource %) .toPath Files/readAllBytes)))
             (catch Exception e
               (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
                                                        :abs-path serdes-meta} e))))))))

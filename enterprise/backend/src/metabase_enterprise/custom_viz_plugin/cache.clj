@@ -141,6 +141,19 @@
       (finally
         (delete-recursive! scratch)))))
 
+;;; ------------------------------------------------ Files ------------------------------------------------
+
+(defn bundle-files
+  "The files in `bundle-bytes`, a tar+gzip archive as uploaded, as a map of archive path to bytes."
+  [^bytes bundle-bytes]
+  (u.compress/untgz-files bundle-bytes untgz-opts))
+
+(defn files->bundle
+  "A tar+gzip archive of `files`, a map of archive path to bytes, as [[validate-bundle!]] reads it. The archive is
+   deterministic, so the same files always make the same `bundle_hash`."
+  ^bytes [files]
+  (u.compress/tgz-bytes files))
+
 ;;; ------------------------------------------------ FS Cache ------------------------------------------------
 
 (defn- custom-viz-cache-root
