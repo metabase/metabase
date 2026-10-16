@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
+   [metabase.models.serialization :as serdes]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -129,7 +130,7 @@
         (is (empty? errors))))))
 
 (deftest shared-top-level-paths-test
-  (testing "a directory remote sync does not own outright is never replaced wholesale"
+  (testing "a directory that also holds files serialization does not own is never replaced wholesale"
     (is (= {"data_apps" "data_app.yaml" "custom_viz_plugins" "custom_viz_plugin.yaml"}
            ingest/shared-top-level-paths))
     (is (not (contains? ingest/replaced-top-level-paths "custom_viz_plugins"))))
@@ -137,6 +138,48 @@
     (is (ingest/entity-file-path? "custom_viz_plugins/thumbs/custom_viz_plugin.yaml"))
     (is (not (ingest/entity-file-path? "custom_viz_plugins/thumbs/deploy/config.yaml")))
     (is (not (ingest/entity-file-path? "custom_viz_plugins/thumbs/package.yaml")))))
+
+(deftest read-resources-test
+  (let [text-entity   {:serdes/meta [{:model "DataApp" :id "x"}] :path "dist/index.js"}
+        binary-entity {:serdes/meta [{:model "CustomVizPlugin" :id "x"}]}
+        read-text     (fn [path]
+                        (if (= path "metabase-plugin.json")
+                          "{\"name\": \"x\", \"icon\": \"icon.png\"}"
+                          (str "text:" path)))
+        read-bytes    (fn [path] (.getBytes (str "bytes:" path) "UTF-8"))]
+    (testing "a model's resources are read as text unless it says they are binary"
+      (is (= {"dist/index.js" "text:dist/index.js"}
+             (:serdes/resources (ingest/read-resources text-entity "sales" read-text read-bytes))))
+      (testing "and a model may name its resources after reading one of them as text"
+        (is (= {"metabase-plugin.json" (seq (.getBytes "bytes:metabase-plugin.json" "UTF-8"))
+                "dist/index.js"        (seq (.getBytes "bytes:dist/index.js" "UTF-8"))
+                "dist/assets/icon.png" (seq (.getBytes "bytes:dist/assets/icon.png" "UTF-8"))}
+               (update-vals (:serdes/resources (ingest/read-resources binary-entity "thumbs" read-text read-bytes)) seq)))))
+    (testing "an entity with resources owns its directory and learns its name"
+      (is (= "thumbs" (:serdes/directory (ingest/read-resources binary-entity "thumbs" read-text read-bytes)))))
+    (testing "an entity without resources is returned as is"
+      (let [entity {:serdes/meta [{:model "Card" :id "x"}]}]
+        (is (identical? entity (ingest/read-resources entity "main" read-text read-bytes)))))))
+
+(deftest ingest-one-attaches-the-directory-and-reads-binary-resources-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (let [plugin-dir (io/file dump-dir "custom_viz_plugins" "thumbs")
+          icon       (byte-array [0 (int 0x80) (int 0xff) 1])]
+      (.mkdirs plugin-dir)
+      (spit (io/file plugin-dir "custom_viz_plugin.yaml")
+            (yaml/generate-string {:identifier "thumbs" :serdes/meta [{:model "CustomVizPlugin"}]}))
+      (spit (io/file plugin-dir "metabase-plugin.json") "{\"name\": \"thumbs\", \"icon\": \"icon.png\"}")
+      (io/make-parents (io/file plugin-dir "dist" "assets" "icon.png"))
+      (io/copy icon (io/file plugin-dir "dist" "assets" "icon.png"))
+      (let [ingested (ingest/ingest-one (ingest/ingest-yaml dump-dir) [{:model "CustomVizPlugin" :id "thumbs"}])]
+        (is (= "thumbs" (:serdes/directory ingested)))
+        (is (= (seq icon) (seq (get-in ingested [:serdes/resources "dist/assets/icon.png"])))
+            "bytes that are not UTF-8 survive")
+        (is (contains? (:serdes/resources ingested) "dist/index.js") "a file that isn't there is still a resource")
+        (is (nil? (get-in ingested [:serdes/resources "dist/index.js"])))
+        (testing "and neither reaches the file an export writes"
+          (is (= {:identifier "thumbs" :serdes/meta [{:model "CustomVizPlugin"}]}
+                 (serdes/storable (dissoc ingested :serdes/resources)))))))))
 
 (deftest keyword-reconstruction-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

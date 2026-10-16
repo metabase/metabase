@@ -594,19 +594,32 @@
       (and self (not (contains? self :id))) (assoc :serdes/meta (ingested-path model ingested)))))
 
 (defn storable
-  "`entity` as its file stores it: `:serdes/meta` reduced to `[{:model ...}]`, and removed from nested entities."
+  "`entity` as its file stores it: `:serdes/meta` reduced to `[{:model ...}]`, and removed from nested entities, and
+  without the `:serdes/directory` ingestion attaches to an entity that owns its directory."
   [entity]
   (let [model (-> entity :serdes/meta last :model)]
     (-> (walk/postwalk #(cond-> % (map? %) (dissoc :serdes/meta)) entity)
+        (dissoc :serdes/directory)
         (assoc :serdes/meta [{:model model}]))))
 
 (defmulti resource-paths
-  "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory."
+  "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory.
+  `read-text` reads a file at such a path as a UTF-8 string, nil when there is none, for a model whose resources are
+  named by one of them: a custom viz plugin's manifest names its assets."
+  {:arglists '([ingested read-text])}
+  (fn [ingested _read-text] (ingested-model ingested)))
+
+(defmethod resource-paths :default [_ _]
+  nil)
+
+(defmulti binary-resources?
+  "Whether the [[resource-paths]] of an ingested entity hold bytes rather than UTF-8 text: ingestion then reads them,
+  and storage writes them, as byte arrays."
   {:arglists '([ingested])}
   ingested-model)
 
-(defmethod resource-paths :default [_]
-  nil)
+(defmethod binary-resources? :default [_]
+  false)
 
 (defmulti load-find-local
   "Given a path, tries to look up any corresponding local entity.

@@ -2660,7 +2660,10 @@
 (deftest custom-viz-plugin-test
   (mt/with-empty-h2-app-db!
     (t2/delete! :model/CustomVizPlugin)
-    (let [bundle (cv.tu/valid-bundle-bytes "test-plugin" {:icon "icon.svg" :metabase-version ">=1.60"})]
+    (let [files  {"metabase-plugin.json" (.getBytes ^String (json/encode {:name "test-plugin" :icon "icon.svg" :metabase {:version ">=1.60"}}) "UTF-8")
+                  "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
+                  "dist/assets/icon.svg" (.getBytes "<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n" "UTF-8")}
+          bundle (cv.tu/make-tgz-bytes files)]
       (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:display_name "Test Plugin"
                                                                  :identifier   "test-plugin"
                                                                  :status       :active
@@ -2672,14 +2675,15 @@
         ;; (round-trip-test/add-to-baseline!)
         (testing "custom viz plugin extraction"
           (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
-            (is (=? {:serdes/meta [{:model "CustomVizPlugin"
-                                    :id    "test-plugin"}]
-                     :identifier  "test-plugin"
-                     :enabled     true
-                     :bundle      string?}
+            (is (=? {:serdes/meta      [{:model "CustomVizPlugin"
+                                         :id    "test-plugin"}]
+                     :identifier       "test-plugin"
+                     :enabled          true}
                     ser))
+            (testing "the bundle's files are the resource files beside the YAML"
+              (is (= (update-vals files seq) (update-vals (:serdes/resources ser) seq))))
             (testing "the file holds nothing the bundle derives"
-              (is (= #{:serdes/meta :identifier :enabled :bundle} (set (keys ser)))))
+              (is (= #{:serdes/meta :identifier :enabled :serdes/resources} (set (keys ser)))))
             (testing "has no dependencies"
               (is (empty? (serdes/deserialization-dependencies ser))))))))))
 

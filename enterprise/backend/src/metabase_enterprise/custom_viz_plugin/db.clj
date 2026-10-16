@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -37,6 +38,22 @@
   "Whether a CustomVizPlugin with `identifier` exists."
   [identifier :- :string]
   (t2/exists? :model/CustomVizPlugin :identifier identifier))
+
+(mu/defn plugin-identifier-ignoring-case :- [:maybe :string]
+  "The identifier of the CustomVizPlugin whose identifier equals `identifier` ignoring case, or nil."
+  [identifier :- :string]
+  (t2/select-one-fn :identifier :model/CustomVizPlugin {:where [:= [:lower :identifier] (u/lower-case-en identifier)]}))
+
+(mu/defn reducible-plugins-with-bundles
+  "A reducible of the CustomVizPlugin rows that have a bundle, bundle included, whose `filter-column` is one of
+  `filter-ids` (every such row when `filter-column` is nil), ordered ascending by `order-columns`."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns :- [:maybe [:sequential :keyword]]]
+  (t2/reducible-select :model/CustomVizPlugin
+                       (cond-> {:where [:not= :bundle_hash nil]}
+                         filter-column       (update :where #(vector :and % [:in filter-column filter-ids]))
+                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn plugin-bundle
   "The bundle bytes of the CustomVizPlugin with `plugin-id`."

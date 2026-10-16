@@ -3,7 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str])
   (:import
-   (java.io File OutputStream)
+   (java.io ByteArrayOutputStream File OutputStream)
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream TarArchiveOutputStream)
    (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream GzipCompressorOutputStream GzipParameters)))
 
@@ -47,6 +47,37 @@
             (io/copy s tar)))
         (.closeArchiveEntry tar)))
     dst))
+
+(defn- check-entry-name!
+  "Throws unless `entry-name` is a relative `/`-separated path with no empty, `.` or `..` segments: an archive read
+   into a map of paths is written back to a directory by those paths."
+  [^String entry-name]
+  (when (or (str/starts-with? entry-name "/")
+            (str/includes? entry-name "\\")
+            (some #{"" "." ".."} (str/split entry-name #"/" -1)))
+    (throw (ex-info (format "Archive entry has an invalid path: %s" entry-name)
+                    {:status-code 400 :path entry-name}))))
+
+(defn tgz-bytes
+  "A tar+gzip archive of `files`, a map of `/`-separated path to byte array, as bytes. The archive is deterministic:
+   entries in path order, mode 0644, no timestamps, so the same files always make the same bytes."
+  ^bytes [files]
+  (let [baos (ByteArrayOutputStream.)]
+    (with-open [tar (-> baos
+                        (GzipCompressorOutputStream. (GzipParameters.))
+                        (TarArchiveOutputStream. 512 "UTF-8"))]
+      (.setLongFileMode tar TarArchiveOutputStream/LONGFILE_POSIX)
+      (.setBigNumberMode tar TarArchiveOutputStream/BIGNUMBER_POSIX)
+      (doseq [[^String path ^bytes content] (sort-by key files)
+              :let [entry (doto (TarArchiveEntry. path)
+                            (.setSize (alength content))
+                            (.setModTime 0)
+                            (.setMode 0644))]]
+        (check-entry-name! path)
+        (.putArchiveEntry tar entry)
+        (.write tar content)
+        (.closeArchiveEntry tar)))
+    (.toByteArray baos)))
 
 (defn- copy-tar-entry!
   "Stream the current tar entry into `out`, returning the new running total of
@@ -98,3 +129,29 @@
                                         (do (.mkdirs f) total-bytes)))]
                  (recur next-count next-total))))
            entry-count))))))
+
+(defn untgz-files
+  "The regular files in tar+gzip `archive` as a map of entry path to bytes. `archive` can be anything
+  `io/input-stream` coerces. Hidden entries are skipped as [[untgz]] skips them, and an entry whose path could leave
+  a directory is refused. Takes the same `opts` as [[untgz]]."
+  ([archive]
+   (untgz-files archive nil))
+  ([archive {:keys [max-uncompressed-bytes max-entries]}]
+   (with-open [tar (tar-input-stream archive)]
+     (loop [files {} entry-count 0 total-bytes 0]
+       (if-let [^TarArchiveEntry e (.getNextEntry tar)]
+         (let [entry-name  (.getName e)
+               actual-name (last (.split entry-name "/"))]
+           (if (str/starts-with? actual-name ".")
+             (recur files entry-count total-bytes)
+             (let [next-count (inc entry-count)]
+               (when (and max-entries (> next-count ^long max-entries))
+                 (throw (ex-info (format "Archive exceeds max entries (%d)" max-entries)
+                                 {:status-code 400 :max-entries max-entries})))
+               (if (.isFile e)
+                 (let [out        (ByteArrayOutputStream.)
+                       next-total (copy-tar-entry! tar out total-bytes max-uncompressed-bytes)]
+                   (check-entry-name! entry-name)
+                   (recur (assoc files entry-name (.toByteArray out)) next-count next-total))
+                 (recur files next-count total-bytes)))))
+         files)))))

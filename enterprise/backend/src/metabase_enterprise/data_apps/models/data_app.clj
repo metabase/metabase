@@ -195,7 +195,7 @@
    {:label (:slug app) :key (:entity_id app) :style :slug}
    {:label "data_app"}])
 
-(defmethod serdes/resource-paths "DataApp" [ingested]
+(defmethod serdes/resource-paths "DataApp" [ingested _read-text]
   [(ingested-bundle-path ingested)])
 
 (defmethod serdes/load-one! "DataApp"
