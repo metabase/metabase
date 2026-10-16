@@ -9,7 +9,6 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
-   [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
@@ -48,7 +47,7 @@
   "The stored `:output` value for a v2 tool part. A map result is trimmed to
   `:output` (the LLM-facing text adapters read on history replay) plus the
   `persisted-structured-output-keys` subset of structured output, canonicalized
-  to `:structured_output`; everything else (`:resources`, `:data-parts`,
+  to `:structured_output`; everything else (`:data-parts`,
   `:reactions`, …) is dropped — that's where the bulk of the bloat lives. A
   non-map result (a tool that returned a bare string/scalar) is stored as-is —
   the v2 part schema types `:output` as any JSON value — so readers must
@@ -81,7 +80,10 @@
                          :text {:type "text" :text (:text part) :state "done"}
                          :tool-input
                          (let [output (get outputs (:id part))
-                               error  (:error output)]
+                               ;; From the result, not the part: a failed call carries its `:error`
+                               ;; there and nowhere else. Reading the part stored every failure as
+                               ;; `output-available`, so history and replay saw a success.
+                               error  (get-in output [:result :error])]
                            (cond-> {:type       (str "tool-" (:function part))
                                     :toolCallId (:id part)
                                     :state      (cond
@@ -93,7 +95,14 @@
                              (assoc :output (tool-result->storable-output (:result output)))
 
                              (some? error)
-                             (assoc :errorText (migrate/error->text error))))
+                             ;; The model-facing text, not the reader-facing one. `:errorText` is
+                             ;; what [[tool-part->llm-messages]] replays to the model for a failed
+                             ;; step, so storing a generic sentence here would lose the authored
+                             ;; failure — the table that was missing, the argument to repair — on
+                             ;; every replay. One field, two audiences; the model wins, because the
+                             ;; live SSE channel has its own and the whole point of the text is that
+                             ;; the agent can act on it.
+                             (assoc :errorText (str (get-in output [:result :output])))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -648,13 +657,21 @@
   (and (= :assistant (:role m))
        (some? (:error m))))
 
+(defn- context-full-row?
+  "Whether the errored assistant `row` is a turn the provider rejected as too long for the context window."
+  [row]
+  (= self.core/context-full-error-code (:error-code (decode-error (:error row)))))
+
 (defn- drop-errored-pairs
-  "Strip errored assistant rows and the preceding user prompt."
+  "Strip errored assistant rows and the user prompt before each, except a context-full turn.
+
+  A context-full turn stays, so a reloaded conversation still reads as full."
   [messages]
   (reduce (fn [acc msg]
             (cond
               (not (errored-agent-row? msg)) (conj acc msg)
-              (= :user (:role (peek acc)))  (pop acc)
+              (context-full-row? msg)        (conj acc msg)
+              (= :user (:role (peek acc)))   (pop acc)
               :else                          acc))
           []
           messages))
@@ -699,6 +716,17 @@
   variant it cannot model."
   #{"length" "content-filter" "tool-calls"})
 
+(defn- error->client-error
+  "The stored error as the client reads it: a stored `:error-code` is also its `:type`.
+
+    {:error-code \"ai_provider_context_full\" :message \"m\"}
+    => {:error-code \"ai_provider_context_full\" :message \"m\" :type \"ai_provider_context_full\"}
+
+  The live stream hands the client the same code as `error.type` (`finish.messageMetadata.errorCode`)."
+  [error]
+  (cond-> error
+    (and (map? error) (:error-code error)) (assoc :type (:error-code error))))
+
 (defn- row->status
   "The message's status, from its own `finished` / `error` / `finish_reason` / `context_window_full` columns.
 
@@ -714,7 +742,7 @@
       {:type "in_progress"}
 
       (some? (:error row))
-      {:type "errored" :error (decode-error (:error row))}
+      {:type "errored" :error (error->client-error (decode-error (:error row)))}
 
       (and (contains? row :finished) (not (true? (:finished row))))
       {:type "aborted"}
@@ -750,7 +778,7 @@
 
 (defn messages->client-messages
   "Convert a seq of `MetabotMessage` model instances into their client shape, one
-  per row. Errored pairs are dropped unless `:include-errored? true`."
+  per row. Errored pairs are dropped, except context-full turns, unless `:include-errored? true`."
   ([messages] (messages->client-messages messages nil))
   ([messages {:keys [include-errored?]}]
    (mapv message->client-message

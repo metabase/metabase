@@ -39,6 +39,7 @@ export interface SandboxRealm {
   fetch: typeof fetch;
   XMLHttpRequest: typeof XMLHttpRequest;
   location: { href: string; origin: string };
+  MetabaseRoot?: string;
 }
 
 export interface SandboxBlockedNetworkInfo {

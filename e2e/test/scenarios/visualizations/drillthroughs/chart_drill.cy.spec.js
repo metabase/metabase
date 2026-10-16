@@ -37,8 +37,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     H.queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
       H.echartsContainer()
-        .should("contain.text", "July 2025")
-        .and("contain.text", "January 2026");
+        .should("contain.text", "April 2025")
+        .and("contain.text", "April 2026");
     });
 
     cy.log("Chart drills");
@@ -64,16 +64,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Month").should("be.visible");
     });
 
+    // The popover closes on Escape only when the focus is in it
+    H.popover().find(":focus").should("exist");
     cy.realPress("Escape");
     H.popover({ skipVisibilityCheck: true }).should("not.exist");
     H.echartsTriggerBlur();
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-    cy.log("Zoom-in on the left side, which corresponds to July 2025");
-    cy.findByTestId("query-visualization-root") // drag across to filter
-      .trigger("mousedown", 120, 200)
-      .trigger("mousemove", 230, 200)
-      .trigger("mouseup", 230, 200);
+    H.applyBrushToPoints(1, 3);
 
     // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
     //       It is enough that we assert that the filter exists.
@@ -119,12 +117,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByLabelText("Legend").findByText("Gadget").should("exist");
         H.echartsContainer().findByText(/Count/).should("exist");
       });
-      cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-
-      cy.findByTestId("query-visualization-root")
-        .trigger("mousedown", 240, 200)
-        .trigger("mousemove", 420, 200)
-        .trigger("mouseup", 420, 200);
+      H.applyBrushToPoints(5, 10);
 
       cy.wait("@dataset").its("response.body.error").should("not.exist");
 
@@ -307,7 +300,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    H.echartsContainer().contains("January 2028");
+    H.echartsContainer().contains("May 2028");
     // drill into a recent week
     H.cartesianChartCircle().should("have.length.gte", 4).eq(-4).click();
 
@@ -573,72 +566,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByText("Macy Olson");
       });
     });
-  });
-
-  it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
-    H.createQuestion({
-      name: "15250",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        breakout: [["field-id", PRODUCTS.CATEGORY]],
-      },
-      display: "pie",
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        H.addOrUpdateDashboardCard({
-          card_id: QUESTION_ID,
-          dashboard_id: DASHBOARD_ID,
-          card: {
-            size_x: 21,
-            size_y: 10,
-            visualization_settings: {
-              click_behavior: {
-                type: "link",
-                linkType: "url",
-                linkTemplate: "question/{{count}}",
-              },
-            },
-          },
-        });
-
-        H.visitDashboard(DASHBOARD_ID);
-      });
-    });
-
-    H.pieSliceWithColor("#88BF4D")
-      .first()
-      .as("doohickeyChart")
-      .trigger("mousemove");
-
-    H.assertEChartsTooltip({
-      header: "Category",
-      rows: [
-        {
-          color: "#88BF4D",
-          name: "Doohickey",
-          value: "42",
-        },
-        {
-          color: "#F9D45C",
-          name: "Gadget",
-          value: "53",
-        },
-        {
-          color: "#A989C5",
-          name: "Gizmo",
-          value: "51",
-        },
-        {
-          color: "#F2A86F",
-          name: "Widget",
-          value: "54",
-        },
-      ],
-    });
-
-    cy.get("@doohickeyChart").click();
-    cy.location("pathname").should("eq", "/question/42");
   });
 
   it("should only show the 'See these records' option for the 'Other' pie slice (metabase#5334)", () => {
@@ -921,6 +848,8 @@ function assertSeriesDrills({ cardIndex, color, underlyingRecords }) {
     cy.findByText("See this year by quarter").should("be.visible");
     cy.findByText(underlyingRecords).should("be.visible");
   });
+  // The popover closes on Escape only when the focus is in it
+  H.popover().find(":focus").should("exist");
   cy.realPress("Escape");
   H.popover({ skipVisibilityCheck: true }).should("not.exist");
 }

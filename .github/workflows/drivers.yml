@@ -51,6 +51,7 @@ jobs:
       sparksql-should-run: ${{ steps.driver-decisions.outputs.sparksql-should-run }}
       sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
+      starburst-should-run: ${{ steps.driver-decisions.outputs.starburst-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
     steps:
       - name: Checkout repository
@@ -305,21 +306,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        job:
-          - name: Driver Tests Part 1
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 2
-              :partition/index 0
-          - name: Driver Tests Part 2
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 2
-              :partition/index 1
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: databricks
@@ -327,7 +314,7 @@ jobs:
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks
+    name: Databricks Driver Tests ${{ matrix.runner-index }}
     steps:
     - name: Select Databricks workspace
       shell: bash
@@ -356,8 +343,15 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-databricks-ee'
-        artifact-suffix: ${{ matrix.job.name }}
-        test-args: ${{ matrix.job.test-args }}
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
+          :fail-fast? true
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
 
   be-tests-h2:
     needs: determine-driver-skips
@@ -982,7 +976,7 @@ jobs:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 70
+    timeout-minutes: 40
     permissions:
       # Required to mint a GitHub Actions OIDC token for the Snowflake WIF live test.
       id-token: write
@@ -990,19 +984,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        job:
-          - name: Driver Tests
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
-              :fail-fast? true
-          - name: Upload Tests
-            test-args: >-
-              :only-tags [:mb/upload-tests]
-          - name: Transforms Python Tests
-            test-args: >-
-              :only-tags [:mb/transforms-python-test]
-            needs-python-runner: true
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: snowflake
@@ -1032,11 +1014,89 @@ jobs:
       MB_SNOWFLAKE_TEST_WIF_USER:      ${{ github.event_name == 'pull_request' && 'METABASE WIF' || (github.ref == 'refs/heads/master' && 'METABASE WIF MAIN' || 'skip') }}
       MB_SNOWFLAKE_TEST_WIF_DB:        SNOWFLAKE_SAMPLE_DATA
       MB_SNOWFLAKE_TEST_WIF_ROLE:      PUBLIC
-    name: Snowflake ${{ matrix.job.name }}
+    name: Snowflake Driver Tests ${{ matrix.runner-index }}
+    steps:
+    - uses: actions/checkout@v7
+    - name: Test Snowflake driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-snowflake-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags '[:mb/upload-tests :mb/transforms-python-test]'
+          :fail-fast? true
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
+
+  be-tests-snowflake-upload-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      DRIVERS: snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+
+      # RSA Role testing:
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+    name: Snowflake Upload Tests
+    steps:
+    - uses: actions/checkout@v7
+    - name: Test Snowflake driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        # This is the same as the driver-tests job above to preserve quarantine history in ci-conductor.
+        junit-name: 'be-tests-snowflake-ee'
+        test-args: >-
+          :only-tags [:mb/upload-tests]
+        artifact-suffix: upload
+
+  be-tests-snowflake-transforms-python-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      DRIVERS: snowflake
+      MB_SNOWFLAKE_TEST_USER: METABASE CI
+      MB_SNOWFLAKE_TEST_ACCOUNT: ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
+      MB_SNOWFLAKE_TEST_PASSWORD: ${{ secrets.MB_SNOWFLAKE_TEST_PASSWORD }}
+      MB_SNOWFLAKE_TEST_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
+      MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY_2 }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY }}
+      MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PUBLIC_KEY_2 }}
+
+      # RSA Role testing:
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
+    name: Snowflake Transforms Python Tests
     steps:
     - uses: actions/checkout@v7
     - name: Setup python-runner
-      if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
         metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -1044,15 +1104,19 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
+        # This is the same as the driver-tests job above to preserve quarantine history in ci-conductor.
         junit-name: 'be-tests-snowflake-ee'
-        test-args: ${{ matrix.job.test-args }}
-        artifact-suffix: ${{ matrix.job.name }}
+        test-args: >-
+          :only-tags [:mb/transforms-python-test]
+        artifact-suffix: transforms-python
     - name: Cleanup python-runner
-      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      if: ${{ always() }}
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        # Driver-qualified: cleanup-python-runner names its artifact from this suffix alone, so it
+        # must not collide with the BigQuery transforms-python job's in the same run.
+        logs-artifact-suffix: snowflake-transforms-python
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
@@ -1160,33 +1224,35 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
-  # be-tests-starburst-ee:
-  #   needs: determine-driver-skips
-  #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
-  #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-  #   timeout-minutes: 40
-  #   env:
-  #     CI: 'true'
-  #     DRIVERS: starburst
-  #   services:
-  #     starburst:
-  #       image: trinodb/trino:latest
-  #       env:
-  #         CATALOG_MANAGEMENT: dynamic
-  #       ports:
-  #         - "8080:8080"
-  #   name: Starburst
-  #   steps:
-  #   - uses: actions/checkout@v7
-  #   - name: Make plugins directory
-  #     run: mkdir plugins
-  #   - name: Test Starburst driver
-  #     uses: ./.github/actions/test-driver
-  #     with:
-  #       junit-name: 'be-tests-starburst-ee'
-  #       test-args: >-
-  #         :only-tags [:mb/driver-tests]
+  be-tests-starburst-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.starburst-should-run == 'true' }}
+    # trino is a memory hog and frequently runs out of memory on 16GB runners.
+    # note that running out of memory manifests as random job cancellations
+    # that give no indication of memory being the root cause of the problem.
+    runs-on: ubuntu-latest-8-cores
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      DRIVERS: starburst
+    services:
+      starburst:
+        image: trinodb/trino:latest
+        env:
+          CATALOG_MANAGEMENT: dynamic
+        ports:
+          - "8080:8080"
+    name: Starburst
+    steps:
+    - uses: actions/checkout@v7
+    - name: Test Starburst driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-starburst-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
 
   login-to-ecr:
     needs: determine-driver-skips
@@ -1239,8 +1305,6 @@ jobs:
     name: Vertica
     steps:
     - uses: actions/checkout@v7
-    - name: Make plugins directory
-      run: mkdir plugins
     - name: Test Vertica driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1272,11 +1336,13 @@ jobs:
       - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
       - be-tests-snowflake-ee
+      - be-tests-snowflake-transforms-python-ee
+      - be-tests-snowflake-upload-ee
       - be-tests-sparksql-ee
       - be-tests-sqlite-ee
       - be-tests-sqlserver
       - be-tests-vertica-ee
-      # - be-tests-starburst-ee
+      - be-tests-starburst-ee
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     name: drivers-tests-result

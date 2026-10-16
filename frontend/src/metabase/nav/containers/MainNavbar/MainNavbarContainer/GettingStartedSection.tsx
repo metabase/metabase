@@ -5,7 +5,8 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
 
-import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
+import { SidebarHeading } from "../Sidebar";
+import { SidebarLink } from "../SidebarItems";
 import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
@@ -47,12 +48,12 @@ export const GettingStartedSection = ({
         aria-expanded={opened}
       >
         {canAddData && (
-          <PaddedSidebarLink icon="add_data" onClick={onAddDataModalOpen}>
+          <SidebarLink icon="add_data" onClick={onAddDataModalOpen}>
             {t`Add your data`}
-          </PaddedSidebarLink>
+          </SidebarLink>
         )}
 
-        <PaddedSidebarLink
+        <SidebarLink
           icon="learn"
           url={ONBOARDING_URL}
           isSelected={isOnboardingPageSelected}
@@ -60,7 +61,7 @@ export const GettingStartedSection = ({
         >
           {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
           {t`How to use Metabase`}
-        </PaddedSidebarLink>
+        </SidebarLink>
 
         {children}
       </Collapse>

@@ -61,6 +61,19 @@ describe("AccountHeader", () => {
   });
 
   describe("authentication tab", () => {
+    it.each(["active", "inactive"] as const)(
+      "should show the tab for an SSO user with an %s Slack account",
+      (status) => {
+        setup({
+          user: getUser({ sso_source: "google", slack_account_status: status }),
+        });
+
+        expect(
+          screen.getByRole("tab", { name: "Authentication" }),
+        ).toBeInTheDocument();
+      },
+    );
+
     it("should show the tab for a user who can change their password", () => {
       setup({ user: getUser({ sso_source: null }) });
 

@@ -9,7 +9,8 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -50,13 +51,15 @@
                         :temperature)))))
 
 (deftest ^:parallel request-body-max-tokens-test
-  (testing "max-tokens passes through"
-    ;; a capped k2.6 chat call would share this budget with thinking (reasoning_content counts
-    ;; toward max_tokens); unreachable today — the only :max-tokens producer also sets :schema,
-    ;; which disables k2.6's thinking
-    (is (= 128 (:max_tokens (moonshot/moonshot-request-body {:model      "kimi-k2.6"
-                                                             :input      [{:role :user :content "hi"}]
-                                                             :max-tokens 128}))))))
+  (testing "max-tokens passes through as max_completion_tokens"
+    ;; A capped k2.6 chat call can share this budget with thinking. The guide counts reasoning_content
+    ;; toward max_tokens. It does not give the scope of max_completion_tokens. No caller reaches this
+    ;; today: the only :max-tokens producer also sets :schema, and :schema turns off k2.6 thinking.
+    (let [body (moonshot/moonshot-request-body {:model      "kimi-k2.6"
+                                                :input      [{:role :user :content "hi"}]
+                                                :max-tokens 128})]
+      (is (= 128 (:max_completion_tokens body)))
+      (is (not (contains? body :max_tokens))))))
 
 (deftest ^:parallel request-body-thinking-switch-test
   (testing "kimi-k2.6's thinking switch follows the path"
@@ -113,22 +116,51 @@
              :schema {:type "object" :properties {:title {:type "string"}}}})))
 
 (deftest ^:parallel request-body-forced-tool-call-floors-max-tokens-test
-  (testing "a forced tool call on a thinking-only model gets its max_tokens cap floored"
+  (testing "a forced tool call on a thinking-only model gets its max_completion_tokens cap floored"
     ;; k3 bills thinking and the forced tool call against one budget — a small cap risks a `length`
     ;; finish before the tool call is emitted (the conversation-title path sends 512). Both forcing
     ;; shapes count: a schema and a plain tool_choice "required".
     (let [schema {:type "object" :properties {:title {:type "string"}}}]
-      (are [expected opts] (= expected (:max_tokens (moonshot/moonshot-request-body opts)))
+      (are [expected opts] (= expected (:max_completion_tokens (moonshot/moonshot-request-body opts)))
         2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}
         2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512
               :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}
+        ;; at the floor, the cap is sent as is
+        2048 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 2048}
         4096 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema :max-tokens 4096}
         ;; uncapped by the caller, so the default cap applies — already above the floor
         32000 {:model "kimi-k3" :input [{:role :user :content "hi"}] :schema schema}
         512  {:model "kimi-k3" :input [{:role :user :content "hi"}] :max-tokens 512}
         512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :schema schema :max-tokens 512}
         512  {:model "kimi-k2.6" :input [{:role :user :content "hi"}] :max-tokens 512
-              :tools [(metabot.tu/get-time-tool)] :tool_choice "required"}))))
+              :tools [(metabot.tu/get-time-tool)] :tool_choice "required"})
+      (testing "the floor does not send max_tokens"
+        (is (not (contains? (moonshot/moonshot-request-body {:model      "kimi-k3"
+                                                             :input      [{:role :user :content "hi"}]
+                                                             :schema     schema
+                                                             :max-tokens 512})
+                            :max_tokens)))))))
+
+(deftest moonshot-raw-sends-max-completion-tokens-test
+  (testing "the request Moonshot receives carries the cap as max_completion_tokens, not the deprecated max_tokens"
+    ;; https://platform.kimi.ai/docs/api/chat marks max_tokens "Deprecated, please refer to max_completion_tokens"
+    (with-redefs [self.core/sse-reducible             identity
+                  self.core/reducible-with-api-errors (fn [r _ _] r)
+                  debug/capture-stream                (fn [r _] r)
+                  http/request                        (fn [req] {:body req})]
+      (let [sent-body (fn [opts] (json/decode+kw (:body (moonshot/moonshot-raw opts))))]
+        (testing "a chat call with no caller cap sends the chat cap"
+          (let [body (sent-body {:input [{:role :user :content "hi"}] :credentials byok-credentials})]
+            (is (= 32000 (:max_completion_tokens body)))
+            (is (not (contains? body :max_tokens)))))
+        (testing "a forced kimi-k3 call under the floor sends the floor"
+          (let [body (sent-body {:model       "kimi-k3"
+                                 :input       [{:role :user :content "hi"}]
+                                 :schema      {:type "object" :properties {:title {:type "string"}}}
+                                 :max-tokens  512
+                                 :credentials byok-credentials})]
+            (is (= 2048 (:max_completion_tokens body)))
+            (is (not (contains? body :max_tokens)))))))))
 
 (deftest ^:parallel request-body-replays-reasoning-test
   (let [reasoning-round [{:role :user :content "q"}

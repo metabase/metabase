@@ -4,6 +4,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -190,11 +191,15 @@
   [{:keys [name description query viz_settings]} :- model-chart-schema]
   (try
     (let [chart-type (get viz_settings :chart_type)
-          result     (construct-tools/construct-notebook-query-tool
-                      {:query query
-                       :title name
-                       :description description
-                       :visualization {:chart_type chart-type}})
+          ;; `construct_notebook_query` is a record now, so this is a protocol call rather than a
+          ;; function call. The nil ctx is what construct's `handle` already ignores; this tool is
+          ;; still the old shape and has none to pass on.
+          result     (tools/call construct-tools/construct-notebook-query-tool
+                                 {:query query
+                                  :title name
+                                  :description description
+                                  :visualization {:chart_type chart-type}}
+                                 nil)
           structured (or (:structured-output result) (:structured_output result))
           query-id   (:query-id structured)
           dataset-query (:query structured)]

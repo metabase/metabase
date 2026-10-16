@@ -80,9 +80,10 @@
        (log/info "Deleting trigger for transform job with schedule" (:schedule job-id-or-trigger))
        (task/delete-trigger! (-> job-id-or-trigger :key triggers/key))))))
 
-(task/defjob ^{:doc "Run transforms."
-               org.quartz.DisallowConcurrentExecution true}
-  RunTransforms
+(task/defjob RunTransforms
+  "Run transforms."
+  {:saved-class "metabase.transforms.schedule.RunTransforms"
+   :concurrent? false}
   [context]
   (let [job-id   (-> (conversion/from-job-data context)
                      (get "job-id"))

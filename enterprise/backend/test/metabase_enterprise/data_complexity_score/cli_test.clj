@@ -11,7 +11,7 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.app-db.core :as mdb]
-   [metabase.embeddings.startup :as embeddings.startup]
+   [metabase.search.embeddings.startup :as embeddings.startup]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]))

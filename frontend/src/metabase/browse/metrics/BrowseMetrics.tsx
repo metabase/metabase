@@ -96,9 +96,8 @@ export function BrowseMetrics() {
               {canCreateMetric && (
                 <Tooltip label={t`Create a new metric`} position="bottom">
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Create a new metric`}
-                    size={32}
-                    variant="viewHeader"
                     component={ForwardRefLink}
                     to={newMetricLink}
                     onClick={() => {

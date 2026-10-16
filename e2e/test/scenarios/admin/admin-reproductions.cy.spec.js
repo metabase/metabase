@@ -159,7 +159,7 @@ describe("(metabase#45042)", () => {
 
     //ensure that hamburger is visible and functional
     cy.findByTestId("admin-navbar").within(() => {
-      cy.findByRole("button", { name: /burger/ })
+      cy.findByRole("button", { name: "Toggle navigation" })
         .should("be.visible")
         .click();
       cy.findByRole("list", { name: "Navigation links" }).should("exist");
@@ -167,7 +167,7 @@ describe("(metabase#45042)", () => {
     });
 
     // dismiss nav list
-    cy.findByRole("button", { name: /burger/ })
+    cy.findByRole("button", { name: "Toggle navigation" })
       .should("be.visible")
       .click();
     cy.findByRole("list", { name: "Navigation links" }).should("not.exist");

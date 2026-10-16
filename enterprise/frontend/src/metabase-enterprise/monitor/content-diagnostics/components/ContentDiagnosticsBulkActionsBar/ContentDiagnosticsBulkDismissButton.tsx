@@ -57,7 +57,7 @@ export function ContentDiagnosticsBulkDismissButton({
       });
       dispatch(
         addUndo({
-          icon: "warning",
+          variant: "negative",
           message: getErrorMessage(error, t`Couldn't dismiss findings`),
         }),
       );

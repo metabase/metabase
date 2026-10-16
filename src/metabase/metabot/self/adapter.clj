@@ -68,8 +68,8 @@
     [:error-msg fn?]]])
 
 (def SupportedModels
-  "An adapter's allow-list of the models it offers in the picker, keyed by model id. A provider that
-  publishes no context window for a model (DeepSeek) records only the display name."
+  "An adapter's allow-list of the models it offers in the picker, keyed by model id.
+  `:context-window` is optional: a model with no known window records only the display name."
   [:map-of :string [:map {:closed false, ::mr/deliberately-open true
                           :description "an allow-list entry; providers add their own flags"}
                     [:display-name                   :string]

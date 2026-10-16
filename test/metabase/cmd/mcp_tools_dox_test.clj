@@ -69,8 +69,7 @@
 (deftest ^:parallel tool-effect-test
   (are [expected annotations] (= expected (#'mcp-tools-dox/tool-effect {:annotations annotations}))
     :read-only   {:readOnlyHint true}
-    ;; `destructiveHint false` is a hint: `document_write` carries it and rewrites whole bodies, so the page
-    ;; promises nothing about what a writer won't touch
+    ;; `destructiveHint false` is only a hint, so the page promises nothing about what a writer won't touch
     :writes      {:destructiveHint false}
     :destructive {:destructiveHint true}
     ;; the registry always merges `destructiveHint false` in, so a tool with neither hint is a writer
