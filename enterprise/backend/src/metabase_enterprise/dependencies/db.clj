@@ -740,14 +740,14 @@
 (def ^:private entity-database-queries
   "For each entity type that can hold a native query, a query of the IDs of its entities reading from `db-id`."
   {:card      (fn [db-id] ^:allow-subquery {:select [:id]
-                                             :from   [(t2/table-name :model/Card)]
-                                             :where  [:= :database_id db-id]})
+                                            :from   [(t2/table-name :model/Card)]
+                                            :where  [:= :database_id db-id]})
    :transform (fn [db-id] ^:allow-subquery {:select [:id]
-                                             :from   [(t2/table-name :model/Transform)]
-                                             :where  [:= :source_database_id db-id]})
+                                            :from   [(t2/table-name :model/Transform)]
+                                            :where  [:= :source_database_id db-id]})
    :action    (fn [db-id] ^:allow-subquery {:select [:action_id]
-                                             :from   [(t2/table-name :model/QueryAction)]
-                                             :where  [:= :database_id db-id]})})
+                                            :from   [(t2/table-name :model/QueryAction)]
+                                            :where  [:= :database_id db-id]})})
 
 (mu/defn unresolved-table-entity-ids :- [:map-of ::deps.dependency-types/dependency-types [:set ms/PositiveInt]]
   "The IDs, by entity type, of the entities reading from the Database with `db-id` that name tables matching nothing."
