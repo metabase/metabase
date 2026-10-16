@@ -162,7 +162,7 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
   const decideState = useDecide(runId);
 
   if (error) {
-    return <Text c="error">{getErrorMessage(error)}</Text>;
+    return <Text c="feedback-negative">{getErrorMessage(error)}</Text>;
   }
   if (isLoading || tables == null) {
     return <Loader size="sm" />;
@@ -356,7 +356,7 @@ function ApplyResult({ result, onDismiss }: ApplyResultProps) {
         <Group gap="xs" wrap="nowrap">
           <Icon
             name={result.failed > 0 ? "warning" : "check"}
-            c={result.failed > 0 ? "warning" : "success"}
+            c={result.failed > 0 ? "feedback-warning" : "feedback-positive"}
           />
           <Text fw="bold">{getApplySummary(result)}</Text>
         </Group>
@@ -404,7 +404,7 @@ function TableList({ tables, selectedTableId, onSelect }: TableListProps) {
                   table.human_set_pending,
                 )}
               >
-                <Icon name="person" c="warning" aria-hidden={false} />
+                <Icon name="person" c="feedback-warning" aria-hidden={false} />
               </Tooltip>
             ) : undefined
           }
@@ -445,7 +445,7 @@ function TableReview({ runId, table, decideState }: TableReviewProps) {
   });
 
   if (error) {
-    return <Text c="error">{getErrorMessage(error)}</Text>;
+    return <Text c="feedback-negative">{getErrorMessage(error)}</Text>;
   }
   if (isLoading || suggestions == null) {
     return <Loader size="sm" />;
@@ -467,7 +467,7 @@ function TableReview({ runId, table, decideState }: TableReviewProps) {
             >
               <Button
                 variant="default"
-                c="warning"
+                c="feedback-warning"
                 disabled={isDeciding}
                 onClick={() =>
                   decide({
@@ -611,7 +611,7 @@ function SuggestionRow({
           {current != null ? (
             <Text>{current}</Text>
           ) : (
-            <Text c="text-tertiary">{t`Empty`}</Text>
+            <Text c="text-secondary">{t`Empty`}</Text>
           )}
           {humanSet && (
             <Badge variant="light" color="warning">{t`Set by a person`}</Badge>

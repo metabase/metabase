@@ -352,7 +352,7 @@ function EstimateSummary({
   }
   if (error != null) {
     return (
-      <Text size="sm" c="error" ta="right">
+      <Text size="sm" c="feedback-negative" ta="right">
         {getErrorMessage(error)}
       </Text>
     );

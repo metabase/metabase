@@ -62,7 +62,7 @@ export function RunProgress({ runId, onRetry, onReview }: RunProgressProps) {
   }, [dispatch, isActive]);
 
   if (error) {
-    return <Text c="error">{getErrorMessage(error)}</Text>;
+    return <Text c="feedback-negative">{getErrorMessage(error)}</Text>;
   }
   if (run == null) {
     return <Loader size="sm" />;
@@ -109,7 +109,7 @@ function RunProgressView({ run, onRetry, onReview }: RunProgressViewProps) {
       <Stack gap="xs">
         <Progress
           value={percent}
-          color={run.failed_tables > 0 ? "warning" : "brand"}
+          color={run.failed_tables > 0 ? "feedback-warning" : "core-brand"}
           aria-label={t`Tables processed`}
         />
         <Group justify="space-between">
@@ -117,7 +117,7 @@ function RunProgressView({ run, onRetry, onReview }: RunProgressViewProps) {
             {t`${processed} of ${run.total_tables} tables processed`}
           </Text>
           {run.failed_tables > 0 && (
-            <Text size="sm" c="error">
+            <Text size="sm" c="feedback-negative">
               {run.failed_tables === 1
                 ? t`1 table failed`
                 : t`${run.failed_tables} tables failed`}
@@ -142,7 +142,7 @@ function RunProgressView({ run, onRetry, onReview }: RunProgressViewProps) {
         <Stack gap={4} data-testid="metadata-generation-table-errors">
           {tableErrors.slice(0, MAX_TABLE_ERRORS).map((tableError) => (
             <Group key={tableError.table_id} gap="xs" wrap="nowrap">
-              <Icon name="warning" c="error" size={12} />
+              <Icon name="warning" c="feedback-negative" size={12} />
               <Text size="sm" truncate>
                 <strong>
                   {tableError.table_name ?? String(tableError.table_id)}
