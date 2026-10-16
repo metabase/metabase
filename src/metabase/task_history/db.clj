@@ -216,6 +216,19 @@
    ended-at :- ms/TemporalInstant]
   (t2/update! :model/TaskRun {:id run-id :status :started} {:status status, :ended_at ended-at}))
 
+(mu/defn lock-task-run-status :- [:maybe :keyword]
+  "The status of the TaskRun with `run-id`, or nil if there is none. Locks the row for update until the transaction
+  ends."
+  [run-id :- ms/PositiveInt]
+  (t2/select-one-fn :status :model/TaskRun :id run-id {:for :update}))
+
+(mu/defn set-task-run-status!
+  "Set the status and end time of the TaskRun with `run-id`."
+  [run-id   :- ms/PositiveInt
+   status   :- :keyword
+   ended-at :- [:maybe ms/TemporalInstant]]
+  (t2/update! :model/TaskRun run-id {:status status, :ended_at ended-at}))
+
 (mu/defn heartbeat-started-task-runs!
   "Touch `updated_at` of the started TaskRuns of `process-uuid` with the app DB's now, returning the number updated."
   [process-uuid :- :string]

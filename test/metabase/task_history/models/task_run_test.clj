@@ -2,6 +2,8 @@
   "Tests for TaskRun model and with-task-run macro."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase.channel.core :as channel]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
@@ -85,6 +87,71 @@
         (let [run (t2/select-one :model/TaskRun :id @run-id)]
           (is (= :success (:status run)))
           (is (some? (:ended_at run))))))))
+
+(deftest task-run-work-done-test
+  (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+    (testing "inside a with-task-run that auto-completes, task-run-work-done! leaves the completion to the macro"
+      (let [run-id (atom nil)]
+        (try
+          (task-history/with-task-run {:run_type    :subscription
+                                       :entity_type :dashboard
+                                       :entity_id   1}
+            (reset! run-id (task-history/current-run-id))
+            (task-history/with-task-history {:task "first-send"}
+              :done)
+            (task-history/task-run-work-done! @run-id)
+            (is (= :started (t2/select-one-fn :status :model/TaskRun :id @run-id))
+                "the first piece of work does not fix the run status")
+            (task-history/with-task-history {:task "second-send"}
+              (throw (Exception. "fail"))))
+          (catch Exception _))
+        (is (= :failed (t2/select-one-fn :status :model/TaskRun :id @run-id))
+            "the macro completes the run from all of its tasks")))
+    (testing "with :auto-complete false, task-run-work-done! completes the run"
+      (let [run-id (atom nil)]
+        (task-history/with-task-run {:run_type      :subscription
+                                     :entity_type   :dashboard
+                                     :entity_id     1
+                                     :auto-complete false}
+          (reset! run-id (task-history/current-run-id))
+          (task-history/with-task-history {:task "send"}
+            :done))
+        ;; called outside the macro, as the notification worker does on its own thread
+        (task-history/task-run-work-done! @run-id)
+        (is (= :success (t2/select-one-fn :status :model/TaskRun :id @run-id)))))))
+
+(deftest task-run-work-done-recomputes-run-without-owner-test
+  (testing "for an :auto-complete false run, each task-run-work-done! sets the run status from the tasks as they are now (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [run-id   (task-run/create-task-run! {:run_type    :subscription
+                                                 :entity_type :dashboard
+                                                 :entity_id   1})
+            run      #(t2/select-one [:model/TaskRun :status :ended_at] :id run-id)
+            start!   #(t2/insert-returning-pk! :model/TaskHistory {:task       "notification-send"
+                                                                   :run_id     run-id
+                                                                   :status     :started
+                                                                   :started_at (t/instant)})
+            finish!  (fn [task-id status]
+                       (t2/update! :model/TaskHistory task-id {:status status :ended_at (t/instant)}))
+            email    (start!)
+            slack    (start!)]
+        (testing "the first send ends while the second one still runs: the run stays started"
+          (finish! email :success)
+          (task-history/task-run-work-done! run-id)
+          (is (=? {:status :started :ended_at nil} (run))))
+        (testing "the last send ends: the run gets the status of all its tasks"
+          (finish! slack :success)
+          (task-history/task-run-work-done! run-id)
+          (is (=? {:status :success :ended_at some?} (run))))
+        (testing "a send that fails after the run succeeded turns the run failed"
+          (finish! (start!) :failed)
+          (task-history/task-run-work-done! run-id)
+          (is (= :failed (:status (run)))))
+        (testing "an abandoned run keeps its status"
+          (t2/update! :model/TaskRun run-id {:status :abandoned})
+          (finish! (start!) :success)
+          (task-history/task-run-work-done! run-id)
+          (is (= :abandoned (:status (run)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Nesting prevention tests                                            |
@@ -303,6 +370,33 @@
               (is (= :subscription (:run_type run)))
               (is (= :dashboard (:entity_type run)))
               (is (#{:success :failed} (:status run)) "task run completed"))))))))
+
+(deftest pulse-send-run-fails-when-a-later-channel-fails-test
+  (testing "a test send to two channels records the run as failed when the second channel fails after the first delivered (GDGT-3331)"
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (notification.tu/with-notification-testing-setup!
+        (mt/with-temp [:model/Dashboard    {dash-id :id}  {:name "Test Dashboard"}
+                       :model/Pulse        {pulse-id :id} {:name         "Test Pulse"
+                                                           :dashboard_id dash-id}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_type "email"
+                                              :details      {:emails ["foo@metabase.com"]}}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_type "slack"
+                                              :details      {:channel "#general"}}]
+          ;; the channels come in the pulse's channel order, which the test does not fix, so fail the second render
+          (let [renders (atom 0)]
+            (with-redefs [channel/render-notification (fn [& _]
+                                                        (if (= 1 (swap! renders inc))
+                                                          [{:stub-message true}]
+                                                          (throw (ex-info "second channel failed" {}))))
+                          channel/send!               (constantly nil)]
+              (is (thrown? clojure.lang.ExceptionInfo
+                           (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))))
+          (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
+            (is (= {:success 1 :failed 1}
+                   (frequencies (t2/select-fn-vec :status :model/TaskHistory :run_id (:id run) :task "notification-send"))))
+            (is (= :failed (:status run)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Notification integration tests                                             |
