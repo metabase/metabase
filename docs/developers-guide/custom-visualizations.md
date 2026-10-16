@@ -351,7 +351,7 @@ formatValue(row[1], { column: cols[1], number_style: "percent", decimals: 1 }); 
 To honor the formatting people pick in the column formatting popover (the one `showColumnSetting: true` enables on `"field"` and `"fields"` widgets - see [built-in widgets](#built-in-widgets)), format with `settings.column(col)`. It resolves a column's effective settings (instance-wide defaults, the column's metadata settings, and the card-level popover settings, merged in that order) into ready-to-use `formatValue` options:
 
 ```tsx
-formatValue(row[1], { ...settings.column?.(cols[1]), column: cols[1] });
+formatValue(row[1], settings.column(cols[1]));
 ```
 
 `formatValue` and the column-type predicates (like `isNumeric` and `isDate`) read formatting and type metadata from Metabase. If you call them outside of Metabase, like in a unit test, they'll throw `Metabase Viz API not initialized`.

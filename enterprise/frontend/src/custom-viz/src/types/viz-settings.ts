@@ -138,7 +138,7 @@ type CommonVisualizationSettings = {
    * from the column formatting popover, merged in that order. Pass the
    * result to `formatValue`.
    */
-  column?: (column: Column) => FormatValueOptions;
+  column: (column: Column) => FormatValueOptions;
 
   /**
    * It's there, but it's intentionally excluded in types, since we don't expose

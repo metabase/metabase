@@ -92,19 +92,21 @@ export function toPluginSettings(
 
   // Deep-clone so a plugin can't mutate a shared nested host object (e.g. `click_behavior`)
   // through the sandbox membrane.
-  const pluginSettings: PluginSettings = cloneCloneableEntries(merged);
-
-  if (typeof merged.column === "function") {
-    pluginSettings.column = (column) => {
+  const hostColumn = merged.column;
+  const pluginSettings: PluginSettings = {
+    ...cloneCloneableEntries(merged),
+    column: (column) => {
+      if (typeof hostColumn !== "function") {
+        return { column };
+      }
       // Fresh copy per call so mutating the result can't reach the host's memoized settings.
-      const { column: _embeddedColumn, ...columnSettings } =
-        merged.column(column);
+      const { column: _embeddedColumn, ...columnSettings } = hostColumn(column);
       return {
         ...cloneCloneableEntries(columnSettings),
         column,
       };
-    };
-  }
+    },
+  };
 
   pluginSettingsCache.set(settings, prefix, pluginSettings);
 
