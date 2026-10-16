@@ -11,6 +11,8 @@
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -585,3 +587,59 @@
                                 (#'dependencies.backfill/run-and-reschedule! nil))))
         (testing "and the next run was scheduled anyway"
           (is (= 1 (count @scheduled))))))))
+
+(defn- table-dependency-ids
+  "The IDs of the tables the `entity-type` entity `entity-id` depends on directly."
+  [entity-type entity-id]
+  (t2/select-fn-set :to_entity_id :model/Dependency
+                    :from_entity_type entity-type :from_entity_id entity-id :to_entity_type :table))
+
+(deftest ^:synchronized backfill-snippet-edit-recomputes-queries-expanding-it-test
+  (testing "a snippet's tables are the card's own dependencies, so editing a snippet, even one nested in another,
+           recomputes the cards whose SQL expands it"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "birds inner" :content "VENUES"}
+                     :model/NativeQuerySnippet _ {:name "birds outer" :content "SELECT * FROM {{snippet: birds inner}}"}
+                     :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                 "{{snippet: birds outer}}")}]
+        (backfill-all-existing-entities!)
+        (is (= #{(mt/id :venues)} (table-dependency-ids :card card-id)))
+        (t2/update! :model/NativeQuerySnippet inner-id {:content "CHECKINS"})
+        (backfill-all-existing-entities!)
+        (is (= #{(mt/id :checkins)} (table-dependency-ids :card card-id)))))))
+
+(deftest ^:synchronized backfill-card-reference-leaves-out-card-tables-test
+  (testing "a native query depends on the card it references, not on the card's tables, which it reads through the card"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {orders-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                       :model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query
+                                                   mp
+                                                   (format "SELECT * FROM {{#%d}} o JOIN PRODUCTS p ON o.PRODUCT_ID = p.ID"
+                                                           orders-id))}]
+          (backfill-all-existing-entities!)
+          (is (= #{(mt/id :products)} (table-dependency-ids :card card-id)))
+          (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
+                          :to_entity_type :card :to_entity_id orders-id)))))))
+
+(deftest ^:synchronized backfill-records-table-sync-finds-later-test
+  (testing "a table a native query names before sync finds it gets its dependency once a sync of the database finds it"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                 "SELECT * FROM PUBLIC.BIRDS_LATE")}
+                     :model/Card {known-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                  "SELECT * FROM VENUES")}]
+        (backfill-all-existing-entities!)
+        (is (empty? (table-dependency-ids :card card-id)))
+        (is (true? (t2/select-one-fn :unresolved_tables :model/DependencyStatus :entity_type :card :entity_id card-id)))
+        (is (false? (t2/select-one-fn :unresolved_tables :model/DependencyStatus :entity_type :card :entity_id known-id)))
+        (mt/with-temp [:model/Table {late-id :id} {:db_id (mt/id) :schema "PUBLIC" :name "BIRDS_LATE" :active true}]
+          (dependencies.hooks/after-database-sync (mt/id))
+          (backfill-all-existing-entities!)
+          (is (= #{late-id} (table-dependency-ids :card card-id)))
+          (is (false? (t2/select-one-fn :unresolved_tables :model/DependencyStatus
+                                        :entity_type :card :entity_id card-id))))))))

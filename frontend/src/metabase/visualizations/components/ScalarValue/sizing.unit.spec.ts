@@ -23,6 +23,15 @@ describe("getScalarSizeTier", () => {
     expect(getScalarSizeTier(600, 320).valueFontSize).toBe(64);
   });
 
+  it("lists every comparison only from the spec min-height of each tier", () => {
+    expect(getScalarSizeTier(100, 400).multiComparisonMinHeight).toBeNull();
+    expect(getScalarSizeTier(160, 120).multiComparisonMinHeight).toBe(240);
+    expect(getScalarSizeTier(320, 160).multiComparisonMinHeight).toBe(256);
+    expect(getScalarSizeTier(400, 200).multiComparisonMinHeight).toBe(264);
+    expect(getScalarSizeTier(500, 240).multiComparisonMinHeight).toBe(288);
+    expect(getScalarSizeTier(600, 320).multiComparisonMinHeight).toBe(320);
+  });
+
   it("hides the title only on the smallest tier", () => {
     expect(getScalarSizeTier(100, 100).showsTitle).toBe(false);
     expect(getScalarSizeTier(160, 120).showsTitle).toBe(true);

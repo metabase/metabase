@@ -79,7 +79,7 @@
      :tool-results (mapv (fn [p] {:id     (:id p)
                                   :output (let [r (:result p)]
                                             (or (:output r) r))
-                                  :error  (:error p)})
+                                  :error  (get-in p [:result :error])})
                          outputs)}))
 
 (defn- debug-log!

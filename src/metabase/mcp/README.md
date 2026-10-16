@@ -46,7 +46,8 @@ The flow for a first-time connection:
 3. The user is redirected to Metabase to log in and approve the connection.
 4. The client receives an access token scoped to the user's Metabase permissions.
 
-Browser-based sessions (cookie auth) are also supported and receive unrestricted scopes.
+Browser-based sessions (cookie auth), API keys, and `mb:full` tokens hold no MCP scope, so they can connect but
+call no scoped tool.
 
 ### Scopes
 
@@ -60,7 +61,8 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
 
-Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
+A tool matches only the exact scope in the table. A wildcard such as `*` or `agent:*`, and the `::unrestricted`
+sentinel, are not MCP scopes, so they grant no tool.
 
 These scopes gate the MCP surface only. No REST endpoint may declare one as its `:scope`, so a new token issued to an
 MCP client grants nothing on the REST API.
@@ -200,8 +202,8 @@ The implementation lives in these files:
 - **[`v2/registry.clj`](v2/registry.clj)** - The v2 tool registry. Tools self-register via `deftool`; the registry
   checks scopes, validates arguments, dispatches calls, and records usage.
 
-- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
-  `::unrestricted` sentinel for session-based auth.
+- **[`scope.clj`](scope.clj)** - Scope matching logic. Exact matches only: wildcards, nil scopes, and the
+  `::unrestricted` sentinel match nothing.
 
 ### Request flow
 
