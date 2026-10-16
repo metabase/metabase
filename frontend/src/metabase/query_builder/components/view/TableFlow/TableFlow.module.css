@@ -218,6 +218,32 @@
   min-width: 0;
 }
 
+.vizToggle {
+  flex-shrink: 0;
+}
+
+/* Slides out of the visualization button; hidden from focus while closed. */
+.vizBar {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    max-width 300ms ease,
+    opacity 200ms ease,
+    visibility 300ms;
+
+  &[data-open="true"] {
+    max-width: 40rem;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 /* Thumbnails are selection targets, so the chart beneath must not receive pointer events. */
 .thumbnailChart {
   pointer-events: none;

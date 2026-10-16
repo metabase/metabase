@@ -18,7 +18,12 @@ import {
   Tooltip,
 } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { IconName, RawSeries, SeriesCard } from "metabase-types/api";
+import type {
+  Dataset,
+  IconName,
+  RawSeries,
+  SeriesCard,
+} from "metabase-types/api";
 import type Question from "metabase-lib/v1/Question";
 
 import { SummarySidebar, getChartSummarySession } from "../SummarySidebar";
@@ -28,12 +33,18 @@ import S from "./TableFlow.module.css";
 import { XrayFilterPills } from "./XrayFilterPills";
 import { XrayFilterSidebar } from "./XrayFilterSidebar";
 import { TableSearch } from "./TableSearch";
+import {
+  VisualizationPicker,
+  VisualizationSettingsPanel,
+} from "./VisualizationControls";
 import { applyTableDrill } from "./utils";
 
 type ChartDetailProps = {
   question: Question;
   /** The question's chart, shown full width above its data; `null` for questions shown as a table. */
   chart: ReactNode | null;
+  /** The question's results; drive the suggested visualizations and their settings. */
+  result: Dataset | null;
   /** The data table's contents. */
   table: ReactNode;
   /** Searches the table's rows; omit to hide the search. */
@@ -55,6 +66,7 @@ type SidePanel = "filter" | "summarize";
 export function ChartDetail({
   question,
   chart,
+  result,
   table,
   search,
   tableHeight,
@@ -63,6 +75,7 @@ export function ChartDetail({
 }: ChartDetailProps) {
   const [sidePanel, setSidePanel] = useState<SidePanel | null>(null);
   const [isMetricBarOpen, setIsMetricBarOpen] = useState(false);
+  const [isVizSettingsOpen, setIsVizSettingsOpen] = useState(false);
   const hasFilters = useMemo(
     () => getFilterItems(question.query()).length > 0,
     [question],
@@ -87,6 +100,19 @@ export function ChartDetail({
 
   return (
     <div className={S.detailLayout}>
+      {chart != null && isVizSettingsOpen && (
+        <aside
+          className={cx(S.card, S.sidePanel)}
+          style={{ height: tableHeight }}
+        >
+          <VisualizationSettingsPanel
+            question={question}
+            result={result}
+            onQuestionChange={onQuestionChange}
+            onClose={() => setIsVizSettingsOpen(false)}
+          />
+        </aside>
+      )}
       <div className={S.detailMain}>
         {chart != null && (
           <div className={cx(S.card, S.detailChartCard)}>
@@ -112,6 +138,12 @@ export function ChartDetail({
               </Tooltip>
             </Flex>
             <Box className={S.chartArea}>{chart}</Box>
+            <VisualizationPicker
+              question={question}
+              result={result}
+              onQuestionChange={onQuestionChange}
+              onOpenSettings={() => setIsVizSettingsOpen(true)}
+            />
           </div>
         )}
         <div

@@ -33,7 +33,7 @@ export function XrayChartDetail({
     chart.card.dataset_query,
   );
   const question = useQuestionFromCard(card);
-  const { rawSeries, error } = useCardSeries(card);
+  const { rawSeries, dataset, error } = useCardSeries(card);
 
   const handleQuestionChange = (nextQuestion: Question) =>
     onCardChange(nextQuestion.card());
@@ -41,6 +41,7 @@ export function XrayChartDetail({
   return (
     <ChartDetail
       question={question}
+      result={dataset}
       tableHeight={tableHeight}
       isMetadataReady={!isMetadataFetching}
       onQuestionChange={handleQuestionChange}

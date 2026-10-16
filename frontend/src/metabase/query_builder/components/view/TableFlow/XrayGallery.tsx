@@ -18,13 +18,20 @@ import { getErrorMessage } from "metabase/api/utils";
 import { isEditablePasteTarget } from "metabase/common/utils/chart-clipboard";
 import { Box, Repeat, Skeleton, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { Card, ConcreteTableId, RawSeries } from "metabase-types/api";
+import type {
+  Card,
+  ConcreteTableId,
+  Dataset,
+  RawSeries,
+} from "metabase-types/api";
 
 import S from "./TableFlow.module.css";
 import { type XrayChart, getXrayCharts } from "./utils";
 
 type CardSeries = {
   rawSeries: RawSeries | null;
+  /** The full query result, `null` under the same conditions as `rawSeries`. */
+  dataset: Dataset | null;
   error: string | null;
 };
 
@@ -39,16 +46,18 @@ export function useCardSeries(card: Card): CardSeries {
   });
 
   if (error) {
-    return { rawSeries: null, error: getErrorMessage(error) };
+    return { rawSeries: null, dataset: null, error: getErrorMessage(error) };
   }
   if (data?.error) {
     return {
       rawSeries: null,
+      dataset: null,
       error: typeof data.error === "string" ? data.error : t`Query failed`,
     };
   }
   return {
     rawSeries: data?.data ? [{ card, data: data.data }] : null,
+    dataset: data?.data ? data : null,
     error: null,
   };
 }

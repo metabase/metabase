@@ -209,12 +209,19 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           key={galleryTableId}
           question={question}
           onQuestionChange={(nextQuestion) =>
-            updateQuestion(nextQuestion, { run: true })
+            updateQuestion(nextQuestion, {
+              // display and settings changes reuse the results already on screen
+              run: !Lib.areLegacyQueriesEqual(
+                nextQuestion.datasetQuery(),
+                question.datasetQuery(),
+              ),
+            })
           }
           tableId={galleryTableId}
           isGalleryOpen={isGalleryOpen}
           viewportHeight={viewportHeight}
           rawSeries={rawSeries ?? null}
+          result={result ?? null}
           searchText={isTableDisplay ? searchText : null}
           onSearchTextChange={setSearchText}
         >

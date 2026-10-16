@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { Skeleton } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { ConcreteTableId, RawSeries } from "metabase-types/api";
+import type { ConcreteTableId, Dataset, RawSeries } from "metabase-types/api";
 
 import { ChartDetail, ResultTable, ValuesRow } from "./ChartDetail";
 import S from "./TableFlow.module.css";
@@ -23,6 +23,8 @@ type TableFlowProps = {
   viewportHeight: number;
   /** The question's results, shown as the gallery's raw records card and below its chart. */
   rawSeries: RawSeries | null;
+  /** The question's full results, for visualization suggestions and settings. */
+  result: Dataset | null;
   /** `null` hides the search bar. */
   searchText: string | null;
   onSearchTextChange: (searchText: string) => void;
@@ -46,6 +48,7 @@ export function TableFlow({
   isGalleryOpen,
   viewportHeight,
   rawSeries,
+  result,
   searchText,
   onSearchTextChange,
   children,
@@ -92,6 +95,7 @@ export function TableFlow({
         // one element for both shapes, so the side panel stays open when a summary turns the table into a chart
         <ChartDetail
           question={question}
+          result={result}
           chart={
             !isChart ? null : hasUngroupedValues(question) ? (
               <ValuesRow rawSeries={rawSeries} />

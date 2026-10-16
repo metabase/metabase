@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { useMaybeLocation, useNavigate } from "metabase/router";
 import type { Card, ConcreteTableId } from "metabase-types/api";
 
@@ -59,6 +61,7 @@ type SelectedXrayChart = XraySelection & {
   selectedChart: XrayChart | null;
   /** The selected chart's card including any filter/summarize edits. */
   selectedCard: Card | null;
+  /** Whether edits changed the chart's query; display and settings changes don't count. */
   isSelectedCardEdited: boolean;
   onSelectedCardChange: (card: Card) => void;
   /** A chart is selected in the URL but the x-ray hasn't loaded yet. */
@@ -92,7 +95,10 @@ export function useSelectedXrayChart(
     hasError,
     selectedChart,
     selectedCard: editedCard ?? selectedChart?.card ?? null,
-    isSelectedCardEdited: editedCard != null,
+    isSelectedCardEdited:
+      editedCard != null &&
+      selectedChart != null &&
+      !_.isEqual(editedCard.dataset_query, selectedChart.card.dataset_query),
     onSelectedCardChange: (card) => {
       if (selectionKey != null) {
         setEditedCard(selectionKey, card);
