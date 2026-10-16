@@ -11,7 +11,7 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+import { Sidebar } from "metabase/nav/containers/MainNavbar/Sidebar";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
@@ -81,6 +81,7 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
       {isConfigured && (
         <Tooltip label={t`New conversation`} position="bottom">
           <ActionIcon
+            variant="subtle"
             onClick={handleNewConversation}
             aria-label={t`New conversation`}
             data-testid="metabot-new-conversation"
@@ -96,7 +97,11 @@ const MetabotSidebarActions = ({ agentId }: { agentId: MetabotAgentId }) => {
           onConversationSelect={metabot.loadConversation}
         />
       )}
-      <ActionIcon onClick={handleCloseChat} data-testid="metabot-close-chat">
+      <ActionIcon
+        variant="subtle"
+        onClick={handleCloseChat}
+        data-testid="metabot-close-chat"
+      >
         <Icon c="text-primary" name="close" />
       </ActionIcon>
     </Flex>

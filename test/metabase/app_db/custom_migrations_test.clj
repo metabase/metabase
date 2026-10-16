@@ -82,7 +82,10 @@
       (is (= (sort versions)
              versions)))))
 
-(task/defjob AbandonmentEmail [_] :default)
+(task/defjob AbandonmentEmail
+  {:saved-class "metabase.app_db.custom_migrations_test.AbandonmentEmail"}
+  [_]
+  :default)
 
 (defn- table-default [table]
   (letfn [(with-timestamped [props]

@@ -7,7 +7,6 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.data-apps.access :as data-app.access]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
@@ -20,15 +19,13 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.settings.core :as setting]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.io ByteArrayInputStream)
-   (java.net URI)))
+   (java.io ByteArrayInputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,27 +44,6 @@
    "Cache-Control"                "no-cache"})
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
-
-(defn- metaplow-origin
-  "Origin of the configured Metaplow collector, without its `/api/send` path.
-   The data-app sandbox accepts origins, not URLs with paths."
-  []
-  (when-let [url (setting/get-value-of-type :string :metaplow-url)]
-    (try
-      (let [uri    (URI. url)
-            scheme (some-> (.getScheme uri) u/lower-case-en)
-            host   (.getHost uri)
-            port   (.getPort uri)]
-        (when (and (#{"http" "https"} scheme) host)
-          (str scheme "://" host (when-not (= -1 port) (str ":" port)))))
-      (catch Exception _))))
-
-(defn- bundle-allowed-hosts
-  "Origins the bundle may fetch, including the configured analytics collector."
-  [allowed-hosts]
-  (let [origin (metaplow-origin)]
-    (cond-> allowed-hosts
-      origin (conj origin))))
 
 (defn- repo-status []
   (let [url (data-apps.apps/repo-url)]
@@ -133,13 +109,8 @@
    [:url [:maybe :string]]])
 
 (def ^:private AddGroupsRequest
-  [:map {:closed true
-         :decode/api (fn [body]
-                       (when (map? body)
-                         (api/check-400 (every? #{:group_ids} (keys body))
-                                        (tru "Only group_ids can be specified.")))
-                       body)}
-   [:group_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
+  [:map {:closed true}
+   [:group_ids [:sequential {:min 1 :max 100} ms/PositiveInt]]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 
@@ -222,7 +193,8 @@
    available, and otherwise listed only to superusers, who see it badged."
   [_route-params
    {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-app.access/readable-apps {:user-id api/*current-user-id* :superuser? api/*is-superuser?*} available)
+  (->> (data-apps.db/data-apps available)
+       (filter mi/can-read?)
        (remove #(and (or available (not api/*is-superuser?*))
                      (data-app.config/outdated? %)))
        (mapv data-app-response)))
@@ -288,9 +260,10 @@
   nil)
 
 (api.macros/defendpoint :post "/generate/app" :- ::data-apps.schema/app-files
-  "A new data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
-  YAML a remote-sync export writes, with new entity IDs. For superusers: the files are written into the app's
-  repository, which only an admin works with."
+  "A data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the
+  YAML a remote-sync export writes. An existing app passes its `entity_id` and `collection_id` to keep them; a new app
+  gets new entity IDs. For superusers: the files are written into the app's repository, which only an admin works
+  with."
   [_route-params
    _query-params
    body :- ::data-apps.schema/app-request]
@@ -411,12 +384,8 @@
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
                       :headers (-> bundle-response-headers
-                                   ;; JSON array of origins the sandboxed bundle may fetch/XHR. Include
-                                   ;; the configured product analytics collector so SDK analytics work
-                                   ;; without granting access to the collector for another environment.
-                                   ;; The iframe reads this to configure its Near-Membrane fetch allowlist.
                                    (assoc "X-Metabase-Data-App-Allowed-Hosts"
-                                          (json/encode (bundle-allowed-hosts (:allowed_hosts row))))
+                                          (json/encode (:allowed_hosts row)))
                                    (cond-> etag (assoc "ETag" etag)))
                       :body    (ByteArrayInputStream. bundle)})
             (respond {:status  404

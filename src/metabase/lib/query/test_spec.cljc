@@ -192,11 +192,17 @@
 (mu/defn- expression-spec->expression-parts
   [query             :- ::lib.schema/query
    stage-number      :- :int
-   expression-spec   :- [:or ::lib.schema.test-spec/test-expression-spec ::lib.schema.test-spec/test-join-source-spec]
+   expression-spec   :- [:or
+                         ::lib.schema.test-spec/test-expression-spec
+                         ::lib.schema.test-spec/test-join-source-spec
+                         ::lib.schema.test-spec/test-operator-arg-spec]
    available-columns :- [:sequential ::lib.schema.metadata/column]]
   (case (:type expression-spec)
     :literal  (:value expression-spec)
     :column   (find-column query stage-number available-columns expression-spec)
+    :segment  (lib.metadata/segment query (:id expression-spec))
+    :measure  (lib.metadata/measure query (:id expression-spec))
+    :metric   (lib.metadata/metric query (:id expression-spec))
     :operator {:lib/type :mbql/expression-parts
                :operator (:operator expression-spec)
                :options {}

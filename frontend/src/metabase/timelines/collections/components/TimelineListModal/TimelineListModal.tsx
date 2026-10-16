@@ -7,7 +7,7 @@ import {
   getSortedTimelines,
 } from "metabase/common/utils/timelines";
 import CS from "metabase/css/core/index.css";
-import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import { ModalHeader } from "metabase/timelines/common/components/ModalHeader";
 import { MODAL_MIN_HEIGHT } from "metabase/timelines/common/constants";
 import { ActionIcon, Flex, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";

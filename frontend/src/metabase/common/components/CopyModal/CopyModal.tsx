@@ -39,6 +39,7 @@ export function CopyModal(props: CopyModalProps) {
 
   return (
     <Modal
+      density="relaxed"
       title={
         title || t`Duplicate "${resolvedObjectWithDefaultCollection.name}"`
       }

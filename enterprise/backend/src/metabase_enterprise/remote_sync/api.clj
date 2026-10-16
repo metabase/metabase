@@ -38,7 +38,8 @@
                               current)
                       {:status-code     409
                        :branch_mismatch true
-                       :current_branch  current})))
+                       :current_branch  current
+                       :response/keys   #{:branch_mismatch :current_branch}})))
     requested-branch))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse

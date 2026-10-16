@@ -2,9 +2,7 @@ import { useId, useState } from "react";
 import { t } from "ttag";
 
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import { PaddedSidebarLink } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { ExpandToggleButton } from "metabase/nav/containers/MainNavbar/SidebarItems/SidebarItems.styled";
 import { Box } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
@@ -22,7 +20,11 @@ export function DataAppNavbarLink({ dataApp, onItemSelect }: Props) {
     dataApp;
 
   const toggleButton = (
-    <ExpandToggleButton
+    <TreeNode.ExpandToggleButton
+      c="core-brand"
+      py="xxs"
+      pl="xxxs"
+      pr={0}
       aria-label={
         isContentsExpanded
           ? t`Collapse ${displayName}`
@@ -37,7 +39,7 @@ export function DataAppNavbarLink({ dataApp, onItemSelect }: Props) {
         isExpanded={isContentsExpanded}
         size={12}
       />
-    </ExpandToggleButton>
+    </TreeNode.ExpandToggleButton>
   );
 
   return (
@@ -55,13 +57,13 @@ export function DataAppNavbarLink({ dataApp, onItemSelect }: Props) {
 
       {isContentsExpanded && (
         <Box id={contentsId} pl="1.5rem">
-          <PaddedSidebarLink
+          <SidebarLink
             icon="folder"
             url={`/collection/${collectionId}`}
             onClick={onItemSelect}
           >
             {t`Contents`}
-          </PaddedSidebarLink>
+          </SidebarLink>
         </Box>
       )}
     </>

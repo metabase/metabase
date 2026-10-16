@@ -4,7 +4,7 @@ import { CollapseSection } from "metabase/common/components/CollapseSection";
 import {
   SidebarHeading,
   SidebarSection,
-} from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+} from "metabase/nav/containers/MainNavbar/Sidebar";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 
 import { DataAppNavbarLink } from "./DataAppNavbarLink";

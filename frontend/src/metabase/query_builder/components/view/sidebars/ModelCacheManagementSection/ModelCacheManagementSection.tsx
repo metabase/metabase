@@ -7,7 +7,7 @@ import {
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { dayjs } from "metabase/dayjs";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
-import { Box, Button, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
@@ -95,15 +95,14 @@ export function ModelCacheManagementSection({ model }: Props) {
                 {t`Create now`}
               </Button>
             ) : (
-              // TODO: replace with ActionIcon (GDGT-2457)
-              <Button
+              <ActionIcon
                 variant="subtle"
-                color="neutral"
                 size="sm"
                 aria-label={t`Refresh now`}
-                leftSection={<Icon name="refresh" tooltip={t`Refresh now`} />}
                 onClick={() => onRefresh(model.id())}
-              />
+              >
+                <Icon name="refresh" tooltip={t`Refresh now`} />
+              </ActionIcon>
             ))}
         </Flex>
       )}

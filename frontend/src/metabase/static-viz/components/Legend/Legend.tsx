@@ -1,7 +1,9 @@
 import { Group } from "@visx/group";
+import Color from "color";
 
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { color as getColor } from "metabase/ui/colors";
 import { truncateText } from "metabase/viz-core";
 
 import {
@@ -30,12 +32,13 @@ export const Legend = ({
   legendItemMarginRight = LEGEND_ITEM_MARGIN_RIGHT,
   items,
 }: LegendProps) => {
+  const markerBorder = Color(getColor("shadow-default"));
+
   return (
     <Group left={left} top={top}>
       {items.map((item, index) => {
         const { name: originalName, color, left, top, width, percent } = item;
 
-        const radius = LEGEND_CIRCLE_SIZE / 2;
         const textX = LEGEND_CIRCLE_SIZE + LEGEND_CIRCLE_MARGIN_RIGHT;
 
         const percentTextWidth =
@@ -73,7 +76,17 @@ export const Legend = ({
 
         return (
           <Group left={left} top={top} key={index}>
-            <circle fill={color} r={radius} cx={radius} cy={radius} />
+            <rect
+              x={0.25}
+              y={0.25}
+              width={LEGEND_CIRCLE_SIZE - 0.5}
+              height={LEGEND_CIRCLE_SIZE - 0.5}
+              rx={LEGEND_CIRCLE_SIZE * 0.32}
+              fill={color}
+              stroke={markerBorder.hex()}
+              strokeOpacity={markerBorder.alpha()}
+              strokeWidth={0.5}
+            />
             <Text
               textAnchor="start"
               verticalAnchor="start"

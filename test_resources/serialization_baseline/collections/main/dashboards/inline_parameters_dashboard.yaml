@@ -31,7 +31,6 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     text: Products in {{category}}
     virtual_card:
       display: heading
@@ -47,7 +46,6 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     text: |-
       Showing products in the **{{category}}** category
       with price above **{{min_price}}**.
@@ -83,7 +81,6 @@ dashcards:
         - PRICE
       - null
   series: []
-  visualization_settings:
-    column_settings: null
+  visualization_settings: {}
 tabs: []
 width: fixed
