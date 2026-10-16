@@ -21,6 +21,7 @@
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -31,12 +32,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private expanded-into-dependents
+  "The entity types whose content a native query using them expands into its own SQL, so that a change to one changes
+  the table dependencies of the entities using it, which no graph edge carries."
+  #{:snippet})
+
 (def ^:private entity-types
-  "The list of entity types to backfill.
+  "The list of entity types to backfill, those expanded into their dependents first, so that the dependents they mark
+  are recomputed in the same run.
 
   This is not the same as deps.dependency-types/dependency-types, because tables shouldn't be backfilled.  Instead, links
   involving tables are found via analysis of the other side of the relation."
-  (vec deps.dependency-types/backfillable-dependency-types))
+  (vec (sort-by (complement expanded-into-dependents) deps.dependency-types/backfillable-dependency-types)))
 
 (def ^:private max-retries 5)
 
@@ -75,19 +82,29 @@
    entity-type
    (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)))
 
+(defn- mark-expanding-entities-stale!
+  "Mark for recalculation the entities whose native SQL expands the `entity-type` entity `entity-id`, directly or
+  through the entities of the same kind that include it."
+  [entity-type entity-id]
+  (let [graph     (models.dependency/filtered-graph-dependents nil {:types expanded-into-dependents})
+        type->ids (models.dependency/group-nodes (graph/transitive graph [[entity-type entity-id]]))]
+    (deps.dependency-status/mark-stale! (apply dissoc type->ids expanded-into-dependents))))
+
 (defn- compute-deps-for-entity!
-  "Mark the dependents of an entity that a write marked stale for re-analysis, then compute and store its
-  dependencies and update its dependency_status. Entities are expected to be pre-hydrated by
-  [[deps.dependency-status/hydrate-for-deps]]."
+  "Mark the dependents of an entity that a write marked stale for re-analysis, and those that expand it for
+  recalculation, then compute and store its dependencies and update its dependency_status, flagging the tables it
+  names that match nothing. Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (when (:stale (dependencies.db/dependency-status entity-type (:id entity)))
-    (deps.findings/mark-transitive-dependents-stale! {entity-type #{(:id entity)}}))
+    (deps.findings/mark-transitive-dependents-stale! {entity-type #{(:id entity)}})
+    (when (expanded-into-dependents entity-type)
+      (mark-expanding-entities-stale! entity-type (:id entity))))
   (t2/with-transaction [_]
     (let [deps (deps.calculation/calculate-deps entity-type entity)]
-      (models.dependency/replace-dependencies! entity-type (:id entity) deps)
+      (models.dependency/replace-dependencies! entity-type (:id entity) (dissoc deps :unresolved-table))
       (post-deps-cleanup! entity-type entity)
-      (deps.dependency-status/upsert-status! entity-type (:id entity)))))
+      (deps.dependency-status/upsert-status! entity-type (:id entity) (contains? deps :unresolved-table)))))
 
 (defn- remove-deleted-entity-batch!
   "Mark the dependents of up to `batch-size` deleted entities of `entity-type` for re-analysis and drop their

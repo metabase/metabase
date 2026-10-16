@@ -34,7 +34,7 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/DependencyStatus]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
-          (deps.dependency-status/upsert-status! :card card-id)
+          (deps.dependency-status/upsert-status! :card card-id false)
           (t2/update! :model/Card card-id {:name "Renamed"})
           (is (not (stale? :card card-id)))
           (t2/update! :model/Card card-id {:dataset_query (table-query :orders)})
@@ -58,7 +58,7 @@
     (mt/with-premium-features #{}
       (mt/with-model-cleanup [:model/DependencyStatus]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
-          (deps.dependency-status/upsert-status! :card card-id)
+          (deps.dependency-status/upsert-status! :card card-id false)
           (t2/update! :model/Card card-id {:dataset_query (table-query :orders)})
           (is (not (stale? :card card-id))))))))
 
@@ -69,7 +69,7 @@
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                        :model/Card      {card-id :id}      {:dataset_query (table-query :products)}
                        :model/Card      {other-id :id}     {:dataset_query (table-query :orders)}]
-          (let [processed! #(deps.dependency-status/upsert-status! :dashboard dashboard-id)]
+          (let [processed! #(deps.dependency-status/upsert-status! :dashboard dashboard-id false)]
             (processed!)
             (let [dashcard-id (t2/insert-returning-pk! :model/DashboardCard
                                                        {:dashboard_id dashboard-id :card_id card-id
@@ -98,7 +98,7 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
         (t2/insert! :model/Dependency {:from_entity_type "card" :from_entity_id card-id
                                        :to_entity_type "table" :to_entity_id (mt/id :products)})
-        (deps.dependency-status/upsert-status! :card card-id)
+        (deps.dependency-status/upsert-status! :card card-id false)
         (t2/delete! :model/Card :id card-id)
         (is (stale? :card card-id))
         (deps.test/synchronously-run-backfill!)
@@ -131,7 +131,7 @@
           (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-b
                                          :to_entity_type   :card :to_entity_id   card-a})
           (doseq [card-id [card-a card-b]]
-            (deps.dependency-status/upsert-status! :card card-id)
+            (deps.dependency-status/upsert-status! :card card-id false)
             (deps.analysis-finding/upsert-analysis! :card card-id true []))
           (mt/with-dynamic-fn-redefs [deps.dependency-status/mark-stale!
                                       (fn [type->ids]
@@ -160,7 +160,7 @@
                 triggered (atom 0)]
             (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id :card_id card-id
                                               :row 4 :col 0 :size_x 4 :size_y 4})
-            (deps.dependency-status/upsert-status! :dashboard dashboard-id)
+            (deps.dependency-status/upsert-status! :dashboard dashboard-id false)
             (mt/with-dynamic-fn-redefs [grouper/submit!                     (fn [_queue write] (swap! submitted conj write))
                                         task.backfill/trigger-backfill-job! (fn [] (swap! triggered inc))]
               (deps.test/do-with-immediate-hook-writes
@@ -182,7 +182,7 @@
                        :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id
                                                                 :visualization_settings {}}]
           (let [exported (ts/extract-one "Dashboard" dashboard-id)]
-            (deps.dependency-status/upsert-status! :dashboard dashboard-id)
+            (deps.dependency-status/upsert-status! :dashboard dashboard-id false)
             (mt/with-dynamic-fn-redefs [task.backfill/trigger-backfill-job! (fn [])]
               (deps.test/do-with-immediate-hook-writes
                #(serdes/with-cache
