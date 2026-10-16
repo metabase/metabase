@@ -583,7 +583,12 @@
   "`value`, valid for the `:purpose` of `ctx`, or throws. The thrown `ex-data` carries the `:failures` of [[check]]
   under an `:error` of `::rejected`, when only context-dependent checks failed, or `::invalid`, when a check on the
   value itself did; both derive from `::check-failed`. Its `:status-code` is whatever the failing check declared, or
-  400 for `::invalid` and 403 for `::rejected`."
+  400 for `::invalid` and 403 for `::rejected`.
+
+  The `:error-code` is `::check-failed`, which is what tells `metabase.server.middleware.exceptions` that this
+  exception was authored as an API response: without it, the `:error` keyword reads as a human-readable message to
+  send (see [[metabase.util.api-error]]) and a rejection renders to the client as a stacktrace instead of its
+  status and message."
   [value ctx]
   (let [result (check value ctx)]
     (if (true? result)
@@ -592,6 +597,7 @@
             contextual (every? :contextual failures)]
         (throw (ex-info (tru "Invalid {0}" (.getSimpleName (class value)))
                         {:error       (if contextual ::rejected ::invalid)
+                         :error-code  ::check-failed
                          :status-code (or (some :status-code failures) (if contextual 403 400))
                          :type        (class value)
                          :purpose     (:purpose ctx)
