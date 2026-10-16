@@ -380,7 +380,7 @@
                              (let [timed-out? (connection-checkout-timeout? e)]
                                (when-let [database-id (and (not timed-out?) (u/id db-or-id-or-spec))]
                                  (try
-                                   (sql-jdbc.conn/invalidate-empty-pool! database-id conn-data-source)
+                                   (sql-jdbc.conn/invalidate-empty-pool! conn-data-source)
                                    (catch Exception e2
                                      (log/warnf e2 "Error closing the connection pool for database %d" database-id))))
                                (throw (ex-info (if timed-out?
