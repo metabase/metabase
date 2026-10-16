@@ -21,6 +21,7 @@
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
+   [oidc-provider.store :as oidc.store]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response]
    [throttle.core :as throttle])
@@ -403,16 +404,26 @@
 
 (defn- token-error-code
   "The RFC 6749 section 5.2 `error` code for the ex-data of an exception thrown while handling a token request."
-  [{:keys [error] :as data}]
-  (or error
+  [{:keys [oauth-error error] :as data}]
+  (or oauth-error
+      error
       ;; oidc-provider names a code only for its PKCE, expired refresh token, and resource-indicator errors. Its other
       ;; grant failures carry the code or refresh token that failed, or the client or redirect URI the grant is bound
       ;; to as `:expected`/`:actual`. Malformed requests carry none of these. A missing `redirect_uri` also carries
       ;; `:code`, and `invalid_grant` is right for it too: the code is consumed by then, so a retry cannot succeed.
-      (if (or (contains? data :code)
-              (contains? data :refresh-token)
-              (and (contains? data :expected) (contains? data :actual)))
+      ;; Its scope rejections, a refresh asking for more than the original grant among them, carry `:requested`.
+      ;; Answering those `invalid_scope` rather than `invalid_request` tells the client the scope is at fault, so it
+      ;; can retry the refresh without `scope`, which RFC 6749 section 6 treats as the original grant.
+      (cond
+        (or (contains? data :code)
+            (contains? data :refresh-token)
+            (and (contains? data :expected) (contains? data :actual)))
         "invalid_grant"
+
+        (contains? data :requested)
+        "invalid_scope"
+
+        :else
         "invalid_request")))
 
 (defn- error-description
@@ -428,9 +439,9 @@
    `:error-description` when the request names no scope, when none of its scopes are registered, or when none of
    them survive narrowing.
 
-   Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the
-   form was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user
-   can re-sign anything. The endpoint that issues the code has to apply these rules itself.
+   Applied by the consent page, the decision endpoint, and a refresh that names a `scope`. The consent form's
+   signature proves only that the form was not tampered with by a third party: it is keyed by the CSRF token the page
+   shows the user, so the user can re-sign anything. The endpoint that issues the code has to apply these rules itself.
 
    Never returns a blank scope. The decision endpoint leans on that: it answers a nil grant with 403
    `params_tampered`, which is only the right status while the sole way to reach it is a choice naming an unoffered
@@ -463,6 +474,24 @@
                        :error-description narrowed-away-scope-description
                        :resource          (:resource parsed)})))
     narrowed))
+
+(defn- with-refresh-scope-to-grant
+  "The token request `body` with the `scope` of a refresh trimmed by [[scope-to-grant]], so a refresh drops unregistered
+   scopes and narrows to the resource the same way authorization does. Narrowed against the request's `resource`, else
+   the one the refresh token was issued for, which is the resource oidc-provider issues the new token for. Throws
+   `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives.
+
+   Any other `body` is returned unchanged: another grant, a refresh without `scope`, which oidc-provider grants the
+   original scope, and a refresh token that does not resolve, so a dead token is still answered `invalid_grant`."
+  [provider {:keys [grant_type scope refresh_token resource] :as body}]
+  (if-let [token-data (when (and (= grant_type "refresh_token")
+                                 (not (str/blank? scope))
+                                 (not (str/blank? refresh_token)))
+                        (oidc.store/get-refresh-token (:token-store provider) refresh_token))]
+    ;; oidc-provider splits `scope` on single spaces and stores what it gets, so pass it deduplicated and single-spaced.
+    (assoc body :scope (str/join " " (scope-tokens (scope-to-grant {:scope    scope
+                                                                    :resource (or resource (:resource token-data))}))))
+    body))
 
 (defn- authorization-consent-response
   "Validate the authorization request `query-params` and return the consent page response, which sets the CSRF
@@ -645,7 +674,9 @@
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
                 (check-resource-indicators! (:resource body))
-                (let [response (oidc/token-request provider body authorization-header)]
+                (let [response (oidc/token-request provider
+                                                   (with-refresh-scope-to-grant provider body)
+                                                   authorization-header)]
                   {:status  200
                    :headers {"Content-Type"  "application/json"
                              "Cache-Control" "no-store"

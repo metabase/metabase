@@ -2514,3 +2514,95 @@
             (let [response (authorize not-mcp)]
               (is (= 400 (:status response)))
               (is (= "invalid_scope" (get-in response [:body :error]))))))))))
+
+;;; ------------------------------------------ Refresh scope vs. the grant -------------------------------------------
+
+(defn- refresh-with-scope!
+  "Refresh `token-response` for `client`, sending `scope` and, when given, `resource`. Returns the response body."
+  [client token-response scope & {:keys [resource expected-status] :or {expected-status 200}}]
+  (token-request! (cond-> {:grant_type    "refresh_token"
+                           :refresh_token (:refresh_token token-response)
+                           :scope         scope}
+                    resource (assoc :resource resource))
+                  :expected-status expected-status
+                  :authorization (basic-auth-header (:client_id client) (:client_secret client))))
+
+(deftest refresh-drops-unregistered-scopes-and-narrows-to-resource-test
+  (testing (str "A refresh that names a `scope` gets the same treatment as an authorization request: unregistered "
+                "scopes are dropped and the rest narrowed to the resource. A client may refresh with the `scope` it "
+                "registered with, which can be the whole default ceiling, so a refresh that only checked the request "
+                "against the grant would refuse every scope the authorization request had narrowed away.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect "https://example.com/callback"
+              client   (register-app-client! "MCP Client" redirect)
+              not-mcp  (first-non-mcp-default-scope)
+              tokens   (atom (authorize-at! client redirect all-v2-scopes (vec v2-scope-set)))]
+          (is (some? not-mcp) "the default ceiling holds a scope the MCP surface does not accept")
+          (is (= v2-scope-set (token-scope-set @tokens)))
+          (doseq [[label scope resource]
+                  [["unregistered scopes alongside the grant"
+                    (str "offline_access " all-v2-scopes " *")
+                    nil]
+                   ["scopes the MCP resource does not accept, narrowed to the resource the refresh token was issued for"
+                    (str/join " " (concat (oauth-server/default-grant-scopes) ["mb:full"]))
+                    nil]
+                   ["scopes the MCP resource does not accept, narrowed to the resource the request names"
+                    (str/join " " (concat (oauth-server/default-grant-scopes) ["mb:full"]))
+                    (mcp-resource-uri)]
+                   ["a repeated scope"
+                    (str all-v2-scopes " " all-v2-scopes)
+                    nil]]]
+            (testing label
+              (let [response (refresh-with-scope! client @tokens scope :resource resource)]
+                (reset! tokens response)
+                (is (= (str/split all-v2-scopes #" ") (str/split (:scope response) #" "))
+                    "the token carries each surviving scope once, in the requested order")
+                (is (= v2-scope-set (access-token-scopes response)))
+                (is (= #{v2-scope-set} (live-refresh-scopes client))
+                    "the rotated refresh token holds no dropped scope")))))))))
+
+(deftest refresh-scope-rejection-is-invalid-scope-test
+  (testing (str "RFC 6749 section 5.2: a refresh whose `scope` cannot be granted is `invalid_scope`, not "
+                "`invalid_request`. That tells the client the scope is at fault, so it can retry without `scope`, "
+                "which RFC 6749 section 6 treats as the original grant, rather than discarding a refresh token that "
+                "still works.")
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect "https://example.com/callback"
+              client   (register-app-client! "MCP Client" redirect)
+              held     (conj v2-baseline-scope-set "agent:content:write")
+              tokens   (authorize-at! client redirect all-v2-scopes ["agent:content:write"])
+              not-mcp  (first-non-mcp-default-scope)]
+          (is (= held (token-scope-set tokens)))
+          (doseq [[label scope description]
+                  [["a scope the user did not grant"
+                    all-v2-scopes
+                    invalid-token-request-description]
+                   ["only unregistered scopes"
+                    "offline_access *"
+                    (str "None of the requested scopes are supported. Request only scopes listed in "
+                         "scopes_supported at http://localhost:3000/.well-known/oauth-authorization-server")]
+                   ["only scopes the resource the refresh token was issued for does not accept"
+                    (str not-mcp " mb:full")
+                    "The requested scopes are not accepted by the requested resource."]]]
+            (testing label
+              (is (= {:error             "invalid_scope"
+                      :error_description description}
+                     (refresh-with-scope! client tokens scope :expected-status 400)))))
+          (testing "a rejected refresh leaves the refresh token live, so retrying without `scope` gets the original grant"
+            (is (= held (token-scope-set (refresh! client tokens))))))))))
+
+(deftest refresh-scope-on-a-dead-refresh-token-is-invalid-grant-test
+  (testing (str "GHY-4491: a refresh token that does not resolve is `invalid_grant` even when the request's `scope` "
+                "could never be granted. `invalid_grant` tells the client its tokens are dead and the user must sign "
+                "in again; answering `invalid_scope` first would send it round a retry that cannot work.")
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client (create-test-client!)]
+          (is (= {:error             "invalid_grant"
+                  :error_description invalid-token-request-description}
+                 (refresh-with-scope! client {:refresh_token "not-a-refresh-token"} "offline_access"
+                                      :expected-status 400))))))))
