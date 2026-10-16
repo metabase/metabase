@@ -10,6 +10,7 @@ import {
   Button,
   Flex,
   Group,
+  Icon,
   Modal,
   Stack,
   Text,
@@ -86,6 +87,9 @@ export const NewSegmentModal = ({
           <Flex gap="sm" wrap="wrap">
             {filters.map((filter, index) => (
               <FilterPill key={index} readOnly>
+                {Lib.isSegmentFilter(query, STAGE_INDEX, filter) && (
+                  <Icon name="segment" size={12} />
+                )}
                 {Lib.displayInfo(query, STAGE_INDEX, filter).displayName}
               </FilterPill>
             ))}

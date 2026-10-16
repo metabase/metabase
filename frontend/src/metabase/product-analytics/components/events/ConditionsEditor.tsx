@@ -71,6 +71,7 @@ const ConditionPill = ({
 }: ConditionPillProps) => {
   const [isOpened, setIsOpened] = useState(false);
   const { displayName } = Lib.displayInfo(query, STAGE_INDEX, filter);
+  const isSegment = Lib.isSegmentFilter(query, STAGE_INDEX, filter);
 
   const handleSelect = (newFilter: Lib.Filterable) => {
     onChange(Lib.replaceClause(query, STAGE_INDEX, filter, newFilter));
@@ -86,6 +87,7 @@ const ConditionPill = ({
             onChange(Lib.removeClause(query, STAGE_INDEX, filter))
           }
         >
+          {isSegment && <Icon name="segment" size={12} />}
           {displayName}
         </FilterPill>
       </Popover.Target>

@@ -1,12 +1,13 @@
 import type { KeyboardEvent } from "react";
 import { useState } from "react";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { Button, Group, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { getConditionsName } from "../../events/conditions-name";
 import { readEventQuery } from "../../events/read-event-query";
 import type { EventDefinition } from "../../events/types";
 import { useClickOutsideFirst } from "../../use-click-outside-first";
@@ -119,18 +120,5 @@ export const EventDefinitionEditor = ({
         </Button>
       )}
     </Stack>
-  );
-};
-
-/** The conditions' names joined with "and", or "" without conditions. */
-const getConditionsName = (query: Lib.Query): string => {
-  const [first, ...rest] = Lib.filters(query, STAGE_INDEX).map(
-    (filter) => Lib.displayInfo(query, STAGE_INDEX, filter).displayName,
-  );
-  return rest.reduce(
-    (names, name) =>
-      c("{0} is a list of conditions, {1} is one more condition")
-        .t`${names} and ${name}`,
-    first ?? "",
   );
 };

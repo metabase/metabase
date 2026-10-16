@@ -1,6 +1,8 @@
 import * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 
+import { getConditionsName } from "../events/conditions-name";
+import { readEventQuery } from "../events/read-event-query";
 import type { EventDefinition } from "../events/types";
 
 import type { PaletteSegment } from "./types";
@@ -21,6 +23,63 @@ export const isPeopleSegment = (segment: PaletteSegment): boolean =>
  * metadata doesn't know the segment yet, its conditions are copied instead. A
  * draft becomes its own conditions. Undefined when neither can be read.
  */
+/**
+ * What to add to a query to require the segment: the segment clause itself
+ * when the table's metadata knows it, else the segment's own conditions.
+ */
+const segmentFilterables = (
+  tableQuery: Lib.Query,
+  metadataProvider: Lib.MetadataProvider,
+  segment: PaletteSegment,
+): Lib.Filterable[] => {
+  switch (segment.status) {
+    case "draft": {
+      const query = readDefinition(metadataProvider, segment.query);
+      return query !== undefined ? Lib.filters(query, STAGE_INDEX) : [];
+    }
+    case "saved": {
+      const metadata = Lib.segmentMetadata(tableQuery, segment.segment.id);
+      if (metadata !== null) {
+        return [metadata];
+      }
+      const query = readDefinition(
+        metadataProvider,
+        segment.segment.definition,
+      );
+      return query !== undefined ? Lib.filters(query, STAGE_INDEX) : [];
+    }
+    case "sample":
+      return [];
+  }
+};
+
+/**
+ * The event with the segment added as one more condition. Its name follows
+ * the conditions unless the user had named it. Undefined when the event or
+ * the segment can't be read.
+ */
+export const addSegmentToEvent = (
+  tableQuery: Lib.Query,
+  metadataProvider: Lib.MetadataProvider,
+  event: EventDefinition,
+  segment: PaletteSegment,
+): EventDefinition | undefined => {
+  const query = readEventQuery(metadataProvider, event);
+  const filterables = segmentFilterables(tableQuery, metadataProvider, segment);
+  if (query === null || filterables.length === 0) {
+    return undefined;
+  }
+  const nextQuery = filterables.reduce(
+    (current, filterable) => Lib.filter(current, STAGE_INDEX, filterable),
+    query,
+  );
+  const isAutoNamed = event.name === getConditionsName(query);
+  return {
+    name: isAutoNamed ? getConditionsName(nextQuery) : event.name,
+    query: Lib.toJsQuery(nextQuery),
+  };
+};
+
 export const segmentToEventDefinition = (
   tableQuery: Lib.Query,
   metadataProvider: Lib.MetadataProvider,

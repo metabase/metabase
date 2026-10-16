@@ -8,6 +8,7 @@ import type { Table } from "metabase-types/api";
 import type { EventDefinition } from "../../events/types";
 import { useSegmentDrag } from "../../segments/drag-context";
 import {
+  addSegmentToEvent,
   isEventSegment,
   segmentToEventDefinition,
 } from "../../segments/to-event-definition";
@@ -51,11 +52,16 @@ export const EventDefinitionWidget = ({
     setIsEditing(true);
   };
 
+  // A drop on an empty well defines the event; on a filled one, it adds a condition.
   const handleDropSegment = (segment: PaletteSegment) => {
-    const event =
-      tableQuery !== undefined
+    const event = (() => {
+      if (tableQuery === undefined) {
+        return undefined;
+      }
+      return value === null
         ? segmentToEventDefinition(tableQuery, metadataProvider, segment)
-        : undefined;
+        : addSegmentToEvent(tableQuery, metadataProvider, value, segment);
+    })();
     if (event === undefined) {
       sendToast({
         icon: "warning",

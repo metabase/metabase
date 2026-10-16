@@ -59,7 +59,11 @@ export const EventDefinitionSummary = ({
 }: EventDefinitionSummaryProps) => {
   const { isPaletteOpen, startEventDrag, endDrag } = useSegmentDrag();
   const { isActive, isOver, dropProps } = useSegmentDropTarget(dropTarget);
-  const label = isOver ? t`Drop to use this segment` : (name ?? placeholder);
+  const dropLabel =
+    name === undefined
+      ? t`Drop to use this segment`
+      : t`Drop to add a condition`;
+  const label = isOver ? dropLabel : (name ?? placeholder);
   // Only worth dragging while there's a palette to drop it on.
   const isDraggable = draggableEvent !== undefined && isPaletteOpen;
 

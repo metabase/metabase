@@ -17,6 +17,7 @@ import type { Table } from "metabase-types/api";
 import type { EventDefinition } from "../../events/types";
 import { useSegmentDrag } from "../../segments/drag-context";
 import {
+  addSegmentToEvent,
   isEventSegment,
   segmentToEventDefinition,
 } from "../../segments/to-event-definition";
@@ -50,8 +51,8 @@ type EventDefinitionListWidgetProps = SettingWidgetProps<EventDefinition[]> & {
  * edit first, or discards it when it can't be submitted. Nothing can be
  * dragged during an edit.
  *
- * A palette segment dropped on an item replaces it; dropped on an empty slot
- * or the zone below the list, it's added.
+ * A palette segment dropped on an item becomes one more of its conditions;
+ * dropped on an empty slot or the zone below the list, it's a new event.
  */
 export const EventDefinitionListWidget = ({
   id,
@@ -106,11 +107,17 @@ export const EventDefinitionListWidget = ({
     }
   };
 
+  // A drop past the end adds an event; on an item, it adds a condition to it.
   const handleDropSegment = (segment: PaletteSegment, atIndex: number) => {
-    const event =
-      tableQuery !== undefined
+    const target = value[atIndex];
+    const event = (() => {
+      if (tableQuery === undefined) {
+        return undefined;
+      }
+      return target === undefined
         ? segmentToEventDefinition(tableQuery, metadataProvider, segment)
-        : undefined;
+        : addSegmentToEvent(tableQuery, metadataProvider, target, segment);
+    })();
     if (event === undefined) {
       sendToast({
         icon: "warning",
