@@ -96,6 +96,9 @@ export function toPluginSettings(
     // through the sandbox membrane.
     ...cloneCloneableEntries(merged),
     column: (column) => {
+      // Custom viz always registers column settings, so the host provides `column`
+      // on every render path. Fall back to plain column formatting rather than
+      // breaking the visualization if that ever changes.
       if (typeof hostColumn !== "function") {
         return { column };
       }
