@@ -232,6 +232,19 @@
         (is (= "collections/ops/daily_dashboard/_collection.yaml" (path-of "Collection" clash)))
         (is (= "collections/ops/v1_2_totals_question.question.yaml" (path-of "Card" dotted)))))))
 
+(deftest data-app-resources-are-in-the-apps-folder-test
+  (testing "a data app's resources are in the app's own folder, also when its slug has a -"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-empty-h2-app-db!
+        (let [app        (ts/create! :model/DataApp :name "sales-app" :display_name "Sales" :bundle_path "index.js"
+                                     :bundle (.getBytes "B" "UTF-8"))
+              collection (t2/select-one :model/Collection :id (:resource_collection_id app))
+              ctx        (storage.util/storage-context kind-layout/kind-layout)
+              app-path   (storage.util/entity-file-path ctx (serdes/extract-one "DataApp" {} app))
+              coll-path  (storage.util/entity-file-path ctx (serdes/extract-one "Collection" {} collection))]
+          (is (= "data_apps/sales-app/data_app.yaml" app-path))
+          (is (= "data_apps/sales-app/resources/_collection.yaml" coll-path)))))))
+
 (deftest kind-layout-is-not-the-default-test
   (testing "a storage context without a layout, and plain serdes export, keep today's layout"
     (is (= storage.util/default-layout (:layout (storage.util/storage-context))))

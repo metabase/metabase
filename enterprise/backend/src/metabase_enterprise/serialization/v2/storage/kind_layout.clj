@@ -293,8 +293,9 @@
                               :else
                               [(namespace-folder coll-ns)])]
           (if (and (nil? parent) (= collections/data-apps-ns coll-ns))
-            ;; a data app's resource collection is the app's resources/ folder
-            ["data_apps" (slug (or (get (data-app-slugs ctx) (:id coll)) (:name coll))) "resources"]
+            ;; a data app's resource collection is the resources/ folder in the app's folder, which is named by the
+            ;; slug as is, like the app's own path
+            ["data_apps" (or (get (data-app-slugs ctx) (:id coll)) (slug (:name coll))) "resources"]
             (conj parent-folder (unique-stem ctx parent-folder :collection eid (:name coll)))))))))
 
 (defn- collection-file
