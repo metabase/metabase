@@ -1607,9 +1607,11 @@
     (let [sensitive-query (mt/mbql-query users {:fields [$id $password]})]
       (mt/with-model-cleanup [:model/Card]
         (testing "POST /api/card"
-          (is (=? {:message #".*not available for querying.*"}
-                  (mt/user-http-request :rasta :post 400 "card"
-                                        (card-with-name-and-query (mt/random-name) sensitive-query))))
+          (let [body (mt/user-http-request :rasta :post 400 "card"
+                                           (card-with-name-and-query (mt/random-name) sensitive-query))]
+            (is (=? #".*not available for querying.*" body))
+            (testing "without naming the column"
+              (is (not (re-find #"(?i)password" (pr-str body))))))
           (is (some? (mt/user-http-request :crowberto :post 200 "card"
                                            (card-with-name-and-query (mt/random-name) sensitive-query))))))
       (mt/with-temp [:model/Card card {:creator_id    (mt/user->id :crowberto)
@@ -1618,12 +1620,12 @@
           (is (=? {:name "Renamed"}
                   (mt/user-http-request :rasta :put 200 (format "card/%d" (:id card)) {:name "Renamed"}))))
         (testing "PUT /api/card/:id changing the query to another one that references the column is rejected"
-          (is (=? {:message #".*not available for querying.*"}
+          (is (=? #".*not available for querying.*"
                   (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card))
                                         {:dataset_query (mt/mbql-query users {:fields [$password]})})))))
       (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
         (testing "PUT /api/card/:id adding the column to a query is rejected"
-          (is (=? {:message #".*not available for querying.*"}
+          (is (=? #".*not available for querying.*"
                   (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card))
                                         {:dataset_query sensitive-query}))))))))
 

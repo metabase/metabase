@@ -34,10 +34,13 @@
   (let [col (lib.walk/apply-f-for-stage-at-path lib.field.resolution/resolve-field-ref query path field-ref)]
     (when (and (= (:visibility-type col) :sensitive)
                (read-from-table? query path col))
-      (throw (ex-info (tru "Field {0} is not available for querying." (pr-str (:name col)))
+      (throw (ex-info (tru "This query refers to a field that is not available for querying.")
                       {:type             qp.error-type/invalid-query
                        :status-code      400
-                       :field            field-ref
+                       :field-id         (:id col)
+                       :field-name       (:name col)
+                       :table-id         (:table-id col)
+                       :log/keys         #{:field-id :field-name :table-id}
                        ::sensitive-field true})))))
 
 (defn- check-parameters [query]

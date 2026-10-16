@@ -77,6 +77,18 @@
                clojure.lang.ExceptionInfo
                #"not available for querying"
                (qp/process-query query))))))
+    (testing "the error doesn't name the column, which an ID ref doesn't reveal"
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [e (is (thrown? clojure.lang.ExceptionInfo
+                             (qp/process-query
+                              (mt/mbql-query users {:fields [[:field (mt/id :users :password) nil]], :limit 1}))))]
+          (is (not (re-find #"(?i)password" (ex-message e))))
+          (testing "but lists the column for the log, which the client doesn't get"
+            (is (=? {:field-id   (mt/id :users :password)
+                     :field-name "PASSWORD"
+                     :table-id   (mt/id :users)
+                     :log/keys   #{:field-id :field-name :table-id}}
+                    (ex-data e)))))))
     (testing "an implicitly joined :sensitive column is rejected"
       (mt/with-current-user (mt/user->id :rasta)
         (is (thrown-with-msg?
