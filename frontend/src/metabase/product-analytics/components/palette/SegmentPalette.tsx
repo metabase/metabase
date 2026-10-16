@@ -42,9 +42,6 @@ import S from "./SegmentPalette.module.css";
 const DEFAULT_WIDTH = 272;
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 400;
-/** The main header's title line-height and toolbar button height. */
-const TITLE_ROW_HEIGHT = "1.5rem";
-const BUTTON_HEIGHT = "2.25rem";
 
 type SegmentPaletteProps = {
   tableId: ConcreteTableId | undefined;
@@ -59,9 +56,9 @@ type SegmentPaletteProps = {
 };
 
 /**
- * The recessed panel on the far left: the event table, then its segments and
- * the linked people table's, each draggable onto the setup panel's slots.
- * The toolbar's segments button shows and hides it.
+ * The panel on the far left, beside the setup panel: the event table, then
+ * its segments and the linked people table's, each draggable onto the setup
+ * panel's slots. The toolbar's segments button shows and hides it.
  */
 export const SegmentPalette = ({
   tableId,
@@ -95,14 +92,10 @@ export const SegmentPalette = ({
       onResizeStop={handleResizeStop}
     >
       <Stack className={S.root} w={width} pos="relative" gap={0}>
-        {/* Mirrors the main header's rhythm (title row, gap, 36px buttons,
-            padding) so the divider lines up with the header's border. */}
         <Stack gap="md" px="md" pt="lg" pb="md">
-          <Group h={TITLE_ROW_HEIGHT} align="center">
-            <Text fw="bold" c="text-secondary">
-              {t`Event data`}
-            </Text>
-          </Group>
+          <Text fw="bold" c="text-secondary">
+            {t`Event data`}
+          </Text>
           {onTableChange !== undefined ? (
             <EventTablePicker
               tableId={tableId}
@@ -112,7 +105,7 @@ export const SegmentPalette = ({
               fullWidth
             />
           ) : (
-            <Group gap="sm" wrap="nowrap" h={BUTTON_HEIGHT} align="center">
+            <Group gap="sm" wrap="nowrap" align="center">
               <Icon name="database" />
               <Text fw="bold" truncate>
                 {table?.display_name ?? t`Loading…`}

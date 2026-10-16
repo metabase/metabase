@@ -1,10 +1,11 @@
+/* Sits beside the setup panel, so it's drawn like one. */
 .root {
   flex-shrink: 0;
   height: 100%;
-  background-color: var(--mb-color-background-secondary);
-  border-right: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
   transition: border-color 120ms ease;
-  box-shadow: inset -8px 0 10px -10px var(--mb-color-shadow);
 }
 
 .handle {
