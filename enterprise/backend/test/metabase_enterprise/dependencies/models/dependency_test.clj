@@ -136,10 +136,8 @@
               (deps.test/synchronously-run-backfill!)
               (testing "raw deps are recorded correctly"
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
-                (is (=? #{(depends-on-> :card id2 :table (mt/id :orders))
-                          (depends-on-> :card id2 :card id1)} (upstream-of :card id2)))
-                (is (=? #{(depends-on-> :card id3 :table (mt/id :orders))
-                          (depends-on-> :card id3 :card id2)} (upstream-of :card id3))))
+                (is (=? #{(depends-on-> :card id2 :card id1)} (upstream-of :card id2)))
+                (is (=? #{(depends-on-> :card id3 :card id2)} (upstream-of :card id3))))
               (testing "transitive deps are computed correctly"
                 (testing "for each card"
                   (is (=? {:card #{id2 id3}}

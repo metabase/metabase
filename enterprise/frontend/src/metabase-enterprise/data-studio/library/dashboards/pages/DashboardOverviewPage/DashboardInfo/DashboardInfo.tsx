@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { Markdown } from "metabase/common/components/Markdown";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -14,6 +13,7 @@ import { getLoadingTimeMs } from "../utils";
 
 import { AutoApplyFiltersStat } from "./AutoApplyFiltersStat";
 import { CachePolicyStat } from "./CachePolicyStat";
+import { DashboardDescription } from "./DashboardDescription";
 import { DashboardStat } from "./DashboardStat";
 
 type DashboardInfoProps = {
@@ -30,11 +30,7 @@ export function DashboardInfo({ dashboard }: DashboardInfoProps) {
   return (
     <Stack gap={0} align="stretch" data-testid="dashboard-info">
       <Box p="xl">
-        {dashboard.description ? (
-          <Markdown>{dashboard.description}</Markdown>
-        ) : (
-          <Text c="text-secondary">{t`No description`}</Text>
-        )}
+        <DashboardDescription dashboard={dashboard} />
       </Box>
       <Card mx="xl" bg="background_page-secondary" shadow="none" radius="lg">
         {lastEditInfo && (

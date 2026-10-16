@@ -481,9 +481,7 @@
                                       :function  (:toolName chunk)
                                       :arguments (parse-tool-arguments chunks)}
                                pm (assoc :provider-metadata pm)))
-    ;; No `:error` on the part. A failed call carries its `:error` inside `:result`, which is the one
-    ;; place anything asks — the agent loop, the SSE writer, persistence and telemetry all read it
-    ;; there. A second copy here is what let a failure reach the client as a success.
+    ;; A failed call carries its `:error` inside `:result`, not on the part.
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)

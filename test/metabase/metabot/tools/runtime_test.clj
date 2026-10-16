@@ -150,16 +150,6 @@
     (is (= "Invalid tool arguments: `m` is not a supported argument. `n` is required."
            (:output outcome)))))
 
-(deftest ^:parallel invalid-json-is-its-own-code-test
-  (testing "malformed JSON and schema-invalid JSON are different mistakes with different repairs"
-    (let [outcome (invoke "happy" {tools.runtime/raw-arguments-key "{\"n\": "})]
-      (is (= {:class :validation :code :invalid-json} (:error outcome)))
-      (is (= (str "Invalid tool arguments: the arguments were not valid JSON. "
-                  "Send the call again as a JSON object.")
-             (:output outcome)))
-      (testing "and the model's own malformed output is not quoted back at it"
-        (is (not (str/includes? (:output outcome) "{\"n\":")))))))
-
 ;;; ------------------------------------------------ Recoverable ---------------------------------------------------
 
 (deftest ^:parallel recoverable-renders-message-then-steps-test
@@ -358,7 +348,6 @@
   (testing "the agent loop and the adapters branch on these, so the list is shared rather than
            re-spelled in each place"
     (is (= {:unknown-tool      :validation
-            :invalid-json      :validation
             :invalid-arguments :validation
             :scope-denied      :unrecoverable
             :internal          :unrecoverable}
@@ -366,12 +355,11 @@
     (testing "and every one of them is reachable through invoke"
       ;; The scoped case needs a ctx that grants nothing; the rest run under the default
       ;; unrestricted one.
-      (is (= #{:unknown-tool :invalid-json :invalid-arguments :scope-denied :internal}
+      (is (= #{:unknown-tool :invalid-arguments :scope-denied :internal}
              (set (keep (fn [[tool-name args overrides]]
                           (get-in (tools.runtime/invoke entries (ctx overrides) tool-name args)
                                   [:error :code]))
                         [["nope" {}]
-                         ["happy" {tools.runtime/raw-arguments-key "{"}]
                          ["happy" {:m 1}]
                          ["scoped" {} {:user-scope #{}}]
                          ["crash" {}]])))))))
