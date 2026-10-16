@@ -5,7 +5,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source :as source]
@@ -17,6 +19,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -324,6 +327,41 @@
   "Whether a file of `mock`'s repository under `collections/data_apps/` has a name starting with `stem`."
   [mock stem]
   (some #(str/starts-with? (last (str/split % #"/")) stem) (resource-files mock)))
+
+(deftest pull-reaches-permission-warnings-test
+  (testing "once the jobs run after a pull, the warnings list the tables the app's native question and action name"
+    (with-data-apps-sync
+      (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+            (let [action-id (actions/insert! {:name          "Clear checkins"
+                                              :type          :query
+                                              :database_id   (mt/id)
+                                              :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                               "DELETE FROM checkins WHERE id = {{id}}")
+                                              :parameters    [{:id "id" :slug "id" :type :number/=}]})
+                  resources (data-apps.tu/build-resources
+                             shop-collection-name shop-collection-eid
+                             [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
+                             [action-id])
+                  path      (some #(when (str/includes? % question-eid) %) (keys resources))
+                  parsed    (yaml/parse-string (get resources path))
+                  native    (assoc parsed :dataset_query {:database (:database (:dataset_query parsed))
+                                                          :lib/type "mbql/query"
+                                                          :stages   [{:lib/type "mbql.stage/native"
+                                                                      :native   "select * from Venues"}]})
+                  src       (test-helpers/versioned-source
+                             :trees {"v0" (shop-tree (assoc resources path (yaml/generate-string native)))}
+                             :current "v0")
+                  result    (import-at! src "v0" :force? true)]
+              (is (= :success (:status result)) (:message result))
+              (mt/with-temp [:model/PermissionsGroup group {}]
+                (let [app (t2/select-one :model/DataApp :name "shop")]
+                  (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+                  (group-access/add-groups! app [(:id group)])
+                  (deps.test/synchronously-run-backfill!)
+                  (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)} {:id (mt/id :venues)}]}]
+                          (group-access/permission-warnings app))))))))))))
 
 (deftest an-apps-collection-is-read-only-test
   (testing "an admin can't write an app's collection, its cards or its actions, whatever the sync mode"
