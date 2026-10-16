@@ -6,4 +6,5 @@
    [metabase.sql-tools.macaw.core]
    [metabase.sql-tools.metrics]
    [metabase.sql-tools.settings]
+   [metabase.sql-tools.sqlglot-java.core]
    [metabase.sql-tools.sqlglot.core]))

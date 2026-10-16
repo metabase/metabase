@@ -2748,8 +2748,8 @@
   sql-tools.parsing
   {:team "DevEx"
    :ns-prefix "metabase.sql-parsing"
-   :api #{metabase.sql-parsing.core}
-   :uses #{analytics.interface util}}
+   :api #{metabase.sql-parsing.core metabase.sql-parsing.parser}
+   :uses #{analytics.interface sql-tools util}}
 
   sso
   {:team "UX West"

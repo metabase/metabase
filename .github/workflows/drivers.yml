@@ -816,6 +816,54 @@ jobs:
           upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
           logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
+  # The SQL parsing tests, and the features built on them, on the Java port of sqlglot. Postgres is
+  # the app DB and the warehouse, so impersonation runs for real. Not in `drivers-tests-result`
+  # until the port passes them.
+  be-tests-postgres-sqlglot-java:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 50
+    name: "Postgres sqlglot-java Parser Tests"
+    env:
+      CI: 'true'
+      DRIVERS: postgres
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
+      MB_SQL_TOOLS_PARSER_BACKEND: sqlglot-java
+    services:
+      postgres:
+        image: postgres:latest
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test Postgres sqlglot-java Parser Tests
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-postgres-sqlglot-java-ee'
+          artifact-suffix: postgres-sqlglot-java
+          test-args: >-
+            :only '["test/metabase/sql_tools"
+                    "test/metabase/sql_parsing"
+                    "test/metabase/source_swap"
+                    "enterprise/backend/test/metabase_enterprise/impersonation"
+                    "enterprise/backend/test/metabase_enterprise/dependencies"
+                    "enterprise/backend/test/metabase_enterprise/transform_testing"
+                    "enterprise/backend/test/metabase_enterprise/transforms_inspector"
+                    metabase.driver.postgres-test
+                    metabase.driver.sql.normalize-test
+                    metabase.metabot.tools.sql.validation-test]'
+            :exclude-tags '[:mb/old-migrations-test :mb/transforms-python-test]'
+
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' }}
