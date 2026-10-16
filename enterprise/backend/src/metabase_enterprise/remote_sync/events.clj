@@ -19,6 +19,7 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
@@ -136,6 +137,91 @@
       (remote-sync.db/delete-rsos-of-models! "Collection" coll-ids))
     (when (seq action-ids)
       (remote-sync.db/delete-rsos-of-models! "Action" action-ids))))
+
+(defn- transforms-folder-ids
+  "The IDs of the transforms-namespace Collections."
+  []
+  (remote-sync.db/collection-ids-in-namespace (name collections/transforms-ns)))
+
+(defn- transforms-rsos
+  "The RemoteSyncObjects of transforms content: every model that syncs with transforms, and the transforms folders."
+  []
+  (concat (remote-sync.db/rsos-of-types (vec (spec/models-for-setting :remote-sync-transforms)))
+          (when-let [folder-ids (seq (transforms-folder-ids))]
+            (remote-sync.db/rsos-of-models "Collection" (vec folder-ids)))))
+
+(defn- untracked-transforms-rows
+  "A 'create' ledger row for each piece of transforms content that has none, leaving out what isn't exported, like
+  built-in tags and the default Python library."
+  [timestamp]
+  (concat
+   (for [model-type (sort (spec/models-for-setting :remote-sync-transforms))
+         :let       [model-spec (spec/spec-for-model-type model-type)
+                     tracked    (remote-sync.db/tracked-model-ids model-type)]
+         instance   (remote-sync.db/instances-where (:model-key model-spec) (spec/export-conditions model-spec))
+         :when      (not (contains? tracked (:id instance)))]
+     (merge {:model_type        model-type
+             :model_id          (:id instance)
+             :status            "create"
+             :status_changed_at timestamp}
+            (spec/build-sync-object-fields model-spec instance)))
+   (let [tracked (remote-sync.db/tracked-model-ids "Collection")]
+     (for [folder (remote-sync.db/collections-with-names-in-namespace (name collections/transforms-ns))
+           :when  (not (contains? tracked (:id folder)))]
+       {:model_type        "Collection"
+        :model_id          (:id folder)
+        :model_name        (:name folder)
+        :status            "create"
+        :status_changed_at timestamp}))))
+
+(defn enable-transforms-tracking!
+  "Tracks the transforms content: a pending removal becomes an update again, and content without a row gets a 'create'
+  row."
+  []
+  (let [timestamp (t/offset-date-time)
+        removed   (filterv #(= "removed" (:status %)) (transforms-rsos))
+        rows      (vec (untracked-transforms-rows timestamp))]
+    (when (seq removed)
+      (remote-sync.db/set-rsos-status! (mapv :id removed) "update" timestamp))
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))))
+
+(defn disable-transforms-tracking!
+  "Stops tracking the transforms content: rows never pushed are dropped, and pushed ones become 'removed', so the next
+  push deletes their files while the content stays."
+  []
+  (let [timestamp (t/offset-date-time)
+        rsos      (transforms-rsos)
+        created   (filterv #(= "create" (:status %)) rsos)
+        pushed    (filterv #(#{"synced" "update"} (:status %)) rsos)]
+    (when (seq created)
+      (remote-sync.db/delete-rsos! (mapv :id created)))
+    (when (seq pushed)
+      (remote-sync.db/set-rsos-status! (mapv :id pushed) "removed" timestamp))))
+
+(def ^:private legacy-transforms-root-id
+  "The model_id of the Collection RemoteSyncObject that stood for all of transforms before they were tracked per row."
+  -1)
+
+(defn convert-legacy-transforms-root!
+  "Replaces the legacy Transforms root RemoteSyncObject with per-row tracking: a pending 'create' or 'update' tracks the
+  transforms content, a pending 'delete' marks it removed, and the root row goes."
+  []
+  (when-let [{:keys [status]} (remote-sync.db/rso "Collection" legacy-transforms-root-id)]
+    (case status
+      ("create" "update") (enable-transforms-tracking!)
+      "delete"            (disable-transforms-tracking!)
+      nil)
+    (remote-sync.db/delete-rso-of! "Collection" legacy-transforms-root-id)))
+
+(defn sync-transforms-tracking!
+  "Brings the transforms tracking in line with [[settings/remote-sync-transforms]] on a read-write instance, which is
+  the only kind that publishes."
+  []
+  (when (= :read-write (settings/remote-sync-type))
+    (if (settings/remote-sync-transforms)
+      (enable-transforms-tracking!)
+      (disable-transforms-tracking!))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 

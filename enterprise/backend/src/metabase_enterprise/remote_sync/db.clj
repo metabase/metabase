@@ -31,9 +31,8 @@
    [:removal-conditions    Conditions]])
 
 (def ^:private ModelId
-  "A `:model_id`: the primary key of the referenced entity, or the `-1` sentinel
-  (`metabase-enterprise.remote-sync.settings/transforms-root-id`) standing in for the virtual Transforms root
-  Collection."
+  "A `:model_id`: the primary key of the referenced entity, or `-1` for the legacy Transforms root Collection row that
+  startup converts."
   [:maybe [:or ms/PositiveInt [:= -1]]])
 
 (mu/defn eligible-children
@@ -567,22 +566,31 @@
   (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
 
 (mu/defn dirty-rso-exists?
-  "Whether a RemoteSyncObject of a model type other than `excluded-model-types` is not synced."
+  "Whether a RemoteSyncObject is not synced, counting those of `excluded-model-types` only for a pending removal."
   [excluded-model-types :- [:set :string]]
   (t2/exists? :model/RemoteSyncObject
               {:where [:and
                        [:not= :status "synced"]
                        (when (seq excluded-model-types)
-                         [:not-in :model_type excluded-model-types])]}))
+                         [:or
+                          [:not-in :model_type excluded-model-types]
+                          [:in :status ["removed" "delete"]]])]}))
 
 (mu/defn dirty-rsos
-  "The RemoteSyncObjects of model types other than `excluded-model-types` that are not synced."
+  "The RemoteSyncObjects that are not synced, including those of `excluded-model-types` only for a pending removal."
   [excluded-model-types :- [:set :string]]
   (t2/select :model/RemoteSyncObject
              {:where [:and
                       [:not= :status "synced"]
                       (when (seq excluded-model-types)
-                        [:not-in :model_type excluded-model-types])]}))
+                        [:or
+                         [:not-in :model_type excluded-model-types]
+                         [:in :status ["removed" "delete"]]])]}))
+
+(mu/defn rsos-of-types
+  "The RemoteSyncObjects of `model-types`."
+  [model-types :- [:sequential :string]]
+  (t2/select :model/RemoteSyncObject :model_type [:in model-types]))
 
 (mu/defn tracked-model-ids
   "The model IDs of the RemoteSyncObjects of `model-type`."
@@ -689,31 +697,6 @@
   "Delete the RemoteSyncObjects with `rso-ids`."
   [rso-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/RemoteSyncObject :id [:in rso-ids]))
-
-(def ^:private transforms-model-types
-  "The model types that sync as transforms, other than transforms Collections."
-  ["Transform" "TransformTag" "TransformTest" "PythonLibrary"])
-
-(mu/defn transforms-tracked? :- :boolean
-  "Whether any Transform, TransformTag, TransformTest, or PythonLibrary has a RemoteSyncObject."
-  []
-  (t2/exists? :model/RemoteSyncObject :model_type [:in transforms-model-types]))
-
-(mu/defn transforms-content-exists? :- :boolean
-  "Whether any transforms content exists to publish: a Transform, TransformTest, transforms Collection, TransformTag
-  that isn't built in, or PythonLibrary that isn't the default one."
-  []
-  (boolean
-   (or (t2/exists? :model/Transform)
-       (t2/exists? :model/TransformTest)
-       (t2/exists? :model/Collection :namespace "transforms")
-       (t2/exists? :model/TransformTag :built_in_type nil)
-       (t2/exists? :model/PythonLibrary :is_default false))))
-
-(mu/defn delete-transforms-rsos!
-  "Delete the RemoteSyncObjects of every Transform, TransformTag, TransformTest, and PythonLibrary."
-  []
-  (t2/delete! :model/RemoteSyncObject :model_type [:in transforms-model-types]))
 
 (mu/defn delete-rso-of!
   "Delete the RemoteSyncObject of the entity `model-type` `model-id`."

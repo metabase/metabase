@@ -73,8 +73,8 @@
                        :statuses   - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
                        :scope-key  - Optional key for scoping deletions (e.g., :collection_id, :id).
                                      If nil, deletions are global (by entity_id only).
-                       :all-on-setting-disable - Optional setting keyword; when this setting's sentinel
-                                     RSO exists with 'delete' status, remove ALL entities of this type
+                       :all-on-setting-disable - Optional setting keyword; the model syncs all or nothing with
+                                     this setting, so an import that drops it is checked for unsynced local work
    - :resources?     - Optional. True when the model's YAML files carry resource files (see
                        `metabase.models.serialization/resource-paths`), whose changes only a full import or export
                        handles.

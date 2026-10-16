@@ -3,7 +3,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.2026-10-16T12:00:00
+      id: v65.pyld7a
       author: ranquild
       comment: Add is_default to python_library
       changes:
@@ -23,7 +23,7 @@ databaseChangeLog:
             columnName: is_default
 
   - changeSet:
-      id: v65.2026-10-16T12:00:01
+      id: v65.pyld7b
       author: ranquild
       comment: Mark the Python libraries with an empty source as the default ones
       changes:

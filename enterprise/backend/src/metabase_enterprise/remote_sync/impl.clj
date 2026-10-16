@@ -14,6 +14,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -33,9 +34,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- snapshot-has-transforms?
-  "Checks if the snapshot contains any Transform, PythonLibrary entities,
-   non-built-in TransformTags, or transforms-namespace collections.
-   Used to auto-enable/disable remote-sync-transforms setting during import.
+  "Checks if the snapshot contains any Transform, PythonLibrary entities other than the built-in one with its default
+   empty source, non-built-in TransformTags, or transforms-namespace collections.
+   Used to auto-enable remote-sync-transforms setting during import.
 
    Uses the ingestable to list all entities and checks their :model metadata,
    then also checks if any Collection entities have namespace=transforms.
@@ -43,7 +44,12 @@
   [ingestable]
   (let [serdes-paths (serialization/ingest-list ingestable)
         models-present (spec/models-in-import serdes-paths)]
-    (or (some spec/transform-models models-present)
+    (or (some (disj spec/transform-models "PythonLibrary") models-present)
+        (some (fn [path]
+                (when (= "PythonLibrary" (:model (last path)))
+                  (or (not= transforms-python/builtin-entity-id (:id (last path)))
+                      (not (str/blank? (:source (serialization/ingest-one ingestable path)))))))
+              serdes-paths)
         ;; Check for non-built-in TransformTags
         (when (contains? models-present "TransformTag")
           (some (fn [path]
@@ -425,10 +431,6 @@
         (collection/ensure-library-dashboards-collection!)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
-    (when (and (not has-transforms?)
-               (settings/remote-sync-transforms))
-      (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
-      (settings/remote-sync-transforms! false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
     (try

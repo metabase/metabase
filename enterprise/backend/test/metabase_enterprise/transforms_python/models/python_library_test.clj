@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -74,3 +75,13 @@
       (is (=? {:source "def test(): pass"
                :path "common.py"}
               (python-library/get-python-library-by-path "common"))))))
+
+(deftest is-default-cleared-by-a-source-change-test
+  (testing "Saving the default library with its source unchanged keeps it the default one"
+    (t2/delete! :model/PythonLibrary)
+    (t2/insert! :model/PythonLibrary {:path "common.py" :source "" :entity_id (u/generate-nano-id) :is_default true})
+    (python-library/update-python-library-source! "common" "")
+    (is (true? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py"))))
+  (testing "while changing its source makes it no longer the default one"
+    (python-library/update-python-library-source! "common" "def f(): pass")
+    (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py")))))
