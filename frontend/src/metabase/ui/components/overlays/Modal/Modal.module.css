@@ -97,7 +97,7 @@
     padding-inline: var(--mantine-spacing-xxl);
     padding-block: rem(64px);
     text-align: center;
-    text-wrap: balance;
+    text-wrap: pretty;
   }
 
   .footer {
