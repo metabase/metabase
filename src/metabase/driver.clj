@@ -1567,10 +1567,19 @@
    {:closed true}
    [:transform :metabase.lib.schema.id/transform]])
 
+(mr/def ::native-query-deps.unresolved-table-dep
+  [:map
+   {:closed true}
+   [:unresolved-table [:map
+                       {:closed true}
+                       [:schema {:optional true} :string]
+                       [:table :string]]]])
+
 (mr/def ::native-query-deps
   [:set [:or
          ::native-query-deps.table-dep
-         ::native-query-deps.transform-dep]])
+         ::native-query-deps.transform-dep
+         ::native-query-deps.unresolved-table-dep]])
 
 (defmulti native-query-deps
   "Gets the table dependencies of a given sql string (or equivalent).
@@ -1579,6 +1588,9 @@
 
   `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use [[metabase.driver-api.core/raw-native-query]]
   to get the raw native query as needed.
+
+  A table the query names that matches no synced table or transform target can be returned as
+  `{:unresolved-table {:schema ... :table ...}}`, so dependency tracking can recompute the query once sync finds it.
 
   The return value should match the `:metabase.driver/native-query-deps` schema."
   {:added "0.57.0" :arglists '([driver query])}
