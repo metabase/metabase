@@ -419,6 +419,31 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select :model/Collection :id [:in collection-ids]))
 
+(mu/defn content-in-collections-exists? :- :boolean
+  "Whether a card, dashboard, document, timeline or published table is in one of the Collections with
+  `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (boolean (or (t2/exists? :model/Card :collection_id [:in collection-ids])
+               (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
+               (t2/exists? :model/Document :collection_id [:in collection-ids])
+               (t2/exists? :model/Timeline :collection_id [:in collection-ids])
+               (t2/exists? :model/Table :collection_id [:in collection-ids] :is_published true))))
+
+(mu/defn snippets-exist? :- :boolean
+  "Whether any NativeQuerySnippet exists."
+  []
+  (t2/exists? :model/NativeQuerySnippet))
+
+(mu/defn glossary-entries-exist? :- :boolean
+  "Whether any Glossary entry exists."
+  []
+  (t2/exists? :model/Glossary))
+
+(mu/defn data-actions-exist? :- :boolean
+  "Whether any Action on no model exists."
+  []
+  (t2/exists? :model/Action :model_id nil))
+
 (mu/defn collections-by-id
   "A map of ID to the ID, name, location, and personal owner of the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]

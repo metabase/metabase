@@ -210,6 +210,31 @@
       (when-not (:is_remote_synced library)
         (remote-sync.db/mark-subtree-remote-synced! [library])))))
 
+(defn- unsynced-library-content?
+  "Whether the instance's Library is not remote-synced and holds content of its own: a collection beyond its system
+  collections, an item in it, or the snippets, glossary entries and data actions that sync with the Library."
+  []
+  (when-let [library (remote-sync.db/library-collection collection/library-collection-type)]
+    (and (not (:is_remote_synced library))
+         (let [collection-ids (vec (remote-sync.db/subtree-collection-ids [library]))]
+           (boolean (or (some (complement collection/library-root-collection?)
+                              (remote-sync.db/collections collection-ids))
+                        (remote-sync.db/content-in-collections-exists? collection-ids)
+                        (remote-sync.db/snippets-exist?)
+                        (remote-sync.db/glossary-entries-exist?)
+                        (remote-sync.db/data-actions-exist?)))))))
+
+(defn- library-sync-conflict
+  "In a layout that gives the Library no files, the Library conflict of a pull of `snapshot` that would turn Library
+  sync on while the instance holds Library content of its own, which the pull would then delete; else nil."
+  [snapshot]
+  (when (and (remote-sync.layout/library-without-files?)
+             (repo-library-content? snapshot)
+             (unsynced-library-content?))
+    {:type     :library-conflict
+     :category "Library"
+     :message  "Import contains Library content but local instance has an unsynced Library with content of its own"}))
+
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
    - :first-import-conflicts - feature/namespace/library conflicts that only block on the very first import
@@ -775,7 +800,12 @@
                                      (into (:first-import-conflicts @conflicts))
 
                                      (not force-deletion?)
-                                     (into (:deletion-conflicts @conflicts)))))
+                                     (into (:deletion-conflicts @conflicts))
+
+                                     ;; turning Library sync on deletes the instance's own Library content on any
+                                     ;; full pull, not only the first
+                                     (not force-deletion?)
+                                     (into (keep identity [(library-sync-conflict snapshot)])))))
             incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))
             dirty?             (delay (remote-sync.object/dirty?))
             result

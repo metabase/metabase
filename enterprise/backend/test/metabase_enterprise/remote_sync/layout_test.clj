@@ -381,6 +381,20 @@
          (is (= before (library-root-ids)))
          (is (t2/exists? :model/Card :id card-id :archived false)))))))
 
+(deftest kind-layout-pull-that-syncs-the-library-reports-local-library-content-test
+  (testing "a pull that would turn Library sync on, into an instance with its own Library content, is a Library conflict"
+    (export-library-metric!
+     (fn [mock _card-id]
+       (rs.test/set-library-remote-synced! false)
+       (t2/delete! :model/RemoteSyncObject)
+       (let [metrics-id (t2/select-one-pk :model/Collection :entity_id "librarylibrarymetrics")]
+         (mt/with-temp [:model/Card {local-id :id} {:name "Local" :type :metric :collection_id metrics-id}]
+           (let [result (impl/import! (source.p/snapshot mock) (new-task!))]
+             (is (=? {:status :conflict :conflicts #{"Library"}} result))
+             (is (t2/exists? :model/Card :id local-id))
+             (is (false? (t2/select-one-fn :is_remote_synced :model/Collection
+                                           :entity_id collection/library-entity-id))))))))))
+
 (deftest kind-layout-pull-turns-library-sync-on-test
   (testing "a pull of a kind-layout repo that holds Library content turns Library sync on"
     (export-library-metric!
