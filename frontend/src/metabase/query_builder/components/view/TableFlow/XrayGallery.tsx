@@ -15,6 +15,7 @@ import {
   useGetXrayDashboardQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { isEditablePasteTarget } from "metabase/common/utils/chart-clipboard";
 import { Box, Repeat, Skeleton, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { Card, ConcreteTableId, RawSeries } from "metabase-types/api";
@@ -103,6 +104,20 @@ export function XrayGallery({
     stripRef,
     itemCount,
   );
+  // the raw records card is index 0; charts follow at their 1-based positions
+  const selectedIndex = selectedPosition ?? 0;
+  useArrowKeySelection({
+    selectedIndex,
+    itemCount,
+    onSelectIndex: (index) => onSelectPosition(index === 0 ? null : index),
+  });
+
+  useEffect(() => {
+    stripRef.current?.children[selectedIndex]?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [selectedIndex, itemCount]);
 
   return (
     <div className={S.gallery} data-testid="xray-gallery">
@@ -143,6 +158,47 @@ export function XrayGallery({
       )}
     </div>
   );
+}
+
+type ArrowKeySelectionOptions = {
+  selectedIndex: number;
+  itemCount: number;
+  onSelectIndex: (index: number) => void;
+};
+
+/** Moves the selection with the left and right arrow keys, except while typing. */
+function useArrowKeySelection({
+  selectedIndex,
+  itemCount,
+  onSelectIndex,
+}: ArrowKeySelectionOptions) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const step =
+        event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+      if (
+        step === 0 ||
+        event.defaultPrevented ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.shiftKey ||
+        isEditablePasteTarget(event.target)
+      ) {
+        return;
+      }
+      const nextIndex = Math.min(
+        itemCount - 1,
+        Math.max(0, selectedIndex + step),
+      );
+      if (nextIndex !== selectedIndex) {
+        event.preventDefault();
+        onSelectIndex(nextIndex);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedIndex, itemCount, onSelectIndex]);
 }
 
 type StripPages = {

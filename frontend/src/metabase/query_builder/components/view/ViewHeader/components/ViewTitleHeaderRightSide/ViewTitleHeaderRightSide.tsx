@@ -150,6 +150,14 @@ export function ViewTitleHeaderRightSide({
     [isRunning, isShowingNotebook, hasRunButton],
   );
 
+  useRegisterShortcut(
+    hasGalleryButton
+      ? [{ id: "query-builder-toggle-explore", perform: onToggleGallery }]
+      : [],
+    // the toggle closes over the open state, so it re-registers with it
+    [hasGalleryButton, isGalleryOpen],
+  );
+
   return (
     <Flex
       className={ViewTitleHeaderS.ViewHeaderActionPanel}

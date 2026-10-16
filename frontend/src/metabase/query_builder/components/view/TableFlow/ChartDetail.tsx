@@ -104,8 +104,15 @@ export function ChartDetail({
           style={{ height: tableHeight }}
         >
           <Flex className={S.tableHeader} gap="sm" align="center">
+            {search && (
+              <TableSearch
+                searchText={search.text}
+                onSearchTextChange={search.onChange}
+                isCollapsed={hasFilters}
+              />
+            )}
             {hasFilters && (
-              <Box flex={1} miw={0}>
+              <Box className={S.filterPills}>
                 <XrayFilterPills
                   query={question.query()}
                   onChange={(query) =>
@@ -114,29 +121,22 @@ export function ChartDetail({
                 />
               </Box>
             )}
-            {search ? (
-              <TableSearch
-                searchText={search.text}
-                onSearchTextChange={search.onChange}
-                isCollapsed={hasFilters}
+            <Flex className={S.tableActions} gap="sm">
+              <PanelToggleButton
+                label={t`Filter`}
+                icon="filter"
+                colorVar="--mb-color-core-filter"
+                isActive={sidePanel === "filter"}
+                onClick={() => togglePanel("filter")}
               />
-            ) : (
-              !hasFilters && <Box flex={1} />
-            )}
-            <PanelToggleButton
-              label={t`Filter`}
-              icon="filter"
-              colorVar="--mb-color-core-filter"
-              isActive={sidePanel === "filter"}
-              onClick={() => togglePanel("filter")}
-            />
-            <PanelToggleButton
-              label={t`Summarize`}
-              icon="sum"
-              colorVar="--mb-color-core-summarize"
-              isActive={sidePanel === "summarize"}
-              onClick={() => togglePanel("summarize")}
-            />
+              <PanelToggleButton
+                label={t`Summarize`}
+                icon="sum"
+                colorVar="--mb-color-core-summarize"
+                isActive={sidePanel === "summarize"}
+                onClick={() => togglePanel("summarize")}
+              />
+            </Flex>
           </Flex>
           <div className={S.tableArea}>{table}</div>
         </div>

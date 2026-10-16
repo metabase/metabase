@@ -14,13 +14,37 @@
   border-radius: var(--mantine-radius-md);
 }
 
+/*
+ * The search animates between its icon and the free width of the row. Only it ever grows,
+ * so animating its flex-grow from 0 to 1 slides it smoothly across the free space.
+ */
 .searchField {
-  flex: 1;
+  flex: 1 1 0%;
+  min-width: 12rem;
+  overflow: hidden;
+  transition:
+    flex-grow 250ms ease,
+    min-width 250ms ease;
+
+  &[data-open="false"] {
+    flex-grow: 0;
+    min-width: 2.25rem;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.filterPills {
+  flex: 0 1 auto;
   min-width: 0;
 }
 
-.searchFieldCompact {
-  flex: 0 0 14rem;
+.tableActions {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .searchInput {
