@@ -390,7 +390,7 @@
     (into (set (for [[model-type entity-type] spec/ai-context-entity-types
                      :let  [eids (seq (map (comp :id last) (get by-model model-type)))]
                      :when eids
-                     {:keys [id]} (remote-sync.db/ids-by-entity-ids (keyword "model" model-type) (vec eids))]
+                     id (remote-sync.db/ids-by-entity-ids (keyword "model" model-type) (set eids))]
                  [entity-type id]))
           (when (seq tables)
             (let [refs     (into #{} (map serdes/table-path->table-ref) tables)
@@ -413,7 +413,10 @@
                        (for [[entity-type type-rows] (group-by :entity_type rows)
                              :let  [model-key (spec/ai-context-parent-models entity-type)]
                              :when model-key
-                             item  (remote-sync.db/instances-by-ids model-key (vec (map :entity_local_id type-rows)))]
+                             :let  [ids (vec (map :entity_local_id type-rows))]
+                             item  (if (= :model/Table model-key)
+                                     (remote-sync.db/tables-by-ids ids)
+                                     (remote-sync.db/instances-by-ids model-key ids))]
                          [[entity-type (:id item)] item]))
         model-of (into {} (map (fn [[model-type entity-type]] [entity-type model-type])) spec/ai-context-entity-types)
         synced-collections (let [ids (into [] (keep (fn [[[entity-type _] item]]

@@ -427,7 +427,10 @@
                (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
                (t2/exists? :model/Document :collection_id [:in collection-ids])
                (t2/exists? :model/Timeline :collection_id [:in collection-ids])
-               (t2/exists? :model/Table :collection_id [:in collection-ids] :is_published true))))
+               (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                         :where [:and
+                                                 [:in :collection_id collection-ids]
+                                                 [:= :is_published true]]}))))
 
 (mu/defn snippets-exist? :- :boolean
   "Whether any NativeQuerySnippet exists."
@@ -459,22 +462,25 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
 
-(mu/defn ids-by-entity-ids
-  "The `:id` and `:entity_id` of the instances of `model-key` with `entity-ids`."
-  [model-key  :- :keyword
-   entity-ids :- [:sequential :string]]
-  (t2/select [model-key :id :entity_id] :entity_id [:in entity-ids]))
-
 (mu/defn instances-by-ids
-  "The instances of `model-key` with `ids`."
-  [model-key :- :keyword
+  "The instances of `model-key` (not Table, see [[tables-by-ids]]) with `ids`."
+  [model-key :- [:and :keyword [:not= :model/Table]]
    ids       :- [:sequential pos-int?]]
   (t2/select model-key :id [:in ids]))
+
+(mu/defn tables-by-ids
+  "The `:id`, `:is_published` and `:collection_id` of the Tables with `ids`."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/Table :id :is_published :collection_id]
+             {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
+              :where [:in :id ids]}))
 
 (mu/defn tables-named
   "The `:id`, `:name`, `:schema` and `:db_id` of the Tables named one of `table-names`."
   [table-names :- [:sequential :string]]
-  (t2/select [:model/Table :id :name :schema :db_id] :name [:in table-names]))
+  (t2/select [:model/Table :id :name :schema :db_id]
+             {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
+              :where [:in :name table-names]}))
 
 (mu/defn databases-named
   "The `:id` and `:name` of the Databases named one of `database-names`."

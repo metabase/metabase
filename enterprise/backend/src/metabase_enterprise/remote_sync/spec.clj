@@ -862,6 +862,9 @@
         (not (in-excluded-collection? spec object))
         (check-eligibility-by-type spec object))))
 
+;; An event handler gets no arguments from the pull that loads, through serdes, the rows whose hooks publish it; a
+;; binding is the only path from the pull to the handler.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *loading-from-repo?*
   "True while a pull loads the repository's content, which the pull then records as synced; a change it makes is not a
   local change to push."

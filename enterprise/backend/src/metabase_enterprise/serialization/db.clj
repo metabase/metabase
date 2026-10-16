@@ -141,7 +141,9 @@
 (mu/defn tables-by-id
   "The `:id`, `:name`, `:schema` and `:db_id` of the Tables with `table-ids`."
   [table-ids :- [:sequential pos-int?]]
-  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids]))
+  (t2/select [:model/Table :id :name :schema :db_id]
+             {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
+              :where [:in :id table-ids]}))
 
 (mu/defn layout-glossary
   "The `:entity_id`, `:term` and `:created_at` of every Glossary entry."
