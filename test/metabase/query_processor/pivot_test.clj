@@ -7,6 +7,8 @@
    [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -225,6 +227,39 @@
                     :error_type :invalid-query
                     :json_query map?}
                    (qp.pivot/run-pivot-query userland-query)))))))))
+
+(deftest ^:mb/driver-tests pivot-returns-every-rollup-bitmask-test
+  (testing "every pivot flow emits rows for every grouping-combo bitmask"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      (mt/dataset test-data
+        (let [mp      (mt/metadata-provider)
+              base    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id)))
+                          (lib/breakout (lib.metadata/field mp (mt/id :orders :user_id)))
+                          (lib/aggregate (lib/count)))
+              uuids   (mapv lib.options/uuid (lib/breakouts base))
+              query   (lib.pivot/with-pivot base
+                        {:rows               [(uuids 0)]
+                         :columns            [(uuids 1)]
+                         :show-row-totals    true
+                         :show-column-totals true})
+              native? (driver.u/supports? driver/*driver* :native-pivot-tables (mt/db))
+              sql?    (isa? driver/hierarchy driver/*driver* :sql)
+              ;; `use-native-pivot-tables` picks the primary runner between `run-pivot-query-multi`
+              ;; (false) and `run-sql-pivot-query` (true). `:qp.pivot/forced-shape` picks which
+              ;; sub-shape `run-sql-pivot-query` compiles.
+              flows   (cond-> [{:flow :multi-query, :setting false, :shape nil}]
+                        sql?    (conj {:flow :union-all,          :setting true,  :shape :union-all})
+                        native? (conj {:flow :native-pivot-query, :setting true,  :shape :native-pivot-query}))]
+          (doseq [{:keys [flow setting shape]} flows]
+            (testing (str "flow = " flow)
+              (let [forced (cond-> query
+                             shape (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape shape))]
+                (mt/with-temporary-setting-values [use-native-pivot-tables setting]
+                  (qp.pivot.test-util/without-pivot-parity-check
+                   (let [rows     (mt/rows (qp.pivot/run-pivot-query forced))
+                         bitmasks (into (sorted-set) (map #(nth % 2)) rows)]
+                     (is (= #{0 1 2 3} bitmasks)))))))))))))
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
