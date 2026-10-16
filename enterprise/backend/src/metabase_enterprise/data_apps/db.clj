@@ -41,31 +41,6 @@
              (cond-> {:order-by [[:display_name :asc]]}
                available? (assoc :where [:= :enabled true]))))
 
-(defn- read-scope-clause
-  [scope]
-  (if (= scope :all)
-    [:= 1 1]
-    [:in :id ^:allow-subquery
-     {:select [:assignment.data_app_id]
-      :from [[:data_app_group_assignment :assignment]]
-      :join [[:permissions_group_membership :pgm] [:= :pgm.group_id :assignment.permission_group_id]
-             [:core_user :u] [:= :u.id :pgm.user_id]]
-      :where [:and [:= :u.id (:user-id scope)] [:= :u.tenant_id nil]]}]))
-
-(mu/defn non-blob-data-apps
-  "DataApps in the read scope without bundles, ordered by display name. Optionally restrict to enabled apps."
-  [scope :- [:or [:= :all] [:map {:closed true} [:user-id ms/PositiveInt]]]
-   available? :- [:maybe :boolean]]
-  (t2/select non-blob-model
-             {:order-by [[:display_name :asc]]
-              :where (cond-> [:and (read-scope-clause scope)]
-                       available? (conj [:= :enabled true]))}))
-
-(defn readable-data-app?
-  "Whether the app exists in the read scope."
-  [scope app-id]
-  (t2/exists? :model/DataApp :id app-id {:where (read-scope-clause scope)}))
-
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
@@ -257,33 +232,23 @@
   (t2/insert! :model/DataAppGroupAssignment
               (mapv (fn [group-id] {:data_app_id app-id :permission_group_id group-id}) group-ids)))
 
-(defn delete-assignment!
-  "Remove one group assignment."
-  [app-id group-id]
-  (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id group-id))
+(defn delete-assignments!
+  "Remove the requested group assignments from an app."
+  [app-id group-ids]
+  (if (seq group-ids)
+    (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id [:in group-ids])
+    0))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."
   [group-ids database-ids table-ids]
-  (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
-             :group_id [:in group-ids]
-             :db_id [:in database-ids]
-             :perm_type :perms/view-data
-             {:where [:or [:in :table_id table-ids] [:= :table_id nil]]}))
-
-(defn table-details
-  "Names and database details for the active tables in `table-ids`."
-  [table-ids]
-  (t2/select :model/Table
-             {:select [:t.id
-                       [:t.display_name :name]
-                       :t.schema
-                       [:t.db_id :database_id]
-                       [:d.name :database_name]]
-              :from [(warehouse-schema-overlay/table-query {:alias :t})]
-              :join [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-              :where [:and [:in :t.id table-ids] [:= :t.active true]]
-              :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]}))
+  (if (and (seq group-ids) (seq database-ids) (seq table-ids))
+    (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
+               :group_id [:in group-ids]
+               :db_id [:in database-ids]
+               :perm_type :perms/view-data
+               {:where [:or [:in :table_id table-ids] [:= :table_id nil]]})
+    []))
 
 (mu/defn metric-cards-in-collections
   "The non-archived metric Cards in `collection-ids`, in name then id order."
