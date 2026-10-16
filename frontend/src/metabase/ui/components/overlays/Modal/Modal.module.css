@@ -89,7 +89,7 @@
     background-color: transparent;
 
     .ModalCloseButton {
-      margin-top: var(--mb-padding, var(--mantine-spacing-md));
+      margin-top: var(--mantine-spacing-xl);
     }
   }
 
