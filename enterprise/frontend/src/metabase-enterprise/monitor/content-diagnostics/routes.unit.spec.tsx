@@ -224,46 +224,38 @@ describe("content diagnostics section counts", () => {
     fetchMock.modifyRoute("content-counts", {
       response: () => pendingCounts.promise,
     });
-    try {
-      await userEvent.click(screen.getByLabelText("Select all"));
-      await userEvent.click(
-        screen.getByRole("button", { name: "Dismiss finding" }),
-      );
-      await userEvent.click(
-        within(await screen.findByRole("dialog")).getByRole("button", {
-          name: "Dismiss finding",
-        }),
-      );
-      await waitFor(() => expect(getCountCalls()).toHaveLength(2));
-      const calls = fetchMock.callHistory.calls(
-        "path:/api/ee/content-diagnostics/invalidate",
-      );
-      expect(calls).toHaveLength(1);
-      const body: unknown = await calls[0].request?.json();
-      expect(body).toEqual({ ids: [1] });
-      await switchTab("Duplicated", "No duplicated content found");
-      expect(within(getTab("Stale")).getByText("137")).toBeVisible();
-      await act(async () => pendingCounts.resolve({ ...COUNTS, stale: 136 }));
-      expect(await within(getTab("Stale")).findByText("136")).toBeVisible();
-      expect(getCountCalls()).toHaveLength(2);
-    } finally {
-      pendingCounts.resolve(COUNTS);
-    }
+    await userEvent.click(screen.getByLabelText("Select all"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Dismiss finding" }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Dismiss finding",
+      }),
+    );
+    await waitFor(() => expect(getCountCalls()).toHaveLength(2));
+    const calls = fetchMock.callHistory.calls(
+      "path:/api/ee/content-diagnostics/invalidate",
+    );
+    expect(calls).toHaveLength(1);
+    const body: unknown = await calls[0].request?.json();
+    expect(body).toEqual({ ids: [1] });
+    await switchTab("Duplicated", "No duplicated content found");
+    expect(within(getTab("Stale")).getByText("137")).toBeVisible();
+    await act(async () => pendingCounts.resolve({ ...COUNTS, stale: 136 }));
+    expect(await within(getTab("Stale")).findByText("136")).toBeVisible();
+    expect(getCountCalls()).toHaveLength(2);
   });
 
   it("shares the pending count request without blocking tab navigation", async () => {
     const pendingCounts = defer<ContentDiagnosticsCountsResponse>();
     setup({ getCounts: () => pendingCounts.promise });
-    try {
-      expect(await screen.findByText("No stale content found")).toBeVisible();
-      await visitAllTabs();
-      expect(getCountCalls()).toHaveLength(1);
-      await act(async () => pendingCounts.resolve(COUNTS));
-      expect(await within(getTab("Stale")).findByText("137")).toBeVisible();
-      await switchTab("Duplicated", "No duplicated content found");
-      expect(getCountCalls()).toHaveLength(1);
-    } finally {
-      pendingCounts.resolve(COUNTS);
-    }
+    expect(await screen.findByText("No stale content found")).toBeVisible();
+    await visitAllTabs();
+    expect(getCountCalls()).toHaveLength(1);
+    await act(async () => pendingCounts.resolve(COUNTS));
+    expect(await within(getTab("Stale")).findByText("137")).toBeVisible();
+    await switchTab("Duplicated", "No duplicated content found");
+    expect(getCountCalls()).toHaveLength(1);
   });
 });
