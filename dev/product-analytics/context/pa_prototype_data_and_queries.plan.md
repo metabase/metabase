@@ -67,6 +67,7 @@ Design notes used to live in gitignored `/local`. They now live in this folder s
   - Promoted columns `plan String` and `amount Nullable(Float64)` from `event_data`. This sidesteps map access in MBQL (the demo's Project E).
   - `ORDER BY (person_id, created_at)`.
 - Connect it as a Metabase database with `mb` (engine `clickhouse`, host `localhost`, port `18123`, db `product_analytics`, user `default`). Optionally set the Event entity type on `pa_events_resolved`.
+- Added later: `sql/02_pa_identities.sql` copies Track's `pa_identities` DDL (one row per `identify()`, keyed by `(website_id, session_id)` where `session_id` is the identify id), and `sql/04_pa_identities_resolved.sql` builds one row per person with traits promoted to columns. The resolved events SQL moved to `03_`. In Metabase, `pa_events_resolved.person_id` is an FK to `pa_identities_resolved.person_id`; see the README.
 
 ## Part 2: Data generator
 
@@ -74,6 +75,7 @@ Design notes used to live in gitignored `/local`. They now live in this folder s
 - Deterministic: seeded random numbers, adapted from `src/util/seeded.ts` in `metabase/event-analytics-ui`.
 - Inserts `JSONEachRow` batches over ClickHouse HTTP.
 - Writes `ground-truth.json` with the configured rates.
+- Emits an `identify()` row per signup, trial start, checkout and cancellation, each with the full trait map (`email`, `name`, `company`, `role`, `plan`, `signed_up_at`).
 
 Scale and shape:
 - About 25k people over 120 days, roughly 2–3M events.

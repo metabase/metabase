@@ -2,11 +2,11 @@
   "seed": "pa-prototype-v1",
   "people": 25000,
   "days": 120,
-  "start": "2026-06-16T00:00:00.000Z",
-  "end": "2026-10-14T00:00:00.000Z",
+  "start": "2026-06-18T00:00:00.000Z",
+  "end": "2026-10-16T00:00:00.000Z",
   "incident": {
-    "start": "2026-09-08T00:00:00.000Z",
-    "end": "2026-09-15T00:00:00.000Z"
+    "start": "2026-09-10T00:00:00.000Z",
+    "end": "2026-09-17T00:00:00.000Z"
   },
   "counts": {
     "events": 1626506,
@@ -18,7 +18,8 @@
     "report_created": 95960,
     "subscription_cancelled": 89,
     "error": 8143,
-    "error_incident": 3171
+    "error_incident": 3171,
+    "identities": 28771
   },
   "funnel": {
     "pricing": 19505,
@@ -26,5 +27,6 @@
     "checkout_completed": 1436
   },
   "inviteWeek1": 2668,
-  "twoDevicePeople": 3672
+  "twoDevicePeople": 3672,
+  "identifiedPeople": 22123
 }

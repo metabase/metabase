@@ -24,6 +24,7 @@ type GroundTruth = {
   funnel: { pricing: number; trial_started: number; checkout_completed: number };
   counts: Record<string, number>;
   inviteWeek1: number;
+  identifiedPeople: number;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -51,6 +52,7 @@ const parseTruth = (raw: unknown): GroundTruth => {
       Object.entries(raw.counts).map(([key, value]) => [key, asNumber(value)]),
     ),
     inviteWeek1: asNumber(raw.inviteWeek1),
+    identifiedPeople: asNumber(raw.identifiedPeople),
   };
 };
 
@@ -118,6 +120,54 @@ const cohortColumns = (spec: AnalysisSpec): ProjectedColumn[] =>
       ? [{ as: "cohort_start", alias: "created_at" }]
       : [];
 
+/**
+ * The identities tables and their link to events: every identified person has
+ * exactly one resolved identity row, and every identity row points at a
+ * person who has events. This is the join Metabase's FK relies on.
+ */
+const checkIdentities = async (truth: GroundTruth) => {
+  console.log("\nidentities");
+  const [stats] = await chJson(`
+    SELECT
+      (SELECT count() FROM product_analytics.pa_identities) AS raw_rows,
+      (SELECT count() FROM product_analytics.pa_identities_resolved) AS resolved_rows,
+      (SELECT uniqExact(person_id) FROM product_analytics.pa_identities_resolved) AS resolved_people,
+      (SELECT uniqExact(distinct_id) FROM product_analytics.pa_events_resolved WHERE distinct_id IS NOT NULL) AS identified_in_events,
+      (SELECT count() FROM product_analytics.pa_identities_resolved AS i
+        LEFT ANTI JOIN (SELECT DISTINCT person_id FROM product_analytics.pa_events_resolved) AS e
+        ON e.person_id = i.person_id) AS orphan_identities,
+      (SELECT count() FROM product_analytics.pa_identities_resolved WHERE email = '' OR plan = '') AS missing_traits
+  `);
+  const rawRows = asNumber(stats?.raw_rows);
+  const resolvedRows = asNumber(stats?.resolved_rows);
+  const resolvedPeople = asNumber(stats?.resolved_people);
+  const identifiedInEvents = asNumber(stats?.identified_in_events);
+  const orphans = asNumber(stats?.orphan_identities);
+  const missingTraits = asNumber(stats?.missing_traits);
+  const expectedRaw = truth.counts.identities ?? 0;
+
+  // ClickHouse collapses ReplacingMergeTree duplicates inside one insert block
+  // (optimize_on_insert) and in background merges, so the raw row count is
+  // anywhere between people and identify() calls.
+  check(
+    "pa_identities holds between one row per person and one per identify()",
+    resolvedPeople <= rawRows && rawRows <= expectedRaw,
+    `got ${rawRows}, people ${resolvedPeople}, identify() calls ${expectedRaw}`,
+  );
+  check(
+    "pa_identities_resolved has one row per person",
+    resolvedRows === resolvedPeople && resolvedRows === truth.identifiedPeople,
+    `rows ${resolvedRows}, people ${resolvedPeople}, truth ${truth.identifiedPeople}`,
+  );
+  check(
+    "every identified person in events has an identity",
+    identifiedInEvents === resolvedPeople,
+    `events ${identifiedInEvents}, identities ${resolvedPeople}`,
+  );
+  check("no identity without events", orphans === 0, `${orphans} orphan rows`);
+  check("resolved traits are filled", missingTraits === 0, `${missingTraits} rows missing email or plan`);
+};
+
 const run = async (
   kind: AnalysisKind,
   truth: GroundTruth,
@@ -140,9 +190,10 @@ const run = async (
   console.log(`\n${label} (${rows.length} rows)`);
 
   if (kind === "funnel") {
+    // label is "1. Viewed pricing"
     const byStep = new Map<number, number>();
     for (const row of rows) {
-      byStep.set(asNumber(row.step), asNumber(row.people));
+      byStep.set(Number(String(row.label).split(".")[0]), asNumber(row.people));
     }
     const step1 = byStep.get(1) ?? 0;
     const step2 = byStep.get(2) ?? 0;
@@ -220,12 +271,17 @@ const truthRaw: unknown = await Bun.file(
 ).json();
 const truth = parseTruth(truthRaw);
 
-const resolved = await chQuery(
-  "EXISTS TABLE product_analytics.pa_events_resolved",
-);
-if (resolved.trim() !== "1") {
-  throw new Error("pa_events_resolved is missing. Run 02_pa_events_resolved.sql.");
+for (const [table, file] of [
+  ["pa_events_resolved", "03_pa_events_resolved.sql"],
+  ["pa_identities_resolved", "04_pa_identities_resolved.sql"],
+]) {
+  const exists = await chQuery(`EXISTS TABLE product_analytics.${table}`);
+  if (exists.trim() !== "1") {
+    throw new Error(`${table} is missing. Run ${file}.`);
+  }
 }
+
+await checkIdentities(truth);
 
 for (const kind of ["funnel", "paths", "habit", "lifecycle", "cohorts"] as const) {
   await run(kind, truth);
