@@ -64,7 +64,7 @@
         (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task! "export") "full" :force? true))))
         (is (= user-files (select-keys (repo mock) (keys user-files))))
         (is (not (contains? (repo mock) (first stale-entity-file))))
-        (is (contains? (repo mock) "collections/main/bench/card_a.yaml"))))))
+        (is (contains? (repo mock) "collections/main/bench/card_a.question.yaml"))))))
 
 (deftest import-skips-user-files-test
   (testing "an import skips the files in the new folders that are not entity files"
