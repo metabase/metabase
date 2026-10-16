@@ -239,12 +239,18 @@ describe("TimelineEventsBand", () => {
 
     it("collapses when the pointer moves outside after visiting a member popover", async () => {
       setup({ timelineEventsModel: stackedTimelineEventsModel });
+      // One session, so that hovering A leaves B.
+      const user = userEvent.setup();
 
-      await userEvent.hover(screen.getByLabelText("Stack B"));
-      await userEvent.hover(screen.getByLabelText("Stack A"));
-      expect(
-        await screen.findByTestId("timeline-event-popover"),
-      ).toBeInTheDocument();
+      await user.hover(screen.getByLabelText("Stack B"));
+      await user.hover(screen.getByLabelText("Stack A"));
+      // A slow hover of B opens its popover, which stays until its close delay
+      // ends, after A's has opened.
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("timeline-event-popover"),
+        ).toBeInTheDocument();
+      });
 
       fireEvent.mouseOver(document.body);
 
