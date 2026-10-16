@@ -763,6 +763,10 @@
      (let [~result (run-pulse-and-return-data-tables! ~'pulse)]
        ~@body)))
 
+(defn- dashboard-run-status
+  [dashboard-id]
+  (t2/select-one-fn :status :model/TaskRun :entity_type :dashboard :entity_id dashboard-id {:order-by [[:id :desc]]}))
+
 (deftest skip-if-empty-test
   ;; with-skip-if-empty-pulse-result! binds result and pulse anaphorically; invisible to kondo
   #_{:clj-kondo/ignore [:unresolved-symbol]}
@@ -790,7 +794,8 @@
             (testing "No results"
               (with-skip-if-empty-pulse-result! [result skip-if-empty? empty-query empty-query]
                 (testing "We send the email anyways, despite everything being empty due to no results"
-                  (is (= [[] []] result)))))))
+                  (is (= [[] []] result))
+                  (is (= :success (dashboard-run-status dash-id))))))))
         (testing "Cases for when 'Don't send if there aren't results is enabled' is true"
           (let [skip-if-empty? true]
             (testing "Everything has results"
@@ -809,8 +814,9 @@
                   (is (= [[["1" "2.07"] ["2" "6.1"]]] result)))))
             (testing "No results"
               (with-skip-if-empty-pulse-result! [result skip-if-empty? empty-query empty-query]
-                (testing "Don't send a pulse if no results at all"
-                  (is (nil? result)))))))))))
+                (testing "Don't send a pulse if no results at all, and show the run as skipped"
+                  (is (nil? result))
+                  (is (= :skipped (dashboard-run-status dash-id))))))))))))
 
 (deftest text-cards-are-not-skipped-when-empty-data-is-skipped-test
   (testing "Do not skip text cards when filtering out pulse cards with empty results (#39190)"

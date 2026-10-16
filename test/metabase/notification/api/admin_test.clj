@@ -545,6 +545,25 @@
           (is (re-find #"abandoned"
                        (get-in (find-row-by-id data nid) [:last_check :error]))))))))
 
+(deftest last-check-skipped-is-successful-test
+  (testing "a :skipped run (it ran and deliberately sent nothing) surfaces as last_check.status=successful"
+    (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                   :model/NotificationCard {nc :id}      {:card_id card-id}
+                   :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                          :payload_id   nc
+                                                          :creator_id   (mt/user->id :crowberto)}
+                   :model/TaskRun          _run          {:run_type        :alert
+                                                          :entity_type     :card
+                                                          :entity_id       card-id
+                                                          :notification_id nid
+                                                          :status          :skipped
+                                                          :started_at      (t/instant)
+                                                          :ended_at        (t/instant)}]
+      (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "notification/admin"
+                                                 :last_check_status "successful")]
+        (is (=? {:last_check {:status "successful" :error nil}}
+                (find-row-by-id data nid)))))))
+
 (deftest last-check-skips-in-flight-runs-test
   (testing "an :started in-flight run is invisible to the admin list — last_check stays nil"
     (mt/with-temp [:model/Card             {card-id :id} {:archived false}

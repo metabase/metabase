@@ -238,9 +238,14 @@
               (throw (ex-info "A subscription recipient is not permitted by subscription-allowed-domains"
                               {:status-code     403
                                :notification-id id}))))
-          (task-history/with-task-history {:task          "notification-send"
-                                           :task_details {:notification_id       id
-                                                          :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
+          (task-history/with-task-history {:task            "notification-send"
+                                           :task_details    {:notification_id       id
+                                                             :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}
+                                           ;; the body returns the skip reason, recorded so admins can tell a deliberate
+                                           ;; skip apart from a delivery
+                                           :on-success-info (fn [update-map skip-reason]
+                                                              (cond-> update-map
+                                                                skip-reason (assoc-in [:task_details :skip_reason] skip-reason)))}
             ;; :handlers stays on the info so payload impls can tailor execution to them
             ;; (e.g. attachment-only dashboard subscriptions skip non-attached cards)
             (let [notification-payload (-> hydrated-notification
@@ -273,7 +278,8 @@
                   (log/info "Done processing notification")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (throw-when-handlers-failed id @failures)
-              (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
+              (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type})
+              skip-reason)))
         (catch Exception e
           (let [undelivered? (delivery-failure? e)]
             ;; a delivery failure is already logged per channel, and the caller or the notification worker logs it

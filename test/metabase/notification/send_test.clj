@@ -220,6 +220,23 @@
                                   :attempted_retries 0}}
                   (latest-task-history-entry "channel-send"))))))))
 
+(deftest notification-send-skipped-records-skip-reason-test
+  (testing "an alert skipped for having no results records why on the notification-send row"
+    (notification.tu/with-notification-testing-setup!
+      (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+        (notification.tu/with-card-notification
+          [n {:card              {:dataset_query (mt/mbql-query products {:filter [:= $category "no such category"]})}
+              :notification-card {:send_condition :has_result}
+              :handlers          [{:channel_type notification.tu/test-channel-type
+                                   :channel_id   (:id chn)
+                                   :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}]}]
+          (is (empty? (notification.tu/with-captured-channel-send!
+                        (notification/send-notification! n :notification/sync? true))))
+          (is (=? {:status       :success
+                   :task_details {:notification_id (:id n)
+                                  :skip_reason     "empty"}}
+                  (latest-task-history-entry "notification-send"))))))))
+
 (deftest notification-send-channel-failure-fails-notification-send-test
   (testing "a channel failure fails the notification-send row, the run and the caller (GDGT-3144)"
     (notification.tu/with-notification-testing-setup!

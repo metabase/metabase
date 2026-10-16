@@ -35,7 +35,9 @@
                                          [:id           {:optional true} [:maybe ms/PositiveInt]]
                                          [:channel_type {:optional true} [:maybe :keyword]]
                                          [:channel_id   {:optional true} [:maybe ms/PositiveInt]]
-                                         [:template_id  {:optional true} [:maybe ms/PositiveInt]]]]]])
+                                         [:template_id  {:optional true} [:maybe ms/PositiveInt]]]]]
+   ;; set when the notification ran but deliberately sent nothing, e.g. `:empty` for "don't send if there aren't results"
+   [:skip_reason           {:optional true} :keyword]])
 
 (mr/def ::task-details.notification-trigger
   [:map {:closed true}

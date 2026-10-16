@@ -469,7 +469,7 @@
 
 (def ^:private admin-run-type-alert "alert")
 (def ^:private admin-task-channel-send "channel-send")
-(def ^:private admin-terminal-statuses ["success" "failed" "abandoned"])
+(def ^:private admin-terminal-statuses ["success" "skipped" "failed" "abandoned"])
 
 (defn- latest-run-per-notification
   [lookback]
@@ -582,7 +582,7 @@
         :failing    [:= :ls.has_failure true]))
     (when last_check_status
       (case last_check_status
-        :successful [:= :lc.status "success"]
+        :successful [:in :lc.status ["success" "skipped"]]
         :failing    [:in :lc.status ["failed" "abandoned"]]))
     ;; recipient_notification_ids is nil when no recipient_email filter was given, and an empty set when a
     ;; recipient_email filter matched nobody -- in which case the page must come back empty.

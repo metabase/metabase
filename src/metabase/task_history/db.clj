@@ -204,10 +204,20 @@
   [row :- ::task-history.schema/task-run.update]
   (t2/insert-returning-pk! :model/TaskRun row))
 
-(mu/defn task-statuses-for-run
-  "The set of statuses of the TaskHistory rows of the TaskRun with `run-id`."
+(mu/defn task-details-for-runs :- [:sequential [:map
+                                                [:run_id       ms/PositiveInt]
+                                                [:task_details [:maybe :map]]]]
+  "The run id and task_details of every TaskHistory row of the TaskRuns with `run-ids`."
+  [run-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select [:model/TaskHistory :run_id :task_details] :run_id [:in run-ids]))
+
+(mu/defn task-outcomes-for-run :- [:sequential [:map
+                                                [:task         :string]
+                                                [:status       :keyword]
+                                                [:task_details [:maybe :map]]]]
+  "The task name, status and task_details of each TaskHistory row of the TaskRun with `run-id`."
   [run-id :- ms/PositiveInt]
-  (t2/select-fn-set :status :model/TaskHistory :run_id run-id))
+  (t2/select [:model/TaskHistory :task :status :task_details] :run_id run-id))
 
 (mu/defn finish-started-task-run!
   "Set the status and end time of the started TaskRun with `run-id`."

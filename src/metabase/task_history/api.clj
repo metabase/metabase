@@ -73,7 +73,7 @@
    [:run-type    {:optional true} (into [:enum] (map name task-run/run-types))]
    [:entity-type {:optional true} (into [:enum] (map name task-run/entity-types))]
    [:entity-id   {:optional true} ms/PositiveInt]
-   [:status      {:optional true} [:enum "started" "success" "failed" "abandoned"]]
+   [:status      {:optional true} [:enum "started" "success" "skipped" "failed" "abandoned"]]
    [:started-at  {:optional true} ms/NonBlankString]])
 
 (def ^:private run-sort-columns
@@ -93,11 +93,12 @@
    [:entity_id   ms/PositiveInt]
    [:started_at  :any]
    [:ended_at    [:maybe :any]]
-   [:status      [:enum :started :success :failed :abandoned]]
+   [:status      [:enum :started :success :skipped :failed :abandoned]]
    [:entity_name {:optional true} [:maybe :string]]
    [:task_count  {:optional true} :int]
    [:success_count {:optional true} :int]
-   [:failed_count {:optional true} :int]])
+   [:failed_count {:optional true} :int]
+   [:skip_reason {:optional true} [:maybe :string]]])
 
 (mr/def ::TaskRunsResponse
   [:map
@@ -167,6 +168,18 @@
                    (get counts-by-id (:id %)))
            runs))))
 
+(defn- hydrate-skip-reasons
+  "Add `:skip_reason` to skipped runs: why one of its tasks deliberately did nothing, or nil when none recorded a reason."
+  [runs]
+  (let [skipped? #(= :skipped (:status %))
+        reasons  (when-let [run-ids (seq (map :id (filter skipped? runs)))]
+                   (into {}
+                         (keep (fn [{:keys [run_id task_details]}]
+                                 (when-let [reason (:skip_reason task_details)]
+                                   [run_id (name reason)])))
+                         (task-history.db/task-details-for-runs run-ids)))]
+    (map #(cond-> % (skipped? %) (assoc :skip_reason (get reasons (:id %)))) runs)))
+
 (defn- timestamp-range
   [date-string]
   (let [{:keys [start end]}
@@ -200,7 +213,7 @@
     {:total  (task-history.db/task-run-count filters)
      :limit  limit
      :offset offset
-     :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
+     :data   (-> runs hydrate-entity-names hydrate-task-counts hydrate-skip-reasons)}))
 
 (api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
   "Get a single task run with all its child tasks."

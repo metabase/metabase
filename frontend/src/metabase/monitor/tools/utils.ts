@@ -33,6 +33,7 @@ export const formatTaskRunStatus = (status: TaskRunStatus) =>
   match(status)
     .with("started", () => t`Started`)
     .with("success", () => t`Success`)
+    .with("skipped", () => t`Skipped`)
     .with("failed", () => t`Failed`)
     .with("abandoned", () => t`Abandoned`)
     .exhaustive();
@@ -44,6 +45,25 @@ export const formatTaskStatus = (status: TaskStatus) =>
     .with("success", () => t`Success`)
     .with("unknown", () => t`Unknown`)
     .exhaustive();
+
+/**
+ * The reason a task deliberately did nothing (e.g. an alert with no results), or `null` when it
+ * didn't skip.
+ */
+export const getTaskSkipReason = ({
+  task_details,
+}: Pick<Task, "task_details">): string | null => {
+  const skipReason = task_details?.skip_reason;
+  return typeof skipReason === "string" ? skipReason : null;
+};
+
+/** A readable skip reason; reasons the frontend doesn't know yet are shown as is. */
+export const formatSkipReason = (skipReason: string) =>
+  match(skipReason)
+    .with("empty", () => t`No results`)
+    .with("goal-not-met", () => t`Goal not met`)
+    .with("archived", () => t`Card archived`)
+    .otherwise(() => skipReason);
 
 export const getEntityUrl = (
   entityType: TaskRunEntityType,
@@ -59,6 +79,7 @@ export const getEntityUrl = (
 export const getTaskRunStatusColor = (status: TaskRunStatus): BadgeColor =>
   match(status)
     .with("success", () => "positive" as const)
+    .with("skipped", () => "neutral" as const)
     .with("failed", () => "negative" as const)
     .with("abandoned", () => "warning" as const)
     .otherwise(() => "neutral" as const);
@@ -104,9 +125,15 @@ export const guardTaskRunEntityType = (
   );
 
 export const guardTaskRunStatus = (value: string): value is TaskRunStatus =>
-  (["started", "success", "failed", "abandoned"] satisfies TaskRunStatus[])
-    // Unjustified type cast. FIXME
-    .includes(value as TaskRunStatus);
+  (
+    [
+      "started",
+      "success",
+      "skipped",
+      "failed",
+      "abandoned",
+    ] satisfies TaskRunStatus[]
+  ).some((status) => status === value);
 
 export const toBackendStartedAt = (
   value: TaskRunDateFilterOption | null,

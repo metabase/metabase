@@ -707,6 +707,29 @@
         (is (= 2 (:success_count run-data)))
         (is (= 1 (:failed_count run-data)))))))
 
+(deftest ^:synchronized runs-skip-reason-test
+  (t2/delete! :model/TaskRun)
+  (t2/delete! :model/TaskHistory)
+  (testing "skipped runs carry the skip reason their task recorded"
+    (let [now (t/zoned-date-time)]
+      (mt/with-temp [:model/Card {card-id :id} {}
+                     :model/TaskRun skipped {:run_type    :alert
+                                             :entity_type :card
+                                             :entity_id   card-id
+                                             :status      :skipped
+                                             :started_at  now
+                                             :ended_at    now}
+                     :model/TaskHistory _ {:task         "notification-send"
+                                           :status       :success
+                                           :run_id       (:id skipped)
+                                           :task_details {:notification_id       1
+                                                          :notification_handlers []
+                                                          :skip_reason           :empty}
+                                           :started_at   now
+                                           :ended_at     now}]
+        (is (=? [{:id (:id skipped) :skip_reason "empty"}]
+                (:data (mt/user-http-request :crowberto :get 200 "task/runs"))))))))
+
 (deftest ^:synchronized runs-entities-test
   (t2/delete! :model/TaskRun)
   (testing "returns distinct entities for run type with hydrated names"

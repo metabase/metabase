@@ -106,6 +106,19 @@ describe("TaskRunsPage", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent(rawTimestamp);
   });
 
+  it("should explain a skipped run in a tooltip on its badge", async () => {
+    await setup({
+      taskRunsResponse: createMockTaskRunsResponse({
+        data: [createMockTaskRun({ status: "skipped", skip_reason: "empty" })],
+      }),
+    });
+
+    const row = await screen.findByTestId("task-run");
+    await userEvent.hover(within(row).getByText("Skipped"));
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("No results");
+  });
+
   it("should show the total results count below the table", async () => {
     await setup({
       taskRunsResponse: createMockTaskRunsResponse({

@@ -139,7 +139,23 @@
               (throw (Exception. "fail")))
             (catch Exception _)))
         (task-history/complete-task-run! run-id)
-        (is (= :failed (:status (t2/select-one :model/TaskRun :id run-id))))))))
+        (is (= :failed (:status (t2/select-one :model/TaskRun :id run-id))))))
+    (doseq [[expected skip-reasons description] [[:skipped [:empty]     "the only send skipped"]
+                                                 [:success [:empty nil] "one channel skipped and another delivered"]]]
+      (testing (str "complete-task-run! derives " expected " when " description)
+        (let [run-id (task-run/create-task-run! {:run_type    :subscription
+                                                 :entity_type :dashboard
+                                                 :entity_id   1})]
+          (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
+            (task-history/with-task-history {:task "notification-trigger"} :ok)
+            (doseq [skip-reason skip-reasons]
+              (task-history/with-task-history {:task         "notification-send"
+                                               :task_details (cond-> {:notification_id       1
+                                                                      :notification_handlers []}
+                                                               skip-reason (assoc :skip_reason skip-reason))}
+                :ok)))
+          (task-history/complete-task-run! run-id)
+          (is (= expected (:status (t2/select-one :model/TaskRun :id run-id)))))))))
 
 (deftest complete-task-run-idempotent-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
