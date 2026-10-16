@@ -1,9 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupSearchEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import type { SearchResult } from "metabase-types/api";
-import { createMockModelResult } from "metabase-types/api/mocks";
+import {
+  createMockModelResult,
+  createMockSearchResult,
+} from "metabase-types/api/mocks";
 
 import { SimpleDataPicker } from "./SimpleDataPicker";
 
@@ -24,6 +28,7 @@ const SEARCH_RESULTS = [
 
 interface SetupOpts {
   searchResults: SearchResult[];
+  entityTypes?: EmbeddingEntityType[];
 }
 function setup(opts?: SetupOpts) {
   setupSearchEndpoints(opts?.searchResults ?? SEARCH_RESULTS);
@@ -31,7 +36,7 @@ function setup(opts?: SetupOpts) {
   const onClick = jest.fn();
   renderWithProviders(
     <SimpleDataPicker
-      entityTypes={["model", "table"]}
+      entityTypes={opts?.entityTypes ?? ["model", "table"]}
       isInitiallyOpen={true}
       setSourceTableFn={onClick}
       filterByDatabaseId={null}
@@ -122,5 +127,33 @@ describe("SimpleDataPicker", () => {
      */
     await userEvent.click(dataSources[0]);
     expect(onClick).toHaveBeenCalledWith("card__2");
+  });
+
+  it("should pick a metric by its card id (card__5), like a model", async () => {
+    const { onClick } = setup({
+      searchResults: [
+        ...SEARCH_RESULTS,
+        createMockSearchResult({ id: 5, name: "Revenue", model: "metric" }),
+      ],
+      entityTypes: ["model", "table", "metric"],
+    });
+
+    await userEvent.click(await screen.findByRole("link", { name: "Revenue" }));
+    expect(onClick).toHaveBeenCalledWith("card__5");
+  });
+
+  it("should show the metric icon for metrics and the table icon for the rest", async () => {
+    setup({
+      searchResults: [
+        ...SEARCH_RESULTS,
+        createMockSearchResult({ id: 5, name: "Revenue", model: "metric" }),
+      ],
+      entityTypes: ["model", "table", "metric"],
+    });
+
+    const metric = await screen.findByRole("link", { name: "Revenue" });
+    expect(within(metric).getByLabelText("metric icon")).toBeInTheDocument();
+    const model = screen.getByRole("link", { name: "Orders" });
+    expect(within(model).getByLabelText("table icon")).toBeInTheDocument();
   });
 });

@@ -15,4 +15,11 @@ export const CARD_INFO = {
     model: "dataset",
     icon: "model",
   },
+  metric: {
+    get title() {
+      return t`Metrics`;
+    },
+    model: "metric",
+    icon: "metric",
+  },
 } as const;
