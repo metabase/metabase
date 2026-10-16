@@ -12,13 +12,13 @@ import {
   type TestFunction,
   type TestNode,
   collect,
-  countTests,
   createSuite,
   forgetPackageHooks,
   fullName,
   packageHooks,
   rootSuite,
   selectTests,
+  testsIn,
 } from "./collect.ts";
 import { currentWindow, replaceWindow } from "./dom.ts";
 import {
@@ -144,7 +144,7 @@ async function runFileSuite(t: TestContext, fileSuite: Suite): Promise<void> {
   actEnvironmentForFile = globals.IS_REACT_ACT_ENVIRONMENT;
   try {
     if (fileSuite.mode === "skip") {
-      recordSkipped(countTests(fileSuite));
+      recordSkipped(testsIn(fileSuite));
     } else {
       await runSuite(t, fileSuite, {
         isFileLevel: true,
@@ -185,7 +185,7 @@ async function runSuite(
     if (child.type === "suite") {
       const skip = child.suite.mode === "skip";
       if (skip) {
-        recordSkipped(countTests(child.suite));
+        recordSkipped(testsIn(child.suite));
       }
       await t.test(child.suite.name, { skip }, (nested) =>
         runSuite(nested, child.suite, { ...hooks, isFileLevel: false }),
@@ -198,7 +198,7 @@ async function runSuite(
     const skip = isPoisoned() || child.mode === "skip";
     const todo = child.mode === "todo";
     if (skip || todo) {
-      recordSkipped();
+      recordSkipped([{ ancestors: child.path, title: child.name }]);
       await t.test(child.name, { skip, todo }, () => {});
       continue;
     }

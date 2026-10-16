@@ -45,12 +45,27 @@ export type TestFailure = {
   output: string;
 };
 
+export type SnapshotSummary = {
+  added: number;
+  matched: number;
+  unmatched: number;
+  updated: number;
+  unchecked: number;
+  uncheckedKeys: string[];
+  fileDeleted: boolean;
+};
+
 export type FileResult = {
   passed: number;
   failed: number;
   skipped: number;
   passedTests: TestIdentity[];
+  skippedTests: TestIdentity[];
   failures: TestFailure[];
+  /**
+   * Absent when the file did not get as far as its snapshots.
+   */
+  snapshot?: SnapshotSummary;
 };
 
 export type FileStarted = {

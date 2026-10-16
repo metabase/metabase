@@ -383,6 +383,7 @@ function crashResult(code: number | null): FileResult {
     failed: 1,
     skipped: 0,
     passedTests: [],
+    skippedTests: [],
     failures: [
       {
         test: "(the worker crashed)",

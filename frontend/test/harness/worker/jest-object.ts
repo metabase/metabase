@@ -38,6 +38,7 @@ import {
 } from "./module-cache.ts";
 import { resolveForMock } from "./module-hooks.ts";
 import { findFile, resolveProjectFile } from "./resolve.ts";
+import { recordSnapshots } from "./results.ts";
 import { type FakeTimersConfig, fakeClock, useFakeTimers } from "./timers.ts";
 
 type UnknownFunction = (...args: unknown[]) => unknown;
@@ -81,7 +82,19 @@ export function startSnapshots(specFile: string): void {
 }
 
 export function finishSnapshots(): void {
-  snapshotState?.save();
+  if (!snapshotState) {
+    return;
+  }
+  const { deleted } = snapshotState.save();
+  recordSnapshots({
+    added: snapshotState.added,
+    matched: snapshotState.matched,
+    unmatched: snapshotState.unmatched,
+    updated: snapshotState.updated,
+    unchecked: snapshotState.getUncheckedCount(),
+    uncheckedKeys: snapshotState.getUncheckedKeys(),
+    fileDeleted: deleted,
+  });
   snapshotState = null;
 }
 

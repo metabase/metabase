@@ -2,7 +2,11 @@
 // of each test.
 import { format } from "node:util";
 
-import type { FileResult, TestIdentity } from "../types.ts";
+import type {
+  FileResult,
+  SnapshotSummary,
+  TestIdentity,
+} from "../types.ts";
 
 import { projectFrames } from "./transform.ts";
 
@@ -56,8 +60,13 @@ export function recordPassed(identity: TestIdentity): void {
   fileResult.passedTests.push(identity);
 }
 
-export function recordSkipped(count = 1): void {
-  fileResult.skipped += count;
+export function recordSnapshots(snapshot: SnapshotSummary): void {
+  fileResult.snapshot = snapshot;
+}
+
+export function recordSkipped(tests: TestIdentity[]): void {
+  fileResult.skipped += tests.length;
+  fileResult.skippedTests.push(...tests);
 }
 
 /**
@@ -104,5 +113,12 @@ export function describeError(error: unknown): {
 }
 
 function createFileResult(): FileResult {
-  return { passed: 0, failed: 0, skipped: 0, passedTests: [], failures: [] };
+  return {
+    passed: 0,
+    failed: 0,
+    skipped: 0,
+    passedTests: [],
+    skippedTests: [],
+    failures: [],
+  };
 }
