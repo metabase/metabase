@@ -1,4 +1,4 @@
-import { useLocalStorage } from "@mantine/hooks";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -6,13 +6,12 @@ import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/Add
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useNavigate } from "metabase/router";
 import { Group, Stack, Title } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import { openInBlankWindow } from "metabase/utils/dom";
 import type { Card, ConcreteTableId } from "metabase-types/api";
 
 import type { AnalysisSettingsByKind } from "../analyses/types";
 import { buildAnalysisCard } from "../analysis-card";
-import type { Insight } from "../insights/types";
+import { getClickActionsMode } from "../click-actions-mode";
+import { getClickedTransition } from "../insights/clicked-transition";
 import { useFunnelInsights } from "../insights/use-funnel-insights";
 import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
@@ -23,10 +22,8 @@ import { useSaveAnalysis } from "../use-save-analysis";
 
 import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisToolbar } from "./AnalysisToolbar";
-import { InsightsPanel } from "./InsightsPanel";
+import { type InsightsFocus, InsightsPanel } from "./InsightsPanel";
 import { SettingsPanel } from "./SettingsPanel";
-
-const INSIGHTS_OPEN_KEY = "metabase-product-analytics-insights-open";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
@@ -67,24 +64,14 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     stored,
     onChangeSettings,
   });
-  const [isInsightsOpen, setIsInsightsOpen] = useLocalStorage({
-    key: INSIGHTS_OPEN_KEY,
-    defaultValue: false,
+  const insights = useFunnelInsights({ spec, tableId, base, context });
+  const [insightsFocus, setInsightsFocus] = useState<InsightsFocus>();
+  const clickActionsMode = getClickActionsMode({
+    getInsightsTransition: (clicked) =>
+      getClickedTransition(spec, insights.state, clicked),
+    onShowInsights: (transition) =>
+      setInsightsFocus((focus) => ({ transition, id: (focus?.id ?? 0) + 1 })),
   });
-  const hasInsights = kind === "funnel";
-  const insights = useFunnelInsights({
-    spec,
-    tableId,
-    base,
-    context,
-    isEnabled: hasInsights && isInsightsOpen,
-  });
-  const handleExplore = (insight: Insight) => {
-    const card = insights.getExploreCard(insight);
-    if (card !== undefined) {
-      openInBlankWindow(Urls.serializedQuestion(card));
-    }
-  };
 
   const tableName = table?.display_name ?? t`this table`;
   const title = savedCard?.name ?? t`${config.name} analysis on ${tableName}`;
@@ -138,12 +125,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           sql={query.sql}
           canSave={canSave}
           isSaveDisabled={isSaveDisabled}
-          isInsightsOpen={hasInsights ? isInsightsOpen : undefined}
           onPanelChange={setPanel}
           onSave={handleSave}
-          onToggleInsights={
-            hasInsights ? () => setIsInsightsOpen(!isInsightsOpen) : undefined
-          }
         />
       </Stack>
       <Group
@@ -157,29 +140,32 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         mih={0}
       >
         {panel && <SettingsPanel panel={panel} widgets={widgets} />}
-        <AnalysisResult
-          title={config.question}
-          display={display}
-          vizSettings={vizSettings}
-          dataset={query.dataset}
-          datasetQuery={query.datasetQuery}
-          isLoading={query.isLoading}
-          error={
-            query.error ??
-            (tableId === undefined ? t`Choose a table to analyze.` : undefined)
-          }
-          warnings={query.warnings}
-          missing={missing}
-          setupLabel={config.setupLabel}
-          onOpenSetup={panel !== "setup" ? () => setPanel("setup") : undefined}
-        />
-        {hasInsights && isInsightsOpen && (
-          <InsightsPanel
-            state={insights.state}
-            onExplore={handleExplore}
-            onClose={() => setIsInsightsOpen(false)}
+        <Stack flex={1} miw={0} gap="lg" style={{ overflowY: "auto" }}>
+          <AnalysisResult
+            title={config.question}
+            display={display}
+            vizSettings={vizSettings}
+            dataset={query.dataset}
+            datasetQuery={query.datasetQuery}
+            isLoading={query.isLoading}
+            error={
+              query.error ??
+              (tableId === undefined
+                ? t`Choose a table to analyze.`
+                : undefined)
+            }
+            warnings={query.warnings}
+            missing={missing}
+            setupLabel={config.setupLabel}
+            clickActionsMode={clickActionsMode}
+            onOpenSetup={
+              panel !== "setup" ? () => setPanel("setup") : undefined
+            }
           />
-        )}
+          {kind === "funnel" && (
+            <InsightsPanel insights={insights} focus={insightsFocus} />
+          )}
+        </Stack>
       </Group>
       {questionToCreate !== undefined && (
         <SaveQuestionModal

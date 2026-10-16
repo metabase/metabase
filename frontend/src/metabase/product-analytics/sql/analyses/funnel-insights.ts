@@ -13,8 +13,13 @@ import {
 
 /** The value an attribute has in `funnel_transitions` when it wasn't seen in time. */
 export const NOT_SET_VALUE = "(not set)";
-/** The value pass 2 gives the values it doesn't keep. Never returned. */
-const OTHER_VALUE = "(other)";
+/**
+ * The value pass 2 gives the values it doesn't keep, and the explore query the
+ * segments too small to report. Pass 2 never returns it.
+ */
+export const OTHER_VALUE = "(other)";
+/** Joins the values of an explore segment over several attributes. */
+export const SEGMENT_SEPARATOR = " · ";
 /** Columns of the explore query besides the segment. */
 export const EXPLORE_PEOPLE_COLUMN = "people";
 export const EXPLORE_CONVERSION_COLUMN = "conversion";
@@ -34,6 +39,10 @@ export type FunnelInsightsQuery =
       attributes: readonly string[];
       /** The name of the column holding the combined values. */
       segmentLabel: string;
+      /** Smaller segments are pooled into `OTHER_VALUE`. */
+      minPeople: number;
+      /** Sort by conversion, highest first; `OTHER_VALUE` is always last. */
+      isDescending: boolean;
     };
 
 const attributesOf = (query: FunnelInsightsQuery): string[] => {
@@ -191,23 +200,35 @@ const pairsSelect = (kept: ReadonlyMap<string, readonly string[]>): string => {
   ].join("\n");
 };
 
-const exploreSelect = (
-  transition: number,
-  attributes: readonly string[],
-  segmentLabel: string,
-): string => {
+const exploreSelect = ({
+  transition,
+  attributes,
+  segmentLabel,
+  minPeople,
+  isDescending,
+}: Extract<FunnelInsightsQuery, { kind: "explore" }>): string => {
   const ids = attributes.map(attributeSql);
   const segment =
-    ids.length === 1 ? ids.join("") : `concat(${ids.join(", ' · ', ")})`;
+    ids.length === 1
+      ? ids.join("")
+      : `concat(${ids.join(`, ${lit(SEGMENT_SEPARATOR)}, `)})`;
+  const label = ident(segmentLabel);
   return [
     "SELECT",
-    `  ${segment} AS ${ident(segmentLabel)},`,
-    `  count() AS ${EXPLORE_PEOPLE_COLUMN},`,
-    `  round(countIf(converted) / count(), 4) AS ${EXPLORE_CONVERSION_COLUMN}`,
-    "FROM funnel_transitions",
-    `WHERE k = ${Math.trunc(transition)}`,
-    `GROUP BY ${ident(segmentLabel)}`,
-    `ORDER BY ${EXPLORE_PEOPLE_COLUMN} DESC`,
+    `  if(segment_people >= ${Math.ceil(minPeople)}, segment, ${lit(OTHER_VALUE)}) AS ${label},`,
+    `  sum(segment_people) AS ${EXPLORE_PEOPLE_COLUMN},`,
+    `  round(sum(segment_converted) / sum(segment_people), 4) AS ${EXPLORE_CONVERSION_COLUMN}`,
+    "FROM (",
+    "  SELECT",
+    `    ${segment} AS segment,`,
+    "    count() AS segment_people,",
+    "    countIf(converted) AS segment_converted",
+    "  FROM funnel_transitions",
+    `  WHERE k = ${Math.trunc(transition)}`,
+    "  GROUP BY segment",
+    ")",
+    `GROUP BY ${label}`,
+    `ORDER BY ${label} = ${lit(OTHER_VALUE)}, ${EXPLORE_CONVERSION_COLUMN} ${isDescending ? "DESC" : "ASC"}, ${label}`,
   ].join("\n");
 };
 
@@ -235,11 +256,7 @@ export const planFunnelInsights = (
       case "pairs":
         return pairsSelect(query.kept);
       case "explore":
-        return exploreSelect(
-          query.transition,
-          query.attributes,
-          query.segmentLabel,
-        );
+        return exploreSelect(query);
     }
   })();
   return { ctes, select, warnings };

@@ -15,6 +15,7 @@ import {
   Title,
 } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 import type {
   CardDisplayType,
   Dataset,
@@ -24,9 +25,10 @@ import type {
 } from "metabase-types/api";
 
 import type { MissingSetting } from "../analyses/types";
-import { PRODUCT_ANALYTICS_CLICK_ACTIONS_MODE } from "../click-actions-mode";
 
 const SYNTHETIC_CARD_ID = -1;
+// The result shares a scrolling column with the insights below it.
+const MIN_HEIGHT_PX = 480;
 
 type AnalysisResultProps = {
   title: string;
@@ -40,6 +42,7 @@ type AnalysisResultProps = {
   /** Settings still to fill in. When non-empty, this replaces the result. */
   missing: MissingSetting[];
   setupLabel: string;
+  clickActionsMode: ClickActionsMode;
   /** Omit when the setup panel is already open. */
   onOpenSetup?: () => void;
 };
@@ -55,6 +58,7 @@ export const AnalysisResult = ({
   warnings,
   missing,
   setupLabel,
+  clickActionsMode,
   onOpenSetup,
 }: AnalysisResultProps) => {
   const [vizWarnings, setVizWarnings] = useState<string[]>([]);
@@ -82,7 +86,7 @@ export const AnalysisResult = ({
     : warnings;
 
   return (
-    <Paper withBorder p="lg" style={{ flex: 1, minWidth: 0 }}>
+    <Paper withBorder p="lg" flex={1} miw={0} mih={MIN_HEIGHT_PX}>
       <Stack h="100%">
         <Group justify="space-between" wrap="nowrap">
           <Title order={4}>{title}</Title>
@@ -110,7 +114,7 @@ export const AnalysisResult = ({
               <Visualization
                 rawSeries={rawSeries}
                 isQueryBuilder={false}
-                mode={PRODUCT_ANALYTICS_CLICK_ACTIONS_MODE}
+                mode={clickActionsMode}
                 onUpdateWarnings={setVizWarnings}
                 onChangeCardAndRun={noop}
               />

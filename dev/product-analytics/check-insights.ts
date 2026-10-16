@@ -11,6 +11,11 @@ import { DEFAULT_INSIGHT_OPTIONS } from "../../frontend/src/metabase/product-ana
 import { planPairs } from "../../frontend/src/metabase/product-analytics/insights/plan-pairs";
 import { parseCountRows } from "../../frontend/src/metabase/product-analytics/insights/rows";
 import { findInsights } from "../../frontend/src/metabase/product-analytics/insights/search";
+import {
+  getInsightSegments,
+  getMinSegmentSize,
+  isDescending,
+} from "../../frontend/src/metabase/product-analytics/insights/segments";
 import type {
   GroupCounts,
   Insight,
@@ -129,8 +134,8 @@ const main = async () => {
   if(event_name = 'checkout_completed', 1, 0) AS ev_3
 FROM ${TABLE}`;
 
-  const run = async (query: FunnelInsightsQuery): Promise<GroupCounts[]> => {
-    const built = buildSql(
+  const toSql = (query: FunnelInsightsQuery): string =>
+    buildSql(
       spec,
       baseSql,
       {
@@ -149,9 +154,10 @@ FROM ${TABLE}`;
         })),
       },
       planFunnelInsights(spec, query),
-    );
+    ).sql;
+  const run = async (query: FunnelInsightsQuery): Promise<GroupCounts[]> => {
     const started = performance.now();
-    const { names, rows } = await chRows(built.sql);
+    const { names, rows } = await chRows(toSql(query));
     console.log(
       `  ${query.kind}: ${rows.length} rows in ${Math.round(performance.now() - started)}ms`,
     );
@@ -168,13 +174,12 @@ FROM ${TABLE}`;
     `  pairs over: ${[...kept].map(([id, values]) => `${columnOf.get(id)} (${values.length})`).join(", ")}`,
   );
   const pairs = kept.size > 0 ? await run({ kind: "pairs", kept }) : [];
-  const insights = findInsights(
-    indexCounts({
-      rows: [...singles, ...pairs],
-      singleAttributes: ids,
-      pairValues: kept,
-    }),
-  );
+  const counts = indexCounts({
+    rows: [...singles, ...pairs],
+    singleAttributes: ids,
+    pairValues: kept,
+  });
+  const insights = findInsights(counts);
 
   const transitionName = (transition: number) =>
     `${STEPS[transition - 1]} → ${STEPS[transition]}`;
@@ -236,6 +241,43 @@ FROM ${TABLE}`;
       failures.push(`unexpected ${label}`);
     }
   });
+
+  // The panel draws the explore chart from the counts; the Explore link runs the SQL.
+  console.log("\nExplore charts:");
+  for (const insight of insights) {
+    const total = counts.totals.get(insight.transition);
+    if (total === undefined) {
+      continue;
+    }
+    const { rows } = await chRows(
+      toSql({
+        kind: "explore",
+        transition: insight.transition,
+        attributes: insight.conditions.map(({ attributeId }) => attributeId),
+        segmentLabel: "segment",
+        minPeople: getMinSegmentSize(total.reached),
+        isDescending: isDescending(insight),
+      }),
+    );
+    const fromSql = rows.map(([label, people, conversion]) => [
+      String(label),
+      Number(people),
+      Number(conversion).toFixed(4),
+    ]);
+    const fromCounts = getInsightSegments(counts, insight).map(
+      ({ label, reached, rate }) => [label, reached, rate.toFixed(4)],
+    );
+    const matches = Bun.deepEquals(fromSql, fromCounts);
+    const label = `${transitionName(insight.transition)} | ${describe(insight)}`;
+    console.log(
+      `  ${matches ? "ok  " : "FAIL"} ${label} (${fromSql.length} segments)`,
+    );
+    if (!matches) {
+      console.log(`    SQL:    ${JSON.stringify(fromSql)}`);
+      console.log(`    counts: ${JSON.stringify(fromCounts)}`);
+      failures.push(`explore ${label}`);
+    }
+  }
 
   if (failures.length > 0) {
     console.log(`\n${failures.length} check(s) failed`);

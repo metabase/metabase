@@ -14,6 +14,10 @@ const MODE: Record<string, string> = {
 };
 
 /** The step flags, plus the disqualifier flags, on `scoped_events`. */
+/** The "Step by step" view's label for a step, numbered from 1. */
+export const getFunnelStepLabel = (stepNumber: number, name: string): string =>
+  `${stepNumber}. ${name}`;
+
 export const funnelFlags = (funnel: FunnelSpec) => [
   ...funnel.steps.map((step, index) => ({
     as: `step_${index + 1}`,
@@ -183,6 +187,7 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
       ", ",
     )}] AS step, [${funnel.steps.map((step) => lit(step.label)).join(", ")}] AS step_name`;
 
+  // Keep in sync with `getFunnelStepLabel`.
   const stepLabel = "concat(toString(step), '. ', step_name)";
   const view = spec.output.funnelView ?? "steps";
   const people = grainLabel(spec.grain);

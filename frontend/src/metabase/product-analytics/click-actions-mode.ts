@@ -6,24 +6,35 @@ import type {
   ClickObject,
 } from "metabase/visualizations/types";
 
-const getHelloWorldAction = (clicked: ClickObject): ClickAction => ({
-  name: "product-analytics.hello-world",
+const getShowInsightsAction = (onShow: () => void): ClickAction => ({
+  name: "product-analytics.show-insights",
   type: "custom",
   section: "custom",
-  title: t`Hello world`,
-  icon: "bolt",
+  title: t`Show insights`,
+  icon: "insight",
   buttonType: "horizontal",
   onClick: ({ closePopover }) => {
-    const clickedValues = (clicked.dimensions ?? [])
-      .map(({ column, value }) => `${column.display_name}: ${value}`)
-      .join(", ");
-    window.alert(t`Hello world! You clicked ${clickedValues}`);
+    onShow();
     closePopover();
   },
 });
 
-/** Click actions offered on product analytics results, in place of the usual drills. */
-export const PRODUCT_ANALYTICS_CLICK_ACTIONS_MODE: ClickActionsMode = {
-  actionsForClick: (clicked) =>
-    clicked.dimensions != null ? [getHelloWorldAction(clicked)] : [],
+type ClickActionsModeOpts = {
+  /** The insights transition for a click, or undefined when it has none. */
+  getInsightsTransition?: (clicked: ClickObject) => number | undefined;
+  onShowInsights?: (transition: number) => void;
 };
+
+/** Click actions offered on product analytics results, in place of the usual drills. */
+export const getClickActionsMode = ({
+  getInsightsTransition,
+  onShowInsights,
+}: ClickActionsModeOpts = {}): ClickActionsMode => ({
+  actionsForClick: (clicked) => {
+    const transition =
+      clicked.dimensions != null ? getInsightsTransition?.(clicked) : undefined;
+    return transition !== undefined && onShowInsights !== undefined
+      ? [getShowInsightsAction(() => onShowInsights(transition))]
+      : [];
+  },
+});

@@ -2,7 +2,12 @@ import { useMemo } from "react";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { useMetadataProvider } from "metabase/metadata-store";
-import type { ConcreteTableId, Dataset, UnsavedCard } from "metabase-types/api";
+import type {
+  ConcreteTableId,
+  Dataset,
+  SingleSeries,
+  UnsavedCard,
+} from "metabase-types/api";
 
 import type { AnalysisContext } from "../analyses/types";
 import type { BaseQueryInput } from "../base-query";
@@ -22,11 +27,20 @@ import { useStableValue } from "../use-stable-value";
 
 import { getInsightAttributes } from "./candidates";
 import { indexCounts } from "./counts";
-import { getExploreCard, getExploreSegmentLabel } from "./explore";
+import {
+  getExploreCard,
+  getExploreData,
+  getExploreSegmentLabel,
+} from "./explore";
 import { DEFAULT_INSIGHT_OPTIONS } from "./options";
 import { planPairs } from "./plan-pairs";
 import { parseCountRows } from "./rows";
 import { findInsights } from "./search";
+import {
+  getInsightSegments,
+  getMinSegmentSize,
+  isDescending,
+} from "./segments";
 import type { GroupCounts, Insight, InsightAttribute } from "./types";
 
 export type FunnelTransition = {
@@ -35,6 +49,7 @@ export type FunnelTransition = {
   from: string;
   to: string;
   reached: number;
+  converted: number;
 };
 
 export type FunnelInsightsState =
@@ -52,14 +67,19 @@ export type FunnelInsightsState =
       pairsError: string | undefined;
     };
 
+export type InsightExplore = {
+  /** The explore question, to open in the query builder. */
+  card: UnsavedCard;
+  /** Its result, from the counts the insights came from. */
+  series: SingleSeries<UnsavedCard>;
+};
+
 type UseFunnelInsightsArgs = {
   spec: AnalysisSpec | undefined;
   tableId: ConcreteTableId | undefined;
   /** Must keep its identity while unchanged. */
   base: BaseQueryInput;
   context: AnalysisContext;
-  /** Nothing is queried until enabled. */
-  isEnabled: boolean;
 };
 
 const parseDataset = (
@@ -81,11 +101,11 @@ const getTransitions = (
   const steps = spec.funnel?.steps ?? [];
   return rows
     .filter(({ conditions }) => conditions.length === 0)
-    .flatMap(({ transition, reached }) => {
+    .flatMap(({ transition, reached, converted }) => {
       const from = steps[transition - 1];
       const to = steps[transition];
       return from !== undefined && to !== undefined
-        ? [{ transition, from: from.label, to: to.label, reached }]
+        ? [{ transition, from: from.label, to: to.label, reached, converted }]
         : [];
     })
     .sort((a, b) => a.transition - b.transition);
@@ -101,9 +121,8 @@ export const useFunnelInsights = ({
   tableId,
   base,
   context,
-  isEnabled,
 }: UseFunnelInsightsArgs) => {
-  const isFunnel = isEnabled && spec?.kind === "funnel";
+  const isFunnel = spec?.kind === "funnel";
   const metadataProvider = useMetadataProvider(context.table?.db_id ?? null);
 
   const attributes = useMemo(() => {
@@ -136,19 +155,21 @@ export const useFunnelInsights = ({
   });
   const { compiled } = compiledBase;
 
-  const toQuery = (query: FunnelInsightsQuery, maxRows?: number) =>
+  const toSql = (query: FunnelInsightsQuery) =>
     spec !== undefined && compiled !== undefined
-      ? toNativeDatasetQuery(
-          buildSql(
-            spec,
-            compiled.sql,
-            compiled.columns,
-            planFunnelInsights(spec, query),
-          ).sql,
-          compiled.databaseId,
-          maxRows,
-        )
+      ? buildSql(
+          spec,
+          compiled.sql,
+          compiled.columns,
+          planFunnelInsights(spec, query),
+        ).sql
       : undefined;
+  const toQuery = (query: FunnelInsightsQuery, maxRows?: number) => {
+    const sql = toSql(query);
+    return sql !== undefined && compiled !== undefined
+      ? toNativeDatasetQuery(sql, compiled.databaseId, maxRows)
+      : undefined;
+  };
 
   const singlesQuery =
     isFunnel && attributeIds.length > 0
@@ -186,34 +207,51 @@ export const useFunnelInsights = ({
     [pairs.currentData, attributeIds],
   );
 
-  const insights = useMemo(
+  const counts = useMemo(
     () =>
       singleRows !== undefined
-        ? findInsights(
-            indexCounts({
-              rows: [...singleRows, ...(pairRows ?? [])],
-              singleAttributes: attributeIds,
-              pairValues,
-            }),
-          )
+        ? indexCounts({
+            rows: [...singleRows, ...(pairRows ?? [])],
+            singleAttributes: attributeIds,
+            pairValues,
+          })
         : undefined,
     [singleRows, pairRows, attributeIds, pairValues],
   );
+  const insights = useMemo(
+    () => (counts !== undefined ? findInsights(counts) : undefined),
+    [counts],
+  );
 
-  const getExploreCardFor = (insight: Insight): UnsavedCard | undefined => {
+  const getExplore = (insight: Insight): InsightExplore | undefined => {
+    const total = counts?.totals.get(insight.transition);
+    if (counts === undefined || total === undefined || compiled === undefined) {
+      return undefined;
+    }
     const insightAttributes = insight.conditions.flatMap(
       ({ attributeId }) =>
         attributes.find(({ id }) => id === attributeId) ?? [],
     );
-    const datasetQuery = toQuery({
+    const sql = toSql({
       kind: "explore",
       transition: insight.transition,
       attributes: insightAttributes.map(({ id }) => id),
       segmentLabel: getExploreSegmentLabel(insightAttributes),
+      minPeople: getMinSegmentSize(total.reached),
+      isDescending: isDescending(insight),
     });
-    return datasetQuery !== undefined
-      ? getExploreCard(datasetQuery, insightAttributes)
-      : undefined;
+    if (sql === undefined) {
+      return undefined;
+    }
+    const card = getExploreCard(
+      toNativeDatasetQuery(sql, compiled.databaseId),
+      insightAttributes,
+    );
+    const segments = getInsightSegments(counts, insight);
+    return {
+      card,
+      series: { card, data: getExploreData(segments, insightAttributes, sql) },
+    };
   };
 
   const state = ((): FunnelInsightsState => {
@@ -250,5 +288,7 @@ export const useFunnelInsights = ({
     };
   })();
 
-  return { state, getExploreCard: getExploreCardFor };
+  return { state, getExplore };
 };
+
+export type FunnelInsights = ReturnType<typeof useFunnelInsights>;
