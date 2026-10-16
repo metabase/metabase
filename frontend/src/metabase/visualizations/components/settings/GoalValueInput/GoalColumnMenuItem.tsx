@@ -19,7 +19,7 @@ export function GoalColumnMenuItem({
 }: Props) {
   return (
     <Menu.Item
-      bg={selected ? "background-selected" : undefined}
+      bg={selected ? "background_surface-selected" : undefined}
       lh="1rem"
       rightSection={
         resolvedValue != null ? (

@@ -2,9 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   ;; load-bearing: the advertised scope sets are derived from the agent-api routes and the v2 tool
-   ;; registry, so both must be loaded for these assertions to see the real surface
-   [metabase.agent-api.api]
    [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.api :as v2.api]
    [metabase.oauth-server.core :as oauth-server]
@@ -12,8 +9,6 @@
    [metabase.test :as mt]
    [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
-
-(comment metabase.agent-api.api/keep-me)
 
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
@@ -38,9 +33,7 @@
             what Claude and ChatGPT both do.
 
             Iterated over every endpoint path rather than over the sets `default-grant-scopes` is
-            built from: asserting a set covers the sets it is defined as the union of cannot fail.
-            The per-path arities are the ones a client actually meets, and the v1 aliases are inside
-            the ceiling only incidentally today, because `all-scopes` also feeds `supported-scopes`."
+            built from: asserting a set covers the sets it is defined as the union of cannot fail."
     (let [ceiling (set (oauth-server/default-grant-scopes))]
       (doseq [path (mcp/mcp-endpoint-paths)]
         (testing path

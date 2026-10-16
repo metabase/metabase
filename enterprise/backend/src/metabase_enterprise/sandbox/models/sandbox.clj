@@ -12,7 +12,6 @@
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -40,7 +39,8 @@
   (derive :metabase/model)
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/write-policy.superuser)
+  (derive :hook/dependencies))
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})
@@ -72,12 +72,13 @@
       (when-not (isa? col-base-type table-col-base-type)
         (let [msg (tru "Sandbox Questions can''t return columns that have different types than the Table they are sandboxing.")]
           (throw (ex-info msg
-                          {:type        qp.error-type/bad-configuration
-                           :status-code 400
-                           :message     msg
-                           :new-col     col
-                           :expected    table-col-base-type
-                           :actual      (:base_type col)})))))))
+                          {:type          qp.error-type/bad-configuration
+                           :status-code   400
+                           :message       msg
+                           :new-col       col
+                           :expected      table-col-base-type
+                           :actual        (:base_type col)
+                           :response/keys #{:expected :actual}})))))))
 
 (defn- merge-sandbox-into-graph
   "Merges a single sandboxing policy into the permissions graph. Adjusts permissions at the database or schema level,
@@ -279,16 +280,8 @@
        (do
          (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
            (sandbox.db/update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
-         (let [updated-sandbox (sandbox.db/sandbox id)]
-           (events/publish-event! :event/sandbox-update
-                                  {:object updated-sandbox
-                                   :user-id api/*current-user-id*})
-           updated-sandbox))
-       (let [inserted-sandbox (sandbox.db/insert-sandbox! sandbox)]
-         (events/publish-event! :event/sandbox-create
-                                {:object inserted-sandbox
-                                 :user-id api/*current-user-id*})
-         inserted-sandbox)))))
+         (sandbox.db/sandbox id))
+       (sandbox.db/insert-sandbox! sandbox)))))
 
 (defn- normalize-sandbox-attribute-remappings
   "Normalize `:attribute_remappings` on a Sandbox map, if present. `before-insert`/`before-update` hooks see this

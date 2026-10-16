@@ -1780,7 +1780,7 @@
         export-visualizer-settings
         export-pivot-table
         export-timeline-events
-        (update :column_settings export-column-settings))))
+        (m/update-existing :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
   [settings]
@@ -1872,6 +1872,13 @@
       (m/update-existing :timeline.selected_timeline_ids import-fks entity-id? :model/Timeline)
       (m/update-existing :timeline.excluded_timeline_event_ids import-fks timeline-event-ref? :model/TimelineEvent)))
 
+(defn- import-viz-column-settings
+  "Import `:column_settings`, dropping the `nil` that older exports wrote for settings without any."
+  [settings]
+  (if (some? (:column_settings settings))
+    (update settings :column_settings import-column-settings)
+    (dissoc settings :column_settings)))
+
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
   references into Field IDs."
@@ -1885,7 +1892,7 @@
         import-visualizer-settings
         import-pivot-table
         import-timeline-events
-        (update :column_settings import-column-settings))))
+        import-viz-column-settings)))
 
 (defn- viz-link-card-deps
   [allow-int-ids? settings]

@@ -18,8 +18,6 @@ import { formatValue } from "metabase/value-formatting";
 import type { GoalValueResult } from "metabase/viz-core";
 import type { ColumnSettings } from "metabase-types/api";
 
-import { ICON_BUTTON_SIZE } from "../../constants";
-
 import S from "./GoalValuePill.module.css";
 
 type Props = HTMLAttributes<HTMLDivElement> & {
@@ -124,7 +122,8 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
             className={S.trigger}
             data-open={isMenuOpen}
             ml="auto"
-            size={ICON_BUTTON_SIZE}
+            size="sm"
+            variant="subtle"
             onClick={onRemove}
           >
             <Icon name="close" />

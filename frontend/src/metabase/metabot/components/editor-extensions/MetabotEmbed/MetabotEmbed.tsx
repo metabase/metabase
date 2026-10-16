@@ -11,13 +11,22 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { MetabotWorkingIndicator } from "metabase/metabot/components/MetabotWorkingIndicator";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { buildDraftCard } from "metabase/rich_text_editing/tiptap/extensions/shared/draft-card";
 import { wrapCardEmbed } from "metabase/rich_text_editing/tiptap/extensions/shared/layout";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import type { MetabotGenerateContentRequest } from "metabase-types/api";
 
 import { useLazyMetabotGenerateContentQuery } from "../../../api";
@@ -274,16 +283,15 @@ export const MetabotComponent = memo(
           mb="lg"
         >
           <Box pos="absolute" top={0} right={0} className={S.closeButton}>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
             {editor.options.editable && (
-              <Button
+              <ActionIcon
                 variant="subtle"
-                color="neutral"
                 size="sm"
                 m="xxs"
-                leftSection={<Icon name="close" data-hide-on-print />}
                 onClick={() => deleteNode()}
-              />
+              >
+                <Icon name="close" data-hide-on-print />
+              </ActionIcon>
             )}
           </Box>
           <Flex flex={1} direction="column" className={S.contentWrapper}>
@@ -302,9 +310,7 @@ export const MetabotComponent = memo(
           <Flex px="lg" pb="lg" pt="sm" gap="sm" contentEditable={false}>
             <Flex flex={1} my="auto">
               {isLoading ? (
-                <Text flex={1} className={S.toolCallStarted}>
-                  {t`Working on it...`}
-                </Text>
+                <MetabotWorkingIndicator flex={1} />
               ) : errorText ? (
                 <Flex gap="sm" c="text-secondary">
                   <Icon name="warning" h="1.2rem" className={S.iconShrink} />

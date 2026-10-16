@@ -1694,7 +1694,7 @@
                     (map serdes/path)
                     (into #{})))))
       (testing "the click behavior looks sane"
-        (is (= #{{:column_settings nil}
+        (is (= #{{}
                  {:column_settings {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {}
                                     "[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Field To Click 2\"],null]]" {}}}}
                (->> {:targets [["Collection" coll-id]]

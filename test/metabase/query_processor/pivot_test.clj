@@ -1094,6 +1094,21 @@
                   :aggregation [[:count]]
                   :breakout    [$user_id->people.source [:expression "Product Rating + 1"]]})))))))
 
+(deftest ^:parallel pivot-with-case-with-literal-else-in-aggregation-test
+  (testing "pivot runs when an aggregation wraps a :case with a literal else value (#84452)"
+    (mt/dataset test-data
+      (let [mp       (mt/metadata-provider)
+            orders   (lib.metadata/table mp (mt/id :orders))
+            total    (lib.metadata/field mp (mt/id :orders :total))
+            quantity (lib.metadata/field mp (mt/id :orders :quantity))
+            created  (lib.metadata/field mp (mt/id :orders :created_at))
+            query    (-> (lib/query mp orders)
+                         (lib/aggregate (lib/sum (lib/case [[(lib/> quantity 3) total]] 0)))
+                         (lib/breakout (lib/with-temporal-bucket created :year))
+                         (lib/breakout quantity))]
+        (is (=? {:status :completed}
+                (qp.pivot/run-pivot-query query)))))))
+
 (deftest ^:parallel measure-in-pivot-table-test
   (testing "a :measure clause used inside a pivot query executes like the equivalent inline aggregation"
     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)

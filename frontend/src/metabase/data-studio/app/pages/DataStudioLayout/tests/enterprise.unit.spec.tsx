@@ -152,7 +152,12 @@ describe("DataStudioLayout", () => {
   });
 
   describe("library tab dirty indicators", () => {
-    const LIBRARY_TABS = ["Semantic layer", "SQL snippets", "Data actions"];
+    const LIBRARY_TABS = [
+      "Semantic layer",
+      "Dashboards",
+      "SQL snippets",
+      "Data actions",
+    ];
     const getTabStatus = (label: string) =>
       within(screen.getByLabelText(label)).queryByTestId("remote-sync-status");
 
@@ -195,6 +200,7 @@ describe("DataStudioLayout", () => {
       await waitFor(() => {
         expect(getTabStatus("Semantic layer")).toBeInTheDocument();
       });
+      expect(getTabStatus("Dashboards")).not.toBeInTheDocument();
       expect(getTabStatus("SQL snippets")).not.toBeInTheDocument();
       expect(getTabStatus("Data actions")).not.toBeInTheDocument();
     });

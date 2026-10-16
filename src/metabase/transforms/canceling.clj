@@ -150,9 +150,11 @@
       ;; is at least visible in metrics. Magnitude can be inferred from log volume if needed.
       (analytics/inc! :metabase-transforms/cancelation-completed {:outcome "error"}))))
 
-(task/defjob  ^{:doc "Cancel items that haven't been canceled in two minutes"
-                org.quartz.DisallowConcurrentExecution true}
-  CancelOldTransformRuns [ctx]
+(task/defjob CancelOldTransformRuns
+  "Cancel items that haven't been canceled in two minutes"
+  {:saved-class "metabase.transforms.canceling.CancelOldTransformRuns"
+   :concurrent? false}
+  [ctx]
   (cancel-old-transform-runs! ctx))
 
 (defn- start-job! []

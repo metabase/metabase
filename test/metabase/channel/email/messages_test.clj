@@ -55,7 +55,15 @@
         (let [content (-> (@et/inbox "admin@example.com")
                           (get-in [0 :body 0 :content]))]
           (is (str/includes? content "href=\"mailto:new-user@example.com\""))
-          (is (not (str/includes? content "mailto:admin@example.com"))))))))
+          (is (not (str/includes? content "mailto:admin@example.com")))))))
+  (testing "a `?` in the joined user's email is percent-encoded, so the link does not add a CC"
+    (mt/with-temporary-setting-values [admin-email "admin@example.com"]
+      (et/with-fake-inbox
+        (messages/send-user-joined-admin-notification-email! {:first_name  "New"
+                                                              :common_name "New User"
+                                                              :email       "x?cc=y@example.com"})
+        (is (str/includes? (get-in (@et/inbox "admin@example.com") [0 :body 0 :content])
+                           "href=\"mailto:x%3Fcc&#x3D;y@example.com\""))))))
 
 #_(deftest render-pulse-email-test
     (testing "Email with few rows and columns can be rendered when tracing (#21166)"
