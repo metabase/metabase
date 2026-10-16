@@ -1,7 +1,10 @@
 import { Ellipsified, Stack, Text } from "metabase/ui";
 import type { ColumnSettings } from "metabase-types/api";
 
-import { getChangeText } from "./TrendComparisonList";
+import {
+  COMPARISON_PANEL_TOOLTIP_PROPS,
+  TrendComparisonPanel,
+} from "./TrendComparisonPanel";
 import { TrendComparisonText } from "./TrendComparisonText";
 import {
   type ComparisonResult,
@@ -9,6 +12,7 @@ import {
   getComparisonDisplay,
 } from "./compute";
 import { TEXT_SPACING } from "./constants";
+import { getChangeText } from "./utils";
 
 const ROW_GAP = 8;
 
@@ -72,6 +76,13 @@ export function TrendComparisonStack({
           lh="sm"
           ta="center"
           maw="100%"
+          tooltip={
+            <TrendComparisonPanel
+              comparisons={comparisons}
+              formatOptions={formatOptions}
+            />
+          }
+          tooltipProps={COMPARISON_PANEL_TOOLTIP_PROPS}
           data-testid="scalar-previous-value"
         >
           {index === 0 ? (

@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  mockTextOverflow,
+  renderWithProviders,
+  screen,
+  within,
+} from "__support__/ui";
 import { NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -28,18 +33,20 @@ beforeAll(() => loadVisualizationComponents(["smartscalar"]));
 
 const createMockInsights = (insights: Partial<Insight>[]) => insights;
 
-const setup = (series: Series, width = 800) =>
-  renderWithProviders(<Visualization rawSeries={series} width={width} />);
-
 interface SetupOpts {
   series: Series;
   width?: number;
   height?: number;
 }
 
-const setupCard = ({ series, width = 800, height }: SetupOpts) =>
+// an explicit `height={undefined}` would override the mocked ExplicitSize height
+const setup = ({ series, width = 800, height }: SetupOpts) =>
   renderWithProviders(
-    <Visualization rawSeries={series} width={width} height={height} />,
+    <Visualization
+      rawSeries={series}
+      width={width}
+      {...(height != null ? { height } : {})}
+    />,
   );
 
 const getTrendSymbol = () => screen.getByTestId("trend-symbol");
@@ -53,7 +60,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }));
+      setup({ series: series({ rows, insights }) });
 
       expect(screen.getByText("120")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -68,7 +75,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }));
+      setup({ series: series({ rows, insights }) });
 
       expect(getTrendSymbol()).toHaveAttribute("data-direction", "arrow_up");
       expect(screen.getByText("+20% MoM")).toBeInTheDocument();
@@ -82,7 +89,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }), 400);
+      setup({ series: series({ rows, insights }), width: 400 });
 
       expect(screen.getByText("100")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -99,7 +106,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }));
+      setup({ series: series({ rows, insights }) });
 
       expect(screen.getByText("80")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -117,7 +124,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }), 400);
+      setup({ series: series({ rows, insights }), width: 400 });
 
       expect(screen.getByText("-100")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -134,7 +141,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }), 400);
+      setup({ series: series({ rows, insights }), width: 400 });
 
       expect(screen.getByText("100")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -149,7 +156,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }), 400);
+      setup({ series: series({ rows, insights }), width: 400 });
 
       expect(getTrendSymbol()).toHaveAttribute("data-direction", "no_change");
       expect(screen.getByText("0.00% vs. previous month")).toBeInTheDocument();
@@ -162,7 +169,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }), 400);
+      setup({ series: series({ rows, insights }), width: 400 });
 
       expect(screen.getByText("100")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -197,7 +204,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }), width);
+      setup({ series: series({ rows, insights }), width });
 
       expect(screen.getByText("81,005")).toBeInTheDocument();
     });
@@ -210,7 +217,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }), width);
+      setup({ series: series({ rows, insights }), width });
 
       expect(screen.getByText("810.8k")).toBeInTheDocument();
     });
@@ -223,7 +230,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setupCard({
+      setup({
         series: series({
           rows,
           insights,
@@ -269,7 +276,7 @@ describe("SmartScalar", () => {
 
       it("should list the primary comparison as the single row and the rest in query builder notation", () => {
         // 400px wide and 264px tall is the size-400 tier at its spec min-height
-        setupCard({ series: multiComparisonSeries, width: 400, height: 264 });
+        setup({ series: multiComparisonSeries, width: 400, height: 264 });
 
         const list = within(screen.getByTestId("scalar-comparison-list"));
         const lines = list.getAllByTestId("scalar-previous-value");
@@ -282,7 +289,7 @@ describe("SmartScalar", () => {
       });
 
       it("should keep the badge when the card is shorter than the tier's min-height", async () => {
-        setupCard({ series: multiComparisonSeries, width: 400, height: 263 });
+        setup({ series: multiComparisonSeries, width: 400, height: 263 });
 
         expect(screen.getByText("+20% MoM")).toBeInTheDocument();
         expect(screen.getByText("+2")).toBeInTheDocument();
@@ -293,9 +300,29 @@ describe("SmartScalar", () => {
         expect(within(tooltip).getByText("vs. Goal")).toBeInTheDocument();
       });
 
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it("should open the comparison panel from a listed line that does not fit", async () => {
+        mockTextOverflow();
+        setup({ series: multiComparisonSeries, width: 400, height: 264 });
+
+        const [firstLine] = within(
+          screen.getByTestId("scalar-comparison-list"),
+        ).getAllByTestId("scalar-previous-value");
+        await userEvent.hover(firstLine);
+        const tooltip = within(await screen.findByRole("tooltip"));
+
+        expect(tooltip.getByText("vs. previous month")).toBeInTheDocument();
+        expect(tooltip.getByText("vs. Oct")).toBeInTheDocument();
+        expect(tooltip.getByText("vs. Goal")).toBeInTheDocument();
+        expect(tooltip.getByText("50%")).toBeInTheDocument();
+      });
+
       it("should apply each tier's own min-height", () => {
         // 320px wide is the size-300 tier, whose min-height is 256px
-        setupCard({ series: multiComparisonSeries, width: 320, height: 256 });
+        setup({ series: multiComparisonSeries, width: 320, height: 256 });
 
         expect(
           within(screen.getByTestId("scalar-comparison-list")).getAllByTestId(
@@ -305,7 +332,7 @@ describe("SmartScalar", () => {
       });
 
       it("should never list comparisons on the smallest cards", () => {
-        setupCard({ series: multiComparisonSeries, width: 100, height: 400 });
+        setup({ series: multiComparisonSeries, width: 100, height: 400 });
 
         expect(
           screen.queryByTestId("scalar-comparison-list"),
@@ -314,7 +341,7 @@ describe("SmartScalar", () => {
       });
 
       it("should keep the single comparison row for one comparison", () => {
-        setupCard({
+        setup({
           series: series({ rows, insights }),
           width: 400,
           height: 400,
@@ -334,7 +361,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }), 100);
+      setup({ series: series({ rows, insights }), width: 100 });
 
       expect(screen.getByText("30,759.47")).toBeInTheDocument();
       expect(screen.queryByTestId("trend-symbol")).not.toBeInTheDocument();
@@ -542,7 +569,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(series({ rows, insights }), 400);
+      setup({ series: series({ rows, insights }), width: 400 });
 
       expect(screen.getByText("100")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -561,7 +588,7 @@ describe("SmartScalar", () => {
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       // narrow width forces the percent-only format, so the panel adds info
-      setup(series({ rows, insights }), 100);
+      setup({ series: series({ rows, insights }), width: 100 });
 
       await userEvent.hover(screen.getByTestId("scalar-previous-value"));
       const tooltip = await screen.findByRole("tooltip");
@@ -584,7 +611,7 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setupCard({
+      setup({
         series: series({
           rows,
           insights,
@@ -614,7 +641,7 @@ describe("SmartScalar", () => {
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
       // one fully-displayed comparison — no panel, so nothing to focus
-      setup(series({ rows, insights }), 400);
+      setup({ series: series({ rows, insights }), width: 400 });
 
       expect(screen.getByTestId("scalar-previous-value")).not.toHaveAttribute(
         "tabindex",
@@ -656,7 +683,10 @@ describe("SmartScalar", () => {
     });
 
     it("should hide the comparison value but keep the percent change", () => {
-      setup(series({ rows, insights, settings: hideComparisonValue }), 400);
+      setup({
+        series: series({ rows, insights, settings: hideComparisonValue }),
+        width: 400,
+      });
 
       const comparison = within(screen.getByTestId("scalar-previous-value"));
       expect(getTrendSymbol()).toHaveAttribute("data-direction", "arrow_up");
@@ -670,14 +700,14 @@ describe("SmartScalar", () => {
         ["2019-11-01T00:00:00", 100],
       ];
 
-      setup(
-        series({
+      setup({
+        series: series({
           rows: rowsWithMissingValue,
           insights,
           settings: hideComparisonValue,
         }),
-        400,
-      );
+        width: 400,
+      });
 
       const comparison = within(screen.getByTestId("scalar-previous-value"));
       expect(
@@ -687,7 +717,7 @@ describe("SmartScalar", () => {
     });
 
     it("should hide the value of every comparison in the hover panel", async () => {
-      setupCard({
+      setup({
         series: series({
           rows,
           insights,
@@ -720,14 +750,14 @@ describe("SmartScalar", () => {
       ];
 
       // the smallest tier shows the percentage only, so the panel is always available
-      setup(
-        series({
+      setup({
+        series: series({
           rows: unchangedRows,
           insights,
           settings: hideComparisonValue,
         }),
-        100,
-      );
+        width: 100,
+      });
 
       await userEvent.hover(screen.getByTestId("scalar-previous-value"));
       const tooltip = within(await screen.findByRole("tooltip"));
@@ -770,12 +800,12 @@ describe("SmartScalar", () => {
     ]);
 
     it("should use first non-date column (Count) by default", () => {
-      setup(
-        series({
+      setup({
+        series: series({
           rows,
           insights,
         }),
-      );
+      });
       expect(screen.getByText("120")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
       expect(screen.getByText("+20% MoM")).toBeInTheDocument();
@@ -783,7 +813,7 @@ describe("SmartScalar", () => {
     });
 
     it("should use Count when selected", () => {
-      setup(series({ rows, insights, field: "Count" }));
+      setup({ series: series({ rows, insights, field: "Count" }) });
       expect(screen.getByText("120")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
       expect(screen.getByText("+20% MoM")).toBeInTheDocument();
@@ -791,7 +821,7 @@ describe("SmartScalar", () => {
     });
 
     it("should use Sum when selected", () => {
-      setup(series({ rows, insights, field: "Sum" }));
+      setup({ series: series({ rows, insights, field: "Sum" }) });
       expect(screen.getByText("220")).toBeInTheDocument();
       expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
       expect(screen.getByText("+10% MoM")).toBeInTheDocument();
@@ -809,10 +839,14 @@ describe("SmartScalar", () => {
         ];
         const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-        setup(
-          series({ rows, insights, comparisonType: PREVIOUS_VALUE_COMPARISON }),
-          400,
-        );
+        setup({
+          series: series({
+            rows,
+            insights,
+            comparisonType: PREVIOUS_VALUE_COMPARISON,
+          }),
+          width: 400,
+        });
 
         expect(screen.getByText("100")).toBeInTheDocument();
         expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -826,10 +860,14 @@ describe("SmartScalar", () => {
         ];
         const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-        setup(
-          series({ rows, insights, comparisonType: PREVIOUS_VALUE_COMPARISON }),
-          400,
-        );
+        setup({
+          series: series({
+            rows,
+            insights,
+            comparisonType: PREVIOUS_VALUE_COMPARISON,
+          }),
+          width: 400,
+        });
 
         expect(screen.getByText("100")).toBeInTheDocument();
         expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -847,14 +885,14 @@ describe("SmartScalar", () => {
         ];
         const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-        setup(
-          series({
+        setup({
+          series: series({
             rows,
             insights,
             comparisonType: getPeriodsAgoComparison(2),
           }),
-          400,
-        );
+          width: 400,
+        });
 
         expect(screen.getByText("100")).toBeInTheDocument();
         expect(screen.getByText(/Nov 2019/)).toBeInTheDocument();
@@ -871,14 +909,14 @@ describe("SmartScalar", () => {
       ];
       const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-      setup(
-        series({
+      setup({
+        series: series({
           rows,
           insights,
           // Unjustified type cast. FIXME
           comparisonType: getPeriodsAgoComparison("hi" as unknown as number),
         }),
-      );
+      });
 
       expect(screen.getByLabelText("warning icon")).toBeInTheDocument();
       expect(
@@ -897,13 +935,13 @@ describe("SmartScalar", () => {
     ];
     const insights = createMockInsights([{ unit: "month", col: "Count" }]);
 
-    setup(
-      series({
+    setup({
+      series: series({
         rows,
         insights,
         comparisonType: getPeriodsAgoComparison(1),
       }),
-    );
+    });
 
     expect(screen.queryByLabelText("warning icon")).not.toBeInTheDocument();
     expect(screen.getByText("100")).toBeInTheDocument();

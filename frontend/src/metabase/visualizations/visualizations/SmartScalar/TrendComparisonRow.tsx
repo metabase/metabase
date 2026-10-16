@@ -3,7 +3,10 @@ import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/viz-core";
 import type { ColumnSettings } from "metabase-types/api";
 
-import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
+import {
+  COMPARISON_PANEL_TOOLTIP_PROPS,
+  TrendComparisonPanel,
+} from "./TrendComparisonPanel";
 import S from "./TrendComparisonRow.module.css";
 import {
   COMPARISON_TEXT_GAPS,
@@ -43,20 +46,13 @@ export function TrendComparisonRow({
 
   return (
     <Tooltip
-      position="bottom"
+      {...COMPARISON_PANEL_TOOLTIP_PROPS}
       disabled={!showsPanel}
-      classNames={{ tooltip: S.comparisonPanel }}
       label={
-        <div className={S.comparisonTable}>
-          {comparisons.map((comparison, index) => (
-            <PreviousValueComparisonTooltip
-              comparison={comparison}
-              key={index}
-              formatOptions={formatOptions}
-              className={S.comparisonRow}
-            />
-          ))}
-        </div>
+        <TrendComparisonPanel
+          comparisons={comparisons}
+          formatOptions={formatOptions}
+        />
       }
     >
       <Flex
