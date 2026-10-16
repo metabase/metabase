@@ -276,6 +276,16 @@ const defaultConfig = {
         launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
+      // TEMPORARY (EMB-2490)
+      if (browser.family === "chromium") {
+        const portArg = launchOptions.args.find((arg) =>
+          arg.startsWith("--remote-debugging-port="),
+        );
+        if (portArg) {
+          require("./hang-watchdog").startHangWatchdog(portArg.split("=")[1]);
+        }
+      }
+
       // Start browsers with prefers-reduced-motion set to "reduce"
       if (browser.family === "firefox") {
         launchOptions.preferences["ui.prefersReducedMotion"] = 1;
