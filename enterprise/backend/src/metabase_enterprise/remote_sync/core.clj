@@ -512,7 +512,7 @@
              (= :read-write (settings/remote-sync-type))
              (not (settings/remote-sync-custom-collections-synced)))
     (let [library (collections/ensure-library-collection!)]
-      (when-not (settings/remote-sync-transforms)
-        (settings/remote-sync-transforms! true))
       (when-not (:is_remote_synced library)
-        (bulk-set-remote-sync {(:id library) true})))))
+        (bulk-set-remote-sync {(:id library) true}))
+      (when-not (settings/remote-sync-transforms)
+        (settings/remote-sync-transforms! true)))))

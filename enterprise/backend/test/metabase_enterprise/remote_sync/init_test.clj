@@ -354,7 +354,10 @@
          (is (false? (settings/remote-sync-custom-collections-synced)))
          (testing "until another collection is synced"
            (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
-             (is (true? (settings/remote-sync-custom-collections-synced))))))))))
+             (is (true? (settings/remote-sync-custom-collections-synced)))))
+         (testing "while one in the trash doesn't count"
+           (mt/with-temp [:model/Collection _ {:name "Trashed" :is_remote_synced true :archived true}]
+             (is (false? (settings/remote-sync-custom-collections-synced))))))))))
 
 (deftest finish-remote-config-creates-library-test
   (doseq [remote-sync-type [:read-write :read-only]]

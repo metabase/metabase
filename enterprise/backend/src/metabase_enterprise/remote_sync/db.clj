@@ -614,13 +614,14 @@
   (t2/exists? :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag" "TransformTest" "PythonLibrary"]]))
 
 (mu/defn other-remote-synced-collection-exists?
-  "Whether a remote-synced Collection exists whose type isn't one of `excluded-types` and whose namespace isn't one of
-  `excluded-namespaces`."
+  "Whether an unarchived remote-synced Collection exists whose type isn't one of `excluded-types` and whose namespace
+  isn't one of `excluded-namespaces`."
   [excluded-types      :- [:sequential :string]
    excluded-namespaces :- [:sequential :string]]
   (t2/exists? :model/Collection
               {:where [:and
                        [:= :is_remote_synced true]
+                       [:= :archived false]
                        [:or [:= :type nil] [:not-in :type excluded-types]]
                        [:or [:= :namespace nil] [:not-in :namespace excluded-namespaces]]]}))
 
