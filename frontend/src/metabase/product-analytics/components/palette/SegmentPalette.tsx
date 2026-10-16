@@ -191,9 +191,8 @@ const PaletteSection = ({
 }: PaletteSectionProps) => {
   const [sendToast] = useToast();
   const tableQuery = useTableQuery(table);
-  const { drafts, addDraft, updateDraft, removeDraft } = useSegmentDrafts(
-    table?.id,
-  );
+  const { drafts, addDraft, updateDraft, removeDraft, restoreDraft } =
+    useSegmentDrafts(table?.id);
   const { saved, drafted, isLoading } = usePaletteSegments(
     table?.id,
     source,
@@ -287,7 +286,18 @@ const PaletteSection = ({
                 setModal({ draft });
               }
             }}
-            onDiscardDraft={() => removeDraft(segment.key)}
+            onDiscardDraft={() => {
+              const draft = findDraft(segment.key);
+              if (draft === undefined) {
+                return;
+              }
+              removeDraft(draft.id);
+              sendToast({
+                message: t`Discarded the draft “${draft.name}”`,
+                actionLabel: t`Undo`,
+                action: () => restoreDraft(draft),
+              });
+            }}
           />
         );
       })}

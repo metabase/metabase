@@ -88,5 +88,14 @@ export const useSegmentDrafts = (tableId: TableId | undefined) => {
     [update],
   );
 
-  return { drafts, addDraft, updateDraft, removeDraft };
+  /** Puts a removed draft back, e.g. from an undo. */
+  const restoreDraft = useCallback(
+    (draft: SegmentDraft) =>
+      update((current) =>
+        current.some((d) => d.id === draft.id) ? current : [...current, draft],
+      ),
+    [update],
+  );
+
+  return { drafts, addDraft, updateDraft, removeDraft, restoreDraft };
 };
