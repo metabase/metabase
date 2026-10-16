@@ -44,6 +44,7 @@ If you're on Metabase Cloud, the API endpoints are your only option.
 - [General Metabase settings that get exported](#general-metabase-settings-that-are-exported)
 - [Customize what gets exported](#customize-what-gets-exported)
 - [Example of a serialized question](#example-of-a-serialized-question)
+- [How exported files are organized](#how-exported-files-are-organized)
 - [Metabase uses Entity IDs to identify and reference items](#metabase-uses-entity-ids-to-identify-metabase-items)
 
 ### What gets exported
@@ -169,6 +170,53 @@ See [Export options](#export-options) for the full list.
 
 Questions are stored as YAML files inside their parent collection folder. For examples and a complete spec, see the [Metabase Representation Format](https://github.com/metabase/representations).
 
+### How exported files are organized
+
+Each item is a YAML file named `<name>.<kind>.yaml`, where the kind says what the item is: `question`, `model`, `metric`, `dashboard`, `document`, `timeline`, `action`, `snippet`, `transform`, `transform_test`, `transform_tag`, `transform_job`, `term`, `segment`, `measure`, `table`, `database`, and so on. A collection is a folder with its own `collection.yaml` file in it.
+
+Items that belong to another item go in a folder named after that item's file, next to it. For example, a dashboard question goes in its dashboard's folder, an action goes in its model's folder, and a transform's tests go in the transform's folder. An item's AI context is the file `osi_ai_context.yaml` in the item's folder.
+
+An export has these top-level folders:
+
+| Folder              | What it holds                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------- |
+| `collections/main/` | Collections in the main namespace, and the questions, dashboards, and other items in them      |
+| `data/`             | The Library's published tables, with their segments and measures                               |
+| `metrics/`          | The Library's metrics                                                                          |
+| `dashboards/`       | The Library's dashboards                                                                       |
+| `snippets/`         | SQL snippets and snippet folders                                                               |
+| `glossary/`         | Glossary entries                                                                               |
+| `data_actions/`     | Actions that don't belong to a model                                                           |
+| `transforms/`       | Transforms, transform collections, and transform tests                                         |
+| `transform_tags/`   | Transform tags                                                                                 |
+| `transform_jobs/`   | Transform jobs                                                                                 |
+| `python_library/`   | Python libraries, like `common.py.yaml`                                                        |
+| `databases/`        | Databases, and the tables that aren't published to the Library, by schema                      |
+| `data_apps/`        | Data apps; each app's folder holds its `data_app.yaml` and, in `resources/`, what the app runs |
+
+For example:
+
+```
+collections/main/ops/collection.yaml
+collections/main/ops/daily.dashboard.yaml
+collections/main/ops/daily.dashboard/weekly_actives.question.yaml
+collections/main/ops/orders_model.model.yaml
+collections/main/ops/orders_model.model/refund.action.yaml
+data/sales/orders.table.yaml
+metrics/mrr.metric.yaml
+glossary/arr.term.yaml
+transforms/dedupe_users.transform.yaml
+transforms/dedupe_users.transform/nulls_dropped.transform_test.yaml
+databases/my_db.database.yaml
+databases/my_db/public/customers.table.yaml
+```
+
+The Library and its Data, Metrics, and Dashboards collections have no files. Metabase creates them, so an export holds only what's in them.
+
+A table is one file. The file holds the table's settings and a `columns` list, with each column's settings and remapping. In an export, each table and column also carries its schema under `metadata`.
+
+Exports made by older versions of Metabase, with the earlier file names and folders, still import.
+
 Some things to keep in mind when reading or editing exported YAML:
 
 - To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
@@ -187,19 +235,19 @@ To get an item's Entity ID in Metabase:
 
 You can also see the Entity IDs of items in the exported YAML files in the `entity_id` field. This ID also appears in the `serdes/meta → id` field (these IDs must match).
 
-Metabase uses simplified versions of entity names for file and directory names in exports. Names are lowercased, and special characters are replaced with underscores. Names are also truncated for filesystem compatibility.
+Metabase uses simplified versions of entity names for file and directory names in exports. Names are lowercased, and special characters (including periods) are replaced with underscores. Names are also truncated for filesystem compatibility.
 
 ```
-products_by_week.yaml
-accounts_model.yaml
-converted_customers.yaml
+products_by_week.question.yaml
+accounts_model.model.yaml
+converted_customers.metric.yaml
 ```
 
-If two entities in the same folder share the same name after simplification, Metabase appends a numeric suffix to disambiguate:
+If two items of the same kind in the same folder share the same name after simplification, Metabase appends a numeric suffix to the newer one, so the older item keeps its file name:
 
 ```
-products_by_week.yaml
-products_by_week_2.yaml
+products_by_week.question.yaml
+products_by_week_2.question.yaml
 ```
 
 ### Entity IDs work with embedding
@@ -218,7 +266,7 @@ A high-level workflow for using Entity IDs when embedding Metabase in your app w
 
 By default, Metabase exports some database and data model settings. Exports exclude database connection strings. You can also choose to exclude the data model entirely.
 
-Metabase serializes databases and tables in the `databases` directory. It will include YAML files for every database, table, field, segment, and metric.
+Metabase serializes databases in the `databases` directory, and each table as one file that holds its fields. Tables published to the Library go in the `data` directory; other tables go in `databases/<database>/<schema>/`. See [How exported files are organized](#how-exported-files-are-organized).
 
 Databases, tables, and fields are referred to by their names (unlike Metabase-specific items, which are [referred to by Entity IDs](#metabase-uses-entity-ids-to-identify-metabase-items)).
 
@@ -260,7 +308,7 @@ By default, Metabase includes all collections in the export except for personal 
 
 You can find a collection ID in its URL. For example, a collection at `your-metabase.com/collection/42-terraforming-progress` has the ID `42`.
 
-This option works the same regardless of a collection's namespace. Metabase determines the output directory (`collections/main/`, `collections/snippets/`, or `collections/transforms/`) from the collection's own namespace property, not from the ID you pass.
+This option works the same regardless of a collection's namespace. Metabase determines the output directory (for example, `collections/main/`, `snippets/`, or `transforms/`) from the collection's own namespace property, not from the ID you pass.
 
 Examples:
 
@@ -622,6 +670,9 @@ Starting with Metabase 60, the export format changed:
 - File and directory names now use human-readable names (like `accounts_model.yaml`) instead of Entity ID prefixes. Entity IDs are still present inside each YAML file.
 - Fields with default values (like `archived: false`) and null-valued fields are omitted from the YAML output, keeping files compact.
 - The file tree organizes collections by namespace (`main/`, `snippets/`, `transforms/`), and entities are stored inside their parent collection folder.
+
+Later versions changed the file names and folders again. See [How exported files are organized](#how-exported-files-are-organized). Exports in the earlier format still import.
+
 - To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
 
 If you've written scripts to automate serialization, you'll need to:
