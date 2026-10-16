@@ -1109,7 +1109,7 @@ describe("scenarios > visualizations > table column settings", () => {
 
           res.send();
         });
-      }).as("cardQuery");
+      });
 
       // A dirty question runs through /api/dataset, so give it the same named field ref.
       cy.intercept("POST", "/api/dataset", (req) => {

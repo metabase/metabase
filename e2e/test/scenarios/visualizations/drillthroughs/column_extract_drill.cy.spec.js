@@ -195,7 +195,6 @@ function extractColumnAndCheck({
   H.tableHeaderClick(column);
 
   H.popover().findByText(extraction).click();
-  cy.wait(1);
 
   if (example) {
     H.popover().findByText(option).should("contain", example);
@@ -227,10 +226,8 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should create a snowplow event for the column extraction action and allow editing the expression in the notebook editor", () => {
+  it("should create a snowplow event for the column extraction action and allow editing and renaming the expression in the notebook editor", () => {
     H.openOrdersTable({ limit: 1 });
-
-    cy.wait(1);
 
     extractColumnAndCheck({
       column: "Created At",
@@ -249,11 +246,13 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     H.openNotebook();
     H.getNotebookStep("expression").findByText("Year").click();
     H.enterCustomColumnDetails({
+      name: "custom formula",
       formula: "year([Created At]) + 2",
       format: true,
     });
     H.popover().button("Update").should("not.be.disabled").click();
     H.visualize();
+    H.tableHeaderColumn("custom formula").should("be.visible");
     cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
   });
 });
