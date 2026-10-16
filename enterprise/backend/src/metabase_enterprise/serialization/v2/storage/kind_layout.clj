@@ -1,11 +1,12 @@
 (ns metabase-enterprise.serialization.v2.storage.kind-layout
-  "The kind layout of an export (`REPRESENTATIONS_LAYOUT_SPEC.md`): each item is a file `<name>.<kind>.yaml`, each
+  "The kind layout of an export: each item is a file `<name>.<kind>.yaml`, each
   collection a folder `<name>/` with its own `_collection.yaml`, and the items an item contains are in the folder
   `<name>.<kind>/` beside it. [[kind-layout]] is the layout function (see [[storage.util/storage-context]]); it needs a
   storage context with a `:layout-cache`, where it keeps what it reads from the app DB."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.serialization.db :as serialization.db]
+   [metabase-enterprise.serialization.v2.storage.kind-folders :as kind-folders]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
@@ -16,8 +17,8 @@
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Open items ------------------------------------------------------
-;;; Each open item of the layout spec that this layout needs is answered in one place below, with the spec's proposed
-;;; answer, or with a choice where the spec proposes none.
+;;; Each open question of the layout's design that this layout needs is answered in one place below, each under a
+;;; comment that names it (open items 1 to 10 of the design).
 
 (def kind-words
   "The word of each kind of item, in its file name `<name>.<word>.yaml`."
@@ -64,12 +65,7 @@
   ;; file to create it before the app.
   true)
 
-(defn namespace-folder
-  "The top-level folder of the collections of `collection-namespace`, a namespace without a folder of its own: its
-  name with `-` turned into `_`."
-  ;; Open item 4: the proposed rule.
-  [collection-namespace]
-  (str/replace (name collection-namespace) "-" "_"))
+;; Open item 4 (the folder of another namespace): see [[kind-folders/namespace-folder]].
 
 (defn- schema-folders
   "The folders of the schema `schema` inside its database's folder."
@@ -89,7 +85,7 @@
 
 (def ^:private action-in-model-folder?
   "Whether an action on a model goes in the model's folder `<name>.model/`, rather than in the model's collection."
-  ;; Open item 10: no; it stays in the model's collection, as today.
+  ;; Open item 10: no; it stays in the model's collection, as in the default layout.
   false)
 
 ;;; ------------------------------------------------- Folders --------------------------------------------------------
@@ -100,17 +96,6 @@
    :snippets     "snippets"
    :transforms   "transforms"
    :data-actions "data_actions"})
-
-(def other-namespace-folders
-  "The top-level folders of the namespaces the default-namespace content may also go in."
-  (into #{} (comp (remove nil?) (map namespace-folder)) collections/default-allowed-namespaces))
-
-(def top-level-folders
-  "Every top-level folder the kind layout writes."
-  (into #{"data" "metrics" "dashboards" "documents" "glossary" "snippets" "data_actions" "transforms" "transform_tags"
-          "python_library" "data_apps" "collections" "databases" "transform_jobs" "metabots" "channels"
-          "embedding_themes" "custom_viz_plugins" "osi_ai_context"}
-        other-namespace-folders))
 
 ;;; ------------------------------------------------- Context --------------------------------------------------------
 
@@ -139,14 +124,18 @@
 (defn- data-app-slugs [ctx]
   (cached ctx ::data-app-slugs serialization.db/data-app-slugs-by-collection-id))
 
+(declare rows)
+
 (defn- containers
-  "The `:entity_id`, `:name`, `:collection_id` (an entity_id) and `:created_at` of every instance of `model`, by
-  entity_id."
-  [ctx model]
-  (cached ctx [::containers model]
+  "The `:entity_id`, `:name`, `:collection_id` (an entity_id) and `:created_at` of every instance of the kind `k` of
+  [[row-queries]], by entity_id."
+  [ctx k]
+  (cached ctx [::containers k]
           #(u/index-by :entity_id
-                       (map (fn [row] (update row :collection_id (partial collection-eid ctx)))
-                            (serialization.db/layout-rows model [:entity_id :name :collection_id :created_at] nil)))))
+                       (map (fn [row] (-> row
+                                          (select-keys [:entity_id :name :collection_id :created_at])
+                                          (update :collection_id (partial collection-eid ctx))))
+                            (rows ctx k)))))
 
 (defn- published-tables
   "Each published Table's `:collection_id` (an entity_id) and `:created_at`, keyed by `[db-name schema table-name]`."
@@ -162,18 +151,37 @@
 ;;; -------------------------------------------------- Names ---------------------------------------------------------
 
 (defn- slug
-  "The file or folder name of the label `s`: today's rule, with `.` also turned into `_`, so that no name ends in
+  "The file or folder name of the label `s`: [[storage.util/slugify-name]], with `.` also turned into `_`, so that no
+  name ends in
   `.<kind>` and a collection's folder cannot be taken for an item's `<name>.<kind>/` folder."
   [s]
   (str/replace (or (storage.util/slugify-name s) "") "." "_"))
 
-(defn- rows-of
-  "The `columns` (with `:entity_id`, `:name` and `:created_at`) of the instances of `model` that match `where`."
-  [model columns where]
-  (fn [_ctx]
-    (serialization.db/layout-rows model (into [:entity_id :name :created_at] columns) where)))
+(def ^:private row-queries
+  "The app-DB query of the rows of each kind of item that the layout places by its container or numbers."
+  {:cards           serialization.db/layout-cards
+   :dashboards      serialization.db/layout-dashboards
+   :documents       serialization.db/layout-documents
+   :timelines       serialization.db/layout-timelines
+   :snippets        serialization.db/layout-snippets
+   :actions         serialization.db/layout-actions
+   :transforms      serialization.db/layout-transforms
+   :transform-tests serialization.db/layout-transform-tests
+   :transform-tags  serialization.db/layout-transform-tags
+   :transform-jobs  serialization.db/layout-transform-jobs
+   :segments        serialization.db/layout-segments
+   :measures        serialization.db/layout-measures
+   :glossary        serialization.db/layout-glossary})
 
-(def ^:private not-archived [:= :archived false])
+(defn- rows
+  "The rows of the kind `k` of [[row-queries]], read once per storage context."
+  [ctx k]
+  (cached ctx [::rows k] (row-queries k)))
+
+(defn- live-rows
+  "A function of a storage context that gives the rows of the kind `k` that are not archived."
+  [k]
+  (fn [ctx] (remove :archived (rows ctx k))))
 
 (defn- numbered-collections
   "The collections whose folders the layout numbers on a name clash: not archived, and not the Trash, a personal
@@ -190,7 +198,7 @@
   storage context), `:group` gives the folder an instance is in, as the app DB says it. `:id` (default `:entity_id`)
   and `:label` (default `:name`) read the instance's identity and name."
   (let [by-collection {:group :collection_id}
-        card          {:rows  (rows-of :model/Card [:collection_id :dashboard_id :document_id :type] not-archived)
+        card          {:rows  (live-rows :cards)
                        :group (fn [{:keys [collection_id dashboard_id document_id] card-type :type}]
                                 (cond
                                   dashboard_id [:dashboard dashboard_id]
@@ -201,21 +209,21 @@
      :question       card
      :model          card
      :metric         card
-     :dashboard      (assoc by-collection :rows (rows-of :model/Dashboard [:collection_id] not-archived))
-     :document       (assoc by-collection :rows (rows-of :model/Document [:collection_id] not-archived))
-     :timeline       (assoc by-collection :rows (rows-of :model/Timeline [:collection_id] not-archived))
-     :snippet        (assoc by-collection :rows (rows-of :model/NativeQuerySnippet [:collection_id] not-archived))
-     :transform      (assoc by-collection :rows (rows-of :model/Transform [:collection_id] nil))
-     :action         {:rows  (rows-of :model/Action [:collection_id :model_id] not-archived)
+     :dashboard      (assoc by-collection :rows (live-rows :dashboards))
+     :document       (assoc by-collection :rows (live-rows :documents))
+     :timeline       (assoc by-collection :rows (live-rows :timelines))
+     :snippet        (assoc by-collection :rows (live-rows :snippets))
+     :transform      (assoc by-collection :rows (live-rows :transforms))
+     :action         {:rows  (live-rows :actions)
                       ;; with no collection, an action on a model is in collections/, one on no model in data_actions/
                       :group (fn [{:keys [collection_id model_id]}]
                                [collection_id (and (nil? collection_id) (some? model_id))])}
-     :transform-test {:rows (rows-of :model/TransformTest [:transform_id] nil) :group :transform_id}
-     :transform-tag  {:rows (rows-of :model/TransformTag [] nil) :group (constantly nil)}
-     :transform-job  {:rows (rows-of :model/TransformJob [] nil) :group (constantly nil)}
-     :segment        {:rows (rows-of :model/Segment [:table_id] not-archived) :group :table_id}
-     :measure        {:rows (rows-of :model/Measure [:table_id] not-archived) :group :table_id}
-     :term           {:rows  (fn [_ctx] (serialization.db/layout-rows :model/Glossary [:entity_id :term :created_at] nil))
+     :transform-test {:rows (live-rows :transform-tests) :group :transform_id}
+     :transform-tag  {:rows (live-rows :transform-tags) :group (constantly nil)}
+     :transform-job  {:rows (live-rows :transform-jobs) :group (constantly nil)}
+     :segment        {:rows (live-rows :segments) :group :table_id}
+     :measure        {:rows (live-rows :measures) :group :table_id}
+     :term           {:rows  (live-rows :glossary)
                       :group (constantly nil)
                       :label :term}
      :table          {:rows  (fn [ctx] (for [[ref row] (published-tables ctx)] (assoc row :ref ref)))
@@ -302,7 +310,7 @@
                               [(namespace-root-folders coll-ns)]
 
                               :else
-                              [(namespace-folder coll-ns)])]
+                              [(kind-folders/namespace-folder coll-ns)])]
           (if (and (nil? parent) (= collections/data-apps-ns coll-ns))
             ;; a data app's resource collection is the resources/ folder in the app's folder, which is named by the
             ;; slug as is, like the app's own path
@@ -376,7 +384,7 @@
   (storage.util/default-layout ctx entity))
 
 (defn- serdes-only-path
-  "The today's storage path of `entity`, its file name followed by the word of `kind`."
+  "The [[serdes/storage-path]] of `entity`, its file name followed by the word of `kind`."
   [ctx entity kind]
   (let [segments (vec (serdes/storage-path entity ctx))]
     (storage.util/resolve-segments ctx (update segments (dec (count segments))
@@ -394,14 +402,15 @@
   (collection-file ctx entity_id))
 
 (defn- contained-folder
-  "The folder of the items an instance of `model` with entity_id `eid` contains, or nil when there is none."
-  [ctx model model-name eid]
-  (when-let [{:keys [collection_id] :as row} (get (containers ctx model) eid)]
+  "The folder of the items the instance of the kind `k` of [[row-queries]] (of the serdes model `model-name`) with
+  entity_id `eid` contains, or nil when there is none."
+  [ctx k model-name eid]
+  (when-let [{:keys [collection_id] :as row} (get (containers ctx k) eid)]
     (item-path ctx (assoc row :serdes/meta [{:model model-name :id eid}] :collection_id collection_id))))
 
 (defmethod item-path "Card" [ctx {:keys [collection_id dashboard_id document_id] card-type :type :as card}]
-  (let [folder (or (some->> dashboard_id (contained-folder ctx :model/Dashboard "Dashboard"))
-                   (some->> document_id (contained-folder ctx :model/Document "Document"))
+  (let [folder (or (some->> dashboard_id (contained-folder ctx :dashboards "Dashboard"))
+                   (some->> document_id (contained-folder ctx :documents "Document"))
                    (item-folder ctx collection_id ["collections"]))]
     (item-file ctx folder (keyword (or (some-> card-type name) "question")) (:entity_id card) (:name card))))
 
@@ -416,7 +425,7 @@
 
 (defmethod item-path "Action" [ctx {:keys [model_id collection_id] :as action}]
   (let [folder (cond
-                 (and model_id action-in-model-folder?) (contained-folder ctx :model/Card "Card" model_id)
+                 (and model_id action-in-model-folder?) (contained-folder ctx :cards "Card" model_id)
                  model_id                               (item-folder ctx collection_id ["collections"])
                  :else                                  (item-folder ctx collection_id ["data_actions"]))]
     (item-file ctx folder :action (:entity_id action) (:name action))))
@@ -428,7 +437,7 @@
   (item-file ctx (item-folder ctx (:collection_id entity) ["transforms"]) :transform (:entity_id entity) (:name entity)))
 
 (defmethod item-path "TransformTest" [ctx {:keys [transform_id] :as entity}]
-  (let [folder (or (contained-folder ctx :model/Transform "Transform" transform_id) ["transforms"])]
+  (let [folder (or (contained-folder ctx :transforms "Transform" transform_id) ["transforms"])]
     (item-file ctx folder :transform-test (:entity_id entity) (:name entity))))
 
 (defmethod item-path "TransformTag" [ctx entity]

@@ -20,7 +20,7 @@
   (serialization/storage-context layout))
 
 (defn current-move-rule
-  "Today's rule. A full export writes every item at its computed path. An incremental export writes each changed
+  "A full export writes every item at its computed path. An incremental export writes each changed
   item at its computed path and deletes its stored file when that differs; a moved collection needs a full export,
   since its path is the folder of its contents. It leaves unchanged items where they are."
   [{:keys [export model-type status stored-path computed-path]}]
@@ -34,7 +34,7 @@
     :else                                    {:write @computed-path :delete [stored-path]}))
 
 (defn move-every-item
-  "Rule (b) of the layout spec: every item moves to its computed path at each push. Changed items move as with
+  "Every item moves to its computed path at each push. Changed items move as with
   [[current-move-rule]]; an unchanged item whose stored path differs from its computed one makes the push a full
   export. So the first push after a change of layout moves every file in one commit, and a push with no layout change
   moves nothing. Each incremental export extracts every synced item to compute its path."

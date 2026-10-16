@@ -6,7 +6,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.serialization.v2.storage.kind-layout :as kind-layout]
+   [metabase-enterprise.serialization.v2.storage.kind-folders :as kind-folders]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -117,18 +117,18 @@
 (def legal-top-level-paths
   "Known top-level paths for directory with serialization output: those of the layout every export wrote before the
   kind layout, and those of the kind layout."
-  (into legacy-top-level-paths kind-layout/top-level-folders))
+  (into legacy-top-level-paths kind-folders/top-level-folders))
 
 (def ^:private kind-only-top-level-paths
   "The top-level paths of the kind layout that the layout before it did not write."
-  (apply disj kind-layout/top-level-folders legacy-top-level-paths))
+  (apply disj kind-folders/top-level-folders legacy-top-level-paths))
 
 (def shared-top-level-paths
   "The [[legal-top-level-paths]] whose directories may also hold files serialization does not own, such as a data
   app's source code, to a predicate of a `.yaml` file's path that says whether it may be an entity file. In the
   folders of [[content-checked-path?]] a file must also pass [[entity-content?]]."
   (into {"data_apps" data-app-entity-file?}
-        (for [folder (remove legacy-top-level-paths kind-layout/top-level-folders)]
+        (for [folder (remove legacy-top-level-paths kind-folders/top-level-folders)]
           [folder (constantly true)])))
 
 (defn content-checked-path?

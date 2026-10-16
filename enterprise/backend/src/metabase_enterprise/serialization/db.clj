@@ -65,13 +65,71 @@
   []
   (t2/select-fn->fn :resource_collection_id :name :model/DataApp {:where [:not= :resource_collection_id nil]}))
 
-(mu/defn layout-rows
-  "The `columns` of every instance of `model` that matches the HoneySQL `where` clause, or of every instance when it
-  is nil."
-  [model   :- :keyword
-   columns :- [:sequential :keyword]
-   where   :- [:maybe vector?]]
-  (t2/select (into [model] columns) (cond-> {} where (assoc :where where))))
+(mu/defn layout-cards
+  "The `:entity_id`, `:name`, `:created_at`, `:archived`, `:collection_id`, `:dashboard_id`, `:document_id` and
+  `:type` of every Card."
+  []
+  (t2/select [:model/Card :entity_id :name :created_at :archived :collection_id :dashboard_id :document_id :type]))
+
+(mu/defn layout-dashboards
+  "The `:entity_id`, `:name`, `:created_at`, `:archived` and `:collection_id` of every Dashboard."
+  []
+  (t2/select [:model/Dashboard :entity_id :name :created_at :archived :collection_id]))
+
+(mu/defn layout-documents
+  "The `:entity_id`, `:name`, `:created_at`, `:archived` and `:collection_id` of every Document."
+  []
+  (t2/select [:model/Document :entity_id :name :created_at :archived :collection_id]))
+
+(mu/defn layout-timelines
+  "The `:entity_id`, `:name`, `:created_at`, `:archived` and `:collection_id` of every Timeline."
+  []
+  (t2/select [:model/Timeline :entity_id :name :created_at :archived :collection_id]))
+
+(mu/defn layout-snippets
+  "The `:entity_id`, `:name`, `:created_at`, `:archived` and `:collection_id` of every NativeQuerySnippet."
+  []
+  (t2/select [:model/NativeQuerySnippet :entity_id :name :created_at :archived :collection_id]))
+
+(mu/defn layout-actions
+  "The `:entity_id`, `:name`, `:created_at`, `:archived`, `:collection_id` and `:model_id` of every Action."
+  []
+  (t2/select [:model/Action :entity_id :name :created_at :archived :collection_id :model_id]))
+
+(mu/defn layout-transforms
+  "The `:entity_id`, `:name`, `:created_at` and `:collection_id` of every Transform."
+  []
+  (t2/select [:model/Transform :entity_id :name :created_at :collection_id]))
+
+(mu/defn layout-transform-tests
+  "The `:entity_id`, `:name`, `:created_at` and `:transform_id` of every TransformTest."
+  []
+  (t2/select [:model/TransformTest :entity_id :name :created_at :transform_id]))
+
+(mu/defn layout-transform-tags
+  "The `:entity_id`, `:name` and `:created_at` of every TransformTag."
+  []
+  (t2/select [:model/TransformTag :entity_id :name :created_at]))
+
+(mu/defn layout-transform-jobs
+  "The `:entity_id`, `:name` and `:created_at` of every TransformJob."
+  []
+  (t2/select [:model/TransformJob :entity_id :name :created_at]))
+
+(mu/defn layout-segments
+  "The `:entity_id`, `:name`, `:created_at`, `:archived` and `:table_id` of every Segment."
+  []
+  (t2/select [:model/Segment :entity_id :name :created_at :archived :table_id]))
+
+(mu/defn layout-measures
+  "The `:entity_id`, `:name`, `:created_at`, `:archived` and `:table_id` of every Measure."
+  []
+  (t2/select [:model/Measure :entity_id :name :created_at :archived :table_id]))
+
+(mu/defn layout-glossary
+  "The `:entity_id`, `:term` and `:created_at` of every Glossary entry."
+  []
+  (t2/select [:model/Glossary :entity_id :term :created_at]))
 
 (mu/defn published-tables
   "The `:id`, `:name`, `:schema`, `:db_id`, `:collection_id` and `:created_at` of every published Table, with its
