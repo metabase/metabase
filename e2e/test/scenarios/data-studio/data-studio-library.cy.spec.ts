@@ -425,7 +425,7 @@ describe("scenarios > data studio > library", () => {
     describe("read-only mode", () => {
       beforeEach(() => {
         H.setupGitSync();
-        H.configureGit("read-only");
+        H.configureGitAndPullChanges("read-only");
         H.createLibrary();
       });
 

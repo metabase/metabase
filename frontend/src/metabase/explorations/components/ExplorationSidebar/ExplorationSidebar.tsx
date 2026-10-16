@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
@@ -330,19 +329,14 @@ function SidebarShowFilterMenu({
     <Menu position="bottom-end">
       <Menu.Target>
         <ActionIcon
-          className={cx(S.filterButton, {
-            [S.filterButtonActive]: showHidden,
-          })}
+          variant={showHidden ? "filled" : undefined}
+          className={S.filterButton}
           radius="xl"
-          size="lg"
           aria-label={t`Filter`}
           aria-pressed={showHidden}
           data-testid="exploration-show-hidden-toggle"
         >
-          <Icon
-            name="filter"
-            c={showHidden ? "core-white_constant" : "text-secondary"}
-          />
+          <Icon name="filter" />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>

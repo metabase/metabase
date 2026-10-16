@@ -61,7 +61,7 @@ function assertChartRendered(title: string): void {
     .should("be.visible")
     .parent()
     .within(() => {
-      cy.findByTestId(/^(chart|row-chart)-container$/, {
+      cy.findByTestId("chart-container", {
         timeout: CHART_RENDER_TIMEOUT,
       })
         .should("be.visible")

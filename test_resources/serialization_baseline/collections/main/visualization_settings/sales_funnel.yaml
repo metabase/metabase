@@ -74,7 +74,6 @@ result_metadata:
   lib/source: source/aggregations
   lib/source-column-alias: count
 visualization_settings:
-  column_settings: null
   funnel.dimension: CATEGORY
   funnel.metric: count
   funnel.type: funnel

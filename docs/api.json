@@ -9215,6 +9215,62 @@
         },
         "required" : [ "id", "entity_id", "name", "settings", "is_default", "created_at", "updated_at" ]
       },
+      "metabase.embedding.schema..sdk-react-18-host.host" : {
+        "description" : "The `host` of a EmbeddingSdkReact18Host: a lowercase hostname, or an empty string when the host app page URL has no\n  hostname.",
+        "type" : "string"
+      },
+      "metabase.embedding.schema..sdk-react-18-host.response" : {
+        "description" : "A EmbeddingSdkReact18Host as selected from the app DB: every column of `:embedding_sdk_react_18_host`. `host` is an\n  empty string when the host app page URL has no hostname.",
+        "type" : "object",
+        "properties" : {
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "host" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last_seen_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "id", "host", "created_at", "last_seen_at" ],
+        "additionalProperties" : false
+      },
+      "metabase.embedding.schema.sdk-react-18-host" : {
+        "description" : "A EmbeddingSdkReact18Host as selected from the app DB: every column of `:embedding_sdk_react_18_host`. `host` is an\n  empty string when the host app page URL has no hostname.",
+        "type" : "object",
+        "properties" : {
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "host" : {
+            "$ref" : "#/components/schemas/metabase.embedding.schema..sdk-react-18-host.host"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last_seen_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "id", "host", "created_at", "last_seen_at" ],
+        "additionalProperties" : false
+      },
       "metabase.explorations.api.CanceledThread" : {
         "description" : "Schema for the cancel endpoint response — just the state-bearing fields the FE needs to\n  reflect the cancellation. EQ status changes are picked up via the existing `/queries` poll.",
         "type" : "object",
@@ -25010,8 +25066,13 @@
                 },
                 "cache_invalidated_at" : {
                   "oneOf" : [ {
-                    "type" : "string",
-                    "format" : "date-time"
+                    "anyOf" : [ {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }, {
+                      "description" : "value must be a valid date string",
+                      "type" : "string"
+                    } ]
                   }, {
                     "type" : "null"
                   } ]
@@ -25025,8 +25086,13 @@
                 },
                 "initially_published_at" : {
                   "oneOf" : [ {
-                    "type" : "string",
-                    "format" : "date-time"
+                    "anyOf" : [ {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }, {
+                      "description" : "value must be a valid date string",
+                      "type" : "string"
+                    } ]
                   }, {
                     "type" : "null"
                   } ]
@@ -26627,8 +26693,13 @@
                 },
                 "cache_invalidated_at" : {
                   "oneOf" : [ {
-                    "type" : "string",
-                    "format" : "date-time"
+                    "anyOf" : [ {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }, {
+                      "description" : "value must be a valid date string",
+                      "type" : "string"
+                    } ]
                   }, {
                     "type" : "null"
                   } ]
@@ -26642,8 +26713,13 @@
                 },
                 "initially_published_at" : {
                   "oneOf" : [ {
-                    "type" : "string",
-                    "format" : "date-time"
+                    "anyOf" : [ {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }, {
+                      "description" : "value must be a valid date string",
+                      "type" : "string"
+                    } ]
                   }, {
                     "type" : "null"
                   } ]
@@ -55257,6 +55333,36 @@
           }
         },
         "tags" : [ "/api/embedding-hub" ]
+      }
+    },
+    "/api/embedding-sdk/react-18-hosts" : {
+      "get" : {
+        "operationId" : "get-api-embedding-sdk-react-18-hosts",
+        "summary" : "GET /api/embedding-sdk/react-18-hosts",
+        "description" : "The host apps that used the React embedding SDK with React 18 in the last 4 days, newest first, at most 50. `host`\n  is null when the host app page URL has no hostname.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.embedding.schema..sdk-react-18-host.response"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/embedding-sdk" ]
       }
     },
     "/api/eval-trace/{session-id}" : {
