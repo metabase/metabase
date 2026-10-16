@@ -176,7 +176,7 @@
     (try
       (init-plugin! path)
       (catch Throwable e
-        (log/errorf "Failed to initialize plugin %s: %s" (.getFileName path) (ex-message e))))))
+        (log/errorf e "Failed to initialize plugin %s: %s" (.getFileName path) (ex-message e))))))
 
 (defn- load! []
   ;; Load any user-supplied plugin JARs from the plugins directory (e.g. Oracle JDBC driver).
