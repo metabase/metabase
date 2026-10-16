@@ -10,6 +10,7 @@ import {
   type ScatterPlotModel,
   type WaterfallChartModel,
   extractRemappings,
+  foldRowChartModel,
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
@@ -35,16 +36,17 @@ export function useModelsAndOption(
     timelineEvents,
     selectedTimelineEventIds = NO_SELECTED_TIMELINE_EVENT_IDS,
     onRender,
-    isFullscreen,
-    gridSize,
+    isDashboard,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
+  containerSize: Pick<VisualizationProps, "width" | "height">,
 ) {
   const tc = useTranslateContent();
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,
-    isFullscreen,
+    isDashboard,
+    containerSize,
   });
 
   const seriesToRender = useMemo(
@@ -61,7 +63,7 @@ export function useModelsAndOption(
     ? timelineEvents.length !== 0
     : false;
 
-  const chartModel = useMemo(() => {
+  const baseChartModel = useMemo(() => {
     let getModel;
 
     settings["graph.x_axis.title_text"] = tc(
@@ -69,6 +71,9 @@ export function useModelsAndOption(
     );
     settings["graph.y_axis.title_text"] = tc(
       settings["graph.y_axis.title_text"],
+    );
+    settings["graph.y_axis.right.title_text"] = tc(
+      settings["graph.y_axis.right.title_text"],
     );
 
     getModel = getCartesianChartModel;
@@ -84,7 +89,6 @@ export function useModelsAndOption(
       Array.from(hiddenSeries),
       renderingContext,
       showWarning,
-      gridSize,
     );
 
     if (model.dimensionModel.column) {
@@ -100,9 +104,17 @@ export function useModelsAndOption(
     hiddenSeries,
     renderingContext,
     showWarning,
-    gridSize,
     tc,
   ]);
+
+  // Fold before layout: the fold decides which category labels get measured.
+  const chartModel = useMemo(
+    () =>
+      baseChartModel.isRowChart
+        ? foldRowChartModel(baseChartModel, height, settings)
+        : baseChartModel,
+    [baseChartModel, height, settings],
+  );
 
   const chartLayout = useMemo(
     () =>

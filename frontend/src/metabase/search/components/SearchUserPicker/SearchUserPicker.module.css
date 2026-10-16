@@ -1,0 +1,12 @@
+.container {
+  overflow: hidden;
+}
+
+.selectBox {
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.content {
+  overflow-y: auto;
+}

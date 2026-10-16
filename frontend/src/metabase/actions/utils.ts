@@ -2,6 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { hasActionsEnabled } from "metabase/common/utils/database";
 import type { ButtonProps } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
@@ -209,7 +210,7 @@ export function getActionExecutionMessage(
 
 export function getActionErrorMessage(error: unknown) {
   return (
-    Errors.getResponseErrorMessage(error) ??
+    findErrorMessage(error) ??
     t`Something went wrong while executing the action`
   );
 }
@@ -314,15 +315,15 @@ export const getSubmitButtonColor = (
   action: WritebackAction,
 ): ButtonProps["color"] => {
   if (isImplicitDeleteAction(action)) {
-    return "feedback-negative";
+    return "negative";
   }
 
   return match(action.visualization_settings?.submitButtonColor)
     .returnType<ButtonProps["color"]>()
-    .with("danger", () => "feedback-negative")
-    .with("success", () => "feedback-positive")
-    .with("warning", () => "feedback-warning")
-    .otherwise(() => "core-brand");
+    .with("danger", () => "negative")
+    .with("success", () => "positive")
+    .with("warning", () => "warning")
+    .otherwise(() => "brand");
 };
 
 export const getSubmitButtonLabel = (action: WritebackAction): string => {

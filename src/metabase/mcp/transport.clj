@@ -3,7 +3,8 @@
 
   Owns everything transport-level: JSON-RPC 2.0 framing (single messages and batches), the `initialize` handshake and
   session issuance, origin validation (DNS-rebinding protection), cookie/bearer auth resolution, per-user throttling,
-  SSE responses and the GET keepalive stream, and OAuth discovery hints on 401s."
+  SSE responses and the GET keepalive stream, OAuth discovery hints on 401s, and
+  `insufficient_scope` challenges on 403s."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -11,9 +12,9 @@
    [compojure.response :as compojure.response]
    [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.mcp.core :as mcp]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.mcp.v2.common :as v2.common]
@@ -24,7 +25,6 @@
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [throttle.core :as throttle])
   (:import
@@ -52,6 +52,13 @@
   [id code message]
   {:jsonrpc "2.0" :id id :error {:code code :message (message/render message)}})
 
+(defn insufficient-scope
+  "Mark `error-response` (a [[jsonrpc-error]]) as a refusal for scopes the token lacks. As the only response to a
+   non-batched POST it is sent with HTTP 403 and an `insufficient_scope` challenge asking for `scopes` (a sequence,
+   in order) and explaining `description`; in a batch it is an ordinary in-band error."
+  [error-response scopes description]
+  (assoc error-response ::insufficient-scope {:scopes scopes :description description}))
+
 (defn- handle-initialize
   "Handle the MCP `initialize` method: log the connecting client and return the handshake result.
 
@@ -66,6 +73,12 @@
             :capabilities    capabilities
             :serverInfo      server-info}
      instructions (assoc :instructions instructions))))
+
+(def mcp-access-disabled-message
+  "The refusal for a user whose groups grant no MCP access, at `initialize` and on requests of a session opened
+  before an admin turned MCP off."
+  (message/msg [(str "MCP access is not enabled for your account. "
+                     "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]))
 
 (defn- mcp-app-ui-capability?
   "Return true if initialize params advertise support for MCP Apps HTML resources."
@@ -160,18 +173,18 @@
   "Format a sequence of JSON-RPC messages as SSE event text."
   [messages]
   (str/join (for [message messages]
-              (str "event: message\ndata: " (json/encode message) "\n\n"))))
+              (str "event: message\ndata: " (message/json-text message) "\n\n"))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- json-response
-  "Build a Ring response with a JSON-encoded `body`."
+  "Build a Ring response with `body` as [[message/json-text]]."
   ([status body]
    (json-response status body nil))
   ([status body extra-headers]
    {:status  status
     :headers (merge {"Content-Type" "application/json"} extra-headers)
-    :body    (json/encode body)}))
+    :body    (message/json-text body)}))
 
 (defn- sse-response
   "Return a plain Ring response with SSE-formatted body for POST requests."
@@ -183,6 +196,41 @@
                      "Cache-Control" "no-cache"}
                     extra-headers)
     :body    (sse-body messages)}))
+
+;;; ---------------------------------------------- OAuth challenges ------------------------------------------------
+
+(defn- resource-metadata-url
+  "The RFC 9728 protected-resource metadata URL for the path `request` hit: an alias in `endpoint-paths` names
+   itself, any other path names `default-path`."
+  [endpoint-paths default-path request]
+  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
+  ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
+  (let [uri  (str/replace (:uri request) #"/+$" "")
+        path (if (contains? endpoint-paths uri) uri default-path)]
+    (str (system/site-url) "/.well-known/oauth-protected-resource" path)))
+
+(defn- quoted-string
+  "`s` as a double-quoted auth-param value: `\"` becomes `'`, `\\` becomes `/`, and every character outside
+   printable ASCII becomes `?`."
+  [s]
+  ;; Replaced rather than backslash-escaped: RFC 6750 section 3 excludes `\"` and `\\` from `scope` and
+  ;; `error_description` values outright, so an escaped quote is still invalid there.
+  (str "\""
+       (-> (str s)
+           (str/replace #"[^\x20-\x7E]" "?")
+           (str/replace "\"" "'")
+           (str/replace "\\" "/"))
+       "\""))
+
+(defn- insufficient-scope-challenge
+  "The RFC 6750 `insufficient_scope` `WWW-Authenticate` value asking for `scopes` (a sequence, emitted in order),
+   pointing at `metadata-url`, with `description` as `error_description` when non-nil."
+  [metadata-url scopes description]
+  (str "Bearer error=\"insufficient_scope\""
+       ", scope=" (quoted-string (str/join " " scopes))
+       ", resource_metadata=" (quoted-string metadata-url)
+       (when description
+         (str ", error_description=" (quoted-string description)))))
 
 ;;; ------------------------------------------------- Validation --------------------------------------------------
 
@@ -299,7 +347,7 @@
 
 (defn- handle-post
   "Handle a POST request containing one or more JSON-RPC messages."
-  [{:keys [dispatch-method-fn capabilities instructions]} user-id request]
+  [{:keys [dispatch-method-fn capabilities instructions endpoint-paths default-path]} user-id request]
   (let [body            (walk/keywordize-keys (:body request))
         session-id      (get-in request [:headers "mcp-session-id"])
         eval-session-id (eval-session-override request)
@@ -326,10 +374,16 @@
       (and batch? (some #(and (valid-message? %) (= "initialize" (:method %))) body))
       (json-response 400 (jsonrpc-error nil -32600 (message/msg ["initialize must not be batched"])))
 
+      (and (not batch?) (valid-message? body) (= "initialize" (:method body))
+           (not (mcp.perms/enabled? (mcp.perms/policy-for-current-user))))
+      (json-response 403 (jsonrpc-error (:id body) v2.common/error-code-invalid-request mcp-access-disabled-message))
+
       ;; Initialize: create session and return response with session header
       (and (not batch?) (valid-message? body) (= "initialize" (:method body)))
       (let [params           (:params body)
-            supports-mcp-ui? (mcp-app-ui-capability? params)
+            ;; A client the admin switched off would only get a broken card: its iframe is blocked by CORS.
+            supports-mcp-ui? (and (mcp-app-ui-capability? params)
+                                  (mcp/inline-ui-enabled-for-client? (get-in params [:clientInfo :name])))
             session-id       (mcp.session/create! user-id {:supports-mcp-ui?
                                                            supports-mcp-ui?})
             init-response (handle-initialize (:id body) params capabilities instructions)]
@@ -379,10 +433,22 @@
                                                                      eval-session-id)]
                                       (when-not (notification? msg)
                                         response))))
-                responses       (into [] (keep handle-msg) messages)]
+                responses       (into [] (keep handle-msg) messages)
+                ;; One HTTP status cannot describe a batch's mixed outcomes, so only a single message's refusal
+                ;; becomes a 403.
+                shortfall       (when-not batch? (::insufficient-scope (first responses)))
+                responses       (mapv #(dissoc % ::insufficient-scope) responses)]
             (cond
               (empty? responses)
               {:status 202 :headers {} :body ""}
+
+              ;; JSON regardless of Accept, like the transport's other error statuses.
+              shortfall
+              (json-response 403 (first responses)
+                             {"WWW-Authenticate" (insufficient-scope-challenge
+                                                  (resource-metadata-url endpoint-paths default-path request)
+                                                  (:scopes shortfall)
+                                                  (:description shortfall))})
 
               (accepts-sse? request)
               (sse-response responses)
@@ -408,23 +474,40 @@
   ;; threads have no such ceiling and cost nothing while parked.
   (Executors/newThreadPerTaskExecutor (.. (Thread/ofVirtual) (name "mcp-keepalive-" 0) factory)))
 
+(defn- read-tools-hash
+  "`[hash failed?]`: `(tools-hash-fn)` and false, or `fallback` and true when it throws. The hash reads the user's
+  group policy from the app database, and a failed read must not end a stream that is otherwise healthy.
+  `failing?` says the previous read failed too, so a sustained failure warns once rather than every tick."
+  [tools-hash-fn fallback failing?]
+  (try
+    [(tools-hash-fn) false]
+    (catch Exception e
+      (if failing?
+        (log/debug e "Still could not hash the MCP tool list for the keepalive stream; keeping the previous hash")
+        (log/warn e "Could not hash the MCP tool list for the keepalive stream; keeping the previous hash"))
+      [fallback true])))
+
 (defn- keepalive-loop!
   "Emit SSE keepalive comments on `writer` every `interval-ms` until `canceled-chan` reports the client is gone.
   Re-reads the tool manifest hash on each tick and emits `notifications/tools/list_changed` when it differs from the
-  previous tick, so the client knows to refetch `tools/list`. Returns nil once canceled."
-  [^Writer writer tools-hash-fn token-scopes canceled-chan interval-ms]
-  (loop [last-hash (tools-hash-fn token-scopes)]
+  previous tick, so the client knows to refetch `tools/list`; a tick whose hash fails keeps the previous one. Returns
+  nil once canceled."
+  [^Writer writer tools-hash-fn canceled-chan interval-ms]
+  (loop [[last-hash failing?] (read-tools-hash tools-hash-fn nil false)]
     (.write writer ": keepalive\n\n")
     (.flush writer)
     ;; Park on the cancellation channel instead of sleeping through the interval: the cancel loop notices a
     ;; disconnected client within a second, and waiting on it releases this thread then rather than at the next tick.
-    (let [[_ port] (a/alts!! [canceled-chan (a/timeout interval-ms)])]
+    ;; `:priority` so a cancellation already delivered wins over a timeout that is ready too.
+    (let [[_ port] (a/alts!! [canceled-chan (a/timeout interval-ms)] :priority true)]
       (when-not (= port canceled-chan)
-        (let [current-hash (tools-hash-fn token-scopes)]
-          (when (not= current-hash last-hash)
+        (let [[current-hash :as read] (read-tools-hash tools-hash-fn last-hash failing?)]
+          ;; A nil `last-hash` means no read has succeeded yet, so the first that does seeds it rather than
+          ;; announcing a change.
+          (when (and last-hash (not= current-hash last-hash))
             (.write writer ^String (sse-body [tools-list-changed-notification]))
             (.flush writer))
-          (recur current-hash))))))
+          (recur read))))))
 
 (def ^:private max-concurrent-keepalive-streams
   "How many GET keepalive streams one user may hold open at once.
@@ -499,10 +582,10 @@
   A slot can be missing here even though `handle-get` read the user as under the cap: that read is advisory, so
   racing connects can both pass it and one of them loses the slot. Refuse in band rather than by returning, since
   status 200 and the SSE headers are already on the wire by the time the body runs."
-  [user-id ^Writer writer tools-hash-fn token-scopes canceled-chan interval-ms]
+  [user-id ^Writer writer tools-hash-fn canceled-chan interval-ms]
   (if (acquire-keepalive-slot! user-id)
     (try
-      (keepalive-loop! writer tools-hash-fn token-scopes canceled-chan interval-ms)
+      (keepalive-loop! writer tools-hash-fn canceled-chan interval-ms)
       (finally
         (release-keepalive-slot! user-id)))
     (do
@@ -517,7 +600,6 @@
    tracks its own last-seen hash; no shared registry."
   [tools-hash-fn user-id request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])
-        token-scopes (:token-scopes request)
         {:keys [error]} (require-valid-session user-id session-id)]
     (cond
       (some? error)
@@ -537,7 +619,7 @@
                   [os canceled-chan]
                    (keepalive-stream-body! user-id
                                            (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-                                           tools-hash-fn token-scopes canceled-chan keepalive-interval-ms))]
+                                           tools-hash-fn canceled-chan keepalive-interval-ms))]
         (compojure.response/send* resp request respond raise)))))
 
 (defn- handle-delete
@@ -601,19 +683,16 @@
 
    `default-ask-scopes`, when non-empty, is emitted as the challenge's `scope` parameter."
   [endpoint-paths default-path default-ask-scopes request]
-  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
-  ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
-  (let [uri  (str/replace (:uri request) #"/+$" "")
-        path (if (contains? endpoint-paths uri) uri default-path)]
-    ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
-    ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
-    ;; uses commas and the stricter parsers proposed upstream would not.
-    (str "Bearer realm=\"mcp\", resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\""
-         ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
-         ;; which is what lets a surface ask for less than it accepts: the wider set stays
-         ;; advertised and requestable, this is only what an uninstructed client asks for.
-         (when (seq default-ask-scopes)
-           (str ", scope=\"" (str/join " " default-ask-scopes) "\"")))))
+  ;; Comma-separated per RFC 7235's `#auth-param`. Both MCP SDKs currently pull each parameter
+  ;; with an unanchored per-field regex and would accept spaces, but every spec and vendor example
+  ;; uses commas and the stricter parsers proposed upstream would not.
+  (str "Bearer realm=\"mcp\""
+       ", resource_metadata=" (quoted-string (resource-metadata-url endpoint-paths default-path request))
+       ;; A client that reads this prefers it over the resource metadata's `scopes_supported`,
+       ;; which is what lets a surface ask for less than it accepts: the wider set stays
+       ;; advertised and requestable, this is only what an uninstructed client asks for.
+       (when (seq default-ask-scopes)
+         (str ", scope=" (quoted-string (str/join " " default-ask-scopes))))))
 
 (defn make-handler
   "Build a Ring async handler for one MCP surface. Uses JSON-RPC 2.0 over HTTP rather than REST,
@@ -622,16 +701,17 @@
    Options:
    - `:dispatch-method-fn` — `(fn [id method params session-id token-scopes request-context])`
      returning a JSON-RPC response map, or nil for notifications. `initialize` is handled by the
-     transport itself and never reaches this fn.
+     transport itself and never reaches this fn. A refusal for missing token scopes should be marked
+     with [[insufficient-scope]] so the transport can answer it with a 403 challenge.
    - `:capabilities` — the server capabilities the `initialize` handshake advertises. Must match
      what `:dispatch-method-fn` actually serves (e.g. advertise `:resources` only when the
      surface dispatches `resources/*`).
    - `:instructions` — optional string returned as the `initialize` result's `instructions`
      field, surfaced to the model by clients that support it.
-   - `:tools-hash-fn` — `(fn [token-scopes])` returning a stable hash of the visible tool set,
+   - `:tools-hash-fn` — `(fn [])` returning a stable hash of the listed tool set,
      polled by the GET/SSE keepalive to emit `notifications/tools/list_changed`.
-   - `:endpoint-paths` — the URL paths (relative to site-url) the 401 `WWW-Authenticate`
-     challenge matches the request URI against. NOT necessarily all served by this surface:
+   - `:endpoint-paths` — the URL paths (relative to site-url) the 401 and 403 `WWW-Authenticate`
+     challenges match the request URI against. NOT necessarily all served by this surface:
      during the migration the set includes v1's paths — see [[metabase.mcp.paths/endpoint-paths]].
    - `:default-path` — the canonical path advertised when the request URI matches no entry in
      `:endpoint-paths`.
@@ -641,10 +721,17 @@
   [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes] :as opts}]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [origin-error (validate-origin request)
-           bearer-token (oauth-server/extract-bearer-token request)
-           session-auth api/*current-user-id*
-           token-scopes (:token-scopes request)]
+     (let [origin-error  (validate-origin request)
+           bearer-token  (oauth-server/extract-bearer-token request)
+           session-auth  api/*current-user-id*
+           token-scopes  (:token-scopes request)
+           ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose token
+           ;; expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
+           invalid-token (delay (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
+                                               {"WWW-Authenticate"
+                                                (str (www-authenticate-discovery endpoint-paths default-path
+                                                                                 default-ask-scopes request)
+                                                     ", error=\"invalid_token\"")}))]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
                    ;; Charge the throttle per JSON-RPC message, not per HTTP request, so a batch can't smuggle many
@@ -673,12 +760,18 @@
            (some? origin-error)
            (respond origin-error)
 
-           ;; Respect the scope set attached to an authenticated request. Sessions without one
-           ;; retain unrestricted access.
+           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, refuse it
+           ;; as an invalid token.
+           (and (:authenticated-via-oauth? request) (empty? token-scopes))
+           (respond @invalid-token)
+
+           ;; Dispatch with the scope strings attached to an authenticated request. A cookie or API-key session
+           ;; carries none, so it reaches no scoped tool. An `mb:full` token carries the unrestricted sentinel next to
+           ;; its other granted scopes; the sentinel is not an MCP scope, so only those strings reach MCP.
            session-auth
            ;; An OAuth bearer request lands here too — the session middleware resolves the token and
            ;; attaches `:token-scopes`, so this branch is not "cookie sessions only".
-           (dispatch session-auth (or token-scopes #{::scope/unrestricted}))
+           (dispatch session-auth (into #{} (filter string?) token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer
@@ -689,12 +782,7 @@
            ;; active-user check (a disabled user's token still authenticated) and the scope trust hinge (raw token
            ;; scopes dispatched verbatim). Return the RFC 6750 `invalid_token` 401 and dispatch nothing.
            bearer-token
-           ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose
-           ;; token expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
-           (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
-                                   {"WWW-Authenticate" (str (www-authenticate-discovery endpoint-paths default-path
-                                                                                        default-ask-scopes request)
-                                                            ", error=\"invalid_token\"")}))
+           (respond @invalid-token)
 
            ;; No auth at all — return 401 with discovery
            :else

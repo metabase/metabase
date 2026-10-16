@@ -19,7 +19,6 @@ interface QueryWithBreakoutOpts {
 function createQueryWithBreakout({
   column = {
     type: "column",
-    sourceName: "ORDERS",
     name: "CREATED_AT",
   },
   bucket = "month",
@@ -127,7 +126,7 @@ describe("TimeseriesBucketPicker", () => {
 
   it("should show all options when the current bucket is below the More button", async () => {
     const { query, breakout, column } = createQueryWithBreakout({
-      column: { type: "column", sourceName: "ORDERS", name: "CREATED_AT" },
+      column: { type: "column", name: "CREATED_AT" },
       bucket: "quarter-of-year",
     });
 

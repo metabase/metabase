@@ -15,14 +15,11 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/current-user";
 import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
+import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
 import { useDispatch, useSelector } from "metabase/redux";
-import { openDiagnostics } from "metabase/redux/app";
+import { closeNavbar, openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";
-import {
-  closeModal,
-  setOpenModal,
-  setOpenModalWithProps,
-} from "metabase/redux/ui";
+import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
 import { useColorScheme } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -41,6 +38,7 @@ import {
 export const BASIC_ACTION_ORDER = [
   "create-new-question",
   "create-new-native-query",
+  "create-new-research",
   "create-new-dashboard",
   "create-new-document",
   "create-new-collection",
@@ -57,6 +55,7 @@ export const BASIC_ACTION_ORDER = [
   "navigate-browse-model",
   "navigate-browse-database",
   "navigate-browse-metric",
+  "navigate-data-apps",
 ];
 
 // Small enough that it only orders actions whose relevance scores are equal,
@@ -107,14 +106,6 @@ export const useCommandPaletteBasicActions = ({
     },
     [dispatch],
   );
-  const openNewModalWithProps = useCallback(
-    (payload: Parameters<typeof setOpenModalWithProps>[0]) => {
-      dispatch(closeModal());
-      dispatch(setOpenModalWithProps(payload));
-    },
-    [dispatch],
-  );
-
   const initialActions = useMemo<RegisterShortcutProps[]>(() => {
     const actions: RegisterShortcutProps[] = [];
 
@@ -126,6 +117,7 @@ export const useCommandPaletteBasicActions = ({
         icon: "insight",
         perform: () => {
           dispatch(closeModal());
+          dispatch(closeNavbar());
           navigate(
             Urls.newQuestion({
               mode: "notebook",
@@ -146,6 +138,7 @@ export const useCommandPaletteBasicActions = ({
         icon: "sql",
         perform: () => {
           dispatch(closeModal());
+          dispatch(closeNavbar());
           navigate(
             Urls.newQuestion({
               DEPRECATED_RAW_MBQL_type: "native",
@@ -153,6 +146,19 @@ export const useCommandPaletteBasicActions = ({
               cardType: "question",
             }),
           );
+        },
+      });
+    }
+
+    if (hasDataAccess) {
+      actions.push({
+        id: "create-new-research",
+        name: t`New research`,
+        section: "basic",
+        icon: "telescope",
+        perform: () => {
+          dispatch(closeModal());
+          navigate(Urls.newExploration());
         },
       });
     }
@@ -173,6 +179,7 @@ export const useCommandPaletteBasicActions = ({
       section: "basic",
       icon: "document",
       perform: () => {
+        dispatch(closeNavbar());
         navigate(Urls.newDocument());
       },
     });
@@ -239,11 +246,17 @@ export const useCommandPaletteBasicActions = ({
         section: "basic",
         icon: "embed",
         keywords: "embed flow, embed js, modular embedding, guest embed",
-        perform: () =>
-          openNewModalWithProps({
-            id: "embed",
-            props: null,
-          }),
+        perform: () => {
+          dispatch(closeModal());
+          dispatch(openEmbedJsWizard());
+        },
+      });
+
+      actions.push({
+        id: "navigate-data-apps",
+        section: "basic",
+        icon: "app",
+        perform: () => navigate(Urls.dataAppsSettings()),
       });
     }
 
@@ -323,7 +336,6 @@ export const useCommandPaletteBasicActions = ({
     hasNativeWrite,
     collectionId,
     openNewModal,
-    openNewModalWithProps,
     isAdmin,
     personalCollectionId,
     navigate,

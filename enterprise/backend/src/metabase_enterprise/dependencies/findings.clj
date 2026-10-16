@@ -23,7 +23,9 @@
 
 (defmethod instance-db-id :model/Transform
   [toucan-instance]
-  (some-> toucan-instance :source :query lib/database-id))
+  (or (some-> toucan-instance :source :query lib/database-id)
+      ;; non-query transforms (e.g. Python) have no query to read the database from
+      (:source_database_id toucan-instance)))
 
 (defmethod instance-db-id :model/Segment
   [toucan-instance]
@@ -119,8 +121,7 @@
                                   (into {}
                                         (filter (fn [[dep-type _]] (analyzable-entities dep-type)))
                                         pass-through-dependents))]
-    (doseq [[dep-type dep-ids] all-supported]
-      (deps.analysis-finding/mark-stale! dep-type dep-ids))
+    (deps.analysis-finding/mark-stale! all-supported)
     (boolean (seq all-supported))))
 
 (defn mark-transitive-dependents-stale!
@@ -140,7 +141,7 @@
   "Mark a single entity as stale for re-analysis by the background job."
   [entity-type :- AnalyzableEntityType
    entity-id   :- pos-int?]
-  (deps.analysis-finding/mark-stale! entity-type [entity-id]))
+  (deps.analysis-finding/mark-stale! {entity-type #{entity-id}}))
 
 (mu/defn mark-entity-and-transitive-dependents-stale!
   "Mark `entity-id` and all of its transitive dependents stale for re-analysis. Use this when an entity changes: it
@@ -160,7 +161,7 @@
 
   This only *analyzes* (each [[upsert-analysis!]] clears that entity's stale flag); it does NOT propagate staleness to
   dependents. Propagation happens up front when an entity changes (see [[mark-entity-and-transitive-dependents-stale!]] and the
-  event handlers), so the entity-check job drains a fixed set of stale entities that only shrinks — guaranteeing
+  backfill job), so the entity-check job drains a fixed set of stale entities that only shrinks — guaranteeing
   termination even when the dependency graph has cycles."
   [type :- AnalyzableEntityType
    batch-size :- pos-int?]

@@ -7,7 +7,7 @@ import {
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { dayjs } from "metabase/dayjs";
 import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
-import { Box, Button, Flex, Icon } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
@@ -53,12 +53,7 @@ export function ModelCacheManagementSection({ model }: Props) {
   const canRefreshCache =
     persistedModel && checkCanRefreshModelCache(persistedModel);
 
-  const refreshButtonLabel =
-    persistedModel?.state === "creating" ? (
-      t`Create now`
-    ) : (
-      <Icon name="refresh" tooltip={t`Refresh now`} />
-    );
+  const isCreating = persistedModel?.state === "creating";
 
   const canManageDB = model.canManageDB();
 
@@ -89,17 +84,26 @@ export function ModelCacheManagementSection({ model }: Props) {
             </Flex>
             {isError && <Box pt="sm">{lastRefreshLabel}</Box>}
           </Box>
-          {canRefreshCache && canManageDB && (
-            <Button
-              variant="subtle"
-              p="xxs"
-              c="text-primary"
-              size="xs"
-              onClick={() => onRefresh(model.id())}
-            >
-              {refreshButtonLabel}
-            </Button>
-          )}
+          {canRefreshCache &&
+            canManageDB &&
+            (isCreating ? (
+              <Button
+                variant="transparent"
+                size="compact-md"
+                onClick={() => onRefresh(model.id())}
+              >
+                {t`Create now`}
+              </Button>
+            ) : (
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                aria-label={t`Refresh now`}
+                onClick={() => onRefresh(model.id())}
+              >
+                <Icon name="refresh" tooltip={t`Refresh now`} />
+              </ActionIcon>
+            ))}
         </Flex>
       )}
     </>

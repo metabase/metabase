@@ -56,6 +56,7 @@
   (or (get matching-query (mdb/db-type))
       (get matching-query :default)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *query-timeout-seconds*
   "Maximum execution time in seconds for advisory matching queries."
   120)

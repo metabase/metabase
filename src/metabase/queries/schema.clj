@@ -4,6 +4,7 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
@@ -257,6 +258,11 @@
   [:map {:closed true}
    [:join_step {:optional true} [:maybe :int]]])
 
+(mr/def ::query-execution.sandbox-details
+  "The `:sandbox_details` column of a QueryExecution, decoded: one entry per sandbox (row-level restriction) applied
+  to the execution. Built by the enterprise sandboxing middleware."
+  [:sequential [:ref ::lib.schema/sandboxing.details.entry]])
+
 (mr/def ::query-execution
   "A QueryExecution as selected from the app DB: every column of `:query_execution`, plus `:row_count` added by the model's after-select hook."
   [:merge
@@ -302,7 +308,8 @@
    [:sanitized_user_agent        {:optional true} [:maybe :string]]
    [:embedding_route             {:optional true} [:maybe :string]]
    [:metabase_version            {:optional true} [:maybe :string]]
-   [:embedding_client_identifier {:optional true} [:maybe :string]]])
+   [:embedding_client_identifier {:optional true} [:maybe :string]]
+   [:sandbox_details             {:optional true} [:maybe ::query-execution.sandbox-details]]])
 
 (mr/def ::query-table
   "A QueryTable as selected from the app DB: every column of `:query_table`."

@@ -38,12 +38,8 @@ export const PLUGIN_AUTH_PROVIDERS = definePluginSlot(
   getDefaultPluginAuthProviders,
 );
 
-export type LdapUserProvisioningProps = {
-  disabled?: boolean;
-};
-
 const getDefaultPluginLdapFormFields = () => ({
-  LdapUserProvisioning: PluginPlaceholder<LdapUserProvisioningProps>,
+  LdapUserProvisioning: PluginPlaceholder,
   LdapGroupMembershipFilter: PluginPlaceholder,
 });
 
@@ -58,7 +54,10 @@ export const PLUGIN_IS_PASSWORD_USER = definePluginSlot(
 );
 
 const getDefaultPluginAdminUserFormFields = (): {
-  FormLoginAttributes: ComponentType<{ userId?: UserId | null }>;
+  FormLoginAttributes: ComponentType<{
+    userId?: UserId | null;
+    className?: string;
+  }>;
 } => ({
   FormLoginAttributes: PluginPlaceholder,
 });

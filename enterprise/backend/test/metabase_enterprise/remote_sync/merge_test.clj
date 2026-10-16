@@ -1,7 +1,9 @@
 (ns metabase-enterprise.remote-sync.merge-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.merge :as remote-sync.merge]))
+   [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
+   [metabase.test :as mt]
+   [metabase.util.yaml :as yaml]))
 
 (defn- card
   "Builds a `{:path :content}` spec for a Card with the given entity `id`, `name` (which drives the on-disk
@@ -10,6 +12,15 @@
   ([id name extra]
    {:path    (str "collections/" name ".yaml")
     :content (str "serdes/meta:\n- model: Card\n  id: " id "\n  label: " name "\nname: " name "\n" extra)}))
+
+(defn- glossary-entry
+  "Builds a `{:path :content}` spec for a Glossary entry with entity `id`, `term` (the file name, as the export
+  slugs it) and an optional `definition` to vary the body."
+  ([id term] (glossary-entry id term "def"))
+  ([id term definition]
+   {:path    (str "glossary/" term ".yaml")
+    :content (str "serdes/meta:\n- model: Glossary\n  id: " id "\n  label: " term "\nentity_id: " id
+                  "\nterm: " term "\ndefinition: " definition "\n")}))
 
 (defn- ids
   "Sorted entity ids present in a merge result's :merged set."
@@ -35,6 +46,25 @@
                   [(card "A" "a")]
                   [(card "A" "a" "x: ours\n")]
                   [(card "A" "a" "x: theirs\n")])]
+      (is (= 1 (count (:conflicts result))))
+      (is (empty? (:merged result))))))
+
+(deftest ^:parallel glossary-disjoint-edits-merge-clean-test
+  (testing "local edits term A's definition and remote edits term B's -> both merged, no conflict"
+    (let [base   [(glossary-entry "A" "arr") (glossary-entry "B" "mrr")]
+          ours   [(glossary-entry "A" "arr" "ours") (glossary-entry "B" "mrr")]
+          theirs [(glossary-entry "A" "arr") (glossary-entry "B" "mrr" "theirs")]
+          result (remote-sync.merge/three-way-merge base ours theirs)]
+      (is (empty? (:conflicts result)))
+      (is (= ["A" "B"] (ids result)))
+      (is (= {:added 0 :updated 1 :removed 0} (:summary result))))))
+
+(deftest ^:parallel glossary-same-term-edited-both-sides-is-conflict-test
+  (testing "the same term's definition edited differently on both sides -> conflict"
+    (let [result (remote-sync.merge/three-way-merge
+                  [(glossary-entry "A" "arr")]
+                  [(glossary-entry "A" "arr" "ours")]
+                  [(glossary-entry "A" "arr" "theirs")])]
       (is (= 1 (count (:conflicts result))))
       (is (empty? (:merged result))))))
 
@@ -186,3 +216,22 @@
               []
               [(card "A" "a")]
               [(card "A" "a")]))))))
+
+(deftest ^:parallel merge-with-casualties-indexes-each-side-once-test
+  (let [base     [(card "A" "a") (card "B" "b")]
+        ours     [(card "A" "a" "x: ours\n") (card "B" "b")]
+        theirs   [(card "A" "a" "x: theirs\n") (card "C" "c")]
+        expected (assoc (remote-sync.merge/three-way-merge base ours theirs)
+                        :force-push-casualties (remote-sync.merge/force-push-casualties base ours theirs))
+        parses   (atom 0)
+        orig     (mt/original-fn #'yaml/parse-string)
+        counting (fn [f] (reset! parses 0) (f) @parses)]
+    (mt/with-dynamic-fn-redefs [yaml/parse-string (fn [& args] (swap! parses inc) (apply orig args))]
+      (testing "the combined result equals the two functions run separately"
+        (is (= expected (remote-sync.merge/merge-with-casualties base ours theirs))))
+      (testing "combining saves exactly one identity parse per document across the three sides"
+        (let [separate (counting #(do (remote-sync.merge/three-way-merge base ours theirs)
+                                      (remote-sync.merge/force-push-casualties base ours theirs)))
+              combined (counting #(remote-sync.merge/merge-with-casualties base ours theirs))]
+          (is (= (+ (count base) (count ours) (count theirs))
+                 (- separate combined))))))))

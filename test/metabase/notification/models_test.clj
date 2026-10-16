@@ -2,7 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.models-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.channel.api.channel-test :as api.channel-test]
+   [metabase.channel.rest.api.channel-test :as api.channel-test]
    [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]

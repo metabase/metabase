@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { useQuestionFromOpts } from "metabase/metadata-store";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
@@ -20,7 +20,7 @@ export function useQueryQuestion(
   }: QueryEditorUiOptions = {},
   onChangeQuery: (newQuery: Lib.Query) => void,
 ) {
-  const buildQuestion = useQuestionFromOpts();
+  const buildQuestion = useQuestionFromOptsBuilder();
   const [parameterValues, setParameterValues] = useState({});
 
   const { question } = useMemo(

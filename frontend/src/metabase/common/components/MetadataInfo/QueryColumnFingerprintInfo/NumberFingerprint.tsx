@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import type * as Lib from "metabase-lib";
-
-import { Table } from "../MetadataInfo.styled";
 
 export type NumberFingerprintProps = {
   className?: string;
@@ -25,22 +24,22 @@ export function NumberFingerprint({
   const someNumberIsDefined = isAvgNumber || isMinNumber || isMaxNumber;
 
   return someNumberIsDefined ? (
-    <Table className={className}>
+    <table className={className}>
       <thead>
         <tr>
-          {isAvgNumber && <th>{t`Average`}</th>}
-          {isMinNumber && <th>{t`Min`}</th>}
-          {isMaxNumber && <th>{t`Max`}</th>}
+          {isAvgNumber && <th className={CS.textNormal}>{t`Average`}</th>}
+          {isMinNumber && <th className={CS.textNormal}>{t`Min`}</th>}
+          {isMaxNumber && <th className={CS.textNormal}>{t`Max`}</th>}
         </tr>
       </thead>
       <tbody>
         <tr>
-          {isAvgNumber && <td>{formattedAvg}</td>}
-          {isMinNumber && <td>{formattedMin}</td>}
-          {isMaxNumber && <td>{formattedMax}</td>}
+          {isAvgNumber && <td className={CS.textBold}>{formattedAvg}</td>}
+          {isMinNumber && <td className={CS.textBold}>{formattedMin}</td>}
+          {isMaxNumber && <td className={CS.textBold}>{formattedMax}</td>}
         </tr>
       </tbody>
-    </Table>
+    </table>
   ) : null;
 }
 

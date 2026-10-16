@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type {
   AdminNotificationDetail,
   AdminNotificationListParams,
@@ -97,7 +99,9 @@ export const notificationApi = Api.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: `/api/notification/send`,
-        body,
+        // In edit mode the alert modal passes the full Notification it fetched,
+        // including the server-managed `creator`, which the endpoint ignores.
+        body: _.omit(body, "creator"),
       }),
     }),
     adminListNotifications: builder.query<

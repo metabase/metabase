@@ -82,7 +82,6 @@ result_metadata:
   lib/source: source/aggregations
   lib/source-column-alias: sum
 visualization_settings:
-  column_settings: null
   graph.goal_label: Monthly Target
   graph.goal_value: 50000
   graph.label_values_frequency: fit
@@ -108,8 +107,6 @@ visualization_settings:
       show_series_values: true
 card_schema: 24
 serdes/meta:
-- id: UEWVldEEZ-3sYUjjN54qz
-  label: revenue_over_time__line_
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

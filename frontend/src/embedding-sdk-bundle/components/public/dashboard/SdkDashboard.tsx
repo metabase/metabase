@@ -53,6 +53,7 @@ import type {
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -75,9 +76,9 @@ import {
   getIsEditing,
 } from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { useSelector } from "metabase/redux";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
@@ -561,7 +562,7 @@ const SdkDashboardInner = ({
         style={style}
       >
         <SdkError
-          message={errorPage.data?.message ?? t`Something's gone wrong`}
+          message={getErrorMessage(errorPage, t`Something's gone wrong`)}
         />
       </MaybeStyledWrapper>
     );
@@ -603,7 +604,7 @@ const SdkDashboardInner = ({
                 dispatch(setEditingDashboard(dashboard));
               },
               confirmButtonProps: {
-                color: "core-brand",
+                color: "brand",
               },
             });
           } else {

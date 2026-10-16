@@ -101,8 +101,8 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
-;; re-exported vars keep their deprecated/discouraged status for callers; the facade must require them
-#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
+;; re-exported vars keep their deprecated status for callers; the facade must require them
+#_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [actions.test-util
   action-executions
@@ -130,7 +130,8 @@
   run-mbql-query
   with-db
   with-temp-copy-of-db
-  with-empty-h2-app-db!]
+  with-empty-h2-app-db!
+  with-sample-h2-app-db!]
  [data.impl
   *db-is-temp-copy?*]
  [datasets

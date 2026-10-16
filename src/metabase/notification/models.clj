@@ -474,12 +474,14 @@
    [:card            {:optional true} [:maybe [:merge
                                                ::queries.schema/card.update
                                                [:map {:closed true}
-                                                [:id                ms/PositiveInt]
+                                                [:id                     ms/PositiveInt]
                                                 ;; a metric's Card row describes its query on the way out of the database
-                                                [:query_description {:optional true} [:maybe :string]]
-                                                [:created_at        {:optional true} RowTimestamp]
-                                                [:updated_at        {:optional true} RowTimestamp]
-                                                [:last_used_at      {:optional true} RowTimestamp]]]]]
+                                                [:query_description      {:optional true} [:maybe :string]]
+                                                [:created_at             {:optional true} RowTimestamp]
+                                                [:updated_at             {:optional true} RowTimestamp]
+                                                [:last_used_at           {:optional true} RowTimestamp]
+                                                [:cache_invalidated_at   {:optional true} RowTimestamp]
+                                                [:initially_published_at {:optional true} RowTimestamp]]]]]
    [:send_condition  {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
    [:send_once       {:optional true} :boolean]
    [:disable_links   {:optional true} [:maybe :boolean]]
@@ -612,8 +614,10 @@
   [_ notification]
   (or (mi/superuser?)
       (and (current-user-can-read-payload? notification)
-           ;; if advanced-permissions is enabled, we require users to have subscription permissions
-           (or (not (premium-features/has-feature? :advanced-permissions))
+           ;; if advanced-permissions is enabled, we require users to have subscription permissions.
+           ;; Not a bare `has-feature?`: that ignores whether EE code is present, so an OSS jar with a
+           ;; stale paid token would demand a permission it can never grant.
+           (or (not (premium-features/enable-advanced-permissions?))
                (perms/current-user-has-application-permissions? :subscription)))))
 
 (defmethod mi/can-update? :model/Notification
@@ -629,7 +633,7 @@
      ;; if advanced-permissions is enabled, we require users to have subscription permissions
      ;; and is the owner of the notification and can read the payload
      (or
-      (not (premium-features/has-feature? :advanced-permissions))
+      (not (premium-features/enable-advanced-permissions?))
       (perms/current-user-has-application-permissions? :subscription))
      (current-user-can-read-payload? instance)
      (current-user-can-read-payload? (merge instance changes))))))
@@ -642,7 +646,7 @@
     (and
      (current-user-is-creator? notification)
      (or
-      (not (premium-features/has-feature? :advanced-permissions))
+      (not (premium-features/enable-advanced-permissions?))
       (perms/current-user-has-application-permissions? :subscription))
      (current-user-can-read-payload? notification))))
   ([_model pk]
@@ -802,13 +806,14 @@
    (hydrated-notification-schema handler-schema {:with-id? true}))
   ([handler-schema {:keys [with-id? update-input?] :as opts}]
    (let [entries (into (notification-entries opts)
-                       (cond->> [;; the hydrated User, echoed back by clients on update; `:creator_id`, declared by
-                                 [:creator       {:optional true} [:maybe ::EchoedUser]]
-                                 [:subscriptions {:optional true} [:sequential [:ref (if with-id?
+                       (cond->> [[:subscriptions {:optional true} [:sequential [:ref (if with-id?
                                                                                        ::NotificationSubscription
                                                                                        ::CreateNotificationSubscriptionParams)]]]
                                  [:handlers      {:optional true} [:sequential handler-schema]]]
-                         with-id? (into [[:payload_id              {:optional true} [:maybe int?]]
+                         with-id? (into [;; the hydrated User a saved notification is read with. Create and send
+                                         ;; requests don't declare it, so the API drops a client-sent copy.
+                                         [:creator                 {:optional true} [:maybe ::EchoedUser]]
+                                         [:payload_id              {:optional true} [:maybe int?]]
                                          [:triggering_subscription {:optional true} [:maybe ::NotificationSubscription]]])))
          entries (cond-> entries
                    update-input? (update-input-entries notification-update-spec))]

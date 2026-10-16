@@ -445,15 +445,14 @@
    so establishing one — or redirecting where one delivers — needs the same scope that seeing those
    results in-session would. The send itself happens later, tokenlessly, under the creator's
    permissions; this check at write time is the only place the token's scopes can bound that
-   deferred execution. No-op for unscoped callers (cookie sessions bind the unrestricted sentinel,
-   which matches everything). Mirrors alert_write's check of the same scope."
+   deferred execution. Mirrors alert_write's check of the same scope."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
-    (common/throw-teaching-error
+    (common/throw-insufficient-scope!
      (message/msg [(str "%s runs the dashboard's questions and delivers the results, which requires "
                         "the %s scope — this token can manage subscriptions but not execute queries.")]
                   action (message/raw metabot.scope/agent-query-run))
-     {:status-code 403 ::common/error-code common/error-code-invalid-request})))
+     metabot.scope/agent-query-run)))
 
 (defn- execute-scope-trigger
   "The reason [[check-query-execute-scope!]] should refuse `updates` with, or nil when the update
@@ -491,10 +490,13 @@
   never does. This is for dashboards on a schedule — use alert_write for a
   question that fires on a condition. Requires read permission on the dashboard; only its creator (or an admin) can
   update it."
-  {:name         "subscription_write"
-   :scope        metabot.scope/agent-delivery-write
-   :annotations  {:readOnlyHint false :destructiveHint false}
-   :args         subscription-write-args-schema}
+  {:name           "subscription_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-delivery-write
+   ;; `destructiveHint`: `archived: true` trashes the subscription, and an update can replace the recipients.
+   ;; `openWorldHint`: it sends to email addresses and Slack channels outside Metabase.
+   :annotations    {:readOnlyHint false, :destructiveHint true, :openWorldHint true}
+   :args           subscription-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write subscription-write-entry args)
         id       (case op

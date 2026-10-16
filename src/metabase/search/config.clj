@@ -10,6 +10,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
   returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
@@ -50,9 +51,6 @@
   #{"dashboard-card"
     "dashboard-tab"
     "dimension"
-    ;; While explorations are disabled. Residue rows (from an instance that was upgraded, used explorations, then
-    ;; downgraded) are still ingested, so excluding the model here filters them out at query time.
-    "exploration"
     "permissions-group"
     "pulse"
     "pulse-card"
@@ -75,14 +73,20 @@
 (def curated-search-models
   "Search models that can carry a curation signal, so the `:curated?` filter restricts to these (and
   keeps them consistent across the appdb and in-place engines). Includes `table`, which is exactly why
-  curated content stays visible where the older verified-only filter dropped it (BOT-1536)."
-  #{"card" "dataset" "metric" "dashboard" "table"})
+  curated content stays visible where the older verified-only filter dropped it (BOT-1536).
+  Measures and segments count as curated when their parent table is published into the Library."
+  #{"card"
+    "dashboard"
+    "dataset"
+    "measure"
+    "metric"
+    "segment"
+    "table"})
 
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document"
-   "transform" "database"])
+  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "exploration" "transform" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
@@ -106,8 +110,8 @@
    ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35 each).
    :official-collection 1
    :verified            1
-   ;; :library is a data-layer curation signal relevant only when picking a data source, so it is off by
-   ;; default; the :data-picker context opts in, at a curation-tier level that an exact match can overpower.
+   ;; Library membership is a curation signal for choosing data sources, so :library is off by default.
+   ;; The :data-picker and :metabot contexts turn it on, at a level an exact match can override.
    :library             0
    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
    :rrf                 500
@@ -156,11 +160,51 @@
    ;; - `custom-viz.cy.spec.ts`
    ;; - `search-snowplow.cy.spec.js`
    :metabot
-   {:data-layer          33
+   ;; Metabot searches for data sources, so it uses the data picker's library boost.
+   ;; General search needs the boost too, because library-only retrieval falls back to it.
+   {:library             80
+    ;; An exact name match must win.
+    ;; So :exact is larger than the library boost, the largest type boost and the tie-breakers combined.
+    :exact               150
+    ;; Popularity and recency only break ties within a tier.
+    ;; Recency alone (0.4) stays below the narrowest tier gap (1).
+    ;; All of them together (1.9) stay below the gap that keeps a metric over a final-layer table (2).
+    :view-count          0.5
+    :bookmarked          0.5
+    :mine                0.5
+    :recency             0.2
+    :user-recency        0.2
+    ;; Relevance has to be able to cross that gap, or any metric that matches at all outranks a better-matching table.
+    ;; The scorer maps cosine distance d to 1 - d/2, so at double the default a 0.2 difference in distance (2) does it.
+    :semantic-distance   20
+    :data-layer          33
     :data-layer/final    1     ; ≈ 33
+    ;; New tables use the internal layer by default, so an ordinary table gets this score even if nobody has vetted it.
+    ;; That score ranks it above dashboards, questions, and models.
     :data-layer/internal 0.3   ; ≈ 10
     :data-layer/hidden   0.03  ; ≈ 1
-    }})
+    ;; Semantic-layer content ranks above saved questions, and saved questions above models.
+    ;; Tables are ranked mostly by :data-layer; their small type boost only keeps a table above a model.
+    ;; A metric beats every table on an equal match: the semantic layer leads a final-layer table (33 + 1) by 2.
+    ;; That is more than the tie-breakers add together, but small enough that a clearly better match wins.
+    ;;
+    ;; Every search model is listed, because [[models-search-order]] supplies a fallback boost for any left out.
+    ;; Collections and actions are here because the Agent API and MCP search use this context and return them.
+    :model                10
+    :model/metric         3.6   ; = 36
+    :model/measure        3.6   ; = 36
+    :model/segment        3.6   ; = 36
+    :model/dashboard      0.3   ; = 3
+    :model/card           0.3   ; = 3
+    :model/table          0.1   ; = 1
+    :model/collection     0.1   ; = 1
+    :model/dataset        0
+    :model/document       0
+    :model/transform      0
+    :model/database       0
+    :model/action         0
+    :model/exploration    0
+    :model/indexed-entity 0}})
 
 (def known-rankers
   "Scorer keys the weights API accepts as overrides: the union across [[static-default-weights]] and every
@@ -356,7 +400,7 @@
 (def vector-search-strategies
   "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
   so the OSS search API param and the EE semantic-search setting validation share one definition.
-  Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
+  Note: the per-strategy dispatch in [[metabase-enterprise.search.semantic.index/semantic-search-query]] is a
   separate dispatch (unknown strategies fall back to `:brute-force`) and must be updated by hand when
   adding a strategy.
 
@@ -458,10 +502,13 @@
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
    [:is-data-analyst?   :boolean]
+   ;; whether a lens -- sandboxing, impersonation, routing -- narrows what this user may see; see
+   ;; [[metabase.search.permissions/sandboxed-impersonated-or-routed-user?]]
+   [:is-impersonated-user? :boolean]
+   [:is-sandboxed-user?    :boolean]
+   [:is-routed-user?       :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
    [:context               {:optional true} [:maybe :keyword]]
-   [:is-impersonated-user? {:optional true} [:maybe :boolean]]
-   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]

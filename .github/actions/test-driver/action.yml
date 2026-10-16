@@ -130,6 +130,7 @@ runs:
         if [ "$PROFILE_TESTS" = "true" ]; then
           echo "Profiling this run; a flamegraph will be attached to the job."
           echo "profiled=true" >> "$GITHUB_OUTPUT"
+          ALIASES="$ALIASES:profile-tests"
           BASE="$BASE:profile-tests"
         fi
         # An explicit selection wins over the rerun narrowing below: it was asked for by hand, on this
@@ -149,6 +150,15 @@ runs:
       shell: bash
       id: run-test
       env:
+        # PROFILE_TESTS is not set here: the suites that test.profile-backend.yml dispatches set it in
+        # their workflow `env`, which reaches this step. The stress-test workflows are dispatched too
+        # but leave it unset, so they never profile.
+        #
+        # ONLY_TESTS comes from test.profile-backend.yml. Inside a called workflow `github.event` is
+        # the caller's payload, so it resolves here rather than in each calling workflow. On any
+        # other run it renders empty and the job's own selection stands. It replaces the job's own
+        # test selection, so every matrix leg of the chosen job runs the whole list.
+        ONLY_TESTS: ${{ github.event.inputs.tests }}
         TEST_RUNNER_INDEX: ${{ inputs.runner-index }}
         TEST_RUNNER_COUNT: ${{ inputs.runner-count }}
         TEST_JVMS_PER_RUNNER: ${{ inputs.jvms-per-runner }}

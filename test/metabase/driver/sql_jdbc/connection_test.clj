@@ -235,6 +235,35 @@
         ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
         (is (not= "null" db-nm))))))
 
+(deftest ^:parallel c3p0-pool-type-suffix-covers-every-non-default-type-test
+  (testing "every non-default connection type has a pool-name suffix, or two of its pools would share a metrics label"
+    (is (= (disj (set driver.conn/connection-types) :default)
+           (set (keys @#'sql-jdbc.conn/pool-type->name-suffix))))))
+
+(deftest c3p0-datasource-name-pool-type-suffix-test
+  (mt/test-driver :h2
+    (when config/ee-available?
+      (mt/with-premium-features #{:writable-connection}
+        (testing "a non-default pool type gets a name suffix, so two pools of one warehouse never share a metrics label"
+          (mt/with-temp [:model/Database database {:engine             :h2
+                                                   :details            {:db "mem:pool_name_default_db"}
+                                                   :write_data_details {:db "mem:pool_name_write_db"}}]
+            (let [pool-name #(get (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 database) "dataSourceName")
+                  db-id     (u/the-id database)]
+              (is (= (format "db-%d-h2-mem:pool_name_default_db" db-id)
+                     (pool-name)))
+              (is (= (format "db-%d-h2-mem:pool_name_write_db-write" db-id)
+                     (driver.conn/with-write-connection (pool-name)))))))
+        (testing "a write connection without write details resolves to the default pool, so its name has no suffix"
+          (mt/with-temp [:model/Database database {:engine :h2, :details {:db "mem:pool_name_default_only_db"}}]
+            (let [pool-name #(get (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 database) "dataSourceName")
+                  db-id     (u/the-id database)]
+              (is (= (format "db-%d-h2-mem:pool_name_default_only_db" db-id)
+                     (driver.conn/with-write-connection (pool-name))))
+              (testing "but the transform pool is always separate, so its name always carries the suffix"
+                (is (= (format "db-%d-h2-mem:pool_name_default_only_db-transform" db-id)
+                       (driver.conn/with-transform-connection (pool-name))))))))))))
+
 (deftest ^:parallel same-connection-details-result-in-equal-specs-test
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
     ;; this is only really a concern for drivers like Spark SQL that create custom DataSources instead of plain details

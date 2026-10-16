@@ -239,6 +239,7 @@
   ;;  > If people have problems with that, I think we can make it configurable.
   7)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *sample-stages*
   "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
   [collection-name :- :string

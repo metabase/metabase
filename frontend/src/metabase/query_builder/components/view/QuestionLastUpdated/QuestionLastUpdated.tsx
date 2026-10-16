@@ -1,6 +1,6 @@
 import { c } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { FixedSizeIcon, Flex, type FlexProps, Tooltip } from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
 

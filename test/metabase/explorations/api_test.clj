@@ -14,7 +14,6 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.explorations.queues :as explorations.queues]
-   [metabase.explorations.test-util :as explorations.tu]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,9 +28,6 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
-
-;; The application does not mount `/api/exploration` while explorations are disabled; serve it for these tests.
-(use-fixtures :each explorations.tu/exploration-routes-fixture)
 
 (deftest gate-threads-derived-data-forbidden-status-test
   (testing "gate-threads-derived-data stamps forbidden when derived data is not visible"
@@ -947,6 +943,19 @@
     (mt/with-temp [:model/User u {:email "rs-404@example.com"}]
       (mt/user-http-request u :post 404 "exploration/thread/9999999/restart"))))
 
+(deftest exploration-get-hydrates-trash-permissions-test
+  (testing "GET /api/exploration/:id hydrates :can_restore and :can_delete"
+    (mt/with-temp [:model/Exploration {trashed-id :id} {:name              "trashed"
+                                                        :creator_id        (mt/user->id :crowberto)
+                                                        :archived          true
+                                                        :archived_directly true}
+                   :model/Exploration {live-id :id}    {:name       "live"
+                                                        :creator_id (mt/user->id :crowberto)}]
+      (is (=? {:archived true, :can_restore true, :can_delete true}
+              (mt/user-http-request :crowberto :get 200 (format "exploration/%d" trashed-id))))
+      (is (=? {:archived false, :can_restore false, :can_delete false}
+              (mt/user-http-request :crowberto :get 200 (format "exploration/%d" live-id)))))))
+
 (deftest exploration-get-permissions-test
   (testing "Only the creator (or a superuser) can GET an exploration"
     (mt/with-temp [:model/User owner {:email "p-owner@example.com"}
@@ -1674,8 +1683,8 @@
         (let [doc (t2/select-one :model/Document :id doc-id)]
           ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
           ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
-          (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
-                        queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
+          (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+                                      queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
             (is (thrown? Throwable
                          (eqr/create-ephemeral-card-for-exploration-queries!
                           [qid] doc-id (:collection_id doc) u
@@ -1714,7 +1723,7 @@
               doc       (t2/select-one :model/Document :id doc-id)
               ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
               ;; the real create-card! / stored_result write path.
-              result    (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+              result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
                           (eqr/create-ephemeral-card-for-exploration-queries!
                            [qid] doc-id (:collection_id doc) u
                            {:display "bar" :visualization-settings {}}))
@@ -2868,7 +2877,7 @@
   create hold no data perms, and `create-card!` runs the same check — the existing single-query
   test stubs it for the same reason. Tests that are *about* the permission check don't use this."
   [& args]
-  (with-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
     (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
 
 (deftest composite-snapshot-carries-a-data-access-token-test
@@ -2931,8 +2940,8 @@
         ;; "checked them all" are distinguishable.
         (t2/update! :model/ExplorationQuery (second query-ids) {:dataset_query other-q})
         (let [checked (atom [])]
-          (with-redefs [query-perms/check-run-permissions-for-query
-                        (fn [q] (swap! checked conj q) nil)]
+          (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query
+                                      (fn [q] (swap! checked conj q) nil)]
             (eqr/create-ephemeral-card-for-exploration-queries!
              query-ids document-id (:collection_id doc) u
              {:display "bar" :visualization-settings {}}))

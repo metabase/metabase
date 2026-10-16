@@ -39,11 +39,13 @@
               (query-processor.db/dashcard-series-exists? card-id dashcard-id))))))
 
 (defn- current-dimension-mapping?
-  [provider query mapping]
+  [provider card query mapping]
   (let [target-key (lib-metric/field-ref->key (:target mapping))]
     (boolean
      (some #(= target-key (lib-metric/field-ref->key (-> % :mapping :target)))
-           (lib-metric/compute-dimension-pairs provider query)))))
+           ;; Only the computed targets are read here, never the ids, but pass the card's real owner key anyway
+           ;; rather than teach a second call site that it may lie about one.
+           (lib-metric/compute-dimension-pairs provider (:entity_id card) query)))))
 
 (defn- default-metric-dimension
   [provider query card]
@@ -58,7 +60,7 @@
                                        (not= :status/orphaned (:status %)))
                                  dimensions)]
       (when-let [mapping (u/seek #(= (:id dimension) (:dimension-id %)) mappings)]
-        (when (current-dimension-mapping? provider query mapping)
+        (when (current-dimension-mapping? provider card query mapping)
           (when-let [database-provider (lib-metric/database-provider-for-table provider (:table-id mapping))]
             (when (permissions.metric/can-use-dimension-mapping? database-provider (:database_id card) mapping)
               (let [field-id (lib-metric/dimension-target->field-id (:target mapping))]

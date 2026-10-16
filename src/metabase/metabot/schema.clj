@@ -149,7 +149,12 @@
    [:chart-configs {:optional true} [:map-of ::state-map-key ::chart-config]]
    [:todos {:optional true} [:sequential ::todo]]
    [:transforms {:optional true} [:map-of ::state-map-key ::transform]]
-   [:link-registry {:optional true} [:map-of ::state-map-key :string]]])
+   [:link-registry {:optional true} [:map-of ::state-map-key :string]]
+   ;; JSON has no sets, so a state read back out of metabot_message arrives as a vector here and
+   ;; is validated before [[normalize-state]] gets a chance to turn it back into one
+   [:client-ids {:optional true} [:or {:decode/normalize set}
+                                  [:set ::state-map-key]
+                                  [:sequential ::state-map-key]]]])
 
 (defn normalize-state
   "Normalize dynamic state-map keys to strings according to [[::state]]."
@@ -194,10 +199,17 @@
    ["done" [:map [:type [:= "done"]]]]
    ["aborted" [:map [:type [:= "aborted"]]]]
    ["in_progress" [:map [:type [:= "in_progress"]]]]
+   ["incomplete"
+    [:map
+     [:type         [:= "incomplete"]]
+     ;; why the model stopped before finishing; the client turns it into its own copy
+     [:finishReason [:enum "length" "content-filter" "tool-calls"]]
+     ;; the turn stopped at `length` because the context window was full
+     [:contextWindowFull {:optional true} :boolean]]]
    ["errored"
     [:map
      [:type  [:= "errored"]]
-     ;; the decoded `error` column, or its raw text when it isn't JSON
+     ;; the decoded `error` column, or its raw text when it isn't JSON; a stored error-code is also its type
      [:error [:or
               :string
               [:map
@@ -230,6 +242,8 @@
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:source                {:optional true} [:maybe [:or :keyword :string]]]
    [:model                 {:optional true} [:maybe [:or :keyword :string]]]
+   [:provider              {:optional true} [:maybe :string]]
+   [:model_name            {:optional true} [:maybe :string]]
    [:prompt_tokens         {:optional true} [:maybe :int]]
    [:completion_tokens     {:optional true} [:maybe :int]]
    [:total_tokens          {:optional true} [:maybe :int]]
@@ -349,7 +363,9 @@
    [:data_version           {:optional true} [:maybe :int]]
    [:state                  {:optional true} [:maybe ::metabot-message.state]]
    [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
-   [:context_tokens         {:optional true} [:maybe :int]]])
+   [:context_tokens         {:optional true} [:maybe :int]]
+   [:finish_reason          {:optional true} [:maybe :string]]
+   [:context_window_full    {:optional true} [:maybe :boolean]]])
 
 (mr/def ::metabot-prompt
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."

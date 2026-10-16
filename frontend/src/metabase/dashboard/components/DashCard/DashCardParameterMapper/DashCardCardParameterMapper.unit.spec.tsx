@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import { setupMetricDimensionsEndpoints } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
@@ -9,7 +10,6 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import Question from "metabase-lib/v1/Question";
 import type { Card, VirtualCard } from "metabase-types/api";
@@ -42,7 +42,7 @@ const state = createMockState({
   }),
 });
 
-const metadata = getMetadata(state); // metabase-lib Metadata instance
+const metadata = createMockMetadataFromState(state); // metabase-lib Metadata instance
 
 type MapperProps = React.ComponentProps<typeof DashCardCardParameterMapper>;
 type SetupOptions = Partial<MapperProps>;

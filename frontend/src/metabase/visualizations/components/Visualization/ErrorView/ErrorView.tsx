@@ -1,9 +1,9 @@
 import { type ReactNode, forwardRef } from "react";
 
-import { Tooltip } from "metabase/ui";
+import { Box, Icon, Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import { Root, ShortMessage, StyledIcon } from "./ErrorView.styled";
+import { StateView } from "../StateView";
 
 interface ErrorViewProps {
   error: ReactNode;
@@ -15,12 +15,16 @@ interface ErrorViewProps {
 export const ErrorView = forwardRef<HTMLDivElement, ErrorViewProps>(
   function ErrorView({ error, icon = "warning", isDashboard, isSmall }, ref) {
     return (
-      <Root ref={ref} isDashboard={isDashboard}>
+      <StateView ref={ref} c={isDashboard ? "text-secondary" : "text-disabled"}>
         <Tooltip label={error} disabled={!isSmall}>
-          <StyledIcon name={icon} size={50} />
+          <Icon name={icon} size={50} mb="lg" />
         </Tooltip>
-        {!isSmall && <ShortMessage>{error}</ShortMessage>}
-      </Root>
+        {!isSmall && (
+          <Box component="span" fw="bold" fz="1.12em">
+            {error}
+          </Box>
+        )}
+      </StateView>
     );
   },
 );

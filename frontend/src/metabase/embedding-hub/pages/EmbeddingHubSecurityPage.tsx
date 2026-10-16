@@ -5,12 +5,12 @@ import {
   useListEmbeddableDashboardsQuery,
 } from "metabase/api";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { EmbeddingHubUpsellBanner } from "metabase/embedding-hub/components/EmbeddingHubUpsellBanner";
 import { EmbeddedResources } from "metabase/embedding/settings/EmbeddedResources";
 import { EmbeddingMethodsCard } from "metabase/embedding/settings/EmbeddingMethodsCard";
 import { EmbeddingSecretKeyWidget } from "metabase/embedding/settings/EmbeddingSecretKeyWidget";
 import { CorsInputWidget } from "metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget";
 import { SameSiteSelectWidget } from "metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget";
-import { EmbeddingHubUpsellBanner } from "metabase/embedding-hub/components/EmbeddingHubUpsellBanner";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import {

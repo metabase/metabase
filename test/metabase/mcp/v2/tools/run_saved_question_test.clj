@@ -12,10 +12,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; registers the run_saved_question tool for the call-tool seam below; aliased for the
    ;; direct unit test of the private `check-parameter-value!`
    [metabase.mcp.v2.tools.query :as tools.query]
    [metabase.permissions.core :as perms]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]))
@@ -25,7 +27,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- call-run-saved-question
-  ([args] (call-run-saved-question nil args))
+  ([args] (call-run-saved-question v2.tu/all-scopes args))
   ([token-scopes args]
    (registry/call-tool token-scopes (str (random-uuid)) "run_saved_question" args)))
 
@@ -37,9 +39,14 @@
   (boolean (or error (:isError result))))
 
 (defn- response-text
-  "The outcome's text block, or a registry-level rejection's message."
+  "A registry-level rejection's message, an `:isError` result's raw text, or a successful result's text with its
+   data boundary stripped (throws when that boundary is missing)."
   [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  (let [text (-> result :content first :text)]
+    (cond
+      error             (message/render (:message error))
+      (:isError result) text
+      :else             (v2.tu/strip-data-boundary text))))
 
 (defn- tool-result
   "The decoded JSON payload of a successful call, with the steering line (the text after the
@@ -380,11 +387,15 @@
                                               :columns ["VENDOR"]
                                               :values  ["count"]}}}]
       (mt/with-current-user (mt/user->id :rasta)
-        (let [payload (tool-result (call-run-saved-question {:id card-id :row_limit 5}))]
-          (is (= 5 (:returned payload)))
-          (is (= 5 (count (:rows payload))))
-          (is (true? (:truncated payload)))
-          (is (some? (::steering payload))))))))
+        ;; Multi-query caps each subquery at row_limit → sum across combos; UA caps the total once.
+        ;; Both flows produce the same column shape and the tool layer truncates to `row_limit`
+        ;; downstream; don't compare row bags.
+        (qp.pivot.tu/with-metadata-only-parity
+          (let [payload (tool-result (call-run-saved-question {:id card-id :row_limit 5}))]
+            (is (= 5 (:returned payload)))
+            (is (= 5 (count (:rows payload))))
+            (is (true? (:truncated payload)))
+            (is (some? (::steering payload)))))))))
 
 (deftest ^:parallel numeric-string-id-parity-test
   (testing "GHY-4498: Claude Desktop sends every value of an int-or-string param as a JSON string,

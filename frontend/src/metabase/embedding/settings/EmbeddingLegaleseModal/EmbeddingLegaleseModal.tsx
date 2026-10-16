@@ -2,9 +2,17 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/settings";
-import { Button, Group, Modal, type ModalProps, Text } from "metabase/ui";
+import { Button, Modal, type ModalProps, Text } from "metabase/ui";
 
-export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
+type EmbeddingLegaleseModalProps = ModalProps & {
+  settingKey: "enable-embedding-modular" | "enable-embedding-sdk";
+};
+
+export const EmbeddingLegaleseModal = ({
+  opened,
+  onClose,
+  settingKey,
+}: EmbeddingLegaleseModalProps) => {
   const [loading, setLoading] = useState(false);
   const [updateSettings] = useUpdateSettingsMutation();
 
@@ -12,7 +20,7 @@ export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
     setLoading(true);
 
     await updateSettings({
-      "enable-embedding-modular": true,
+      [settingKey]: true,
       "show-modular-embed-terms": false,
     });
 
@@ -26,16 +34,14 @@ export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
       onClose={onClose}
       opened={opened}
       size={670}
-      padding="xxl"
       withCloseButton={false}
       closeOnClickOutside={false}
     >
-      <Text mt="xxs">{t`When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage.`}</Text>
-      <Group justify="right" mt="xl">
+      <Text>{t`When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage.`}</Text>
+      <Modal.Footer>
         <Button
           onClick={onClose}
-          variant="subtle"
-          radius="xs"
+          variant="default"
           disabled={loading}
         >{t`Cancel`}</Button>
         <Button
@@ -44,7 +50,7 @@ export const EmbeddingLegaleseModal = ({ opened, onClose }: ModalProps) => {
           data-is-loading={loading}
           loading={loading}
         >{t`Agree`}</Button>
-      </Group>
+      </Modal.Footer>
     </Modal>
   );
 };

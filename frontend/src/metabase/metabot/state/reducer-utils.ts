@@ -252,12 +252,13 @@ export const endChainTool = (
   convo: WritableDraft<MetabotConversationState>,
   id: string,
   nowMs?: number,
+  isError?: boolean,
 ) => {
   const found = findChainToolStep(convo, id);
   if (!found) {
     return;
   }
-  found.step.status = "ended";
+  found.step.status = isError ? "errored" : "ended";
   if (!found.chain.finished && nowMs != null) {
     found.chain.endedAtMs = nowMs;
   }

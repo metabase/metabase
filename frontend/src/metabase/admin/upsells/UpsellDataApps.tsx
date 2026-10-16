@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import upsellDataAppsImage from "assets/img/upsell-data-apps.png?url";
 import { UpsellBigCard } from "metabase/common/components/upsells/components";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks";
@@ -24,7 +25,7 @@ export const UpsellDataApps = ({ source }: { source: string }) => {
       buttonText={t`Try for free`}
       buttonLink={UPGRADE_URL}
       source={source}
-      illustrationSrc="app/assets/img/upsell-data-apps.png"
+      illustrationSrc={upsellDataAppsImage}
       onClick={triggerUpsellFlow}
     >
       <span>

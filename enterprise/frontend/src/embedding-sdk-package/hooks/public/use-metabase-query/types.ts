@@ -1,3 +1,4 @@
+import type { MetabaseQueryObject } from "metabase/embedding-sdk/types/question";
 import type {
   BooleanFilterOperator,
   DefaultFilterOperator,
@@ -107,7 +108,7 @@ export type MetricReference<TTable = unknown> = Omit<
  * `FieldReference` is deliberately not the type to reach for: it also admits
  * FK-joined dimensions, which a local source table can't accept.
  */
-export type LocalFieldReference<TTable = unknown> = Omit<
+export type MetabaseLocalFieldReference<TTable = unknown> = Omit<
   FieldSchema,
   "sourceFieldId" | "tableId"
 > & {
@@ -130,24 +131,28 @@ type JoinedFieldReference = Omit<FieldSchema, "sourceFieldId" | "tableId"> & {
 };
 
 export type FieldReference<TTable = unknown> =
-  | LocalFieldReference<TTable>
+  | MetabaseLocalFieldReference<TTable>
   | JoinedFieldReference;
 
+// `name` names the result column, which is how a later stage refers to it. A
+// query with two aggregations of the same kind needs it to tell them apart.
 export type CountAggregation = {
   type: "operator";
   operator: "count";
   args: [];
+  name?: string;
 };
 
-export type CountAggregationSchema = CountAggregation & {
-  columns: readonly [
-    {
-      name: "count";
-      displayName: "Count";
-      jsType: "number";
-    },
-  ];
-};
+export type CountAggregationSchema<TName extends string = "count"> =
+  CountAggregation & {
+    columns: readonly [
+      {
+        name: TName;
+        displayName: "Count";
+        jsType: "number";
+      },
+    ];
+  };
 
 type CountAggregationColumn = CountAggregationSchema["columns"][number];
 
@@ -166,32 +171,56 @@ export type FieldAggregation<
   type: "operator";
   operator: TOperator;
   args: readonly [TDimension];
+  name?: string;
 };
 
 export type FieldAggregationSchema<
   TOperator extends FieldAggregationOperator = FieldAggregationOperator,
   TDimension = unknown,
   TJavaScriptType extends SchemaJavaScriptType = "number",
+  TName extends string = TOperator extends "distinct" ? "count" : TOperator,
 > = FieldAggregation<TOperator, TDimension> & {
   columns: readonly [
     {
-      name: TOperator extends "distinct" ? "count" : TOperator;
+      name: TName;
       displayName: string;
       jsType: TJavaScriptType;
     },
   ];
 };
 
-type DimensionAggregation<TDimension> =
+type AggregationForDimension<TDimension> =
   | CountAggregation
   | CountAggregationSchema
-  | FieldAggregation<FieldAggregationOperator, TDimension>
-  | FieldAggregationSchema<FieldAggregationOperator, TDimension>;
+  | FieldAggregation<
+      "sum" | "avg" | "median",
+      NumericAggregationDimension<TDimension>
+    >
+  | FieldAggregation<"min" | "max", OrderableAggregationDimension<TDimension>>
+  | FieldAggregation<"distinct", TDimension>;
+
+type FirstSchemaColumn<TAggregation> = TAggregation extends {
+  columns?: readonly [infer TColumn, ...unknown[]];
+}
+  ? TColumn
+  : SchemaColumn;
+
+export type NamedSavedAggregation<
+  TAggregation = unknown,
+  TName extends string = string,
+> = {
+  name: TName;
+  value: TAggregation;
+  columns: readonly [
+    Omit<FirstSchemaColumn<TAggregation>, "name"> & { name: TName },
+  ];
+};
 
 type AnyAggregation<TTable = unknown> =
-  | DimensionAggregation<FieldReference<TTable>>
+  | AggregationForDimension<FieldReference<TTable>>
   | MeasureReference<TTable>
-  | MetricReference<TTable>;
+  | MetricReference<TTable>
+  | NamedSavedAggregation<MeasureReference<TTable> | MetricReference<TTable>>;
 
 type AggregationDimensionWithJavaScriptType<
   TDimension,
@@ -222,6 +251,7 @@ export type FilterOperator =
 
 type UnaryFilterOperator = "is-empty" | "not-empty" | "is-null" | "not-null";
 type BetweenFilterOperator = "between";
+type TimeIntervalFilterOperator = "time-interval";
 type StringFilterOperator = LibStringFilterOperator | DefaultFilterOperator;
 type DateFilterOperator =
   | SpecificDateFilterOperator
@@ -255,12 +285,17 @@ export type BetweenFilterOperatorForDimension<TDimension> = Extract<
   BetweenFilterOperator
 >;
 
-export type ValueFilterOperatorForDimension<TDimension> = Exclude<
+export type TimeIntervalFilterOperatorForDimension<TDimension> = Extract<
   FilterOperatorForDimension<TDimension>,
-  UnaryFilterOperator | BetweenFilterOperator
+  TimeIntervalFilterOperator
 >;
 
-export type MetabaseDimensionFilterForOperator<
+export type ValueFilterOperatorForDimension<TDimension> = Exclude<
+  FilterOperatorForDimension<TDimension>,
+  UnaryFilterOperator | BetweenFilterOperator | TimeIntervalFilterOperator
+>;
+
+export type FilterForOperator<
   TDimension,
   TOperator extends FilterOperatorForDimension<TDimension>,
 > = {
@@ -275,23 +310,19 @@ export type MetabaseDimensionFilterForOperator<
   ];
 };
 
-type MetabaseDimensionFilterForDimension<TDimension> =
-  TDimension extends unknown
-    ? {
-        type: "operator";
-        operator: FilterOperatorForDimension<TDimension>;
-        args: readonly [
-          TDimension,
-          ...{
-            type: "literal";
-            value: FilterLiteralValue;
-          }[],
-        ];
-      }
-    : never;
-
-export type MetabaseDimensionFilter<TEntity = unknown> =
-  MetabaseDimensionFilterForDimension<FieldReference<TEntity>>;
+type FilterForDimension<TDimension> = TDimension extends unknown
+  ? {
+      type: "operator";
+      operator: FilterOperatorForDimension<TDimension>;
+      args: readonly [
+        TDimension,
+        ...{
+          type: "literal";
+          value: FilterLiteralValue;
+        }[],
+      ];
+    }
+  : never;
 
 export type FilterLiteralValue = string | number | bigint | boolean;
 
@@ -314,40 +345,48 @@ type NonDateBucketDimension<TDimension> = TDimension extends unknown
 export type BreakoutOptionsArgument<TDimension> = [
   DateBucketDimension<TDimension>,
 ] extends [never]
-  ? { unit?: never; binning?: BinningOptions } & BinningOptionsInput
-  : { unit?: TemporalUnit; binning?: BinningOptions } & BinningOptionsInput;
+  ? { unit?: never; binning?: BinningOptions }
+  : { unit?: TemporalUnit; binning?: BinningOptions };
 
-export type MetabaseBreakoutObjectForDimension<TDimension> =
+export type BreakoutObjectForDimension<TDimension> =
   | ([DateBucketDimension<TDimension>] extends [never]
       ? never
       : DateBucketDimension<TDimension> & {
           unit?: TemporalUnit;
           binning?: BinningOptions;
-        } & BinningOptionsInput)
+        })
   | ([NonDateBucketDimension<TDimension>] extends [never]
       ? never
       : NonDateBucketDimension<TDimension> & {
+          unit?: never;
           binning?: BinningOptions;
-        } & BinningOptionsInput);
+        });
+
+export type NamedBreakout<TColumn = unknown, TName extends string = string> = {
+  type: "breakout";
+  name: TName;
+  column: TColumn;
+};
 
 type BreakoutForDimension<TDimension> =
-  | TDimension
-  | MetabaseBreakoutObjectForDimension<TDimension>;
+  | (TDimension & { unit?: never; binning?: never })
+  | BreakoutObjectForDimension<TDimension>
+  | NamedBreakout<TDimension | BreakoutObjectForDimension<TDimension>>;
 
 export type MetabaseBreakout<TTable = unknown> = BreakoutForDimension<
   FieldReference<TTable>
 >;
 
-export type OrderByDirection = "asc" | "desc";
+export type MetabaseOrderByDirection = "asc" | "desc";
 
-type MetabaseOrderByObjectForDimension<TDimension> =
-  MetabaseBreakoutObjectForDimension<TDimension> & {
-    direction?: OrderByDirection;
+type OrderByObjectForDimension<TDimension> =
+  BreakoutObjectForDimension<TDimension> & {
+    direction?: MetabaseOrderByDirection;
   };
 
 type OrderByForDimension<TDimension> =
-  | (TDimension & { direction?: OrderByDirection })
-  | MetabaseOrderByObjectForDimension<TDimension>
+  | (TDimension & { direction?: MetabaseOrderByDirection })
+  | OrderByObjectForDimension<TDimension>
   | AggregationResultOrderBy;
 
 export type MetabaseOrderBy<TTable = unknown> = OrderByForDimension<
@@ -357,17 +396,27 @@ export type MetabaseOrderBy<TTable = unknown> = OrderByForDimension<
 type AggregationResultOrderBy = {
   type: "column";
   name: string;
-  direction?: OrderByDirection;
+  direction?: MetabaseOrderByDirection;
 };
 
-type BinningOptionsInput =
-  | { bins?: number | "auto"; binWidth?: never }
-  | { binWidth?: number | "auto"; bins?: never };
+export type DefaultBinningOptions = {
+  strategy: "default";
+};
+
+export type NumBinsBinningOptions = {
+  strategy: "num-bins";
+  numBins: number;
+};
+
+export type BinWidthBinningOptions = {
+  strategy: "bin-width";
+  binWidth: number;
+};
 
 export type BinningOptions =
-  | { strategy: "default" }
-  | { strategy: "num-bins"; "num-bins": number }
-  | { strategy: "bin-width"; "bin-width": number };
+  | DefaultBinningOptions
+  | NumBinsBinningOptions
+  | BinWidthBinningOptions;
 
 /**
  * The clauses one query stage accepts. A table stage scopes them to its fields,
@@ -375,10 +424,7 @@ export type BinningOptions =
  * question's result columns.
  */
 type StageClauses<TDimension, TAggregation, TFilter> = {
-  filters?: readonly (
-    | TFilter
-    | MetabaseDimensionFilterForDimension<TDimension>
-  )[];
+  filters?: readonly (TFilter | FilterForDimension<TDimension>)[];
   orderBys?: readonly OrderByForDimension<TDimension>[];
   limit?: number;
   enabled?: boolean;
@@ -396,7 +442,14 @@ type StageClauses<TDimension, TAggregation, TFilter> = {
 type TableQueryBase<TTable> = {
   source: TTable extends TableSchema ? SourceQuerySpec<TTable> : TableSchema;
   fields?: readonly FieldReference<TTable>[];
-  savedQuestionSourceId?: number;
+  /**
+   * The entity ID of this query's saved question in the app's collection,
+   * under the repository's `collections/data_apps/`. A production build runs
+   * that card instead of the table: it sits in the app's collection, which the
+   * app's viewers can read, and a table source isn't. The dev preview ignores
+   * it and runs the table source.
+   */
+  savedQuestionEntityId?: string;
 } & StageClauses<
   FieldReference<TTable>,
   AnyAggregation<TTable>,
@@ -411,8 +464,75 @@ export type RequireAggregationsForBreakouts<TQuery> = TQuery extends {
     : { aggregations: readonly [unknown, ...unknown[]] }
   : unknown;
 
-export type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
+type TableQuery<TTable, TQuery = unknown> = TableQueryBase<TTable> &
   RequireAggregationsForBreakouts<TQuery>;
+
+export type AggregationResultColumnName<TAggregation> = TAggregation extends {
+  columns: readonly [{ name: infer TName }, ...unknown[]];
+}
+  ? TName
+  : TAggregation extends { type: "operator"; operator: infer TOperator }
+    ? TAggregation extends { name: infer TName extends string }
+      ? TName
+      : TOperator extends "distinct"
+        ? "count"
+        : TOperator
+    : string;
+
+type ColumnName<TColumn> = TColumn extends { name: infer TName }
+  ? TName
+  : never;
+
+type QueryGroupedColumnNames<TQuery> =
+  | ColumnName<QueryBreakoutColumns<TQuery>>
+  | (TQuery extends { aggregations?: infer TAggregations }
+      ? AggregationResultColumnName<TupleElement<NonNullable<TAggregations>>>
+      : never);
+
+type AggregatesResultColumns<TQuery> = TQuery extends {
+  aggregations: readonly [unknown, ...unknown[]];
+}
+  ? true
+  : false;
+
+type OrderByWithName<TOrderBy, TNames> = TOrderBy extends
+  | { tableId: unknown }
+  | { sourceFieldId: unknown }
+  ? TOrderBy
+  : TOrderBy extends { type: "column"; name: infer TName }
+    ? [TName] extends [TNames]
+      ? TOrderBy
+      : { orderByColumnNames: `${TNames & string}` }
+    : TOrderBy;
+
+/** Narrows the name-only order-bys of `TQuery` to `TNames`. */
+type RequireOrderByNames<TQuery, TNames> = [TNames] extends [never]
+  ? unknown
+  : TQuery extends { orderBys: infer TOrderBys extends readonly unknown[] }
+    ? {
+        orderBys: {
+          [TIndex in keyof TOrderBys]: OrderByWithName<
+            TOrderBys[TIndex],
+            TNames
+          >;
+        };
+      }
+    : unknown;
+
+/** Requires a grouped stage's name-only order-bys to name one of its breakout or aggregation columns. */
+export type RequireGroupedOrderByNames<TQuery> =
+  AggregatesResultColumns<TQuery> extends true
+    ? RequireOrderByNames<TQuery, QueryGroupedColumnNames<TQuery>>
+    : unknown;
+
+/** Requires a dynamic stage's name-only order-bys to name its own grouped columns, or else the static query's result columns. */
+type RequireDynamicOrderByNames<TEntity, TQuery, TDynamic> =
+  AggregatesResultColumns<TDynamic> extends true
+    ? RequireGroupedOrderByNames<TDynamic>
+    : RequireOrderByNames<
+        TDynamic,
+        ColumnName<QueryResultColumns<TEntity, TQuery>>
+      >;
 
 export type MetabaseQueryOptions<
   TEntity = unknown,
@@ -439,10 +559,15 @@ type QueryFieldColumns<TQuery> = TQuery extends { fields?: infer TFields }
   ? TupleElement<NonNullable<TFields>>
   : never;
 
+type BreakoutColumn<TBreakout> =
+  TBreakout extends NamedBreakout<infer TColumn, infer TName>
+    ? Omit<TColumn, "name"> & { name: TName }
+    : TBreakout;
+
 type QueryBreakoutColumns<TQuery> = TQuery extends {
   breakouts?: infer TBreakouts;
 }
-  ? TupleElement<NonNullable<TBreakouts>>
+  ? BreakoutColumn<TupleElement<NonNullable<TBreakouts>>>
   : never;
 
 type QueryAggregationColumns<TQuery> = TQuery extends {
@@ -497,7 +622,7 @@ type DefaultQuestionColumns<TEntity, TQuery> =
       ? TupleElement<NonNullable<TColumns>>
       : never;
 
-type QueryResultColumn<TEntity, TQuery> =
+type QueryResultColumns<TEntity, TQuery> =
   | DefaultTableColumns<TEntity, TQuery>
   | DefaultQuestionColumns<TEntity, TQuery>
   | QueryFieldColumns<TQuery>
@@ -509,10 +634,38 @@ type QueryResultColumn<TEntity, TQuery> =
  * without a generated schema name a result column by hand.
  */
 export type MetabaseDynamicColumn<TEntity = unknown, TQuery = unknown> = [
-  QueryResultColumn<TEntity, TQuery>,
+  QueryResultColumns<TEntity, TQuery>,
 ] extends [never]
   ? SchemaColumn & { type: "column" }
-  : QueryResultColumn<TEntity, TQuery>;
+  :
+      | QueryResultColumns<TEntity, TQuery>
+      | ColumnNameReference<QueryResultColumns<TEntity, TQuery>>;
+
+/** A result column referenced by its name alone, typed by the column's `jsType`. */
+type ColumnNameReference<TColumn> = TColumn extends SchemaColumn
+  ? { type: "column"; name: TColumn["name"] } & (TColumn extends {
+      jsType: infer TJavaScriptType;
+    }
+      ? { jsType?: TJavaScriptType }
+      : unknown)
+  : never;
+
+type ColumnByName<TColumns, TColumn> = TColumn extends { name: infer TName }
+  ? [Extract<TColumns, { name: TName }>] extends [never]
+    ? TColumn
+    : Extract<TColumns, { name: TName }>
+  : TColumn;
+
+type DynamicBreakoutColumn<TColumns, TBreakout> =
+  TBreakout extends NamedBreakout<infer TColumn, infer TName>
+    ? Omit<ColumnByName<TColumns, TColumn>, "name"> & { name: TName }
+    : ColumnByName<TColumns, TBreakout>;
+
+type DynamicBreakoutColumns<TColumns, TDynamic> = TDynamic extends {
+  breakouts?: infer TBreakouts;
+}
+  ? DynamicBreakoutColumn<TColumns, TupleElement<NonNullable<TBreakouts>>>
+  : never;
 
 /**
  * Clauses layered on top of a static query — the part a UI changes at runtime.
@@ -524,7 +677,7 @@ export type MetabaseDynamicQuery<
   TQuery = unknown,
 > = StageClauses<
   MetabaseDynamicColumn<TEntity, TQuery>,
-  DimensionAggregation<MetabaseDynamicColumn<TEntity, TQuery>>,
+  AggregationForDimension<MetabaseDynamicColumn<TEntity, TQuery>>,
   never
 >;
 
@@ -539,7 +692,8 @@ type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
 type InferResultSchema<TEntity, TQuery, TDynamic> =
   ReshapesResultColumns<TDynamic> extends true
     ? RowsFromColumns<
-        QueryBreakoutColumns<TDynamic> | QueryAggregationColumns<TDynamic>
+        | DynamicBreakoutColumns<QueryResultColumns<TEntity, TQuery>, TDynamic>
+        | QueryAggregationColumns<TDynamic>
       >
     : InferQuerySchema<TEntity, TQuery>;
 
@@ -574,11 +728,48 @@ export type UseMetabaseQuery = <
     DefinedQuery &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
       ? TQuery extends { source: unknown }
-        ? RequireAggregationsForBreakouts<TQuery>
+        ? RequireAggregationsForBreakouts<TQuery> &
+            RequireGroupedOrderByNames<TQuery>
         : unknown
       : MetabaseQueryOptions<TEntity, TSchema>),
   dynamicQuery?: TDynamic &
-    (TDynamic extends MetabaseDynamicQuery<TEntity, TQuery>
-      ? RequireAggregationsForBreakouts<TDynamic>
-      : MetabaseDynamicQuery<TEntity, TQuery>),
+    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
+      ? RequireAggregationsForBreakouts<TDynamic> &
+          RequireDynamicOrderByNames<
+            QueryEntity<TEntity, TQuery>,
+            TQuery,
+            TDynamic
+          >
+      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
 ) => UseMetabaseQueryResult<QueryEntity<TEntity, TQuery>, TQuery, TDynamic>;
+
+export type UseMetabaseQueryObject = <
+  TEntity extends TableSchema | undefined = undefined,
+  TSchema = unknown,
+  const TQuery = MetabaseQueryOptions<TEntity, TSchema> & DefinedQuery,
+  const TDynamic = undefined,
+>(
+  query: TQuery &
+    DefinedQuery &
+    (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
+      ? TQuery extends { source: unknown }
+        ? RequireAggregationsForBreakouts<TQuery> &
+            RequireGroupedOrderByNames<TQuery>
+        : unknown
+      : MetabaseQueryOptions<TEntity, TSchema>),
+  dynamicQuery?: TDynamic &
+    (TDynamic extends MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>
+      ? RequireAggregationsForBreakouts<TDynamic> &
+          RequireDynamicOrderByNames<
+            QueryEntity<TEntity, TQuery>,
+            TQuery,
+            TDynamic
+          >
+      : MetabaseDynamicQuery<QueryEntity<TEntity, TQuery>, TQuery>),
+) => UseMetabaseQueryObjectResult;
+
+export type UseMetabaseQueryObjectResult = {
+  query: MetabaseQueryObject | null;
+  error: unknown;
+  isLoading: boolean;
+};

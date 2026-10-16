@@ -1,0 +1,160 @@
+const { H } = cy;
+
+import { groupMappingCardHelpers } from "./shared/group-mapping-card";
+import { getSamlCertificate, setupSaml } from "./shared/helpers";
+
+const {
+  groupMappingSwitch,
+  mappingRow,
+  toggleGroupMapping,
+  addMapping,
+  deleteMapping,
+} = groupMappingCardHelpers({
+  sectionTestId: "saml-group-mapping-section",
+  nameLabel: "SAML group name",
+});
+
+describe("scenarios > admin > settings > SSO > SAML", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    cy.intercept("PUT", /\/api\/setting$/).as("updateSettings");
+    cy.intercept("PUT", "/api/setting/*").as("updateSetting");
+    cy.intercept("PUT", "/api/saml/settings").as("updateSamlSettings");
+  });
+
+  it("should allow to save and enable saml, then update its settings", () => {
+    cy.visit("/admin/settings/authentication/saml");
+
+    enterSamlSettings();
+    cy.button("Save and enable").click();
+    cy.wait("@updateSamlSettings");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Success").should("exist");
+
+    H.goToAuthOverviewPage();
+    getSamlCard().findByText("Active").should("exist");
+
+    cy.log("Update the existing settings");
+    cy.visit("/admin/settings/authentication/saml");
+
+    H.typeAndBlurUsingLabel(
+      /SAML Identity Provider URL/i,
+      "https://other.test",
+    );
+    cy.button("Save changes").click();
+    cy.wait("@updateSamlSettings");
+    cy.findByTestId("admin-layout-content")
+      .findByText("Success")
+      .should("exist");
+
+    H.goToAuthOverviewPage();
+    getSamlCard().findByText("Active").should("exist");
+  });
+
+  it("should allow to disable and enable saml, then reset its settings", () => {
+    setupSaml();
+    cy.visit("/admin/settings/authentication");
+
+    getSamlCard().icon("ellipsis").click();
+    H.popover().findByText("Pause").click();
+    cy.wait("@updateSetting");
+    getSamlCard().findByText("Paused").should("exist");
+
+    getSamlCard().icon("ellipsis").click();
+    H.popover().findByText("Resume").click();
+    cy.wait("@updateSetting");
+    getSamlCard().findByText("Active").should("exist");
+
+    cy.log("Deactivating resets the saml settings");
+    getSamlCard().icon("ellipsis").click();
+    H.popover().findByText("Deactivate").click();
+    H.modal().button("Deactivate").click();
+    cy.wait("@updateSettings");
+
+    getSamlCard().findByText("Set up").should("exist");
+  });
+
+  it("should allow the user to enable/disable user provisioning", () => {
+    setupSaml();
+    cy.visit("/admin/settings/authentication/saml");
+
+    cy.findByRole("switch", { name: "User provisioning" }).should("be.checked");
+    cy.contains("label", "User provisioning").click();
+    cy.wait("@updateSetting");
+    H.undoToast().findByText("Changes saved").should("exist");
+    cy.findByRole("switch", { name: "User provisioning" }).should(
+      "not.be.checked",
+    );
+  });
+
+  describe("Group mapping", () => {
+    beforeEach(() => {
+      cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
+      setupSaml();
+      cy.visit("/admin/settings/authentication/saml");
+    });
+
+    it("should save the switch and the mappings on their own and the group attribute with the form", () => {
+      toggleGroupMapping(true);
+      addMapping("engineering", ["data", "nosql"]);
+
+      cy.log("The group attribute saves with the page form");
+      cy.findByLabelText(/Group attribute name/).type("memberOf");
+      cy.button("Save changes").click();
+      cy.wait("@updateSamlSettings");
+
+      cy.log("Everything comes back after a reload");
+      cy.reload();
+      groupMappingSwitch().should("be.checked");
+      mappingRow("engineering").should("contain", "data, nosql");
+      cy.findByLabelText(/Group attribute name/).should(
+        "have.value",
+        "memberOf",
+      );
+
+      cy.log("Deleting a mapping takes its groups with it");
+      deleteMapping(
+        "engineering",
+        /delete the groups/i,
+        "Remove mapping and delete groups",
+      );
+      cy.wait(["@deleteGroup", "@deleteGroup"]);
+
+      cy.log("Turning group mapping off sticks");
+      toggleGroupMapping(false);
+      cy.reload();
+      groupMappingSwitch().should("not.be.checked");
+    });
+  });
+});
+
+const getSamlCard = () => {
+  return cy
+    .findByTestId("admin-layout-content")
+    .findByText("SAML")
+    .parent()
+    .parent();
+};
+
+const enterSamlSettings = () => {
+  getSamlCertificate().then((certificate) => {
+    H.typeAndBlurUsingLabel(
+      /SAML Identity Provider URL/i,
+      "https://example.test",
+    );
+    H.typeAndBlurUsingLabel(
+      /SAML Identity Provider Issuer/i,
+      "https://example.test/issuer",
+    );
+    // paste this long value to not waste time typing
+    cy.findByLabelText(/SAML Identity Provider Certificate/i)
+      .click()
+      .invoke("val", certificate);
+    // do a little typing to invoke the blur event
+    cy.findByLabelText(/SAML Identity Provider Certificate/i)
+      .type("a{backspace}")
+      .blur();
+  });
+};

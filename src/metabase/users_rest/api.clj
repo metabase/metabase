@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [java-time.api :as t]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
@@ -189,7 +190,7 @@
                                                    [:enum :all :internal :external]]]
        [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
-      api/*is-data-analyst?*
+      (api/entitled-data-analyst?)
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
@@ -379,6 +380,7 @@
    [:has_invited_second_user    :boolean]
    [:has_question_and_dashboard :boolean]
    [:has_model                  :boolean]
+   [:slack_account_status       [:maybe [:enum "active" "inactive"]]]
    [:can_write_any_collection   :boolean]
    [:sso_source                 [:maybe :keyword]]
    [:locale                     [:maybe :string]]
@@ -395,6 +397,7 @@
 
 (api.macros/defendpoint :get "/current" :- ::current-user-response
   "Fetch the current `User`."
+  {:scope api-scope/data-app}
   []
   (-> (api/check-404 @api/*current-user*)
       ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this
@@ -407,7 +410,18 @@
       maybe-add-advanced-permissions
       maybe-add-sso-source
       add-custom-homepage-info
-      add-can-write-any-collection))
+      add-can-write-any-collection
+      (assoc :slack_account_status (sso/slack-account-status api/*current-user-id*))))
+
+(api.macros/defendpoint :delete "/:id/slack" :- [:map {:closed true}
+                                                 [:status [:= 204]]
+                                                 [:body :nil]]
+  "Remove the current user's Slack Connect link."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-403 (= id api/*current-user-id*))
+  (sso/disconnect-slack-account! id)
+  api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -644,7 +658,7 @@
                                        users-rest.db/mfa-auth-identity-id-from-hashed-key
                                        :mfa_auth_identity_id)]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
-      (auth-identity/set-password! id password)
+      (auth-identity/set-password! id password {:ended-by api/*current-user-id*})
       ;; after a successful password update go ahead and offer the client a new session that they can use
       (when (= id api/*current-user-id*)
         (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking!

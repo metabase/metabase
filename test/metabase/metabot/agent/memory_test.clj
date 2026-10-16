@@ -4,7 +4,9 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
-   [metabase.metabot.tools.shared :as shared]))
+   [metabase.metabot.schema :as metabot.schema]
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel initialize-test
   (testing "seeds the working state and starts an empty turn-state"
@@ -91,6 +93,33 @@
   (testing "turn-state is nil until this turn writes something"
     (let [mem (memory/initialize [] {:queries {"q1" {:id "q1"}}})]
       (is (nil? (memory/turn-state mem))))))
+
+(deftest ^:parallel client-ids-survive-the-app-db-round-trip-test
+  (testing "JSON has no sets, so state read back out of metabot_message carries a vector here. It
+            has to validate in that shape, since the agent entry point checks it before memory is
+            initialized, and it has to arrive as a set."
+    (let [persisted {:client-ids ["seeded-q"]}]
+      (is (mr/validate ::metabot.schema/state persisted))
+      (is (= #{"seeded-q"}
+             (get-in (memory/initialize [] persisted) [:state :client-ids]))))))
+
+(deftest ^:parallel client-ids-persist-once-stored-test
+  (let [query   {:database 1}
+        earlier (memory/initialize [] {:client-ids #{"from-an-earlier-turn"}})
+        memory  (memory/add-client-ids earlier #{"from-an-earlier-turn" "stored-now" "only-viewed"})]
+    (testing "tools see this turn's ids along with the ones earlier turns persisted"
+      (binding [shared/*memory-atom* (atom (memory/add-client-ids earlier #{"stored-now" "only-viewed"}))]
+        (is (= #{"from-an-earlier-turn" "stored-now" "only-viewed"} (shared/current-client-ids)))))
+    (testing "a turn that stores nothing persists no ids"
+      (is (nil? (memory/turn-state memory))))
+    (testing "storing a query or chart under an id persists it with earlier turns' ids"
+      (doseq [store [#(memory/set-query % "stored-now" query)
+                     #(memory/set-chart % "stored-now" {:chart_id "stored-now"})]]
+        (is (= #{"from-an-earlier-turn" "stored-now"}
+               (:client-ids (memory/turn-state (store memory)))))))
+    (testing "storing under an id an earlier turn persisted leaves the client ids unwritten"
+      (is (= {:queries {"from-an-earlier-turn" query}}
+             (memory/turn-state (memory/set-query memory "from-an-earlier-turn" query)))))))
 
 (deftest ^:parallel set-link-registry-test
   (testing "an empty or unchanged registry is not written into the turn delta"

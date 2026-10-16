@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -14,7 +15,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card } from "metabase-types/api";
 import {
@@ -71,7 +71,7 @@ const setup = async ({
       questions: [card],
     }),
   });
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
   const query = checkNotNull(question.legacyNativeQuery());
   const onSetDatabaseId = jest.fn();

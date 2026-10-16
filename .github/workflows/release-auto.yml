@@ -40,7 +40,7 @@ jobs:
             echo "This workflow should not run on forks."
             exit 1
           fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release

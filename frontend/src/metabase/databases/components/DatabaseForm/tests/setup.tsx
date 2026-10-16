@@ -1,7 +1,9 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupEnginesEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
+import type { FormLocation } from "metabase/databases/types";
 import type {
   DatabaseData,
   Engine,
@@ -103,17 +105,21 @@ export interface SetupOpts {
   engines?: Record<string, Engine>;
   initialValues?: Partial<DatabaseData> & { engine?: EngineKey };
   isAdvanced?: boolean;
+  location?: FormLocation;
 }
 
-export const setup = ({
+export const setup = async ({
   settings,
   enterprisePlugins,
   engines = TEST_ENGINES,
   initialValues = {},
   isAdvanced = true,
+  location = "admin",
 }: SetupOpts = {}) => {
+  setupEnginesEndpoint(engines);
+
   const state = createMockState({
-    settings: mockSettings({ ...settings, engines }),
+    settings: mockSettings({ ...settings }),
   });
 
   if (enterprisePlugins) {
@@ -132,12 +138,14 @@ export const setup = ({
       }}
       config={{ isAdvanced }}
       onSubmit={onSubmit}
-      location="admin"
+      location={location}
     />,
     {
       storeInitialState: state,
     },
   );
+
+  await screen.findByTestId("database-form");
 
   return { onSubmit };
 };

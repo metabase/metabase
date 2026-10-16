@@ -328,10 +328,8 @@
 
     :fixture
     (fn [_ thunk]
-      ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
-      ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
-      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
+      (mt/with-dynamic-fn-redefs [body/attached-results-text
+                                  (pulse.test-util/wrap-function (mt/original-fn #'body/attached-results-text))]
         (thunk)))
 
     :assert
@@ -377,10 +375,10 @@
                   pulse-results)))
          (testing "attached-results-text should be invoked exactly once"
            (is (= 1
-                  (count (pulse.test-util/input @#'body/attached-results-text)))))
+                  (count (pulse.test-util/input (mt/dynamic-value #'body/attached-results-text))))))
          (testing "attached-results-text should return nil since it's a slack message"
            (is (= [nil]
-                  (pulse.test-util/output @#'body/attached-results-text))))))}}))
+                  (pulse.test-util/output (mt/dynamic-value #'body/attached-results-text)))))))}}))
 
 (deftest virtual-card-test
   (tests!
@@ -1234,8 +1232,9 @@
                                          :table.cell_column  "count"}}
       ;; Slack rasterizes the rendered hiccup; wrap the rasterizer to see what it was given
       :fixture (fn [_ thunk]
-                 (with-redefs [channel.render/png-from-render-info
-                               (pulse.test-util/wrap-function @#'channel.render/png-from-render-info)]
+                 (mt/with-dynamic-fn-redefs [channel.render/png-from-render-info
+                                             (pulse.test-util/wrap-function
+                                              (mt/original-fn #'channel.render/png-from-render-info))]
                    (thunk)))
       :assert
       {:email
@@ -1248,7 +1247,7 @@
                                                      #">Product → Category</th>"))))
        :slack
        (fn [_ _]
-         (let [[[rendered-info]] (pulse.test-util/input @#'channel.render/png-from-render-info)
+         (let [[[rendered-info]] (pulse.test-util/input (mt/dynamic-value #'channel.render/png-from-render-info))
                h                 (html (:content rendered-info))]
            (testing "the hiccup handed to the rasterizer is the pivoted grid"
              (is (str/includes? h ">Facebook</th>"))
@@ -1719,13 +1718,13 @@
   (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
     (let [render-args (atom nil)]
       ;; Stub the renderer: avoid producing a real PDF, and capture the args it's called with.
-      (with-redefs [channel.render/render-dashboard-to-pdf
-                    (fn [dashboard-id user-id parameters & [_paper-key parts]]
-                      (reset! render-args {:dashboard-id dashboard-id
-                                           :user-id      user-id
-                                           :parameters   parameters
-                                           :parts        parts})
-                      (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+      (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                  (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                                    (reset! render-args {:dashboard-id dashboard-id
+                                                         :user-id      user-id
+                                                         :parameters   parameters
+                                                         :parts        parts})
+                                    (.getBytes "%PDF-1.4 stub" "UTF-8"))]
         (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
                                                            :dataset_query (mt/mbql-query orders {:limit 1})}
                        :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
@@ -1761,8 +1760,8 @@
 (deftest dashboard-sub-no-pdf-by-default-test
   (testing "Without :include_pdf, the renderer is not invoked and no PDF is attached"
     (let [called? (atom false)]
-      (with-redefs [channel.render/render-dashboard-to-pdf
-                    (fn [& _] (reset! called? true) (byte-array 0))]
+      (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                  (fn [& _] (reset! called? true) (byte-array 0))]
         (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
                                                            :dataset_query (mt/mbql-query orders {:limit 1})}
                        :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
@@ -1787,6 +1786,47 @@
                     (first (:channel/email pulse-results))
                     #"Aviary KPIs")))))))))
 
+(defn- send-email-dashsub-with-details!
+  "Send a one-card dashboard subscription named \"Aviary KPIs\" to rasta over an email channel with `details`, and
+  return the captured email."
+  [details]
+  (mt/with-temp [:model/Card                  {card-id :id}      {:name          pulse.test-util/card-name
+                                                                  :dataset_query (mt/mbql-query orders {:limit 1})}
+                 :model/Dashboard             {dashboard-id :id} {:name "Aviary KPIs"}
+                 :model/DashboardCard         _                  {:dashboard_id dashboard-id
+                                                                  :card_id      card-id}
+                 :model/Pulse                 {pulse-id :id}     {:name         "Pulse Name"
+                                                                  :dashboard_id dashboard-id}
+                 :model/PulseCard             _                  {:pulse_id pulse-id
+                                                                  :card_id  card-id
+                                                                  :position 0}
+                 :model/PulseChannel          {pc-id :id}        {:pulse_id     pulse-id
+                                                                  :channel_type "email"
+                                                                  :details      details}
+                 :model/PulseChannelRecipient _                  {:user_id          (pulse.test-util/rasta-id)
+                                                                  :pulse_channel_id pc-id}]
+    (-> (pulse.test-util/with-captured-channel-send-messages!
+          (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+        :channel/email
+        first)))
+
+(deftest dashboard-sub-custom-subject-test
+  (testing "An email channel with :subject sends it as the subject and keeps the dashboard name in the body (#63305)"
+    (is (= (rasta-dashsub-message {:subject "Aviary KPIs, Account A"})
+           (mt/summarize-multipart-single-email
+            (send-email-dashsub-with-details! {:subject "Aviary KPIs, Account A"})
+            #"Aviary KPIs")))))
+
+(deftest dashboard-sub-custom-subject-is-literal-test
+  (testing "Template syntax in a custom subject is sent as typed, not resolved against the payload"
+    (is (= "{{payload.dashboard.id}} report"
+           (:subject (send-email-dashsub-with-details! {:subject "{{payload.dashboard.id}} report"}))))))
+
+(deftest dashboard-sub-without-subject-uses-dashboard-name-test
+  (testing "An email channel without :subject keeps the dashboard name as the subject"
+    (is (= "Aviary KPIs"
+           (:subject (send-email-dashsub-with-details! {}))))))
+
 (deftest dashboard-sub-slack-include-pdf-test
   (testing "A Slack channel with :include_pdf renders the dashboard PDF and carries it on the message"
     (notification.tu/with-channel-fixtures [:channel/slack]
@@ -1801,11 +1841,11 @@
                                              :channel_type "slack"
                                              :details      {:channel "#general" :include_pdf true}}]
         (let [render-args (atom nil)]
-          (with-redefs [channel.render/render-dashboard-to-pdf
-                        (fn [dashboard-id user-id parameters & [_paper-key parts]]
-                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id
-                                               :parameters parameters :parts parts})
-                          (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+          (mt/with-dynamic-fn-redefs [channel.render/render-dashboard-to-pdf
+                                      (fn [dashboard-id user-id parameters & [_paper-key parts]]
+                                        (reset! render-args {:dashboard-id dashboard-id :user-id user-id
+                                                             :parameters parameters :parts parts})
+                                        (.getBytes "%PDF-1.4 stub" "UTF-8"))]
             (pulse.test-util/slack-test-setup!
              (let [results (pulse.test-util/with-captured-channel-send-messages!
                              (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))

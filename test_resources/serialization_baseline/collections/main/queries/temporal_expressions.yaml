@@ -459,12 +459,9 @@ result_metadata:
   lib/source: source/expressions
   lib/source-column-alias: Today Date
   qp/implicit-field?: true
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
-- id: DBBrqcMAmOO0sbM_CzM_Z
-  label: temporal_expressions
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

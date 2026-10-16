@@ -10,6 +10,7 @@ import {
   provideUserTags,
 } from "metabase/api/tags";
 import {
+  type ActionDependencyNode,
   type CardDependencyNode,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
@@ -20,6 +21,7 @@ import {
   type PythonLibrary,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
+  type Session,
   type SnippetDependencyNode,
   type SourceReplacementRun,
   type SupportAccessGrant,
@@ -46,11 +48,13 @@ export const ENTERPRISE_TAG_TYPES = [
   "support-access-grant-current",
   "library-collection",
   "ai-controls-permissions",
+  "ai-controls-mcp-permissions",
   "ai-controls-usage-instance-limit",
   "ai-controls-usage-group-limits",
   "ai-controls-usage-tenant-limits",
   "data-complexity-scores",
   "security-advisory",
+  "session",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -190,6 +194,18 @@ function provideMeasureDependencyNodeTags(
   ];
 }
 
+function provideActionDependencyNodeTags(
+  node: ActionDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("action", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+  ];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -212,6 +228,8 @@ export function provideDependencyNodeTags(
       return provideSegmentDependencyNodeTags(node);
     case "measure":
       return provideMeasureDependencyNodeTags(node);
+    case "action":
+      return provideActionDependencyNodeTags(node);
   }
 }
 
@@ -241,6 +259,18 @@ export function provideSupportAccessGrantListTags(
     listTag("support-access-grant"),
     ...grants.flatMap(provideSupportAccessGrantTags),
   ];
+}
+
+export function provideSessionTags(
+  session: Session,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("session", session.id), ...provideUserTags(session.user)];
+}
+
+export function provideSessionListTags(
+  sessions: Session[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("session"), ...sessions.flatMap(provideSessionTags)];
 }
 
 export function provideSourceReplacementRunTags(

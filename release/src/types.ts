@@ -40,12 +40,20 @@ export interface MajorVersionSupport {
   eol: string;
 }
 
+export interface AlertUpgradeVersion {
+  min: string;
+  fixed: string;
+  message: string;
+  id?: string;
+}
+
 export interface VersionInfoFile {
   latest: VersionInfo;
   beta?: VersionInfo;
   nightly?: VersionInfo;
   older: VersionInfo[];
   major_version_support?: MajorVersionSupport[];
+  alert_upgrade_versions?: AlertUpgradeVersion[];
 }
 
 export type Issue = {

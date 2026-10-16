@@ -25,3 +25,8 @@ export const DATA_APP_REALM_HOST_URL = "/api/apps/sandbox-host";
 export function dataApp(name: string) {
   return `${DATA_APP_ROOT_URL}/${encodeURIComponent(name)}`;
 }
+
+/** Admin page listing the data apps: `/admin/settings/apps`. */
+export function dataAppsSettings() {
+  return `/admin/settings/${DATA_APP_URL_SEGMENT}`;
+}

@@ -40,13 +40,13 @@ export const UploadInfoModal = ({
         </Title>
         {isAdmin ? (
           <>
-            <Box c="text-secondary">
-              <p>
+            <Box>
+              <Text c="text-secondary" mb="1rem">
                 {t`Team members will be able to upload CSV files and work with them just like any other data source.`}
-              </p>
-              <p>
+              </Text>
+              <Text c="text-secondary">
                 {t`You'll be able to pick the default database where the data should be stored when enabling the feature.`}
-              </p>
+              </Text>
             </Box>
             <Button
               component={Link}
@@ -59,10 +59,10 @@ export const UploadInfoModal = ({
           </>
         ) : (
           <>
-            <Box c="text-secondary">
-              <p>
+            <Box>
+              <Text c="text-secondary">
                 {t`You'll need to ask your admin to enable this feature to get started. Then, you'll be able to upload CSV files and work with them just like any other data source.`}
-              </p>
+              </Text>
             </Box>
             <Button onClick={onClose}>{t`Got it`}</Button>
           </>

@@ -1,0 +1,12 @@
+.columns {
+  display: grid;
+  grid-template-columns: 4fr 3fr;
+}
+
+.borderTop {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+.borderRight {
+  border-right: 1px solid var(--mb-color-border-neutral);
+}

@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.agent-api.api :as agent-api]
+   [metabase.api-scope.core :as api-scope]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.scopes :as scopes]
@@ -10,6 +12,7 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [oidc-provider.core :as oidc]
+   [oidc-provider.protocol :as oidc.proto]
    [oidc-provider.store :as oidc.store]))
 
 (set! *warn-on-reflection* true)
@@ -27,20 +30,34 @@
 (defonce ^:private provider (atom nil))
 
 (defn supported-scopes
-  "All OAuth scopes intended to be advertised in the server's discovery metadata (`scopes-supported`).
-
-  `mb:full` is deliberately absent. Advertising it here puts a full-access grant in front of every client that reads
-  discovery metadata, so keeping it out means no client is led toward it. Note this is not a gate: dynamic
-  registration is unauthenticated and passes a client-supplied `scope` through unchecked, so a client that names
-  `mb:full` itself still registers with it. Keeping it off this list narrows who finds it, not who may ask."
+  "All OAuth scopes intended to be advertised in the server's discovery metadata (`scopes-supported`)."
   []
-  (vec (into (sorted-set) (mcp/all-scopes))))
+  (-> (sorted-set)
+      (into (mcp/v2-scopes))
+      (into (agent-api/defendpoint-scopes))
+      (disj "mb:full") ;; mb:full should not appear so clients don't find it; they can still register with it (e.g., CLI)
+      vec))
+
+(defn all-scopes-registered?
+  "True when every scope in the space-delimited `scope` string is registered via
+  [[metabase.api-scope.core/defscope]]. A nil or blank `scope` names none, so it is true."
+  [scope]
+  (every? api-scope/registered-scope? (api-scope/parse-scopes scope)))
+
+(defn registered-scopes-only
+  "The space-delimited `scope` string with every scope that is not registered via
+  [[metabase.api-scope.core/defscope]] removed, keeping the requested order, or nil when none remain."
+  [scope]
+  (some->> (str/split (str scope) #"\s+")
+           (filter api-scope/registered-scope?)
+           seq
+           (str/join " ")))
 
 (defn mcp-resource-scopes
-  "The scopes advertised for the MCP resource at `path`. RFC 9728 metadata answers \"what does *this* resource
-  accept\", and every path in [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they
-  all accept the same set: the scopes the v2 tool registry gates on plus the resource scopes its UI tools
-  render through.
+  "The scopes the MCP resource at `path` accepts, which [[narrow-scope-to-resource]] trims a grant to. Every path in
+  [[metabase.mcp.paths/endpoint-paths]] now reaches the same v2 surface, so they all accept the same set: the scopes
+  the v2 tool registry gates on plus the resource scopes its UI tools render through. What the resource *advertises*
+  is [[mcp-resource-advertised-scopes]].
 
   This branched while v1 was still served. v1's tools gated on the per-entity agent-API scopes
   (`agent:question:create`, `agent:sql:execute`, …), so the aliases that reached v1 had to advertise those or
@@ -50,6 +67,14 @@
   signature because RFC 9728 metadata is per-resource and a future surface may diverge again."
   [_path]
   (vec (into (sorted-set) (mcp/v2-scopes))))
+
+(defn mcp-resource-advertised-scopes
+  "The RFC 9728 `scopes_supported` for the MCP resource at `path`: every v2 scope, in surface order, which Claude Code
+  and the Claude connectors request on first connect."
+  ;; The whole surface, not the baseline (ENG-11089): a manual reconnect asks for exactly this, so a narrower list left
+  ;; the write scopes unreachable for clients whose step-up is lossy.
+  [_path]
+  (vec (mcp/v2-scopes)))
 
 (defn default-grant-scopes
   "The scope set a dynamically-registered client is registered with when it sends no `scope` of its own (RFC 7591 makes
@@ -66,6 +91,44 @@
   []
   ;; sorted so the `scope` echoed back in the registration response is stable across restarts
   (into (sorted-set) (supported-scopes)))
+
+(defn- widen-to-grant-ceiling
+  "`client` with the scopes it lacks from `mcp-scopes` appended to its `:scopes` when it is dynamically registered,
+   and those it lacks from `ceiling` too while `registration-enabled?`. Any other `client`, nil included, is returned
+   unchanged."
+  [client registration-enabled? mcp-scopes ceiling]
+  (cond-> client
+    (= "dynamic" (:registration-type client))
+    (update :scopes (fn [scopes]
+                      (into (vec scopes)
+                            (comp (remove (set scopes)) (distinct))
+                            (cond-> mcp-scopes registration-enabled? (concat ceiling)))))))
+
+(defn- with-default-grant-ceiling
+  "Wrap `client-store` so that reading a client applies [[widen-to-grant-ceiling]] with the MCP surface's scopes,
+   [[default-grant-scopes]], and the dynamic-registration setting. Writes pass through unchanged."
+  [client-store]
+  ;; A registration `scope` can only widen what a client may later request, never narrow it: MCP clients register with
+  ;; the narrow scope they start from and then step up on the same `client_id`, which a per-client snapshot would
+  ;; refuse. Applied on read, so a client registered before a scope existed can still request it. Every read sees the
+  ;; widened `:scopes`, including the RFC 7592 client read (`GET /oauth/register/:client-id`).
+  ;;
+  ;; The MCP scopes are added whatever the *registration* setting says: turning registration off blocks new clients, but
+  ;; a client that registered with the baseline must still be able to step up, or its `/authorize` is a bare 400. Each
+  ;; scope still needs the user's consent. The rest of the ceiling -- the agent-API extras -- is added only while
+  ;; registration is enabled, so an admin who turned it off leaves existing clients without those.
+  ;;
+  ;; The MCP kill switch stops the MCP part of the widening: with MCP off, no surface serves those scopes.
+  (reify oidc.proto/ClientStore
+    (get-client [_ client-id]
+      (widen-to-grant-ceiling (oidc.proto/get-client client-store client-id)
+                              (oauth-settings/oauth-server-dynamic-registration-enabled)
+                              (when (mcp/mcp-enabled?) (mcp/v2-scopes))
+                              (default-grant-scopes)))
+    (register-client [_ client-config]
+      (oidc.proto/register-client client-store client-config))
+    (update-client [_ client-id updated-config]
+      (oidc.proto/update-client client-store client-id updated-config))))
 
 (def ^:private scheme-default-port
   {"http" 80, "https" 443})
@@ -111,17 +174,14 @@
   no named surface accepts are dropped, so the consent screen asks for what the token can actually be used for
   rather than everything the client registered. Several indicators may be sent, and the token has to work against
   each, so what survives is the union of what they accept. Returns the scope unchanged when no indicator names a
-  resource we narrow for, and nil when nothing survives.
-
-  Note nil is the answer for both \"nothing was requested\" and \"nothing survived\"; the caller has the requested
-  scope and must tell them apart, since only the first may drop the parameter (see the authorize handler).
+  resource we narrow for, and nil when no requested scope survives.
 
   Every alias in [[metabase.mcp.core/mcp-endpoint-paths]] counts, not just the canonical one: a client that connected
   through an alias was handed that path as its resource identifier, and narrowing has to recognize what it was told to
   send back.
 
-  Only ever removes scopes, and runs after the provider has validated the request, so it can never turn a valid
-  authorization into a rejected one.
+  Only ever removes scopes: a request in which none survive is refused by the caller rather than granted an empty
+  scope.
 
   `mb:full` does not survive. The MCP resource metadata never advertised it, and a client naming the MCP resource is
   asking for a token to use against that surface — which accepts none of the REST API that scope unlocks.
@@ -160,7 +220,7 @@
      :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
      :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)
      :refresh-token-ttl-seconds      (oauth-settings/oauth-server-refresh-token-ttl)
-     :client-store                   (store/create-client-store)
+     :client-store                   (with-default-grant-ceiling (store/create-client-store))
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
      ;; OIDC provider requires a vector.

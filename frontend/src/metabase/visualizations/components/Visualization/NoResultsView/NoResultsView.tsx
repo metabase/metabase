@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { NoDataError } from "metabase/common/components/errors/NoDataError";
-import { Tooltip } from "metabase/ui";
+import { Box, Tooltip } from "metabase/ui";
 
-import { Root, ShortMessage } from "./NoResultsView.styled";
+import { StateView } from "../StateView";
 
 interface NoResultsViewProps {
   isSmall?: boolean;
@@ -11,14 +11,18 @@ interface NoResultsViewProps {
 
 function NoResultsView({ isSmall }: NoResultsViewProps) {
   return (
-    <Root>
+    <StateView c="text-disabled">
       <Tooltip label={t`No results`} disabled={!isSmall}>
         <span>
           <NoDataError data-testid="no-results-image" mb="1rem" />
         </span>
       </Tooltip>
-      {!isSmall && <ShortMessage>{t`No results`}</ShortMessage>}
-    </Root>
+      {!isSmall && (
+        <Box component="span" fw="bold" fz="1.12em">
+          {t`No results`}
+        </Box>
+      )}
+    </StateView>
   );
 }
 

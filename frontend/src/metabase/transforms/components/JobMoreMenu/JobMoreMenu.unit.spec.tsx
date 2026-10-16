@@ -1,18 +1,29 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import { setupUpdateTransformJobEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { TransformJob } from "metabase-types/api";
 import { createMockTransformJob } from "metabase-types/api/mocks";
 
-import { JobMoreMenu } from "./JobMoreMenu";
+import { JobModal, type JobModalState, JobMoreMenu } from "./JobMoreMenu";
+
+function JobMoreMenuWithModal({ job }: { job: TransformJob }) {
+  const [modal, setModal] = useState<JobModalState>();
+  return (
+    <>
+      <JobMoreMenu job={job} onOpenModal={setModal} />
+      <JobModal modal={modal} onClose={() => setModal(undefined)} />
+    </>
+  );
+}
 
 function setup({
   job = createMockTransformJob(),
 }: { job?: TransformJob } = {}) {
   setupUpdateTransformJobEndpoint(job);
-  renderWithProviders(<JobMoreMenu job={job} />);
+  renderWithProviders(<JobMoreMenuWithModal job={job} />);
   return { job };
 }
 

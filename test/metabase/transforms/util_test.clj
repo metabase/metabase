@@ -779,7 +779,7 @@
   (testing "activate-table-and-mark-computed! resolves nil schema when physical table exists in default schema"
     (let [target {:type "table" :schema nil :name "test_nil_schema_fix"}
           synced-table (atom nil)]
-      (mt/with-temp [:model/Database db {:engine :h2}]
+      (mt/with-temp [:model/Database db {:engine :h2, :default_schema "PUBLIC"}]
         (with-redefs [sync/create-table! (fn [database table-map]
                                            (let [created (t2/insert-returning-instance!
                                                           :model/Table
