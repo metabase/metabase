@@ -217,20 +217,9 @@ Each comment body starts with `**Issue N: [Brief title]**`.
 
 Every report ends with this section. The numbered issues above are about whether the test is *well-written*; this section is about whether it should be an **e2e test at all**. They're orthogonal — a flawless spec can still be paying e2e prices for component-test value, and that's worth saying out loud.
 
-The bar is simple: **an `it()` earns its place in e2e only if it exercises a layer you cannot fake without gutting the test's value.** In this codebase that means one or more of:
+@./../_shared/e2e-vs-unit.md
 
-- a **real backend query against seeded data** (the assertion depends on the server actually filtering/sorting/bucketing rows, not on a mocked response);
-- **real rendering you then interact with** — clicking a charted ECharts SVG element at computed coordinates, drag/hit-testing, drill-through;
-- **routing across screens** — navigation, URL param round-trips that the backend then honors, browser back/forward;
-- **cross-screen traversal** — list → detail → back, where the value is the seam between screens.
-
-Conversely, a test belongs in **Jest + RTL** (the cheaper layer this repo already uses for component/unit coverage) when its real subject is frontend-only:
-
-- **pure frontend logic** — a bucketing/formatting/derivation decision (e.g. "single-day range → bucket by hour") that has one right answer independent of the backend;
-- **render assertions** — "the page mounts N titled cards and an SVG exists." A mocked dataset response + RTL verifies the titles; that an ECharts SVG renders is library behavior, not your logic;
-- **state/wiring** — tab → `aria-selected` → active-state, or select → querystring mapping. The *URL gets the param* half is component-level; only the *backend honors the param* half needs e2e.
-
-Write the breakdown in three honest buckets. Ground each call in **which layers the test actually touches**, not in how the test is named:
+Write the breakdown in three honest buckets:
 
 1. **Genuinely must-be-e2e (keep)** — load-bearing. Name the layer(s) only a browser + backend can verify together.
 2. **Defensible-but-narrowable e2e** — justified as integration, but over-split or doing more boots than the coverage requires. Say what to merge.
