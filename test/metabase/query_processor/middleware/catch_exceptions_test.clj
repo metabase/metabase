@@ -175,7 +175,8 @@
                                                      :field          1
                                                      :response/keys  #{:field}
                                                      :card-id        2
-                                                     :log/field-name "PASSWORD"}))))))))
+                                                     :field-name     "PASSWORD"
+                                                     :log/keys       #{:field-name}}))))))))
   (testing "the ex-data of each exception in the chain is filtered"
     (let [result (catch-exceptions
                   (fn [] (throw (ex-info "outer" {:secret 1}
@@ -184,15 +185,17 @@
       (is (= [nil] (map :ex-data (:via result)))))))
 
 (deftest ^:synchronized log-ex-data-test
-  (testing "`:log`-namespaced ex-data goes to the error log line's context, from anywhere in the chain, and not to the response"
+  (testing "the ex-data keys listed under `:log/keys` go to the error log line's context, from anywhere in the chain, and not to the response"
     (let [contexts (atom [])]
       (mt/with-dynamic-fn-redefs [log/with-thread-context-fn (fn [context-map f]
                                                                 (swap! contexts conj context-map)
                                                                 (f))]
         (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
           (let [result (catch-exceptions
-                        (fn [] (throw (ex-info "outer" {:log/card-id 2, :secret "hunter2"}
-                                               (ex-info "inner" {:log/field-id 1, :log/field-name "PASSWORD"})))))]
+                        (fn [] (throw (ex-info "outer" {:card-id 2, :secret "hunter2", :log/keys #{:card-id}}
+                                               (ex-info "inner" {:field-id   1
+                                                                 :field-name "PASSWORD"
+                                                                 :log/keys   #{:field-id :field-name}})))))]
             (is (=? [{:level :error, :message "Error processing query: inner"}]
                     (messages)))
             (is (contains? (set @contexts) {:card-id 2, :field-id 1, :field-name "PASSWORD"}))
@@ -269,5 +272,5 @@
                                   :params nil}
                    :preprocessed map?}
                   result))
-          (testing "and the SQL a driver put in its ex-data, which the frontend lines error positions up with"
-            (is (some (comp :sql :ex-data) (cons result (:via result))))))))))
+          (testing "but not the SQL a driver put in its ex-data, which is server-side detail"
+            (is (not-any? (comp :sql :ex-data) (cons result (:via result))))))))))

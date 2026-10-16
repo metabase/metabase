@@ -2,13 +2,14 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format.
 
   The response carries only the client-facing part of each exception's ex-data (see [[metabase.util.api-error]]). The
-  error log line carries just the message, plus the ex-data entries in the `:log` namespace, as log context:
+  error log line carries just the message, plus the ex-data keys listed under `:log/keys`, as log context:
 
-    (throw (ex-info (tru \"Field is not available\") {:status-code 400, :log/field-id id, :log/field-name field-name}))
+    (throw (ex-info (tru \"Field is not available\")
+                    {:status-code 400, :field-id id, :field-name field-name, :log/keys #{:field-id :field-name}}))
 
-  responds without either entry and logs `field-id` and `field-name` alongside the message. Keep everything else, like
-  the query or values from it, out of the `:log` namespace."
-  (:refer-clojure :exclude [some get-in mapv not-empty select-keys])
+  responds without either key and logs `field-id` and `field-name` alongside the message. Don't list the query or
+  values from it."
+  (:refer-clojure :exclude [some get-in not-empty select-keys])
   (:require
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
@@ -27,7 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some get-in mapv not-empty select-keys]])
+   [metabase.util.performance :refer [some get-in not-empty select-keys]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.sql SQLException)))
@@ -51,12 +52,11 @@
   {:status :interrupted})
 
 (defn- response-ex-data
-  "The part of an exception's `data` sent to the client: what [[api-error/response-data]] sends, `:status-code`, which
-  [[metabase.query-processor.streaming]] turns into the HTTP status, and `:sql`, the query a driver ran, which the
-  frontend lines error positions up with. [[format-exception*]] drops `:sql` for users who can't see native queries."
+  "The part of an exception's `data` sent to the client: what [[api-error/response-data]] sends, and `:status-code`,
+  which [[metabase.query-processor.streaming]] turns into the HTTP status."
   [data]
   (not-empty (merge (api-error/response-data data)
-                    (select-keys data [:status-code :sql]))))
+                    (select-keys data [:status-code]))))
 
 (defmethod format-exception ExceptionInfo
   [e]
@@ -124,25 +124,15 @@
 
 (defn- query-info
   "Map of about `query` to add to the exception response."
-  [{query-type :type, :as query} {:keys [preprocessed native]} native-perms?]
+  [{query-type :type, :as query} {:keys [preprocessed native]}]
   (merge
    {:json_query (dissoc query :info :driver)}
    ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
    ;; useful for debugging purposes.
    (when (= (keyword query-type) :query)
      {:preprocessed preprocessed
-      :native       (when native-perms?
+      :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
                       native)})))
-
-(defn- without-driver-sql
-  "`response` without the `:sql` drivers put in ex-data, which for an MBQL query is the compiled query, like `:native`."
-  [response]
-  (let [strip (fn [m]
-                (if-let [data (not-empty (dissoc (:ex-data m) :sql))]
-                  (assoc m :ex-data data)
-                  (dissoc m :ex-data)))]
-    (cond-> (strip response)
-      (:via response) (update :via #(mapv strip %)))))
 
 (mr/def ::query-execution-info
   "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
@@ -172,24 +162,21 @@
     (if-let [query-execution (:query-execution (ex-data e))]
       (merge (query-execution-info query-execution)
              (format-exception* query (ex-cause e) extra-info))
-      (let [native-perms? (qp.perms/current-user-has-adhoc-native-query-perms? query)]
-        (cond-> (merge
-                 {:data {:rows [], :cols []}, :row_count 0}
-                 (exception-response e)
-                 (query-info query extra-info native-perms?))
-          (not native-perms?) without-driver-sql)))
+      (merge
+       {:data {:rows [], :cols []}, :row_count 0}
+       (exception-response e)
+       (query-info query extra-info)))
     (catch Throwable e
       (assoc (Throwable->map e) :status :failed))))
 
 (defn- log-context
-  "The `:log`-namespaced ex-data entries of `e`'s exception chain, without the namespace, for the error log line. An
-  inner exception's entries win over an outer one's."
+  "The ex-data entries each exception in `e`'s chain lists under `:log/keys`, for the error log line. An inner
+  exception's entries win over an outer one's."
   [e]
   (into {}
-        (comp (mapcat ex-data)
-              (keep (fn [[k v]]
-                      (when (and (keyword? k) (= (namespace k) "log"))
-                        [(keyword (name k)) v]))))
+        (map (fn [ex]
+               (let [data (ex-data ex)]
+                 (select-keys data (:log/keys data)))))
         (u/full-exception-chain e)))
 
 (mu/defn catch-exceptions :- ::qp.schema/qp
