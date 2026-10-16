@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
-  setupDatabaseListEndpoint,
+  setupCardPublicLinkRefusalEndpoint,
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
@@ -15,7 +15,12 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { useSelector } from "metabase/redux";
 import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
-import type { Card, Database, Notification, User } from "metabase-types/api";
+import type {
+  Card,
+  Notification,
+  PublicLinkRefusal,
+  User,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockSettings,
@@ -105,12 +110,12 @@ export async function setupQuestionSharingMenu({
   hasPublicLink = false,
   question: questionOverrides = {},
   alerts = [],
-  databases = [],
+  publicLinkRefusal,
 }: {
   question?: Partial<Card>;
   hasPublicLink?: boolean;
   alerts?: Notification[];
-  databases?: Database[];
+  publicLinkRefusal?: PublicLinkRefusal;
 } & SettingsProps) {
   const card = createMockCard({
     name: "My Cool Question",
@@ -132,8 +137,7 @@ export async function setupQuestionSharingMenu({
   const user = checkNotNull(state.currentUser);
 
   setupListNotificationEndpoints({ card_id: card.id }, alerts);
-  // the public-link menu item reads the routing fields the database list hydrates
-  setupDatabaseListEndpoint(databases);
+  setupCardPublicLinkRefusalEndpoint(card.id, publicLinkRefusal);
   setupUsersEndpoints([user]);
   setupUserRecipientsEndpoint({
     users: [user],

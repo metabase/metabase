@@ -3053,6 +3053,74 @@
                   (mt/user-http-request :crowberto :post 200
                                         (format "dashboard/%d/public_link" (u/the-id dashboard))))))))))
 
+(deftest public-link-refusal-test
+  (testing "GET /api/dashboard/:id/public-link-refusal"
+    (mt/with-premium-features #{:database-routing}
+      (testing "names the database that would make a new public link on this Dashboard return no data"
+        (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Dashboard      dashboard {}
+                       :model/Card           card      {}
+                       :model/DashboardCard  _         {:dashboard_id (u/the-id dashboard)
+                                                        :card_id      (u/the-id card)}]
+          (is (= {:refusing_database {:id (mt/id), :name (:name (mt/db))}}
+                 (mt/user-http-request :crowberto :get 200
+                                       (format "dashboard/%d/public-link-refusal" (u/the-id dashboard)))))))
+      (testing "sees the value-list edge a client guessing from the Dashboard's own cards would miss, so the menu and
+               the creation endpoint cannot disagree"
+        (mt/with-temp [:model/DatabaseRouter _            {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Database       other        {}
+                       :model/Card           value-source {}
+                       :model/Card           main         {:database_id (u/the-id other)}
+                       :model/Dashboard      dashboard
+                       {:parameters [(public-sharing.test-util/card-value-source-parameter
+                                      (u/the-id value-source))]}
+                       :model/DashboardCard  _            {:dashboard_id (u/the-id dashboard)
+                                                           :card_id      (u/the-id main)}]
+          (is (= {:refusing_database {:id (mt/id), :name (:name (mt/db))}}
+                 (mt/user-http-request :crowberto :get 200
+                                       (format "dashboard/%d/public-link-refusal" (u/the-id dashboard)))))))
+      (testing "sees a series card too"
+        (mt/with-temp [:model/DatabaseRouter      _         {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Database            other     {}
+                       :model/Dashboard           dashboard {}
+                       :model/Card                main      {:database_id (u/the-id other)}
+                       :model/DashboardCard       dashcard  {:dashboard_id (u/the-id dashboard)
+                                                             :card_id      (u/the-id main)}
+                       :model/Card                series    {}
+                       :model/DashboardCardSeries _         {:dashboardcard_id (u/the-id dashcard)
+                                                             :card_id          (u/the-id series)}]
+          (is (= {:refusing_database {:id (mt/id), :name (:name (mt/db))}}
+                 (mt/user-http-request :crowberto :get 200
+                                       (format "dashboard/%d/public-link-refusal" (u/the-id dashboard)))))))
+      (testing "is null where a link may be created, so absence is never read as a refusal"
+        (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Dashboard      dashboard {}]
+          (is (= {:refusing_database nil}
+                 (mt/user-http-request :crowberto :get 200
+                                       (format "dashboard/%d/public-link-refusal" (u/the-id dashboard)))))))
+      (testing "is superuser-only, because naming the database says how an admin configured it"
+        (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Dashboard      dashboard {}
+                       :model/Card           card      {}
+                       :model/DashboardCard  _         {:dashboard_id (u/the-id dashboard)
+                                                        :card_id      (u/the-id card)}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403
+                                       (format "dashboard/%d/public-link-refusal" (u/the-id dashboard)))))))
+      (testing "404s on a Dashboard that does not exist"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404
+                                     (format "dashboard/%d/public-link-refusal" Integer/MAX_VALUE))))))
+    (testing "without the database-routing feature nothing is refused: there is no routing to break"
+      (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                     :model/Dashboard      dashboard {}
+                     :model/Card           card      {}
+                     :model/DashboardCard  _         {:dashboard_id (u/the-id dashboard)
+                                                      :card_id      (u/the-id card)}]
+        (is (= {:refusing_database nil}
+               (mt/user-http-request :crowberto :get 200
+                                     (format "dashboard/%d/public-link-refusal" (u/the-id dashboard)))))))))
+
 (deftest delete-public-link-test
   (testing "DELETE /api/dashboard/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]

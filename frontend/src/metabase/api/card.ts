@@ -16,6 +16,7 @@ import type {
   ListCardsRequest,
   ParameterId,
   ParameterValues,
+  PublicLinkRefusal,
   UpdateCardKeyRequest,
   UpdateCardRequest,
 } from "metabase-types/api";
@@ -319,6 +320,20 @@ export const cardApi = Api.injectEndpoints({
           listTag("public-card"),
         ],
       }),
+      /**
+       * Whether a new public link on this question would be refused, and by which database.
+       */
+      getCardPublicLinkRefusal: builder.query<PublicLinkRefusal, CardId>({
+        query: (id) => ({
+          method: "GET",
+          url: `/api/card/${id}/public-link-refusal`,
+        }),
+        providesTags: (_response, _error, id) => [
+          idTag("card", id),
+          listTag("card"),
+          listTag("database"),
+        ],
+      }),
       deleteCardPublicLink: builder.mutation<void, Pick<Card, "id">>({
         query: ({ id }) => ({
           method: "DELETE",
@@ -393,6 +408,7 @@ export const {
   useGetCardQueryPivotQuery,
   useLazyGetCardQueryPivotQuery,
   useGetCardParameterValuesQuery,
+  useGetCardPublicLinkRefusalQuery,
   useSearchCardParameterValuesQuery,
   useGetRemappedCardParameterValueQuery,
   useCreateCardMutation,

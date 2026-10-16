@@ -7,6 +7,7 @@ import type {
   Document,
   GetDocumentRequest,
   GetPublicDocument,
+  PublicLinkRefusal,
   UpdateDocumentRequest,
 } from "metabase-types/api";
 
@@ -101,6 +102,23 @@ export const documentApi = Api.injectEndpoints({
         listTag("public-document"),
       ],
     }),
+    /**
+     * Whether a new public link on this document would be refused, and by which database.
+     */
+    getDocumentPublicLinkRefusal: builder.query<
+      PublicLinkRefusal,
+      Document["id"]
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/document/${id}/public-link-refusal`,
+      }),
+      providesTags: (_response, _error, id) => [
+        idTag("document", id),
+        listTag("card"),
+        listTag("database"),
+      ],
+    }),
     createDocumentPublicLink: builder.mutation<
       Pick<Document, "id"> & { uuid: Document["public_uuid"] },
       Pick<Document, "id">
@@ -139,6 +157,7 @@ export const documentApi = Api.injectEndpoints({
 
 export const {
   useGetDocumentQuery,
+  useGetDocumentPublicLinkRefusalQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
   useDeleteDocumentMutation,

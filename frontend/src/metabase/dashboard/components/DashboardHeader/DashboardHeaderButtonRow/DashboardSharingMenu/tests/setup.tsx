@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
-  setupDatabaseListEndpoint,
+  setupDashboardPublicLinkRefusalEndpoint,
   setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -10,7 +10,7 @@ import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store/dashboard";
-import type { Dashboard, Database } from "metabase-types/api";
+import type { Dashboard, PublicLinkRefusal } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -99,11 +99,11 @@ export function setupDashboardSharingMenu({
   hasPublicLink = false,
   dashboard: dashboardOverrides = {},
   dashboardState,
-  databases = [],
+  publicLinkRefusal,
 }: {
   dashboard?: Partial<Dashboard>;
   hasPublicLink?: boolean;
-  databases?: Database[];
+  publicLinkRefusal?: PublicLinkRefusal;
 } & SettingsProps) {
   const dashboard = createMockDashboard({
     name: "My Cool Dashboard",
@@ -127,8 +127,7 @@ export function setupDashboardSharingMenu({
     dashboardState,
   });
 
-  // the public-link menu item reads the routing fields the database list hydrates
-  setupDatabaseListEndpoint(databases);
+  setupDashboardPublicLinkRefusalEndpoint(dashboard.id, publicLinkRefusal);
 
   if (isEnterprise) {
     setupEnterpriseOnlyPlugin("audit_app");

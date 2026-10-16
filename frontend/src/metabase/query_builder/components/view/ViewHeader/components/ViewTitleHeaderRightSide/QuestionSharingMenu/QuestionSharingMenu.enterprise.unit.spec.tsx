@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
-import {
-  createMockCollection,
-  createMockDatabase,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
@@ -92,28 +89,20 @@ describe("QuestionSharingMenu > Enterprise", () => {
   });
 
   describe("admins", () => {
-    const ROUTED_DATABASE = createMockDatabase({
-      id: 10,
-      name: "Tenant warehouse",
-      router_user_attribute: "tenant",
-      router_anonymous_access_granted: false,
-    });
-    const GRANTED_DATABASE = createMockDatabase({
-      ...ROUTED_DATABASE,
-      router_anonymous_access_granted: true,
-    });
-    const PLAIN_DATABASE = createMockDatabase({ id: 10, name: "Warehouse" });
+    const REFUSED = {
+      refusing_database: { id: 10, name: "Tenant warehouse" },
+    };
+    const ALLOWED = { refusing_database: null };
 
     const routingExplanation =
       /Tenant warehouse has database routing enabled and does not allow anonymous access/;
 
-    it("disables creating a public link on a routed database that refuses anonymous access", async () => {
+    it("disables creating a public link when the server refuses one", async () => {
       await setupQuestionSharingMenu({
         isAdmin: true,
         isPublicSharingEnabled: true,
         isEnterprise: true,
-        question: { database_id: ROUTED_DATABASE.id },
-        databases: [ROUTED_DATABASE],
+        publicLinkRefusal: REFUSED,
       });
       await openMenu();
 
@@ -131,13 +120,12 @@ describe("QuestionSharingMenu > Enterprise", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("creates a public link once an admin allows anonymous access", async () => {
+    it("offers a public link when the server allows one", async () => {
       await setupQuestionSharingMenu({
         isAdmin: true,
         isPublicSharingEnabled: true,
         isEnterprise: true,
-        question: { database_id: GRANTED_DATABASE.id },
-        databases: [GRANTED_DATABASE],
+        publicLinkRefusal: ALLOWED,
       });
       await openMenu();
 
@@ -145,28 +133,13 @@ describe("QuestionSharingMenu > Enterprise", () => {
       expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
     });
 
-    it("creates a public link on a database that is not routed", async () => {
-      await setupQuestionSharingMenu({
-        isAdmin: true,
-        isPublicSharingEnabled: true,
-        isEnterprise: true,
-        question: { database_id: PLAIN_DATABASE.id },
-        databases: [PLAIN_DATABASE],
-      });
-      await openMenu();
-
-      expect(screen.getByText("Create a public link")).toBeInTheDocument();
-      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
-    });
-
-    it("leaves an existing public link reachable on a routed database", async () => {
+    it("leaves an existing public link reachable where a new one would be refused", async () => {
       await setupQuestionSharingMenu({
         isAdmin: true,
         isPublicSharingEnabled: true,
         isEnterprise: true,
         hasPublicLink: true,
-        question: { database_id: ROUTED_DATABASE.id },
-        databases: [ROUTED_DATABASE],
+        publicLinkRefusal: REFUSED,
       });
       await openMenu();
 

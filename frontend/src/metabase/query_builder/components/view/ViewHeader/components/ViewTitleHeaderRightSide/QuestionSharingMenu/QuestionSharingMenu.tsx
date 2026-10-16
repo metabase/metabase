@@ -96,7 +96,6 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
   const canWrite = question.canWrite();
   const hasPublicLink = Boolean(question.publicUUID?.());
   const shareUrl = useQuestionAppUrl(question);
-  const databaseId = question.card().database_id;
 
   return (
     <Flex>
@@ -114,7 +113,7 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
         {isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
             hasPublicLink={hasPublicLink}
-            databaseIds={databaseId != null ? [databaseId] : []}
+            entity={{ model: "card", id: question.id() }}
             onClick={() => setModalType("question-public-link")}
           />
         )}

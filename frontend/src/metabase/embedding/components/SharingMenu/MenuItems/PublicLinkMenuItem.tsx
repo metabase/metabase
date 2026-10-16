@@ -3,24 +3,22 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { Box, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { DatabaseId } from "metabase-types/api";
 
-import { useDatabaseRefusingAnonymousAccess } from "../use-database-refusing-anonymous-access";
+import {
+  type PublicLinkEntity,
+  usePublicLinkRefusal,
+} from "../use-public-link-refusal";
 
 export function PublicLinkMenuItem({
   hasPublicLink,
-  databaseIds,
+  entity,
   onClick,
 }: {
   hasPublicLink: boolean;
-  /**
-   * The databases this question or dashboard queries. Required, so a new call
-   * site cannot skip the anonymous-access check by leaving it out.
-   */
-  databaseIds: DatabaseId[];
+  entity: PublicLinkEntity;
   onClick: () => void;
 }) {
-  const refusingDatabase = useDatabaseRefusingAnonymousAccess(databaseIds);
+  const refusingDatabase = usePublicLinkRefusal(entity);
 
   // An existing link stays reachable, since the popover is where it is copied
   // and removed; only creating a new one is refused.

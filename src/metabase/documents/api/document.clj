@@ -238,6 +238,14 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
+(api.macros/defendpoint :get "/:document-id/public-link-refusal" :- ::public-sharing.validation/public-link-refusal
+  "Whether a new public link on this Document would be refused, and by which database."
+  [{:keys [document-id]} :- [:map {:closed true}
+                             [:document-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-exists? :model/Document :id document-id)
+  {:refusing_database (public-sharing.validation/public-link-refusing-database :model/Document document-id)})
+
 (api.macros/defendpoint :post "/:document-id/public-link" :- [:map [:uuid ms/UUIDString]]
   "Generate a publicly-accessible UUID for a Document.
 

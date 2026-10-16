@@ -12,7 +12,6 @@ import {
   getDashboardDatabaseIds,
   hasDbRoutingEnabled,
   questionUsesRoutingEnabledDatabase,
-  refusesAnonymousAccess,
 } from "./database";
 
 describe("database routing utility functions", () => {
@@ -108,27 +107,6 @@ describe("database routing utility functions", () => {
           mockDatabases,
         ),
       ).toBe(expected);
-    });
-  });
-
-  describe("refusesAnonymousAccess", () => {
-    it.each([
-      ["routing off", { router_user_attribute: null }, false],
-      [
-        "routing on and anonymous access not granted",
-        { router_user_attribute: "department" },
-        true,
-      ],
-      [
-        "routing on and anonymous access granted",
-        {
-          router_user_attribute: "department",
-          router_anonymous_access_granted: true,
-        },
-        false,
-      ],
-    ])("returns %s with %s", (_, database, expected) => {
-      expect(refusesAnonymousAccess(database)).toBe(expected);
     });
   });
 

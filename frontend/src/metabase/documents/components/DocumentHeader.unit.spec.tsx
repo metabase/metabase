@@ -1,16 +1,22 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupCommentEndpoints } from "__support__/server-mocks";
+import {
+  setupCommentEndpoints,
+  setupDocumentPublicLinkRefusalEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   PrintContext,
   type PrintContextValue,
 } from "metabase/documents/contexts/PrintContext";
+import type { PublicLinkRefusal } from "metabase-types/api";
 import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
 import { DocumentHeader } from "./DocumentHeader";
+
+const PUBLIC_LINK_ALLOWED: PublicLinkRefusal = { refusing_database: null };
 
 const defaultDocument = createMockDocument({
   creator: createMockUser({ common_name: "John Doe" }),
@@ -26,6 +32,7 @@ const setup = ({
   isBookmarked = false,
   isAdmin = false,
   isPublicSharingEnabled = false,
+  publicLinkRefusal = PUBLIC_LINK_ALLOWED,
   onTitleChange = jest.fn(),
   onSave = jest.fn(),
   onMove = jest.fn(),
@@ -56,6 +63,7 @@ const setup = ({
     target_type: "document",
     target_id: document.id,
   });
+  setupDocumentPublicLinkRefusalEndpoint(document.id, publicLinkRefusal);
 
   const header = printContext ? (
     <PrintContext.Provider value={printContext}>
@@ -141,6 +149,84 @@ describe("DocumentHeader", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Save" }));
       expect(onSave).toHaveBeenCalled();
+    });
+  });
+
+  describe("Public link", () => {
+    const routingExplanation =
+      /Tenant warehouse has database routing enabled and does not allow anonymous access/;
+
+    const openMenu = () =>
+      userEvent.click(screen.getByRole("button", { name: "More options" }));
+
+    it("should offer a public link to an admin when the server allows one", async () => {
+      setup({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        publicLinkRefusal: { refusing_database: null },
+      });
+      await openMenu();
+
+      expect(
+        await screen.findByRole("menuitem", { name: "Create a public link" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
+    });
+
+    it("should disable creating a public link when the server refuses one", async () => {
+      setup({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        publicLinkRefusal: {
+          refusing_database: { id: 10, name: "Tenant warehouse" },
+        },
+      });
+      await openMenu();
+
+      expect(await screen.findByText(routingExplanation)).toBeInTheDocument();
+      expect(
+        screen.getByRole("menuitem", { name: /Create a public link/ }),
+      ).toHaveAttribute("data-disabled", "true");
+      expect(
+        screen.getByRole("link", { name: "Allow anonymous access" }),
+      ).toHaveAttribute("href", "/admin/databases/10");
+    });
+
+    it("should leave an existing public link reachable where a new one would be refused", async () => {
+      setup({
+        document: createMockDocument({ public_uuid: "1337bad801" }),
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        publicLinkRefusal: {
+          refusing_database: { id: 10, name: "Tenant warehouse" },
+        },
+      });
+      await openMenu();
+
+      expect(
+        await screen.findByRole("menuitem", { name: "Public link" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(routingExplanation)).not.toBeInTheDocument();
+    });
+
+    it("should point an admin at the setting when public sharing is off site-wide", async () => {
+      setup({ isAdmin: true, isPublicSharingEnabled: false });
+      await openMenu();
+
+      expect(
+        screen.getByRole("menuitem", { name: /Public link/ }),
+      ).toHaveAttribute("data-disabled", "true");
+      expect(screen.getByRole("link", { name: "Enable" })).toHaveAttribute(
+        "href",
+        "/admin/settings/public-sharing",
+      );
+    });
+
+    it("should show nothing to a non-admin", async () => {
+      setup({ isAdmin: false, isPublicSharingEnabled: true });
+      await openMenu();
+
+      expect(screen.queryByText(/public link/i)).not.toBeInTheDocument();
     });
   });
 

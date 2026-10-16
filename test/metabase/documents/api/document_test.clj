@@ -2206,6 +2206,57 @@
                   (mt/user-http-request :crowberto :post 200
                                         (format "document/%d/public-link" (:id document))))))))))
 
+(deftest public-link-refusal-test
+  (testing "GET /api/document/:id/public-link-refusal"
+    (mt/with-premium-features #{:database-routing}
+      (testing "names the database that would make a new public link on this Document return no data. The Document's
+               own content is not saved against any database, so a client had nothing to guess from at all"
+        (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Document       document {}
+                       :model/Card           card     {:document_id (:id document)}]
+          (embed-cards-in-document! (:id document) [(:id card)])
+          (is (= {:refusing_database {:id (mt/id), :name (:name (mt/db))}}
+                 (mt/user-http-request :crowberto :get 200
+                                       (format "document/%d/public-link-refusal" (:id document)))))))
+      (testing "is null where a link may be created, so absence is never read as a refusal"
+        (testing "for a question the Document owns but does not embed"
+          (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Document       document {}
+                         :model/Card           _        {:document_id (:id document)}]
+            (is (= {:refusing_database nil}
+                   (mt/user-http-request :crowberto :get 200
+                                         (format "document/%d/public-link-refusal" (:id document)))))))
+        (testing "once an admin allows anonymous access"
+          (mt/with-temp [:model/DatabaseRouter _        {:database_id              (mt/id)
+                                                         :user_attribute           "db_name"
+                                                         :anonymous_access_granted true}
+                         :model/Document       document {}
+                         :model/Card           card     {:document_id (:id document)}]
+            (embed-cards-in-document! (:id document) [(:id card)])
+            (is (= {:refusing_database nil}
+                   (mt/user-http-request :crowberto :get 200
+                                         (format "document/%d/public-link-refusal" (:id document))))))))
+      (testing "is superuser-only, because naming the database says how an admin configured it"
+        (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Document       document {}
+                       :model/Card           card     {:document_id (:id document)}]
+          (embed-cards-in-document! (:id document) [(:id card)])
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403
+                                       (format "document/%d/public-link-refusal" (:id document)))))))
+      (testing "404s on a Document that does not exist"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404
+                                     (format "document/%d/public-link-refusal" Integer/MAX_VALUE))))))
+    (testing "without the database-routing feature nothing is refused: there is no routing to break"
+      (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                     :model/Document       document {}
+                     :model/Card           card     {:document_id (:id document)}]
+        (embed-cards-in-document! (:id document) [(:id card)])
+        (is (= {:refusing_database nil}
+               (mt/user-http-request :crowberto :get 200
+                                     (format "document/%d/public-link-refusal" (:id document)))))))))
+
 (deftest delete-public-link-test
   (testing "DELETE /api/document/:id/public-link"
     (mt/with-temporary-setting-values [enable-public-sharing true]

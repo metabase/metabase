@@ -59,23 +59,6 @@ export const hasDbRoutingEnabled = (
 };
 
 /**
- * Whether this database refuses anonymous traffic: routing is on, and no admin
- * has allowed anonymous access to the router database. An anonymous visitor has
- * no user attribute to route by, so a public link on such a database could never
- * return data and the API refuses to create one.
- */
-export const refusesAnonymousAccess = (
-  database: Pick<
-    Database,
-    "router_user_attribute" | "router_anonymous_access_granted"
-  >,
-) => {
-  return (
-    hasDbRoutingEnabled(database) && !database.router_anonymous_access_granted
-  );
-};
-
-/**
  * The ids of the databases a dashboard's cards query, including the cards added
  * to its dashcards as series.
  */

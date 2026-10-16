@@ -19,6 +19,7 @@ import type {
   ListDashboardsRequest,
   ListDashboardsResponse,
   ParameterValues,
+  PublicLinkRefusal,
   SaveDashboardRequest,
   SearchDashboardParameterValuesRequest,
   UpdateDashboardPropertyRequest,
@@ -279,6 +280,23 @@ export const dashboardApi = Api.injectEndpoints({
           listTag("public-dashboard"),
         ],
       }),
+      /**
+       * Whether a new public link on this dashboard would be refused, and by which database.
+       */
+      getDashboardPublicLinkRefusal: builder.query<
+        PublicLinkRefusal,
+        DashboardId
+      >({
+        query: (id) => ({
+          method: "GET",
+          url: `/api/dashboard/${id}/public-link-refusal`,
+        }),
+        providesTags: (_response, _error, id) => [
+          idTag("dashboard", id),
+          listTag("card"),
+          listTag("database"),
+        ],
+      }),
       createDashboardPublicLink: builder.mutation<
         Pick<Dashboard, "id"> & { uuid: Dashboard["public_uuid"] },
         Pick<Dashboard, "id">
@@ -315,6 +333,7 @@ export const dashboardApi = Api.injectEndpoints({
 
 export const {
   useGetDashboardQuery,
+  useGetDashboardPublicLinkRefusalQuery,
   useLazyGetDashboardQuery,
   useGetDashboardQueryMetadataQuery,
   useGetDashboardCardQueryQuery,

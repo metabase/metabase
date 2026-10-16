@@ -3537,6 +3537,63 @@
           (is (=? {:uuid string?}
                   (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (u/the-id card))))))))))
 
+(deftest public-link-refusal-test
+  (testing "GET /api/card/:id/public-link-refusal"
+    (mt/with-premium-features #{:database-routing}
+      (testing "names the database that would make a new public link on this Card return no data"
+        (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Card          card {}]
+          (is (= {:refusing_database {:id (mt/id), :name (:name (mt/db))}}
+                 (mt/user-http-request :crowberto :get 200
+                                       (format "card/%d/public-link-refusal" (u/the-id card)))))))
+      (testing "sees the value-list edge a client guessing from the Card's own database_id would miss, so the menu
+               and the creation endpoint cannot disagree"
+        (mt/with-temp [:model/DatabaseRouter _            {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Database       other        {}
+                       :model/Card           value-source {}
+                       :model/Card           card
+                       {:database_id (u/the-id other)
+                        :parameters  [(public-sharing.test-util/card-value-source-parameter
+                                       (u/the-id value-source))]}]
+          (is (= {:refusing_database {:id (mt/id), :name (:name (mt/db))}}
+                 (mt/user-http-request :crowberto :get 200
+                                       (format "card/%d/public-link-refusal" (u/the-id card)))))))
+      (testing "is null where a link may be created, so absence is never read as a refusal"
+        (mt/with-temp [:model/Card card {}]
+          (is (= {:refusing_database nil}
+                 (mt/user-http-request :crowberto :get 200
+                                       (format "card/%d/public-link-refusal" (u/the-id card))))))
+        (testing "including once an admin allows anonymous access"
+          (mt/with-temp [:model/DatabaseRouter _ {:database_id              (mt/id)
+                                                  :user_attribute           "db_name"
+                                                  :anonymous_access_granted true}
+                         :model/Card          card {}]
+            (is (= {:refusing_database nil}
+                   (mt/user-http-request :crowberto :get 200
+                                         (format "card/%d/public-link-refusal" (u/the-id card))))))))
+      (testing "answers the same whether or not a link already exists: it is what a *new* link would reach"
+        (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Card          card (shared-card)]
+          (is (= {:refusing_database {:id (mt/id), :name (:name (mt/db))}}
+                 (mt/user-http-request :crowberto :get 200
+                                       (format "card/%d/public-link-refusal" (u/the-id card)))))))
+      (testing "is superuser-only, because naming the database says how an admin configured it"
+        (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id), :user_attribute "db_name"}
+                       :model/Card          card {}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403
+                                       (format "card/%d/public-link-refusal" (u/the-id card)))))))
+      (testing "404s on a Card that does not exist"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404
+                                     (format "card/%d/public-link-refusal" Integer/MAX_VALUE))))))
+    (testing "without the database-routing feature nothing is refused: there is no routing to break"
+      (mt/with-temp [:model/DatabaseRouter _ {:database_id (mt/id), :user_attribute "db_name"}
+                     :model/Card          card {}]
+        (is (= {:refusing_database nil}
+               (mt/user-http-request :crowberto :get 200
+                                     (format "card/%d/public-link-refusal" (u/the-id card)))))))))
+
 (deftest share-already-shared-card-test
   (testing "POST /api/card/:id/public_link"
     (testing "Attempting to share a Card that's already shared should return the existing public UUID"

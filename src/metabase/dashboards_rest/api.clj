@@ -1202,6 +1202,14 @@
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
+(api.macros/defendpoint :get "/:dashboard-id/public-link-refusal" :- ::public-sharing.validation/public-link-refusal
+  "Whether a new public link on this Dashboard would be refused, and by which database."
+  [{:keys [dashboard-id]} :- [:map {:closed true}
+                              [:dashboard-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/read-check :model/Dashboard dashboard-id)
+  {:refusing_database (public-sharing.validation/public-link-refusing-database :model/Dashboard dashboard-id)})
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
