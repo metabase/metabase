@@ -154,12 +154,13 @@
 (defmethod serdes/make-spec "DataApp"
   [_model-name _opts]
   {:copy      [:entity_id :description :version :allowed_hosts]
-   :skip      [;; admin-owned state of this instance
+   :skip      [:created_at :updated_at
+               ;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
                :bundle_hash
                ;; server-managed resources, recreated on import
-               :table_ids :created_at :updated_at]
+               :table_ids]
    :transform {;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
                :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
                :name         {:as :slug :export identity :import identity}

@@ -205,7 +205,7 @@
    :defaults {:active true}
    :transform {:name {:export str :import identity}
                :description {:export str :import identity}
-               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :created_at)} opts))}})
+               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :entity_id)} opts))}})
 
 (defmethod serdes/deserialization-dependencies "TransformJob"
   [{:keys [job_tags]}]
