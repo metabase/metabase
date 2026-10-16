@@ -1,5 +1,6 @@
 /**
- * Seeded SaaS event simulator → product_analytics.pa_events.
+ * Seeded SaaS event simulator → product_analytics.pa_events and
+ * pa_identities, then the *_resolved tables Metabase queries.
  *
  * Usage: bun run dev/product-analytics/generate.ts
  * Env:   PA_PEOPLE (default 25000), PA_DAYS (default 120),
@@ -23,6 +24,15 @@ const LEAD_WEEKS = 2;
 
 type Persona = "power" | "regular" | "casual" | "churned";
 type Plan = "starter" | "pro" | "business";
+
+/** Matches Track's pa_identities: session_id is the identify() id. */
+type IdentityRow = {
+  website_id: string;
+  session_id: string;
+  identity_data: Record<string, string>;
+  ip: string;
+  created_at: string;
+};
 
 type EventRow = {
   website_id: string;
@@ -58,6 +68,8 @@ type GroundTruth = {
   funnel: { pricing: number; trial_started: number; checkout_completed: number };
   inviteWeek1: number;
   twoDevicePeople: number;
+  /** People with at least one identify() call, so one pa_identities_resolved row each. */
+  identifiedPeople: number;
 };
 
 const COUNTRIES: [string, number][] = [
@@ -71,6 +83,42 @@ const COUNTRIES: [string, number][] = [
   ["BR", 0.04],
   ["NL", 0.04],
   ["JP", 0.04],
+];
+
+const FIRST_NAMES = [
+  "Ada", "Ben", "Chloe", "Dev", "Elena", "Femi", "Grace", "Hugo", "Iris", "Jonas",
+  "Kai", "Lena", "Mateo", "Nia", "Omar", "Priya", "Quinn", "Rosa", "Sam", "Tomas",
+  "Uma", "Viktor", "Wren", "Ximena", "Yusuf", "Zoe",
+];
+
+const LAST_NAMES = [
+  "Adeyemi", "Brown", "Chen", "Dubois", "Evans", "Fischer", "Garcia", "Haddad",
+  "Ivanova", "Johansson", "Kim", "Lopez", "Mori", "Nguyen", "Okafor", "Patel",
+  "Quintero", "Rossi", "Silva", "Tanaka", "Ueda", "Varga", "Walsh", "Xu", "Yilmaz", "Zhang",
+];
+
+/** Weights skew toward a few large accounts so company breakdowns have a head and a tail. */
+const COMPANIES: [string, number][] = [
+  ["Acme Corp", 0.12],
+  ["Globex", 0.1],
+  ["Initech", 0.09],
+  ["Umbrella Co", 0.08],
+  ["Hooli", 0.07],
+  ["Vandelay Industries", 0.06],
+  ["Stark Industries", 0.06],
+  ["Wayne Enterprises", 0.05],
+  ["Wonka Inc", 0.05],
+  ["Dunder Mifflin", 0.05],
+  ["Pied Piper", 0.04],
+  ["Soylent", 0.04],
+  ["Cyberdyne", 0.04],
+  ["Tyrell Corp", 0.03],
+  ["Aperture Labs", 0.03],
+  ["Massive Dynamic", 0.03],
+  ["Gringotts", 0.02],
+  ["Oscorp", 0.02],
+  ["Sirius Cybernetics", 0.01],
+  ["Monsters Inc", 0.01],
 ];
 
 const PAGE_NEXT: Record<string, [string, number][]> = {
@@ -300,18 +348,16 @@ async function waitForClickHouse(): Promise<void> {
 /** ClickHouse HTTP rejects multi-statement bodies; run each statement alone. */
 async function execSqlFile(path: string): Promise<void> {
   const sql = await Bun.file(path).text();
+  // Strip comments before splitting so a semicolon in a comment is harmless.
   const statements = sql
+    .split("\n")
+    .map((line) => {
+      const comment = line.indexOf("--");
+      return comment === -1 ? line : line.slice(0, comment);
+    })
+    .join("\n")
     .split(";")
-    .map((part) =>
-      part
-        .split("\n")
-        .map((line) => {
-          const comment = line.indexOf("--");
-          return comment === -1 ? line : line.slice(0, comment);
-        })
-        .join("\n")
-        .trim(),
-    )
+    .map((part) => part.trim())
     .filter((part) => part.length > 0);
   for (const statement of statements) {
     await chQuery(statement);
@@ -339,10 +385,12 @@ const truth: GroundTruth = {
     subscription_cancelled: 0,
     error: 0,
     error_incident: 0,
+    identities: 0,
   },
   funnel: { pricing: 0, trial_started: 0, checkout_completed: 0 },
   inviteWeek1: 0,
   twoDevicePeople: 0,
+  identifiedPeople: 0,
 };
 
 function bump(name: keyof GroundTruth["counts"], n = 1) {
@@ -402,10 +450,28 @@ function makePerson(i: number) {
     truth.twoDevicePeople += 1;
   }
 
+  // Separate stream so adding traits leaves the event data unchanged.
+  const traitRng = rngFrom(`${SEED}:traits:${i}`);
+  const firstName = pick(traitRng, FIRST_NAMES);
+  const lastName = pick(traitRng, LAST_NAMES);
+  const company = pickWeighted(traitRng, COMPANIES);
+  const domain = `${company.toLowerCase().replace(/[^a-z0-9]+/g, "")}.example`;
+  const role: string = pickWeighted(traitRng, [
+    ["admin", persona === "power" ? 0.5 : 0.15],
+    ["editor", 0.45],
+    ["viewer", persona === "power" ? 0.05 : 0.4],
+  ]);
+
   return {
     i,
     rng,
     distinctId: `user_${i}`,
+    traits: {
+      email: `${firstName}.${lastName}${i}@${domain}`.toLowerCase(),
+      name: `${firstName} ${lastName}`,
+      company,
+      role,
+    },
     visitorIds: twoDevices ? [`vid_${i}_0`, `vid_${i}_1`] : [`vid_${i}_0`],
     signupAt,
     country: pickWeighted(rng, COUNTRIES),
@@ -480,7 +546,36 @@ function emit(
   }
 }
 
-function simulatePerson(person: Person, buffer: EventRow[]): void {
+/**
+ * One identify() call, the way Track stores it: session_id is the identify()
+ * id, and the whole trait map is sent every time, so later rows replace
+ * earlier ones once ReplacingMergeTree merges. ip is '' without consent.
+ */
+function identify(
+  identities: IdentityRow[],
+  person: Person,
+  at: number,
+  plan: string,
+) {
+  identities.push({
+    website_id: WEBSITE_ID,
+    session_id: person.distinctId,
+    identity_data: {
+      ...person.traits,
+      plan,
+      signed_up_at: fmt(person.signupAt),
+    },
+    ip: "",
+    created_at: fmt(at),
+  });
+  bump("identities");
+}
+
+function simulatePerson(
+  person: Person,
+  buffer: EventRow[],
+  identities: IdentityRow[],
+): void {
   const { rng } = person;
   let sessionSeq = 0;
   let lastTs = 0;
@@ -551,7 +646,10 @@ function simulatePerson(person: Person, buffer: EventRow[]): void {
 
   // Signup.
   push(person.signupAt - 30_000, { type: 1, name: null, path: "/signup" }, false);
-  push(person.signupAt, { type: 2, name: "signup", path: "/signup" }, true);
+  if (push(person.signupAt, { type: 2, name: "signup", path: "/signup" }, true)) {
+    identify(identities, person, person.signupAt, "free");
+    truth.identifiedPeople += 1;
+  }
 
   let trialAt: number | null = null;
   if (person.startsTrial) {
@@ -559,6 +657,7 @@ function simulatePerson(person: Person, buffer: EventRow[]): void {
       person.signupAt + (2 * 3_600_000 + Math.floor(rng() * 3 * 86_400_000));
     if (at < END_MS) {
       push(at, { type: 2, name: "trial_started", path: "/app" }, true);
+      identify(identities, person, at, "trial");
       truth.funnel.trial_started += 1;
       trialAt = at;
     }
@@ -579,6 +678,7 @@ function simulatePerson(person: Person, buffer: EventRow[]): void {
         },
         true,
       );
+      identify(identities, person, checkoutAt, person.plan);
       truth.funnel.checkout_completed += 1;
     }
   }
@@ -639,16 +739,17 @@ function simulatePerson(person: Person, buffer: EventRow[]): void {
     const cancelAt = person.signupAt + (14 + rng() * 50) * 86_400_000;
     if (cancelAt < END_MS) {
       push(cancelAt, { type: 2, name: "subscription_cancelled", path: "/app/settings" }, true);
+      identify(identities, person, cancelAt, "cancelled");
     }
   }
 }
 
-async function flush(buffer: EventRow[]): Promise<void> {
+async function flush(table: string, buffer: object[]): Promise<void> {
   if (buffer.length === 0) {
     return;
   }
   const body = buffer.map((row) => JSON.stringify(row)).join("\n");
-  await chQuery("INSERT INTO product_analytics.pa_events FORMAT JSONEachRow", body);
+  await chQuery(`INSERT INTO product_analytics.${table} FORMAT JSONEachRow`, body);
   buffer.length = 0;
 }
 
@@ -659,29 +760,40 @@ async function main() {
   console.log(`Waiting for ClickHouse at ${CH}`);
   await waitForClickHouse();
   await execSqlFile(`${import.meta.dir}/sql/01_pa_events.sql`);
+  await execSqlFile(`${import.meta.dir}/sql/02_pa_identities.sql`);
   await chQuery("TRUNCATE TABLE IF EXISTS product_analytics.pa_events");
+  await chQuery("TRUNCATE TABLE IF EXISTS product_analytics.pa_identities");
   console.log(`Generating ${PEOPLE} people over ${DAYS} days, seed=${SEED}`);
 
   const buffer: EventRow[] = [];
+  const identities: IdentityRow[] = [];
   const t0 = performance.now();
   for (let i = 0; i < PEOPLE; i++) {
-    simulatePerson(makePerson(i), buffer);
+    simulatePerson(makePerson(i), buffer, identities);
     if (buffer.length >= BATCH) {
-      await flush(buffer);
+      await flush("pa_events", buffer);
+    }
+    if (identities.length >= BATCH) {
+      await flush("pa_identities", identities);
     }
     if ((i + 1) % 2500 === 0) {
       const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
       console.log(`  ${i + 1}/${PEOPLE} people, ${truth.counts.events} events, ${elapsed}s`);
     }
   }
-  await flush(buffer);
+  await flush("pa_events", buffer);
+  await flush("pa_identities", identities);
 
   console.log("Building pa_events_resolved");
-  await execSqlFile(`${import.meta.dir}/sql/02_pa_events_resolved.sql`);
+  await execSqlFile(`${import.meta.dir}/sql/03_pa_events_resolved.sql`);
+  console.log("Building pa_identities_resolved");
+  await execSqlFile(`${import.meta.dir}/sql/04_pa_identities_resolved.sql`);
 
   const out = `${import.meta.dir}/ground-truth.json`;
   await Bun.write(out, JSON.stringify(truth, null, 2) + "\n");
-  console.log(`Wrote ${truth.counts.events} events. Ground truth → ${out}`);
+  console.log(
+    `Wrote ${truth.counts.events} events and ${truth.counts.identities} identities for ${truth.identifiedPeople} people. Ground truth → ${out}`,
+  );
   console.log(
     `Funnel people: pricing=${truth.funnel.pricing} trial=${truth.funnel.trial_started} checkout=${truth.funnel.checkout_completed}`,
   );
