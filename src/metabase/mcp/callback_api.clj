@@ -17,6 +17,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.derive :as mcp.derive]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -357,11 +358,11 @@
         route-table))
 
 (defn- holds-scope?
-  "Whether the credential `claims` hold `required-scope` literally: no wildcard stands in for it, and claims without
-   a scope set hold nothing. nil `required-scope` means none is needed."
+  "Whether the credential `claims` hold `required-scope`, by the same exact rule as the MCP tools; nil
+   `required-scope` means none is needed."
   [claims required-scope]
   (or (nil? required-scope)
-      (contains? (set (filter string? (:token-scopes claims))) required-scope)))
+      (mcp.scope/matches? (:token-scopes claims) required-scope)))
 
 (defn- respond-with
   "Send `response`, which may be a Ring response map or a streaming response."
