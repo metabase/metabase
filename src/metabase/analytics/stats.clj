@@ -583,6 +583,11 @@
     {:transforms               (analytics.db/transform-count)
      :transform_runs_last_24h  (analytics.db/transform-run-count-since one-day-ago)}))
 
+(defn- remote-sync-metrics
+  "Returns Git-synced content counts for the Snowplow stats ping."
+  []
+  (update-keys (internal-stats/remote-sync-stats) u/->snake_case_en))
+
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
@@ -595,7 +600,8 @@
       :pivot_tables                    (analytics.db/unarchived-pivot-table-count)
       :query_executions_last_24h       (analytics.db/query-execution-count-since one-day-ago)
       :entity_id_translations_last_24h total-translation-count}
-     (transform-metrics))))
+     (transform-metrics)
+     (remote-sync-metrics))))
 
 (def ^:private string-keyed-int-histogram
   [:map-of :string :int])
@@ -750,7 +756,23 @@
                    [:query_executions_last_24h :int]
                    [:entity_id_translations_last_24h :int]
                    [:transforms :int]
-                   [:transform_runs_last_24h :int]]]
+                   [:transform_runs_last_24h :int]
+                   [:remote_sync_action_count :int]
+                   [:remote_sync_card_count :int]
+                   [:remote_sync_content_count :int]
+                   [:remote_sync_dashboard_count :int]
+                   [:remote_sync_data_app_count :int]
+                   [:remote_sync_document_count :int]
+                   [:remote_sync_glossary_entry_count :int]
+                   [:remote_sync_measure_count :int]
+                   [:remote_sync_metric_count :int]
+                   [:remote_sync_model_count :int]
+                   [:remote_sync_question_count :int]
+                   [:remote_sync_segment_count :int]
+                   [:remote_sync_snippet_count :int]
+                   [:remote_sync_table_count :int]
+                   [:remote_sync_timeline_count :int]
+                   [:remote_sync_transform_count :int]]]
   (mapv
    (fn [[k v tags]]
      (assert (every? string? tags) "Tags must be strings in snowplow metrics.")
@@ -787,6 +809,22 @@
     [:public_questions_with_params    (get-in stats [:stats :question :public :with_params] 0)        #{"questions"}]
     [:query_builder_questions         (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
     [:query_executions_last_24h       (:query_executions_last_24h metric-info 0)                      #{"query_executions"}]
+    [:remote_sync_action_count        (:remote_sync_action_count metric-info 0)                       #{"remote_sync"}]
+    [:remote_sync_card_count          (:remote_sync_card_count metric-info 0)                         #{"remote_sync"}]
+    [:remote_sync_content_count       (:remote_sync_content_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_dashboard_count     (:remote_sync_dashboard_count metric-info 0)                    #{"remote_sync"}]
+    [:remote_sync_data_app_count      (:remote_sync_data_app_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_document_count      (:remote_sync_document_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_glossary_entry_count (:remote_sync_glossary_entry_count metric-info 0)              #{"remote_sync"}]
+    [:remote_sync_measure_count       (:remote_sync_measure_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_metric_count        (:remote_sync_metric_count metric-info 0)                       #{"remote_sync"}]
+    [:remote_sync_model_count         (:remote_sync_model_count metric-info 0)                        #{"remote_sync"}]
+    [:remote_sync_question_count      (:remote_sync_question_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_segment_count       (:remote_sync_segment_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_snippet_count       (:remote_sync_snippet_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_table_count         (:remote_sync_table_count metric-info 0)                        #{"remote_sync"}]
+    [:remote_sync_timeline_count      (:remote_sync_timeline_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_transform_count     (:remote_sync_transform_count metric-info 0)                    #{"remote_sync"}]
     [:questions                       (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
     [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
     [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]

@@ -5,12 +5,17 @@
    [metabase.internal-stats.metabot :as metabot-stats]
    [metabase.internal-stats.query-executions :as query-execution-stats]
    [metabase.internal-stats.questions :as question-stats]
+   [metabase.internal-stats.remote-sync :as remote-sync-stats]
    [metabase.internal-stats.users :as user-stats]
    [potemkin :as p]))
 
 (p/import-vars
  [data-app-stats
   data-app-stats])
+
+(p/import-vars
+ [remote-sync-stats
+  remote-sync-stats])
 
 (p/import-vars
  [embedding-stats
