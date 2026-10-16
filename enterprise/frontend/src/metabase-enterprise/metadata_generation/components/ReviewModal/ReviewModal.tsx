@@ -80,6 +80,8 @@ type ReviewModalProps = {
   onClose: () => void;
   /** Called with the new run after the person regenerates the suggestions. */
   onRegenerate?: (run: MetadataGenerationRun) => void;
+  /** Called when the person is done with a run that has no suggestions. */
+  onDone?: () => void;
 };
 
 export function ReviewModal({
@@ -87,17 +89,96 @@ export function ReviewModal({
   opened,
   onClose,
   onRegenerate,
+  onDone,
 }: ReviewModalProps) {
+  const { data: tables } = useListMetadataGenerationRunTablesQuery(runId, {
+    skip: !opened,
+  });
+  const isEmpty = tables != null && tables.length === 0;
+
   return (
     <Modal
       opened={opened}
       title={t`Review AI-generated metadata suggestions`}
-      size="90rem"
+      size={isEmpty ? "lg" : "90rem"}
       onClose={onClose}
     >
-      {opened && <ReviewContent runId={runId} onRegenerate={onRegenerate} />}
+      {opened && isEmpty && (
+        <EmptyRun
+          runId={runId}
+          onRegenerate={onRegenerate}
+          onDone={onDone ?? onClose}
+        />
+      )}
+      {opened && !isEmpty && (
+        <ReviewContent runId={runId} onRegenerate={onRegenerate} />
+      )}
     </Modal>
   );
+}
+
+type EmptyRunProps = {
+  runId: MetadataGenerationRunId;
+  onRegenerate?: (run: MetadataGenerationRun) => void;
+  onDone: () => void;
+};
+
+function EmptyRun({ runId, onRegenerate, onDone }: EmptyRunProps) {
+  const { regenerate, canRegenerate, isRegenerating } = useRegenerate(
+    runId,
+    onRegenerate,
+  );
+
+  return (
+    <Stack gap="lg" data-testid="metadata-generation-review-empty">
+      <Text>{t`This run has no suggestions.`}</Text>
+      <Group justify="flex-end" gap="sm">
+        {onRegenerate != null && (
+          <Button
+            disabled={!canRegenerate}
+            loading={isRegenerating}
+            onClick={regenerate}
+          >
+            {t`Regenerate suggestions`}
+          </Button>
+        )}
+        <Button onClick={onDone}>{t`Done`}</Button>
+      </Group>
+    </Stack>
+  );
+}
+
+type RegenerateState = {
+  /** Starts a run with the same scope and attributes as this one. */
+  regenerate: () => Promise<void>;
+  canRegenerate: boolean;
+  isRegenerating: boolean;
+};
+
+function useRegenerate(
+  runId: MetadataGenerationRunId,
+  onRegenerate?: (run: MetadataGenerationRun) => void,
+): RegenerateState {
+  const [startRun, { isLoading: isRegenerating }] =
+    useStartMetadataGenerationRunMutation();
+  const { data: run } = useGetMetadataGenerationRunQuery(runId);
+  const { sendErrorToast } = useMetadataToasts();
+
+  const regenerate = async () => {
+    if (run == null) {
+      return;
+    }
+    const { data, error } = await startRun(getRunRequest(run));
+    if (error) {
+      sendErrorToast(
+        getErrorMessage(error, t`Failed to regenerate the suggestions`),
+      );
+    } else if (data) {
+      onRegenerate?.(data);
+    }
+  };
+
+  return { regenerate, canRegenerate: run != null, isRegenerating };
 }
 
 type Decide = (
@@ -167,10 +248,6 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
   if (isLoading || tables == null) {
     return <Loader size="sm" />;
   }
-  if (tables.length === 0) {
-    return <Text>{t`This run has no suggestions.`}</Text>;
-  }
-
   const selectedTable =
     tables.find((table) => table.table_id === selectedTableId) ??
     tables.find(hasOpenDecisions) ??
@@ -229,9 +306,10 @@ function RunHeader({
 }: RunHeaderProps) {
   const [applyRun, { isLoading: isApplying }] =
     useApplyMetadataGenerationRunMutation();
-  const [startRun, { isLoading: isRegenerating }] =
-    useStartMetadataGenerationRunMutation();
-  const { data: run } = useGetMetadataGenerationRunQuery(runId);
+  const { regenerate, canRegenerate, isRegenerating } = useRegenerate(
+    runId,
+    onRegenerate,
+  );
   const [
     isRegenerateConfirmOpen,
     { open: openRegenerateConfirm, close: closeRegenerateConfirm },
@@ -241,18 +319,8 @@ function RunHeader({
   const notAccepted = getNotAcceptedCount(counts);
 
   const handleRegenerate = async () => {
-    if (run == null) {
-      return;
-    }
-    const { data, error } = await startRun(getRunRequest(run));
-    if (error) {
-      sendErrorToast(
-        getErrorMessage(error, t`Failed to regenerate the suggestions`),
-      );
-    } else if (data) {
-      closeRegenerateConfirm();
-      onRegenerate?.(data);
-    }
+    await regenerate();
+    closeRegenerateConfirm();
   };
 
   const handleApply = async () => {
@@ -290,7 +358,7 @@ function RunHeader({
           <Tooltip label={t`Regenerate suggestions`}>
             <ActionIcon
               aria-label={t`Regenerate suggestions`}
-              disabled={run == null}
+              disabled={!canRegenerate}
               onClick={openRegenerateConfirm}
             >
               <Icon name="refresh" />

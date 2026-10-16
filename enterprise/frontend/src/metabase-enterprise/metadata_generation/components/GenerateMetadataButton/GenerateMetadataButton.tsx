@@ -37,6 +37,9 @@ function GenerateMetadataButtonContent({
   const [startedRunId, setStartedRunId] =
     useState<MetadataGenerationRunId | null>(null);
   const [hasActiveRun, setHasActiveRun] = useState(false);
+  // The run the person dismissed from an empty review, so the button offers to generate again.
+  const [dismissedRunId, setDismissedRunId] =
+    useState<MetadataGenerationRunId | null>(null);
   const { data: runs } = useListMetadataGenerationRunsQuery(
     { database_id: databaseId },
     // The list keeps polling while the run continues in the background, so the
@@ -53,7 +56,10 @@ function GenerateMetadataButtonContent({
   }, [isActive]);
 
   const modalRunId = startedRunId ?? activeRun?.id ?? null;
-  const state = getButtonState(activeRun, latestRun);
+  const state = getButtonState(
+    activeRun,
+    latestRun != null && latestRun.id !== dismissedRunId ? latestRun : null,
+  );
 
   const handleModalClose = () => {
     setStartedRunId(null);
@@ -70,6 +76,11 @@ function GenerateMetadataButtonContent({
     closeReview();
     setStartedRunId(run.id);
     openModal();
+  };
+
+  const handleReviewDone = () => {
+    setDismissedRunId(latestRun?.id ?? null);
+    closeReview();
   };
 
   return (
@@ -95,6 +106,7 @@ function GenerateMetadataButtonContent({
           opened={isReviewOpen}
           onClose={closeReview}
           onRegenerate={handleRegenerate}
+          onDone={handleReviewDone}
         />
       )}
     </>
