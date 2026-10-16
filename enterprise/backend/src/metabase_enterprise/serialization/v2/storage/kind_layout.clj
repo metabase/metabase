@@ -65,7 +65,8 @@
   ;; file to create it before the app.
   true)
 
-;; Open item 4 (the folder of another namespace): see [[kind-folders/namespace-folder]].
+;; Open item 4 (the folder of another namespace): `collections/<namespace folder>/`, by
+;; [[kind-folders/namespace-folder]] (see [[namespace-root-folder]]).
 
 (defn- schema-folders
   "The folders of the schema `schema` inside its database's folder."
@@ -90,12 +91,21 @@
 
 ;;; ------------------------------------------------- Folders --------------------------------------------------------
 
-(def ^:private namespace-root-folders
-  "The top-level folder of the root collections of each namespace with a folder of its own."
-  {nil           "collections"
-   :snippets     "snippets"
-   :transforms   "transforms"
-   :data-actions "data_actions"})
+(def ^:private legacy-root-folder
+  "The folder of the default-namespace content outside the Library: the root collections and the items in no
+  collection."
+  ["collections" "main"])
+
+(defn- namespace-root-folder
+  "The folder of the root collections of the namespace `coll-ns` (a keyword, nil for the default namespace). Snippets,
+  data actions and transforms have top-level folders; every other namespace has a folder under `collections/`."
+  [coll-ns]
+  (case coll-ns
+    nil           legacy-root-folder
+    :snippets     ["snippets"]
+    :transforms   ["transforms"]
+    :data-actions ["data_actions"]
+    ["collections" (kind-folders/namespace-folder coll-ns)]))
 
 ;;; ------------------------------------------------- Context --------------------------------------------------------
 
@@ -306,11 +316,8 @@
                               (= collections/data-apps-ns coll-ns)
                               nil
 
-                              (contains? namespace-root-folders coll-ns)
-                              [(namespace-root-folders coll-ns)]
-
                               :else
-                              [(kind-folders/namespace-folder coll-ns)])]
+                              (namespace-root-folder coll-ns))]
           (if (and (nil? parent) (= collections/data-apps-ns coll-ns))
             ;; a data app's resource collection is the resources/ folder in the app's folder, which is named by the
             ;; slug as is, like the app's own path
@@ -411,22 +418,22 @@
 (defmethod item-path "Card" [ctx {:keys [collection_id dashboard_id document_id] card-type :type :as card}]
   (let [folder (or (some->> dashboard_id (contained-folder ctx :dashboards "Dashboard"))
                    (some->> document_id (contained-folder ctx :documents "Document"))
-                   (item-folder ctx collection_id ["collections"]))]
+                   (item-folder ctx collection_id legacy-root-folder))]
     (item-file ctx folder (keyword (or (some-> card-type name) "question")) (:entity_id card) (:name card))))
 
 (defmethod item-path "Dashboard" [ctx entity]
-  (item-file ctx (item-folder ctx (:collection_id entity) ["collections"]) :dashboard (:entity_id entity) (:name entity)))
+  (item-file ctx (item-folder ctx (:collection_id entity) legacy-root-folder) :dashboard (:entity_id entity) (:name entity)))
 
 (defmethod item-path "Document" [ctx entity]
-  (item-file ctx (item-folder ctx (:collection_id entity) ["collections"]) :document (:entity_id entity) (:name entity)))
+  (item-file ctx (item-folder ctx (:collection_id entity) legacy-root-folder) :document (:entity_id entity) (:name entity)))
 
 (defmethod item-path "Timeline" [ctx entity]
-  (item-file ctx (item-folder ctx (:collection_id entity) ["collections"]) :timeline (:entity_id entity) (:name entity)))
+  (item-file ctx (item-folder ctx (:collection_id entity) legacy-root-folder) :timeline (:entity_id entity) (:name entity)))
 
 (defmethod item-path "Action" [ctx {:keys [model_id collection_id] :as action}]
   (let [folder (cond
                  (and model_id action-in-model-folder?) (contained-folder ctx :cards "Card" model_id)
-                 model_id                               (item-folder ctx collection_id ["collections"])
+                 model_id                               (item-folder ctx collection_id legacy-root-folder)
                  :else                                  (item-folder ctx collection_id ["data_actions"]))]
     (item-file ctx folder :action (:entity_id action) (:name action))))
 

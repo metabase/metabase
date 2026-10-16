@@ -9,6 +9,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase-enterprise.serialization.v2.storage.kind-folders :as kind-folders]
    [metabase-enterprise.serialization.v2.storage.kind-layout :as kind-layout]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.actions.core :as actions]
@@ -114,15 +115,15 @@
    :segment    "data/sales/orders.table/big_orders.segment.yaml"
    :mrr        "metrics/mrr.metric.yaml"
    :kpis       "dashboards/kpis.dashboard.yaml"
-   :daily      "collections/ops/daily.dashboard.yaml"
-   :weekly     "collections/ops/daily.dashboard/weekly_actives.question.yaml"
-   :ops        "collections/ops/collection.yaml"
-   :model      "collections/ops/orders_model.model.yaml"
-   :refund     "collections/ops/refund.action.yaml"
-   :launches   "collections/ops/launches.timeline.yaml"
-   :question   "collections/ops/orders.question.yaml"
-   :notes      "collections/ops/q3_notes.document.yaml"
-   :top        "collections/ops/q3_notes.document/top_customers.question.yaml"
+   :daily      "collections/main/ops/daily.dashboard.yaml"
+   :weekly     "collections/main/ops/daily.dashboard/weekly_actives.question.yaml"
+   :ops        "collections/main/ops/collection.yaml"
+   :model      "collections/main/ops/orders_model.model.yaml"
+   :refund     "collections/main/ops/refund.action.yaml"
+   :launches   "collections/main/ops/launches.timeline.yaml"
+   :question   "collections/main/ops/orders.question.yaml"
+   :notes      "collections/main/ops/q3_notes.document.yaml"
+   :top        "collections/main/ops/q3_notes.document/top_customers.question.yaml"
    :active     "snippets/active_users.snippet.yaml"
    :shared     "snippets/shared/collection.yaml"
    :spenders   "snippets/shared/big_spenders.snippet.yaml"
@@ -172,7 +173,7 @@
           (testing "export then import gives the same items"
             (ts/with-db source-db
               (storage/store! entities (storage.files/file-writer dump-dir kind-layout/kind-layout)))
-            (is (not (.exists (io/file dump-dir "collections" "main"))))
+            (is (not (.exists (io/file dump-dir "collections" "main" "ops.yaml"))) "no collection file of the default layout")
             ;; a file the user keeps in a folder of the kind layout is skipped, not an error
             (spit (io/file dump-dir "data" "list.yaml") "- a\n- b\n")
             (ts/with-db dest-db
@@ -198,9 +199,9 @@
           older  (card! "Orders" #t "2026-01-01T00:00:00Z")
           model  (:id (ts/create! :model/Card :name "Orders" :type :model :collection_id (:id ops)
                                   :created_at #t "2026-03-01T00:00:00Z"))
-          expect {older "collections/ops/orders.question.yaml"
-                  newer "collections/ops/orders_2.question.yaml"
-                  model "collections/ops/orders.model.yaml"}
+          expect {older "collections/main/ops/orders.question.yaml"
+                  newer "collections/main/ops/orders_2.question.yaml"
+                  model "collections/main/ops/orders.model.yaml"}
           ctx!   #(storage.util/storage-context kind-layout/kind-layout)]
       (testing "the older card keeps the name; the newer one gets _2; another kind does not count"
         (let [ctx (ctx!)]
@@ -212,7 +213,7 @@
         (is (= expect (into {} (map (juxt identity #(path-of (ctx!) %))) [newer older model]))))
       (testing "an archived card does not count"
         (t2/update! :model/Card older {:archived true})
-        (is (= "collections/ops/orders.question.yaml" (path-of (ctx!) newer)))))))
+        (is (= "collections/main/ops/orders.question.yaml" (path-of (ctx!) newer)))))))
 
 (deftest dots-in-names-become-underscores-test
   (testing "a name cannot end in .<kind>, so a collection named like a contained-items folder does not clash with it"
@@ -224,13 +225,13 @@
             ctx     (storage.util/storage-context kind-layout/kind-layout)
             path-of (fn [model instance]
                       (storage.util/entity-file-path ctx (serdes/extract-one model {} instance)))]
-        (is (= "collections/ops/daily.dashboard.yaml"
+        (is (= "collections/main/ops/daily.dashboard.yaml"
                (storage.util/entity-file-path ctx {:serdes/meta   [{:model "Dashboard" :id (:entity_id daily)}]
                                                    :entity_id     (:entity_id daily)
                                                    :name          "Daily"
                                                    :collection_id (:entity_id ops)})))
-        (is (= "collections/ops/daily_dashboard/collection.yaml" (path-of "Collection" clash)))
-        (is (= "collections/ops/v1_2_totals_question.question.yaml" (path-of "Card" dotted)))))))
+        (is (= "collections/main/ops/daily_dashboard/collection.yaml" (path-of "Collection" clash)))
+        (is (= "collections/main/ops/v1_2_totals_question.question.yaml" (path-of "Card" dotted)))))))
 
 (deftest data-app-resources-are-in-the-apps-folder-test
   (testing "a data app's resources are in the app's own folder, also when its slug has a -"
@@ -246,15 +247,29 @@
           (is (= "data_apps/sales-app/resources/collection.yaml" coll-path)))))))
 
 (deftest collections-without-folders-do-not-take-numbers-test
-  (testing "the Trash and the Library have no folder in collections/, so a collection of the same name is not _2"
+  (testing "the Trash and the Library have no folder in collections/main/, so a collection of the same name is not _2"
     (mt/with-empty-h2-app-db!
       (collections/create-library-collection!)
       (let [trash   (ts/create! :model/Collection :name "Trash" :location "/")
             library (ts/create! :model/Collection :name "Library" :location "/")
             ctx     (storage.util/storage-context kind-layout/kind-layout)
             path-of #(storage.util/entity-file-path ctx (serdes/extract-one "Collection" {} %))]
-        (is (= "collections/trash/collection.yaml" (path-of trash)))
-        (is (= "collections/library/collection.yaml" (path-of library)))))))
+        (is (= "collections/main/trash/collection.yaml" (path-of trash)))
+        (is (= "collections/main/library/collection.yaml" (path-of library)))))))
+
+(deftest other-namespaces-are-folders-under-collections-test
+  (testing "a collection of another namespace than the default one is under collections/<namespace folder>/"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-empty-h2-app-db!
+        (mt/with-temporary-setting-values [use-tenants true]
+          (let [shared (ts/create! :model/Collection :name "Partners" :location "/"
+                                   :namespace :shared-tenant-collection)
+                ctx    (storage.util/storage-context kind-layout/kind-layout)]
+            (is (= "collections/shared_tenant_collection/partners/collection.yaml"
+                   (storage.util/entity-file-path ctx (serdes/extract-one "Collection" {} shared))))))))
+    (testing "there is no top-level folder per namespace"
+      (is (not-any? kind-folders/top-level-folders ["analytics" "shared_tenant_collection" "tenant_specific"]))
+      (is (not-any? ingest/legal-top-level-paths ["analytics" "shared_tenant_collection" "tenant_specific"])))))
 
 (deftest kind-layout-is-not-the-default-test
   (testing "a storage context without a layout, and plain serdes export, keep today's layout"

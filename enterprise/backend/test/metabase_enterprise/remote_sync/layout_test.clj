@@ -141,11 +141,11 @@
 
 (def ^:private kind-layout-paths
   "Where the kind layout puts each file a full export of [[with-kind-layout-content!]] writes today."
-  {"collections/main/bench.yaml"                "collections/bench/collection.yaml"
-   "collections/main/bench/card_a.yaml"         "collections/bench/card_a.question.yaml"
-   "collections/main/bench/dash.yaml"           "collections/bench/dash.dashboard.yaml"
-   "collections/main/bench/dash/dq.yaml"        "collections/bench/dash.dashboard/dq.question.yaml"
-   "collections/main/bench/sub.yaml"            "collections/bench/sub/collection.yaml"
+  {"collections/main/bench.yaml"                "collections/main/bench/collection.yaml"
+   "collections/main/bench/card_a.yaml"         "collections/main/bench/card_a.question.yaml"
+   "collections/main/bench/dash.yaml"           "collections/main/bench/dash.dashboard.yaml"
+   "collections/main/bench/dash/dq.yaml"        "collections/main/bench/dash.dashboard/dq.question.yaml"
+   "collections/main/bench/sub.yaml"            "collections/main/bench/sub/collection.yaml"
    "collections/transforms/staging.yaml"        "transforms/staging/collection.yaml"
    "collections/transforms/staging/dedupe.yaml" "transforms/staging/dedupe.transform.yaml"
    "transforms/transform_tags/nightly.yaml"     "transform_tags/nightly.transform_tag.yaml"
@@ -193,16 +193,16 @@
           (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
                 files #(set (keys (get @(:files-atom mock) "main")))]
             (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "first"))))
-            (is (= #{"collections/bench/collection.yaml" "collections/bench/orders.question.yaml"} (files)))
+            (is (= #{"collections/main/bench/collection.yaml" "collections/main/bench/orders.question.yaml"} (files)))
             (mt/with-temp [:model/Card {newer :id} {:name "Orders" :collection_id coll-id
                                                     :created_at #t "2026-02-01T00:00:00Z"}]
               (seed-create-row! "Card" newer)
               (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "incremental"))))
               (is (= "apply-changes-version" (written-version)))
               (let [incremental (files)]
-                (is (= #{"collections/bench/collection.yaml"
-                         "collections/bench/orders.question.yaml"
-                         "collections/bench/orders_2.question.yaml"}
+                (is (= #{"collections/main/bench/collection.yaml"
+                         "collections/main/bench/orders.question.yaml"
+                         "collections/main/bench/orders_2.question.yaml"}
                        incremental))
                 (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
                 (is (= incremental (files)) "a full export gives the same names")))))))))
@@ -221,11 +221,11 @@
             (testing "a push with no local change moves every file"
               (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "switch"))))
               (is (= "write-files-version" (written-version)))
-              (is (= #{"collections/bench/collection.yaml"
-                       "collections/bench/card_a.question.yaml"
-                       "collections/bench/card_b.question.yaml"}
+              (is (= #{"collections/main/bench/collection.yaml"
+                       "collections/main/bench/card_a.question.yaml"
+                       "collections/main/bench/card_b.question.yaml"}
                      (set (keys (files)))))
-              (is (= "collections/bench/card_a.question.yaml"
+              (is (= "collections/main/bench/card_a.question.yaml"
                      (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Card" :model_id card-a))))
             (testing "the next push moves nothing"
               (is (=? {:status :success :outcome {:kind "push-skipped"}}
@@ -287,13 +287,13 @@
               (is (= :success (:status (export-at! src "edit A"))))
               (is (= #{"collections/main/bench.yaml"
                        "collections/main/bench/card_b.yaml"
-                       "collections/bench/card_a.question.yaml"}
+                       "collections/main/bench/card_a.question.yaml"}
                      (paths))))
             (testing "full: every item stays where it is"
               (is (= :success (:status (export-at! src "full" :force? true))))
               (is (= #{"collections/main/bench.yaml"
                        "collections/main/bench/card_b.yaml"
-                       "collections/bench/card_a.question.yaml"}
+                       "collections/main/bench/card_a.question.yaml"}
                      (paths))))
             (testing "merged: the changed card moves, the others stay"
               (let [base   (source.p/version (source.p/snapshot src))
@@ -307,8 +307,8 @@
                   (is (= "merged" (get-in result [:outcome :kind])))))
               (is (= #{"README.md"
                        "collections/main/bench.yaml"
-                       "collections/bench/card_b.question.yaml"
-                       "collections/bench/card_a.question.yaml"}
+                       "collections/main/bench/card_b.question.yaml"
+                       "collections/main/bench/card_a.question.yaml"}
                      (paths))))))))))
 
 (deftest import-reads-the-kind-layout-test
