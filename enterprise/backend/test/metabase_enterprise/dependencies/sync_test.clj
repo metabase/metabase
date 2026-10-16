@@ -5,7 +5,7 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.db :as deps.db]
    [metabase-enterprise.dependencies.findings :as deps.findings]
-   [metabase-enterprise.dependencies.hooks]
+   [metabase-enterprise.dependencies.hooks :as dependencies.hooks]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -87,7 +87,7 @@
           ;; Verify the field is now inactive
           (testing "Field is marked inactive after sync"
             (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id))))
-          (testing "The table is marked for the result metadata of the cards depending on it to be re-derived"
+          (testing "The table has a result metadata status for re-deriving the result metadata of the cards depending on it"
             (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id)))
           ;; Step 6 & 7: The sync-end event marks dependents as stale and triggers the job.
           ;; Due to race conditions, the entity may be either stale (job hasn't run yet)
@@ -158,3 +158,14 @@
               (is (true? (:result finding)) "Analysis should be a success")
               (is (= initial-analysis-time (:analyzed_at finding))
                   "Analysis should not have been re-run"))))))))
+
+(deftest ^:synchronized unchanged-sync-after-reanalysis-marks-nothing-test
+  (testing "once a field change is re-analyzed with an unchanged result, the next sync no longer finds the table outdated"
+    (with-syncable-db!
+      (fn [{:keys [db-id filter-field-id table-id]}]
+        (t2/insert! :model/FieldUserSettings {:field_id filter-field-id :display_name "Filter column"})
+        (dependencies.hooks/after-database-sync db-id)
+        (is (= #{table-id} (deps.db/table-ids-with-outdated-findings db-id)))
+        (lib-be/with-metadata-provider-cache
+          (deps.findings/analyze-batch! :card 100))
+        (is (empty? (deps.db/table-ids-with-outdated-findings db-id)))))))
