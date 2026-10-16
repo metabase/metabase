@@ -1958,13 +1958,15 @@
                                                      :collection_id coll-id}
        :model/DashboardTab  {tab-id-1 :id
                              tab-eid-1 :entity_id}  {:dashboard_id dash-id
-                                                     :name "Tab 1"}
+                                                     :name "Tab 1"
+                                                     :position 0}
        :model/DashboardCard  _                      {:dashboard_id dash-id
                                                      :dashboard_tab_id tab-id-1
                                                      :card_id card-id-1}
        :model/DashboardTab  {tab-id-2 :id
                              tab-eid-2 :entity_id}  {:dashboard_id dash-id
-                                                     :name "Tab 2"}
+                                                     :name "Tab 2"
+                                                     :position 1}
        :model/DashboardCard _                       {:dashboard_id dash-id
                                                      :dashboard_tab_id tab-id-2
                                                      :card_id card-id-2}]

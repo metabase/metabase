@@ -68,12 +68,12 @@
         (is (not (contains? transform column)))))))
 
 (defn- entity-id-collation
-  "The collation of `table`'s entity_id column in the app DB's current schema."
+  "The collation of `table`'s entity_id column in the schema the `schema-fn` SQL function names."
   [table schema-fn]
   (first (vals (t2/query-one {:select [:collation_name]
                               :from   [:information_schema.columns]
                               :where  [:and
-                                       [:= :table_schema [:raw schema-fn]]
+                                       [:= :table_schema [schema-fn]]
                                        [:= :table_name table]
                                        [:= :column_name "entity_id"]]}))))
 
@@ -81,8 +81,8 @@
   (testing "entity_id columns compare byte by byte, so every app DB orders exported entities, and names same-named
            files, the same way"
     (when-let [[expected schema-fn] (case (mdb/db-type)
-                                      :postgres ["C" "current_schema()"]
-                                      :mysql    ["utf8mb4_bin" "database()"]
+                                      :postgres ["C" :current_schema]
+                                      :mysql    ["utf8mb4_bin" :database]
                                       nil)]
       (doseq [model (keys models.resolution/model->namespace)
               :when (isa? model :hook/entity-id)
