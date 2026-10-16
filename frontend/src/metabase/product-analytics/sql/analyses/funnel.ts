@@ -5,7 +5,7 @@ import { flagSql } from "../compile/flag";
 import { grainLabel } from "../compile/grain";
 import type { Cte, QueryPlan } from "../compose";
 
-import { scopedEvents, splitCols, splitGroup } from "./base";
+import { type BaseBlock, scopedEvents, splitCols, splitGroup } from "./base";
 
 const MODE: Record<string, string> = {
   strict: ", 'strict_order'",
@@ -92,20 +92,30 @@ export const funnelOrderedLevel = (
   };
 };
 
-export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
-  const funnel = spec.funnel;
-  if (!funnel || funnel.steps.length === 0) {
-    return {
-      ctes: [],
-      select: "SELECT 'Add at least one step' AS message",
-      warnings: ["The funnel has no steps yet."],
-    };
-  }
+export type FunnelLevels = {
+  ctes: Cte[];
+  /** The CTE with one row per kept actor: `level` (or `hit_k`) and `t_1` … `t_n`. */
+  source: string;
+  base: BaseBlock;
+  warnings: string[];
+};
 
+/**
+ * `scoped_events` with the step flags (plus `extraColumns`), then one row per
+ * actor with how far they got, without the disqualified actors.
+ */
+export const funnelLevels = (
+  spec: AnalysisSpec,
+  funnel: FunnelSpec,
+  extraColumns: { as: string; sql: string }[] = [],
+): FunnelLevels => {
   const warnings: string[] = [];
   const n = funnel.steps.length;
 
-  const base = scopedEvents(spec, undefined, funnelFlags(funnel));
+  const base = scopedEvents(spec, undefined, [
+    ...funnelFlags(funnel),
+    ...extraColumns,
+  ]);
   warnings.push(...base.warnings);
 
   let levelExpr: string;
@@ -170,6 +180,22 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
       "Disqualifiers re-scan the event stream and join it back to the step bounds, so the funnel is read twice.",
     );
   }
+
+  return { ctes, source, base, warnings };
+};
+
+export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
+  const funnel = spec.funnel;
+  if (!funnel || funnel.steps.length === 0) {
+    return {
+      ctes: [],
+      select: "SELECT 'Add at least one step' AS message",
+      warnings: ["The funnel has no steps yet."],
+    };
+  }
+
+  const n = funnel.steps.length;
+  const { ctes, source, warnings } = funnelLevels(spec, funnel);
 
   if (funnel.allowRetry) {
     warnings.push(

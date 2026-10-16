@@ -12,6 +12,7 @@ import { getColumnDescriptors } from "../../../../lib/graph/columns";
 import type { ComputedVisualizationSettings } from "../../../../types";
 import { NULL_CHAR } from "../../../cartesian/constants/dataset";
 
+import type { SankeyBreakout } from "./breakout";
 import type {
   SankeyChartColumns,
   SankeyData,
@@ -49,9 +50,17 @@ export const getSankeyChartColumns = <TColumn extends DatasetColumn>(
   };
 };
 
+export type SankeyDataOptions = {
+  /** Columns holding each node's display name, when it differs from its key. */
+  labelColumnIndexes?: { source: number; target: number };
+  /** Splits the links between the same two nodes into one per breakout value. */
+  breakout?: SankeyBreakout;
+};
+
 export const getSankeyData = (
   rawSeries: RawSeries,
   sankeyColumns: SankeyChartColumns,
+  { labelColumnIndexes, breakout }: SankeyDataOptions = {},
 ): SankeyData => {
   const [
     {
@@ -76,6 +85,18 @@ export const getSankeyData = (
           displayNameMap.set(key, rows[index][column.index]);
         }
       }
+    });
+  }
+  if (labelColumnIndexes !== undefined) {
+    rowsForKeys.forEach((keyRow, index) => {
+      displayNameMap.set(
+        keyRow[sankeyColumns.source.index],
+        rows[index][labelColumnIndexes.source],
+      );
+      displayNameMap.set(
+        keyRow[sankeyColumns.target.index],
+        rows[index][labelColumnIndexes.target],
+      );
     });
   }
 
@@ -139,7 +160,11 @@ export const getSankeyData = (
     const source = keyRow[sankeyColumns.source.index];
     const target = keyRow[sankeyColumns.target.index];
     const value = row[sankeyColumns.value.index];
-    const linkKey = `${NULL_CHAR}${source}->${target}`;
+    const breakoutValue =
+      breakout !== undefined ? row[breakout.columnIndex] : undefined;
+    const targetKey =
+      breakout !== undefined ? `${target}${NULL_CHAR}${breakoutValue}` : target;
+    const linkKey = `${NULL_CHAR}${source}->${targetKey}`;
 
     const sourceNode = updateNode(source, 0, "source", row);
     const targetNode = updateNode(target, sourceNode.level + 1, "target", row);
@@ -151,9 +176,14 @@ export const getSankeyData = (
       target,
       value: 0,
       columnValues: {},
+      ...(breakout !== undefined && {
+        breakoutValue: row[breakout.columnIndex],
+        color: breakout.getColor(row[breakout.columnIndex]),
+        label: breakout.getLabel(row[breakout.columnIndex]),
+      }),
     };
 
-    sourceNode.outputLinkByTarget.set(target, link);
+    sourceNode.outputLinkByTarget.set(targetKey, link);
 
     link.value = sumMetric(link.value, value);
     cols.forEach((_column, index) => {

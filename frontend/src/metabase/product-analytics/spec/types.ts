@@ -140,7 +140,7 @@ export interface CohortsSpec {
 }
 
 export interface OutputSpec {
-  funnelView?: "steps" | "overTime" | "timeToConvert";
+  funnelView?: "steps" | "overTime" | "timeToConvert" | "paths";
   cohortsDisplay?: "percent" | "counts";
   lifecycleShown?: LifecycleStateName[];
   pathsEdgeMetric?: "people" | "events";

@@ -7,6 +7,9 @@ import { isOneOf } from "../analyses/setting-helpers";
 import { type InsightAction, InsightsPanel } from "../components/InsightsPanel";
 import { SettingsList, hasPanelSettings } from "../components/SettingsPanel";
 import { getInsightBreakdownSettings } from "../insights/breakdown-settings";
+import { isFirstEventInsight } from "../insights/first-events";
+import { getInsightPathsSettings } from "../insights/paths-settings";
+import type { Insight } from "../insights/types";
 import { useFunnelInsights } from "../insights/use-funnel-insights";
 
 import {
@@ -46,6 +49,17 @@ export const AnalysisSidePanel = ({
     context: analysis.context,
     isEnabled: tab === "insights",
   });
+  const funnelSteps =
+    "funnel.steps" in analysis.computed
+      ? analysis.computed["funnel.steps"]
+      : [];
+  const getInsightSettings = (
+    insight: Insight,
+    state: Extract<typeof insights.state, { status: "done" }>,
+  ) =>
+    isFirstEventInsight(insight)
+      ? getInsightPathsSettings(insight, funnelSteps)
+      : getInsightBreakdownSettings(insight, state.attributes);
   const insightAction: InsightAction = {
     label: t`Add to document`,
     icon: "add",
@@ -57,7 +71,7 @@ export const AnalysisSidePanel = ({
         ...definition,
         settings: {
           ...definition.settings,
-          ...getInsightBreakdownSettings(insight, insights.state.attributes),
+          ...getInsightSettings(insight, insights.state),
         },
       });
     },

@@ -5,6 +5,7 @@ import { SegmentedControl } from "metabase/ui";
 import { BreakdownWidget } from "../components/settings/BreakdownWidget";
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
+import { getFunnelPathsVizSettings } from "../funnel-paths/viz-settings";
 import { getSegmentConversionVizSettings } from "../insights/explore";
 import { withWidgetProps } from "../settings/with-widget-props";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
@@ -44,6 +45,7 @@ const VIEWS: readonly FunnelSettings["funnel.view"][] = [
   "steps",
   "overTime",
   "timeToConvert",
+  "paths",
 ];
 const ORDERINGS: readonly FunnelSettings["funnel.ordering"][] = [
   "strict",
@@ -89,6 +91,7 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
         { label: t`Step by step`, value: "steps" as const },
         { label: t`Over time`, value: "overTime" as const },
         { label: t`How long it took`, value: "timeToConvert" as const },
+        { label: t`Paths`, value: "paths" as const },
       ],
       w: "100%",
     }),
@@ -229,6 +232,8 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         return "line";
       case "timeToConvert":
         return "bar";
+      case "paths":
+        return "sankey";
     }
   },
   getVizSettings: (settings, context) => {
@@ -266,6 +271,8 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           "graph.metrics": [people],
           ...getSeriesSettings(people, peopleTitle),
         };
+      case "paths":
+        return getFunnelPathsVizSettings();
     }
   },
 };

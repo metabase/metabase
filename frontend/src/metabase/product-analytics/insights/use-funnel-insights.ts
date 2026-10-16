@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import _ from "underscore";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { useMetadataProvider } from "metabase/metadata-store";
@@ -13,11 +14,19 @@ import type { AnalysisContext } from "../analyses/types";
 import type { BaseQueryInput } from "../base-query";
 import { buildSql } from "../build-sql";
 import { getEventFilterColumns } from "../events/filter-columns";
+import {
+  FUNNEL_PATHS_MAX_NODES,
+  FUNNEL_PATHS_STEPS,
+} from "../funnel-paths/options";
+import { getPathsFunnel, getTransitionRanges } from "../funnel-paths/range";
+import { getFunnelPathsVizSettings } from "../funnel-paths/viz-settings";
 import type { AnalysisSpec } from "../spec/types";
 import {
   type FunnelInsightsQuery,
   planFunnelInsights,
 } from "../sql/analyses/funnel-insights";
+import { planFunnelPaths } from "../sql/analyses/funnel-paths";
+import type { QueryPlan } from "../sql/compose";
 import {
   getDatasetError,
   toNativeDatasetQuery,
@@ -32,6 +41,11 @@ import {
   getExploreSegmentLabel,
   getSegmentConversionVizSettings,
 } from "./explore";
+import {
+  FIRST_EVENT_ATTRIBUTE_ID,
+  isFirstEventInsight,
+  parseFunnelPathsResult,
+} from "./first-events";
 import { DEFAULT_INSIGHT_OPTIONS } from "./options";
 import { planPairs } from "./plan-pairs";
 import { parseCountRows } from "./rows";
@@ -65,6 +79,10 @@ export type FunnelInsightsState =
       isFindingPairs: boolean;
       /** Single-attribute insights are still shown when pairs fail. */
       pairsError: string | undefined;
+      /** What people did after each step is still being counted. */
+      isFindingPaths: boolean;
+      /** The other insights are still shown when paths fail. */
+      pathsError: string | undefined;
     };
 
 type UseFunnelInsightsArgs = {
@@ -145,35 +163,32 @@ export const useFunnelInsights = ({
     ],
   });
   const compiledBase = useCompiledBase({
-    isReady: isFunnel && attributes.length > 0,
+    isReady: isFunnel,
     tableId,
     base: insightsBase,
   });
   const { compiled } = compiledBase;
 
-  const toSql = (query: FunnelInsightsQuery) =>
+  const toPlannedSql = (planFor: (spec: AnalysisSpec) => QueryPlan) =>
     spec !== undefined && compiled !== undefined
-      ? buildSql(
-          spec,
-          compiled.sql,
-          compiled.columns,
-          planFunnelInsights(spec, query),
-        ).sql
+      ? buildSql(spec, compiled.sql, compiled.columns, planFor(spec)).sql
       : undefined;
-  const toQuery = (query: FunnelInsightsQuery, maxRows?: number) => {
-    const sql = toSql(query);
-    return sql !== undefined && compiled !== undefined
+  const toSql = (query: FunnelInsightsQuery) =>
+    toPlannedSql((spec) => planFunnelInsights(spec, query));
+  const toDatasetQuery = (sql: string | undefined, maxRows?: number) =>
+    sql !== undefined && compiled !== undefined
       ? toNativeDatasetQuery(sql, compiled.databaseId, maxRows)
       : undefined;
-  };
+  const toQuery = (query: FunnelInsightsQuery, maxRows?: number) =>
+    toDatasetQuery(toSql(query), maxRows);
 
-  const singlesQuery =
-    isFunnel && attributeIds.length > 0
-      ? toQuery(
-          { kind: "singles", attributes: attributeIds },
-          DEFAULT_INSIGHT_OPTIONS.pairRowBudget,
-        )
-      : undefined;
+  // With no attributes, this still counts each transition's totals.
+  const singlesQuery = isFunnel
+    ? toQuery(
+        { kind: "singles", attributes: attributeIds },
+        DEFAULT_INSIGHT_OPTIONS.pairRowBudget,
+      )
+    : undefined;
   const singles = useGetAdhocQueryQuery(singlesQuery ?? skipToken);
   const singleRows = useMemo(
     () => parseDataset(singles.currentData, attributeIds),
@@ -203,6 +218,49 @@ export const useFunnelInsights = ({
     [pairs.currentData, attributeIds],
   );
 
+  const pathsFunnel = isFunnel ? getPathsFunnel(spec) : undefined;
+  const transitionRanges = useMemo(
+    () =>
+      pathsFunnel !== undefined ? getTransitionRanges(pathsFunnel) : undefined,
+    [pathsFunnel],
+  );
+  const pathsQuery =
+    transitionRanges !== undefined
+      ? toDatasetQuery(
+          toPlannedSql((spec) =>
+            planFunnelPaths(spec, {
+              ranges: transitionRanges,
+              steps: FUNNEL_PATHS_STEPS,
+              maxNodes: FUNNEL_PATHS_MAX_NODES,
+              withFirstEvents: true,
+            }),
+          ),
+          DEFAULT_INSIGHT_OPTIONS.pairRowBudget,
+        )
+      : undefined;
+  const paths = useGetAdhocQueryQuery(pathsQuery ?? skipToken);
+  const pathsResult = useMemo(() => {
+    const data = paths.currentData?.data;
+    return data !== undefined &&
+      !paths.currentData?.error &&
+      transitionRanges !== undefined
+      ? parseFunnelPathsResult(data, transitionRanges)
+      : undefined;
+  }, [paths.currentData, transitionRanges]);
+  // Their own family: the people who did something after the step, not everyone.
+  const pathInsights = useMemo(
+    () =>
+      pathsResult !== undefined
+        ? findInsights(
+            indexCounts({
+              rows: pathsResult.counts,
+              singleAttributes: [FIRST_EVENT_ATTRIBUTE_ID],
+            }),
+          )
+        : [],
+    [pathsResult],
+  );
+
   const counts = useMemo(
     () =>
       singleRows !== undefined
@@ -215,14 +273,43 @@ export const useFunnelInsights = ({
     [singleRows, pairRows, attributeIds, pairValues],
   );
   const insights = useMemo(
-    () => (counts !== undefined ? findInsights(counts) : undefined),
-    [counts],
+    () =>
+      counts !== undefined
+        ? _.sortBy(
+            [...findInsights(counts), ...pathInsights],
+            (insight) => -Math.abs(insight.excess),
+          )
+        : undefined,
+    [counts, pathInsights],
   );
 
-  /** Conversion by each value of the insight's attributes, drawn from the counts. */
+  const getPathsSeries = (
+    transition: number,
+  ): SingleSeries<UnsavedCard> | undefined => {
+    const chart = pathsResult?.charts.get(transition);
+    return chart !== undefined && pathsQuery !== undefined
+      ? {
+          card: {
+            display: "sankey",
+            dataset_query: pathsQuery,
+            visualization_settings: getFunnelPathsVizSettings(),
+          },
+          data: chart,
+        }
+      : undefined;
+  };
+
+  /**
+   * A chart of the insight from results already fetched: the transition's
+   * paths for what people did next, otherwise conversion by each value of the
+   * insight's attributes.
+   */
   const getExploreSeries = (
     insight: Insight,
   ): SingleSeries<UnsavedCard> | undefined => {
+    if (isFirstEventInsight(insight)) {
+      return getPathsSeries(insight.transition);
+    }
     const total = counts?.totals.get(insight.transition);
     if (counts === undefined || total === undefined || compiled === undefined) {
       return undefined;
@@ -259,16 +346,6 @@ export const useFunnelInsights = ({
     if (context.table === undefined) {
       return { status: "loading" };
     }
-    if (attributes.length === 0) {
-      return {
-        status: "done",
-        insights: [],
-        attributes,
-        transitions: [],
-        isFindingPairs: false,
-        pairsError: undefined,
-      };
-    }
     const error = compiledBase.error ?? getDatasetError(singles);
     if (error !== undefined) {
       return { status: "error", error };
@@ -283,6 +360,8 @@ export const useFunnelInsights = ({
       transitions: getTransitions(spec, singleRows),
       isFindingPairs: pairsQuery !== undefined && pairs.isFetching,
       pairsError: pairsQuery !== undefined ? getDatasetError(pairs) : undefined,
+      isFindingPaths: pathsQuery !== undefined && paths.isFetching,
+      pathsError: pathsQuery !== undefined ? getDatasetError(paths) : undefined,
     };
   })();
 

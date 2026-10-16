@@ -5,10 +5,16 @@ import {
   PLANNER_COLUMN_NAMES,
   type ProjectedColumn,
 } from "./columns";
+import {
+  FUNNEL_PATHS_MAX_NODES,
+  FUNNEL_PATHS_STEPS,
+} from "./funnel-paths/options";
+import { getPathsFunnel, getWholeFunnelRange } from "./funnel-paths/range";
 import type { AnalysisSpec } from "./spec/types";
 import { planCohorts } from "./sql/analyses/cohorts";
 import { planFunnel } from "./sql/analyses/funnel";
 import { planFunnelInsights } from "./sql/analyses/funnel-insights";
+import { planFunnelPaths } from "./sql/analyses/funnel-paths";
 import { planHabit } from "./sql/analyses/habit";
 import { planLifecycle } from "./sql/analyses/lifecycle";
 import { planPaths } from "./sql/analyses/paths";
@@ -29,9 +35,21 @@ export type BaseColumns = {
   extraColumns: ProjectedColumn[];
 };
 
+const planFunnelPathsView = (spec: AnalysisSpec): QueryPlan => {
+  const pathsFunnel = getPathsFunnel(spec);
+  return planFunnelPaths(spec, {
+    ranges: pathsFunnel !== undefined ? [getWholeFunnelRange(pathsFunnel)] : [],
+    steps: FUNNEL_PATHS_STEPS,
+    maxNodes: FUNNEL_PATHS_MAX_NODES,
+  });
+};
+
 const planAnalysis = (spec: AnalysisSpec): QueryPlan => {
   switch (spec.kind) {
     case "funnel":
+      if (spec.output.funnelView === "paths") {
+        return planFunnelPathsView(spec);
+      }
       return spec.funnel?.breakdown !== undefined
         ? planFunnelInsights(spec, {
             kind: "explore",

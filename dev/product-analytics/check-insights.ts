@@ -6,7 +6,16 @@
  */
 
 import { buildSql } from "../../frontend/src/metabase/product-analytics/build-sql";
+import { getTransitionRanges } from "../../frontend/src/metabase/product-analytics/funnel-paths/range";
+import {
+  FUNNEL_PATHS_MAX_NODES,
+  FUNNEL_PATHS_STEPS,
+} from "../../frontend/src/metabase/product-analytics/funnel-paths/options";
 import { indexCounts } from "../../frontend/src/metabase/product-analytics/insights/counts";
+import {
+  FIRST_EVENT_ATTRIBUTE_ID,
+  getFirstEventCounts,
+} from "../../frontend/src/metabase/product-analytics/insights/first-events";
 import { DEFAULT_INSIGHT_OPTIONS } from "../../frontend/src/metabase/product-analytics/insights/options";
 import { planPairs } from "../../frontend/src/metabase/product-analytics/insights/plan-pairs";
 import { parseCountRows } from "../../frontend/src/metabase/product-analytics/insights/rows";
@@ -24,6 +33,8 @@ import {
   type FunnelInsightsQuery,
   planFunnelInsights,
 } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-insights";
+import { planFunnelPaths } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-paths";
+import type { QueryPlan } from "../../frontend/src/metabase/product-analytics/sql/compose";
 
 import { FLAG, defaultSpec } from "./specs";
 
@@ -134,7 +145,7 @@ const main = async () => {
   if(event_name = 'checkout_completed', 1, 0) AS ev_3
 FROM ${TABLE}`;
 
-  const toSql = (query: FunnelInsightsQuery): string =>
+  const toPlannedSql = (plan: QueryPlan): string =>
     buildSql(
       spec,
       baseSql,
@@ -153,8 +164,10 @@ FROM ${TABLE}`;
           alias: columns[index],
         })),
       },
-      planFunnelInsights(spec, query),
+      plan,
     ).sql;
+  const toSql = (query: FunnelInsightsQuery): string =>
+    toPlannedSql(planFunnelInsights(spec, query));
   const run = async (query: FunnelInsightsQuery): Promise<GroupCounts[]> => {
     const started = performance.now();
     const { names, rows } = await chRows(toSql(query));
@@ -179,7 +192,38 @@ FROM ${TABLE}`;
     singleAttributes: ids,
     pairValues: kept,
   });
-  const insights = findInsights(counts);
+  const attributeInsights = findInsights(counts);
+
+  // What people did first after each step: its own family, over the people
+  // who did something other than the next step.
+  const transitionRanges =
+    spec.funnel !== undefined ? getTransitionRanges(spec.funnel) : [];
+  const pathsStarted = performance.now();
+  const paths = await chRows(
+    toPlannedSql(
+      planFunnelPaths(spec, {
+        ranges: transitionRanges,
+        steps: FUNNEL_PATHS_STEPS,
+        maxNodes: FUNNEL_PATHS_MAX_NODES,
+        withFirstEvents: true,
+      }),
+    ),
+  );
+  console.log(
+    `  paths: ${paths.rows.length} rows in ${Math.round(performance.now() - pathsStarted)}ms`,
+  );
+  const pathInsights = findInsights(
+    indexCounts({
+      rows: getFirstEventCounts({
+        columnNames: paths.names,
+        rows: paths.rows,
+        transitionRanges,
+      }),
+      singleAttributes: [FIRST_EVENT_ATTRIBUTE_ID],
+    }),
+  );
+  columnOf.set(FIRST_EVENT_ATTRIBUTE_ID, "first event");
+  const insights = [...attributeInsights, ...pathInsights];
 
   const transitionName = (transition: number) =>
     `${STEPS[transition - 1]} → ${STEPS[transition]}`;
@@ -244,7 +288,7 @@ FROM ${TABLE}`;
 
   // The panel draws the explore chart from the counts; the Explore link runs the SQL.
   console.log("\nExplore charts:");
-  for (const insight of insights) {
+  for (const insight of attributeInsights) {
     const total = counts.totals.get(insight.transition);
     if (total === undefined) {
       continue;

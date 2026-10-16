@@ -527,6 +527,62 @@ describe("analysis settings", () => {
     });
   });
 
+  describe("funnel paths view", () => {
+    const FUNNEL_CONFIG = getAnalysisConfig("funnel");
+    const setupPaths = (stored: StoredSettings = {}) =>
+      setup({
+        kind: "funnel",
+        table: EVENT_TABLE,
+        stored: {
+          ...REQUIRED_EVENTS.funnel,
+          "funnel.view": "paths",
+          ...stored,
+        },
+      });
+
+    it("shows the paths as a chart split by whether people converted", () => {
+      const { computed } = setupPaths();
+
+      expect(FUNNEL_CONFIG.getDisplay(computed)).toBe("sankey");
+      expect(
+        FUNNEL_CONFIG.getVizSettings(computed, {
+          table: EVENT_TABLE,
+          usersTable: undefined,
+        }),
+      ).toMatchObject({ "sankey.breakout": "outcome" });
+    });
+
+    it("compiles to the paths from the first step to the last", () => {
+      const { specResult, allocation } = setupPaths();
+      const built = buildSql(getReadySpec(specResult), "SELECT 1", {
+        columns: PLANNER_COLUMNS,
+        flags: allocation.events.map(({ flag }) => flag),
+        extraColumns: [],
+      });
+
+      expect(built.sql).toContain("path_bounds");
+      expect(built.sql).toContain(
+        "[l.level >= 2 AND c.c_2 > c.c_1] AS range_converted",
+      );
+      expect(built.sql).not.toContain("GROUPING SETS");
+    });
+
+    it("explains why there are no paths when steps can happen in any order", () => {
+      const { specResult, allocation } = setupPaths({
+        "funnel.ordering": "any",
+      });
+      const built = buildSql(getReadySpec(specResult), "SELECT 1", {
+        columns: PLANNER_COLUMNS,
+        flags: allocation.events.map(({ flag }) => flag),
+        extraColumns: [],
+      });
+
+      expect(built.warnings).toContain(
+        "Paths aren't available when steps can happen in any order.",
+      );
+    });
+  });
+
   describe("funnel breakdown", () => {
     const asCandidate = (
       field: Field,

@@ -20,6 +20,10 @@ import type { IconName } from "metabase-types/api";
 
 import { CONVERSION_FORMAT } from "../analyses/series-settings";
 import { describeExcess, describeLift } from "../insights/describe";
+import {
+  FIRST_EVENT_ATTRIBUTE_ID,
+  isFirstEventInsight,
+} from "../insights/first-events";
 import { isDescending } from "../insights/segments";
 import type { Insight, InsightAttribute } from "../insights/types";
 import type {
@@ -31,6 +35,7 @@ import { NOT_SET_VALUE } from "../sql/analyses/funnel-insights";
 
 const INSIGHTS_SHOWN = 5;
 const CHART_HEIGHT_PX = 220;
+const PATHS_CHART_HEIGHT_PX = 360;
 
 /** What each insight's button does. */
 export type InsightAction = {
@@ -80,27 +85,25 @@ const InsightsList = ({
   transitionFilter,
   onShowAll,
 }: InsightsListProps) => {
-  const { insights, attributes, transitions, isFindingPairs, pairsError } =
-    state;
-  if (attributes.length === 0) {
-    return (
-      <Text c="text-secondary">{t`There are no columns with few enough distinct values to compare people by.`}</Text>
-    );
-  }
+  const {
+    insights,
+    attributes,
+    transitions,
+    isFindingPairs,
+    pairsError,
+    isFindingPaths,
+    pathsError,
+  } = state;
   const isFiltered = transitionFilter !== undefined;
   const isNothingFound =
     !isFiltered &&
     insights.length === 0 &&
     !isFindingPairs &&
-    pairsError === undefined;
+    !isFindingPaths &&
+    pairsError === undefined &&
+    pathsError === undefined;
   if (isNothingFound) {
-    const people = formatNumber(transitions[0]?.reached ?? 0);
-    return (
-      <Text c="text-secondary">
-        {c("{0} is a number of columns, {1} is a number of people")
-          .t`Nothing stands out. Checked ${attributes.length} columns across ${people} people.`}
-      </Text>
-    );
+    return <NothingFound state={state} />;
   }
   const shownTransitions = isFiltered
     ? transitions.filter(({ transition }) => transition === transitionFilter)
@@ -136,21 +139,47 @@ const InsightsList = ({
           getExploreSeries={getExploreSeries}
         />
       ))}
-      {isFindingPairs && (
-        <Group gap="sm" wrap="nowrap">
-          <Loader size="xs" />
-          <Text
-            size="sm"
-            c="text-secondary"
-          >{t`Looking for combinations…`}</Text>
-        </Group>
+      {isFindingPairs && <Progress label={t`Looking for combinations…`} />}
+      {isFindingPaths && (
+        <Progress label={t`Looking at what people did next…`} />
       )}
       {pairsError !== undefined && (
         <Text size="sm" c="text-secondary">
           {t`Combinations couldn't be checked: ${pairsError}`}
         </Text>
       )}
+      {pathsError !== undefined && (
+        <Text size="sm" c="text-secondary">
+          {t`What people did next couldn't be checked: ${pathsError}`}
+        </Text>
+      )}
     </Stack>
+  );
+};
+
+const Progress = ({ label }: { label: string }) => (
+  <Group gap="sm" wrap="nowrap">
+    <Loader size="xs" />
+    <Text size="sm" c="text-secondary">
+      {label}
+    </Text>
+  </Group>
+);
+
+const NothingFound = ({
+  state: { attributes, transitions },
+}: {
+  state: Extract<FunnelInsightsState, { status: "done" }>;
+}) => {
+  const people = formatNumber(transitions[0]?.reached ?? 0);
+  return (
+    <Text c="text-secondary">
+      {attributes.length > 0
+        ? c("{0} is a number of columns, {1} is a number of people")
+            .t`Nothing stands out. Checked what people did next, and ${attributes.length} columns, across ${people} people.`
+        : c("{0} is a number of people")
+            .t`Nothing stands out. Checked what people did next across ${people} people. There are no columns with few enough distinct values to compare people by.`}
+    </Text>
   );
 };
 
@@ -240,9 +269,14 @@ const TransitionHeading = ({
 };
 
 const describeCondition = (
-  attribute: InsightAttribute | undefined,
+  attributeId: string,
+  attributes: InsightAttribute[],
   value: string,
 ): string => {
+  if (attributeId === FIRST_EVENT_ATTRIBUTE_ID) {
+    return c("{0} is an event name or a page path").t`Did ${value} next`;
+  }
+  const attribute = attributes.find(({ id }) => id === attributeId);
   const name = attribute?.displayName ?? t`Unknown column`;
   return value === NOT_SET_VALUE
     ? c("{0} is a column name").t`${name} is not set`
@@ -268,10 +302,7 @@ const InsightItem = ({
   const isHigher = isDescending(insight);
   const title = insight.conditions
     .map(({ attributeId, value }) =>
-      describeCondition(
-        attributes.find(({ id }) => id === attributeId),
-        value,
-      ),
+      describeCondition(attributeId, attributes, value),
     )
     .join(t` and `);
 
@@ -320,6 +351,7 @@ const InsightDetails = ({
   getExploreSeries,
 }: InsightDetailsProps) => {
   const series = getExploreSeries(insight);
+  const isPaths = isFirstEventInsight(insight);
   const rate = formatRate(insight.rate);
   const restRate = formatRate(insight.restRate);
   const people = formatNumber(insight.reached);
@@ -328,15 +360,18 @@ const InsightDetails = ({
     <Stack gap="md" pt="xs">
       <Stack gap={2}>
         <Text size="sm" c="text-secondary">
-          {c("{0} and {1} are percentages, {2} is a number of people")
-            .t`${rate} converted vs. ${restRate} of everyone else · ${people} people`}
+          {isPaths
+            ? c("{0} and {1} are percentages, {2} is a number of people")
+                .t`${rate} converted vs. ${restRate} of people who did something else next · ${people} people`
+            : c("{0} and {1} are percentages, {2} is a number of people")
+                .t`${rate} converted vs. ${restRate} of everyone else · ${people} people`}
         </Text>
         <Text size="sm" c="text-secondary">
           {describeExcess(insight)}
         </Text>
       </Stack>
       {series !== undefined && (
-        <Box h={CHART_HEIGHT_PX}>
+        <Box h={isPaths ? PATHS_CHART_HEIGHT_PX : CHART_HEIGHT_PX}>
           <Visualization
             rawSeries={[series]}
             isQueryBuilder={false}
