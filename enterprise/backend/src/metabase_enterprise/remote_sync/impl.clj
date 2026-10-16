@@ -988,6 +988,18 @@
        (map #(dependency-chunk->incremental-export-plan snapshot opts %))
        (reduce merge-incremental-export-plans-reducer {})))
 
+(defn- write-allowed?
+  "Whether an incremental export may write a changed item at `write-path`, where `file-info` (from
+  [[entity-path-info]]) describes the item's computed path: an update in place at its stored path; an update with no
+  stored path onto the file that already holds this item; or a write onto a computed path that is free."
+  [status stored-path write-path file-info]
+  (cond
+    (and (= "update" status) (= write-path stored-path))  true
+    ;; only the computed path was read, so a write anywhere else can't be checked
+    (not= write-path (:new-path file-info))                false
+    (and (= "update" status) (str/blank? stored-path))     (= (:eid file-info) (:file-eid file-info))
+    :else                                                  (path-free? file-info)))
+
 (defn- row->incremental-export-plan
   "Decide a `row`'s contribution to an incremental plan.
 
@@ -1019,53 +1031,28 @@
       (not file-info) ;; entity no longer exists
       :remote-sync/incremental-not-possible
 
-      ;; create: brand-new file, no old path to delete.
-      ;; Target must be free or same entity id
-      (and (= "create" status)
-           (path-free? file-info))
-      {:pull (untracked-content-deps model_type model_id)
-       :writes [{:id         id
-                 :model_type model_type
-                 :model_id   model_id
-                 :file_path  (:new-path file-info)}]}
-
-      ;; in-place update: at its stored path, or (no stored path) the repo file at
-      ;; new-path is already this entity — overwrite.
-      (and (= "update" status)
-           (or (= file_path (:new-path file-info))
-               (and (str/blank? file_path)
-                    (= (:eid file-info) (:file-eid file-info)))))
-      {:pull (untracked-content-deps model_type model_id)
-       :writes [{:id         id
-                 :model_type model_type
-                 :model_id   model_id
-                 :file_path  (:new-path file-info)}]}
-
-      ;; a collection's path is also its contents' directory, so moving the collection moves every
-      ;; descendant's file too; only a full export rewrites them all
-      (and (= "Collection" model_type)
-           (= "update" status)
-           (not (str/blank? file_path))
-           (not= file_path (:new-path file-info)))
-      :remote-sync/incremental-not-possible
-
-      ;; rename: update whose stored path differs from new path. Write the
-      ;; new file and delete the old one.
-      (and (= "update" status)
-           (not (str/blank? file_path))
-           (not= file_path (:new-path file-info))
-           (path-free? file-info))
-      {:pull (untracked-content-deps model_type model_id)
-       :writes [{:id         id
-                 :model_type model_type
-                 :model_id   model_id
-                 :file_path  (:new-path file-info)}]
-       :delete-paths [file_path]}
-
-      ;; any other create/update case (e.g. the target path is occupied by a different entity) needs
-      ;; a full export
       :else
-      :remote-sync/incremental-not-possible)
+      (let [move (remote-sync.layout/move-rule {:export        :incremental
+                                                :model-type    model_type
+                                                :status        status
+                                                :stored-path   file_path
+                                                :computed-path (delay (:new-path file-info))})]
+        (cond
+          (= :remote-sync/incremental-not-possible move)
+          move
+
+          ;; a changed item must be written; one the rule does not write needs a full export
+          (or (nil? (:write move))
+              (not (write-allowed? status file_path (:write move) file-info)))
+          :remote-sync/incremental-not-possible
+
+          :else
+          {:pull         (untracked-content-deps model_type model_id)
+           :writes       [{:id         id
+                           :model_type model_type
+                           :model_id   model_id
+                           :file_path  (:write move)}]
+           :delete-paths (vec (:delete move))})))
     (catch Exception _
       :remote-sync/incremental-not-possible)))
 
@@ -1083,6 +1070,59 @@
            (map (fn [[row entity]]
                   (row->incremental-export-plan row (entity-path-info snapshot (serialization/entity-file-path opts entity) (:entity_id entity)))))
            (reduce merge-incremental-export-plans-reducer {})))))
+
+(defn- clean-rows
+  "The synced RemoteSyncObject rows an incremental export asks the move rule about: those of the enabled models an
+  incremental export can write (entity-id identity, no resource files)."
+  []
+  (let [excluded (spec/excluded-model-types)]
+    (remote-sync.db/synced-rsos
+     (into #{}
+           (comp (map :model-type)
+                 (filter #(let [model-spec (spec/spec-for-model-type %)]
+                            (and (= :entity-id (:identity model-spec))
+                                 (not (:resources? model-spec))
+                                 (not (contains? excluded %))))))
+           (vals spec/remote-sync-specs)))))
+
+(defn- lazy-computed-paths
+  "Each of `rows` ({:model_type :model_id}) paired with a delay of its computed path in storage context `opts`. The
+  rows are extracted a chunk at a time, the first time a delay of the chunk is dereferenced; an entity that no longer
+  exists has a nil path."
+  [opts rows]
+  (for [chunk (->sized-chunks rows)
+        :let  [paths (delay (into {}
+                                  (map (fn [[row entity]]
+                                         [(:model_id row) (serialization/entity-file-path opts entity)]))
+                                  (extract-chunk chunk)))]
+        row   (:rows chunk)]
+    [row (delay (get @paths (:model_id row)))]))
+
+(defn- clean-row->incremental-export-plan
+  "Plan fragment for the synced `row`, from the move rule: nothing, a rewrite at its stored path, deletions, or
+  `:remote-sync/incremental-not-possible`. An unchanged item is only rewritten where it is; a move needs a full
+  export."
+  [{:keys [id model_type model_id file_path]} computed-path]
+  (try
+    (let [move (remote-sync.layout/move-rule {:export        :incremental
+                                              :model-type    model_type
+                                              :status        "synced"
+                                              :stored-path   file_path
+                                              :computed-path computed-path})]
+      (cond
+        (= :remote-sync/incremental-not-possible move)
+        move
+
+        (and (:write move) (not= file_path (:write move)))
+        :remote-sync/incremental-not-possible
+
+        :else
+        {:writes       (if (:write move)
+                         [{:id id :model_type model_type :model_id model_id :file_path (:write move)}]
+                         [])
+         :delete-paths (vec (:delete move))}))
+    (catch Exception _
+      :remote-sync/incremental-not-possible)))
 
 (defn- incremental-export-plan
   "Build an incremental export plan for `rows` (`RemoteSyncObject`s) against `snapshot`, one chunk at a time.
@@ -1105,6 +1145,10 @@
                            (->sized-chunks)
                            (map #(chunk->incremental-export-plan snapshot opts %))
                            (reduce merge-incremental-export-plans-reducer plan))
+        plan          (->> (clean-rows)
+                           (lazy-computed-paths opts)
+                           (map (fn [[row computed-path]] (clean-row->incremental-export-plan row computed-path)))
+                           (reduce merge-incremental-export-plans-reducer plan))
         plan          (->> (:pull plan) ;; nil when plan is already :incremental-not-possible
                            (dependencies->incremental-export-plan snapshot opts)
                            (merge-incremental-export-plans plan))]
@@ -1123,36 +1167,39 @@
     (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
     (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
-(defn- stage-write [commit opts [row entity]]
-  (let [path  (or (:file_path row) (serialization/entity-file-path opts entity))
+(defn- stage-write
+  "Stage `entity` at the path `(path-fn row entity)`; returns its synced write-row when `row` has an `:id`."
+  [commit path-fn [row entity]]
+  (let [path  (path-fn row entity)
         fspec (source/entity->file-spec-at path entity)]
     (run! #(source.p/stage-upsert! commit %) (source/file-specs fspec))
     (when (:id row)
       [{:id (:id row) :file_path path :content_hash (source/file-spec-hash fspec)}])))
 
 (defn- chunk-stage-writes
-  [commit opts chunk]
+  [commit path-fn chunk]
   (->> chunk
        (extract-chunk)
-       (mapcat #(stage-write commit opts %))
+       (mapcat #(stage-write commit path-fn %))
        (doall)))
 
 (defn- stage-writes
-  "Stage WriteRows ({:model_type :model_id, optional :id/:file_path}) to `commit`, chunking internally per
-  model type so each chunk's entities load in one query with bounded memory. Callers pass a flat seq.
+  "Stage WriteRows ({:model_type :model_id, optional :id}) to `commit`, each at the path `(path-fn row entity)`,
+  chunking internally per model type so each chunk's entities load in one query with bounded memory. Callers pass a
+  flat seq.
 
   `on-chunk`, when non-nil, is called once per staged chunk with the cumulative number of rows staged so
   far — used to drive serialize-phase progress. It must not realize `rows`.
 
   Returns:
    - [{:id :file_path :content_hash}]"
-  ([commit opts rows] (stage-writes commit opts rows nil))
-  ([commit opts rows on-chunk]
+  ([commit path-fn rows] (stage-writes commit path-fn rows nil))
+  ([commit path-fn rows on-chunk]
    (let [staged (volatile! 0)]
      (->> rows
           (->sized-chunks)
           (mapcat (fn [chunk]
-                    (let [res (chunk-stage-writes commit opts chunk)]
+                    (let [res (chunk-stage-writes commit path-fn chunk)]
                       (vswap! staged + (count (:rows chunk)))
                       (when on-chunk (on-chunk @staged))
                       res)))
@@ -1163,13 +1210,24 @@
     (source.p/stage-delete! commit delete-path)))
 
 (defn- exportable-write-rows
-  "WriteRows for a full export — every exportable id tagged with its RemoteSyncObject id (untracked deps and
-  Dimensions, whose RemoteSyncObject is keyed by their Field, get :id nil)."
+  "WriteRows for a full export — every exportable id tagged with its RemoteSyncObject's `:id`, `:status` and
+  `:stored-path` (untracked deps and Dimensions, whose RemoteSyncObject is keyed by their Field, have none)."
   []
-  (let [rso-id (u/index-by (juxt :model_type :model_id) :id (remote-sync.db/rso-keys))]
+  (let [rso (u/index-by (juxt :model_type :model_id) (remote-sync.db/rso-keys))]
     (for [[model ids] (spec/exportable-entities)
-          id          ids]
-      {:model_type model :model_id id :id (when-not (= "Dimension" model) (rso-id [model id]))})))
+          id          ids
+          :let        [{rso-id :id :keys [status file_path]} (when-not (= "Dimension" model) (rso [model id]))]]
+      {:model_type model :model_id id :id rso-id :status status :stored-path file_path})))
+
+(defn- full-export-path
+  "The path a full export writes `entity` (of the WriteRow `row`) at, from the move rule."
+  [opts {:keys [model_type status stored-path]} entity]
+  (or (:write (remote-sync.layout/move-rule {:export        :full
+                                             :model-type    model_type
+                                             :status        (or status "create")
+                                             :stored-path   stored-path
+                                             :computed-path (delay (serialization/entity-file-path opts entity))}))
+      (throw (ex-info "The move rule gave no path for an item of a full export" {:model-type model_type}))))
 
 (def ^:private user-settings-model-types
   "The model types tracked by the user-settings event handlers rather than a remote-sync spec."
@@ -1213,7 +1271,7 @@
             [synced version] (commit-staged! snapshot message
                                              (fn [commit]
                                                (source/replace-managed-files! commit snapshot) ; replace the managed files wholesale
-                                               (let [synced (stage-writes commit opts export-rows
+                                               (let [synced (stage-writes commit (partial full-export-path opts) export-rows
                                                                           (fn [staged]
                                                                             (report (+ export-progress-plan-done
                                                                                        (* span (/ staged total))))))]
@@ -1241,10 +1299,9 @@
         total        (max 1 (count writes))
         span         (- export-progress-serialize export-progress-plan-done)]
     (report export-progress-plan-done {:force? true})
-    (let [opts             (remote-sync.layout/storage-context)
-          [synced version] (commit-staged! snapshot message
+    (let [[synced version] (commit-staged! snapshot message
                                            (fn [commit]
-                                             (let [synced (stage-writes commit opts writes
+                                             (let [synced (stage-writes commit (fn [row _entity] (:file_path row)) writes
                                                                         (fn [staged]
                                                                           (report (+ export-progress-plan-done
                                                                                      (* span (/ staged total))))))]

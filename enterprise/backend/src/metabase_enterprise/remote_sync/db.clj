@@ -588,9 +588,9 @@
   (t2/count :model/RemoteSyncObject :model_type model-type))
 
 (mu/defn rso-keys
-  "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject."
+  "The `:id`, `:model_type`, `:model_id`, `:status` and `:file_path` of every RemoteSyncObject."
   []
-  (t2/select [:model/RemoteSyncObject :id :model_type :model_id]))
+  (t2/select [:model/RemoteSyncObject :id :model_type :model_id :status :file_path]))
 
 (mu/defn departed-rso-keys
   "The `:id`, `:model_type`, and `:model_id` of the RemoteSyncObjects pending removal or deletion."
@@ -624,6 +624,15 @@
                       [:not= :status "synced"]
                       (when (seq excluded-model-types)
                         [:not-in :model_type excluded-model-types])]}))
+
+(mu/defn synced-rsos
+  "The `:id`, `:model_type`, `:model_id` and `:file_path` of the synced RemoteSyncObjects of `model-types`."
+  [model-types :- [:set :string]]
+  (when (seq model-types)
+    (t2/select [:model/RemoteSyncObject :id :model_type :model_id :file_path]
+               {:where [:and
+                        [:= :status "synced"]
+                        [:in :model_type model-types]]})))
 
 (mu/defn tracked-model-ids
   "The model IDs of the RemoteSyncObjects of `model-type`."

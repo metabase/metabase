@@ -77,3 +77,62 @@
               (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "incremental"))))
               (is (= "apply-changes-version" (t2/select-one-fn :version :model/RemoteSyncTask)))
               (is (str/includes? (get-in @(:files-atom mock) ["main" (str "flat/" card-eid ".yaml")]) "Card A")))))))))
+
+(defn- with-exported-bench!
+  "Exports a remote-synced collection with two cards into a fresh MockSource, then calls `f` with
+  `{:mock :card-a :card-b}`."
+  [f]
+  (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                     remote-sync-transforms false]
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
+                   :model/Card       {card-a :id}  {:name "Card A" :collection_id coll-id}
+                   :model/Card       {card-b :id}  {:name "Card B" :collection_id coll-id}]
+      (t2/delete! :model/RemoteSyncObject)
+      (doseq [[model-type model-id] [["Collection" coll-id] ["Card" card-a] ["Card" card-b]]]
+        (seed-create-row! model-type model-id))
+      (let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
+        (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "init"))))
+        (f {:mock mock :card-a card-a :card-b card-b})))))
+
+(defn- written-version []
+  (t2/select-one-fn :version :model/RemoteSyncTask))
+
+(deftest full-export-writes-where-the-move-rule-says-test
+  (with-exported-bench!
+    (fn [{:keys [mock]}]
+      (let [calls (atom [])]
+        (with-redefs [remote-sync.layout/move-rule (fn [{:keys [computed-path] :as item}]
+                                                     (swap! calls conj (dissoc item :computed-path))
+                                                     {:write (str "moved/" @computed-path)})]
+          (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true)))))
+        (is (= #{"moved/collections/main/bench.yaml"
+                 "moved/collections/main/bench/card_a.yaml"
+                 "moved/collections/main/bench/card_b.yaml"}
+               (set (keys (get @(:files-atom mock) "main")))))
+        (testing "the rule sees each item's stored path and status"
+          (is (= #{{:export :full :model-type "Collection" :status "synced" :stored-path "collections/main/bench.yaml"}
+                   {:export :full :model-type "Card" :status "synced" :stored-path "collections/main/bench/card_a.yaml"}
+                   {:export :full :model-type "Card" :status "synced" :stored-path "collections/main/bench/card_b.yaml"}}
+                 (set @calls))))))))
+
+(deftest incremental-export-asks-the-move-rule-test
+  (with-exported-bench!
+    (fn [{:keys [mock card-a]}]
+      (t2/update! :model/Card card-a {:description "edited"})
+      (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-a} {:status "update"})
+      (testing "the rule is asked about unchanged items too, and can make the export a full one"
+        (let [asked (atom #{})]
+          (with-redefs [remote-sync.layout/move-rule (fn [{:keys [status] :as item}]
+                                                       (swap! asked conj [(:model-type item) status])
+                                                       (if (and (= :incremental (:export item)) (= "synced" status))
+                                                         :remote-sync/incremental-not-possible
+                                                         (remote-sync.layout/current-move-rule item)))]
+            (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "edit")))))
+          (is (= "write-files-version" (written-version)))
+          (is (contains? @asked ["Card" "synced"]))
+          (is (contains? @asked ["Card" "update"]))))
+      (testing "with today's rule an in-place edit stays incremental"
+        (t2/update! :model/Card card-a {:description "edited again"})
+        (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-a} {:status "update"})
+        (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "edit again"))))
+        (is (= "apply-changes-version" (written-version)))))))

@@ -1,7 +1,10 @@
 (ns metabase-enterprise.remote-sync.layout
-  "Where remote sync writes each item in the repository: the layout, which maps an item to its path, and the storage
-  context every remote-sync caller computes paths in."
+  "Where remote sync writes each item in the repository. Two functions decide it, and each one is a var to swap:
+  - [[layout]] maps an item to its path (through the storage context of [[storage-context]]);
+  - [[move-rule]] takes an item's computed path, its stored path and its sync status, and returns the file to write
+    and the files to delete."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.serialization.core :as serialization]))
 
 (set! *warn-on-reflection* true)
@@ -15,3 +18,31 @@
   "A fresh storage context whose paths come from [[layout]]."
   []
   (serialization/storage-context layout))
+
+(defn current-move-rule
+  "Today's rule. A full export writes every item at its computed path. An incremental export writes each changed
+  item at its computed path and deletes its stored file when that differs; a moved collection needs a full export,
+  since its path is the folder of its contents. It leaves unchanged items where they are."
+  [{:keys [export model-type status stored-path computed-path]}]
+  (cond
+    (= :full export)                         {:write @computed-path}
+    (= "synced" status)                      nil
+    (or (= "create" status)
+        (str/blank? stored-path)
+        (= stored-path @computed-path))      {:write @computed-path}
+    (= "Collection" model-type)              :remote-sync/incremental-not-possible
+    :else                                    {:write @computed-path :delete [stored-path]}))
+
+(def move-rule
+  "The move rule remote sync exports with. It is called once per item, with:
+  - `:export`        `:full` (every managed file is deleted first) or `:incremental` (only the files named are touched)
+  - `:model-type`    the item's serdes model name
+  - `:status`        its RemoteSyncObject status: `\"synced\"`, `\"create\"` or `\"update\"` (`\"create\"` for an item
+                     no RemoteSyncObject tracks)
+  - `:stored-path`   the path its RemoteSyncObject records, or nil
+  - `:computed-path` a delay of the path [[layout]] gives it; deref it only when needed, as for an unchanged item in an
+                     incremental export it extracts the item.
+  It returns `{:write path :delete [path ...]}` (either key may be absent), nil to touch nothing, or
+  `:remote-sync/incremental-not-possible` to make an incremental export a full one. In a full export it must return a
+  `:write`."
+  current-move-rule)
