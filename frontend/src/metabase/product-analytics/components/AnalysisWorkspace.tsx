@@ -45,6 +45,8 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   savedSettings?: StoredSettings;
   /** For a new analysis, where the title's kind opens a menu of the kinds. */
   onKindChange?: (kind: AnalysisKind) => void;
+  /** Opens that menu on arrival, when the URL names no kind yet. */
+  isKindMenuOpenInitially?: boolean;
   /** For a new analysis, where the palette picks the table. */
   onTableChange?: (tableId: ConcreteTableId) => void;
   isTableLoading?: boolean;
@@ -64,6 +66,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   savedCard,
   savedSettings,
   onKindChange,
+  isKindMenuOpenInitially,
   onTableChange,
   isTableLoading = false,
   tableError,
@@ -197,6 +200,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             tableName={tableName}
             savedName={savedCard?.name}
             onKindChange={onKindChange}
+            isKindMenuOpenInitially={isKindMenuOpenInitially}
           />
           <AnalysisToolbar
             widgets={widgets}

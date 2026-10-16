@@ -14,6 +14,8 @@ type AnalysisTitleProps = {
   savedName?: string;
   /** For a new analysis: the kind in the title opens a menu of the kinds. */
   onKindChange?: (kind: AnalysisKind) => void;
+  /** Opens the menu of kinds on arrival, for a page that hasn't picked one. */
+  isKindMenuOpenInitially?: boolean;
 };
 
 /** The title of a new analysis, e.g. "Funnel analysis on Events". */
@@ -31,6 +33,7 @@ export const AnalysisTitle = ({
   tableName,
   savedName,
   onKindChange,
+  isKindMenuOpenInitially = false,
 }: AnalysisTitleProps) => {
   if (onKindChange === undefined) {
     return (
@@ -40,7 +43,12 @@ export const AnalysisTitle = ({
     );
   }
   const kindMenu = (
-    <Menu key="kind" position="bottom-start" shadow="md">
+    <Menu
+      key="kind"
+      position="bottom-start"
+      shadow="md"
+      defaultOpened={isKindMenuOpenInitially}
+    >
       <Menu.Target>
         <UnstyledButton
           className={S.kindButton}
