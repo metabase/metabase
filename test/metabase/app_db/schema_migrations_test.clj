@@ -2862,21 +2862,6 @@
           (migrate!)
           (is (= sentinel (t2/select-one-fn :value :setting :key "encryption-check"))))))))
 
-(deftest delete-table-and-field-remote-sync-objects-test
-  (testing "v58.2026-10-15T00:00:00: the RemoteSyncObject rows of Tables and Fields are deleted, other rows stay"
-    (impl/test-migrations ["v58.2026-10-15T00:00:00"] [migrate!]
-      (let [insert-rso! (fn [model-type]
-                          (t2/insert-returning-pk! :remote_sync_object {:model_type        model-type
-                                                                        :model_id          1
-                                                                        :model_name        model-type
-                                                                        :status            "update"
-                                                                        :status_changed_at :%now}))
-            kept        (mapv insert-rso! ["TableUserSettings" "FieldUserSettings" "Dimension" "Card"])]
-        (insert-rso! "Table")
-        (insert-rso! "Field")
-        (migrate!)
-        (is (= (set kept) (t2/select-pks-set :remote_sync_object)))))))
-
 (deftest retire-confirmed-at-v59-ids-test
   (testing "v59.2026-07-10T22:29:18 deletes the changelog rows of the confirmed_at changesets that moved to v63 ids"
     (impl/test-migrations "v59.2026-07-10T22:29:18" [migrate!]
@@ -3969,3 +3954,56 @@
         (is (t2/exists? :data_app :id app-id))
         (is (t2/exists? :permissions_group :id ordinary-group))
         (is (empty? (t2/select :data_app_group_assignment)))))))
+
+(deftest remote-sync-object-user-settings-test
+  (testing "v65.2026-10-16T00:00:00-02: the RemoteSyncObject rows of Tables and Fields with user settings become their
+           user settings' rows, keeping their status and file path, and the rest are deleted"
+    (impl/test-migrations ["v65.2026-10-16T00:00:00" "v65.2026-10-16T00:00:02"] [migrate!]
+      (let [db-id       (t2/insert-returning-pk! :metabase_database {:name       "Remote Sync User Settings Test DB"
+                                                                     :engine     "h2"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+            table!      (fn [table-name]
+                          (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                    :db_id      db-id
+                                                                    :name       table-name
+                                                                    :created_at :%now
+                                                                    :updated_at :%now}))
+            field!      (fn [table-id field-name]
+                          (t2/insert-returning-pk! :metabase_field {:table_id          table-id
+                                                                    :name              field-name
+                                                                    :display_name      field-name
+                                                                    :base_type         "type/Text"
+                                                                    :database_type     "TEXT"
+                                                                    :position          0
+                                                                    :database_position 0
+                                                                    :active            true
+                                                                    :preview_display   true
+                                                                    :created_at        :%now
+                                                                    :updated_at        :%now}))
+            rso!        (fn [model-type model-id status]
+                          (t2/insert-returning-pk! :remote_sync_object {:model_type        model-type
+                                                                        :model_id          model-id
+                                                                        :model_name        model-type
+                                                                        :status            status
+                                                                        :status_changed_at :%now
+                                                                        :file_path         (str model-type "/" model-id ".yaml")}))
+            published   (table! "published")
+            unpublished (table! "unpublished")
+            edited      (field! published "edited")
+            unedited    (field! published "unedited")]
+        (t2/insert! :metabase_table_user_settings {:table_id published :created_at :%now :updated_at :%now})
+        (t2/insert! :metabase_field_user_settings {:field_id edited :created_at :%now :updated_at :%now})
+        (let [table-rso (rso! "Table" published "create")
+              field-rso (rso! "Field" edited "update")
+              dropped   [(rso! "Table" unpublished "update") (rso! "Field" unedited "update")]
+              card-rso  (rso! "Card" 1 "update")]
+          (migrate!)
+          (is (=? {:model_type "TableUserSettings" :model_id published :status "create"
+                   :file_path  (str "Table/" published ".yaml")}
+                  (t2/select-one :remote_sync_object :id table-rso)))
+          (is (=? {:model_type "FieldUserSettings" :model_id edited :status "update"}
+                  (t2/select-one :remote_sync_object :id field-rso)))
+          (is (not (t2/exists? :remote_sync_object :id [:in dropped])))
+          (is (t2/exists? :remote_sync_object :id card-rso)))))))
