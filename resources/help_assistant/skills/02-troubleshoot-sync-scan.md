@@ -1,13 +1,24 @@
 ---
 id: troubleshoot-sync-scan
-title: Missing tables, columns or filter values (sync and scan)
-description: New tables or columns don't show up, or filter dropdowns are missing values or out of date.
+title: Missing tables or columns (sync)
+description: New tables, views or columns don't show up in Metabase, or renamed or deleted columns still show their old state.
 references:
   - troubleshooting-guide/sync-fingerprint-scan.md
   - databases/sync-scan.md
   - troubleshooting-guide/cant-see-tables.md
 ---
-1. Figure out which it is: a table or column that's missing entirely (sync), or filter values that are missing or stale (scan).
-2. For sync: explain how to trigger a manual sync from the database's admin page, and check that the database user Metabase connects with can see that schema or table.
-3. For scan: explain the scan schedule and how to re-scan field values. Mention that fields with very many distinct values may get a search box instead of a dropdown.
-4. If a manual sync doesn't help, ask them to look at the server logs during the sync for errors.
+If the problem is filter dropdown values that are missing or out of date, use the filters skill instead.
+
+Ask one question at a time, and skip any the user has already answered.
+
+First questions, in this order:
+1. Is it missing for everyone, or only for some people? If only some people, it's more likely permissions; use the skill for people who can't see data.
+2. Is it one table or column, or a whole database or schema?
+3. Is it new in the database, or was it in Metabase before?
+
+Causes to check, most common first:
+- Metabase hasn't synced since the change. A manual re-sync of the table or database is the first fix. A brand new database connection also needs time for its first sync.
+- The database user Metabase connects with can't see the schema, table or view. Check it by querying the table from the SQL editor.
+- The table is hidden in Table Metadata.
+- The sync is failing. Check the logs during a sync for errors.
+- Self-hosted with a community database driver: the driver may be out of date.

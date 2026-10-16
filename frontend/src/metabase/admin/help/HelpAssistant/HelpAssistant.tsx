@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Markdown } from "metabase/common/components/Markdown";
@@ -34,6 +34,15 @@ export const HelpAssistant = ({ diagnosticInfo }: HelpAssistantProps) => {
   const [draft, setDraft] = useState("");
   const [sendMessage, { isLoading, error, reset }] =
     useSendHelpAssistantMessageMutation();
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  // Keep the newest message in view as the conversation grows.
+  useEffect(() => {
+    const history = historyRef.current;
+    if (history) {
+      history.scrollTop = history.scrollHeight;
+    }
+  }, [entries, isLoading, error]);
 
   const handleSend = async () => {
     const question = draft.trim();
@@ -67,42 +76,57 @@ export const HelpAssistant = ({ diagnosticInfo }: HelpAssistantProps) => {
       description={t`Describe a problem or ask how to do something. Uses the AI provider connected under Admin > AI. Prototype.`}
     >
       <Stack gap="md">
-        {entries.map((entry, index) => (
-          <Paper key={index} p="md" withBorder>
-            <Text fw="bold" size="sm" mb="xs">
-              {entry.role === "user" ? t`You` : t`Assistant`}
-            </Text>
-            {entry.role === "user" ? (
-              <Text style={{ whiteSpace: "pre-wrap" }}>{entry.content}</Text>
-            ) : (
-              <Markdown>{entry.content}</Markdown>
-            )}
-            {entry.sources && entry.sources.length > 0 && (
-              <Box mt="sm">
-                <Text size="sm" c="text-secondary">{t`Pages it read:`}</Text>
-                {entry.sources.map((source) => (
-                  <Text size="sm" key={source.url}>
-                    <a href={source.url} target="_blank" rel="noreferrer">
-                      {source.title}
-                    </a>
+        {(entries.length > 0 || isLoading || error != null) && (
+          <Stack
+            ref={historyRef}
+            gap="md"
+            mah="60vh"
+            style={{ overflowY: "auto" }}
+          >
+            {entries.map((entry, index) => (
+              <Paper key={index} p="md" withBorder>
+                <Text fw="bold" size="sm" mb="xs">
+                  {entry.role === "user" ? t`You` : t`Assistant`}
+                </Text>
+                {entry.role === "user" ? (
+                  <Text style={{ whiteSpace: "pre-wrap" }}>
+                    {entry.content}
                   </Text>
-                ))}
-              </Box>
+                ) : (
+                  <Markdown>{entry.content}</Markdown>
+                )}
+                {entry.sources && entry.sources.length > 0 && (
+                  <Box mt="sm">
+                    <Text
+                      size="sm"
+                      c="text-secondary"
+                    >{t`Pages it read:`}</Text>
+                    {entry.sources.map((source) => (
+                      <Text size="sm" key={source.url}>
+                        <a href={source.url} target="_blank" rel="noreferrer">
+                          {source.title}
+                        </a>
+                      </Text>
+                    ))}
+                  </Box>
+                )}
+              </Paper>
+            ))}
+
+            {isLoading && (
+              <Group gap="sm">
+                <Loader size="sm" />
+                <Text c="text-secondary">{t`Working on it…`}</Text>
+              </Group>
             )}
-          </Paper>
-        ))}
 
-        {isLoading && (
-          <Group gap="sm">
-            <Loader size="sm" />
-            <Text c="text-secondary">{t`Reading the docs…`}</Text>
-          </Group>
-        )}
-
-        {error != null && (
-          <Alert color="error" title={t`Something went wrong`}>
-            {getResponseErrorMessage(error) ?? t`The assistant didn't respond.`}
-          </Alert>
+            {error != null && (
+              <Alert color="error" title={t`Something went wrong`}>
+                {getResponseErrorMessage(error) ??
+                  t`The assistant didn't respond.`}
+              </Alert>
+            )}
+          </Stack>
         )}
 
         <Textarea
