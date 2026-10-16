@@ -3,19 +3,21 @@ import { type ComponentPropsWithRef, type SyntheticEvent, useRef } from "react";
 
 const stopPropagation = (event: SyntheticEvent) => event.stopPropagation();
 
+type IsolatedTooltipProps = Pick<
+  TooltipProps,
+  | "onDoubleClick"
+  | "onContextMenu"
+  | "onPointerUp"
+  | "onTouchStart"
+  | "onPointerDown"
+  | "onClickCapture"
+  | "onMouseDownCapture"
+  | "onMouseUpCapture"
+>;
+
 type TooltipEventIsolation = {
-  /** Spread onto the tooltip. */
-  tooltipProps: Pick<
-    TooltipProps,
-    | "onDoubleClick"
-    | "onContextMenu"
-    | "onPointerUp"
-    | "onTouchStart"
-    | "onPointerDown"
-    | "onClickCapture"
-    | "onMouseDownCapture"
-    | "onMouseUpCapture"
-  >;
+  /** Spread onto the tooltip, after the caller's own props. */
+  tooltipProps: IsolatedTooltipProps;
   /** Spread onto an element wrapping the tooltip's label. */
   labelProps: Pick<
     ComponentPropsWithRef<"div">,
@@ -25,9 +27,12 @@ type TooltipEventIsolation = {
 
 /**
  * Stops presses, clicks and touches on the tooltip from reaching the trigger's
- * React ancestors. Events on the trigger itself are untouched.
+ * React ancestors. Events on the trigger itself are untouched, and any of
+ * these handlers the caller passed in still run.
  */
-export function useTooltipEventIsolation(): TooltipEventIsolation {
+export function useTooltipEventIsolation(
+  handlers: IsolatedTooltipProps,
+): TooltipEventIsolation {
   const labelRef = useRef<HTMLDivElement>(null);
 
   // Mantine sends `onPointerDown` to the trigger as well as the tooltip.
@@ -53,14 +58,26 @@ export function useTooltipEventIsolation(): TooltipEventIsolation {
 
   return {
     tooltipProps: {
-      onDoubleClick: stopPropagation,
-      onContextMenu: stopPropagation,
-      onPointerUp: stopPropagation,
-      onTouchStart: stopPropagation,
-      onPointerDown: stopPropagationUnlessOnTrigger,
-      onClickCapture: stopPropagationOutsideLabel,
-      onMouseDownCapture: stopPropagationOutsideLabel,
-      onMouseUpCapture: stopPropagationOutsideLabel,
+      onDoubleClick: withHandler(stopPropagation, handlers.onDoubleClick),
+      onContextMenu: withHandler(stopPropagation, handlers.onContextMenu),
+      onPointerUp: withHandler(stopPropagation, handlers.onPointerUp),
+      onTouchStart: withHandler(stopPropagation, handlers.onTouchStart),
+      onPointerDown: withHandler(
+        stopPropagationUnlessOnTrigger,
+        handlers.onPointerDown,
+      ),
+      onClickCapture: withHandler(
+        stopPropagationOutsideLabel,
+        handlers.onClickCapture,
+      ),
+      onMouseDownCapture: withHandler(
+        stopPropagationOutsideLabel,
+        handlers.onMouseDownCapture,
+      ),
+      onMouseUpCapture: withHandler(
+        stopPropagationOutsideLabel,
+        handlers.onMouseUpCapture,
+      ),
     },
     labelProps: {
       ref: labelRef,
@@ -68,5 +85,15 @@ export function useTooltipEventIsolation(): TooltipEventIsolation {
       onMouseDown: stopPropagation,
       onMouseUp: stopPropagation,
     },
+  };
+}
+
+function withHandler<E extends SyntheticEvent>(
+  isolate: (event: E) => void,
+  handler: ((event: E) => void) | undefined,
+) {
+  return (event: E) => {
+    handler?.(event);
+    isolate(event);
   };
 }

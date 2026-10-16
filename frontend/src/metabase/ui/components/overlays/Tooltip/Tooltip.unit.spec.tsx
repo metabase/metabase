@@ -73,6 +73,23 @@ describe("Tooltip", () => {
     expect(onParentPointerDown).toHaveBeenCalledTimes(1);
   });
 
+  it("still stops events on the tooltip reaching the target's parents when the caller handles them", async () => {
+    const onParentDoubleClick = jest.fn<void, []>();
+    const onTooltipDoubleClick = jest.fn<void, []>();
+    render(
+      <div onDoubleClick={onParentDoubleClick}>
+        <Tooltip label="Tooltip content" onDoubleClick={onTooltipDoubleClick}>
+          <button>Target</button>
+        </Tooltip>
+      </div>,
+    );
+
+    await userEvent.hover(screen.getByRole("button", { name: "Target" }));
+    await userEvent.dblClick(await screen.findByRole("tooltip"));
+    expect(onTooltipDoubleClick).toHaveBeenCalledTimes(1);
+    expect(onParentDoubleClick).not.toHaveBeenCalled();
+  });
+
   it("doesn't catch the pointer when its owner controls whether it's open", async () => {
     const TooltipWithTarget = ({ opened }: { opened: boolean }) => (
       <Tooltip label="Tooltip content" opened={opened}>

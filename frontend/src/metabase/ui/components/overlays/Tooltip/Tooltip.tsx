@@ -49,12 +49,12 @@ const TooltipImpl = forwardRef<HTMLDivElement, TooltipProps>(
 
     const isHoverable = isOpen && !isControlled;
 
-    const { tooltipProps, labelProps } = useTooltipEventIsolation();
+    const { tooltipProps, labelProps } = useTooltipEventIsolation(rest);
 
     return (
       <MantineTooltip
-        {...tooltipProps}
         {...rest}
+        {...tooltipProps}
         label={<div {...labelProps}>{label}</div>}
         mod={[{ hoverable: isHoverable }, mod]}
         portalProps={resolvedPortalProps}
