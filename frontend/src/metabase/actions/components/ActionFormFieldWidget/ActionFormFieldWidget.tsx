@@ -2,11 +2,11 @@ import type { FunctionComponent, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
-import { FormToggle as FormBooleanWidget } from "metabase/common/components/FormToggle";
 import { FormRadioGroup, type FormRadioGroupProps } from "metabase/forms";
 import { Radio, Stack } from "metabase/ui";
 import type { InputComponentType } from "metabase-types/api";
 
+import { FormBooleanWidget } from "./FormBooleanWidget";
 import { FormInputWidget } from "./FormInputWidget";
 import { FormNumberInputWidget } from "./FormNumberInputWidget";
 import { FormSelectWidget } from "./FormSelectWidget";

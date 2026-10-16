@@ -110,7 +110,7 @@ export function CreateLibraryDashboardModal({
               options: LIBRARY_COLLECTION_PICKER_OPTIONS,
             }}
           />
-          <FormFooter mt="lg">
+          <FormFooter>
             <FormErrorMessage inline />
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton label={t`Create`} variant="filled" />

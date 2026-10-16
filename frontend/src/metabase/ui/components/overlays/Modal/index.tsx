@@ -13,12 +13,14 @@ import { PreventEagerPortal } from "metabase/ui";
 import { useGatedCloseProps } from "metabase/ui/components/overlays/overlay-stack";
 import { useDisableCommandPalette } from "metabase/ui/hooks/use-disable-command-palette";
 
+import { InModalProvider } from "./InModalContext";
 import S from "./Modal.module.css";
 
 export { useModalsStack } from "@mantine/core";
 
 export * from "./Modal.config";
 export * from "./constants";
+export * from "./InModalContext";
 
 export const MODAL_LAYOUTS = ["default", "centered"] as const;
 
@@ -103,13 +105,15 @@ export function Modal({
         closeOnClickOutside={closeProps.closeOnClickOutside}
         closeOnEscape={closeProps.closeOnEscape}
       >
-        {hasCenteredHeading && (
-          <div className={S.centeredHeading}>
-            {illustration}
-            {title && <MantineModal.Title>{title}</MantineModal.Title>}
-          </div>
-        )}
-        {children}
+        <InModalProvider value={true}>
+          {hasCenteredHeading && (
+            <div className={S.centeredHeading}>
+              {illustration}
+              {title && <MantineModal.Title>{title}</MantineModal.Title>}
+            </div>
+          )}
+          {children}
+        </InModalProvider>
       </MantineModal>
     </PreventEagerPortal>
   );
@@ -118,6 +122,7 @@ export function Modal({
 function ModalRoot({
   layout = "default",
   density = "default",
+  children,
   ...props
 }: ModalRootProps) {
   const closeProps = useGatedCloseProps(props);
@@ -133,7 +138,9 @@ function ModalRoot({
         data-density={density}
         closeOnClickOutside={closeProps.closeOnClickOutside}
         closeOnEscape={closeProps.closeOnEscape}
-      />
+      >
+        <InModalProvider value={true}>{children}</InModalProvider>
+      </MantineModal.Root>
     </PreventEagerPortal>
   );
 }
