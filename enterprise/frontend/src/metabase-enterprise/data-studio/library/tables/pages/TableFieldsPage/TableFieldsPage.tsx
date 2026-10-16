@@ -17,8 +17,8 @@ import {
 } from "metabase/metadata/components";
 import { useParams } from "metabase/router";
 import {
+  ActionIcon,
   Box,
-  Button,
   Center,
   Flex,
   Group,
@@ -109,15 +109,16 @@ export function TableFieldsPage() {
               bg="background_page-secondary"
             >
               <Text fw="bold">{t`Field Details`}</Text>
-              <Button
+              <ActionIcon
+                variant="subtle"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="compact-sm"
-                p="sm"
-              />
+                aria-label={t`Close`}
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Group>
             <FieldSection
               /**

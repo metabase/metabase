@@ -33,9 +33,9 @@ You could also use the dashboard's [Entity ID](../installation-and-operation/ser
 
 ### Enable full app embedding
 
-In Metabase, click the **grid** icon in the upper right and go to **Admin > Embedding** and toggle on **Enable full app embedding**.
+In Metabase, click the **grid** icon in the upper right, select **Embedding hub**, and go to **Security**. Toggle on **Full-app embedding**.
 
-Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
+Under **Authorized origins for full-app embedding** (it appears once you flip the toggle), add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
 
 #### SameSite configuration
 
@@ -45,19 +45,15 @@ If you're embedding Metabase in a different domain, you may need to [set the ses
 
 #### Enable authentication with JWT
 
-While still in the **Embedding settings** section, scroll down and click on **Authentication** under **Related settings**.
+In the Embedding hub sidebar, click **Authentication**. The page opens to the JWT settings.
 
-On the card that says **JWT**, click the **Setup** button (you may have to scroll down to view the JWT card).
+#### Set JWT identity provider URI
 
-![Admin settings: Authentication > JWT setup.](./images/jwt-setup.png)
-
-#### Set JWT Identity provider URI
-
-In your app, you'll create a route for SSO at `/sso/metabase`. In the **JWT IDENTITY PROVIDER URI** field, enter the URL of your SSO route. For example, our sample app runs on port 8080, so in that case this JWT IDENTITY PROVIDER URI could be `http://localhost:8080/sso/metabase`.
+In your app, you'll create a route for SSO at `/sso/metabase`. In the **JWT Identity Provider URI** field, enter the URL of your SSO route. For example, our sample app runs on port 8080, so in that case this **JWT Identity Provider URI** could be `http://localhost:8080/sso/metabase`.
 
 #### Generate a JWT signing key
 
-Click on the **Generate key** button to generate a signing key. Keep this key a secret. You'll use it on your server. If you generate another key, you'll overwrite the existing key, so you'll need to update the key in your app as well.
+Click on the **Set up key** button to generate a signing key. Keep this key a secret. You'll use this JWT signing key on your server. If you generate another key, you'll overwrite the existing key, so you'll need to update the key in your app as well.
 
 Copy this key, as you'll need it in the next section.
 
@@ -173,15 +169,20 @@ In Metabase, click the **grid** icon and go to **Admin** > **People** > **Groups
 
 You'll map this string in the `groups` key to a Metabase group, so that when the person signs in via SSO, Metabase automatically assigns them to the appropriate Metabase group.
 
-In Metabase's admin section, go to **Authentication > JWT** and click **Edit**.
+Go to **Embedding hub** > **Authentication**.
 
-In the **Group schema** section, toggle on **Synchronize group memberships**. If the names of groups in the `groups` array match Metabase group names exactly (e.g. both are `"Customer Acme"`), then the groups will be mapped automatically.
+In the **Group mapping** section, select **Automatic**. Metabase adds people to the Metabase groups whose names match the group names in their JWT. If your `groups` array and your Metabase group both use `Customer Acme`, Metabase maps them for you.
 
-If the JWT group names and Metabase group names don't match, then for each group you want to sync, add a group mapping. When you click **New mapping**, enter "Customer-Acme", the string that you included in the `groups` array in your JWT payload. You can then associate that group name with the Metabase group "Customer Acme" that we created earlier.
+If your JWT group names and your Metabase group names don't match, select **Manual** instead:
+
+1. Click **New mapping**.
+2. In the **JWT group name** field, enter `Customer-Acme`.
+3. From **Metabase groups**, select **Customer Acme**.
+4. Click **Add mapping**.
+
+Metabase saves each mapping as soon as you add it.
 
 ![Mapping user attributes to groups.](./images/sync-groups.png)
-
-Be sure to **Save changes**.
 
 ### CHECKPOINT: verify that Metabase assigns people to groups when they log in
 

@@ -635,15 +635,11 @@
                                                                        :entity_id @#'collection/library-metrics-entity-id))})
                lib-items    (:data (mt/user-http-request :crowberto :get 200
                                                          (str "collection/" (:id library) "/items")))]
-           (testing "System library children (Data, Metrics) have is_library_root true"
-             (doseq [item (filter :is_library_root lib-items)]
-               (is (contains? #{collection/library-data-collection-type
-                                collection/library-metrics-collection-type}
-                              (:type item)))))
-           (testing "Data and Metrics collections both marked as is_library_root"
+           (testing "Data, Metrics, and Dashboards collections are all marked as is_library_root"
              (let [roots (filter :is_library_root lib-items)]
                (is (= #{collection/library-data-collection-type
-                        collection/library-metrics-collection-type}
+                        collection/library-metrics-collection-type
+                        collection/library-dashboards-collection-type}
                       (set (map :type roots))))))
            (testing "User-created subcollections inside Data do NOT have is_library_root"
              (let [data-items (:data (mt/user-http-request :crowberto :get 200
@@ -1062,6 +1058,20 @@
             (is (= all-models (:available_models models-response)))
             (is (= #{["card" "Question"]}
                    (set (map (juxt :model :name) (:data models-response)))))))))))
+
+(deftest collection-items-available-models-exploration-test
+  (testing "GET /api/collection/:id/items"
+    (mt/with-temp [:model/User        owner      {}
+                   :model/Collection  collection {}
+                   :model/Card        _          {:name "Question" :collection_id (u/the-id collection)}
+                   :model/Exploration _          {:name          "Exploration"
+                                                  :creator_id    (u/the-id owner)
+                                                  :collection_id (u/the-id collection)}]
+      (testing "reports explorations so they can be filtered on"
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (str "collection/" (u/the-id collection) "/items")
+                                             :include-available-models true)]
+          (is (= ["card" "exploration"] (:available_models response))))))))
 
 (deftest collection-items-metadata-test
   (testing "GET /api/collection/:id/items/metadata"
@@ -1872,18 +1882,48 @@
                                    (map #(select-keys % [:id :name]))
                                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
 
+(deftest data-action-collection-items-test
+  (testing "GET /api/collection/:id/items lists the actions without a model in data actions collections only"
+    (mt/with-temp [:model/Collection   {folder-id :id}  {:namespace "data-actions", :name "Data actions folder"}
+                   :model/Collection   {regular-id :id} {:name "Regular collection"}
+                   :model/Card         {model-id :id}   {:type :model, :collection_id regular-id}
+                   :model/Action       {in-folder :id}  {:type :query, :name "In folder", :collection_id folder-id}
+                   :model/QueryAction  _                {:action_id     in-folder
+                                                         :database_id   (mt/id)
+                                                         :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
+                   :model/Action       {archived :id}   {:type :query, :name "Archived", :collection_id folder-id, :archived true}
+                   :model/QueryAction  _                {:action_id     archived
+                                                         :database_id   (mt/id)
+                                                         :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
+                   :model/Action       {at-root :id}    {:type :query, :name "At data actions root"}
+                   :model/QueryAction  _                {:action_id     at-root
+                                                         :database_id   (mt/id)
+                                                         :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
+                   :model/Action       {of-model :id}   {:type :implicit, :name "Of a model", :model_id model-id}
+                   :model/ImplicitAction _              {:action_id of-model, :kind "row/create"}]
+      (let [actions (fn [path & params]
+                      (->> (apply mt/user-http-request :crowberto :get 200 path params)
+                           :data
+                           (filter (comp #{"action"} :model))
+                           (into #{} (map :name))))]
+        (is (= #{"In folder"}
+               (actions (str "collection/" folder-id "/items") :models "action")))
+        (is (= #{"Archived"}
+               (actions (str "collection/" folder-id "/items") :models "action" :archived true)))
+        (is (contains? (actions "collection/root/items" :namespace "data-actions") "At data actions root"))
+        (is (not (contains? (actions "collection/root/items" :namespace "data-actions") "Of a model")))
+        (is (= #{}
+               (actions (str "collection/" regular-id "/items"))))))))
+
 (deftest snippet-collection-items-count-only-test
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
     (mt/with-temp [:model/NativeQuerySnippet _ {:name "UXW5016 root snippet"}]
       (mt/with-test-user :crowberto
-        (let [queries     (atom [])
-              real-query  mdb/query
-              this-thread (Thread/currentThread)]
-          ;; `with-redefs` is global, so only record what this thread asks for.
-          (with-redefs [mdb/query (fn [query & args]
-                                    (when (identical? this-thread (Thread/currentThread))
-                                      (swap! queries conj query))
-                                    (apply real-query query args))]
+        (let [queries    (atom [])
+              real-query (mt/original-fn #'mdb/query)]
+          (mt/with-dynamic-fn-redefs [mdb/query (fn [query & args]
+                                                  (swap! queries conj query)
+                                                  (apply real-query query args))]
             (request/with-limit-and-offset 0 0
               (is (pos? (:total (collections.children/collection-children
                                  (assoc collection/root-collection :namespace "snippets")
@@ -2130,6 +2170,11 @@
               :can_delete          false}
              (with-some-children-of-collection! nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
+
+(deftest fetch-data-actions-root-collection-test
+  (testing "GET /api/collection/root?namespace=data-actions names the root after data actions"
+    (is (=? {:id "root" :name "Data actions" :namespace "data-actions"}
+            (mt/user-http-request :crowberto :get 200 "collection/root" :namespace "data-actions")))))
 
 (deftest fetch-root-collection-permissions-test
   (testing "GET /api/collection/root"
@@ -2628,7 +2673,7 @@
                                       (swap! call-count inc)
                                       (when (= @call-count 2)
                                         (throw (ex-info "Simulated failure" {})))
-                                      (apply (mt/dynamic-value card/update-card!) args)))]
+                                      (apply (mt/original-fn #'card/update-card!) args)))]
         (mt/user-http-request :crowberto :post 500
                               (format "collection/%d/move-dashboard-question-candidates" coll-id)))
       ;; Verify neither card was moved (operation rolled back)
@@ -3987,3 +4032,162 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id archived-collection))
                                        {:archived false :parent_id (u/the-id dest-collection)}))))))))
+
+(defn- exploration-items-in [coll-id & {:keys [user] :or {user :crowberto}}]
+  (->> (:data (mt/user-http-request user :get 200 (str "collection/" coll-id "/items")))
+       (filter #(= "exploration" (:model %)))))
+
+(deftest explorations-appear-in-collection-items-test
+  (testing "GET /api/collection/:id/items"
+    (testing "explorations in a shared collection appear in that collection's items"
+      (mt/with-temp [:model/User        owner {}
+                     :model/Collection  coll  {}
+                     :model/Exploration e     {:name          "Shared Expl"
+                                               :creator_id    (:id owner)
+                                               :collection_id (:id coll)}]
+        (let [items (exploration-items-in (:id coll))]
+          (is (= [{:id (:id e) :name "Shared Expl" :model "exploration"}]
+                 (map #(select-keys % [:id :name :model]) items))))))
+    (testing "?model=exploration filters to only explorations"
+      (mt/with-temp [:model/User        owner {}
+                     :model/Collection  coll  {}
+                     :model/Card        _card {:collection_id (:id coll)}
+                     :model/Exploration e     {:name          "Just me"
+                                               :creator_id    (:id owner)
+                                               :collection_id (:id coll)}]
+        (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                 (str "collection/" (:id coll) "/items?models=exploration")))]
+          (is (= [{:id (:id e) :model "exploration"}]
+                 (map #(select-keys % [:id :model]) items))))))))
+
+(deftest exploration-respects-collection-perms-test
+  (testing "Users without read on the exploration's collection don't see it in /items"
+    (mt/with-temp [:model/User        owner {}
+                   :model/Collection  coll  {:name "Locked"}
+                   :model/Exploration e     {:name          "Hidden"
+                                             :creator_id    (:id owner)
+                                             :collection_id (:id coll)}]
+      (perms/revoke-collection-permissions! (perms/all-users-group) coll)
+      (testing "rasta cannot see the exploration"
+        (let [resp (mt/user-http-request :rasta :get (str "collection/" (:id coll) "/items"))]
+          ;; Either the collection itself is forbidden (403) or the items list omits the exploration.
+          (cond
+            (= 403 (:status-code resp)) (is true)
+            :else (is (not (some #(= (:id e) (:id %)) (filter #(= "exploration" (:model %)) (:data resp))))))))
+      (testing "after granting read, the exploration appears"
+        (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
+        (let [items (exploration-items-in (:id coll) :user :rasta)]
+          (is (some #(= (:id e) (:id %)) items)))))))
+
+(deftest exploration-trash-and-archive-directly-test
+  (testing "Directly-archived exploration appears in /collection/trash/items"
+    (mt/with-temp [:model/User        owner {}
+                   :model/Collection  coll  {}
+                   :model/Exploration e     {:name              "Tossed"
+                                             :creator_id        (:id owner)
+                                             :collection_id     (:id coll)
+                                             :archived          true
+                                             :archived_directly true}]
+      (let [items (->> (:data (mt/user-http-request :crowberto :get 200
+                                                    (format "collection/%d/items" (collection/trash-collection-id))))
+                       (filter #(= "exploration" (:model %))))]
+        (is (some #(= (:id e) (:id %)) items)))))
+  (testing "Cascade-archived (archived=true, archived_directly=false) does not appear in trash"
+    (mt/with-temp [:model/User        owner {}
+                   :model/Collection  coll  {}
+                   :model/Exploration e     {:name              "Cascade"
+                                             :creator_id        (:id owner)
+                                             :collection_id     (:id coll)
+                                             :archived          true
+                                             :archived_directly false}]
+      (let [items (->> (:data (mt/user-http-request :crowberto :get 200
+                                                    (format "collection/%d/items" (collection/trash-collection-id))))
+                       (filter #(= "exploration" (:model %))))]
+        (is (not (some #(= (:id e) (:id %)) items)))))))
+
+(deftest exploration-pinning-test
+  (testing "explorations with collection_position appear under ?pinned-state=is_pinned"
+    (mt/with-temp [:model/User        owner {}
+                   :model/Collection  coll  {}
+                   :model/Exploration pinned   {:name                "Pinned"
+                                                :creator_id          (:id owner)
+                                                :collection_id       (:id coll)
+                                                :collection_position 1}
+                   :model/Exploration unpinned {:name          "Unpinned"
+                                                :creator_id    (:id owner)
+                                                :collection_id (:id coll)}]
+      (let [pinned-items (->> (:data (mt/user-http-request :crowberto :get 200
+                                                           (str "collection/" (:id coll) "/items?pinned-state=is_pinned")))
+                              (filter #(= "exploration" (:model %)))
+                              (map :id)
+                              set)]
+        (is (contains? pinned-items (:id pinned)))
+        (is (not (contains? pinned-items (:id unpinned))))))))
+
+(defn- find-exploration [items expl-id]
+  (some #(when (and (= "exploration" (:model %)) (= expl-id (:id %))) %) items))
+
+(deftest exploration-last-edit-info-test
+  (testing "GET /api/collection/:id/items reports last-edit-info for explorations"
+    (testing "freshly created exploration with a creation revision -> last-edit-info populated"
+      (mt/with-temp [:model/Collection  coll {}
+                     :model/Exploration e    {:name          "Created"
+                                              :creator_id    (mt/user->id :crowberto)
+                                              :collection_id (:id coll)}]
+        (revision/push-revision! {:entity       :model/Exploration
+                                  :id           (:id e)
+                                  :object       (t2/select-one :model/Exploration :id (:id e))
+                                  :user-id      (mt/user->id :crowberto)
+                                  :is-creation? true})
+        (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
+                                                                  (str "collection/" (:id coll) "/items")))
+                                     (:id e))]
+          (is (some? item))
+          (is (= (mt/user->id :crowberto)
+                 (-> item :last-edit-info :id))))))
+    (testing "no Exploration or Document revisions -> last-edit-info absent"
+      (mt/with-temp [:model/Collection  coll {}
+                     :model/Exploration e    {:name          "Bare"
+                                              :creator_id    (mt/user->id :crowberto)
+                                              :collection_id (:id coll)}]
+        (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
+                                                                  (str "collection/" (:id coll) "/items")))
+                                     (:id e))]
+          (is (some? item))
+          (is (nil? (:last-edit-info item))))))
+    (testing "Document attached to an exploration bumps the exploration's last-edit-info"
+      (mt/with-temp [:model/Collection  coll {}
+                     :model/Exploration e    {:name          "DocBumped"
+                                              :creator_id    (mt/user->id :crowberto)
+                                              :collection_id (:id coll)}
+                     :model/Document    doc  {:name           "notes"
+                                              :collection_id  (:id coll)
+                                              :creator_id     (mt/user->id :crowberto)
+                                              :exploration_id (:id e)
+                                              :document       {:type "doc" :content []}}]
+        ;; Older Exploration revision by :crowberto, newer Document revision by :rasta.
+        ;; Insert directly so we control timestamps — within a `with-temp` transaction
+        ;; the DB-side NOW() is frozen, so the standard push-revision! path would emit
+        ;; identical timestamps and tiebreak non-deterministically.
+        (let [t (java.time.OffsetDateTime/now)]
+          (t2/insert! :model/Revision
+                      {:model       "Exploration"
+                       :model_id    (:id e)
+                       :user_id     (mt/user->id :crowberto)
+                       :object      (revision/serialize-instance :model/Exploration (:id e)
+                                                                 (t2/select-one :model/Exploration :id (:id e)))
+                       :timestamp   (.minusSeconds t 60)
+                       :is_creation true})
+          (t2/insert! :model/Revision
+                      {:model     "Document"
+                       :model_id  (:id doc)
+                       :user_id   (mt/user->id :rasta)
+                       :object    (revision/serialize-instance :model/Document (:id doc)
+                                                               (t2/select-one :model/Document :id (:id doc)))
+                       :timestamp t}))
+        (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
+                                                                  (str "collection/" (:id coll) "/items")))
+                                     (:id e))]
+          (is (some? item))
+          (is (= (mt/user->id :rasta)
+                 (-> item :last-edit-info :id))))))))

@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { useListEnginesQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { MAX_INITIAL_ENGINES_SHOWN } from "metabase/databases/constants";
 import {
@@ -47,10 +49,11 @@ export const DatabaseEngineList = ({
   const [search, setSearch] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const engines = useSetting("engines");
+  const { data: engines = {}, isLoading, error } = useListEnginesQuery();
   const options = getEngineOptions(engines);
 
   const elevatedEngines = options.slice(0, MAX_INITIAL_ENGINES_SHOWN);
+  const hasMoreEngines = options.length > MAX_INITIAL_ENGINES_SHOWN;
   const searchResults = options.filter(({ name }) =>
     name.toLowerCase().includes(search.toLowerCase().trim()),
   );
@@ -64,6 +67,10 @@ export const DatabaseEngineList = ({
       onSelect(undefined);
     }
   }, [onSelect, isSetupStep]);
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
 
   // This is just a temporary way to show a selected item. The plan is to redesign
   // this particular bit, and it will live outside this component.
@@ -125,17 +132,19 @@ export const DatabaseEngineList = ({
               })}
             </Combobox.Options>
 
-            <ListToggle
-              aria-expanded={isExpanded}
-              isExpanded={isExpanded}
-              onClick={() => {
-                if (isExpanded) {
-                  setSearch("");
-                }
+            {hasMoreEngines && (
+              <ListToggle
+                aria-expanded={isExpanded}
+                isExpanded={isExpanded}
+                onClick={() => {
+                  if (isExpanded) {
+                    setSearch("");
+                  }
 
-                setIsExpanded(!isExpanded);
-              }}
-            />
+                  setIsExpanded(!isExpanded);
+                }}
+              />
+            )}
           </ScrollArea>
         ) : (
           <NoDatabaseFound isSetupStep={isSetupStep} />

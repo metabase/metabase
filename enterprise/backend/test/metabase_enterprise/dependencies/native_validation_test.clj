@@ -67,8 +67,7 @@
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (mt/id :products)}
-             {:card 1}}
+    (is (= #{{:card 1}}
            (->> (lib.metadata/card mp 5)
                 :dataset-query
                 (lib-be/normalize-query mp)
@@ -88,9 +87,7 @@
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (mt/id :products)}
-             {:table (mt/id :orders)}
-             {:card 1}
+    (is (= #{{:card 1}
              {:card 2}}
            (->> (lib.metadata/card mp 9)
                 :dataset-query
@@ -486,7 +483,7 @@
 (deftest ^:parallel placeholder-no-card-refs-test
   (testing "Queries with tables named as placeholder produce expected validation results"
     (let [mp     (lib.tu/mock-metadata-provider
-                  {:database {:id 100 :engine :h2}
+                  {:database {:id 100 :engine :h2 :default-schema "PUBLIC"}
                    :tables   [{:name   "MB__VALIDAT_CARD__10330"
                                :schema "PUBLIC"
                                :id     333

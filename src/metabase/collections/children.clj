@@ -29,10 +29,9 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
-   [metabase.revisions.core :as revisions]
+   [metabase.revisions.schema :as revisions.schema]
    [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.transforms.util :as transforms.u]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -99,9 +98,7 @@
                [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
              (when-not include-library?
                [:or [:= nil :type]
-                [:not-in :type [collection/library-collection-type
-                                collection/library-data-collection-type
-                                collection/library-metrics-collection-type]]])
+                [:not-in :type (vec collection/library-collection-types)]])
              [:or
               (when (contains? namespaces nil)
                 [:= :namespace nil])
@@ -158,9 +155,11 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by the collection-items endpoints.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card"                              ; SavedQuestion
+  #{"action"
+    "card"                              ; SavedQuestion
     "dataset"                           ; Model. TODO : update this
     "document"
+    "exploration"
     "metric"
     "collection"
     "dashboard"
@@ -474,7 +473,7 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  (let [enabled-types (transforms.u/enabled-source-types-for-user)]
+  (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and
@@ -485,6 +484,27 @@
                 [:=
                  [:inline 0]
                  [:inline 1]])]}))
+
+(defmethod collection-children-query :action
+  [_model collection {:keys [archived? pinned-state]}]
+  {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
+            :action.archived :action.archived_directly [(h2x/literal "action") :model]]
+   :from   [[:action :action]]
+   :where  [:and
+            (poison-when-pinned-clause pinned-state)
+            [:= :action.collection_id (:id collection)]
+            [:= :action.model_id nil]
+            [:= :action.archived (boolean archived?)]]})
+
+(defmethod post-process-collection-children :action
+  [_ _options _collection rows]
+  (for [row rows]
+    (-> (dissoc row
+                :collection_position :display :authority_level :moderated_status :icon :personal_owner_id
+                :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)
+        (update :archived api/bit->boolean)
+        (update :archived_directly api/bit->boolean)
+        (assoc :collection_namespace "data-actions"))))
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -706,9 +726,7 @@
              [:= :type collection-type]))
          (when-not include-library?
            [:or [:= nil :type]
-            [:not [:in :type [collection/library-collection-type
-                              collection/library-metrics-collection-type
-                              collection/library-data-collection-type]]]])
+            [:not [:in :type (vec collection/library-collection-types)]]])
          (if archived?
            [:or
             [:= :archived true]
@@ -748,39 +766,33 @@
 
 (defmethod collection-children-query :table
   [_ collection {:keys [archived? pinned-state]}]
-  (let [user-info {:user-id       api/*current-user-id*
-                   :is-superuser? api/*is-superuser?*}
-        published-clause (perms/published-table-visible-clause :t.id user-info)
-        queryable-clause (cond-> [:or
-                                  [:in :t.id (perms/visible-table-filter-select
-                                              :id
-                                              user-info
-                                              {:perms/view-data      :unrestricted
-                                               :perms/create-queries :query-builder})]]
-                           published-clause (conj [:and
-                                                   [:in :t.id (perms/visible-table-filter-select
-                                                               :id
-                                                               user-info
-                                                               {:perms/view-data :unrestricted})]
-                                                   published-clause]))]
-    {:select [:t.id
-              [:t.id :table_id]
-              [:t.display_name :name]
-              :t.description
-              :t.collection_id
-              [:t.db_id :database_id]
-              [[:!= :t.archived_at nil] :archived]
-              [(h2x/literal "table") :model]]
-     :from   [(warehouse-schema-overlay/table-query {:alias :t})]
-     :where  [:and
-              [:= :t.is_published true]
-              (poison-when-pinned-clause pinned-state)
-              (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
-              queryable-clause
-              [:= :t.collection_id (:id collection)]
-              (if archived?
-                [:!= :t.archived_at nil]
-                [:= :t.archived_at nil])]}))
+  {:select [:t.id
+            [:t.id :table_id]
+            [:t.display_name :name]
+            :t.description
+            :t.collection_id
+            [:t.db_id :database_id]
+            [[:!= :t.archived_at nil] :archived]
+            [(h2x/literal "table") :model]]
+   :from   [(warehouse-schema-overlay/table-query {:alias :t})]
+   :where  [:and
+            [:= :t.is_published true]
+            (poison-when-pinned-clause pinned-state)
+            (collection/visible-collection-filter-clause :t.collection_id {:cte-name :visible_collection_ids})
+            ;; The subquery form, not the CTE one: this query becomes a UNION ALL branch or an EXISTS probe, where
+            ;; a CTE is not valid, and hoisting the CTE to the top level does not work either: H2 2.1.214 returns no
+            ;; rows for a CTE with bound parameters referenced from inside a derived table (see the docstring).
+            (perms/visible-table-filter-subquery-clause
+             :t.id
+             {:user-id       api/*current-user-id*
+              :is-superuser? api/*is-superuser?*}
+             {:perms/view-data      :unrestricted
+              :perms/create-queries :query-builder}
+             {:include-published-via-collection? true})
+            [:= :t.collection_id (:id collection)]
+            (if archived?
+              [:!= :t.archived_at nil]
+              [:= :t.archived_at nil])]})
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
@@ -828,6 +840,12 @@
              (map :collection_id)
              (into #{}))
 
+        collections-containing-actions
+        (->> (when (seq descendant-collection-ids)
+               (collections.db/unarchived-action-collection-ids-in descendant-collection-ids))
+             (map :collection_id)
+             (into #{}))
+
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
         (->> (t2/hydrate descendant-collections :effective_parent :is_remote_synced)
@@ -841,7 +859,8 @@
                {:table collections-containing-tables
                 :collection collections-containing-collections
                 :dashboard collections-containing-dashboards
-                :transform collections-containing-transforms})
+                :transform collections-containing-transforms
+                :action collections-containing-actions})
 
         ;; why are we calling `annotate-collections` on all descendants, when we only need the collections in `colls`
         ;; to be annotated? Because `annotate-collections` works by looping through the collections it's passed and
@@ -889,7 +908,7 @@
    :last_edit_timestamp  :timestamp})
 
 ;;; TODO -- consider whether this function belongs here or in [[metabase.revisions.models.revision.last-edit]]
-(mu/defn- coalesce-edit-info :- revisions/MaybeAnnotated
+(mu/defn- coalesce-edit-info :- ::revisions.schema/maybe-annotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row :- [:map {:closed true}
@@ -921,6 +940,7 @@
     :exploration :model/Exploration
     :pulse       :model/Pulse
     :snippet     :model/NativeQuerySnippet
+    :action      :model/Action
     :table       :model/Table
     :timeline    :model/Timeline
     :transform   :model/Transform))
@@ -1131,9 +1151,10 @@
 (defn- valid-collection-models
   "Return every item model that can appear in `collection-namespace`."
   [collection-namespace]
-  (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
+  (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                    ;; Tables in collections are an EE feature (library)
-                   (premium-features/has-feature? :library) (conj :table))
+                   (premium-features/has-feature? :library) (conj :table)
+                   (= "data-actions" (some-> collection-namespace name)) (conj :action))
         :let     [toucan-model       (model-name->toucan-model model-kw)
                   allowed-namespaces (collection/allowed-namespaces toucan-model)]
         :when    (or (= model-kw :collection)
@@ -1144,9 +1165,10 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models created-by-id], :as options}       :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                                       ;; Tables in collections are an EE feature (library)
-                                      (premium-features/has-feature? :library) (conj :table))
+                                      (premium-features/has-feature? :library) (conj :table)
+                                      (= "data-actions" (some-> collection-namespace name)) (conj :action))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            ;; a creator filter drops models that don't index a creator
@@ -1224,4 +1246,4 @@
   If you're looking in the root collection of one of these namespaces, we'll allow you to list any type of model.
 
   Otherwise, we'll just show you collections."
-  #{nil "snippets" "transforms"})
+  #{nil "snippets" "transforms" "data-actions"})

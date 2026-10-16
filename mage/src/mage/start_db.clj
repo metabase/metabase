@@ -92,7 +92,7 @@
 (defmethod docker-cmd :postgres
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":5432")
+   "-p" (str "127.0.0.1:" port ":5432")
    ;; "--network" "psql-metabase-network"
    "-e" "POSTGRES_USER=metabase"
    "-e" "POSTGRES_DB=metabase"
@@ -105,7 +105,7 @@
 (defmethod docker-cmd :mysql
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":3306")
+   "-p" (str "127.0.0.1:" port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
    "--name" container-name
@@ -114,7 +114,7 @@
 (defmethod docker-cmd :mariadb
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":3306")
+   "-p" (str "127.0.0.1:" port ":3306")
    "-e" "MYSQL_DATABASE=metabase_test"
    "-e" "MYSQL_ALLOW_EMPTY_PASSWORD=yes"
    "--name" container-name
@@ -125,7 +125,7 @@
   ["docker" "run" "-d"
    "-e" "MONGO_INITDB_ROOT_USERNAME=metabase"
    "-e" "MONGO_INITDB_ROOT_PASSWORD=metasample123"
-   "-p" (str port ":27017")
+   "-p" (str "127.0.0.1:" port ":27017")
    "--name" container-name
    (str "mongo:" resolved-version)])
 
@@ -141,7 +141,7 @@
 (defmethod docker-cmd :sqlserver
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":1433")
+   "-p" (str "127.0.0.1:" port ":1433")
    "-e" "ACCEPT_EULA=Y"
    "-e" "SA_PASSWORD=P@ssw0rd"
    "--name" container-name
@@ -150,12 +150,20 @@
 (defmethod docker-cmd :oracle
   [_db container-name resolved-version port]
   ["docker" "run" "-d"
-   "-p" (str port ":1521")
+   "-p" (str "127.0.0.1:" port ":1521")
    "-e" "ORACLE_PASSWORD=password"
    "--name" container-name
    (if (= resolved-version "latest")
      "gvenzl/oracle-free:latest"
      (str "gvenzl/oracle-xe:" resolved-version))])
+
+(defmethod docker-cmd :starburst
+  [_db container-name resolved-version port]
+  ["docker" "run" "-d"
+   "-p" (str "127.0.0.1:" port ":8080")
+   "-e" "CATALOG_MANAGEMENT=dynamic"
+   "--name" container-name
+   (str "trinodb/trino:" resolved-version)])
 
 ;; Client command stuff:
 
@@ -163,17 +171,24 @@
   {:arglists '([db port])}
   (fn [db _port] db))
 
-;; TODO: add other databases' commands here
 (defmethod client-cmd :default [_ _] nil)
 
 (defmethod client-cmd :mysql [_ port]
-  (format "mysql --host localhost --port %s --user root --password=\"\" metabase_test" port))
+  (format "mysql --host 127.0.0.1 --port %s --user root --password=\"\" metabase_test" port))
 
 (defmethod client-cmd :mariadb [_ port]
   (client-cmd :mysql port))
 
 (defmethod client-cmd :postgres [_ port]
   (format "PGPASSWORD=password psql --user metabase --host localhost --port %s -d metabase" port))
+
+(defmethod client-cmd :mongo [_ port]
+  (format "mongosh --host localhost --port %s -u metabase -p metasample123 --authenticationDatabase admin" port))
+
+(defmethod client-cmd :sqlserver [_ port]
+  (format "sqlcmd -S 127.0.0.1,%s -U SA -P 'P@ssw0rd' -C" port))
+
+;; Oracle service names differ between the Free and XE images, so it's more complicated
 
 (defn- app-db? [db]
   (contains? #{:postgres :mysql :mariadb} db))
@@ -194,7 +209,7 @@
         (println (str "  clj -M:dev:ee:ee-dev" deps-edn-alias))
         (u/debug (str "  clj -M:dev:ee:ee-dev" deps-edn-alias " -e '(dev) (start!)'"))))
     (when-let [client-command (client-cmd database port)]
-      (println "\nUse this command to connect:")
+      (println "\nUse this command to connect: (once the server has started)")
       (println client-command))))
 
 (defn- usage

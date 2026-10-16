@@ -27,12 +27,27 @@ describe("feature name", () => {
 
 Use existing navigation helpers (`H.openOrdersTable()`, `H.openNativeEditor()`, `H.visitDashboard(id)`, `H.visitQuestion(id)`, etc.) instead of raw `cy.visit()` chains. Grep `e2e/support/helpers/` to discover what's available.
 
+### Changing shared helpers
+
+Before changing a shared helper's default behavior, enumerate its callers and check:
+
+- repeated calls with the same and different arguments;
+- cache, deduplication, or conditional paths where an expected request may not occur;
+- existing intercepts, alias reuse, and concurrent requests;
+- inherited `within` scopes and other caller-owned context.
+
+If only some callers need additional synchronization or assertions, prefer an explicit opt-in option over changing every caller implicitly. Validate both an opted-in caller and an existing caller that retains the default behavior.
+
 ## Constants and IDs
 
 **Sample Database schema** (table/field definitions) — import from `cypress_sample_database`:
 
 ```js
-import { ORDERS, ORDERS_ID, PRODUCTS } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+} from "e2e/support/cypress_sample_database";
 ```
 
 **Instance data** (dashboard IDs, user IDs, etc.) — import from `cypress_sample_instance_data`:
@@ -68,6 +83,7 @@ cy.visit("/dashboard/10");
 4. Other `data-*` attributes as a fallback (e.g. `cy.get("[data-element-id='foo']")`) when a stable `data-testid` isn't available.
 
 NEVER use:
+
 - `cy.get("[data-testid='...']")` — always use `cy.findByTestId(...)` instead.
 - CSS class names (especially generated ones from styled-components or Mantine).
 - Ad-hoc CSS attribute selectors (`path[fill="..."]`, `[stroke="..."]`, etc.) in test specs or new helpers.
@@ -78,6 +94,7 @@ NEVER use:
 `e2e/support/helpers/e2e-visual-tests-helpers.js` is the **only** file allowed to reach into rendered chart DOM via raw CSS attribute selectors. ECharts renders SVG with no `data-testid` attributes and minimal a11y surface, so there's no first-class alternative for asserting on chart visuals. The helpers there (`echartsContainer`, `goalLine`, `chartPathWithFillColor`, `pieSliceWithColor`, `cartesianChartCircle`, `BoxPlot.*`, etc.) are the intentional exception.
 
 When writing or reviewing visualization tests:
+
 - Always go through these helpers — don't roll your own `cy.get("path[fill=...]")` inline.
 - If a chart pattern isn't covered, add a new helper to that file rather than embedding the selector in a spec.
 
@@ -144,11 +161,14 @@ The `metabase/no-unscoped-text-selectors` lint rule enforces this for the top-le
 
 - Use `cy.request()` or existing API helpers to set up state.
 - Only drive the UI for the flow you're actually testing.
+- Before replacing UI steps with API setup, state the behavior the test must preserve. An interaction belongs to the tested flow when it is part of the regression path, appears in relevant failure evidence, or is an intended integration boundary. Keep those interactions in the UI; use APIs only for preconditions outside that behavior.
 
 ## Waits and timing
 
 - **Never** use numeric `cy.wait(ms)`.
 - For API timing: define `cy.intercept()` BEFORE the action that triggers the request, then `cy.wait("@alias")`.
+- A network wait is valid only when the triggering action is expected to issue that request. Account for caches, request deduplication, unchanged query arguments, and conditional fetches before making a wait mandatory.
+- Treat network completion and DOM readiness as separate boundaries: first verify the expected response, then assert the resulting UI state.
 - For DOM readiness: prefer `.should("be.visible")` — it asserts the element is rendered **and** visible to the user, which is the right proxy for "the UI is ready". `.should("exist")` only proves the node is in the DOM and is **not** a readiness check; reserve it for cases where you specifically need to assert presence without visibility (hidden inputs, off-screen / portal-detached nodes, etc.).
 
 ```js
@@ -159,7 +179,7 @@ cy.wait("@dataset");
 
 ## Never assign return values from `cy.*` commands
 
-`cy.*` commands are not synchronous — they enqueue work on Cypress's command queue and resolve asynchronously. Assigning the return value to a variable yields a *chainer*, not the underlying DOM element / string / response. Treating that variable as if it held the resolved value is one of the most common foot-guns in Cypress and a frequent source of "but my console.log printed something weird" confusion. See the [official anti-pattern doc](https://docs.cypress.io/app/core-concepts/best-practices#Assigning-Return-Values).
+`cy.*` commands are not synchronous — they enqueue work on Cypress's command queue and resolve asynchronously. Assigning the return value to a variable yields a _chainer_, not the underlying DOM element / string / response. Treating that variable as if it held the resolved value is one of the most common foot-guns in Cypress and a frequent source of "but my console.log printed something weird" confusion. See the [official anti-pattern doc](https://docs.cypress.io/app/core-concepts/best-practices#Assigning-Return-Values).
 
 ```js
 // Bad — `button` is a chainer, NOT a DOM node
@@ -385,6 +405,7 @@ Before writing a new `it()` block, look at sibling tests in the same `describe`.
 A near-duplicate test pays the full `beforeEach` cost again, doubles the maintenance surface (two places to update when the flow changes), and obscures intent — readers can't tell why the second test exists if it's not visibly different from the first.
 
 Signals that this is the case:
+
 - The new `it()` repeats the same `H.openOrdersTable()` / `H.visitDashboard(id)` / opening sequence as the test above it.
 - The new `it()` differs only in the last few lines.
 - The new `it()` title is a near-paraphrase of an existing one ("can pick a sum function" + "can pick an avg function" — these are likely the same test parameterised over function name).

@@ -694,8 +694,8 @@
       (is (= "60" (get headers "Access-Control-Max-Age"))
           "Expected Access-Control-Max-Age header to be set to 60")))
   (testing "CORS should be enabled when origins are configured regardless of embedding flags"
-    (mt/with-temporary-setting-values [enable-embedding-simple false
-                                       enable-embedding-sdk false]
+    (mt/with-temporary-setting-values [enable-embedding-modular false
+                                       enable-embedding-sdk     false]
       (let [headers (mw.security/access-control-headers "https://example.com"
                                                         "https://example.com")]
         (is (= "https://example.com"
@@ -708,8 +708,8 @@
 
 (deftest test-cors-enabled-when-origins-configured-without-embedding-features
   (testing "CORS headers should be sent when origins are configured even if embedding features are disabled"
-    (mt/with-temporary-setting-values [enable-embedding-sdk    false
-                                       enable-embedding-simple false
+    (mt/with-temporary-setting-values [enable-embedding-sdk      false
+                                       enable-embedding-modular  false
                                        embedding-app-origins-sdk "https://example.com"]
       (let [wrapped-handler (mw.security/add-security-headers
                              (fn [_request respond _raise]
@@ -1094,3 +1094,28 @@
       (is (true? (server.settings/csp-img-enabled)))
       (server.settings/csp-img-enabled! false)
       (is (false? (server.settings/csp-img-enabled))))))
+
+(defn- cache-control-for
+  "Run `response` through [[mw.security/add-security-headers]] for a GET of `uri`."
+  [uri response]
+  (let [handler (mw.security/add-security-headers (fn [_req respond _raise] (respond response)))
+        result  (promise)]
+    (handler {:request-method :get :uri uri} #(deliver result %) #(deliver result %))
+    (get-in @result [:headers "Cache-Control"])))
+
+(deftest far-future-cache-only-for-successful-responses-test
+  (testing "a hashed asset that exists is cached for a long time"
+    (is (= "public, max-age=31536000"
+           (cache-control-for "/app/dist/abc123def456.png" {:status 200 :body "x"}))))
+  (testing "a 304 keeps the freshness information the browser already stored"
+    (is (= "public, max-age=31536000"
+           (cache-control-for "/app/dist/abc123def456.png" {:status 304}))))
+  (testing "a 404 for a hashed asset is never cached: during a rolling deploy a client can reach
+            an instance that does not have the file yet, and caching that leaves the asset broken"
+    (doseq [status [404 500 302]]
+      (is (= "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+             (cache-control-for "/app/dist/abc123def456.png" {:status status :body "nope"}))
+          (str "status " status))))
+  (testing "a missing font is not cached either"
+    (is (= "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+           (cache-control-for "/app/fonts/Lato/lato-v16-latin-regular.woff2" {:status 404})))))

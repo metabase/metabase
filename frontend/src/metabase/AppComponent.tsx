@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
 import {
@@ -7,9 +8,10 @@ import {
   getIsAppBarVisible,
   getIsDataApp,
   getIsDataStudioApp,
+  getIsEmbeddingHubApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
-} from "metabase/app/selectors";
+} from "metabase/app/nav/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
@@ -22,6 +24,7 @@ import {
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
+import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -54,7 +57,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (data?.error_code === "archived" && context === "query-builder") {
     return <Archived entityName="question" linkTo="/questions/archive" />;
   }
-  return <GenericError details={data?.message} />;
+  return <GenericError details={findErrorMessage(data)} />;
 };
 
 export function App() {
@@ -73,6 +76,9 @@ export function App() {
   );
   const isMonitorApp = useSelector((state) =>
     getIsMonitorApp(state, routerProps),
+  );
+  const isEmbeddingHubApp = useSelector((state) =>
+    getIsEmbeddingHubApp(state, routerProps),
   );
   const isDataApp = useSelector((state) => getIsDataApp(state, routerProps));
   const isAppBarVisible = useSelector((state) =>
@@ -120,9 +126,14 @@ export function App() {
               <UndoListing />
               <StatusListing />
               <NewModals />
+              <EmbedSetupModals />
               <Metabot
                 hide={
-                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                  isAdminApp ||
+                  isDataStudioApp ||
+                  isMonitorApp ||
+                  isEmbeddingHubApp ||
+                  isDataApp
                 }
               />
             </AppContentContainer>

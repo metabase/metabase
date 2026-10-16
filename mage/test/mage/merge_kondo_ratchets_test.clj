@@ -18,6 +18,9 @@
 (def ^:private ratchets-file
   ".clj-kondo/ratchets.edn")
 
+(def ^:private test-ratchets-file
+  ".clj-kondo/ratchets-test.edn")
+
 (def ^:private module-ratchets-file
   ".clj-kondo/config/modules/ratchets.edn")
 
@@ -114,9 +117,11 @@
       (is (= 0 exit))
       (is (str/includes? out "staged merged .clj-kondo/ratchets.edn")))
     (testing "the finite budget beats :unlimited, one-sided changes win, and a concurrent removal stays gone"
-      (is (= {:ignore-counts  {:a 4, :b 3}
-              :config-counts  {:c 1}
-              :comment-exempt #{}}
+      (is (= {:ignore-counts                {:a 4, :b 3}
+              :discouraged-var-counts       {}
+              :discouraged-namespace-counts {}
+              :config-counts                {:c 1}
+              :comment-exempt               #{}}
              (ratchets-policies dir))))
     (testing "only the ratchets file is staged; the other conflict is left alone"
       (is (= #{"M  .clj-kondo/ratchets.edn" "UU app.txt"}
@@ -134,12 +139,40 @@
   (with-conflict [dir {:ours   {ratchets-file "{:ignore-counts {:a 3, :shared :unlimited}}\n"}
                        :theirs {ratchets-file "{:ignore-counts {:b 4, :shared 2}}\n"}}]
     (is (= 0 (:exit (run dir script))))
-    (is (= {:ignore-counts  {:a 3, :b 4, :shared 2}
-            :config-counts  {}
-            :comment-exempt #{}}
+    (is (= {:ignore-counts                {:a 3, :b 4, :shared 2}
+            :discouraged-var-counts       {}
+            :discouraged-namespace-counts {}
+            :config-counts                {}
+            :comment-exempt               #{}}
            (ratchets-policies dir)))
     (is (= #{"M  .clj-kondo/ratchets.edn" "UU app.txt"}
            (status dir)))))
+
+(deftest resolves-test-ratchets-test
+  (with-conflict [dir {:base   {test-ratchets-file (ratchets {:a 5, :b :unlimited, :ours-drop 2} {} #{:b})}
+                       :ours   {test-ratchets-file (ratchets {:a 5, :b 3} {} #{})}
+                       :theirs {test-ratchets-file (ratchets {:a 4, :b :unlimited, :ours-drop 1} {} #{:b})}}]
+    (let [{:keys [exit out]} (run dir script)]
+      (is (= 0 exit))
+      (is (str/includes? out (str "staged merged " test-ratchets-file))))
+    (let [text (slurp (str (fs/path dir test-ratchets-file)))]
+      (is (= {:ignore-counts                {:a 4, :b 3}
+              :discouraged-namespace-counts {}
+              :discouraged-var-counts       {}
+              :comment-exempt               #{}}
+             (edn/read-string text))
+          "merged with the same rules as the prod file, and written without :config-counts")
+      (is (str/starts-with? text ";; Budgets for kondo suppressions in test code")))
+    (is (= #{(str "M  " test-ratchets-file) "UU app.txt"}
+           (status dir))))
+  (testing "a stage with :config-counts is refused rather than having them dropped"
+    (with-conflict [dir {:base   {test-ratchets-file (ratchets {:a 5} {} #{})}
+                         :ours   {test-ratchets-file (ratchets {:a 4} {} #{})}
+                         :theirs {test-ratchets-file (ratchets {:a 3} {:c 1} #{})}}]
+      (let [{:keys [exit out err]} (run dir script)]
+        (is (pos? exit))
+        (is (str/includes? (str out err) "must not set :config-counts")))
+      (is (contains? (status dir) (str "UU " test-ratchets-file))))))
 
 (deftest resolves-module-ratchets-test
   (with-conflict [dir {:base   {module-ratchets-file "{:api-any 3, :friend-edges 5}\n"}
@@ -229,4 +262,4 @@
   (with-conflict [dir {:base {ratchets-file base-ratchets}}]
     (let [{:keys [exit err]} (run dir script)]
       (is (= 1 exit))
-      (is (str/includes? err "neither ratchet file is conflicted")))))
+      (is (str/includes? err "no ratchet file is conflicted")))))

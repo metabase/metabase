@@ -17,6 +17,7 @@
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -52,6 +53,70 @@
    (org.mariadb.jdbc UrlParser)))
 
 (set! *warn-on-reflection* true)
+
+(deftest ssl-cert-path-must-be-readable-test
+  ;; the "Server SSL certificate chain" field takes inline PEM, a `classpath:` resource, or a path to a file on the
+  ;; Metabase host -- and a path has to be somewhere `readable-paths` allows
+  (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          spec    #(sql-jdbc.conn/connection-details->spec :mysql (merge details %))]
+      (testing "a certificate path outside the allowed directories is refused"
+        (doseq [cert ["/etc/server-ca.pem" "/allowed-dir/../etc/server-ca.pem"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:ssl-cert cert}))
+              cert)))
+      (testing "inline PEM, a classpath resource, an allowed path, or a certificate SSL does not use, are accepted"
+        (doseq [extra [{:ssl-cert "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"}
+                       {:ssl-cert "classpath:server-ca.pem"}
+                       {:ssl-cert "/allowed-dir/server-ca.pem"}
+                       {:ssl false :ssl-cert "/etc/server-ca.pem"}]]
+          (is (map? (spec extra)) (pr-str extra)))))))
+
+(deftest ssl-cert-url-must-be-readable-test
+  ;; the client opens the value as a URL before falling back to a file path, so `file:/etc/x` reads `/etc/x` -- not a
+  ;; file named `file:/etc/x` under the working directory, which is allowed here
+  (mt/with-temp-env-var-value! [mb-readable-paths (str "/allowed-dir," (System/getProperty "user.dir"))]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          spec    #(sql-jdbc.conn/connection-details->spec :mysql (merge details {:ssl-cert %}))]
+      (testing "a URL the client would read from somewhere other than an allowed local file is refused"
+        (doseq [cert ["file:/etc/server-ca.pem"
+                      "file:///etc/server-ca.pem"
+                      "file:/allowed-dir/%2E%2E/etc/server-ca.pem"
+                      "file://other-host/allowed-dir/server-ca.pem"
+                      "jar:file:/allowed-dir/certs.jar!/server-ca.pem"
+                      "http://example.com/server-ca.pem"]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec cert))
+              cert)))
+      (testing "a file URL for an allowed path is accepted"
+        (doseq [cert ["file:/allowed-dir/server-ca.pem"
+                      "file:///allowed-dir/server-ca.pem"
+                      "file://localhost/allowed-dir/server-ca.pem"]]
+          (is (map? (spec cert)) cert)))))
+  (testing "any URL is accepted when every path is readable"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/"]
+      (is (map? (sql-jdbc.conn/connection-details->spec
+                 :mysql
+                 {:host "h" :port 3306 :dbname "db" :user "u" :ssl true :ssl-cert "http://example.com/server-ca.pem"}))))))
+
+(deftest ssl-cert-url-host-is-a-connection-parameter-host-test
+  ;; a URL in the certificate field is fetched by the client, so the host it names is one the connection reaches and
+  ;; has to pass the network policy like any other. Every path is readable here, which is the self-hosted default,
+  ;; so the readable-paths check does not refuse the URL first.
+  (mt/with-temp-env-var-value! [mb-readable-paths "/"]
+    (let [details {:host "h" :port 3306 :dbname "db" :user "u" :ssl true}
+          hosts   #(set (driver/connection-parameter-hosts :mysql (merge details %)))]
+      (testing "the certificate field"
+        (is (contains? (hosts {:ssl-cert "http://10.0.0.1/server-ca.pem"}) "10.0.0.1"))
+        (is (contains? (hosts {:ssl-cert "file://10.0.0.2/server-ca.pem"}) "10.0.0.2")))
+      (testing "serverSslCert in the additional options"
+        ;; a name rather than an address: an undeclared parameter of the connection string is only read for an address
+        (is (contains? (hosts {:additional-options "serverSslCert=http://certs.example/server-ca.pem"})
+                       "certs.example"))))))
+
+(deftest default-schema-test
+  (mt/test-driver :mysql
+    (is (nil? (driver.sql/default-schema :mysql (mt/db))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -417,6 +482,22 @@
       ;; the driver lets a later duplicate win, so ours has to be appended after whatever the user wrote
       "allowLocalInfile=false&allowLocalInfile=true")))
 
+(deftest ^:parallel validate-db-details-rejects-dangerous-additional-options-test
+  (testing "MySQL inherits the shared SQL-JDBC denylist: socketFactory et al. are rejected"
+    (doseq [opt ["socketFactory=evil.SocketFactory"
+                 "sslfactory=evil.Factory"
+                 "hostnameverifier=evil.Verifier"
+                 ;; the driver's own denylist still applies too
+                 "autoDeserialize=true"
+                 "allowLoadLocalInfile=true"]]
+      (testing opt
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :mysql {:additional-options opt}))))))
+  (testing "benign additional options are still allowed"
+    (doseq [opt [nil "tinyInt1isBit=false" "useSSL=true&trustServerCertificate=true"]]
+      (is (nil? (driver/validate-db-details! :mysql {:additional-options opt}))))))
+
 (deftest ^:synchronized local-infile-blocked-for-write-queries-test
   (mt/test-driver :mysql
     (testing "a write query cannot make the driver read a file off the Metabase host"
@@ -705,6 +786,24 @@
                         driver/*driver*
                         database
                         (t2/select-one :model/Table :db_id (mt/id) :name "json_table"))))))))))))
+
+(deftest json-unfolding-ignores-table-differing-only-in-case-test
+  (testing "JSON unfolding lists only the synced table's columns, not a table's differing only in case (#83790)"
+    (mt/test-driver :mysql
+      (when-not (mysql/mariadb? (mt/db))
+        (tx/drop-if-exists-and-create-db! driver/*driver* "json_case_test")
+        (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "json_case_test"})
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          (doseq [statement ["CREATE TABLE `orders` (`id` INT PRIMARY KEY, `data` JSON);"
+                             "CREATE TABLE `Orders` (`id` INT PRIMARY KEY, `payload` JSON);"
+                             "INSERT INTO `orders` VALUES (1, '{\"a\": 1}');"]]
+            (jdbc/execute! spec [statement]))
+          (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+            (sync/sync-database! database {:scan :schema})
+            (is (= #{"id" "data" "data → a"}
+                   (t2/select-fn-set :name :model/Field
+                                     :table_id (t2/select-one-pk :model/Table :db_id (:id database) :name "orders")
+                                     :active true)))))))))
 
 (deftest json-alias-test
   (mt/test-driver :mysql

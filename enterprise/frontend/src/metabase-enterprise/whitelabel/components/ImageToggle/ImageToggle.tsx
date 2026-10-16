@@ -1,14 +1,9 @@
 import type { ReactNode } from "react";
 
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import { Switch } from "metabase/ui";
+import { Box, Flex, Switch } from "metabase/ui";
 
-import {
-  ImageContainer,
-  ToggleContainer,
-  ToggleLabel,
-  ToggleRoot,
-} from "./ImageToggle.styled";
+import S from "./ImageToggle.module.css";
 
 export interface ImageToggleProps {
   label: string;
@@ -26,17 +21,32 @@ export const ImageToggle = ({
   const toggleId = useUniqueId();
 
   return (
-    <ToggleRoot>
-      <ImageContainer>{children}</ImageContainer>
-      <ToggleContainer>
-        <ToggleLabel htmlFor={toggleId}>{label}</ToggleLabel>
+    <Flex className={S.border}>
+      <Flex
+        className={S.borderRight}
+        w="7.5rem"
+        justify="center"
+        align="center"
+      >
+        {children}
+      </Flex>
+      <Flex
+        flex="1 1 auto"
+        justify="space-between"
+        align="center"
+        px="xl"
+        py="xxl"
+      >
+        <Box component="label" htmlFor={toggleId} mr="xxl">
+          {label}
+        </Box>
         <Switch
           id={toggleId}
           aria-checked={value}
           checked={value}
           onChange={(e) => onChange(e.target.checked)}
         />
-      </ToggleContainer>
-    </ToggleRoot>
+      </Flex>
+    </Flex>
   );
 };

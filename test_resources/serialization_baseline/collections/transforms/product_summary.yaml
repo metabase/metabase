@@ -40,6 +40,4 @@ target:
   schema: TRANSFORMS
   type: table
 serdes/meta:
-- id: rT5vWxYz1aBcDeFgHiJkL
-  label: product_summary
-  model: Transform
+- model: Transform

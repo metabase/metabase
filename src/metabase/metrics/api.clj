@@ -347,15 +347,21 @@
 (defn- write-check-metric! [id]
   (api/write-check (metrics.db/metric-card id)))
 
-;; The module-local parent keeps the topic publishable in OSS, where no consumer namespace derives
-;; it. (A direct :metabase/event derive would throw once an EE consumer makes it an ancestor.)
-(events/derive! ::dimensions-event :metabase/event)
-(events/derive! :event/metric-dimensions-update ::dimensions-event)
-
 (defn- notify-dimensions-changed!
-  "Signal that a metric's dimension mappings changed so its dependency graph is recomputed."
-  [id]
-  (events/publish-event! :event/metric-dimensions-update {:object {:id id}}))
+  "Announce a write to metric `id`'s curated dimensions, given the `before` Card that
+   [[write-check-metric!]] already fetched.
+
+   These endpoints write `:dimensions`/`:dimension_mappings`, which are serialized columns, so the write has to
+   reach everything a Card update normally reaches — remote-sync dirty tracking above all, which listens only for
+   the standard per-model event families and so never saw the bespoke topic this replaces. Audit logging and the
+   dependency graph come along for the ride; a dimension edit is a card edit.
+
+   Revisions are unaffected: `metabase.revisions.impl.card` excludes both columns from the snapshot, and
+   `push-revision!` skips a revision whose serialization is unchanged."
+  [id before]
+  (events/publish-event! :event/card-update {:object          (metrics.db/metric-card id)
+                                             :previous-object before
+                                             :user-id         api/*current-user-id*}))
 
 (api.macros/defendpoint :get "/:id/dimension"
   :- [:map
@@ -388,9 +394,9 @@
                                                        [:display_name   {:optional true} ms/NonBlankString]
                                                        [:description    {:optional true} [:maybe :string]]
                                                        [:mapping_target ::lib-metric.schema/dimension-mapping.target]]]]]]
-  (write-check-metric! id)
-  (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
-    (notify-dimensions-changed! id)))
+  (let [before (write-check-metric! id)]
+    (u/prog1 (metrics/add-dimensions! :metadata/metric id dimensions)
+      (notify-dimensions-changed! id before))))
 
 (api.macros/defendpoint :post "/:id/dimension/remove"
   :- [:sequential :map]
@@ -398,9 +404,9 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_ids]} :- [:map {:closed true} [:dimension_ids [:sequential ms/NonBlankString]]]]
-  (write-check-metric! id)
-  (u/prog1 (metrics/remove-dimensions! :metadata/metric id dimension_ids)
-    (notify-dimensions-changed! id)))
+  (let [before (write-check-metric! id)]
+    (u/prog1 (metrics/remove-dimensions! :metadata/metric id dimension_ids)
+      (notify-dimensions-changed! id before))))
 
 (api.macros/defendpoint :post "/:id/dimension/set-default"
   :- [:sequential :map]
@@ -410,8 +416,9 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_id]} :- [:map {:closed true} [:dimension_id [:maybe ms/NonBlankString]]]]
-  (write-check-metric! id)
-  (metrics/set-default-dimension! :metadata/metric id dimension_id))
+  (let [before (write-check-metric! id)]
+    (u/prog1 (metrics/set-default-dimension! :metadata/metric id dimension_id)
+      (notify-dimensions-changed! id before))))
 
 (api.macros/defendpoint :post "/:id/dimension/reorder"
   :- [:sequential :map]
@@ -421,8 +428,9 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dimension_ids]} :- [:map {:closed true} [:dimension_ids [:sequential ms/NonBlankString]]]]
-  (write-check-metric! id)
-  (metrics/reorder-dimensions! :metadata/metric id dimension_ids))
+  (let [before (write-check-metric! id)]
+    (u/prog1 (metrics/reorder-dimensions! :metadata/metric id dimension_ids)
+      (notify-dimensions-changed! id before))))
 
 (api.macros/defendpoint :post "/:id/dimension/:dimension-key"
   :- :map
@@ -439,8 +447,6 @@
             [:description  {:optional true} [:maybe :string]]
             [:default_temporal_unit {:optional true} ms/NonBlankString]
             [:source       {:optional true} [:maybe [:map {:closed true} [:field-id ms/PositiveInt]]]]]]
-  (write-check-metric! id)
-  (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)
-    ;; Only a source-column change alters the mapping (and thus the deps graph).
-    (when (:source body)
-      (notify-dimensions-changed! id))))
+  (let [before (write-check-metric! id)]
+    (u/prog1 (metrics/update-dimension! :metadata/metric id dimension-key body)
+      (notify-dimensions-changed! id before))))

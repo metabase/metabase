@@ -5,9 +5,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.tools.sql.edit :as edit-sql-query-tools]
+   [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
@@ -34,6 +37,35 @@
               (is (str/includes? output (str "database_id=\"" db-id "\""))))
             (testing "instructions contain actual query ID link"
               (is (str/includes? output (str "metabase://query/" query-id))))))))))
+
+(deftest create-sql-query-says-whether-its-results-can-be-read-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+        (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id (mt/user->id :crowberto)}
+                       :model/MetabotConversation {theirs :id} {:user_id (mt/user->id :rasta)}]
+          (doseq [:let [both #{"create_sql_query" "run_query"}]
+                  [situation tool-names query-on? sql-on? conversation readable?]
+                  [["run_query offered and SQL execution on"    both                  true  true  own    true]
+                   ["run_query offered and SQL execution off"   both                  true  false own    false]
+                   ["run_query offered and query execution off" both                  false true  own    false]
+                   ["no run_query in the session"               #{"create_sql_query"} true  true  own    false]
+                   ["a conversation someone else can read"      both                  true  true  theirs false]]]
+            (testing situation
+              (mt/with-temporary-setting-values [metabot-query-execution-enabled? query-on?
+                                                 metabot-sql-execution-enabled?   sql-on?]
+                (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
+                                                                          :conversation-id conversation
+                                                                          :state           {}})
+                          scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                          scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                    scope/all-yes-permissions)]
+                  (let [instructions (:instructions (agent-sql/create-sql-query-tool {:database_id db-id
+                                                                                      :sql_query   "SELECT 1"
+                                                                                      :title       "Results"}))]
+                    (is (= [readable? (not readable?)]
+                           [(str/includes? instructions "Run the query with `run_query`")
+                            (str/includes? instructions "you cannot view the results directly yourself")]))))))))))))
 
 (deftest create-sql-query-validation-error-output-test
   (testing "create_sql_query output contains appropriate info on validation failure"
@@ -286,3 +318,18 @@
                                 :checklist "- [x] checked"
                                 :new_query "SELECT 2"
                                 :title     "Results"})))))))))))
+
+(deftest edit-and-replace-sql-query-unexpected-error-test
+  (testing "edit_sql_query and replace_sql_query rethrow non-agent errors so they stay tracked as failures"
+    (mt/with-dynamic-fn-redefs [edit-sql-query-tools/edit-sql-query       (fn [_] (throw (ex-info "boom" {})))
+                                replace-sql-query-tools/replace-sql-query (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (agent-sql/edit-sql-query-tool {:query_id  "q-1"
+                                                            :checklist "- [x] checked"
+                                                            :edits     [{:old_string "1" :new_string "2"}]
+                                                            :title     "Results"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (agent-sql/replace-sql-query-tool {:query_id  "q-1"
+                                                               :checklist "- [x] checked"
+                                                               :new_query "SELECT 2"
+                                                               :title     "Results"}))))))

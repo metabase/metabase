@@ -2,9 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   ;; load-bearing: the advertised scope sets are derived from the agent-api routes and the v2 tool
-   ;; registry, so both must be loaded for these assertions to see the real surface
-   [metabase.agent-api.api]
    [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.api :as v2.api]
    [metabase.oauth-server.core :as oauth-server]
@@ -12,8 +9,6 @@
    [metabase.test :as mt]
    [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
-
-(comment metabase.agent-api.api/keep-me)
 
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
@@ -38,9 +33,7 @@
             what Claude and ChatGPT both do.
 
             Iterated over every endpoint path rather than over the sets `default-grant-scopes` is
-            built from: asserting a set covers the sets it is defined as the union of cannot fail.
-            The per-path arities are the ones a client actually meets, and the v1 aliases are inside
-            the ceiling only incidentally today, because `all-scopes` also feeds `supported-scopes`."
+            built from: asserting a set covers the sets it is defined as the union of cannot fail."
     (let [ceiling (set (oauth-server/default-grant-scopes))]
       (doseq [path (mcp/mcp-endpoint-paths)]
         (testing path
@@ -49,12 +42,13 @@
       (testing "and the authorization-server metadata set"
         (is (empty? (remove ceiling (oauth-server/supported-scopes))))))))
 
-(deftest v2-default-ask-is-the-baseline-and-is-requestable-test
-  (testing "GHY-4543: the v2 401 challenge asks an uninstructed client for the baseline only: reading and querying,
-            but not SQL, writes or delivery. Every tool is listed whatever the token holds, and a call needing more is
-            answered with a 403 `insufficient_scope` step-up, so asking for less degrades to a consent prompt rather
-            than a hidden tool."
-    (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"} (set @#'v2.api/default-ask-scopes)))
+(deftest v2-default-ask-is-the-whole-surface-and-is-requestable-test
+  (testing "ENG-11089: the v2 401 challenge asks an uninstructed client for every v2 scope. A manual reconnect from
+            Claude's connector settings asks for exactly this, so a baseline-only challenge left SQL, writes and
+            delivery unreachable. The user can still untick each one outside the baseline on the consent page."
+    (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
+             "agent:sql:run" "agent:delivery:write"}
+           (set @#'v2.api/default-ask-scopes)))
     (testing "the surface still accepts every scope asked for, or narrowing strips the ask at consent"
       (is (empty? (remove (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
                           @#'v2.api/default-ask-scopes))))
@@ -73,7 +67,7 @@
             advertised twice.
 
             GHY-4543: the protected-resource metadata advertises `mcp-resource-advertised-scopes`, a vector copied
-            from the `v2-baseline-scopes` literal, so a scope repeated there is repeated on the wire. The accepted
+            from the `v2-surface-scopes` literal, so a scope repeated there is repeated on the wire. The accepted
             set, `mcp-resource-scopes`, is built through a `sorted-set` and cannot repeat by construction; it is
             checked too, alongside the literals both are built from, where a duplicate would be silently swallowed."
     (let [duplicates (fn [scopes] (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec))]
@@ -83,9 +77,8 @@
                                   "accepted"   (oauth-server/mcp-resource-scopes path)}]
             (testing label
               (is (empty? (duplicates scopes)))))))
-      (testing "the v2 surface and baseline literals have no duplicates of their own"
-        (is (empty? (duplicates (mcp/v2-scopes))))
-        (is (empty? (duplicates (mcp/v2-baseline-scopes))))))))
+      (testing "the v2 surface literal has no duplicates of its own"
+        (is (empty? (duplicates (mcp/v2-scopes))))))))
 
 (deftest rationalized-scopes-are-in-the-default-grant-test
   (testing "GHY-4225: the five v2 scopes must all reach the default grant a dynamically-registered
@@ -197,10 +190,10 @@
                                 [mcp-uri]
                                 "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
           (is (= #{"agent:content:read" "agent:query:run"} narrowed))))
-      (testing "GHY-4543: every v2 scope survives narrowing on every alias, although the resource metadata
-                advertises only the baseline — otherwise a step-up for a write scope is stripped at consent"
+      (testing "GHY-4543: every v2 scope survives narrowing on every alias — otherwise a first connect or a
+                step-up for a write scope is stripped at consent"
         (let [v2-scopes ["agent:content:read" "agent:content:write" "agent:query:run"
-                         "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
+                         "agent:sql:run" "agent:delivery:write"]]
           (doseq [path (mcp/mcp-endpoint-paths)]
             (testing path
               (is (= (set v2-scopes)

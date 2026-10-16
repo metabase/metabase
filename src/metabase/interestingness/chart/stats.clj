@@ -1,6 +1,7 @@
 (ns metabase.interestingness.chart.stats
   "Chart type detection and statistics routing."
   (:require
+   [medley.core :as m]
    [metabase.interestingness.chart.categorical :as categorical]
    [metabase.interestingness.chart.histogram :as histogram]
    [metabase.interestingness.chart.scatter :as scatter]
@@ -48,13 +49,27 @@
                                    [name (count y_values)]))
         limited-series  (into {} (for [[name config] series-data]
                                    [name (downsample-series config max-data-points-per-series)]))
-        downsampled     (into {} (for [[name orig-count] original-counts
-                                       :let [new-count (count (get-in limited-series [name :y_values]))]
-                                       :when (< new-count orig-count)]
-                                   [name {:original-count orig-count :sampled-count new-count}]))]
+        downsampled     (vec (for [[name orig-count] original-counts
+                                   :let [new-count (count (get-in limited-series [name :y_values]))]
+                                   :when (< new-count orig-count)]
+                               {:name name :original-count orig-count :sampled-count new-count}))]
     [limited-series
      (when (seq downsampled)
        {:downsampled-series downsampled})]))
+
+(defn- drop-nil-points
+  "Drop the points of `series-config` whose x or y value is nil."
+  [{x-values :x_values, y-values :y_values, :as series-config}]
+  (let [points (filter (fn [[x y]] (and (some? x) (some? y))) (map vector x-values y-values))]
+    (assoc series-config
+           :x_values (mapv first points)
+           :y_values (mapv second points))))
+
+(defn analyzable-series
+  "Return the series of `chart-config` with their nil points dropped, leaving out any series with no points left."
+  [chart-config]
+  (->> (update-vals (:series chart-config) drop-nil-points)
+       (m/filter-vals (comp seq :y_values))))
 
 ;;; ----------------------------------------------- Chart Type Detection ---------------------------------------------
 
@@ -138,7 +153,7 @@
 (mu/defn compute-chart-stats :- ::stats.types/chart-stats
   "Compute statistics for a chart based on its detected type.
 
-  Applies data limits before computation:
+  Drops points with a nil x or y value and series left empty, then applies data limits before computation:
   - Each series is downsampled to at most [[max-data-points-per-series]] points
   - Correlation computation is limited to [[max-series-for-correlations]] series
 
@@ -148,8 +163,9 @@
                    :deep? - compute additional statistics"
   [chart-config :- ::stats.types/chart-config
    opts         :- ::stats.types/options]
-  (let [chart-type                   (detect-chart-type chart-config)
-        [limited-series limits-info] (apply-data-limits (:series chart-config))
+  (let [series                       (analyzable-series chart-config)
+        chart-type                   (detect-chart-type (assoc chart-config :series series))
+        [limited-series limits-info] (apply-data-limits series)
         too-many-series?             (> (count limited-series) max-series-for-correlations)
         opts                         (cond-> opts
                                        too-many-series? (assoc :max-correlation-series max-series-for-correlations))
@@ -168,3 +184,9 @@
                                                            " charts not yet implemented")})]
     (cond-> stats
       limits-info (assoc :limits limits-info))))
+
+;;; --------------------------------------------- Serialization ------------------------------------------------------
+
+(def chart-stats-schema
+  "Registry key for a [[compute-chart-stats]] result."
+  ::stats.types/chart-stats)

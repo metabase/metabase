@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.replacement.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
@@ -428,7 +428,7 @@
                         :type          :model
                         :name          "Model"}]
           (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
-            (with-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
+            (mt/with-dynamic-fn-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
               (snowplow-test/with-fake-snowplow-collector
                 (let [response (mt/user-http-request :crowberto :post 202
                                                      "ee/replacement/replace-model-with-transform"

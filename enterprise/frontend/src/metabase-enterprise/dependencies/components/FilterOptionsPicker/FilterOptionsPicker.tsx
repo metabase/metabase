@@ -46,6 +46,7 @@ export function FilterOptionsPicker({
         >
           {isCompact ? (
             <ActionIcon
+              variant="subtle"
               aria-label={t`Filter`}
               disabled={isDisabled}
               onClick={toggle}
@@ -54,6 +55,7 @@ export function FilterOptionsPicker({
             </ActionIcon>
           ) : (
             <Button
+              size="lg"
               leftSection={<FixedSizeIcon name="filter" aria-hidden />}
               disabled={isDisabled}
               data-testid="dependency-filter-button"

@@ -11,16 +11,20 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.spec :as search.spec]
+   [metabase.staleness.core :as staleness]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
+   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -30,7 +34,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/dependencies]]
   (derive :model/Transform trait))
 
 (defn- transform-readable?
@@ -39,7 +43,7 @@
   [instance & args]
   (and (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
-           (and (api/is-data-analyst?)
+           (and (api/entitled-data-analyst?)
                 (apply transforms.u/source-tables-readable? instance args)))))
 
 (defn- native-transform-write-allowed?
@@ -92,12 +96,12 @@
   [_model instance]
   ;; Inline can-write? logic since instance is a plain map without model metadata.
   ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
-  ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
+  ;; can-read? requires: is-superuser? OR (entitled-data-analyst? AND source-tables-readable?)
   (and (remote-sync/transforms-editable?)
        (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_database_id instance) (transforms-base.i/source-db-id instance))]
-             (and api/*is-data-analyst?*
+             (and (api/entitled-data-analyst?)
                   (transforms.u/source-tables-readable? instance)
                   (transform-database-permissions? instance)
                   (native-transform-write-allowed? instance source-db-id))))))
@@ -345,9 +349,20 @@
     (events/publish-event! :event/update-transform {:object transform}))
   transform)
 
+(defenterprise delete-transform-tests!
+  "Hook called from the `:model/Transform` before-delete: delete the tests of the transform `transform-id` through
+  Toucan, so that each one's own delete hook runs. The database would take them with the transform either way -- the
+  `transform_test.transform_id` FK is `ON DELETE CASCADE` -- but a cascade runs no hook, and remote sync learns a
+  test is gone only from the event that hook publishes, so it would go on serving a test whose transform no longer
+  exists. OSS is a no-op (no transform-testing module)."
+  metabase-enterprise.transform-testing.models
+  [_transform-id]
+  nil)
+
 (t2/define-before-delete :model/Transform [transform]
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
+  (delete-transform-tests! (:id transform))
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
@@ -513,19 +528,14 @@
                :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
 
 (defmethod serdes/deserialization-dependencies "Transform"
-  [{:keys [collection_id source tags source_database_id]}]
-  (let [checkpoint-field-ref (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])]
-    (set
-     (concat
-      (when collection_id
-        [[{:model "Collection" :id collection_id}]])
-      (when source_database_id
-        [[{:model "Database" :id source_database_id}]])
-      (for [{tag-id :tag_id} tags]
-        [{:model "TransformTag" :id tag-id}])
-      (when (some-> checkpoint-field-ref pos-int? not)
-        [(serdes/field->path checkpoint-field-ref)])
-      (serdes/mbql-deps false source)))))
+  [{:keys [collection_id source tags]}]
+  (set
+   (concat
+    (when collection_id
+      [[{:model "Collection" :id collection_id}]])
+    (for [{tag-id :tag_id} tags]
+      [{:model "TransformTag" :id tag-id}])
+    (serdes/mbql-deps false source))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
   (serdes/storage-default-collection-path transform ctx "transforms"))
@@ -575,3 +585,30 @@
    :search-terms [:name :description]
    :render-terms {:transform-name :name
                   :transform-id   :id}})
+
+;;; ------------------------------------------------- Staleness ------------------------------------------------
+
+(defmethod staleness/find-stale-query :model/Transform
+  [_model args]
+  ;; Run-based: a transform is stale when it has never run and was created on/before the cutoff,
+  ;; or when its most recent run started on/before the cutoff (failed runs still count). Transforms
+  ;; between fires of a slower-than-threshold schedule are not stale.
+  (let [schedule-fresh-ids (freshness/schedule-fresh-transform-ids (java.time.Instant/now))]
+    ^:allow-subquery
+    {:select    [:transform.id
+                 [(h2x/literal "Transform") :model]
+                 [:transform.name :name]
+                 [:latest_run.last_start :last_used_at]
+                 :transform.collection_id]
+     :from      :transform
+     :left-join [[(transforms.db/latest-run-start-times-query) :latest_run]
+                 [:= :latest_run.transform_id :transform.id]]
+     :where     [:and
+                 [:or
+                  [:and
+                   [:= :latest_run.last_start nil]
+                   [:<= :transform.created_at (:cutoff-date args)]]
+                  [:<= :latest_run.last_start (:cutoff-date args)]]
+                 (when (seq schedule-fresh-ids)
+                   [:not [:in :transform.id schedule-fresh-ids]])
+                 (staleness/collection-filter :transform.collection_id args)]}))

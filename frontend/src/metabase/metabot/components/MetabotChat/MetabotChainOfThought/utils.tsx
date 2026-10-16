@@ -7,9 +7,10 @@ import { isEmbedding } from "metabase/embedding/config";
 import { MarkdownSmartLink } from "metabase/metabot/components/AIMarkdown/components/MarkdownSmartLink";
 import { getToolMessage } from "metabase/metabot/constants";
 import type { MetabotChainStep } from "metabase/metabot/state";
+import type { SmartLinkEntityRef } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-smart-link-entity";
+import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import {
   METABSE_PROTOCOL_MD_LINK,
-  type MetabaseProtocolEntityModel,
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
@@ -51,12 +52,7 @@ export const isHiddenTool = (name: string) => {
 
 export type TitleSegment =
   | { type: "text"; text: string }
-  | {
-      type: "link";
-      id: number;
-      name: string;
-      model: MetabaseProtocolEntityModel;
-    };
+  | ({ type: "link"; name: string } & SmartLinkEntityRef);
 
 export const splitTitle = (title: string): TitleSegment[] => {
   const re = new RegExp(METABSE_PROTOCOL_MD_LINK.source, "g");
@@ -70,7 +66,12 @@ export const splitTitle = (title: string): TitleSegment[] => {
     const parsed = parseMetabaseProtocolMarkdownLink(match[0]);
     segments.push(
       parsed
-        ? { type: "link", ...parsed }
+        ? {
+            type: "link",
+            id: parsed.id,
+            name: parsed.name,
+            model: mbProtocolModelToSuggestionModel(parsed.model),
+          }
         : { type: "text", text: match.groups?.name ?? match[0] },
     );
     lastIndex = start + match[0].length;
@@ -158,12 +159,19 @@ export type DisplayItem =
   | { kind: "tool"; step: ToolChainStep; index: number }
   | { kind: "resourceGroup"; steps: ToolChainStep[]; index: number };
 
+const isGroupableResourceStep = (step: MetabotChainStep) =>
+  isResourceStep(step) && step.status !== "errored";
+
 const groupConsecutiveResources = (
   steps: MetabotChainStep[],
 ): MetabotChainStep[][] =>
   steps.reduce<MetabotChainStep[][]>((groups, step) => {
     const last = groups.at(-1);
-    if (last && isResourceStep(step) && isResourceStep(last[0])) {
+    if (
+      last &&
+      isGroupableResourceStep(step) &&
+      isGroupableResourceStep(last[0])
+    ) {
       return [...groups.slice(0, -1), [...last, step]];
     }
     return [...groups, [step]];
@@ -215,19 +223,33 @@ const exactSeconds = (durationMs: number | undefined): number | null =>
     ? Math.round(durationMs / 1000)
     : null;
 
-const thoughtFor = (seconds: number) =>
-  ngettext(
-    msgid`Thought for ${seconds} second`,
-    `Thought for ${seconds} seconds`,
-    seconds,
-  );
+const formatDuration = (totalSeconds: number): string => {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
 
-const workedFor = (seconds: number) =>
-  ngettext(
-    msgid`Worked for ${seconds} second`,
-    `Worked for ${seconds} seconds`,
-    seconds,
-  );
+  if (minutes === 0) {
+    return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
+  } else if (seconds === 0) {
+    return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
+  } else if (seconds === 1) {
+    return ngettext(
+      msgid`${minutes} minute ${seconds} second`,
+      `${minutes} minutes ${seconds} second`,
+      minutes,
+    );
+  } else {
+    return ngettext(
+      msgid`${minutes} minute ${seconds} seconds`,
+      `${minutes} minutes ${seconds} seconds`,
+      minutes,
+    );
+  }
+};
+
+const thoughtFor = (seconds: number) =>
+  t`Thought for ${formatDuration(seconds)}`;
+
+const workedFor = (seconds: number) => t`Worked for ${formatDuration(seconds)}`;
 
 export const reasoningLabel = (durationMs: number | undefined): string => {
   const seconds = exactSeconds(durationMs);

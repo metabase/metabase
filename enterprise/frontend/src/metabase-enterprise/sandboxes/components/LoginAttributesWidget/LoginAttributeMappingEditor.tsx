@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
@@ -148,7 +149,7 @@ export const LoginAttributeMappingEditor = ({
                 autoFocus={index === autoFocusIndex}
               />
             </Flex>
-            <Flex gap="sm" w="50%">
+            <Flex gap="sm" w="50%" align="center">
               <ValueInput
                 canDelete={canDeleteThis}
                 canRevert={!!canRevert}
@@ -175,8 +176,8 @@ export const LoginAttributeMappingEditor = ({
         );
       })}
       <Button
-        variant="light"
-        size="xs"
+        variant="transparent"
+        size="compact-md"
         leftSection={<Icon name="add" />}
         onClick={() => {
           handleChange(addEntry(entries));
@@ -254,21 +255,28 @@ const ValueInput = ({
         {...valueOpts}
       />
       {canDelete && (
-        <Button
-          leftSection={<Icon name="close" />}
+        <ActionIcon
+          variant="subtle"
+          size="sm"
           onClick={onDelete}
           data-testid="remove-mapping"
-        />
+          aria-label={t`Remove mapping`}
+        >
+          <Icon name="close" />
+        </ActionIcon>
       )}
       {canRevert && (
         <Tooltip
           label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
         >
-          <Button
-            leftSection={<Icon name="refresh" />}
+          <ActionIcon
+            variant="subtle"
+            size="sm"
             onClick={onRevert}
             data-testid="revert-mapping"
-          />
+          >
+            <Icon name="refresh" />
+          </ActionIcon>
         </Tooltip>
       )}
     </>

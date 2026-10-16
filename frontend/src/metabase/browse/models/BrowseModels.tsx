@@ -97,9 +97,8 @@ export const BrowseModels = () => {
               {canCreateNewModel && (
                 <Tooltip label={t`Create a new model`} position="bottom">
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Create a new model`}
-                    size={32}
-                    variant="viewHeader"
                     component={ForwardRefLink}
                     to="/model/new"
                     onClick={() => trackNewModelInitiated()}
@@ -139,9 +138,11 @@ export const BrowseModels = () => {
                   >{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
                 </Stack>
                 {showMetabaseLinks && (
-                  <Button variant="subtle" p={0}>
-                    <ExternalLink href={url}>{t`Read the docs`}</ExternalLink>
-                  </Button>
+                  <Button
+                    component={ExternalLink}
+                    href={url}
+                    variant="subtle"
+                  >{t`Read the docs`}</Button>
                 )}
               </Stack>
             ) : (

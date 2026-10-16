@@ -7,6 +7,7 @@ import { useToast } from "metabase/common/hooks";
 import { createEmptyTenantDraft } from "metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/utils";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
+  ActionIcon,
   Button,
   Flex,
   Group,
@@ -108,8 +109,7 @@ export const CreateTenantsOnboardingStep = ({
       onTenantsCreated?.(tenants);
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getErrorMessage(error, t`Failed to create tenants`),
       });
     }
@@ -128,7 +128,7 @@ export const CreateTenantsOnboardingStep = ({
         {tenants.map((tenant, index) => (
           <Paper key={index} withBorder p="lg" radius="sm">
             <Stack gap="lg">
-              <Group justify="space-between" align="flex-start">
+              <Group justify="space-between" align="center">
                 <TextInput
                   value={tenant.name}
                   onChange={(e) =>
@@ -140,15 +140,14 @@ export const CreateTenantsOnboardingStep = ({
                   classNames={{ input: S.TenantNameInput }}
                 />
                 {tenants.length > 1 && (
-                  <Button
+                  <ActionIcon
                     variant="subtle"
-                    color="text-secondary"
-                    p={0}
+                    size="sm"
                     onClick={() => removeTenantCard(index)}
                     aria-label={t`Remove tenant`}
                   >
-                    <Icon name="close" size={16} />
-                  </Button>
+                    <Icon name="close" />
+                  </ActionIcon>
                 )}
               </Group>
 
@@ -191,11 +190,10 @@ export const CreateTenantsOnboardingStep = ({
 
       <Flex justify="space-between" align="center">
         <Button
-          variant="subtle"
+          variant="transparent"
+          size="compact-md"
           leftSection={<Icon name="add" size={16} />}
           onClick={addTenantCard}
-          p={0}
-          fw="bold"
         >
           {t`New tenant`}
         </Button>

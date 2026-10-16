@@ -31,6 +31,7 @@ export const mutateColors = (whitelabelColors: ColorSettings) => {
 };
 
 export const staticVizOverrides = {
+  "chart-axis": baseColors.orion[20],
   "text-primary": baseColors.orion[80],
   "text-secondary": baseColors.orion[60],
   "text-disabled": baseColors.orion[40],

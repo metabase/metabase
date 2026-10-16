@@ -2,10 +2,10 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [mb.hawk.parallel]
-   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -97,16 +97,55 @@
 
 (defn tool-boundary-error
   "Run one tool call through the agent tool boundary — the path production uses — and
-  return the error message the model would see, or nil when the call was accepted."
+  return the error text the model would see, or nil when the call was accepted.
+
+  The text is the outcome's `:output`, which is where a failure's message lives now; a failure also
+  carries `:error` with its class and code."
   [tool-name tool-var arguments]
-  (let [tools  (metabot.tools/wrap-tools-with-state {tool-name tool-var} (atom {}) nil nil)
+  (let [tools  (metabot.tools/->entries [tool-var] (atom {}) nil nil)
         chunks (parts->aisdk-chunks
                 [{:type :start :id "msg-boundary"}
-                 {:type :tool-input :id "call-boundary" :function tool-name :arguments arguments}])]
-    (-> (into [] (self.core/tool-executor-xf tools) chunks)
-        last
-        :error
-        :message)))
+                 {:type :tool-input :id "call-boundary" :function tool-name :arguments arguments}])
+        result (-> (into [] (self.core/tool-executor-xf tools) chunks) last :result)]
+    (when (:error result)
+      (:output result))))
+
+(defn call-tool
+  "Call `tool` with `arguments` and return its `tools.core/result`.
+
+  What a test uses in place of invoking a tool var as a function. A converted tool is a record, so
+  `(the-tool args)` no longer works and the caller should not have to know whether this one does one
+  item or several — `tools.core/call` decides that. `tool` may be the record, or a var holding one.
+
+  `tool-names` is the profile the recovery steps are filtered against; it defaults to a profile that
+  has `search`, since most steps offer it. Pass a smaller set to assert a step disappears.
+
+  This is not the agent boundary: arguments are not validated and the scope is not checked. Use
+  [[tool-boundary-error]] for those."
+  ([tool arguments] (call-tool tool arguments #{"search"}))
+  ([tool arguments tool-names]
+   (tools.core/call (cond-> tool (var? tool) deref) arguments {:tool-names tool-names})))
+
+(defn tool-failure
+  "Call `tool` expecting it to fail, and return what the failure is: `{:class :code}`, plus `:text`
+  — the text a model in a profile holding `tool-names` would read — when it is recoverable.
+
+  The counterpart to [[call-tool]]. Throws when the call succeeds, so a test cannot pass by the
+  tool quietly working. This is the tool's own contract, not the agent boundary: the runtime's
+  rendering of an unrecoverable error, and its dev assertions, are
+  `metabase.metabot.tools.runtime-test`'s subject. Use [[tool-boundary-error]] for the boundary."
+  ([tool arguments] (tool-failure tool arguments #{"search"}))
+  ([tool arguments tool-names]
+   (let [outcome (try
+                   (call-tool tool arguments tool-names)
+                   (catch Throwable e e))]
+     (if-not (instance? Throwable outcome)
+       (throw (ex-info "expected this tool call to fail, but it returned a result"
+                       {:result outcome}))
+       (let [{:keys [class code] :as error} (tools.error/classify outcome)]
+         (cond-> {:class class :code code}
+           (= :recoverable class)
+           (assoc :text (tools.error/recoverable-text error tool-names))))))))
 
 (defn mock-llm-response
   "Create a mock LLM response (reducible) from high-level parts."
@@ -190,19 +229,3 @@
                                        :display-name "snip"
                                        :snippet-id   Integer/MAX_VALUE}}}
               {:lib/type :mbql.stage/mbql}]})
-
-;;; ──────────────────────────────────────────────────────────────────
-;;; Profiles
-;;; ──────────────────────────────────────────────────────────────────
-
-(defn do-with-registered-profile!
-  "Run `thunk` with `profile` registered in the agent profile registry, restoring the registry afterwards. For
-  profiles the application defines but does not register, such as [[profiles/explorations-profile]]."
-  [profile thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-registered-profile!")
-  (let [registry @#'profiles/*profiles]
-    (try
-      (#'profiles/register-profile! profile)
-      (thunk)
-      (finally
-        (swap! registry dissoc (:name profile))))))

@@ -6,9 +6,10 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.database-routing.core :as database-routing]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
@@ -54,6 +55,15 @@
   "True if `m`'s keywordized `:type` equals `t`."
   [m t]
   (= t (keyword (:type m))))
+
+(defn create-target-schema!
+  "Creates a transform's target `schema` on database `db-id` when it doesn't exist, under a cluster lock per database so concurrent transforms targeting a new schema don't race to create it."
+  [driver db-id conn-spec schema]
+  (when (and (not (str/blank? schema))
+             (not (driver/schema-exists? driver db-id schema)))
+    (cluster-lock/with-cluster-lock (keyword "metabase.transforms-base.util" (str "create-target-schema-" db-id))
+      (when-not (driver/schema-exists? driver db-id schema)
+        (driver/create-schema-if-needed! driver conn-spec schema)))))
 
 (defn query-transform?
   "Check if this is a query transform: native query / mbql query."
@@ -183,7 +193,7 @@
    This handles the case where transforms create tables without explicit schema
    but the driver needs a schema to find the table during sync."
   [driver database table]
-  (when-let [default-schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
+  (when-let [default-schema (:default_schema database)]
     (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
       default-schema)))
 
@@ -676,6 +686,15 @@
                                                   (= status :failed)
                                                   (assoc :error_message "Index was not found on the target table after the transform ran."))))))
 
+(defn- mark-indexes-unverifiable!
+  "Fail the still-running `managed` requests with the driver's reason when the warehouse read that verification needs
+  has failed. Only running rows change, so the run's generic `finally` backstop finds nothing left to relabel."
+  [driver managed schema table-name ^Throwable t]
+  (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s: %s" schema table-name (ex-message t))
+  (table-index/mark-unverified-running-indexes-failed!
+   (into #{} (map :id) managed)
+   (str "Couldn't read the table's indexes to verify this one: " (reconcile/driver-error-message driver t))))
+
 (defn verify-managed-indexes!
   "Reconcile each index request against what's physically in the warehouse and set its `:status`.
   Only runs on full-create runs (same guard as [[apply-target-indexes!]])."
@@ -688,11 +707,13 @@
       (when-let [managed (seq managed)]
         (let [database (transforms-base.db/database (transforms-base.i/target-db-id transform))
               {:keys [schema] table-name :name} (:target transform)]
-          (if-some [warehouse-indexes (reconcile/fetch-warehouse-indexes database schema table-name)]
+          (when-some [warehouse-indexes (try
+                                          (reconcile/fetch-warehouse-indexes database schema table-name)
+                                          (catch Exception e
+                                            (mark-indexes-unverifiable! (:engine database) managed schema table-name e)
+                                            nil))]
             (apply-index-outcomes!
-             (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))
-            (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s; leaving %d request(s) unchanged"
-                       schema table-name (count managed))))))))
+             (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))))))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.
@@ -711,9 +732,10 @@
         {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
-        database (transforms-base.db/database db-id)]
+        database (transforms-base.db/database db-id)
+        table (sync-target! target database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
-    (when-let [table (sync-target! target database)]
+    (when table
       (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
       (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
@@ -725,6 +747,7 @@
         (log/warnf "refresh-table-stats! failed for %s.%s: %s" (:schema target) (:name target) (ex-message t))))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
+      (dependencies.hooks/after-transform-run (:id transform) (:id table))
       (events/publish-event! :event/transform-run-complete
                              {:object {:db-id          db-id
                                        :transform-id   (:id transform)

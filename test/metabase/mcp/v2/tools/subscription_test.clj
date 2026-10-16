@@ -9,6 +9,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.subscription :as tools.subscription]
    [metabase.test :as mt]
@@ -33,9 +34,14 @@
   (boolean (or error (:isError result))))
 
 (defn- response-text
-  "The outcome's text block, or a registry-level rejection's message."
+  "The outcome's text block, or a registry-level rejection's message. A successful result must open with a
+   data boundary, which is stripped; error text is returned raw."
   [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  (let [text (-> result :content first :text)]
+    (cond
+      error             (message/render (:message error))
+      (:isError result) text
+      :else             (v2.tu/strip-data-boundary text))))
 
 (defn- tool-result
   [outcome]
@@ -75,7 +81,7 @@
       (mt/with-temp [:model/Card {card-id :id} {:name "Revenue"}
                      :model/Dashboard {dash-id :id} {:name "Sales KPIs"}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-        (let [result (tool-result (call-tool! :crowberto nil
+        (let [result (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                               (wire {:method       "create"
                                                      :dashboard_id dash-id
                                                      :schedule     {:schedule_type "daily" :schedule_hour 9}})))]
@@ -106,7 +112,7 @@
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id nil :row 2 :col 0
                                              :visualization_settings {:virtual_card {:display "text"}
                                                                       :text "hello"}}]
-        (let [result (tool-result (call-tool! :crowberto nil
+        (let [result (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                               (wire {:method       "create"
                                                      :dashboard_id dash-id
                                                      :schedule     {:schedule_type "hourly"}})))]
@@ -121,7 +127,7 @@
             least one card, and the bare 400 doesn't say why"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Empty"}]
       (is (re-find #"no cards"
-                   (tool-error (call-tool! :crowberto nil
+                   (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method       "create"
                                                   :dashboard_id dash-id
                                                   :schedule     {:schedule_type "hourly"}}))))))))
@@ -129,7 +135,7 @@
 (deftest create-requires-dashboard-id-test
   (testing "GHY-4156: create without a dashboard_id is a teaching error, not a schema dump"
     (is (re-find #"\"dashboard_id\" is required"
-                 (tool-error (call-tool! :crowberto nil
+                 (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                          (wire {:method "create"
                                                 :schedule {:schedule_type "hourly"}})))))))
 
@@ -137,13 +143,13 @@
   (testing "GHY-4156: create without a schedule is a teaching error"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}]
       (is (re-find #"\"schedule\" is required"
-                   (tool-error (call-tool! :crowberto nil
+                   (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method "create" :dashboard_id dash-id}))))))))
 
 (deftest update-requires-id-test
   (testing "GHY-4156: update without an id is a teaching error"
     (is (re-find #"\"id\" is required"
-                 (tool-error (call-tool! :crowberto nil (wire {:method "update"})))))))
+                 (tool-error (call-tool! :crowberto v2.tu/all-scopes (wire {:method "update"})))))))
 
 (deftest create-with-explicit-recipients-test
   (testing "GHY-4156: recipients accept both user ids and raw email addresses, the two shapes the
@@ -152,7 +158,7 @@
       (mt/with-temp [:model/Card {card-id :id} {}
                      :model/Dashboard {dash-id :id} {:name "Sales KPIs"}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-        (let [result (tool-result (call-tool! :crowberto nil
+        (let [result (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                               (wire {:method       "create"
                                                      :dashboard_id dash-id
                                                      :schedule     {:schedule_type "daily" :schedule_hour 8}
@@ -177,7 +183,7 @@
           (mt/with-temp [:model/Card {card-id :id} {}
                          :model/Dashboard {dash-id :id} {:name "Sales KPIs"}
                          :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-            (let [result (tool-result (call-tool! :crowberto nil
+            (let [result (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                                   (wire {:method        "create"
                                                          :dashboard_id  dash-id
                                                          :schedule      {:schedule_type "daily" :schedule_hour 8}
@@ -198,7 +204,7 @@
                        :model/Dashboard {dash-id :id} {}
                        :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
           (is (re-find #"slack_channel"
-                       (tool-error (call-tool! :crowberto nil
+                       (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                                (wire {:method       "create"
                                                       :dashboard_id dash-id
                                                       :schedule     {:schedule_type "hourly"}
@@ -213,7 +219,7 @@
                        :model/Dashboard {dash-id :id} {}
                        :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
           (is (re-find #"nowhere"
-                       (tool-error (call-tool! :crowberto nil
+                       (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                                (wire {:method        "create"
                                                       :dashboard_id  dash-id
                                                       :schedule      {:schedule_type "hourly"}
@@ -227,7 +233,7 @@
                      :model/Dashboard {dash-id :id} {}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (is (re-find #"Slack is not connected"
-                     (tool-error (call-tool! :crowberto nil
+                     (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                              (wire {:method        "create"
                                                     :dashboard_id  dash-id
                                                     :schedule      {:schedule_type "hourly"}
@@ -242,7 +248,7 @@
                        :model/Dashboard {dash-id :id} {}
                        :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
           (is (re-find #"recipients"
-                       (tool-error (call-tool! :crowberto nil
+                       (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                                (wire {:method        "create"
                                                       :dashboard_id  dash-id
                                                       :schedule      {:schedule_type "hourly"}
@@ -264,14 +270,14 @@
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
                                                    :user_id (mt/user->id :rasta)}]
       (is (re-find #"nobody"
-                   (tool-error (call-tool! :crowberto nil
+                   (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method       "create"
                                                   :dashboard_id dash-id
                                                   :schedule     {:schedule_type "hourly"}
                                                   :recipients   []})))))
       (testing "and on update, where it would empty a list that currently has people on it"
         (is (re-find #"nobody"
-                     (tool-error (call-tool! :crowberto nil
+                     (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                              (wire {:method "update" :id pulse-id :recipients []})))))
         (is (= [(mt/user->id :rasta)]
                (t2/select-fn-vec :user_id :model/PulseChannelRecipient :pulse_channel_id pc-id)))))))
@@ -293,7 +299,7 @@
                                                      :user_id (mt/user->id :rasta)}]
         (testing "a string that isn't an email address"
           (is (re-find #"neither a user id nor an email address"
-                       (tool-error (call-tool! :crowberto nil
+                       (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                                (wire {:method       "create"
                                                       :dashboard_id dash-id
                                                       :schedule     {:schedule_type "hourly"}
@@ -301,14 +307,14 @@
         (testing "a user id nobody has — named as the id it is, rather than surfacing as the FK
                   violation the insert would otherwise be"
           (is (re-find #"No active user with id 13371337"
-                       (tool-error (call-tool! :crowberto nil
+                       (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                                (wire {:method       "create"
                                                       :dashboard_id dash-id
                                                       :schedule     {:schedule_type "hourly"}
                                                       :recipients   [13371337]}))))))
         (testing "on update too, and the stored recipients are left alone"
           (is (re-find #"neither a user id nor an email address"
-                       (tool-error (call-tool! :crowberto nil
+                       (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                                (wire {:method "update" :id pulse-id
                                                       :recipients ["ops at example.com"]})))))
           (is (= [(mt/user->id :rasta)]
@@ -324,7 +330,7 @@
                    :model/Dashboard {dash-id :id} {}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
       (are [schedule expected]
-           (let [error (tool-error (call-tool! :crowberto nil
+           (let [error (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                                (wire {:method       "create"
                                                       :dashboard_id dash-id
                                                       :schedule     schedule})))]
@@ -349,7 +355,7 @@
       (mt/with-temp [:model/Card {card-id :id} {}
                      :model/Dashboard {dash-id :id} {}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-        (let [result (tool-result (call-tool! :crowberto nil
+        (let [result (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                               (wire {:method       "create"
                                                      :dashboard_id dash-id
                                                      :schedule     {:schedule_type  "monthly"
@@ -375,7 +381,7 @@
                         :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
                                                                       :type "string/=" :slug "category"}]}
                         :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-           (let [result (tool-result (call-tool! :crowberto nil
+           (let [result (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                                  (wire {:method       "create"
                                                         :dashboard_id dash-id
                                                         :schedule     {:schedule_type "hourly"}
@@ -393,13 +399,13 @@
                                                                      :type "string/=" :slug "category"}]}
                        :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
           (is (re-find #"dashboard-subscription-filters"
-                       (tool-error (call-tool! :crowberto nil
+                       (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                                (wire {:method       "create"
                                                       :dashboard_id dash-id
                                                       :schedule     {:schedule_type "hourly"}
                                                       :parameters   [{:id "cat" :value "Gadget"}]})))))
           (testing "a subscription with no parameters is unaffected"
-            (is (some? (tool-result (call-tool! :crowberto nil
+            (is (some? (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                                 (wire {:method       "create"
                                                        :dashboard_id dash-id
                                                        :schedule     {:schedule_type "hourly"}})))))))))))
@@ -417,7 +423,7 @@
                       :model/Dashboard {dash-id :id} {:parameters [{:id "cat" :name "Category"
                                                                     :type "string/=" :slug "category"}]}
                       :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-         (let [err (tool-error (call-tool! :crowberto nil
+         (let [err (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method       "create"
                                                   :dashboard_id dash-id
                                                   :schedule     {:schedule_type "hourly"}
@@ -435,7 +441,7 @@
                                                                     :name "Category"
                                                                     :type "string/=" :slug "category"}]}
                       :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-         (let [err (tool-error (call-tool! :crowberto nil
+         (let [err (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method       "create"
                                                   :dashboard_id dash-id
                                                   :schedule     {:schedule_type "hourly"}
@@ -460,7 +466,7 @@
                                                     :details {:include_pdf true}}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
                                                    :user_id (mt/user->id :rasta)}]
-      (tool-result (call-tool! :crowberto nil
+      (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                (wire {:method   "update"
                                       :id       pulse-id
                                       :schedule {:schedule_type "daily" :schedule_hour 7}})))
@@ -468,12 +474,12 @@
           "a schedule-only edit must not erase the channel's format details")
       (testing "slack_channel on an email target is a teaching error, not a silent no-op"
         (is (re-find #"slack_channel"
-                     (tool-error (call-tool! :crowberto nil
+                     (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                              (wire {:method "update" :id pulse-id :slack_channel "data-team"})))))
         (is (= :email (t2/select-one-fn :channel_type :model/PulseChannel :id pc-id))))
       (testing "and on create, where the channel defaults to email"
         (is (re-find #"slack_channel"
-                     (tool-error (call-tool! :crowberto nil
+                     (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                              (wire {:method        "create"
                                                     :dashboard_id  dash-id
                                                     :schedule      {:schedule_type "daily" :schedule_hour 9}
@@ -491,7 +497,7 @@
                                                     :schedule_type :daily :schedule_hour 15}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
                                                    :user_id (mt/user->id :rasta)}]
-      (tool-result (call-tool! :crowberto nil
+      (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                (wire {:method   "update"
                                       :id       pulse-id
                                       :schedule {:schedule_type "weekly" :schedule_hour 7
@@ -517,7 +523,7 @@
                                                     :schedule_type :daily :schedule_hour 15}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
                                                    :user_id (mt/user->id :rasta)}]
-      (tool-result (call-tool! :crowberto nil
+      (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                (wire {:method     "update"
                                       :id         pulse-id
                                       :recipients [(mt/user->id :lucky)]})))
@@ -536,7 +542,7 @@
                        :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
                        :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
                                               :schedule_type :daily :schedule_hour 15}]
-          (tool-result (call-tool! :crowberto nil
+          (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                    (wire {:method        "update"
                                           :id            pulse-id
                                           :channel       "slack"
@@ -558,7 +564,7 @@
                                           :details {:channel "#x"}
                                           :schedule_type :daily :schedule_hour 15}]
       (is (re-find #"\"channel\""
-                   (tool-error (call-tool! :crowberto nil
+                   (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method   "update"
                                                   :id       pulse-id
                                                   :schedule {:schedule_type "hourly"}}))))))))
@@ -573,10 +579,10 @@
                    :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
                    :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
                                           :schedule_type :daily :schedule_hour 15}]
-      (is (true? (:archived (tool-result (call-tool! :crowberto nil
+      (is (true? (:archived (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                                      (wire {:method "update" :id pulse-id :archived true}))))))
       (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
-      (tool-result (call-tool! :crowberto nil (wire {:method "update" :id pulse-id :archived false})))
+      (tool-result (call-tool! :crowberto v2.tu/all-scopes (wire {:method "update" :id pulse-id :archived false})))
       (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))))
 
 (deftest archived-subscriptions-stay-paused-test
@@ -595,7 +601,7 @@
                                                     :details {:channel "#ops"}
                                                     :schedule_type :daily :schedule_hour 15}]
       (testing "archiving and editing a channel in one call disables every channel"
-        (tool-result (call-tool! :crowberto nil
+        (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                  (wire {:method   "update"
                                         :id       pulse-id
                                         :archived true
@@ -607,7 +613,7 @@
                  (mapv :enabled (sort-by :id [(t2/select-one :model/PulseChannel :id pc-id)
                                               (t2/select-one :model/PulseChannel :id sc-id)]))))))
       (testing "a later schedule-only edit doesn't quietly resume it"
-        (tool-result (call-tool! :crowberto nil
+        (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                  (wire {:method   "update"
                                         :id       pulse-id
                                         :channel  "email"
@@ -615,7 +621,7 @@
         (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id)))
         (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id))))
       (testing "unarchiving re-enables the channels"
-        (tool-result (call-tool! :crowberto nil (wire {:method "update" :id pulse-id :archived false})))
+        (tool-result (call-tool! :crowberto v2.tu/all-scopes (wire {:method "update" :id pulse-id :archived false})))
         (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))))))
 
 (deftest unarchiving-while-editing-a-channel-re-enables-it-test
@@ -630,7 +636,7 @@
                    :model/PulseChannel {pc-id :id} {:pulse_id pulse-id :channel_type :email
                                                     :enabled false
                                                     :schedule_type :daily :schedule_hour 15}]
-      (tool-result (call-tool! :crowberto nil
+      (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                (wire {:method   "update"
                                       :id       pulse-id
                                       :archived false
@@ -650,7 +656,7 @@
                    :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
                                           :schedule_type :daily :schedule_hour 15}]
       (is (true? (:skip_if_empty
-                  (tool-result (call-tool! :crowberto nil
+                  (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method "update" :id pulse-id :skip_if_empty true})))))))))
 
 (deftest update-leaves-cards-alone-test
@@ -663,7 +669,7 @@
                    :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
                    :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
                                           :schedule_type :daily :schedule_hour 15}]
-      (tool-result (call-tool! :crowberto nil (wire {:method "update" :id pulse-id :skip_if_empty true})))
+      (tool-result (call-tool! :crowberto v2.tu/all-scopes (wire {:method "update" :id pulse-id :skip_if_empty true})))
       (is (= [card-id] (t2/select-fn-vec :card_id :model/PulseCard :pulse_id pulse-id))))))
 
 (deftest entity-id-is-accepted-test
@@ -676,7 +682,7 @@
                    :model/PulseChannel _ {:pulse_id (:id pulse) :channel_type :email
                                           :schedule_type :daily :schedule_hour 15}]
       (is (= (:id pulse)
-             (:id (tool-result (call-tool! :crowberto nil
+             (:id (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method "update" :id (:entity_id pulse)
                                                   :skip_if_empty true})))))))))
 
@@ -687,7 +693,7 @@
                      :model/Dashboard dash {:name "Sales KPIs"}
                      :model/DashboardCard _ {:dashboard_id (:id dash) :card_id card-id}]
         (is (= (:id dash)
-               (:dashboard_id (tool-result (call-tool! :crowberto nil
+               (:dashboard_id (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                                        (wire {:method       "create"
                                                               :dashboard_id (:entity_id dash)
                                                               :schedule     {:schedule_type "hourly"}}))))))))))
@@ -702,7 +708,7 @@
                                                 :creator_id (mt/user->id :crowberto)}
                    :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}]
       (is (re-find #"not found"
-                   (tool-error (call-tool! :crowberto nil
+                   (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method "update" :id pulse-id :archived true}))))))))
 
 (deftest update-requires-write-permission-test
@@ -718,7 +724,7 @@
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
                                                    :user_id (mt/user->id :rasta)}]
       (is (re-find #"not found"
-                   (tool-error (call-tool! :rasta nil
+                   (tool-error (call-tool! :rasta v2.tu/all-scopes
                                            (wire {:method "update" :id pulse-id :archived true}))))
           "the refusal must be the collapsed not-found, not a distinguishable 403 — rasta is a
            recipient, so a 403 here would tell subscriptions she is a target of apart from ids
@@ -747,22 +753,22 @@
                      :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
                                                      :user_id (mt/user->id :rasta)}]
         (let [unrelated-id (inc (or (t2/select-one-pk :model/Pulse {:order-by [[:id :desc]]}) 0))
-              baseline     (tool-error (call-tool! :rasta nil
+              baseline     (tool-error (call-tool! :rasta v2.tu/all-scopes
                                                    (wire {:method "update" :id unrelated-id :archived true})))]
           (testing "an unknown parameter id does not disclose the dashboard's parameter vocabulary"
-            (let [err (tool-error (call-tool! :rasta nil
+            (let [err (tool-error (call-tool! :rasta v2.tu/all-scopes
                                               (wire {:method "update" :id pulse-id
                                                      :parameters [{:id "zzz" :value 1}]})))]
               (is (not (re-find #"secret_param" err)))
               (is (re-find #"not found" err))))
           (testing "a recipient id does not disclose whether that user exists and is active"
             (is (re-find #"not found"
-                         (tool-error (call-tool! :rasta nil
+                         (tool-error (call-tool! :rasta v2.tu/all-scopes
                                                  (wire {:method "update" :id pulse-id
                                                         :recipients [Integer/MAX_VALUE]}))))))
           (testing "the rejection is byte-identical to the one an id she knows nothing about gets"
             (is (= (str/replace baseline (str unrelated-id) "<id>")
-                   (str/replace (tool-error (call-tool! :rasta nil
+                   (str/replace (tool-error (call-tool! :rasta v2.tu/all-scopes
                                                         (wire {:method "update" :id pulse-id :archived true})))
                                 (str pulse-id) "<id>"))))
           (is (false? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))))))
@@ -784,7 +790,7 @@
             ;; `tool-error` throws on an unexpected success, which would abort the whole doseq and
             ;; report only the first regressed schedule type. Read the outcome directly so each
             ;; case is asserted independently.
-            (let [outcome (call-tool! :crowberto nil
+            (let [outcome (call-tool! :crowberto v2.tu/all-scopes
                                       (wire {:method       "create"
                                              :dashboard_id dash-id
                                              :schedule     schedule}))
@@ -794,7 +800,7 @@
               (is (str/includes? err (str "\"" (:schedule_type schedule) "\" schedule doesn't use \"" ignored "\"")))
               (is (re-find #"would be ignored" err)))))
         (testing "an explicit null is an omission, not a request, so it is not refused"
-          (is (some? (tool-result (call-tool! :crowberto nil
+          (is (some? (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                               (wire {:method       "create"
                                                      :dashboard_id dash-id
                                                      :schedule     {:schedule_type "hourly"
@@ -817,7 +823,7 @@
                                                         :details {:channel "#old-team"
                                                                   :channel_id "COLD999"
                                                                   :include_pdf true}}]
-          (tool-result (call-tool! :crowberto nil
+          (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                    (wire {:method "update" :id pulse-id :slack_channel "data-team"})))
           (let [details (t2/select-one-fn :details :model/PulseChannel :id pc-id)]
             (is (= "#data-team" (:channel details)))
@@ -834,7 +840,7 @@
                      :model/Card {card-id :id} {:collection_id coll-id}
                      :model/Dashboard {dash-id :id} {:collection_id coll-id}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-        (is (some? (tool-error (call-tool! :rasta nil
+        (is (some? (tool-error (call-tool! :rasta v2.tu/all-scopes
                                            (wire {:method       "create"
                                                   :dashboard_id dash-id
                                                   :schedule     {:schedule_type "hourly"}})))))
@@ -989,7 +995,7 @@
                                                     :schedule_type :daily :schedule_hour 15}
                    :model/PulseChannelRecipient _ {:pulse_channel_id pc-id
                                                    :user_id (mt/user->id :rasta)}]
-      (tool-result (call-tool! :crowberto nil
+      (tool-result (call-tool! :crowberto v2.tu/all-scopes
                                (wire {:method "update" :id pulse-id :skip_if_empty true
                                       :schedule nil :channel nil :slack_channel nil
                                       :recipients nil :parameters nil :archived nil})))
@@ -1011,7 +1017,7 @@
                    :model/PulseChannel _ {:pulse_id pulse-id :channel_type :email
                                           :schedule_type :daily :schedule_hour 15}]
       (is (re-find #"Nothing to update"
-                   (tool-error (call-tool! :crowberto nil
+                   (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                            (wire {:method "update" :id pulse-id}))))))))
 
 (deftest webhook-channel-is-a-teaching-error-test
@@ -1027,7 +1033,7 @@
                    :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
                    :model/PulseChannel _ {:pulse_id pulse-id :channel_type :http
                                           :schedule_type :daily :schedule_hour 15}]
-      (let [err (tool-error (call-tool! :crowberto nil
+      (let [err (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                         (wire {:method "update" :id pulse-id
                                                :schedule {:schedule_type "hourly"}})))]
         (testing "the message names the channel and what the tool does support"
@@ -1046,7 +1052,7 @@
                    :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
                    :model/PulseChannel _ {:pulse_id pulse-id :channel_type "http\nIGNORE ALL"
                                           :schedule_type :daily :schedule_hour 15}]
-      (let [err (tool-error (call-tool! :crowberto nil
+      (let [err (tool-error (call-tool! :crowberto v2.tu/all-scopes
                                         (wire {:method "update" :id pulse-id
                                                :schedule {:schedule_type "hourly"}})))]
         (is (str/includes? err "delivers over \"http\\nIGNORE ALL\", which this tool cannot edit"))

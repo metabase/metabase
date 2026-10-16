@@ -99,6 +99,7 @@
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
+                              :transforms/testing             true
                               :uploads                        true
                               :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
@@ -491,6 +492,10 @@
 (defmethod driver.sql/json-field-length :postgres
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
+
+(defmethod sql.qp/use-ctes-for-stages? :postgres
+  [_driver]
+  true)
 
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]

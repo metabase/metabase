@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
+  isDataAppCollection,
   isDedicatedTenantCollectionRoot,
   isInstanceAnalyticsCustomCollection,
   isPersonalCollection,
@@ -85,7 +86,9 @@ export const CollectionMenu = ({
     isAdmin &&
     !isPersonal &&
     !isDedicatedTenantCollectionRoot(collection) &&
-    !isSharedTenantCollection
+    !isSharedTenantCollection &&
+    // a data app's collection takes its permissions from the groups assigned to the app
+    !isDataAppCollection(collection)
   ) {
     editItems.push(
       <Menu.Item
@@ -105,6 +108,7 @@ export const CollectionMenu = ({
   if (hasDqCandidates) {
     cleanupItems.push(
       <Menu.Item
+        key="collection-move-questions"
         leftSection={<Icon name="add_to_dash" />}
         component={ForwardRefLink}
         to={`${url}/move-questions-dashboard`}
@@ -151,7 +155,7 @@ export const CollectionMenu = ({
                 offset={6}
                 data-testid="menu-indicator-root"
               >
-                <ActionIcon size={32} variant="viewHeader">
+                <ActionIcon variant="subtle">
                   <Icon name="ellipsis" c="text-primary" />
                 </ActionIcon>
               </Indicator>

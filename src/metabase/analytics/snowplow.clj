@@ -45,13 +45,13 @@
    :snowplow/metabot          "1-0-1"
    :snowplow/search           "1-0-1"
    :snowplow/model            "1-0-0"
-   :snowplow/timeline         "1-0-0"
+   :snowplow/timeline         "1-0-1"
    :snowplow/task             "1-0-0"
    :snowplow/upsell           "1-0-0"
    :snowplow/action           "1-0-0"
    :snowplow/embed_share      "1-0-2"
    :snowplow/llm_usage        "1-0-0"
-   :snowplow/token_usage      "1-0-5"
+   :snowplow/token_usage      "1-0-6"
    :snowplow/serialization    "1-0-1"
    :snowplow/simple_event     "1-0-0"
    :snowplow/cleanup          "1-0-0"
@@ -146,6 +146,8 @@
   [:map {:closed true}
    [:request-id                    {:optional true} [:maybe :string]]
    [:model-id                      {:optional true} [:maybe :string]]
+   [:provider                      {:optional true} [:maybe :string]]
+   [:model-name                    {:optional true} [:maybe :string]]
    [:total-tokens                  {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:prompt-tokens                 {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:completion-tokens             {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]

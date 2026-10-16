@@ -13,6 +13,7 @@ import {
   type EChartsSeriesMouseEvent,
   INDEX_KEY,
   X_AXIS_DATA_KEY,
+  foldRowChartModel,
   getDatasetKey,
 } from "metabase/viz-core";
 import {
@@ -27,7 +28,9 @@ import {
   getAdjustedBrushEndEvent,
   getBrushClickObject,
   getEventDimensions,
+  getGoalLineHoverData,
   getSeriesClickData,
+  getSeriesHovered,
   getTooltipModel,
   normalizeDimensionValue,
 } from "./events";
@@ -225,57 +228,6 @@ describe("getEventDimensions", () => {
       { column: sourceColumn, value: "Affiliate" },
     ]);
   });
-
-  it("includes the x-axis breakout when clicking a bar with only metric data (#73448)", () => {
-    const categoryColumn = createMockColumn({
-      name: "CATEGORY",
-      display_name: "Product → Category",
-      source: "breakout",
-      base_type: "type/Text",
-      effective_type: "type/Text",
-    });
-    const countColumn = createMockColumn({
-      name: "count",
-      display_name: "Count",
-      source: "aggregation",
-      base_type: "type/BigInteger",
-      effective_type: "type/BigInteger",
-    });
-    const countKey = `${CARD_ID}:count`;
-    const datum: Datum = {
-      [X_AXIS_DATA_KEY]: "Doohickey",
-      [countKey]: 3976,
-    };
-    const chartModel = createMockCartesianChartModel({
-      columnByDataKey: {
-        [countKey]: countColumn,
-      },
-    });
-    const categoryDimensionModel: DimensionModel = {
-      column: categoryColumn,
-      columnIndex: 0,
-      columnByCardId: { [CARD_ID]: categoryColumn },
-      columns: [categoryColumn],
-    };
-    const seriesModel = createMockSeriesModel({
-      dataKey: countKey,
-      column: countColumn,
-      columnIndex: 1,
-      cardId: CARD_ID,
-      vizSettingsKey: "count",
-    });
-
-    const dimensions = getEventDimensions(
-      chartModel,
-      datum,
-      categoryDimensionModel,
-      seriesModel,
-    );
-
-    expect(dimensions).toEqual([
-      { column: categoryColumn, value: "Doohickey" },
-    ]);
-  });
 });
 
 describe("getSeriesClickData", () => {
@@ -372,9 +324,11 @@ describe("getSeriesClickData", () => {
       source: "breakout",
     });
     const sourceKey = getDatasetKey(sourceColumn, CARD_ID);
+    const categoryKey = getDatasetKey(categoryColumn, CARD_ID);
     const sumKey = dataKey;
     const datum: Datum = {
       [X_AXIS_DATA_KEY]: "Gadget",
+      [categoryKey]: "Gadget",
       [sourceKey]: "Affiliate",
       [sumKey]: 12,
     };
@@ -396,6 +350,7 @@ describe("getSeriesClickData", () => {
         { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
       ] as Datum[],
       columnByDataKey: {
+        [categoryKey]: categoryColumn,
         [sourceKey]: sourceColumn,
         [sumKey]: sumColumn,
       },
@@ -903,5 +858,113 @@ describe("getTooltipModel", () => {
       "Doohickey",
       "Gadget",
     ]);
+  });
+});
+
+describe("row chart folded Other row", () => {
+  const COUNT_KEY = "count";
+  const CATEGORIES = ["A", "B", "C", "D", "E"];
+
+  // Five rows in a chart tall enough for two: one kept row plus "Other (4)".
+  const getFoldedChartModel = () => {
+    const dataset: Datum[] = CATEGORIES.map((category, index) => ({
+      [X_AXIS_DATA_KEY]: category,
+      [COUNT_KEY]: 10 * (index + 1),
+    }));
+    return foldRowChartModel(
+      {
+        ...createMockCartesianChartModel({
+          seriesModels: [createMockSeriesModel({ dataKey: COUNT_KEY })],
+          seriesIdToDataKey: { [COUNT_KEY]: COUNT_KEY },
+          dataset,
+          transformedDataset: dataset.map((datum, index) => ({
+            ...datum,
+            [INDEX_KEY]: index,
+          })),
+        }),
+        stackedLabelsFormatters: {},
+        dataDensity: {
+          type: "combo",
+          seriesDataKeysWithLabels: [],
+          stackedDisplayWithLabels: [],
+          numberOfDotsBySeriesKey: {},
+          averageLabelWidth: 0,
+          totalNumberOfLabels: 0,
+        },
+      },
+      48,
+      createMockVisualizationSettings(),
+    );
+  };
+
+  const createMouseEvent = (dataIndex: number) =>
+    // A partial ECharts event: only these fields are read by the helpers under test.
+    ({
+      dataIndex,
+      seriesId: COUNT_KEY,
+      event: { event: new MouseEvent("click") },
+    }) as EChartsSeriesMouseEvent;
+
+  const OTHER_INDEX = 1;
+
+  it("names the Other row in its tooltip", () => {
+    const chartModel = getFoldedChartModel();
+
+    const tooltipModel = getTooltipModel(
+      chartModel,
+      createMockVisualizationSettings(),
+      OTHER_INDEX,
+      "row",
+      COUNT_KEY,
+    );
+
+    expect(tooltipModel?.header).toBe("Other (4)");
+  });
+
+  it("reports hovering the Other row, so the rest of the chart dims", () => {
+    const chartModel = getFoldedChartModel();
+
+    expect(getSeriesHovered(chartModel, createMouseEvent(OTHER_INDEX))).toEqual(
+      { index: 0, datumIndex: OTHER_INDEX },
+    );
+  });
+
+  it("does not drill into the Other row, like the legacy renderer", () => {
+    const chartModel = getFoldedChartModel();
+
+    expect(
+      getSeriesClickData(chartModel, {}, createMouseEvent(OTHER_INDEX)),
+    ).toBeNull();
+    expect(
+      getSeriesClickData(chartModel, {}, createMouseEvent(0)),
+    ).not.toBeNull();
+  });
+});
+
+describe("getGoalLineHoverData", () => {
+  const createMarkerElement = () =>
+    document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+  const settings = createMockVisualizationSettings({
+    "graph.goal_value": 25000,
+    "graph.goal_label": "Goal",
+  });
+
+  it("shows the goal label and formatted value when the marker is hovered", () => {
+    const hoverData = getGoalLineHoverData(
+      settings,
+      createMarkerElement(),
+      (value) => `${value} orders`,
+    );
+
+    expect(hoverData?.data).toEqual([
+      { col: null, key: "Goal", value: "25000 orders" },
+    ]);
+  });
+
+  it("anchors the tooltip to the hovered marker element", () => {
+    const marker = createMarkerElement();
+
+    expect(getGoalLineHoverData(settings, marker)?.element).toBe(marker);
   });
 });

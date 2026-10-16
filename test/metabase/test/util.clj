@@ -179,6 +179,12 @@
        :name (u.random/random-name)
        :position 0}))
 
+   :model/DataApp
+   (fn [_] {:entity_id    (u/generate-nano-id)
+            :name         (u/lower-case-en (u.random/random-name))
+            :display_name (u.random/random-name)
+            :bundle_path  "dist/index.js"})
+
    :model/Database
    (fn [_] (default-timestamped
             {:details {}
@@ -405,6 +411,20 @@
        :name            (str "Test Transform Job " (u/generate-nano-id))
        :schedule        "0 0 * * * ?"
        :ui_display_type :cron/raw}))
+
+   :model/TransformTest
+   (fn [_]
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Transform Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
+   :model/TransformTestRun
+   (fn [_]
+     {:status         "started"
+      :start_time     (t/instant)
+      :last_heartbeat (t/instant)})
 
    :model/TransformRun
    (fn [_]

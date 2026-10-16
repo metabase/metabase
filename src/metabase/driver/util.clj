@@ -166,6 +166,7 @@
               :errors      {:host (str (deferred-tru "check your host settings"))}}
              cause)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *allow-private-connection-hosts*
   "When true, an `:external-only` [[driver.settings/warehouse-allowed-networks]] policy is enforced as
   `:allow-private`. Bound only by [[do-with-database-network-policy]]."
@@ -315,6 +316,7 @@
    critical metabase features that use this check."
   5000)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *memoize-supports?*
   "If true, [[supports?]] is memoized for the application DB. Memoization is disabled in dev and test mode by default to avoid
    accidental coupling between tests."

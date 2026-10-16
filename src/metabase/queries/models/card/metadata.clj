@@ -214,6 +214,24 @@ saved later when it is ready."
                                                              :metadata/own-model-query? true}))]
     (infer-metadata query)))
 
+(defn untyped-metadata?
+  "Whether `metadata` has columns and none of them has a known base type."
+  [metadata]
+  (boolean (and (seq metadata)
+                (every? #(contains? #{nil :type/*} (:base_type %)) metadata))))
+
+(defn backfill-untyped-model-metadata!
+  "Re-infer the result metadata of each MBQL model on the Database with `database-id` whose stored metadata is
+  [[untyped-metadata?]], keeping the model overrides. A model whose metadata still cannot be inferred stays as it is."
+  [database-id]
+  ;; A model deserialized before its fields were synced stores only its overrides, because inference failed then.
+  (doseq [card  (queries.db/mbql-model-cards database-id)
+          :when (untyped-metadata? (:result_metadata card))
+          :let  [metadata (infer-metadata-with-model-overrides (:dataset_query card) card)]
+          :when (and metadata (not (untyped-metadata? metadata)))]
+    (queries.db/update-card! (:id card) {:result_metadata metadata})
+    (log/infof "Inferred the untyped result metadata of model Card %d" (:id card))))
+
 ;; TODO: Refactor this to use idents rather than names, so it's more robust.
 (defn refresh-metadata
   "Update cached result metadata to reflect changes to the underlying tables.

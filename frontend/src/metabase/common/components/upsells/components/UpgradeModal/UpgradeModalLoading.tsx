@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
-import { useGetSettingsQuery, useTokenRefreshUntil } from "metabase/settings";
+import {
+  WAITING_REFRESH_INTERVAL,
+  useGetSettingsQuery,
+  useTokenRefreshUntil,
+} from "metabase/settings";
 import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
 
 import type { UpgradeFlow } from "./types";
@@ -15,7 +19,7 @@ export function UpgradeModalLoading({
   onDone,
 }: UpgradeModalLoadingProps) {
   // Poll every second until no-upsell feature appears
-  useTokenRefreshUntil("no-upsell", { intervalMs: 1000 });
+  useTokenRefreshUntil("no-upsell", { intervalMs: WAITING_REFRESH_INTERVAL });
 
   const { data: settings } = useGetSettingsQuery();
   const tokenFeatures = settings?.["token-status"]?.features ?? [];
@@ -43,7 +47,7 @@ export function UpgradeModalLoading({
         </Stack>
 
         <Flex justify="center" w="100%">
-          <Button variant="filled" color="core-brand" disabled>
+          <Button variant="filled" color="brand" disabled>
             {t`Done`}
           </Button>
         </Flex>
@@ -82,7 +86,7 @@ export function UpgradeModalLoading({
       <Flex justify="center" w="100%">
         <Button
           variant="filled"
-          color="core-brand"
+          color="brand"
           onClick={() => {
             onDone();
             window.location.reload();

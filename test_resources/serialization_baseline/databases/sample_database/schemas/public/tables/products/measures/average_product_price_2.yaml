@@ -21,6 +21,4 @@ definition:
 entity_id: xK7mPqR2sT4uVwXyZ9a1b
 name: Average Product Price
 serdes/meta:
-- id: xK7mPqR2sT4uVwXyZ9a1b
-  label: average_product_price
-  model: Measure
+- model: Measure

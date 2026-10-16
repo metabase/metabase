@@ -8,7 +8,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
@@ -129,20 +128,15 @@
     {:output "dashboard not found"}))
 
 (defn- get-field-values
-  "Get field values for a field, creating them if they don't exist.
-   Uses the user-aware API that respects sandboxing/impersonation."
   [id->values id]
-  (if-some [field-values (get id->values id)]
-    (:values field-values)
-    (let [field (metabot.db/field id)]
-      (when (and field
-                 (params.field-values/current-user-can-fetch-field-values? field))
-        (:values (params.field-values/get-or-create-field-values! field))))))
+  (:values (get id->values id)))
 
 (defn- add-field-values
   [cols]
   (if-let [field-ids (seq (keep :id cols))]
-    (let [id->values (params.field-values/field-id->field-values-for-current-user field-ids)]
+    (let [id->values (params.field-values/get-or-create-field-values-by-field-id!
+                      (filter params.field-values/current-user-can-fetch-field-values?
+                              (t2/hydrate (metabot.db/fields (set field-ids)) :table)))]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
 
@@ -303,7 +297,6 @@
                                                   (comp (filter #(and (= target-tid (:table-id %))
                                                                       (not (base-reachable-ids (:id %)))
                                                                       (not (key-ids (:id %)))))
-                                                        (map #(metabot.tools.u/add-table-reference defq %))
                                                         (map #(metabot.tools.u/->result-column defq %))
                                                         (map (fn [rc]
                                                                (cond-> rc
@@ -387,9 +380,7 @@
                                (some->> (:dataset-query metric-card) (lib/query metadata-provider))
                                (set (keep :id base-filterable-cols))))
          visible-cols (when query-needed?
-                        (->> (lib/visible-columns base-query)
-                             permission-filter-columns
-                             (map #(metabot.tools.u/add-table-reference base-query %))))
+                        (permission-filter-columns (lib/visible-columns base-query)))
          default-temporal-breakout (when (and query-needed? with-default-temporal-breakout?)
                                      (->> breakouts
                                           (map #(lib/find-matching-column % visible-cols))
@@ -423,10 +414,7 @@
                                                        :field_id))
 
        (and source-table with-queryable-dimensions?)
-       (assoc :queryable-dimensions (into []
-                                          (comp (map #(metabot.tools.u/add-table-reference base-query %))
-                                                (map #(metabot.tools.u/->result-column metric-query %)))
-                                          queryable-columns))
+       (assoc :queryable-dimensions (mapv #(metabot.tools.u/->result-column metric-query %) queryable-columns))
 
        (seq join-required-dims)
        (assoc :join-required-dimensions join-required-dims)
@@ -501,8 +489,7 @@
            cols (when with-fields?
                   (->> (lib/visible-columns table-query -1 {:include-implicitly-joinable? false})
                        permission-filter-columns
-                       field-values-fn
-                       (map #(metabot.tools.u/add-table-reference table-query %))))
+                       field-values-fn))
            related (when with-related-tables?
                      (related-tables table-query with-fields? field-values-fn))]
        (-> {:id id
@@ -723,12 +710,12 @@
             cards))))
 
 (defn answer-sources
-  "Get the details of metrics and models in the scope of the Metabot instance with ID `metabot-id`.
-  Accepts a map with `:metabot-id` and optional options for field values."
-  [{:keys [metabot-id] :as options}]
-  (if-let [normalized-metabot-id (metabot.config/normalize-metabot-id metabot-id)]
+  "Get the details of metrics and models in the scope of a Metabot row.
+  Accepts a map with `:metabot` and optional options for field values."
+  [{:keys [metabot] :as options}]
+  (if-let [metabot-id (:id metabot)]
     (lib-be/with-metadata-provider-cache
-      (let [metrics-and-models (metabot.tools.u/get-metrics-and-models normalized-metabot-id)
+      (let [metrics-and-models (metabot.tools.u/get-metrics-and-models metabot-id)
             {metrics :metric, models :model}
             (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
                        detail (cards-details card-type database-id cards options)]
@@ -741,8 +728,8 @@
         {:structured-output {:result-type :answer-sources
                              :metrics (vec metrics)
                              :models  (vec models)}}))
-    (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
-                    {:metabot_id metabot-id, :status-code 400}))))
+    (throw (ex-info (i18n/tru "Unknown Metabot.")
+                    {:status-code 400}))))
 
 (defn get-table-details
   "Get information about the table, question or model with .

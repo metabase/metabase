@@ -84,7 +84,7 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
   });
 
   // Capture every POST to the proxy into a closure array so we can assert across
-  // the several immediate (bufferSize: 1) posts a single mount produces.
+  // the one or more posts a single mount produces.
   const interceptAnalyticsProxy = () => {
     const capturedEvents: SdkEventData[] = [];
     cy.intercept("POST", "/api/analytics-proxy", (request) => {
@@ -108,10 +108,9 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
       cy.findByText("Product ID").should("be.visible");
     });
 
-    // Beacon and component event are serialized by Snowplow's executingQueue:
-    // event 2 is only sent after event 1's XHR response arrives, so they come
-    // in two separate requests. Wait for both before asserting.
-    cy.wait(["@analyticsProxy", "@analyticsProxy"]);
+    // Snowplow v4 batches same-tick events into one POST, so both events may share a request.
+    // Wait for the first request; the retrying assertions below cover the rest.
+    cy.wait("@analyticsProxy");
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const componentEvent = findEventByComponent(events, "StaticQuestion");
@@ -208,8 +207,8 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     });
 
     // beacon already fired in test 1 (once per JS context);
-    // InteractiveQuestion + CollectionBrowser = 2 component events
-    cy.wait(["@analyticsProxy", "@analyticsProxy"]);
+    // InteractiveQuestion + CollectionBrowser = 2 component events, possibly in one POST
+    cy.wait("@analyticsProxy");
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const interactiveQuestionEvent = findEventByComponent(

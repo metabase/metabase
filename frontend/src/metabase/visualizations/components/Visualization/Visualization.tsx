@@ -28,7 +28,7 @@ import type { Dispatch, State } from "metabase/redux/store";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
-import type { IconProps } from "metabase/ui";
+import { Box, Flex, type IconProps, Stack } from "metabase/ui";
 import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoize } from "metabase/utils/memoize";
@@ -71,6 +71,7 @@ import type {
   SeriesCard,
   SingleSeries,
   TimelineEvent,
+  TimelineEventsVisibility,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -83,11 +84,6 @@ import { ErrorView } from "./ErrorView";
 import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import { DashCardLoadingView } from "./LoadingView/DashCardLoadingView";
 import NoResultsView from "./NoResultsView";
-import {
-  VisualizationActionButtonsContainer,
-  VisualizationHeader,
-  VisualizationRoot,
-} from "./Visualization.styled";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
 import { VisualizationRunningState } from "./VisualizationRunningState";
 import { Watermark } from "./Watermark";
@@ -164,12 +160,14 @@ type VisualizationOwnProps = {
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
-  autoAdjustSettings?: boolean;
   showTitle?: boolean;
   showWarnings?: boolean;
   hideLegend?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility;
+  onTimelineEventsShown?: () => void;
+  onTimelineEventsEnabledChange?: (isEnabled: boolean) => void;
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
@@ -633,7 +631,6 @@ class Visualization extends PureComponent<
   render() {
     const {
       actionButtons,
-      autoAdjustSettings,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -694,12 +691,15 @@ class Visualization extends PureComponent<
       style,
       tableHeaderHeight,
       timelineEvents,
+      timelineEventsVisibility,
       totalNumGridCols,
       onDeselectTimelineEvents,
       onOpenChartSettings,
       onOpenTimelines,
       onSelectTimelineEvents,
       onSeeAllEvents,
+      onTimelineEventsShown,
+      onTimelineEventsEnabledChange,
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
@@ -789,9 +789,9 @@ class Visualization extends PureComponent<
     }
 
     const extra = (
-      <VisualizationActionButtonsContainer>
+      <Flex component="span" align="center">
         {actionButtons}
-      </VisualizationActionButtonsContainer>
+      </Flex>
     );
 
     let { gridSize, gridUnit } = this.props;
@@ -839,9 +839,11 @@ class Visualization extends PureComponent<
         onError={this.onErrorBoundaryError}
         ref={this.props.forwardedRef}
       >
-        <VisualizationRoot
-          className={className}
+        <Stack
+          // A class, not h="100%": callers override the height through style
+          className={cx(CS.fullHeight, className)}
           style={style}
+          gap={0}
           data-testid="visualization-root"
           // `getUiName` should be defined (and is a required field on the TS type), but because we have javascript
           // files about visualizations, it's best if we don't risk crashing the app, hence the `?.()`
@@ -849,7 +851,7 @@ class Visualization extends PureComponent<
           ref={this.props.forwardedRef}
         >
           {!!hasHeader && (
-            <VisualizationHeader>
+            <Box pt="0.625rem" px="sm" pb="xs" flex="0 0 auto">
               <ChartCaption
                 series={series}
                 visualizerRawSeries={visualizerRawSeries}
@@ -864,7 +866,7 @@ class Visualization extends PureComponent<
                   canSelectTitle ? this.handleOnChangeCardAndRun : null
                 }
               />
-            </VisualizationHeader>
+            </Box>
           )}
           {replacementContent ? (
             replacementContent
@@ -961,12 +963,16 @@ class Visualization extends PureComponent<
                       selectedTimelineEventIds={selectedTimelineEventIds}
                       series={series}
                       settings={settings}
-                      autoAdjustSettings={!!autoAdjustSettings}
                       showAllLegendItems={showAllLegendItems}
                       hideLegend={hideLegend}
                       showTitle={!!showTitle}
                       tableHeaderHeight={tableHeaderHeight}
                       timelineEvents={timelineEvents}
+                      timelineEventsVisibility={timelineEventsVisibility}
+                      onTimelineEventsShown={onTimelineEventsShown}
+                      onTimelineEventsEnabledChange={
+                        onTimelineEventsEnabledChange
+                      }
                       totalNumGridCols={totalNumGridCols}
                       visualizationIsClickable={this.visualizationIsClickable}
                       width={width}
@@ -1023,7 +1029,7 @@ class Visualization extends PureComponent<
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             />
           )}
-        </VisualizationRoot>
+        </Stack>
       </ErrorBoundary>
     );
   }

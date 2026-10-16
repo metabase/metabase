@@ -1,7 +1,7 @@
 import type { IconName } from "metabase-types/api";
 
-import ten_thousand_component from "./10k.svg?component";
 import one_million_component from "./1m.svg?component";
+import ten_thousand_component from "./10k.svg?component";
 import add_component from "./add.svg?component";
 import add_collection_component from "./add_collection.svg?component";
 import add_column_component from "./add_column.svg?component";
@@ -71,6 +71,7 @@ import compare_component from "./compare.svg?component";
 import connections_component from "./connections.svg?component";
 import contract_component from "./contract.svg?component";
 import copy_component from "./copy.svg?component";
+import corner_down_right_component from "./corner_down_right.svg?component";
 import corner_up_right_component from "./corner_up_right.svg?component";
 import currency_component from "./currency.svg?component";
 import curve_component from "./curve.svg?component";
@@ -132,6 +133,7 @@ import grid_component from "./grid.svg?component";
 import grid_2x2_component from "./grid_2x2.svg?component";
 import grid_bordered_component from "./grid_bordered.svg?component";
 import group_component from "./group.svg?component";
+import heart_handshake_component from "./heart_handshake.svg?component";
 import history_component from "./history.svg?component";
 import home_component from "./home.svg?component";
 import horizontal_bar_component from "./horizontal_bar.svg?component";
@@ -375,6 +377,7 @@ export const Icons: Record<IconName, React.VFC> = {
   connections: connections_component,
   contract: contract_component,
   copy: copy_component,
+  corner_down_right: corner_down_right_component,
   corner_up_right: corner_up_right_component,
   currency: currency_component,
   curved: curved_component,
@@ -434,6 +437,7 @@ export const Icons: Record<IconName, React.VFC> = {
   google: google_component,
   google_drive: google_drive_component,
   google_sheet: google_sheet_component,
+  heart_handshake: heart_handshake_component,
   history: history_component,
   home: home_component,
   horizontal_bar: horizontal_bar_component,

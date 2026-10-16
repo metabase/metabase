@@ -213,6 +213,7 @@
              (log/errorf "Invalid format string %s: %s" (pr-str format-string) (ex-message e))
              format-string)))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *in-site-locale-from-setting*
   "Whether we're currently inside a call to [[site-locale-from-setting]], so we can prevent infinite recursion."
   false)

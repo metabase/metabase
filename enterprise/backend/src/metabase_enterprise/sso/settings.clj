@@ -371,7 +371,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :type        :json
   :default     []
   :feature     :sso-oidc
-  :visibility  :settings-manager
+  :visibility  :admin
   :export?     false
   :audit       :no-value
   :sensitive?  true)

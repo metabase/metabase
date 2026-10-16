@@ -12,7 +12,6 @@
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
    [metabase-enterprise.test :as met]
    [metabase.explorations.query-plan.variants :as variants]
-   [metabase.explorations.test-util :as explorations.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -28,9 +27,6 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
-
-;; The application does not mount `/api/exploration` while explorations are disabled; serve it for these tests.
-(use-fixtures :each explorations.tu/exploration-routes-fixture)
 
 (defn- venues-count-query []
   (let [mp (mt/metadata-provider)]
@@ -236,7 +232,7 @@
           {:creator-id (mt/user->id :rasta) :data-access-token token}
           (fn [{:keys [query]}]
             (testing "lucky is a non-admin with full data access and no sandbox"
-              (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+              (is (=? #"Cannot show cached results: your data access differs.*"
                       (mt/user-http-request :lucky :get 403 (format "exploration/query/%d" (:id query))))
                   "the denial is the lens refusing, not a missing data perm"))
             (testing "while a superuser streams it (bypass)"
@@ -429,7 +425,7 @@
                                :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
                                                                     :group_id (:id escape-group)}]
                   (perms/set-database-permission! escape-group (mt/id) :perms/view-data :unrestricted)
-                  (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+                  (is (=? #"Cannot show cached results: your data access differs.*"
                           (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))
                       "the denial is the lens refusing, not a missing data perm")))
               (testing "a superuser streams the cached result (bypass — superusers see every exploration)"

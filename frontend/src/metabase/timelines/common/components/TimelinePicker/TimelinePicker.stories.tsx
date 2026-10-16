@@ -7,7 +7,7 @@ import {
   createMockTimeline,
 } from "metabase-types/api/mocks";
 
-import TimelinePicker, { type TimelinePickerProps } from "./TimelinePicker";
+import { TimelinePicker, type TimelinePickerProps } from "./TimelinePicker";
 
 export default {
   title: "App/Timelines/TimelinePicker",

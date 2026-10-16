@@ -30,6 +30,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *additive-logging*
   "If custom loggers should pass logs to parent loggers (to system Metabase logs), used to clean up test output."
   true)

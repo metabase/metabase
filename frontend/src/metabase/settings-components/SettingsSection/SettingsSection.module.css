@@ -37,7 +37,7 @@
 
 /* the theme's Accordion styles remove the focus outline; restore it */
 .CollapsibleAccordion .CollapsibleControl.CollapsibleControl:focus-visible {
-  outline: 2px solid var(--mb-color-focus);
+  outline: 2px solid var(--mb-color-input-focus);
 }
 
 /* stretch the hit area over the whole header row, description included */
@@ -95,10 +95,16 @@
 /* the card fades as a whole, so the disabled control must not fade a second time */
 .CollapsibleAccordion .CollapsibleControl:disabled {
   opacity: 1;
+  background-color: transparent;
+  color: inherit;
 }
 
 /* a disabled card is a preview rather than a blocked action, so its header shows a plain cursor */
 .CollapsibleAccordion .CollapsibleControl:disabled,
 .CollapsibleAccordion .CollapsibleControl:disabled::after {
   cursor: default;
+}
+
+.TitleLabel {
+  cursor: pointer;
 }

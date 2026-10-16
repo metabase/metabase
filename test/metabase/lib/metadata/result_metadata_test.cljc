@@ -918,7 +918,7 @@
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (is (=? [{:base-type                                  :type/DateTimeWithLocalTZ
                   :display-name                               "Created At: Year"
-                  :effective-type                             :type/Integer
+                  :effective-type                             :type/DateTimeWithLocalTZ
                   ;; additional keys in field ref are WRONG
                   ::result-metadata/field-ref                 [:field "CREATED_AT" (partial = {:base-type     :type/DateTimeWithLocalTZ
                                                                                                :temporal-unit :year})]

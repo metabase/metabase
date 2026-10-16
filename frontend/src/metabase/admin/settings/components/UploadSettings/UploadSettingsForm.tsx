@@ -93,7 +93,7 @@ export function UploadSettingsFormView({
   const showError = (msg: string) => {
     setErrorMessage(msg);
     setTimeout(() => setErrorMessage(null), FEEDBACK_TIMEOUT);
-    sendToast({ icon: "warning", message: msg });
+    sendToast({ variant: "negative", message: msg });
   };
 
   const handleEnableUploads = async () => {
@@ -268,7 +268,7 @@ export function UploadSettingsFormView({
               actionFn={handleDisableUploads}
               type="button"
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               useLoadingSpinner
             />
           )

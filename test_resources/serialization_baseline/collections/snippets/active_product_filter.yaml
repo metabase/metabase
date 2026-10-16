@@ -5,6 +5,4 @@ content: '"CREATED_AT" >= DATEADD(''year'', -1, CURRENT_TIMESTAMP) AND "total_re
 creator_id: admin@example.com
 template_tags: {}
 serdes/meta:
-- id: WyQWnT23PF-SfbYLROllJ
-  label: active_product_filter
-  model: NativeQuerySnippet
+- model: NativeQuerySnippet

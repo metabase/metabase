@@ -86,7 +86,7 @@ Whether AI features are enabled.
 - [Exported as](../installation-and-operation/serialization.md): `ai-usage-max-retention-days`.
 - Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
-Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.
+Number of days to retain rows in the ai_usage_log, metabot_conversation, metabot_message, agent_api_call_log, and api_key_usage_log tables. Minimum value is 30; set to 0 to retain data indefinitely.
 
 Sets the maximum number of days Metabase preserves rows for the following application database tables:
 
@@ -94,6 +94,7 @@ Sets the maximum number of days Metabase preserves rows for the following applic
 - `metabot_conversation`
 - `metabot_message`
 - `agent_api_call_log`
+- `api_key_usage_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
 If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.
@@ -137,7 +138,7 @@ Allowed iframe hosts. Includes a list of popular hosts by default; set to ' ' to
 - [Exported as](../installation-and-operation/serialization.md): `analytics-pii-retention-enabled`.
 - [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
 
-Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics.
+Enable logging of embed path, query parameters, user attribute values, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics.
 
 ### `MB_ANON_TRACKING_ENABLED`
 
@@ -737,17 +738,23 @@ Allow admins to embed Metabase via interactive embedding?
 - Default: `false`
 - [Configuration file name](./config-file.md): `enable-embedding-modular`
 
-Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?
+Allow admins to embed Metabase via modular embedding and guest embeds?
 
-### `MB_ENABLE_EMBEDDING_SDK [DEPRECATED]`
-
-> DEPRECATED: 0.65.0
+### `MB_ENABLE_EMBEDDING_SDK`
 
 - Type: boolean
 - Default: `false`
 - [Configuration file name](./config-file.md): `enable-embedding-sdk`
 
 Allow admins to embed Metabase via the SDK?
+
+### `MB_ENABLE_EMBEDDING_SIDECAR`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `enable-embedding-sidecar`
+
+Do admins link to Metabase from their own app? Only reported for analytics.
 
 ### `MB_ENABLE_EMBEDDING_SIMPLE [DEPRECATED]`
 
@@ -901,6 +908,7 @@ Prevent the exception middleware from including stacktraces in responses.
 
 - Type: keyword
 - Default: `external-only`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Controls which types of hosts are allowed as HTTP channel destinations.
 Options:
@@ -908,6 +916,8 @@ Options:
 - allow-private (external + private networks but NOT localhost)
 - allow-all (no restrictions including localhost).
 .
+
+Set this when a notification webhook must reach a host on your private network (`allow-private`) or on this machine (`allow-all`). Default is `external-only`
 
 ### `MB_HUMANIZATION_STRATEGY`
 
@@ -937,6 +947,18 @@ Whether or not we should install the Metabase analytics database on startup. Def
   via environmment variable.
 
 Setting this environment variable to false will prevent installing the analytics database, which is handy in a migration use-case where it conflicts with the incoming database.
+
+### `MB_INTERESTINGNESS_MAX_FIELDS_PER_SYNC`
+
+- Type: integer
+- Default: `100000`
+- [Exported as](../installation-and-operation/serialization.md): `interestingness-max-fields-per-sync`.
+
+Maximum number of fields per database to score for dimension interestingness in one sync. The leftovers pass
+  scores every field whose score is still NULL, which after a release that invalidates existing scores is every field
+  in the database; this bounds how long one sync spends on that backfill, leaving the rest for the next sync. Unlike
+  `scan-max-fields-per-table` and `fingerprint-max-fields-per-table` the skipped fields are not abandoned -- they stay
+  NULL and so are picked up by the following sync, which is why this can be set far higher than those two.
 
 ### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
 
@@ -1367,14 +1389,6 @@ The Anthropic API Key.
 
 Backed by the anthropic connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
-### `MB_LLM_ANTHROPIC_MODEL`
-
-- Type: string
-- Default: `claude-opus-4-5-20251101`
-- [Configuration file name](./config-file.md): `llm-anthropic-model`
-
-The Anthropic model to use.
-
 ### `MB_LLM_AZURE_API_BASE_URL`
 
 - Type: string
@@ -1433,7 +1447,7 @@ Backed by the bedrock connection in the admin AI settings provider list: reads a
 
 The AWS region for Amazon Bedrock (e.g. us-east-1).
 
-Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured.
+Backed by the bedrock connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection. On a self-hosted Metabase, setting only the region enables Bedrock with the AWS default credentials chain, with no access keys configured. [The Bedrock models you can pick depend on the region](../ai/providers.md#the-bedrock-models-you-can-pick-depend-on-the-region).
 
 ### `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`
 
@@ -1541,14 +1555,6 @@ A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform
 
 Backed by the google connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
-### `MB_LLM_MAX_TOKENS`
-
-- Type: integer
-- Default: `4096`
-- [Configuration file name](./config-file.md): `llm-max-tokens`
-
-Maximum tokens for LLM responses.
-
 ### `MB_LLM_METABOT_PROVIDER`
 
 - Type: string
@@ -1605,6 +1611,34 @@ The Moonshot AI API Key.
 
 Backed by the moonshot connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
+### `MB_LLM_OLLAMA_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-ollama-api-base-url`
+
+The base URL of your Ollama server's OpenAI-compatible API, e.g. `http://localhost:11434/v1`, or `https://ollama.com/v1` for Ollama Cloud.
+
+Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.
+
+### `MB_LLM_OLLAMA_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-ollama-api-key`
+
+The API key for Ollama Cloud, with MB_LLM_OLLAMA_API_BASE_URL set to https://ollama.com/v1. For self-hosted servers, only needed behind an authenticated proxy.
+
+Backed by the ollama connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OLLAMA_REQUEST_TIMEOUT_MS`
+
+- Type: integer
+- Default: `300000`
+- [Configuration file name](./config-file.md): `llm-ollama-request-timeout-ms`
+
+Socket timeout in milliseconds for requests to your Ollama server.
+
 ### `MB_LLM_OPENAI_API_BASE_URL`
 
 - Type: string
@@ -1624,6 +1658,26 @@ Backed by the openai connection in the admin AI settings provider list: reads an
 The OpenAI API Key.
 
 Backed by the openai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_OPENAI_COMPATIBLE_API_BASE_URL`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openai-compatible-api-base-url`
+
+The base URL of a server that implements OpenAI's Chat Completions API, e.g. `https://api.scaleway.ai/v1`. Set `MB_LLM_METABOT_PROVIDER` to `openai-compatible/` followed by the model ID to choose its model.
+
+Backed by the openai-compatible connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list. A value set by this environment variable shadows that connection's base URL.
+
+### `MB_LLM_OPENAI_COMPATIBLE_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-openai-compatible-api-key`
+
+The API key for the server that the OpenAI-compatible connection talks to, if it asks for one.
+
+Backed by the openai-compatible connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_OPENAI_MODEL`
 
@@ -1664,22 +1718,6 @@ Connections are normally managed from the admin AI settings page. Setting this e
 
 Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_API_KEY` and friends) is equally supported, and is the simpler option when you only need one connection per provider and would rather not hand-write JSON. Each such provider becomes a read-only connection whose key is the provider type, resolved from the environment on every read, so editing one of those variables is picked up on the next restart. A provider configured this way takes precedence over a stored connection with the same key.
 
-### `MB_LLM_RATE_LIMIT_PER_IP`
-
-- Type: integer
-- Default: `100`
-- [Configuration file name](./config-file.md): `llm-rate-limit-per-ip`
-
-Maximum SQL generation requests per IP address per minute.
-
-### `MB_LLM_RATE_LIMIT_PER_USER`
-
-- Type: integer
-- Default: `20`
-- [Configuration file name](./config-file.md): `llm-rate-limit-per-user`
-
-Maximum SQL generation requests per user per minute.
-
 ### `MB_LLM_REQUEST_TIMEOUT_MS`
 
 - Type: integer
@@ -1715,6 +1753,26 @@ Backed by the vllm connection in the admin AI settings provider list: reads and 
 - [Configuration file name](./config-file.md): `llm-vllm-request-timeout-ms`
 
 Socket timeout in milliseconds for requests to your vLLM server.
+
+### `MB_LLM_XAI_API_BASE_URL`
+
+- Type: string
+- Default: `https://api.x.ai/v1`
+- [Configuration file name](./config-file.md): `llm-xai-api-base-url`
+
+The xAI API base URL used for Chat Completions.
+
+Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
+
+### `MB_LLM_XAI_API_KEY`
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `llm-xai-api-key`
+
+The xAI API Key.
+
+Backed by the xai connection in the admin AI settings provider list: reads and writes go through the llm-providers connection list, and a value set by this environment variable shadows this one field of that connection.
 
 ### `MB_LLM_ZAI_API_BASE_URL`
 
@@ -1784,6 +1842,7 @@ The custom illustration for the login page.
 
 - Type: keyword
 - Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Controls which networks Metabase may connect to for map tile servers.
   Options:
@@ -1792,6 +1851,8 @@ Controls which networks Metabase may connect to for map tile servers.
   - allow-all (no restrictions).
   Defaults to external-only on Metabase Cloud and allow-private when self-hosted.
 
+Allowed network for the map tile server.
+
 ### `MB_MAP_TILE_SERVER_URL`
 
 - Type: string
@@ -1799,6 +1860,16 @@ Controls which networks Metabase may connect to for map tile servers.
 - [Configuration file name](./config-file.md): `map-tile-server-url`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys.
+
+### `MB_MAX_UNAUTHENTICATED_REQUEST_BODY_BYTES`
+
+- Type: integer
+- Default: `4194304`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read.
+
+Applies to requests without a valid session, API key or token. The body is bounded before authentication is checked, so this is the most memory an anonymous request can make the server buffer. It covers login, setup, password reset, SSO callbacks, and public or embedded queries; none of those legitimately send more than a few hundred kilobytes. Authenticated requests are not limited.
 
 ### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
 
@@ -1826,6 +1897,13 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 - [Configuration file name](./config-file.md): `metabot-advanced-permissions`
 
 Whether the AI feature access admin page shows granular, per-tool group permissions instead of a single on/off toggle per group.
+
+### `MB_METABOT_CHAT_TURN_ASYNC_TIMEOUT_MS`
+
+- Type: positive-integer
+- Default: `1800000`
+
+Maximum duration of a Metabot chat turn in milliseconds.
 
 ### `MB_METABOT_ENABLED`
 
@@ -1858,6 +1936,14 @@ The icon for Metabot. Set to `metabot` for the default icon, or a data URI for a
 
 The display name for Metabot, shown throughout the Metabase UI.
 
+### `MB_METABOT_QUERY_EXECUTION_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
+
+Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
+
 ### `MB_METABOT_RECENT_VIEWS_ENABLED`
 
 - Type: boolean
@@ -1883,6 +1969,13 @@ Whether to show Metabot illustrations in the UI.
 - [Configuration file name](./config-file.md): `metabot-slack-signing-secret`
 
 Signing secret for verifying requests from the Metabot Slack app.
+
+### `MB_METABOT_SQL_EXECUTION_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Whether Metabot can also run SQL queries it wrote, for questions a notebook query can't express. Applies only when Metabot can run queries, and only on databases where the user may write SQL.
 
 ### `MB_MFA_CHALLENGE_SIGNING_KEY`
 
@@ -2028,9 +2121,11 @@ If Metabase stops sending notifications like alerts, it may be because long-runn
 
 - Type: keyword
 - Default: `allow-all`
-- [Configuration file name](./config-file.md): `oidc-allowed-networks`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'.
+
+Set this to tighten which networks OIDC discovery and token requests may reach; it defaults to allow-all. Other values: external-only and allow-private
 
 ### `MB_OIDC_PROVIDERS`
 
@@ -2178,7 +2273,7 @@ Network timeout (in seconds) for remote git operations such as fetch, push, clon
 - Default: `300000`
 - [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
 
-The maximum amount of time a remote sync task will be given to complete.
+How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.
 
 ### `MB_REMOTE_SYNC_TOKEN`
 
@@ -2997,6 +3092,7 @@ Note: Users with row or column security restrictions will never see suggestions.
 
 - Type: keyword
 - Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
 
 Controls which networks Metabase may connect to for warehouse connections.
 Options:
@@ -3005,6 +3101,8 @@ Options:
 - allow-all (no restrictions).
 Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
 Also covers the SSH tunnel host and the database auth-provider URLs.
+
+Set this when Metabase must reach a warehouse on a private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. Defaults to external-only on Metabase Cloud and allow-all when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies, rather than run on a policy nobody chose.
 
 ## Other environment variables
 
@@ -3291,7 +3389,7 @@ Type: integer<br>
 Default: `600000`<br>
 Since: v35.0
 
-Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might.
+Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might. Metabot chat responses aren't bound by this timeout.
 
 ### `MB_JETTY_DAEMON`
 

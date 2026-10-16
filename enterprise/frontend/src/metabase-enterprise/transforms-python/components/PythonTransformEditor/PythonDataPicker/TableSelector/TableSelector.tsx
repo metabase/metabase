@@ -74,9 +74,12 @@ export function TableSelector({
           miw={0}
           onClick={open}
           disabled={disabled}
-          classNames={{ inner: S.tableSelectorButtonInner }}
-          px="sm"
-          py="xl"
+          classNames={{
+            root: S.tableSelectorButton,
+            inner: S.tableSelectorButtonInner,
+          }}
+          py="sm"
+          h="auto"
           variant="subtle"
         >
           <Stack gap="xxs">
@@ -98,6 +101,7 @@ export function TableSelector({
         {!disabled && (
           <Tooltip label={t`Remove this table`}>
             <ActionIcon
+              variant="subtle"
               onClick={onRemove}
               mr="sm"
               aria-label={t`Remove this table`}

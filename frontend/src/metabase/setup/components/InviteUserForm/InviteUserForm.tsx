@@ -9,10 +9,8 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import type { InviteInfo, UserInfo } from "metabase/redux/store";
-import { Stack } from "metabase/ui";
+import { SimpleGrid, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-
-import S from "./InviteUserForm.module.css";
 
 const getInviteUserSchema = () =>
   Yup.object({
@@ -54,7 +52,7 @@ export const InviteUserForm = ({
       onSubmit={onSubmit}
     >
       <Form as={Stack} gap="lg" data-testid="invite-user-form">
-        <div className={S.UserFieldGroup}>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <FormTextInput
             name="first_name"
             label={t`First name`}
@@ -68,7 +66,7 @@ export const InviteUserForm = ({
             placeholder={t`Appleseed`}
             nullable
           />
-        </div>
+        </SimpleGrid>
         <FormTextInput
           name="email"
           label={t`Email`}

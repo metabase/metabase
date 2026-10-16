@@ -8,9 +8,12 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import type { QueryModalType } from "metabase/querying/constants";
 import { useDispatch } from "metabase/redux";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import type {
+  DatasetEditorTab,
+  QueryBuilderMode,
+  QueryModalType,
+} from "metabase/redux/store";
 import { UploadMode } from "metabase/redux/store/upload";
 import { uploadFile } from "metabase/redux/uploads";
 import { Box, Divider, Icon, Menu } from "metabase/ui";
@@ -63,10 +66,6 @@ export const QuestionActions = ({
     ],
     [isShowingQuestionInfoSidebar, isBookmarked],
   );
-
-  const infoButtonColor = isShowingQuestionInfoSidebar
-    ? "core-brand"
-    : undefined;
 
   const hasCollectionPermissions = question.canWrite();
   const uploadTableId = question._card.based_on_upload;
@@ -145,7 +144,6 @@ export const QuestionActions = ({
           className={ViewTitleHeaderS.ViewHeaderIconButton}
           icon="info"
           onClick={onInfoClick}
-          color={infoButtonColor}
           data-testid="qb-header-info-button"
           tooltipLabel={t`More info`}
           aria-label={t`More info`}
@@ -164,7 +162,6 @@ export const QuestionActions = ({
                 <ToolbarButton
                   className={ViewTitleHeaderS.ViewHeaderIconButton}
                   icon="upload"
-                  color={infoButtonColor}
                   data-testid="qb-header-append-button"
                   tooltipLabel={t`Upload data to this model`}
                   aria-label={t`Upload data to this model`}

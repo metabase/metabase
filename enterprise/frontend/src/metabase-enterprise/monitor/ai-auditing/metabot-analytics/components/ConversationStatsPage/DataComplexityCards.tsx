@@ -53,9 +53,9 @@ const RATING_BADGE_COLORS = {
 } satisfies Record<RatingColorKey, BadgeColor>;
 
 const RATING_TEXT_COLORS = {
-  low: "success",
-  medium: "warning",
-  high: "error",
+  low: "feedback-positive",
+  medium: "feedback-warning",
+  high: "feedback-negative",
   default: "text-secondary",
 } satisfies Record<RatingColorKey, MetabaseColorKey>;
 
@@ -86,11 +86,11 @@ function DataComplexityCard({
   const { subtitle, title } = match(catalogId)
     .with("library", () => ({
       title: t`Curated semantic layer`,
-      subtitle: t`Metrics and published tables within your Library.`,
+      subtitle: t`Metrics and published tables within your semantic layer.`,
     }))
     .with("universe", () => ({
       title: t`Full semantic layer`,
-      subtitle: t`Library entities plus every active physical table.`,
+      subtitle: t`Semantic layer entities plus every active physical table.`,
     }))
     .with("metabot", () => ({
       title: t`Metabot-visible layer`,

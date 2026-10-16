@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.duplicate :as tools.duplicate]
    [metabase.metabot.scope :as metabot.scope]
@@ -31,7 +32,7 @@
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
 (defn- call-tool!
-  ([user args] (call-tool! user nil args))
+  ([user args] (call-tool! user v2.tu/all-scopes args))
   ([user scopes args]
    (mt/with-current-user (mt/user->id user)
      (registry/call-tool scopes nil "duplicate_content" args))))
@@ -43,7 +44,7 @@
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
-  (-> result :content first :text json/decode+kw))
+  (-> result :content first :text v2.tu/strip-data-boundary json/decode+kw))
 
 (defn- tool-error
   [{:keys [result error]}]
@@ -77,6 +78,23 @@
           (is (= (:dataset_query (t2/select-one :model/Card :id card-id))
                  (:dataset_query copy))))))))
 
+(deftest duplicate-question-keeps-inaccessible-timeline-selection-test
+  (testing "a copy inherits a timeline selection the caller cannot read, like POST /api/card/:id/copy"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection {restricted-id :id} {}
+                     :model/Timeline {timeline-id :id} {:collection_id restricted-id}
+                     :model/Card {card-id :id} {:name          "Orders over time"
+                                                :type          :question
+                                                :display       :line
+                                                :dataset_query (venues-query)
+                                                :visualization_settings
+                                                {:timeline.selected_timeline_ids [timeline-id]}}]
+        (perms/revoke-collection-permissions! (perms/all-users-group) restricted-id)
+        (let [result (tool-result (call-tool! :rasta {:type "question" :id card-id}))
+              copy   (t2/select-one :model/Card :id (:id result))]
+          (is (= [timeline-id]
+                 (get-in copy [:visualization_settings :timeline.selected_timeline_ids]))))))))
+
 (deftest duplicate-question-default-name-is-localized-test
   (testing "GHY-4544: the default copy name is translated into the user's locale, like the REST copy endpoints"
     (mt/with-model-cleanup [:model/Card]
@@ -88,7 +106,7 @@
           (mt/with-current-user (mt/user->id :crowberto)
             ;; Inside, because binding the current user rebinds the locale to the user's own.
             (mt/with-user-locale "de"
-              (let [result (tool-result (registry/call-tool nil nil "duplicate_content"
+              (let [result (tool-result (registry/call-tool v2.tu/all-scopes nil "duplicate_content"
                                                             {:type "question" :id card-id}))]
                 (is (= "Kopie von Umsatz" (:name result)))
                 (is (= "Kopie von Umsatz" (t2/select-one-fn :name :model/Card :id (:id result))))))))))))
@@ -292,6 +310,33 @@
           (testing "the duplicated card lands in the destination collection"
             (is (=? {:name "Revenue" :collection_id dest-coll}
                     (t2/select-one :model/Card :id (first new-cards))))))))))
+
+(deftest duplicate-dashboard-deep-keeps-inaccessible-timeline-selection-test
+  (testing "a deep copy keeps a card's timeline selection the caller cannot read, like the REST deep copy"
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (mt/with-temp [:model/Collection {source-coll :id} {}
+                     :model/Collection {dest-coll :id} {}
+                     :model/Collection {restricted :id} {}
+                     :model/Timeline {timeline-id :id} {:collection_id restricted}
+                     :model/Card {card-id :id} {:name          "Orders over time"
+                                                :type          :question
+                                                :display       :line
+                                                :collection_id source-coll
+                                                :dataset_query (venues-query)
+                                                :visualization_settings
+                                                {:timeline.selected_timeline_ids [timeline-id]}}
+                     :model/Dashboard {dash-id :id} {:name "Sales" :collection_id source-coll}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (perms/revoke-collection-permissions! (perms/all-users-group) restricted)
+        (let [result    (tool-result (call-tool! :rasta {:type          "dashboard"
+                                                         :id            dash-id
+                                                         :collection_id dest-coll
+                                                         :is_deep_copy  true}))
+              new-cards (map :card_id (copied-dashcards (:id result)))]
+          (is (= 1 (count new-cards)))
+          (is (= [timeline-id]
+                 (get-in (t2/select-one :model/Card :id (first new-cards))
+                         [:visualization_settings :timeline.selected_timeline_ids]))))))))
 
 (deftest duplicate-dashboard-deep-uncopied-test
   (testing "GHY-4151: a deep copy reports cards it left behind as `uncopied`, and an unreadable one

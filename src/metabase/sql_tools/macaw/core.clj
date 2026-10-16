@@ -107,9 +107,7 @@
         table-ids     (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table specs))
         db-tables     (lib.metadata/bulk-metadata query :metadata/table table-ids)
         db-transforms (lib.metadata/transforms query)]
-    (into #{}
-          (keep #(sql-tools.common/find-table-or-transform driver db-tables db-transforms %))
-          specs)))
+    (sql-tools.common/resolve-table-specs driver (lib.metadata/database query) db-tables db-transforms specs)))
 
 (defmethod sql-tools/referenced-tables-impl :macaw
   [_parser driver query]
@@ -141,7 +139,7 @@
   (sql-tools.common/validate-query parser driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :macaw
-  [_parser _driver sql-str]
+  [_parser _driver sql-str _opts]
   (-> sql-str
       (macaw/parsed-query)
       (macaw/query->components {:strip-contexts? true})

@@ -4,11 +4,13 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.channel.core :as channel]
    [metabase.channel.email.messages :as messages]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -544,6 +546,28 @@
                                  (mt/user-http-request :crowberto :post 204 (format "notification/%d/send" (:id notification))
                                                        {:handler_ids handler-ids}))))))))))))
 
+(deftest send-unsaved-notification-delivery-failure-test
+  (testing "POST /api/notification/send answers 502 with the handlers that did not deliver (GDGT-3144)"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (mt/with-dynamic-fn-redefs [notification.send/should-skip-retry? (constantly true)]
+          (with-redefs [channel/send! (fn [& _] (throw (ex-info "SMTP is down" {})))]
+            (let [response (mt/user-http-request :crowberto :post 502 "notification/send"
+                                                 {:handlers      [{:channel_type :channel/email
+                                                                   :recipients   [{:type    :notification-recipient/user
+                                                                                   :user_id (mt/user->id :crowberto)}]}]
+                                                  :payload_type  :notification/card
+                                                  :payload       {:card_id        card-id
+                                                                  :send_condition :has_result
+                                                                  :send_once      false}
+                                                  :subscriptions [{:type          :notification-subscription/cron
+                                                                   :cron_schedule "0 0 0 * * ?"}]})]
+              (is (=? {:message         "Failed to deliver to channel/email"
+                       :error-code      "notification/delivery-failed"
+                       :failed-handlers [{:channel_type "channel/email"
+                                          :error_type   "clojure.lang.ExceptionInfo"}]} response))
+              (is (not-any? :message (:failed-handlers response))))))))))
+
 (deftest send-unsaved-notification-api-test
   (mt/with-temp [:model/Channel {http-channel-id :id} {:type    :channel/http
                                                        :details {:url         "https://metabase.com/testhttp"
@@ -954,6 +978,28 @@
               (send! :crowberto 200))
             (testing "a non-admin user cannot"
               (send! :rasta 403))))))))
+
+(deftest send-unsaved-notification-existing-channel-permissions-test
+  (testing "POST /api/notification/send naming an existing channel by channel_id requires channel write permission"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card    {card-id :id} {}
+                     :model/Channel {chn-id :id}  {:type    :channel/http
+                                                   :details {:url         "https://example.com/webhook"
+                                                             :auth-method "none"}}]
+        (let [send! (fn [user-or-id channel-id expected-status]
+                      (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
+                        (mt/user-http-request user-or-id :post expected-status "notification/send"
+                                              {:payload_type  :notification/card
+                                               :handlers      [{:channel_type :channel/http
+                                                                :channel_id   channel-id}]
+                                               :subscriptions []
+                                               :payload       {:card_id card-id}})))]
+          (testing "an admin can send to an existing channel"
+            (send! :crowberto chn-id 200))
+          (testing "a non-admin user cannot"
+            (send! :rasta chn-id 403))
+          (testing "a non-admin user gets the same 403 for a channel id that doesn't exist"
+            (send! :rasta Integer/MAX_VALUE 403)))))))
 
 (deftest list-notifications-basic-test
   (testing "GET /api/notification"
@@ -1373,3 +1419,39 @@
                (testing "success if recipients matches allowed domains"
                  (mt/user-http-request :crowberto :post 204 "notification/send"
                                        (assoc notification :handlers success-handlers)))))))))))
+
+(deftest send-unsaved-notification-echoed-creator-test
+  (testing "POST /api/notification/send accepts a saved notification sent back as fetched, creator included"
+    (notification.tu/with-card-notification
+      [{notification-id :id}
+       {:handlers      [{:channel_type :channel/email
+                         :recipients   [{:type    :notification-recipient/user
+                                         :user_id (mt/user->id :crowberto)}]}]
+        :subscriptions [{:type          :notification-subscription/cron
+                         :cron_schedule "0 0 0 * * ?"}]}]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (let [echoed (mt/user-http-request :crowberto :get 200 (format "notification/%d" notification-id))]
+          (is (some? (get-in echoed [:creator :date_joined])))
+          (is (=? {:channel/email [{:recipients ["crowberto@metabase.com"]}]}
+                  (notification.tu/with-captured-channel-send!
+                    (mt/user-http-request :crowberto :post 204 "notification/send" echoed)))))))))
+
+(deftest send-unsaved-notification-echoed-card-timestamps-test
+  (testing "POST /api/notification/send accepts a saved notification sent back as fetched, card timestamps included"
+    (notification.tu/with-card-notification
+      [{notification-id :id}
+       {:card          {:cache_invalidated_at   (t/offset-date-time)
+                        :initially_published_at (t/offset-date-time)}
+        :handlers      [{:channel_type :channel/email
+                         :recipients   [{:type    :notification-recipient/user
+                                         :user_id (mt/user->id :crowberto)}]}]
+        :subscriptions [{:type          :notification-subscription/cron
+                         :cron_schedule "0 0 0 * * ?"}]}]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (let [echoed (mt/user-http-request :crowberto :get 200 (format "notification/%d" notification-id))]
+          (is (=? {:cache_invalidated_at   some?
+                   :initially_published_at some?}
+                  (get-in echoed [:payload :card])))
+          (is (=? {:channel/email [{:recipients ["crowberto@metabase.com"]}]}
+                  (notification.tu/with-captured-channel-send!
+                    (mt/user-http-request :crowberto :post 204 "notification/send" echoed)))))))))
