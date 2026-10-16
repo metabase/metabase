@@ -29,14 +29,14 @@
     (some-> (ex-message e) str/split-lines first str/trim)))
 
 (defn- ingest-contents
-  "The entities of the YAML file whose text is `file-content`: the parts of a table document, or its one entity."
-  [file-content]
-  (serialization/ingested-entities (yaml/parse-string file-content {:key-fn serialization/parse-key})))
+  "The entities of the YAML file at `path` whose text is `file-content` (see [[serialization/ingested-entities]])."
+  [path file-content]
+  (serialization/ingested-entities path (yaml/parse-string file-content {:key-fn serialization/parse-key})))
 
 (defn- ingest-content
-  "The entity of the YAML file whose text is `file-content`, the first part of a table document."
-  [file-content]
-  (first (ingest-contents file-content)))
+  "The entity of the YAML file at `path` whose text is `file-content`, the first part of a table document."
+  [path file-content]
+  (first (ingest-contents path file-content)))
 
 (defn check-data-app-files!
   "Throws, naming each file, when a data app's files in `snapshot` (its manifest, its collection, and what the
@@ -52,7 +52,7 @@
                             :when (or (not (serialization/content-checked-path? path))
                                       (serialization/entity-content? content))
                             :let [entity (try
-                                           (ingest-content content)
+                                           (ingest-content path content)
                                            (catch Exception _ nil))]
                             :when (or entity (re-matches #"data_apps/[^/]+/data_app\.yaml" path))]
                         {:path path :entity entity}))
@@ -87,7 +87,7 @@
                                         (serialization/entity-content? content))
                               :let [loaded (try
                                              (when content
-                                               (ingest-contents content))
+                                               (ingest-contents path content))
                                              (catch Exception e
                                                (log/warn (u/strip-error e "Error parsing file during ingestion"))
                                                (swap! errors conj (ex-info (format "Failed to parse file: %s" path)
@@ -189,7 +189,7 @@
     (when-let [{:keys [content ^String path index entity]} (get @cache (serialization/strip-labels serdes-path))]
       (try
         (let [dir (subs path 0 (inc (or (str/last-index-of path "/") -1)))]
-          (serialization/read-resources (or entity (nth (ingest-contents content) index))
+          (serialization/read-resources (or entity (nth (ingest-contents path content) index))
                                         #(source.p/read-file snapshot (str dir %))))
         (catch Exception e
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))))

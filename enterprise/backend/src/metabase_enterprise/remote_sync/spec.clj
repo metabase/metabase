@@ -204,6 +204,8 @@
                      :scope-key :collection_id}
     ;; timelines in the Library's Dashboards collection do not sync
     :excluded-collection-types #{collections/library-dashboards-collection-type}
+    ;; the instances of the model in collections, to leave those of the excluded types out of an export
+    :ids-in-collections        remote-sync.db/timeline-ids-in-collections
     :enabled?       true}
 
    :model/Collection
@@ -1391,10 +1393,10 @@
   "`targets` (a map of {model-name [id ...]}) without the instances in the Collections whose content of their model
   never syncs."
   [targets]
-  (reduce (fn [targets {:keys [model-type model-key] :as spec}]
+  (reduce (fn [targets {:keys [model-type] :as spec}]
             (let [excluded (some->> (seq (excluded-collection-ids spec))
                                     vec
-                                    (remote-sync.db/ids-in-collections model-key))]
+                                    ((:ids-in-collections spec)))]
               (cond-> targets
                 (and (seq excluded) (contains? targets model-type))
                 (update model-type #(vec (remove excluded %))))))

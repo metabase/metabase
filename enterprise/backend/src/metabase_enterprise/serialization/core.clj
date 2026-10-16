@@ -33,6 +33,7 @@
   entity-content?
   entity-file-path?
   ingested-entities
+  table-document-path?
   legal-top-level-paths
   replaced-top-level-paths
   shared-top-level-paths

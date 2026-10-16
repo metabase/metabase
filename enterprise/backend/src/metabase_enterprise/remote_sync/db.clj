@@ -484,11 +484,10 @@
   [collection-types :- [:sequential :string]]
   (set (t2/select-pks-set :model/Collection :type [:in collection-types])))
 
-(mu/defn ids-in-collections :- [:set pos-int?]
-  "The IDs of the instances of `model` in the Collections with `collection-ids`."
-  [model          :- :keyword
-   collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (set (t2/select-pks-set model :collection_id [:in collection-ids])))
+(mu/defn timeline-ids-in-collections :- [:set pos-int?]
+  "The IDs of the Timelines in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (set (t2/select-pks-set :model/Timeline :collection_id [:in collection-ids])))
 
 (mu/defn collection-type :- [:maybe :string]
   "The type of the Collection with `collection-id`, or nil."

@@ -18,8 +18,8 @@
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Open items ------------------------------------------------------
-;;; Each open question of the layout's design that this layout needs is answered in one place below, each under a
-;;; comment that names it (open items 1 to 10 of the design).
+;;; Each design question this layout answers is answered in one place below, under a comment that names it
+;;; ("Open item N", numbered as in the layout's design).
 
 (def kind-words
   "The word of each kind of item, in its file name `<name>.<word>.yaml`."
@@ -170,8 +170,7 @@
 
 (defn- slug
   "The file or folder name of the label `s`: [[storage.util/slugify-name]], with `.` also turned into `_`, so that no
-  name ends in
-  `.<kind>` and a collection's folder cannot be taken for an item's `<name>.<kind>/` folder."
+  name ends in `.<kind>` and a collection's folder cannot be taken for an item's `<name>.<kind>/` folder."
   [s]
   (str/replace (or (storage.util/slugify-name s) "") "." "_"))
 

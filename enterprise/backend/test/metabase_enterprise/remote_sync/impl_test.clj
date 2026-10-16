@@ -323,7 +323,7 @@
             (let [mock-source (test-helpers/create-mock-source)]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                     #"No remote-syncable content available"
-                                    (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit" (t/instant)))))))))))
+                                    (#'impl/full-export! remote-sync.layout/move-rule (source.p/snapshot mock-source) task-id "Test commit" (t/instant)))))))))))
 
 (deftest export!-successful-with-default-collections-test
   (testing "export! successful with default collections"
@@ -341,7 +341,7 @@
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
           (let [mock-source (test-helpers/create-mock-source :fail-mode :store-error)]
             (is (thrown-with-msg? Exception #"Store failed"
-                                  (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit message" (t/instant))))))))))
+                                  (#'impl/full-export! remote-sync.layout/move-rule (source.p/snapshot mock-source) task-id "Test commit message" (t/instant))))))))))
 
 (deftest export!-handles-network-errors-during-write-test
   (testing "export! catches a write failure and returns an :error result"
@@ -500,7 +500,7 @@
               (mt/with-dynamic-fn-redefs [remote-sync.task/update-progress!
                                           (fn [task-id progress]
                                             (swap! progress-calls conj {:task-id task-id :progress progress}))]
-                (let [result (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
+                (let [result (#'impl/full-export! remote-sync.layout/move-rule (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
                   (is (= :success (:status result)))
                   (is (pos? (count @progress-calls)))
                   (is (= task-id (:task-id (first @progress-calls))))
@@ -954,7 +954,7 @@
                           :entity_id "archived-segment-xxxx"
                           :archived true}]
             (let [mock-source (test-helpers/create-mock-source)
-                  result (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
+                  result (#'impl/full-export! remote-sync.layout/move-rule (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
               (is (= :success (:status result)))
               (let [files-after-export (get @(:files-atom mock-source) "main")
                     file-keys (keys files-after-export)]
@@ -1230,7 +1230,7 @@
                           :entity_id "archived-measure-xxxx"
                           :archived true}]
             (let [mock-source (test-helpers/create-mock-source)
-                  result (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
+                  result (#'impl/full-export! remote-sync.layout/move-rule (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
               (is (= :success (:status result)))
               (let [files-after-export (get @(:files-atom mock-source) "main")
                     file-keys (keys files-after-export)]

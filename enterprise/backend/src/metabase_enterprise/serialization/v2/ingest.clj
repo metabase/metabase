@@ -74,13 +74,18 @@
   [hierarchy]
   (mapv #(dissoc % :label) hierarchy))
 
+(defn table-document-path?
+  "Whether the file at `path` may hold a table document: only a `<name>.table.yaml` file can."
+  [path]
+  (str/ends-with? path ".table.yaml"))
+
 (defn ingested-entities
-  "The entities in the parsed YAML file `parsed`, each cleaned up (timestamps parsed, serdes path restored) and in
-  \"extracted\" form, ready to be passed to the `load` step: the parts of a table document (see
-  [[table-document/split]]), or the file's one entity."
-  [parsed]
+  "The entities in `parsed`, the parsed YAML file at `path`, each cleaned up (timestamps parsed, serdes path restored)
+  and in \"extracted\" form, ready to be passed to the `load` step: the parts of a table document (see
+  [[table-document/split]]) in a file of [[table-document-path?]], or the file's one entity."
+  [path parsed]
   (mapv (comp serdes/restore-path read-timestamps)
-        (if (table-document/table-document? parsed)
+        (if (and (table-document-path? path) (table-document/table-document? parsed))
           (table-document/split parsed)
           [parsed])))
 
@@ -97,8 +102,8 @@
   "Reads an entity YAML file into its entities: the parts of a table document, which only a `<name>.table.yaml` file
   can hold (see [[ingested-entities]]), or its one entity."
   [^File file]
-  (if (str/ends-with? (.getName file) ".table.yaml")
-    (ingested-entities (yaml/from-file file {:key-fn parse-key}))
+  (if (table-document-path? (.getName file))
+    (ingested-entities (.getName file) (yaml/from-file file {:key-fn parse-key}))
     [(ingest-file file)]))
 
 (defn- check-resource-path!
@@ -241,7 +246,7 @@
                               [index entity] (map-indexed vector entities)]
                           ;; the parts of a table document are kept parsed, so each isn't parsed from the whole file
                           [(intern-path (strip-labels (serdes/path entity)))
-                           (if (str/ends-with? (.getName file) ".table.yaml") [file index entity] file)]))
+                           (if (table-document-path? (.getName file)) [file index entity] file)]))
      :errors  @errors}))
 
 (defn- populate-cache! [cache errors-atom ingest-fn]

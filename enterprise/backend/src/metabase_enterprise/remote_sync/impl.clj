@@ -1439,39 +1439,37 @@
   Returns:
    - {:status :success}
    or throws"
-  ([snapshot task-id message sync-timestamp]
-   (full-export! remote-sync.layout/move-rule snapshot task-id message sync-timestamp))
-  ([rule snapshot task-id message sync-timestamp]
-   (let [export-rows (vec (exportable-write-rows))]
-     (when (empty? export-rows)
-       (throw (ex-info "No remote-syncable content available." {})))
-     (let [report (remote-sync.task/make-progress-reporter task-id)
-           total  (count export-rows)
-           span   (- export-progress-serialize export-progress-plan-done)]
-       (report export-progress-plan-done {:force? true})
-       (let [opts             (remote-sync.layout/storage-context)
-             [synced version] (commit-staged! snapshot message
-                                              (fn [commit]
-                                                (source/replace-managed-files! commit snapshot) ; replace the managed files wholesale
-                                                (let [synced (stage-writes commit opts (full-export-path-fn rule opts) export-rows
-                                                                           (fn [staged]
-                                                                             (report (+ export-progress-plan-done
-                                                                                        (* span (/ staged total))))))]
-                                                  (report export-progress-serialize {:force? true})
-                                                  synced))
-                                              report)]
-         (t2/with-transaction [_]
-           (when-not (= version :remote-sync/empty-commit)
-             (remote-sync.task/set-version! task-id version))
-           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
-             (remote-sync.db/delete-rsos! removed-ids))
-           (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp))
-         (if (= version :remote-sync/empty-commit)
-           (do
-             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
-             {:status :success :outcome {:kind "push-skipped"}})
-           {:status :success
-            :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}}))))))
+  [rule snapshot task-id message sync-timestamp]
+  (let [export-rows (vec (exportable-write-rows))]
+    (when (empty? export-rows)
+      (throw (ex-info "No remote-syncable content available." {})))
+    (let [report (remote-sync.task/make-progress-reporter task-id)
+          total  (count export-rows)
+          span   (- export-progress-serialize export-progress-plan-done)]
+      (report export-progress-plan-done {:force? true})
+      (let [opts             (remote-sync.layout/storage-context)
+            [synced version] (commit-staged! snapshot message
+                                             (fn [commit]
+                                               (source/replace-managed-files! commit snapshot) ; replace the managed files wholesale
+                                               (let [synced (stage-writes commit opts (full-export-path-fn rule opts) export-rows
+                                                                          (fn [staged]
+                                                                            (report (+ export-progress-plan-done
+                                                                                       (* span (/ staged total))))))]
+                                                 (report export-progress-serialize {:force? true})
+                                                 synced))
+                                             report)]
+        (t2/with-transaction [_]
+          (when-not (= version :remote-sync/empty-commit)
+            (remote-sync.task/set-version! task-id version))
+          (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
+            (remote-sync.db/delete-rsos! removed-ids))
+          (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp))
+        (if (= version :remote-sync/empty-commit)
+          (do
+            (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
+            {:status :success :outcome {:kind "push-skipped"}})
+          {:status :success
+           :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
