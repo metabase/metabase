@@ -81,37 +81,44 @@ export const PaletteSegmentItem = ({
         </Text>
       )}
       {segment.status === "draft" && (
-        <Menu position="bottom-end">
-          <Menu.Target>
-            <ActionIcon
-              size="sm"
-              variant="subtle"
-              aria-label={t`Draft options`}
-            >
-              <Icon name="ellipsis" />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<Icon name="pencil" />}
-              onClick={onEditDraft}
-            >
-              {t`Edit draft`}
-            </Menu.Item>
-            <Menu.Item
-              leftSection={<Icon name="bookmark" />}
-              onClick={onSaveDraft}
-            >
-              {t`Save as a segment…`}
-            </Menu.Item>
-            <Menu.Item
-              leftSection={<Icon name="trash" />}
-              onClick={onDiscardDraft}
-            >
-              {t`Discard draft`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+        // The row's own click (edit or use the draft) must not fire from the menu.
+        <Box
+          display="flex"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          <Menu position="bottom-end">
+            <Menu.Target>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                aria-label={t`Draft options`}
+              >
+                <Icon name="ellipsis" />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<Icon name="pencil" />}
+                onClick={onEditDraft}
+              >
+                {t`Edit draft`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="bookmark" />}
+                onClick={onSaveDraft}
+              >
+                {t`Save as a segment…`}
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<Icon name="trash" />}
+                onClick={onDiscardDraft}
+              >
+                {t`Discard draft`}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Box>
       )}
     </Group>
   );
