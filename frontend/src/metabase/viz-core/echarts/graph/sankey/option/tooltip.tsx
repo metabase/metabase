@@ -1,5 +1,6 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { formatPercent } from "metabase/utils/formatting";
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
@@ -33,9 +34,7 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
 
   if (params.dataType === "node") {
     node = chartModel.data.nodes.find((node) => node.rawName === data.rawName)!;
-    header = !node.hasOutputs
-      ? formatters.target(node.displayName)
-      : formatters.source(node.displayName);
+    header = formatters.nodeLabel(node);
   } else if (params.dataType === "edge") {
     node = chartModel.data.nodes.find((node) => node.rawName === data.source)!;
     const targetNode = chartModel.data.nodes.find(
@@ -59,12 +58,24 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
   );
   const formattedNodeValue = formatters.value(nodeValue);
 
-  rows = Array.from(node.outputLinkByTarget.values()).map((link) => {
-    const color = chartModel.nodeColors[String(link.targetNode.rawName)];
-    const isFocused = params.dataType === "edge" && data.target === link.target;
+  const nodeOrder = new Map(
+    chartModel.data.nodes.map((node, index) => [node, index]),
+  );
+  rows = _.sortBy(
+    Array.from(node.outputLinkByTarget.values()),
+    (link) => nodeOrder.get(link.targetNode) ?? 0,
+  ).map((link) => {
+    const color =
+      link.color ?? chartModel.nodeColors[String(link.targetNode.rawName)];
+    const isFocused =
+      params.dataType === "edge" &&
+      data.target === link.target &&
+      data.breakoutValue === link.breakoutValue;
+    const targetName = formatters.target(link.targetNode.displayName);
     return {
       isFocused,
-      name: formatters.target(link.targetNode.displayName),
+      name:
+        link.label !== undefined ? `${targetName} · ${link.label}` : targetName,
       values: [
         formatters.value(link.value),
         formatPercent(getPercent(nodeValue, link.value) ?? 0),

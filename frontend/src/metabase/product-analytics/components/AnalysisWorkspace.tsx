@@ -11,10 +11,20 @@ import type { Card, ConcreteTableId } from "metabase-types/api";
 import type { AnalysisSettingsByKind } from "../analyses/types";
 import { buildAnalysisCard } from "../analysis-card";
 import { getClickActionsMode } from "../click-actions-mode";
-import { getClickedTransition } from "../insights/clicked-transition";
+import {
+  getFunnelPathsRange,
+  getPathsFunnel,
+  getPathsRangeInto,
+} from "../funnel-paths/range";
+import { useFunnelPaths } from "../funnel-paths/use-funnel-paths";
+import {
+  getClickedStep,
+  getClickedTransition,
+} from "../insights/clicked-transition";
 import { useFunnelInsights } from "../insights/use-funnel-insights";
 import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
+import type { FunnelPathsRange } from "../sql/analyses/funnel-paths";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
 import { useAnalysisState } from "../use-analysis-state";
@@ -22,6 +32,7 @@ import { useSaveAnalysis } from "../use-save-analysis";
 
 import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisToolbar } from "./AnalysisToolbar";
+import { FunnelPathsPanel } from "./FunnelPathsPanel";
 import { type InsightsFocus, InsightsPanel } from "./InsightsPanel";
 import { SettingsPanel } from "./SettingsPanel";
 
@@ -66,11 +77,29 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   });
   const insights = useFunnelInsights({ spec, tableId, base, context });
   const [insightsFocus, setInsightsFocus] = useState<InsightsFocus>();
+  const pathsFunnel = getPathsFunnel(spec);
+  const [chosenPathsRange, setChosenPathsRange] = useState<FunnelPathsRange>();
+  const pathsRange =
+    pathsFunnel !== undefined
+      ? getFunnelPathsRange(pathsFunnel, chosenPathsRange)
+      : undefined;
+  const paths = useFunnelPaths({ spec, tableId, base, range: pathsRange });
+  const [pathsFocusId, setPathsFocusId] = useState<number>();
   const clickActionsMode = getClickActionsMode({
     getInsightsTransition: (clicked) =>
       getClickedTransition(spec, insights.state, clicked),
     onShowInsights: (transition) =>
       setInsightsFocus((focus) => ({ transition, id: (focus?.id ?? 0) + 1 })),
+    getPathsRange: (clicked) => {
+      const step = getClickedStep(spec, clicked);
+      return pathsFunnel !== undefined && step !== undefined
+        ? getPathsRangeInto(pathsFunnel, step)
+        : undefined;
+    },
+    onShowPaths: (range) => {
+      setChosenPathsRange(range);
+      setPathsFocusId((id) => (id ?? 0) + 1);
+    },
   });
 
   const tableName = table?.display_name ?? t`this table`;
@@ -162,6 +191,15 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               panel !== "setup" ? () => setPanel("setup") : undefined
             }
           />
+          {pathsFunnel !== undefined && pathsRange !== undefined && (
+            <FunnelPathsPanel
+              steps={pathsFunnel.steps}
+              range={pathsRange}
+              paths={paths}
+              focusId={pathsFocusId}
+              onChangeRange={setChosenPathsRange}
+            />
+          )}
           {kind === "funnel" && (
             <InsightsPanel insights={insights} focus={insightsFocus} />
           )}

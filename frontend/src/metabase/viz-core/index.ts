@@ -104,6 +104,11 @@ export { getWaterfallChartOption } from "./echarts/cartesian/waterfall/option";
 export { getSankeyLayout } from "./echarts/graph/sankey/layout";
 export { getSankeyChartColumns } from "./echarts/graph/sankey/model/dataset";
 export { getSankeyChartModel } from "./echarts/graph/sankey/model";
+export {
+  type PathNodeKind,
+  type PathsColumns,
+  getPathColors,
+} from "./echarts/graph/sankey/model/paths";
 export type {
   ColumnKey,
   SankeyChartColumns,

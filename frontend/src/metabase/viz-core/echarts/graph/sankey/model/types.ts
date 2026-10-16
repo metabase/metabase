@@ -33,6 +33,12 @@ export interface SankeyLink {
   target: RowValue;
   value: RowValue;
   columnValues: Record<ColumnKey, RowValue>;
+  /** Set when links are split by `sankey.breakout`. */
+  breakoutValue?: RowValue;
+  /** The breakout value's color, overriding the edge color. */
+  color?: string;
+  /** The formatted breakout value. */
+  label?: string;
 }
 
 export interface SankeyDataModel {
@@ -47,6 +53,8 @@ export interface SankeyFormatters {
   source: Formatter;
   target: Formatter;
   node: (node: SankeyNode) => string;
+  /** The text shown for a node, which can differ from its key. */
+  nodeLabel: (node: SankeyNode) => string;
 }
 
 export interface SankeyChartModel {
@@ -54,4 +62,6 @@ export interface SankeyChartModel {
   formatters: SankeyFormatters;
   sankeyColumns: SankeyChartColumns;
   nodeColors: Record<string, string>;
+  /** Draw the nodes in `data.nodes` order, rather than reordering them to reduce crossings. */
+  keepsNodeOrder?: boolean;
 }

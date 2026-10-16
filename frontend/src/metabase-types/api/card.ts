@@ -438,6 +438,9 @@ export type VisualizationSettings = {
   /** Draws a bar chart as product analytics funnel steps. Not user-editable. */
   "product_analytics.funnel_steps"?: boolean;
 
+  /** Draws a sankey chart as product analytics paths. Not user-editable. */
+  "product_analytics.paths"?: boolean;
+
   /** Conditional formatting rules for table cells. */
   "table.column_formatting"?: ColumnFormattingSetting[];
 
@@ -521,6 +524,12 @@ export type VisualizationSettings = {
 
   /** Formatting for Sankey edge labels. */
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
+
+  /** Result column name that splits each Sankey flow into one per value. Not user-editable yet. */
+  "sankey.breakout"?: string;
+
+  /** Colors for Sankey breakout values, keyed by formatted value. Not user-editable yet. */
+  "sankey.breakout_colors"?: Record<string, string>;
 
   /** Treemap settings */
   "treemap.grouping"?: string;

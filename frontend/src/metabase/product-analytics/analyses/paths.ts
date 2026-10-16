@@ -40,11 +40,11 @@ const EDGE_METRICS: readonly PathsSettings["paths.edge_metric"][] = [
 const getMinVolumeTitle = (grain: Grain): string => {
   switch (grain) {
     case "person":
-      return t`Hide routes with fewer than this many people`;
+      return t`Group steps with fewer than this many people into Other`;
     case "session":
-      return t`Hide routes with fewer than this many sessions`;
+      return t`Group steps with fewer than this many sessions into Other`;
     case "event":
-      return t`Hide routes with fewer than this many events`;
+      return t`Group steps with fewer than this many events into Other`;
   }
 };
 
@@ -139,7 +139,8 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     isValid: (value) => isBoolean(value),
   },
   "paths.max_nodes": {
-    getTitle: () => t`Number of routes to show at each step`,
+    getTitle: () => t`Number of events to show at each step`,
+    getHint: () => t`The rest are grouped into Other.`,
     getSection: () => "advanced",
     widget: NumberStepperWidget,
     getDefault: () => 8,
@@ -211,5 +212,6 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
     "sankey.source": "source",
     "sankey.target": "target",
     "sankey.value": "weight",
+    "product_analytics.paths": true,
   }),
 };
