@@ -110,7 +110,15 @@ export const updateQuestion = (
     newQuestion = computedPivotQuestion.question;
 
     if (computedPivotQuestion.shouldRun !== null) {
-      run = computedPivotQuestion.shouldRun;
+      // the pivot check only looks at how columns are laid out, so a changed query
+      // (e.g. a reworded aggregation with the same name) still runs when asked to
+      const hasQueryChanged =
+        currentQuestion != null &&
+        !Lib.areLegacyQueriesEqual(
+          currentQuestion.datasetQuery(),
+          newQuestion.datasetQuery(),
+        );
+      run = computedPivotQuestion.shouldRun || (run && hasQueryChanged);
     }
 
     const isNewQuestionNative = Lib.queryDisplayInfo(

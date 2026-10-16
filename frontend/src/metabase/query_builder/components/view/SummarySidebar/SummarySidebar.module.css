@@ -138,3 +138,136 @@
 .valuesInput {
   flex: 1 0 100%;
 }
+
+.chipIsEditing {
+  outline: 2px solid var(--mb-color-core-brand);
+  outline-offset: 1px;
+}
+
+.formulaBox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  padding: 0 0.25rem 0 0.625rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 8px;
+  background-color: var(--mb-color-background_page-primary);
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--mb-color-core-brand);
+  }
+}
+
+.formulaBoxInvalid,
+.formulaBoxInvalid:hover,
+.formulaBoxInvalid:focus-within {
+  border-color: var(--mb-color-feedback-negative);
+}
+
+.formulaEquals {
+  font-family: var(--mb-default-monospace-font-family), monospace;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.formulaEditor {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0;
+
+  :global(.cm-editor) {
+    background-color: transparent;
+  }
+
+  :global(.cm-editor.cm-focused) {
+    outline: none;
+  }
+
+  :global(.cm-content) {
+    padding: 0;
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+  }
+
+  :global(.cm-line) {
+    padding: 0;
+  }
+
+  :global(.cm-gutters) {
+    display: none;
+  }
+
+  :global(.cm-placeholder) {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* base syntax highlighting renders nested spans; let the token colors win */
+.tokenFunction *,
+.tokenLiteral *,
+.tokenOperator *,
+.tokenColumn * {
+  color: inherit;
+}
+
+.tokenFunction {
+  font-weight: bold;
+  color: var(--mb-color-core-brand);
+}
+
+.tokenLiteral {
+  color: var(--mb-color-accent2);
+}
+
+.tokenOperator {
+  padding: 0 0.125rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.tokenColumn {
+  --token-color: var(--mb-color-accent0);
+
+  padding: 0.0625rem 0.25rem;
+  border-radius: 4px;
+  color: var(--token-color);
+  background-color: color-mix(in srgb, var(--token-color) 14%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--token-color) 40%, transparent);
+}
+
+.tokenColumn0 {
+  composes: tokenColumn;
+}
+
+.tokenColumn1 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent1);
+}
+
+.tokenColumn2 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent3);
+}
+
+.tokenColumn3 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent4);
+}
+
+.tokenColumn4 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent5);
+}
+
+.tokenColumn5 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent7);
+}

@@ -10,9 +10,12 @@ import type {
   SummaryDimension,
   SummaryDimensionWellId,
   SummaryDragItem,
+  SummaryExpression,
   SummaryValue,
   SummaryWellId,
 } from "./types";
+
+const DEFAULT_FORMULA_NAME_MAX_LENGTH = 40;
 
 export function getSummaryBase(dataQuery: Lib.Query): SummaryBase {
   const stageIndex = -1;
@@ -152,24 +155,32 @@ function getDefaultOperatorShortName(
   );
 }
 
+type SummaryOperatorValue = Extract<SummaryValue, { type: "count" | "column" }>;
+
+/** The aggregation a count or column value stands for, e.g. `Sum([Total])`. */
+function getOperatorClause(
+  base: SummaryBase,
+  value: SummaryOperatorValue,
+): Lib.AggregationClause | null {
+  if (value.type === "count") {
+    const operator = findOperator(base, "count");
+    return operator ? Lib.aggregationClause(operator) : null;
+  }
+  const operator = findOperator(base, value.operatorShortName);
+  const column = operator
+    ? findOperatorColumn(base, operator, value.column)
+    : null;
+  return operator && column ? Lib.aggregationClause(operator, column) : null;
+}
+
 function getAggregable(
   base: SummaryBase,
   value: SummaryValue,
 ): Lib.Aggregable | null {
   switch (value.type) {
-    case "count": {
-      const operator = findOperator(base, "count");
-      return operator ? Lib.aggregationClause(operator) : null;
-    }
-    case "column": {
-      const operator = findOperator(base, value.operatorShortName);
-      const column = operator
-        ? findOperatorColumn(base, operator, value.column)
-        : null;
-      return operator && column
-        ? Lib.aggregationClause(operator, column)
-        : null;
-    }
+    case "count":
+    case "column":
+      return getOperatorClause(base, value);
     case "metric": {
       const metricKey = getItemKey(base, value.metric);
       return (
@@ -178,11 +189,65 @@ function getAggregable(
         ) ?? null
       );
     }
+    case "expression":
+      return Lib.withExpressionName(
+        value.expression.clause,
+        value.expression.name,
+      );
   }
+}
+
+function getUniqueName(name: string, usedNames: Set<string>): string {
+  let uniqueName = name;
+  for (let index = 2; usedNames.has(uniqueName.toLowerCase()); index++) {
+    uniqueName = `${name} (${index})`;
+  }
+  usedNames.add(uniqueName.toLowerCase());
+  return uniqueName;
+}
+
+/**
+ * The names custom-column dimensions are added to the stage under, keyed by item id: their own
+ * names, made unique against each other and the stage's existing custom columns.
+ */
+function getDimensionExpressionNames(
+  { query, stageIndex }: SummaryBase,
+  dimensions: SummaryDimension[],
+): Map<string, string> {
+  const usedNames = new Set(
+    Lib.expressions(query, stageIndex).map((expression) =>
+      Lib.displayInfo(query, stageIndex, expression).displayName.toLowerCase(),
+    ),
+  );
+  const names = new Map<string, string>();
+  dimensions.forEach((dimension) => {
+    if ("expression" in dimension) {
+      names.set(
+        dimension.id,
+        getUniqueName(dimension.expression.name, usedNames),
+      );
+    }
+  });
+  return names;
+}
+
+function findExpressionColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+  expressionName: string,
+): Lib.ColumnMetadata | null {
+  return (
+    columns.find((column) => {
+      const info = Lib.displayInfo(query, stageIndex, column);
+      return info.isCalculated && info.displayName === expressionName;
+    }) ?? null
+  );
 }
 
 /**
  * Builds the summary query: rows then columns as breakouts, values as aggregations, in well order.
+ * Custom-column dimensions are added to the stage as expressions first, so they can be grouped by.
  * Returns `null` when an item no longer resolves against the base query (e.g. a removed join).
  */
 export function buildSummaryQuery(
@@ -190,16 +255,39 @@ export function buildSummaryQuery(
   definition: SummaryDefinition,
 ): Lib.Query | null {
   const { stageIndex } = base;
-  const breakoutableColumns = Lib.breakoutableColumns(base.query, stageIndex);
+  const dimensions = [...definition.rows, ...definition.columns];
+  const expressionNames = getDimensionExpressionNames(base, dimensions);
   let query = base.query;
 
-  for (const dimension of [...definition.rows, ...definition.columns]) {
-    const column = Lib.findMatchingColumn(
-      base.query,
-      stageIndex,
-      dimension.column,
-      breakoutableColumns,
-    );
+  for (const dimension of dimensions) {
+    const expressionName = expressionNames.get(dimension.id);
+    if ("expression" in dimension && expressionName != null) {
+      query = Lib.expression(
+        query,
+        stageIndex,
+        expressionName,
+        dimension.expression.clause,
+      );
+    }
+  }
+
+  const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
+  for (const dimension of dimensions) {
+    const expressionName = expressionNames.get(dimension.id);
+    const column =
+      "expression" in dimension
+        ? findExpressionColumn(
+            query,
+            stageIndex,
+            breakoutableColumns,
+            expressionName ?? dimension.expression.name,
+          )
+        : Lib.findMatchingColumn(
+            query,
+            stageIndex,
+            dimension.column,
+            breakoutableColumns,
+          );
     if (column == null) {
       return null;
     }
@@ -229,7 +317,18 @@ function getFallbackValueLabel(base: SummaryBase, value: SummaryValue) {
       return getColumnLabel(base, value.column);
     case "metric":
       return getMetricLabel(base, value.metric);
+    case "expression":
+      return value.expression.name;
   }
+}
+
+function getFallbackDimensionLabel(
+  base: SummaryBase,
+  dimension: SummaryDimension,
+) {
+  return "expression" in dimension
+    ? dimension.expression.name
+    : getColumnLabel(base, dimension.column);
 }
 
 /**
@@ -259,7 +358,7 @@ export function getItemLabels(
   [...definition.rows, ...definition.columns].forEach((dimension, index) => {
     labels.set(
       dimension.id,
-      breakoutLabels[index] ?? getColumnLabel(base, dimension.column),
+      breakoutLabels[index] ?? getFallbackDimensionLabel(base, dimension),
     );
   });
   definition.values.forEach((value, index) => {
@@ -319,6 +418,11 @@ export function canDropOnWell(
       if (item.wellId === wellId) {
         return false;
       }
+      // custom columns group but can't be aggregated, and custom aggregations can't group
+      const dimension = findDimension(definition, item.itemId);
+      if (dimension != null) {
+        return wellId !== "values" || "column" in dimension;
+      }
       if (wellId === "values") {
         return true;
       }
@@ -328,8 +432,19 @@ export function canDropOnWell(
   }
 }
 
-function createItemId() {
+export function createItemId() {
   return _.uniqueId("summary-item-");
+}
+
+export function findDimension(
+  definition: SummaryDefinition,
+  itemId: string,
+): SummaryDimension | null {
+  return (
+    [...definition.rows, ...definition.columns].find(
+      ({ id }) => id === itemId,
+    ) ?? null
+  );
 }
 
 function withoutDimensionColumn(
@@ -339,6 +454,7 @@ function withoutDimensionColumn(
 ): SummaryDefinition {
   const columnKey = getItemKey(base, column);
   const isOtherColumn = (dimension: SummaryDimension) =>
+    !("column" in dimension) ||
     getItemKey(base, dimension.column) !== columnKey;
   return {
     ...definition,
@@ -413,6 +529,82 @@ export function addCountValue(
   };
 }
 
+export function addExpressionDimension(
+  definition: SummaryDefinition,
+  wellId: SummaryDimensionWellId,
+  expression: SummaryExpression,
+): SummaryDefinition {
+  return {
+    ...definition,
+    [wellId]: [...definition[wellId], { id: createItemId(), expression }],
+  };
+}
+
+export function addExpressionValue(
+  definition: SummaryDefinition,
+  expression: SummaryExpression,
+): SummaryDefinition {
+  return {
+    ...definition,
+    values: [
+      ...definition.values,
+      { id: createItemId(), type: "expression", expression },
+    ],
+  };
+}
+
+/** Replaces the item `itemId` with a custom expression, in place, e.g. after editing it as a formula. */
+export function replaceWithExpression(
+  definition: SummaryDefinition,
+  itemId: string,
+  expression: SummaryExpression,
+): SummaryDefinition {
+  const replaceDimension = (dimension: SummaryDimension): SummaryDimension =>
+    dimension.id === itemId ? { id: itemId, expression } : dimension;
+  return {
+    rows: definition.rows.map(replaceDimension),
+    columns: definition.columns.map(replaceDimension),
+    values: definition.values.map((value) =>
+      value.id === itemId
+        ? { id: itemId, type: "expression", expression }
+        : value,
+    ),
+  };
+}
+
+/**
+ * The clause an item's formula is written from when editing it: the expression itself, or the
+ * aggregation a count or column value stands for. `null` for items that aren't formulas (metrics, columns).
+ */
+export function getFormulaClause(
+  base: SummaryBase,
+  definition: SummaryDefinition,
+  itemId: string,
+): Lib.Expressionable | null {
+  const dimension = findDimension(definition, itemId);
+  if (dimension != null) {
+    return "expression" in dimension ? dimension.expression.clause : null;
+  }
+  const value = definition.values.find(({ id }) => id === itemId);
+  if (value == null || value.type === "metric") {
+    return null;
+  }
+  return value.type === "expression"
+    ? value.expression.clause
+    : getOperatorClause(base, value);
+}
+
+/** "Sum(Total) / Count": the name a formula's result gets when nobody names it. */
+export function getDefaultFormulaName(source: string): string {
+  const name = source
+    .replace(/\[([^\]]*)\]?/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  return name.length > DEFAULT_FORMULA_NAME_MAX_LENGTH
+    ? `${name.slice(0, DEFAULT_FORMULA_NAME_MAX_LENGTH - 1).trimEnd()}…`
+    : name;
+}
+
 export function removeItem(
   definition: SummaryDefinition,
   itemId: string,
@@ -443,11 +635,9 @@ function findChipColumn(
   definition: SummaryDefinition,
   itemId: string,
 ): Lib.ColumnMetadata | null {
-  const dimension = [...definition.rows, ...definition.columns].find(
-    ({ id }) => id === itemId,
-  );
+  const dimension = findDimension(definition, itemId);
   if (dimension) {
-    return dimension.column;
+    return "column" in dimension ? dimension.column : null;
   }
   const value = definition.values.find(({ id }) => id === itemId);
   return value?.type === "column" ? value.column : null;
@@ -472,6 +662,18 @@ export function dropOnWell(
     case "metric":
       return addMetricValue(base, definition, item.metric);
     case "chip": {
+      const dimension = findDimension(definition, item.itemId);
+      if (dimension != null && "expression" in dimension) {
+        // custom columns move as they are, keeping their formula
+        if (wellId === "values") {
+          return definition;
+        }
+        const remainingDefinition = removeItem(definition, item.itemId);
+        return {
+          ...remainingDefinition,
+          [wellId]: [...remainingDefinition[wellId], dimension],
+        };
+      }
       const column = findChipColumn(definition, item.itemId);
       if (column == null) {
         return definition;

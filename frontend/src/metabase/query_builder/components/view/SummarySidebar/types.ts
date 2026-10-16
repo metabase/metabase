@@ -6,10 +6,16 @@ export type SummaryWellId = (typeof SUMMARY_WELL_IDS)[number];
 
 export type SummaryDimensionWellId = Exclude<SummaryWellId, "values">;
 
-export type SummaryDimension = {
-  id: string;
-  column: Lib.ColumnMetadata;
+/** A custom expression written in a well's formula input, with the name its result column gets. */
+export type SummaryExpression = {
+  name: string;
+  clause: Lib.ExpressionClause;
 };
+
+/** A grouping: an existing column, or a custom column computed by an expression. */
+export type SummaryDimension =
+  | { id: string; column: Lib.ColumnMetadata }
+  | { id: string; expression: SummaryExpression };
 
 export type SummaryValue =
   | { id: string; type: "count" }
@@ -19,7 +25,8 @@ export type SummaryValue =
       column: Lib.ColumnMetadata;
       operatorShortName: string;
     }
-  | { id: string; type: "metric"; metric: Lib.MetricMetadata };
+  | { id: string; type: "metric"; metric: Lib.MetricMetadata }
+  | { id: string; type: "expression"; expression: SummaryExpression };
 
 export type SummaryDefinition = {
   rows: SummaryDimension[];
