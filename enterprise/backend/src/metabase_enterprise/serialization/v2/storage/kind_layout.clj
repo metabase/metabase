@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.collections.core :as collections]
+   [metabase.collections.schema :as collections.schema]
    [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]))
@@ -174,6 +175,16 @@
 
 (def ^:private not-archived [:= :archived false])
 
+(defn- numbered-collections
+  "The collections whose folders the layout numbers on a name clash: not archived, and not the Trash, a personal
+  collection or the Library, which have no folder among the others."
+  [ctx]
+  (remove (fn [{:keys [archived personal_owner_id] coll-type :type}]
+            (or archived
+                personal_owner_id
+                (contains? #{collections.schema/trash-collection-type collections/library-collection-type} coll-type)))
+          (vals (:by-eid (collections-index ctx)))))
+
 (def ^:private rank-specs
   "How to number the items of each kind that share a name in a folder: `:rows` reads every instance (a function of the
   storage context), `:group` gives the folder an instance is in, as the app DB says it. `:id` (default `:entity_id`)
@@ -185,7 +196,7 @@
                                   dashboard_id [:dashboard dashboard_id]
                                   document_id  [:document document_id]
                                   :else        [:collection collection_id (keyword card-type)]))}]
-    {:collection     {:rows  (rows-of :model/Collection [:location :namespace] not-archived)
+    {:collection     {:rows  numbered-collections
                       :group (juxt :location :namespace)}
      :question       card
      :model          card

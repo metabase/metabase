@@ -245,6 +245,17 @@
           (is (= "data_apps/sales-app/data_app.yaml" app-path))
           (is (= "data_apps/sales-app/resources/_collection.yaml" coll-path)))))))
 
+(deftest collections-without-folders-do-not-take-numbers-test
+  (testing "the Trash and the Library have no folder in collections/, so a collection of the same name is not _2"
+    (mt/with-empty-h2-app-db!
+      (collections/create-library-collection!)
+      (let [trash   (ts/create! :model/Collection :name "Trash" :location "/")
+            library (ts/create! :model/Collection :name "Library" :location "/")
+            ctx     (storage.util/storage-context kind-layout/kind-layout)
+            path-of #(storage.util/entity-file-path ctx (serdes/extract-one "Collection" {} %))]
+        (is (= "collections/trash/_collection.yaml" (path-of trash)))
+        (is (= "collections/library/_collection.yaml" (path-of library)))))))
+
 (deftest kind-layout-is-not-the-default-test
   (testing "a storage context without a layout, and plain serdes export, keep today's layout"
     (is (= storage.util/default-layout (:layout (storage.util/storage-context))))

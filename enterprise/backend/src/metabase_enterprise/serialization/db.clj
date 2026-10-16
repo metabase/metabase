@@ -54,9 +54,11 @@
                                           [:in :collection_id collection-ids]]}))
 
 (mu/defn layout-collections
-  "The `:id`, `:entity_id`, `:name`, `:location`, `:namespace`, `:type` and `:created_at` of every Collection."
+  "The `:id`, `:entity_id`, `:name`, `:location`, `:namespace`, `:type`, `:archived`, `:personal_owner_id` and
+  `:created_at` of every Collection."
   []
-  (t2/select [:model/Collection :id :entity_id :name :location :namespace :type :created_at]))
+  (t2/select [:model/Collection :id :entity_id :name :location :namespace :type :archived :personal_owner_id
+              :created_at]))
 
 (mu/defn data-app-slugs-by-collection-id
   "The slug (the `:name`) of each DataApp, keyed by the id of its resource collection."
