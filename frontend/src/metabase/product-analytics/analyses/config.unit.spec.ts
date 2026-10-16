@@ -615,7 +615,7 @@ describe("analysis settings", () => {
         { as: "breakdown_2", ...COUNTRY },
       ]);
       expect(isHidden("funnel.breakdown_step")).toBe(false);
-      expect(FUNNEL_CONFIG.getDisplay(computed)).toBe("combo");
+      expect(FUNNEL_CONFIG.getDisplay(computed)).toBe("bar");
       expect(FUNNEL_CONFIG.getVizSettings(computed, context)).toMatchObject({
         "graph.dimensions": ["segment"],
         "graph.x_axis.title_text": "Plan · Country",
@@ -645,7 +645,8 @@ describe("analysis settings", () => {
       });
 
       expect(built.sql).toContain("funnel_transitions");
-      expect(built.sql).toContain("breakdown_1 AS `segment`");
+      expect(built.sql).toContain("breakdown_1 AS segment");
+      expect(built.sql).toContain("GROUP BY `segment`");
       expect(built.sql).toContain("WHERE k = 1");
     });
   });

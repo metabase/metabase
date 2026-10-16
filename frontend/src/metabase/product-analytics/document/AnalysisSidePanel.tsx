@@ -102,7 +102,13 @@ export const AnalysisSidePanel = ({
         style={{ overflowY: "auto" }}
       >
         {tab === "insights" ? (
-          <InsightsPanel state={insights.state} action={insightAction} />
+          <InsightsPanel
+            state={insights.state}
+            action={insightAction}
+            getExploreSeries={insights.getExploreSeries}
+            transitionFilter={analysisDocument.insightsTransition ?? undefined}
+            onShowAll={() => analysisDocument.showInsights(nodeId)}
+          />
         ) : (
           <SettingsList panel={tab} widgets={analysis.widgets} />
         )}

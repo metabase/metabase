@@ -22,11 +22,18 @@ export type AnalysisDocumentContextValue = {
   /** The analysis in edit mode. At most one is. */
   editingNodeId: string | null;
   panelTab: AnalysisPanelTab | null;
+  /** The funnel transition the insights tab is narrowed to, if any. */
+  insightsTransition: number | null;
   /** An analysis that was just added, briefly highlighted. */
   highlightedNodeId: string | null;
   startEditing: (nodeId: string, panelTab?: AnalysisPanelTab) => void;
   stopEditing: () => void;
   setPanelTab: (panelTab: AnalysisPanelTab | null) => void;
+  /**
+   * Edits the analysis with its insights tab open, narrowed to `transition`
+   * when given. Changing the tab or the analysis being edited widens it again.
+   */
+  showInsights: (nodeId: string, transition?: number) => void;
   /** Adds a new analysis at the cursor and opens its setup. */
   insertAnalysis: (kind: AnalysisKind) => void;
   /**

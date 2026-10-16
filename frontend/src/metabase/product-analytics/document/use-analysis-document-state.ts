@@ -58,23 +58,43 @@ export const useAnalysisDocumentState = ({
   canWrite,
 }: UseAnalysisDocumentStateArgs): AnalysisDocumentContextValue => {
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
-  const [panelTab, setPanelTab] = useState<AnalysisPanelTab | null>(null);
+  const [panelTab, setPanelTabState] = useState<AnalysisPanelTab | null>(null);
+  const [insightsTransition, setInsightsTransition] = useState<number | null>(
+    null,
+  );
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(
     null,
   );
   const lastInsertedBelowRef = useRef(new Map<string, string>());
 
+  const setPanelTab = useCallback((nextPanelTab: AnalysisPanelTab | null) => {
+    setPanelTabState(nextPanelTab);
+    setInsightsTransition(null);
+  }, []);
+
   const startEditing = useCallback(
     (nodeId: string, nextPanelTab?: AnalysisPanelTab) => {
       setEditingNodeId(nodeId);
+      setInsightsTransition(null);
       if (nextPanelTab !== undefined) {
-        setPanelTab(nextPanelTab);
+        setPanelTabState(nextPanelTab);
       }
     },
     [],
   );
 
-  const stopEditing = useCallback(() => setEditingNodeId(null), []);
+  const stopEditing = useCallback(() => {
+    setEditingNodeId(null);
+    setInsightsTransition(null);
+  }, []);
+
+  const showInsights = useCallback(
+    (nodeId: string, transition?: number) => {
+      startEditing(nodeId, "insights");
+      setInsightsTransition(transition ?? null);
+    },
+    [startEditing],
+  );
 
   useEffect(() => {
     if (editor === null || editingNodeId === null) {
@@ -88,7 +108,7 @@ export const useAnalysisDocumentState = ({
       const isSelectionMove =
         transaction.selectionSet && !transaction.docChanged;
       if (isSelectionMove && !isSelectingNode(editor, editingNodeId)) {
-        setEditingNodeId(null);
+        stopEditing();
       }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -97,7 +117,7 @@ export const useAnalysisDocumentState = ({
         (event.target instanceof Node &&
           editor.view.dom.contains(event.target));
       if (event.key === "Escape" && isInDocument) {
-        setEditingNodeId(null);
+        stopEditing();
       }
     };
     editor.on("transaction", handleTransaction);
@@ -106,7 +126,7 @@ export const useAnalysisDocumentState = ({
       editor.off("transaction", handleTransaction);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [editor, editingNodeId]);
+  }, [editor, editingNodeId, stopEditing]);
 
   useEffect(() => {
     if (highlightedNodeId === null) {
@@ -161,10 +181,12 @@ export const useAnalysisDocumentState = ({
       canWrite,
       editingNodeId,
       panelTab,
+      insightsTransition,
       highlightedNodeId,
       startEditing,
       stopEditing,
       setPanelTab,
+      showInsights,
       insertAnalysis,
       insertAnalysisBelow,
     }),
@@ -175,9 +197,12 @@ export const useAnalysisDocumentState = ({
       canWrite,
       editingNodeId,
       panelTab,
+      insightsTransition,
       highlightedNodeId,
       startEditing,
       stopEditing,
+      setPanelTab,
+      showInsights,
       insertAnalysis,
       insertAnalysisBelow,
     ],

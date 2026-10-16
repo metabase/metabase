@@ -1,8 +1,6 @@
 import { c, t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
-import { color } from "metabase/ui/colors";
-import type { VisualizationSettings } from "metabase-types/api";
 
 import { BreakdownWidget } from "../components/settings/BreakdownWidget";
 import { DurationWidget } from "../components/settings/DurationWidget";
@@ -20,6 +18,10 @@ import {
   isBreakdownColumnList,
 } from "./breakdown";
 import { commonSettings } from "./common-settings";
+import {
+  getConversionColumnSettings,
+  getSeriesSettings,
+} from "./series-settings";
 import {
   getCommonSpec,
   getEventDefinitionProps,
@@ -50,25 +52,9 @@ const ORDERINGS: readonly FunnelSettings["funnel.ordering"][] = [
 ];
 const ANCHORS: readonly FunnelSettings["funnel.anchor"][] = ["first", "each"];
 
-const SERIES_COLOR_NAME = "accent0";
-
 const isBreakdownShown = (settings: FunnelSettings): boolean =>
   settings["funnel.view"] === "steps" &&
   settings["funnel.breakdown"].length > 0;
-
-// Every view shares one color. The color name keeps it following the active palette.
-const getSeriesSettings = (
-  metric: string,
-  title: string,
-): Pick<VisualizationSettings, "series_settings"> => ({
-  series_settings: {
-    [metric]: {
-      title,
-      color: color(SERIES_COLOR_NAME),
-      color_name: SERIES_COLOR_NAME,
-    },
-  },
-});
 
 const common = commonSettings({
   granularity: { units: ["hour", "day", "week", "month"], defaultUnit: "week" },
@@ -234,7 +220,7 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
       : [],
   getDisplay: (settings) => {
     if (isBreakdownShown(settings)) {
-      return "combo";
+      return "bar";
     }
     switch (settings["funnel.view"]) {
       case "steps":
@@ -272,6 +258,7 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           "graph.dimensions": ["period"],
           "graph.metrics": ["conversion"],
           ...getSeriesSettings("conversion", t`Conversion`),
+          ...getConversionColumnSettings("conversion"),
         };
       case "timeToConvert":
         return {

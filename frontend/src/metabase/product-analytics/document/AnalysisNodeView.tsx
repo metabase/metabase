@@ -68,7 +68,8 @@ const AnalysisCard = ({ nodeId, definition }: AnalysisCardProps) => {
     "funnel.steps" in computed && computed["funnel.view"] === "steps"
       ? computed["funnel.steps"]
       : undefined;
-  const { insertAnalysisBelow } = analysisDocument;
+  const hasInsights = definition.kind === "funnel";
+  const { insertAnalysisBelow, showInsights } = analysisDocument;
   const mode = useMemo(
     () =>
       isEditable
@@ -76,9 +77,19 @@ const AnalysisCard = ({ nodeId, definition }: AnalysisCardProps) => {
             funnelSteps,
             onInsertBelow: (nextDefinition) =>
               insertAnalysisBelow(nodeId, nextDefinition),
+            onShowInsights: hasInsights
+              ? (transition) => showInsights(nodeId, transition)
+              : undefined,
           })
         : undefined,
-    [isEditable, funnelSteps, insertAnalysisBelow, nodeId],
+    [
+      isEditable,
+      funnelSteps,
+      hasInsights,
+      insertAnalysisBelow,
+      showInsights,
+      nodeId,
+    ],
   );
 
   const resultProps = {
@@ -129,7 +140,7 @@ const AnalysisCard = ({ nodeId, definition }: AnalysisCardProps) => {
             widgets={analysis.widgets}
             setupLabel={config.setupLabel}
             sql={query.sql}
-            hasInsights={definition.kind === "funnel"}
+            hasInsights={hasInsights}
             panelTab={analysisDocument.panelTab}
             onPanelTabChange={analysisDocument.setPanelTab}
             onDone={analysisDocument.stopEditing}

@@ -122,6 +122,33 @@ describe("useAnalysisDocumentState", () => {
     expect(result.current.panelTab).toBe("insights");
   });
 
+  it("opens insights narrowed to a transition, until the tab or the analysis changes", () => {
+    const { result } = setup();
+
+    act(() => result.current.showInsights("a", 2));
+    expect(result.current.editingNodeId).toBe("a");
+    expect(result.current.panelTab).toBe("insights");
+    expect(result.current.insightsTransition).toBe(2);
+
+    act(() => result.current.setPanelTab("setup"));
+    expect(result.current.insightsTransition).toBeNull();
+
+    act(() => result.current.showInsights("a", 1));
+    act(() => result.current.startEditing("b"));
+    expect(result.current.panelTab).toBe("insights");
+    expect(result.current.insightsTransition).toBeNull();
+  });
+
+  it("widens narrowed insights back to all of them", () => {
+    const { result } = setup();
+    act(() => result.current.showInsights("a", 2));
+
+    act(() => result.current.showInsights("a"));
+
+    expect(result.current.panelTab).toBe("insights");
+    expect(result.current.insightsTransition).toBeNull();
+  });
+
   it("keeps edit mode while the analysis is selected or its settings change", () => {
     const { editor, result, selectAnalysis } = setup();
     act(() => result.current.startEditing("a"));

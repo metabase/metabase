@@ -2,6 +2,7 @@ import type { Field } from "metabase-types/api";
 
 import type { ExtraColumn } from "../columns";
 import { isCandidateField } from "../insights/candidates";
+import { SEGMENT_SEPARATOR } from "../sql/analyses/funnel-insights";
 
 import type { AnalysisContext } from "./types";
 
@@ -83,7 +84,7 @@ export const getBreakdownLabel = (
         findBreakdownField(context, breakdown)?.display_name ??
         breakdown.column,
     )
-    .join(" · ");
+    .join(SEGMENT_SEPARATOR);
 
 export type BreakdownOption = {
   value: string;
