@@ -37,6 +37,8 @@ import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
+import { isExploreModeQuestion } from "../../ExploreBar";
+import { ExploreViewsPanel } from "../../ExploreViews";
 import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
@@ -285,6 +287,9 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
                 runQuestionQuery={runQuestionQuery}
                 setQueryBuilderMode={setQueryBuilderMode}
               />
+            )}
+            {isExploreModeQuestion(question, queryBuilderMode) && (
+              <ExploreViewsPanel question={question} />
             )}
             <ViewSidebar side="left" isOpen={showLeftSidebar}>
               <ViewLeftSidebarContainer
