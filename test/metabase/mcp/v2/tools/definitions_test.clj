@@ -106,6 +106,11 @@
 (def ^:private mbql4-fragment
   {:filter ["=" 1 1]})
 
+(def ^:private measure-create-denial
+  "What `measure_write` says when the CreateMeasure command's permission check refuses: the check's own `:doc`,
+   which is the same thing the REST caller is told."
+  "You must have permission to create a measure on the table \"definition\" names.")
+
 (defn- latest-revision-message
   [model-name id]
   (t2/select-one-fn :message :model/Revision
@@ -170,16 +175,32 @@
     (testing tool
       (testing "GHY-4137: update without id is a teaching error"
         (is (= "\"id\" is required when method is \"update\"."
-               (tool-error (call-tool! :crowberto nil tool {:method "update" :revision_message "x"})))))
-      (testing "GHY-4137: update without revision_message is the tool's own teaching error, never the bare REST 400"
-        (is (= (format (str "\"revision_message\" is required when method is \"update\" — pass a short sentence "
-                            "describing the change; it is recorded in the %s's revision history.")
-                       (if (= "segment_write" tool) "segment" "measure"))
-               (tool-error (call-tool! :crowberto nil tool {:method "update" :id 13371337 :description "d"})))))
-      (testing "GHY-4137: a whitespace-only revision_message is rejected the same way"
+               (tool-error (call-tool! :crowberto nil tool {:method "update" :revision_message "x"})))))))
+  (testing "segment_write"
+    (testing "GHY-4137: update without revision_message is the tool's own teaching error, never the bare REST 400"
+      (is (= (str "\"revision_message\" is required when method is \"update\" — pass a short sentence "
+                  "describing the change; it is recorded in the segment's revision history.")
+             (tool-error (call-tool! :crowberto nil "segment_write"
+                                     {:method "update" :id 13371337 :description "d"})))))
+    (testing "GHY-4137: a whitespace-only revision_message is rejected the same way"
+      (is (re-find #"\"revision_message\" is required"
+                   (tool-error (call-tool! :crowberto nil "segment_write"
+                                           {:method "update" :id 13371337 :revision_message " "}))))))
+  (testing "measure_write: the rule belongs to the UpdateMeasure command, so it is asked once the id resolves --
+            a bad id is answered as a bad id first, and this error is the command's own words"
+    (mt/with-temp [:model/Measure {measure-id :id} {:name       "definitions-test revision message"
+                                                    :table_id   (mt/id :venues)
+                                                    :creator_id (mt/user->id :crowberto)
+                                                    :definition {}}]
+      (is (= (str "\"revision_message\" is required: a short sentence describing the change, recorded in the "
+                  "measure's revision history.")
+             (tool-error (call-tool! :crowberto nil "measure_write"
+                                     {:method "update" :id measure-id :description "d"}))))
+      (testing "and a whitespace-only one is rejected the same way"
         (is (re-find #"\"revision_message\" is required"
-                     (tool-error (call-tool! :crowberto nil tool
-                                             {:method "update" :id 13371337 :revision_message " "}))))))))
+                     (tool-error (call-tool! :crowberto nil "measure_write"
+                                             {:method "update" :id measure-id :description "d"
+                                              :revision_message " "}))))))))
 
 (deftest ^:parallel method-exclusive-args-test
   (doseq [tool ["segment_write" "measure_write"]]
@@ -206,18 +227,33 @@
                                "measure_write" (count-definition (mt/id :venues))}]
       (testing tool
         (testing "create"
-          (is (= (format "\"name\" cannot be blank — pass a short descriptive name for the %s."
-                         (if (= "segment_write" tool) "segment" "measure"))
+          ;; segment_write says this itself; measure_write is told it by the CreateMeasure command's own `:doc`
+          (is (= (if (= "segment_write" tool)
+                   "\"name\" cannot be blank — pass a short descriptive name for the segment."
+                   "\"name\" cannot be blank: pass a short descriptive name for the measure.")
                  (tool-error (call-tool! :crowberto nil tool
                                          {:method     "create" :table_id (mt/id :venues)
                                           :name       "   "
                                           :definition definition})))))
-        (testing "update — refused before the id lookup, so it reads as an argument error"
-          (is (re-find #"\"name\" cannot be blank"
-                       (tool-error (call-tool! :crowberto nil tool
-                                               {:method           "update" :id 13371337
-                                                :name             "   "
-                                                :revision_message "x"})))))))))
+        (testing "update"
+          (if (= "segment_write" tool)
+            (testing "refused before the id lookup, so it reads as an argument error"
+              (is (re-find #"\"name\" cannot be blank"
+                           (tool-error (call-tool! :crowberto nil tool
+                                                   {:method           "update" :id 13371337
+                                                    :name             "   "
+                                                    :revision_message "x"})))))
+            ;; measure_write inherits the rule from the UpdateMeasure command instead, which is asked after the id
+            ;; resolves — so this needs a measure that is really there
+            (mt/with-temp [:model/Measure {measure-id :id} {:name       "definitions-test blank name"
+                                                            :table_id   (mt/id :venues)
+                                                            :creator_id (mt/user->id :crowberto)
+                                                            :definition {}}]
+              (is (re-find #"\"name\" cannot be blank"
+                           (tool-error (call-tool! :crowberto nil tool
+                                                   {:method           "update" :id measure-id
+                                                    :name             "   "
+                                                    :revision_message "x"})))))))))))
 
 (deftest ^:parallel invalid-id-shape-test
   (testing "GHY-4137: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
@@ -400,6 +436,25 @@
                                                {:method "update" :id measure-id :revision_message "x"
                                                 :definition {:aggregation [["count"]]}})))))))))
 
+;; not ^:parallel: drives the domain create fn, though the input it drives it with is refused
+(deftest measure-rest-and-mcp-report-the-same-failure-test
+  (testing "GHY-4154: the rules are the command's, so the REST domain path and this tool refuse the same input the
+            same way -- and the tool's teaching error is nothing but that report's own words"
+    (let [definition (count-definition (mt/id :venues))
+          report     (mt/with-current-user (mt/user->id :crowberto)
+                       (try
+                         (measures.api/create-measure! {:name "   " :definition definition})
+                         (catch clojure.lang.ExceptionInfo e
+                           (:failures (ex-data e)))))]
+      (testing "the REST domain path reports exactly the one rule that was broken"
+        (is (= [:metabase.measures.commands/name-not-blank] (keys report))))
+      (testing "and the tool says the same thing, because it renders the same report"
+        (is (= (:doc (val (first report)))
+               (tool-error (call-tool! :crowberto nil "measure_write"
+                                       {:method     "create" :table_id (mt/id :venues)
+                                        :name       "   "
+                                        :definition definition}))))))))
+
 ;;; --------------------------------------------- Round-tripping ---------------------------------------------------
 
 ;; not ^:parallel: creates rows through the tool; with-model-cleanup's id watermark is not parallel-safe
@@ -489,23 +544,27 @@
         (is (= (mt/id :venues) (:table_id created)))
         (is (= 1 (count (get-in created [:definition :stages 0 :filters]))))))))
 
-(deftest ^:parallel table-id-definition-mismatch-test
-  (testing "GHY-4153/GHY-4154: a full-query definition whose source table differs from table_id is a teaching error,
+(deftest ^:parallel segment-table-id-definition-mismatch-test
+  (testing "GHY-4153: a full-query segment definition whose source table differs from table_id is a teaching error,
             not silent"
-    (testing "segment"
-      (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
-                                        {:method "create" :table_id (mt/id :checkins)
-                                         :name "definitions-test mismatch segment"
-                                         :definition (venues-filter-definition)}))]
-        (is (re-find #"must be the same table" msg))
-        (is (not= "Internal error" msg))))
-    (testing "measure"
-      (let [msg (tool-error (call-tool! :crowberto nil "measure_write"
-                                        {:method "create" :table_id (mt/id :checkins)
-                                         :name "definitions-test mismatch measure"
-                                         :definition (venues-count-definition)}))]
-        (is (re-find #"must be the same table" msg))
-        (is (not= "Internal error" msg))))))
+    (let [msg (tool-error (call-tool! :crowberto nil "segment_write"
+                                      {:method "create" :table_id (mt/id :checkins)
+                                       :name "definitions-test mismatch segment"
+                                       :definition (venues-filter-definition)}))]
+      (is (re-find #"must be the same table" msg))
+      (is (not= "Internal error" msg)))))
+
+;; not ^:parallel: creates a row through the tool
+(deftest measure-table-id-definition-mismatch-test
+  (testing "measure_write no longer compares table_id with the definition's source table: the CreateMeasure command
+            has no table_id of its own, and its permission check asks about the table the definition names, which is
+            the table the row lands on. So a mismatched table_id is ignored rather than taught about"
+    (mt/with-model-cleanup [:model/Measure :model/Revision]
+      (let [created (tool-result (call-tool! :crowberto nil "measure_write"
+                                             {:method "create" :table_id (mt/id :checkins)
+                                              :name "definitions-test mismatch measure"
+                                              :definition (venues-count-definition)}))]
+        (is (= (mt/id :venues) (:table_id created)))))))
 
 ;;; ------------------------------------------ Definition validation -----------------------------------------------
 
@@ -699,7 +758,7 @@
               (is (= "\"You don't have permissions to do that.\""
                      (tool-error (call-tool! analyst-id nil "segment_write"
                                              (assoc segment-args :name "definitions-test gated segment")))))
-              (is (= "\"You don't have permissions to do that.\""
+              (is (= measure-create-denial
                      (tool-error (call-tool! analyst-id nil "measure_write"
                                              (assoc measure-args :name "definitions-test gated measure")))))))
           (mt/with-premium-features #{:advanced-permissions}
@@ -708,7 +767,7 @@
               (is (= "\"You don't have permissions to do that.\""
                      (tool-error (call-tool! plain-id nil "segment_write"
                                              (assoc segment-args :name "definitions-test denied segment")))))
-              (is (= "\"You don't have permissions to do that.\""
+              (is (= measure-create-denial
                      (tool-error (call-tool! plain-id nil "measure_write"
                                              (assoc measure-args :name "definitions-test denied measure"))))))
             (testing "GHY-4137: a data analyst without unrestricted view-data is denied — data analysts always read
@@ -760,7 +819,8 @@
                    (is (= (mt/id :venues)
                           (t2/select-one-fn :table_id :model/Segment :id (:id segment))))))
                (testing "measure"
-                 (is (= "\"You don't have permissions to do that.\""
+                 (is (= (str "You must have permission to create a measure on the table a changed \"definition\" "
+                             "moves it to.")
                         (tool-error (call-tool! analyst-id nil "measure_write"
                                                 {:method           "update" :id (:id measure)
                                                  :definition       (count-definition (mt/id :checkins))

@@ -1,6 +1,12 @@
 (ns metabase.measures.db
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
+
+  `insert-measure!` and `update-measure!` are reached only from the `apply!` of a
+  [[metabase.measures.commands]] command, so every editorial write to a Measure has had that command's checks run
+  over it. Two writers here are not behind that door yet -- `set-measure-dimensions!`, and the enterprise
+  replacement path's own update -- because neither has an actor to check against; a later pass gives them a purpose
+  of their own."
   (:require
    [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,6 +31,11 @@
   "The Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
   (t2/select-one :model/Measure :id id))
+
+(mu/defn measures
+  "The Measures with `ids`."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (t2/select :model/Measure :id [:in ids]))
 
 (mu/defn unarchived-measures
   "The unarchived Measures, in case-insensitive name order."

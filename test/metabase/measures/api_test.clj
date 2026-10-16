@@ -49,10 +49,12 @@
 (deftest create-measure-permissions-test
   (testing "POST /api/measure"
     (testing "Test security. Requires superuser perms."
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "measure"
-                                   {:name       "abc"
-                                    :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))))
+      ;; The create-check is a check of the command the endpoint builds, so the refusal is the command's uniform
+      ;; rejection rather than `api/create-check`'s bare sentence. The status code is still what matters.
+      (is (=? {:message "Invalid CreateMeasure"}
+              (mt/user-http-request :rasta :post 403 "measure"
+                                    {:name       "abc"
+                                     :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))))
 
 (deftest create-measure-input-validation-test
   (testing "POST /api/measure"
@@ -93,11 +95,11 @@
     (testing "test security. requires superuser perms"
       (mt/with-temp [:model/Measure measure {:table_id   (mt/id :venues)
                                              :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :put 403 (str "measure/" (:id measure))
-                                     {:name             "abc"
-                                      :definition       (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))
-                                      :revision_message "something different"})))))))
+        (is (=? {:message "Invalid UpdateMeasure"}
+                (mt/user-http-request :rasta :put 403 (str "measure/" (:id measure))
+                                      {:name             "abc"
+                                       :definition       (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))
+                                       :revision_message "something different"})))))))
 
 (deftest update-input-validation-test
   (testing "PUT /api/measure/:id"
@@ -212,14 +214,14 @@
             (is (some #(= measure-id (:id %))
                       (mt/user-http-request :lucky :get 200 "measure/"))))
           (testing "POST /api/measure is still blocked"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :post 403 "measure"
-                                         {:name       "New Measure"
-                                          :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))
+            (is (=? {:message "Invalid CreateMeasure"}
+                    (mt/user-http-request :lucky :post 403 "measure"
+                                          {:name       "New Measure"
+                                           :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))
           (testing "PUT /api/measure/:id is still blocked"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :lucky :put 403 (str "measure/" measure-id)
-                                         {:name "Updated Name" :revision_message "attempted edit"})))))))))
+            (is (=? {:message "Invalid UpdateMeasure"}
+                    (mt/user-http-request :lucky :put 403 (str "measure/" measure-id)
+                                          {:name "Updated Name" :revision_message "attempted edit"})))))))))
 
 (deftest fetch-measure-test
   (testing "GET /api/measure/:id"

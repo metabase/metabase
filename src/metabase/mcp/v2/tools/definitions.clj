@@ -5,8 +5,15 @@
    OR data-analyst-with-unrestricted-view-data on the table, plus the table's remote-sync
    editability — is inherited, never reimplemented. The tools' own work is id resolution behind
    read checks, definition-shape handling (the bare clause form `get_content` returns, full
-   MBQL 5 queries, and MBQL 4 auto-convert for segments), and translating the model layer's
-   raw validation exceptions into teaching errors."
+   MBQL 5 queries, and MBQL 4 auto-convert for segments), and translating the domain layer's
+   validation failures into teaching errors.
+
+   The two sides differ in how much of that is still the tool's own work. A measure's rules live on the
+   [[metabase.measures.commands]] command the domain fn builds -- the non-blank name, the non-blank revision
+   message, the definition being a normalized MBQL 5 query naming a source table -- so this ns renders that
+   command's failure report and writes none of those rules itself. A segment has no command yet, so the
+   `check-*!` fns below are still what keeps `segment_write` from being laxer than the REST endpoint it delegates
+   to."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -20,7 +27,8 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
-   [metabase.metabot.scope :as metabot.scope]))
+   [metabase.metabot.scope :as metabot.scope]
+   [metabase.util.validated :as v]))
 
 (set! *warn-on-reflection* true)
 
@@ -83,17 +91,21 @@
                                   "server derives it from \"definition\"'s source table.")])))))
 
 (defn- check-name!
-  "Reject a present-but-blank `name`. The REST endpoints these tools delegate to take
-   `ms/NonBlankString`; the tools' own JSON schema can only say `:min 1`, which \" \" satisfies, so
-   without this the tools would be laxer than the endpoints whose checks they inherit. `entity` is the
-   server's own entity name."
+  "Reject a present-but-blank `name`. The REST endpoint `segment_write` delegates to takes
+   `ms/NonBlankString`; the tool's own JSON schema can only say `:min 1`, which \" \" satisfies, so
+   without this the tool would be laxer than the endpoint whose checks it inherits. `entity` is the
+   server's own entity name.
+
+   `measure_write` needs no such fn: `metabase.measures.commands/CreateMeasure` and `UpdateMeasure` own that rule,
+   and this ns only renders their report."
   [{entity-name :name} entity]
   (when (and (some? entity-name) (str/blank? entity-name))
     (common/throw-teaching-error
      (message/msg ["\"name\" cannot be blank — pass a short descriptive name for the %s."] entity))))
 
 (defn- check-revision-message!
-  "Reject a blank `revision_message` on update. `entity` is the server's own entity name."
+  "Reject a blank `revision_message` on update. `entity` is the server's own entity name. Segment-only, for the
+   reason [[check-name!]] gives."
   [{:keys [revision_message]} entity]
   (when (str/blank? revision_message)
     (common/throw-teaching-error
@@ -134,7 +146,10 @@
   "Probe `definition` against strict MBQL normalization before handing it to the domain layer.
    The models normalize non-strictly, where an unparseable definition silently degrades to `{}`
    and would be stored as an empty definition; failing here turns that silent data loss into a
-   teaching error."
+   teaching error.
+
+   Segment-only: a measure definition that degrades to `{}` fails the command's own
+   `::definition-names-a-table`, so the data loss is caught without a probe here."
   [kind definition]
   (try
     (lib-be/normalize-query nil definition {:strict? true})
@@ -189,8 +204,9 @@
       :segment (let [wrapped (wrap-mbql4-fragment definition table)]
                  (check-normalizable! kind wrapped)
                  wrapped)
+      ;; no `check-normalizable!` here: a measure definition that will not normalize names no source table once
+      ;; normalized, which the command refuses
       :measure (do (require-mbql5-definition! definition)
-                   (check-normalizable! kind definition)
                    definition))))
 
 (defn- check-table-match!
@@ -198,7 +214,11 @@
    source table; when they disagree, fail loud rather than silently storing on the definition's
    table (the `table_id` read check would also have been on the wrong table). The clause form is
    built on `table`, so its source always matches and this never trips. Runs after
-   [[prepare-definition]], so the definition is already known to normalize."
+   [[prepare-definition]], so the definition is already known to normalize.
+
+   Segment-only. `measure_write` drops it: the command's permission check asks about the table the definition
+   names, which is the table the measure is stored on, so a mismatched `table_id` can no longer authorize a write
+   anywhere."
   [table definition]
   (when-let [defn-table-id (lib/primary-source-table-id (lib-be/normalize-query definition))]
     (when (not= defn-table-id (:id table))
@@ -208,6 +228,19 @@
                     (:id table) defn-table-id defn-table-id (:id table))))))
 
 ;;; ---------------------------------------------- Error translation -----------------------------------------------
+
+(defn- unmet-requirements
+  "The teaching error for a [[metabase.util.validated/check!]] rejection: the `:doc` of every check that failed, one
+   per line, in the words the command's own author wrote. A rule added to a command therefore teaches the agent
+   without an edit here, and the agent is told the same thing the REST caller is told."
+  [{:keys [failures]}]
+  (common/lines-message
+   (into []
+         (comp (keep (comp :doc val))
+               (distinct)
+               (map #(common/ellipsize % 300))
+               (map message/raw))
+         (sort-by (comp str key) failures))))
 
 (defn- humanized-messages
   [x]
@@ -249,6 +282,11 @@
     (catch clojure.lang.ExceptionInfo e
       (let [data (ex-data e)]
         (cond
+          ;; before the `:status-code` passthrough: a command's rejection carries one, and its report is what
+          ;; teaches
+          (isa? (:error data) ::v/check-failed)
+          (common/throw-teaching-error (unmet-requirements data) (select-keys data [:status-code]))
+
           (:status-code data)
           (throw e)
 
@@ -416,10 +454,8 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
-            _          (check-name! body (message/raw "measure"))
             table      (resolve-table (:table_id body))
-            definition (prepare-definition :measure (:definition body) table)
-            _          (check-table-match! table definition)]
+            definition (prepare-definition :measure (:definition body) table)]
         (-> (run-domain-write #(create-measure! {:name        (:name body)
                                                  :description (:description body)
                                                  :definition  definition}))
@@ -430,8 +466,6 @@
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
-            _           (check-name! body (message/raw "measure"))
-            _           (check-revision-message! body (message/raw "measure"))
             measure     (resolve-existing :model/Measure id)
             body        (m/update-existing body :definition
                                            (fn [definition]
