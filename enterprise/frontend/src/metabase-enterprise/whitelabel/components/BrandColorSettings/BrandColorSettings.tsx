@@ -7,15 +7,18 @@ import { ColorPicker } from "metabase/common/components/ColorPicker";
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { Box, Flex } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { WHITELABEL_KEY_TO_COLOR_KEY } from "metabase/ui/colors/constants/whitelabel-colors";
+import type { ColorPalette } from "metabase/ui/colors/types";
+import type { ColorSettings } from "metabase-types/api";
 
 import S from "./BrandColorSettings.module.css";
 import type { ColorOption } from "./types";
 import { getBrandColorOptions } from "./utils";
 
 export interface BrandColorSettingsProps {
-  colors: Record<string, string>;
-  colorPalette: Record<string, string>;
-  onChange: (colors: Record<string, string>) => void;
+  colors: ColorSettings;
+  colorPalette: ColorPalette;
+  onChange: (colors: ColorSettings) => void;
 }
 
 export const BrandColorSettings = ({
@@ -48,8 +51,8 @@ export const BrandColorSettings = ({
 };
 
 interface BrandColorTableProps {
-  colors: Record<string, string>;
-  colorPalette: Record<string, string>;
+  colors: ColorSettings;
+  colorPalette: ColorPalette;
   options: ColorOption[];
   onChange: (colorName: string, color?: string) => void;
 }
@@ -81,7 +84,10 @@ const BrandColorTable = ({
           <BrandColorRow
             key={option.name}
             color={colors[option.name]}
-            originalColor={color(option.name, colorPalette)}
+            originalColor={color(
+              WHITELABEL_KEY_TO_COLOR_KEY[option.name],
+              colorPalette,
+            )}
             option={option}
             onChange={onChange}
           />

@@ -386,6 +386,14 @@
                                    :dashboard_id       dashboard-id}]
           (is (#'api.dashboard/get-dashboard dashboard-id)))))))
 
+(deftest get-dashboard-creator-test
+  (testing "GET /api/dashboard/:id includes the dashboard's creator"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:creator_id (mt/user->id :rasta)}]
+      (is (=? {:creator {:id         (mt/user->id :rasta)
+                         :email      "rasta@metabase.com"
+                         :first_name "Rasta"}}
+              (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id)))))))
+
 (deftest get-dashboard-param-fields-has-target-test
   (testing "param-fields for fk has target (#44231)"
     (mt/with-temp
@@ -1874,7 +1882,6 @@
               (is (= (map #(dissoc % :id) original-tabs)
                      (map #(dissoc % :id) new-tabs))))))))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})
@@ -4538,9 +4545,8 @@
                                        dashcard-id)]
               (testing "Without actions enabled"
                 (is (= "Actions are not enabled."
-                       (:cause
-                        (mt/user-http-request :crowberto :post 400 execute-path
-                                              {:parameters {"name" "Birds"}})))))
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters {"name" "Birds"}}))))
               ;; Actions cannot run with access to the DB blocked, which is an enterprise feature.  See tests in
               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
               ;; this file
@@ -4577,9 +4583,8 @@
                                        dashcard-id)]
               (testing "Fails with actions disabled"
                 (is (= "Actions are not enabled."
-                       (:cause
-                        (mt/user-http-request :crowberto :post 400 execute-path
-                                              {:parameters {"id" 1}})))))
+                       (mt/user-http-request :crowberto :post 400 execute-path
+                                             {:parameters {"id" 1}}))))
               ;; Actions cannot run with access to the DB blocked, which is an enterprise feature.  See tests in
               ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
               ;; this file.
@@ -5278,12 +5283,13 @@
      :model/DashboardCard dc2 {:dashboard_id       (:id d)
                                :card_id            (:id c2)}]
     (let [uncached-calls-count (atom 0)
-          cached-calls-count   (atom 0)]
+          cached-calls-count   (atom 0)
+          select               (mt/original-fn #'t2/select)]
       ;; Get _uncached_ call count of t2/select count for :metadata/table
       (mt/with-dynamic-fn-redefs [t2/select (fn [& args]
                                               (when (= :metadata/table (first args))
                                                 (swap! uncached-calls-count inc))
-                                              (apply (mt/dynamic-value t2/select) args))]
+                                              (apply select args))]
         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id d)))
         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id d))))
       ;; Get _cached_ call count of t2/select count for :metadata/table
@@ -5291,7 +5297,7 @@
         (mt/with-dynamic-fn-redefs [t2/select (fn [& args]
                                                 (when (= :metadata/table (first args))
                                                   (swap! cached-calls-count inc))
-                                                (apply (mt/dynamic-value t2/select) args))]
+                                                (apply select args))]
           (mt/user-http-request :crowberto :get 200
                                 (format "dashboard/%d?dashboard_load_id=%s" (:id d) load-id))
           (mt/user-http-request :crowberto :get 200
@@ -5306,7 +5312,7 @@
               load-id                 (str (random-uuid))]
           (mt/with-dynamic-fn-redefs [lib.metadata.protocols/table (fn [mp table-id]
                                                                      (swap! providers conj mp)
-                                                                     ((mt/dynamic-value lib.metadata.protocols/table) mp table-id))]
+                                                                     ((mt/original-fn #'lib.metadata.protocols/table) mp table-id))]
             (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query"
                                                        (:id d) (:id dc1) (:id c1))
                                   {"dashboard_load_id" load-id})

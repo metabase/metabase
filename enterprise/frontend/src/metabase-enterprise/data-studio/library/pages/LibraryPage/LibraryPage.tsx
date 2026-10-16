@@ -3,7 +3,6 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
 import {
   CollectionRowModal,
   type CollectionRowModalState,
@@ -19,23 +18,20 @@ import {
   type TableModalState,
 } from "metabase-enterprise/data-studio/library/tables/components/TableModal";
 
+import { LibraryEmptyState } from "../../components/LibraryEmptyState";
+import { useLibraryCollections } from "../../hooks/use-library-collections";
+import type { LibrarySearchModel } from "../../hooks/use-library-search-results";
+
 import { ActionCell } from "./ActionCell";
-import { CreateLibraryDashboardModal } from "./CreateLibraryDashboardModal";
 import { CreateMenu } from "./CreateMenu";
-import { LibraryEmptyState } from "./LibraryEmptyState";
 import { PublishTableModal } from "./PublishTableModal";
-import {
-  useLibraryCollectionTree,
-  useLibraryCollections,
-  useLibrarySearch,
-} from "./hooks";
-import type { LibrarySearchModel } from "./hooks";
+import { useLibraryCollectionTree, useLibrarySearch } from "./hooks";
 import {
   getArchiveLibraryCollectionsMessage,
   getWritableCollection,
 } from "./utils";
 
-const SEARCH_MODELS: LibrarySearchModel[] = ["table", "metric", "dashboard"];
+const SEARCH_MODELS: LibrarySearchModel[] = ["table", "metric"];
 
 function getTrashMessage(section: LibrarySection, count: number) {
   return section === "data"
@@ -62,22 +58,12 @@ function LibraryPageContent() {
     showPublishTableModal,
     { open: openPublishTableModal, close: closePublishTableModal },
   ] = useDisclosure(false);
-  const [
-    showCreateDashboardModal,
-    { open: openCreateDashboardModal, close: closeCreateDashboardModal },
-  ] = useDisclosure(false);
-  const { data: collections = [], isLoading: isLoadingCollections } =
-    useListCollectionsTreeQuery({
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-      "include-library": true,
-    });
   const {
+    isLoading: isLoadingCollections,
     libraryCollection,
     tableCollection,
     metricCollection,
-    dashboardCollection,
-  } = useLibraryCollections(collections);
+  } = useLibraryCollections();
   const writableMetricCollection = useMemo(
     () =>
       libraryCollection &&
@@ -104,47 +90,33 @@ function LibraryPageContent() {
     metricCollection?.id,
   );
   const {
-    tree: dashboardsTree,
-    isLoading: isLoadingDashboards,
-    error: dashboardsError,
-    watchRows: watchDashboardRows,
-    isChildrenLoading: isDashboardChildrenLoading,
-  } = useLibraryCollectionTree(dashboardCollection, "dashboards");
-  const {
     tree: searchTree,
     isActive: isSearchActive,
     isLoading: isSearchLoading,
   } = useLibrarySearch(searchQuery, libraryCollection?.id, SEARCH_MODELS);
-  useErrorHandling(tablesError || metricsError || dashboardsError);
+  useErrorHandling(tablesError || metricsError);
 
   const tree = useMemo(
-    () =>
-      isSearchActive
-        ? searchTree
-        : [...tablesTree, ...metricsTree, ...dashboardsTree],
-    [isSearchActive, searchTree, tablesTree, metricsTree, dashboardsTree],
+    () => (isSearchActive ? searchTree : [...tablesTree, ...metricsTree]),
+    [isSearchActive, searchTree, tablesTree, metricsTree],
   );
   const defaultExpandedIds = useMemo(
     () =>
-      [tableCollection, metricCollection, dashboardCollection].flatMap(
-        (collection) => (collection ? [`collection:${collection.id}`] : []),
+      [tableCollection, metricCollection].flatMap((collection) =>
+        collection ? [`collection:${collection.id}`] : [],
       ),
-    [tableCollection, metricCollection, dashboardCollection],
+    [tableCollection, metricCollection],
   );
   const defaultMoveCollectionIds = useMemo(
     () => ({
       data: tableCollection?.id,
       metrics: metricCollection?.id,
-      dashboards: dashboardCollection?.id,
     }),
-    [tableCollection, metricCollection, dashboardCollection],
+    [tableCollection, metricCollection],
   );
   const emptyStateActions = useMemo(
-    () => ({
-      data: openPublishTableModal,
-      dashboards: openCreateDashboardModal,
-    }),
-    [openPublishTableModal, openCreateDashboardModal],
+    () => ({ data: openPublishTableModal }),
+    [openPublishTableModal],
   );
 
   const renderRowMenu = useCallback(
@@ -161,20 +133,13 @@ function LibraryPageContent() {
     (rows: Row<TreeItem>[]) => {
       watchTableRows(rows);
       watchMetricRows(rows);
-      watchDashboardRows(rows);
     },
-    [watchTableRows, watchMetricRows, watchDashboardRows],
+    [watchTableRows, watchMetricRows],
   );
   const isChildrenLoading = useCallback(
     (row: Row<TreeItem>) =>
-      isTableChildrenLoading(row) ||
-      isMetricChildrenLoading(row) ||
-      isDashboardChildrenLoading(row),
-    [
-      isTableChildrenLoading,
-      isMetricChildrenLoading,
-      isDashboardChildrenLoading,
-    ],
+      isTableChildrenLoading(row) || isMetricChildrenLoading(row),
+    [isTableChildrenLoading, isMetricChildrenLoading],
   );
 
   return (
@@ -185,12 +150,11 @@ function LibraryPageContent() {
         isLoadingCollections ||
         isLoadingTables ||
         isLoadingMetrics ||
-        isLoadingDashboards ||
         isSearchLoading
       }
       isSearchActive={isSearchActive}
       searchQuery={searchQuery}
-      emptyMessage={t`No tables, metrics, or dashboards yet`}
+      emptyMessage={t`No tables or metrics yet`}
       defaultExpandedIds={defaultExpandedIds}
       defaultMoveCollectionIds={defaultMoveCollectionIds}
       emptyState={
@@ -204,9 +168,6 @@ function LibraryPageContent() {
           canWriteToMetricCollection={!!writableMetricCollection}
           dataCollectionId={tableCollection?.id}
           canWriteToDataCollection={!!tableCollection?.can_write}
-          dashboardCollectionId={dashboardCollection?.id}
-          canWriteToDashboardCollection={!!dashboardCollection?.can_write}
-          onNewDashboardClick={openCreateDashboardModal}
         />
       }
       emptyStateActions={emptyStateActions}
@@ -221,13 +182,6 @@ function LibraryPageContent() {
         onClose={closePublishTableModal}
         onPublished={closePublishTableModal}
       />
-      {dashboardCollection && (
-        <CreateLibraryDashboardModal
-          opened={showCreateDashboardModal}
-          collectionId={dashboardCollection.id}
-          onClose={closeCreateDashboardModal}
-        />
-      )}
       <CollectionRowModal
         modal={collectionModal}
         onClose={() => setCollectionModal(undefined)}

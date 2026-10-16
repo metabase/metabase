@@ -341,8 +341,9 @@ describe("SessionsPage", () => {
           "Sessions that have ended will start appearing here as they are timed out, revoked or as users log out",
         ),
       ).toBeInTheDocument();
+      await userEvent.hover(await screen.findByRole("img", { name: /info/ }));
       expect(
-        screen.getByText("Ended sessions are kept for 30 days."),
+        await screen.findByText("Ended sessions are kept for 30 days."),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Revoke all active sessions" }),

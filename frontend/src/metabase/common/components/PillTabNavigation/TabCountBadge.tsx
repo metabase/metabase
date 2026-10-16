@@ -25,7 +25,14 @@ export function TabCountBadge({ count, id }: TabCountBadgeProps) {
       />
     ))
     .with({ status: "loaded" }, ({ value }) => (
-      <Badge id={id} variant="light" size="xs" color="neutral" flex="none">
+      <Badge
+        id={id}
+        variant="light"
+        size="xs"
+        color="neutral"
+        flex="none"
+        data-testid="pill-tab-count"
+      >
         {formatNumber(value)}
       </Badge>
     ))

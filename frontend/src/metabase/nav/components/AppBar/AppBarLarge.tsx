@@ -39,6 +39,7 @@ export interface AppBarLargeProps {
   questionLineage?: ReactNode;
   onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
+  onOpenNavbar: () => void;
 }
 
 export const AppBarLarge = ({
@@ -60,6 +61,7 @@ export const AppBarLarge = ({
   questionLineage,
   onSearchItemSelect,
   onToggleNavbar,
+  onOpenNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
   const isInfoVisible = !isNavBarVisible || isQuestionLineageVisible;
@@ -95,6 +97,7 @@ export const AppBarLarge = ({
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
           isGitSyncVisible={isGitSyncVisible}
+          onLogoClick={onOpenNavbar}
         />
         <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <Flex

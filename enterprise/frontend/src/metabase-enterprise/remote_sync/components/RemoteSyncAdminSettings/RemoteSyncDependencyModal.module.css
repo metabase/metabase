@@ -29,7 +29,7 @@
 }
 
 .contentRow:not(:last-of-type) {
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
 .cell {

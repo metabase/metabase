@@ -4,6 +4,7 @@ import {
   PillTabNavigation,
   getTabCount,
 } from "metabase/common/components/PillTabNavigation";
+import { Group, Icon, Text, Tooltip } from "metabase/ui";
 import { useGetSessionCountsQuery } from "metabase-enterprise/api";
 import type { IconName } from "metabase-types/api";
 
@@ -25,21 +26,38 @@ export const SessionsTabs = ({ tab, onChange }: SessionsTabsProps) => {
     refetchOnMountOrArgChange: true,
   });
   const tabs: TabConfig[] = [
-    { value: "active", icon: "key", label: t`Active` },
+    { value: "active", icon: "group", label: t`Active` },
     { value: "ended", icon: "history", label: t`Ended` },
   ];
 
   return (
-    <PillTabNavigation
-      data-testid="sessions-tabs"
-      tabs={tabs.map((config) => ({
-        label: config.label,
-        icon: config.icon,
-        count: getTabCount({ value: counts?.[config.value], isError }),
-        isSelected: config.value === tab,
-        "data-testid": `sessions-tab-${config.value}`,
-        onClick: () => onChange(config.value),
-      }))}
-    />
+    <Group justify="space-between">
+      <PillTabNavigation
+        data-testid="sessions-tabs"
+        tabs={tabs.map((config) => ({
+          label: config.label,
+          icon: config.icon,
+          count: getTabCount({ value: counts?.[config.value], isError }),
+          isSelected: config.value === tab,
+          "data-testid": `sessions-tab-${config.value}`,
+          onClick: () => onChange(config.value),
+        }))}
+      />
+      {tab === "ended" && (
+        <Tooltip
+          label={
+            <Text
+              c="inherit"
+              fz="inherit"
+            >{t`Ended sessions are kept for 30 days.`}</Text>
+          }
+          multiline
+          maw="20rem"
+          position="bottom-end"
+        >
+          <Icon name="info" c="text-secondary" />
+        </Tooltip>
+      )}
+    </Group>
   );
 };

@@ -111,8 +111,8 @@ function PillItem({
       withRemoveButton={onRemove != null}
       onRemove={onRemove}
       bdrs="xl"
-      bg={isOverflow ? "background-secondary" : "background-primary"}
-      bd="1px solid border"
+      bg={isOverflow ? "background_page-secondary" : "background_page-primary"}
+      bd="1px solid border-neutral"
       fw={600}
       py="0.375rem"
       px="sm"

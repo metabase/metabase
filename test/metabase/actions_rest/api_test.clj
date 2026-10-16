@@ -193,22 +193,20 @@
                   (let [action   (cross-db-action (:id model) test-data-id)
                         response (mt/user-http-request :rasta :post 400 "action" action)]
                     (testing "Checks both databases for actions enabled"
-                      (is (partial= {:message "Actions are not enabled."
-                                     :data    {:database-id test-data-id}}
-                                    response))))))))))
+                      (is (= "Actions are not enabled."
+                             response))))))))))
       (testing "When executing, both dbs are checked for enabled"
         (mt/dataset test-data
           (let [test-data-id (mt/id)]
             (mt/with-actions-test-data-and-actions-enabled
               (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query categories)}
                                 {action-on-other-id :action-id} (cross-db-action model-id test-data-id)]
-                (is (partial= {:message "Actions are not enabled."
-                               :data    {:database-id test-data-id}}
-                              (mt/user-http-request :rasta
-                                                    :post 400
-                                                    (format "action/%s/execute" action-on-other-id)
-                                                    ;; Twitter is the current value so effectively a no-op
-                                                    {:parameters {:id 1 :source "Twitter"}})))))))
+                (is (= "Actions are not enabled."
+                       (mt/user-http-request :rasta
+                                             :post 400
+                                             (format "action/%s/execute" action-on-other-id)
+                                             ;; Twitter is the current value so effectively a no-op
+                                             {:parameters {:id 1 :source "Twitter"}})))))))
         (testing "When actions are enabled on the other database"
           (mt/dataset test-data
             (let [test-data-id (mt/id)]
@@ -250,7 +248,7 @@
                               :parameters    []}]
                   (testing "creating it is refused because actions are disabled on the query's real DB"
                     (is (= "Actions are not enabled."
-                           (:cause (mt/user-http-request :crowberto :post 400 "action" action))))))))))))))
+                           (mt/user-http-request :crowberto :post 400 "action" action)))))))))))))
 
 (deftest unified-action-create-test
   (mt/test-helpers-set-global-values!
@@ -295,8 +293,7 @@
                   (testing "actions disabled"
                     (mt/with-actions-disabled
                       (is (= "Actions are not enabled."
-                             (:cause
-                              (mt/user-http-request :crowberto :post 400 "action" initial-action))))))
+                             (mt/user-http-request :crowberto :post 400 "action" initial-action)))))
                   (testing "an implicit action on a plain card instead of a model"
                     (mt/with-temp [:model/Card {plain-card-id :id} {:dataset_query (mt/mbql-query users)}]
                       (is (= "Actions must be made with models, not cards."
@@ -319,8 +316,7 @@
                       (testing "actions disabled"
                         (mt/with-actions-disabled
                           (is (= "Actions are not enabled."
-                                 (:cause
-                                  (mt/user-http-request :crowberto :put 400 action-path (update-fn {}))))))))
+                                 (mt/user-http-request :crowberto :put 400 action-path (update-fn {})))))))
                     (testing "Get"
                       (is (partial= (expected-fn updated-action)
                                     (mt/user-http-request :crowberto :get 200 action-path)))
@@ -633,11 +629,10 @@
             (is (= model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))
 
 (deftest action-without-model-collection-guards-test
-  (testing "an action without a model can only go in the data actions root or an existing, unarchived data actions or data app collection"
+  (testing "an action without a model can only go in the data actions root or an existing, unarchived data actions collection"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-model-cleanup [:model/Action]
         (mt/with-temp [:model/Collection {coll-id :id}     {:namespace "data-actions"}
-                       :model/Collection {app-id :id}      {:namespace "data-apps"}
                        :model/Collection {default-id :id}  {}
                        :model/Collection {snippets-id :id} {:namespace "snippets"}
                        :model/Collection {archived-id :id} {:namespace "data-actions" :archived true}]
@@ -647,8 +642,6 @@
                        (str (mt/user-http-request :crowberto :post 400 "action" (model-less-query-action default-id)))))
           (is (= "Not found."
                  (mt/user-http-request :crowberto :post 404 "action" (model-less-query-action Integer/MAX_VALUE))))
-          (is (=? {:collection_id app-id}
-                  (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action app-id))))
           (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id))))]
             (mt/user-http-request :crowberto :put 400 path {:collection_id archived-id})
             (mt/user-http-request :crowberto :put 400 path {:collection_id default-id})
@@ -703,8 +696,8 @@
           (mt/with-actions-disabled
             (testing "changing the query is refused"
               (is (= "Actions are not enabled."
-                     (:cause (mt/user-http-request :crowberto :put 400 path
-                                                   {:dataset_query (:dataset_query created)})))))
+                     (mt/user-http-request :crowberto :put 400 path
+                                           {:dataset_query (:dataset_query created)}))))
             (testing "renaming, settings and archiving are allowed"
               (is (=? {:name "Renamed"}
                       (mt/user-http-request :crowberto :put 200 path {:name "Renamed"})))
@@ -816,8 +809,7 @@
             (testing "We *cannot* share an action if actions are disabled"
               (mt/with-actions-disabled
                 (is (= "Actions are not enabled."
-                       (:cause
-                        (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id)))))))
+                       (mt/user-http-request :crowberto :post 400 (format "action/%d/public_link" action-id))))))
             (testing "We get a 404 if the Action doesn't exist"
               (is (= "Not found."
                      (mt/user-http-request :crowberto :post 404 (format "action/%d/public_link" Integer/MAX_VALUE)))))))
@@ -914,11 +906,10 @@
       (testing "Check that we get a 400 if actions are disabled for the database."
         (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-actions false}}
           (is (= "Actions are not enabled."
-                 (:cause
-                  (mt/user-http-request :crowberto
-                                        :post 400
-                                        (format "action/%s/execute" action-id)
-                                        {:parameters {:id 1 :name "European"}})))))))))
+                 (mt/user-http-request :crowberto
+                                       :post 400
+                                       (format "action/%s/execute" action-id)
+                                       {:parameters {:id 1 :name "European"}}))))))))
 
 (deftest execute-action-permission-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -1045,7 +1036,7 @@
         (mt/with-actions-disabled
           (testing "error if actions is disabled"
             (is (= "Actions are not enabled."
-                   (:message (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" delete-action-id) {:parameters {"id" 1}}))))))))))
+                   (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" delete-action-id) {:parameters {"id" 1}})))))))))
 
 ;; This is just to test the flow, a comprehensive tests for error type ares in
 ;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]

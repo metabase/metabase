@@ -89,7 +89,7 @@ export const useGatedCloseProps = ({
   };
 };
 
-export const OverlayStackItem = () => {
-  useIsTopmost(true);
+export const OverlayStackItem = ({ opened }: { opened: boolean }) => {
+  useIsTopmost(opened);
   return null;
 };

@@ -12,7 +12,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -60,7 +59,8 @@
 
   Handles different entity types:
   - Superuser-only (`:model/Sandbox`): only if `is-superuser?` is true
-  - Collection-based (`:model/Card`, `:model/Dashboard`, `:model/Document`, `:model/NativeQuerySnippet`): filters
+  - Collection-based (`:model/Card`, `:model/Dashboard`, `:model/Document`, `:model/NativeQuerySnippet`,
+    `:model/Action`): filters
     by collection visibility and archived status. Native query snippets have additional restrictions for
     sandboxed users.
   - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
@@ -100,8 +100,15 @@
                                     :is-data-analyst? is-data-analyst?}
                                    {:perms/create-queries :query-builder})]}]])
 
-                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
-                    (let [archived-column (keyword (name table-name) "archived")]
+                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
+                    (let [archived-column (keyword (name table-name) "archived")
+                          visible-in-root (fn [root-namespace]
+                                            (collection/visible-collection-filter-clause
+                                             (keyword (name table-name) "collection_id")
+                                             {:include-archived-items include-archived-items
+                                              :root-namespace         root-namespace}
+                                             {:current-user-id user-id
+                                              :is-superuser?   is-superuser?}))]
                       (when-not (and (= model :model/NativeQuerySnippet)
                                      (or (perms/sandboxed-user?)
                                          (not (perms/user-has-any-perms-of-type? user-id :perms/create-queries))))
@@ -112,13 +119,16 @@
                           {:select [:id]
                            :from   [table-name]
                            :where  [:and
-                                    (collection/visible-collection-filter-clause
-                                     (keyword (name table-name) "collection_id")
-                                     {:include-archived-items include-archived-items
-                                      :root-namespace         (when (= model :model/NativeQuerySnippet)
-                                                                collection/snippets-ns)}
-                                     {:current-user-id user-id
-                                      :is-superuser?   is-superuser?})
+                                    (case model
+                                      :model/NativeQuerySnippet (visible-in-root collection/snippets-ns)
+                                      :model/Action             [:or
+                                                                 [:and
+                                                                  [:not= :action.model_id nil]
+                                                                  (visible-in-root nil)]
+                                                                 [:and
+                                                                  [:= :action.model_id nil]
+                                                                  (visible-in-root collection/data-actions-ns)]]
+                                      (visible-in-root nil))
                                     (case include-archived-items
                                       :exclude [:= archived-column false]
                                       :only    [:= archived-column true]
@@ -271,6 +281,13 @@
   []
   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/"))
 
+(defn action-root-namespace
+  "The namespace of the root collection an action without a collection sits in: the data actions root for a
+  `model-less?` action, and the default root for an action of a model."
+  [model-less?]
+  (when model-less?
+    :data-actions))
+
 (defn- entity-type-config
   "The table name and name/location column expressions to select an item list row for `entity-type`."
   [entity-type]
@@ -288,7 +305,8 @@
                    :document :document
                    :sandbox :sandboxes
                    :segment :segment
-                   :measure :measure)
+                   :measure :measure
+                   :action :action)
      :name-column (case entity-type
                     :table :entity.display_name
                     :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
@@ -300,6 +318,13 @@
                                :else [:coalesce :collection.name (:name root-collection)]]
                         :table :database.name
                         (:transform :snippet :dashboard :document) [:coalesce :collection.name (:name root-collection)]
+                        :action [:coalesce
+                                 :collection.name
+                                 [:case
+                                  [:= :entity.model_id nil]
+                                  (:name (collection.root/root-collection-with-ui-details (action-root-namespace true)))
+                                  :else
+                                  (:name (collection.root/root-collection-with-ui-details (action-root-namespace false)))]]
                         :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                         (:segment :measure) :table.display_name)}))
 
@@ -332,7 +357,7 @@
   [entity-type]
   (case entity-type
     :card #{:collection :dashboard :document}
-    (:transform :snippet :dashboard :document) #{:collection}
+    (:transform :snippet :dashboard :document :action) #{:collection}
     (:segment :measure) #{:table}
     :table #{:database}
     #{}))
@@ -369,13 +394,13 @@
         ;; broken by dropped tables stay visible
         archived-expr (when-not (= query-type :breaking)
                         {:expr (case entity-type
-                                 (:card :dashboard :document :snippet :segment :measure)
+                                 (:card :dashboard :document :snippet :segment :measure :action)
                                  [:= :entity.archived false]
                                  nil)
                          :joins #{}})
         personal-expr (when-not include-personal-collections?
                         (case entity-type
-                          (:card :dashboard :document :snippet)
+                          (:card :dashboard :document :snippet :action)
                           (let [personal-ids (personal-root-collection-ids)]
                             (when (seq personal-ids)
                               {:expr [:or
@@ -582,6 +607,11 @@
   (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
                  :id id (entity-source entity-type)))
 
+(mu/defn query-action-queries
+  "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
+
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -597,12 +627,6 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
 
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id`, returning the number updated."
-  [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
-
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
@@ -613,12 +637,15 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
-(mu/defn table-id-by-name
-  "The ID of the Table named `table-name` in `schema` of the Database with `db-id`, or nil."
-  [db-id      :- ::lib.schema.id/database
-   schema     :- [:maybe :string]
-   table-name :- :string]
-  (t2/select-one-fn :id :model/Table :db_id db-id :schema schema :name table-name {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+(mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
+  "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
+  [dashcard-id :- ::lib.schema.id/dashcard]
+  (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
+
+(mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
+  "The `:table_id` of the Field with `field-id`, or nil."
+  [field-id :- ::lib.schema.id/field]
+  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn transform-sources
   "The `:id` and `:source` of the Transforms with `transform-ids`."
@@ -691,10 +718,10 @@
               :to_entity_type to-type :to_entity_id to-id))
 
 (mu/defn delete-dependencies-from!
-  "Delete the Dependencies of the entity `entity-type` `entity-id`, returning the number deleted."
+  "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id entity-id))
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id [:in entity-ids]))
 
 (mu/defn downstream-table-ids-of-transform
   "The IDs of the Tables that depend on the Transform with `transform-id`."
@@ -723,11 +750,25 @@
    entity-id   :- ms/PositiveInt]
   (t2/select-one :model/DependencyStatus :entity_type entity-type :entity_id entity-id))
 
-(mu/defn delete-dependency-status!
-  "Delete the DependencyStatus of the entity `entity-type` `entity-id`, returning the number deleted."
+(mu/defn delete-dependency-statuses!
+  "Delete the DependencyStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id entity-id))
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id [:in entity-ids]))
+
+(mu/defn deleted-entity-ids :- [:sequential ms/PositiveInt]
+  "Up to `batch-size` IDs of deleted entities of the type `entity-type` that still have a DependencyStatus."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   batch-size  :- ms/PositiveInt]
+  (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))]
+    (vec (t2/select-fn-vec :entity_id :model/DependencyStatus
+                           {:where [:and
+                                    [:= :dependency_status.entity_type (name entity-type)]
+                                    [:not [:exists ^:allow-subquery
+                                           {:select [1]
+                                            :from   [[table-name :entity]]
+                                            :where  [:= :entity.id :dependency_status.entity_id]}]]]
+                            :limit batch-size}))))
 
 (mu/defn mark-dependency-status-stale!
   "Mark the DependencyStatus of `entity-type` `entity-id` as stale for dependency recalculation, creating it if it
@@ -800,7 +841,9 @@
                              [:or
                               [:is :dependency_status.next_retry_at nil]
                               [:<= :dependency_status.next_retry_at now]]]]
-                :order-by  [[[:case [:= :dependency_status.stale true] [:inline 0] :else [:inline 1]]]]
+                :order-by  [[[:case
+                              [:or [:= :dependency_status.entity_id nil] [:= :dependency_status.stale true]] [:inline 0]
+                              :else [:inline 1]]]]
                 :limit     batch-size})))
 
 ;;; ------------------------------------------------ Analysis findings ------------------------------------------------

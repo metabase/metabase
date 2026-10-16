@@ -245,8 +245,7 @@ result_metadata:
   lib/source: source/table-defaults
   lib/source-column-alias: RATING
   qp/implicit-field?: true
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
 - model: Card

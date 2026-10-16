@@ -6,15 +6,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { trackDataStudioTableUnpublished } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { UnpublishTablesModalProps } from "metabase/plugins";
-import {
-  Button,
-  FocusTrap,
-  Group,
-  List,
-  Modal,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, FocusTrap, List, Modal, Stack, Text } from "metabase/ui";
 import { useUnpublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,
@@ -121,7 +113,7 @@ function ModalBody({
 
   return (
     <>
-      <Stack gap="sm" mt="sm">
+      <Stack gap="sm">
         <Text>
           {getInfoMessage(selected_table, published_downstream_tables)}
         </Text>
@@ -138,7 +130,7 @@ function ModalBody({
           </>
         )}
       </Stack>
-      <Group mt="xxl" gap="sm" wrap="nowrap" justify="flex-end">
+      <Modal.Footer>
         <Button
           variant="subtle"
           color="neutral"
@@ -147,7 +139,7 @@ function ModalBody({
         <Button onClick={handleSubmit} variant="filled" color="negative">
           {getSubmitButtonLabel(selected_table, published_downstream_tables)}
         </Button>
-      </Group>
+      </Modal.Footer>
     </>
   );
 }

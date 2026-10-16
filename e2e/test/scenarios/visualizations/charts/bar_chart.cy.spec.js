@@ -204,82 +204,6 @@ describe("scenarios > visualizations > bar chart", () => {
 
       H.getValueLabels().should("contain", "19").and("contain", "20.0M");
     });
-
-    describe("issue 55853", () => {
-      const questionDetails = {
-        name: "55853",
-        database: WRITABLE_DB_ID,
-        native: {
-          query: `select 'Category A' as category, 0.0001 as value union all
-        select 'Category B' as category, 0.0002 as value union all
-        select 'Category C' as category, 0.00015 as value union all
-        select 'Category D' as category, 0.00025 as value`,
-          "template-tags": {},
-        },
-        display: "bar",
-        visualization_settings: {
-          "graph.dimensions": ["category"],
-          "graph.metrics": ["value"],
-          column_settings: {
-            '["name","value"]': {
-              number_style: "percent",
-            },
-          },
-        },
-      };
-
-      beforeEach(() => {
-        H.restore("postgres-12");
-        cy.signInAsAdmin();
-      });
-
-      it("should not have y-axis labels colliding with very low percentages (metabase#55853)", () => {
-        H.createNativeQuestion(questionDetails, { visitQuestion: true });
-
-        cy.log("Verify that the chart renders successfully");
-        H.echartsContainer().should("be.visible");
-        H.echartsContainer().find("text").should("contain", "%");
-        H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
-
-        cy.log("Check that axis labels and title don't overlap");
-        H.echartsContainer()
-          .find("text")
-          .then(($texts) => {
-            const texts = $texts.toArray();
-            const axisTitle = texts.find(
-              (el) => el.textContent?.trim() === "value",
-            );
-            const percentLabels = texts.filter((el) =>
-              el.textContent?.includes("%"),
-            );
-
-            expect(axisTitle, "y-axis title").to.exist;
-            expect(percentLabels).to.have.length.greaterThan(0);
-
-            const titleRight = axisTitle.getBoundingClientRect().right;
-            percentLabels.forEach((el) => {
-              expect(
-                el.getBoundingClientRect().left - titleRight,
-                `Label "${el.textContent}" should not overlap with the axis title`,
-              ).to.be.greaterThan(5);
-            });
-          });
-
-        cy.log(
-          "Verify tooltips show correct percentage values (not incorrectly rounded)",
-        );
-        H.chartPathWithFillColor("#88BF4D").first().realHover();
-        H.assertEChartsTooltip({
-          header: "Category A",
-          rows: [
-            {
-              name: "value",
-              value: "0.01%",
-            },
-          ],
-        });
-      });
-    });
   });
 
   describe("with x-axis series", () => {
@@ -532,6 +456,13 @@ describe("scenarios > visualizations > bar chart", () => {
           display: "bar",
           visualization_settings: { "stackable.stack_type": "stacked" },
         });
+
+        cy.findAllByTestId("legend-item")
+          .findByText("Doohickey")
+          .should("be.visible");
+        cy.findByTestId("development-watermark").should(
+          devMode ? "exist" : "not.exist",
+        );
 
         cy.findAllByTestId("legend-item").findByText("Doohickey").click();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -801,7 +732,10 @@ describe("scenarios > visualizations > bar chart", () => {
       .contains("[data-testid=dashcard]", "Should split")
       .within(() => {
         // Verify this axis tick exists twice which verifies there are two y-axes
-        H.echartsContainer().findAllByText("3.0k").should("have.length", 2);
+        H.echartsContainer()
+          .findAllByText("21.0k")
+          .should("have.length", 2)
+          .and("be.visible");
       });
 
     cy.findAllByTestId("dashcard")
@@ -1094,7 +1028,7 @@ describe("scenarios > visualizations > bar chart", () => {
       },
     });
 
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
@@ -1108,6 +1042,9 @@ describe("scenarios > visualizations > bar chart", () => {
     // Create a bar chart showing count of orders by month for the last 12 months
     H.visitQuestionAdhoc({
       display: "bar",
+      visualization_settings: {
+        "graph.x_axis.axis_enabled": "compact",
+      },
       dataset_query: {
         type: "query",
         query: {
@@ -1137,14 +1074,15 @@ describe("scenarios > visualizations > bar chart", () => {
 
     H.echartsContainer()
       .findAllByText(
-        /^(January|February|March|April|May|June|July|August|September|October|November|December) \d{4}$/,
+        /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}$/,
       )
-      .should("have.length", 12);
+      .should("have.length", 12)
+      .and("be.visible");
   });
 
   it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {
     // Use a smaller viewport to ensure labels need to rotate
-    cy.viewport(940, 800);
+    cy.viewport(820, 800);
 
     const query = `
       SELECT * FROM (
@@ -1225,10 +1163,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
     H.openVizSettingsSidebar();
 
-    cy.findAllByTestId("chart-setting-select")
-      .eq(0)
-      .as("dimensionSelect")
-      .click();
+    cy.findAllByTestId("chart-setting-select").eq(0).click();
     H.popover().findByText("ID").click();
 
     H.leftSidebar().findByText("Add series breakout").click();
@@ -1484,3 +1419,79 @@ function compareValuesInOrder(selector, values) {
     cy.wrap($item).invoke("text").should("eq", values[index]);
   });
 }
+
+describe("scenarios > visualizations > bar chart > issue 55853", () => {
+  const questionDetails = {
+    name: "55853",
+    database: WRITABLE_DB_ID,
+    native: {
+      query: `select 'Category A' as category, 0.0001 as value union all
+      select 'Category B' as category, 0.0002 as value union all
+      select 'Category C' as category, 0.00015 as value union all
+      select 'Category D' as category, 0.00025 as value`,
+      "template-tags": {},
+    },
+    display: "bar",
+    visualization_settings: {
+      "graph.dimensions": ["category"],
+      "graph.metrics": ["value"],
+      column_settings: {
+        '["name","value"]': {
+          number_style: "percent",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should not have y-axis labels colliding with very low percentages (metabase#55853)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Verify that the chart renders successfully");
+    H.echartsContainer().should("be.visible");
+    H.echartsContainer().find("text").should("contain", "%");
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+
+    cy.log("Check that axis labels and title don't overlap");
+    H.echartsContainer()
+      .find("text")
+      .then(($texts) => {
+        const texts = $texts.toArray();
+        const axisTitle = texts.find(
+          (el) => el.textContent?.trim() === "value",
+        );
+        const percentLabels = texts.filter((el) =>
+          el.textContent?.includes("%"),
+        );
+
+        expect(axisTitle, "y-axis title").to.exist;
+        expect(percentLabels).to.have.length.greaterThan(0);
+
+        const titleRight = axisTitle.getBoundingClientRect().right;
+        percentLabels.forEach((el) => {
+          expect(
+            el.getBoundingClientRect().left - titleRight,
+            `Label "${el.textContent}" should not overlap with the axis title`,
+          ).to.be.greaterThan(5);
+        });
+      });
+
+    cy.log(
+      "Verify tooltips show correct percentage values (not incorrectly rounded)",
+    );
+    H.chartPathWithFillColor("#88BF4D").first().realHover();
+    H.assertEChartsTooltip({
+      header: "Category A",
+      rows: [
+        {
+          name: "value",
+          value: "0.01%",
+        },
+      ],
+    });
+  });
+});

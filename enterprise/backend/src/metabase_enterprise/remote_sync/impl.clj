@@ -144,7 +144,7 @@
 
       ;; the validator names a file, whose path may hold any word the matches below look for
       (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
-      (str "Failed to reload from git repository: " message)
+      (str "Failed to reload from git repository. " message)
 
       (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
@@ -580,8 +580,8 @@
       (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
 (defn- record-data-app-tables!
-  "Record the tables each data app's resources read, after a load or an export, logging a failure: the load's
-  transaction has committed and the export's commit is pushed by then, so a failure must not undo their record."
+  "Record the tables each data app's resources read, after a load, logging a failure: the load's transaction has
+  committed by then, so a failure must not undo its record."
   []
   (try
     (data-apps/record-table-dependencies!)
@@ -1225,7 +1225,6 @@
           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
             (remote-sync.db/delete-rsos! removed-ids))
           (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp))
-        (record-data-app-tables!)
         (if (= version :remote-sync/empty-commit)
           (do
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
@@ -1259,7 +1258,6 @@
         (doseq [removed-ids (partition-all 500 removed-ids)]
           (remote-sync.db/delete-rsos! removed-ids))
         (mark-rows-synced! (map :id synced) synced sync-timestamp))
-      (record-data-app-tables!)
       (if (= version :remote-sync/empty-commit)
         (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})
@@ -1651,7 +1649,8 @@
                        :conflicts true
                        ;; The un-pushed local changes a switch would discard, so the client can name exactly
                        ;; what would be lost without a second round-trip to /dirty.
-                       :dirty_objects (remote-sync.object/dirty-objects)})))
+                       :dirty_objects (remote-sync.object/dirty-objects)
+                       :response/keys #{:conflicts :dirty_objects}})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)
