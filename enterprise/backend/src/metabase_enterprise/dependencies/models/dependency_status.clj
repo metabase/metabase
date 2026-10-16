@@ -16,11 +16,11 @@
   {:entity_type mi/transform-keyword})
 
 (defn mark-stale!
-  "Mark entities of `entity-type` with ids in `entity-ids` as stale for dependency recalculation.
-  Creates entries if they don't exist, or sets stale=true if they do.
-  Resets retry state so previously-failed entities get a fresh chance."
-  [entity-type entity-ids]
-  (doseq [id entity-ids]
+  "Mark the entities in `type->ids`, `{entity-type ids}`, stale for dependency recalculation, creating their statuses
+  if they don't exist and resetting their retry state so previously-failed entities get a fresh chance."
+  [type->ids]
+  (doseq [[entity-type ids] type->ids
+          id                ids]
     (dependencies.db/mark-dependency-status-stale! entity-type id)))
 
 (defn upsert-status!
@@ -60,12 +60,14 @@
 
 (defn has-stale-or-outdated?
   "Returns true if there are any entities needing dependency calculation: no status row yet,
-  stale=true, OR version < current (not terminal, retry delay elapsed). Defined in terms of
-  [[instances-for-dependency-calculation]] so it stays consistent with what the backfill processes."
+  stale=true, OR version < current (not terminal, retry delay elapsed), or deleted entities whose status the backfill
+  has yet to clean up. Defined in terms of [[instances-for-dependency-calculation]] so it stays consistent with what
+  the backfill processes."
   []
   (boolean
    (some (fn [entity-type]
-           (seq (instances-for-dependency-calculation entity-type 1)))
+           (or (seq (instances-for-dependency-calculation entity-type 1))
+               (seq (dependencies.db/deleted-entity-ids entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))
 
 (defn record-failure!

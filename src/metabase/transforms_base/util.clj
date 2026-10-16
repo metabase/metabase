@@ -8,6 +8,7 @@
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.database-routing.core :as database-routing]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
@@ -731,9 +732,10 @@
         {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
-        database (transforms-base.db/database db-id)]
+        database (transforms-base.db/database db-id)
+        table (sync-target! target database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
-    (when-let [table (sync-target! target database)]
+    (when table
       (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
       (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
@@ -745,6 +747,7 @@
         (log/warnf "refresh-table-stats! failed for %s.%s: %s" (:schema target) (:name target) (ex-message t))))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
+      (dependencies.hooks/after-transform-run (:id transform) (:id table))
       (events/publish-event! :event/transform-run-complete
                              {:object {:db-id          db-id
                                        :transform-id   (:id transform)
