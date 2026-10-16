@@ -352,6 +352,16 @@ const classifyInterceptHandler = (
   if (!handler) {
     return "wait";
   }
+  // `cy.spy()` and `cy.stub()` record the request and let it through.
+  if (
+    ts.isCallExpression(handler) &&
+    chainRoot(handler.expression) === "cy" &&
+    [handler, ...receiverCalls(handler)].some((c) =>
+      ["spy", "stub"].includes(methodName(c) ?? ""),
+    )
+  ) {
+    return "wait";
+  }
   if (!ts.isArrowFunction(handler) && !ts.isFunctionExpression(handler)) {
     return "static";
   }
@@ -566,6 +576,12 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
     })
   ) {
     const page = call.arguments
+      .filter(
+        (arg) =>
+          ts.isStringLiteralLike(arg) ||
+          ts.isTemplateExpression(arg) ||
+          ts.isRegularExpressionLiteral(arg),
+      )
       .map((arg) => stringValue(arg) ?? text(arg, sf))
       .find((value) => QUERY_PAGE.test(value.replace(/\\/g, "")));
     if (page) {

@@ -153,6 +153,13 @@ describe("rules beyond the pilot", () => {
     expect(triage(body("/^\\/browse\\/\\d+/")).bucket).toBe("B");
   });
 
+  it("does not count a cy.spy() handler as a stub", () => {
+    const body = (handler: string) =>
+      `cy.intercept("GET", "/api/x", ${handler}); cy.visit("/");`;
+    expect(triage(body(`cy.spy().as("s")`)).bucket).toBe("B");
+    expect(triage(body(`{ body: [] }`)).bucket).toBe("A");
+  });
+
   it("follows local functions", () => {
     const header = `function save() { cy.button("Save").click(); }`;
     expect(triage(`cy.visit("/"); save();`, header).bucket).toBe("C?");
