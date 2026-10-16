@@ -90,8 +90,8 @@
 (defmethod before-update* :default [_model _instance] nil)
 (defmethod before-delete* :default [_model _instance] nil)
 
-(doseq [model [:model/Card :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet :model/Sandbox
-               :model/Segment :model/Transform]]
+(doseq [model [:model/Action :model/Card :model/Dashboard :model/Document :model/Measure :model/NativeQuerySnippet
+               :model/Sandbox :model/Segment :model/Transform]]
   (defmethod before-insert* model
     [_model _instance]
     (trigger-jobs!))
@@ -99,7 +99,8 @@
     [model instance]
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
-(doseq [[model columns] {:model/Card               #{:type :dataset_query :dimension_mappings :parameters}
+(doseq [[model columns] {:model/Action             #{:model_id :type}
+                         :model/Card               #{:type :dataset_query :dimension_mappings :parameters}
                          :model/Dashboard          #{:parameters}
                          :model/Document           #{:content_type :document}
                          :model/Measure            #{:definition :table_id}
@@ -110,6 +111,15 @@
   (defmethod before-update* model
     [model instance]
     (mark-entity-changed! model instance columns)))
+
+(defmethod before-insert* :model/QueryAction
+  [_model query-action]
+  (mark-changed! :action (:action_id query-action)))
+
+(defmethod before-update* :model/QueryAction
+  [_model query-action]
+  (when (changed? query-action #{:dataset_query})
+    (mark-changed! :action (:action_id query-action))))
 
 (defmethod before-insert* :model/DashboardCard
   [_model dashcard]

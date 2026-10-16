@@ -58,7 +58,8 @@
 
   Handles different entity types:
   - Superuser-only (`:model/Sandbox`): only if `is-superuser?` is true
-  - Collection-based (`:model/Card`, `:model/Dashboard`, `:model/Document`, `:model/NativeQuerySnippet`): filters
+  - Collection-based (`:model/Card`, `:model/Dashboard`, `:model/Document`, `:model/NativeQuerySnippet`,
+    `:model/Action`): filters
     by collection visibility and archived status. Native query snippets have additional restrictions for
     sandboxed users.
   - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
@@ -98,8 +99,15 @@
                                     :is-data-analyst? is-data-analyst?}
                                    {:perms/create-queries :query-builder})]}]])
 
-                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet)
-                    (let [archived-column (keyword (name table-name) "archived")]
+                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
+                    (let [archived-column (keyword (name table-name) "archived")
+                          visible-in-root (fn [root-namespace]
+                                            (collection/visible-collection-filter-clause
+                                             (keyword (name table-name) "collection_id")
+                                             {:include-archived-items include-archived-items
+                                              :root-namespace         root-namespace}
+                                             {:current-user-id user-id
+                                              :is-superuser?   is-superuser?}))]
                       (when-not (and (= model :model/NativeQuerySnippet)
                                      (or (perms/sandboxed-user?)
                                          (not (perms/user-has-any-perms-of-type? user-id :perms/create-queries))))
@@ -110,13 +118,16 @@
                           {:select [:id]
                            :from   [table-name]
                            :where  [:and
-                                    (collection/visible-collection-filter-clause
-                                     (keyword (name table-name) "collection_id")
-                                     {:include-archived-items include-archived-items
-                                      :root-namespace         (when (= model :model/NativeQuerySnippet)
-                                                                collection/snippets-ns)}
-                                     {:current-user-id user-id
-                                      :is-superuser?   is-superuser?})
+                                    (case model
+                                      :model/NativeQuerySnippet (visible-in-root collection/snippets-ns)
+                                      :model/Action             [:or
+                                                                 [:and
+                                                                  [:not= :action.model_id nil]
+                                                                  (visible-in-root nil)]
+                                                                 [:and
+                                                                  [:= :action.model_id nil]
+                                                                  (visible-in-root collection/data-actions-ns)]]
+                                      (visible-in-root nil))
                                     (case include-archived-items
                                       :exclude [:= archived-column false]
                                       :only    [:= archived-column true]
@@ -269,6 +280,13 @@
   []
   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/"))
 
+(defn action-root-namespace
+  "The namespace of the root collection an action without a collection sits in: the data actions root for a
+  `model-less?` action, and the default root for an action of a model."
+  [model-less?]
+  (when model-less?
+    :data-actions))
+
 (defn- entity-type-config
   "The table name and name/location column expressions to select an item list row for `entity-type`."
   [entity-type]
@@ -286,7 +304,8 @@
                    :document :document
                    :sandbox :sandboxes
                    :segment :segment
-                   :measure :measure)
+                   :measure :measure
+                   :action :action)
      :name-column (case entity-type
                     :table :entity.display_name
                     :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
@@ -298,6 +317,13 @@
                                :else [:coalesce :collection.name (:name root-collection)]]
                         :table :database.name
                         (:transform :snippet :dashboard :document) [:coalesce :collection.name (:name root-collection)]
+                        :action [:coalesce
+                                 :collection.name
+                                 [:case
+                                  [:= :entity.model_id nil]
+                                  (:name (collection.root/root-collection-with-ui-details (action-root-namespace true)))
+                                  :else
+                                  (:name (collection.root/root-collection-with-ui-details (action-root-namespace false)))]]
                         :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                         (:segment :measure) :table.display_name)}))
 
@@ -330,7 +356,7 @@
   [entity-type]
   (case entity-type
     :card #{:collection :dashboard :document}
-    (:transform :snippet :dashboard :document) #{:collection}
+    (:transform :snippet :dashboard :document :action) #{:collection}
     (:segment :measure) #{:table}
     :table #{:database}
     #{}))
@@ -367,13 +393,13 @@
         ;; broken by dropped tables stay visible
         archived-expr (when-not (= query-type :breaking)
                         {:expr (case entity-type
-                                 (:card :dashboard :document :snippet :segment :measure)
+                                 (:card :dashboard :document :snippet :segment :measure :action)
                                  [:= :entity.archived false]
                                  nil)
                          :joins #{}})
         personal-expr (when-not include-personal-collections?
                         (case entity-type
-                          (:card :dashboard :document :snippet)
+                          (:card :dashboard :document :snippet :action)
                           (let [personal-ids (personal-root-collection-ids)]
                             (when (seq personal-ids)
                               {:expr [:or
@@ -573,6 +599,11 @@
    id          :- ::deps.dependency-types/entity-id]
   (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
                  :id id (entity-source entity-type)))
+
+(mu/defn query-action-queries
+  "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
