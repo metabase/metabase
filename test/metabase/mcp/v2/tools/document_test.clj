@@ -21,11 +21,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- call
-  "Invoke the document_write handler directly (unrestricted scopes) and return the decoded
+  "Invoke the document_write handler directly with every v2 scope and return the decoded
    payload map. Teaching errors surface as thrown ex-infos, matching how the registry treats
    handler exceptions."
   [args]
-  (-> (v2.document/document-write-tool args {:token-scopes nil})
+  (-> (v2.document/document-write-tool args {:token-scopes v2.tu/all-scopes})
       (get-in [:content 0 :text])
       v2.tu/strip-data-boundary
       json/decode+kw))
@@ -344,7 +344,7 @@
    handler directly — the tool's own Malli schema is only applied at that seam, and these are
    arguments the schema is meant to reject."
   [args]
-  (error-text (registry/call-tool nil "test-session" "document_write" args)))
+  (error-text (registry/call-tool v2.tu/all-scopes "test-session" "document_write" args)))
 
 (deftest markdown-tables-are-rejected-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -435,7 +435,7 @@
 (defn- read-with-layout
   "The `get_content` result for document `doc-id` with the `layout` include, as the decoded result row."
   [doc-id]
-  (-> (registry/call-tool nil "test-session" "get_content"
+  (-> (registry/call-tool v2.tu/all-scopes "test-session" "get_content"
                           {:items [{:type "document" :id doc-id}] :include ["layout"]})
       (get-in [:result :content 0 :text])
       v2.tu/strip-data-boundary

@@ -3346,6 +3346,13 @@
             (is (true? (mi/can-read? dashboards)))
             (is (false? (mi/can-write? dashboards)))))))))
 
+(deftest data-apps-collection-is-read-only-test
+  (testing "Nobody writes a collection of the data apps namespace, administrators included"
+    (mt/with-temp [:model/Collection collection {:namespace "data-apps"}]
+      (mt/with-test-user :crowberto
+        (is (false? (mi/can-write? collection)))
+        (is (false? (mi/can-write? :model/Collection (:id collection))))))))
+
 (deftest create-library
   (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"

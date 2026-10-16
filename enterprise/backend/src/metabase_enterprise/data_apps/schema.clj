@@ -113,8 +113,7 @@
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:description     {:optional true} ::description]
    [:version         {:optional true} ::version]
-   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:table_ids              {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::data-app.insert
   "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, display name, and bundle path required."

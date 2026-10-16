@@ -50,7 +50,7 @@ the YAML, and ingestion reads the paths `serdes/resource-paths` returns back in.
 must stay inside the entity's directory.
 
 `enabled` is admin-owned and never leaves the instance; group assignments also stay local to the
-instance. `table_ids` are server-managed, and `bundle_hash` is recomputed from the bundle on import.
+instance, and `bundle_hash` is recomputed from the bundle on import.
 A targeted export of an app brings its collection and what it holds along (`serdes/descendants`).
 
 An import matches an app by `entity_id` and reasserts the app's resources; a manifest whose slug an app
@@ -71,7 +71,8 @@ An author deletes an app by deleting its directory and its collection's files un
 `collections/data_apps/` in one commit: the pull deletes the app, and the app's `before-delete`
 hook deletes the collection with what it holds. A commit that deletes the directory but keeps the
 collection's files still deletes the app and its collection; the next export removes the files,
-and until then a full pull loads them back as a collection no app owns.
+and until then a full pull loads them back as a collection no app owns. That collection is read-only
+like an app's, so only deleting its files from the repository removes it.
 
 ## Serving
 
@@ -124,6 +125,10 @@ Collection access alone does not grant app access.
 
 Every app owns a collection from insertion. If its collection is deleted separately, resource reconciliation recreates it.
 
+Nobody can write a collection of the `data-apps` namespace, or what it holds, administrators included, with or
+without remote sync: the collection's `can-write?` refuses it, the write permissions of everything that takes them
+from its collection are a path no user holds, and a pull is what changes them.
+
 Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
 access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
 collection and assignments, but preserves the assigned groups.
@@ -141,7 +146,7 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | Namespace                              | Responsibility                                                                                  |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `apps.clj`                             | Creating apps; the connected repository's URL.                                                  |
-| `core.clj`                             | Public access checks, resource file problems, and table dependencies.                           |
+| `core.clj`                             | Public access checks and resource file problems.                                                |
 | `config.clj`                           | The serialized layout and data app contract version constants.                                  |
 | `schema.clj`                           | Column schemas, with the normalization and validation every write goes through.                 |
 | `api.clj`                              | The `/api/apps` endpoints, bundle serving, ETag handling.                                       |
@@ -154,9 +159,8 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | `generate/schemas/`                    | The schema's stages: data access (`source`), entities (`table`, `metric`, `action`, `common`), rendering (`render`, `javascript`). |
 | `query_definition.clj`                 | The closed schema of a `defineQuery` definition the serialization accepts.                      |
 | `resource_validation.clj`              | What the files of an app's collection may hold, checked on the whole snapshot before an import. |
-| `resource_tables.clj`                  | The tables an app's resources read, recorded on the app after an import.                        |
 | `access.clj`                           | App access through assigned groups.                                                             |
-| `group_access.clj`                     | Assignment management and collection grant reconciliation.                                      |
+| `group_access.clj`                     | Assignment management, collection grant reconciliation, and the permission warnings, which walk the dependency graph (`:dependencies` feature) from the app's cards and actions to the tables they read. |
 | `models/data_app_group_assignment.clj` | App-to-group assignments.                                                                       |
 | `db.clj`                               | The module's application-database queries.                                                      |
 | `csp.clj`                              | `allowed_hosts` lookup for the core CSP middleware.                                             |

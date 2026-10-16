@@ -50,7 +50,7 @@ Enterprise (`enterprise/backend/src/metabase_enterprise/`):
 - Tool-specific instructions live in skills (`metabase.metabot.skills`, `resources/metabot/skills/`), not in the system prompt. Keep the cached system-prompt prefix stable.
 - Conversation writes that race need `metabase.metabot.persistence/with-conversation-lock` (a `FOR UPDATE` row lock).
 - `metabase.ai-tracing.core` captures only under its eval binding. Do not use it for production observability.
-- `metabase.metabot.tools.deftool` builds HTTP tool endpoints, not agent tools. Its only caller is its own test. Do not use it as the pattern for new agent tools.
+- Agent tools are declared with `metabase.metabot.tools.core/deftool` and report failure by throwing: `defrecoverable` for something the agent can work around, `unrecoverable!` for something only the user can act on. `metabase.metabot.tools.runtime/invoke` decides which audience hears about a failure and in what words — tool code never writes the model-facing text for an undeclared error. Not every tool has been migrated yet; the older ones still use `mu/defn` plus `metabase.metabot.tools.util/handle-agent-error`.
 
 ## How to work
 
