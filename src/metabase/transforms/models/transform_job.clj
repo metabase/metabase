@@ -201,12 +201,11 @@
 (defmethod serdes/make-spec "TransformJob"
   [_model-name opts]
   {:copy [:entity_id :built_in_type :schedule :ui_display_type :active]
-   :skip []
+   :skip [:created_at :updated_at]
    :defaults {:active true}
    :transform {:name {:export str :import identity}
                :description {:export str :import identity}
-               :created_at (serdes/date)
-               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :created_at)} opts))}})
+               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :entity_id)} opts))}})
 
 (defmethod serdes/deserialization-dependencies "TransformJob"
   [{:keys [job_tags]}]

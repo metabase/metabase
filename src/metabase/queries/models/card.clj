@@ -1680,7 +1680,8 @@
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
-   :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
+   :skip [:created_at :updated_at
+          ;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
           ;; serialized representation is versioned by :card_schema instead
           :metabase_version
           ;; cache invalidation is instance-specific
@@ -1702,8 +1703,7 @@
           ;; always re-derived from public_uuid on import
           :public_uuid_prefix]
    :transform
-   {:created_at             (serdes/date)
-    ;; database_id is usually derivable from dataset_query, but must be kept when the query
+   {;; database_id is usually derivable from dataset_query, but must be kept when the query
     ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
     :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
                               {::serdes/fk true
