@@ -75,6 +75,7 @@ describe("global keyboard shortcuts", () => {
       ["g a", "ga", "/admin/settings"],
       ["g s", "gs", "/data-studio"],
       ["g p", "gp", `/collection/${PERSONAL_COLLECTION_ID}`],
+      ["g Shift+a", "g{Shift>}a{/Shift}", "/admin/settings/apps"],
     ])("%s navigates to %s", async (_name, keys, pathname) => {
       const { router } = await setup();
 

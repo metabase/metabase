@@ -18,7 +18,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.core :as queries]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -139,12 +141,14 @@
       query)))
 
 (mu/defn- build-card :- :map
-  "The unsaved question named `card-name` with entity ID `entity-id`, holding `query`."
+  "The question named `card-name` with entity ID `entity-id`, holding `query`, as a pull saves it."
   [card-name :- ms/NonBlankString
    entity-id :- ms/NanoIdString
    query     :- ::lib.schema/query]
   {:entity_id              entity-id
    :name                   card-name
+   :created_at             (mi/current-timestamp)
+   :card_schema            queries/current-card-schema-version
    :type                   :question
    :display                :table
    :creator_id             api/*current-user-id*

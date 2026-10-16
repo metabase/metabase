@@ -31,8 +31,6 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import S from "./MetricToolbar.module.css";
-
 type MetricModalType =
   | "move"
   | "copy"
@@ -119,12 +117,7 @@ function MetricToolbarButtons({
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <ActionIcon
-          variant="default"
-          size="lg"
-          className={S.moreOptionsButton}
-          aria-label={t`More options`}
-        >
+        <ActionIcon size="lg" aria-label={t`More options`}>
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>

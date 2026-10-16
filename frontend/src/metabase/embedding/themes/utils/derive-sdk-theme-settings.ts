@@ -4,9 +4,8 @@ import type {
   MetabaseTheme,
 } from "metabase/embedding-sdk/theme";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { WHITELABEL_ACCENT_KEYS } from "metabase/ui/colors/constants/whitelabel-colors";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors/derive-theme";
-import { ACCENT_COUNT } from "metabase/ui/colors/palette";
-import type { ColorName } from "metabase/ui/colors/types";
 import type { ColorSettings } from "metabase-types/api/settings";
 
 type ColorScheme = "light" | "dark";
@@ -25,13 +24,7 @@ const SDK_COLORS_TO_PERSIST = [
   "negative",
   "shadow",
   "charts",
-] as const satisfies MetabaseColor[];
-
-const WHITELABEL_CHART_COLOR_NAMES = Array.from(
-  { length: ACCENT_COUNT },
-  // Unjustified type cast. FIXME
-  (_, i) => `accent${i}` as ColorName,
-);
+] as const satisfies readonly MetabaseColor[];
 
 export function deriveSdkThemeSettings(
   colorScheme: ColorScheme,
@@ -46,7 +39,7 @@ export function deriveSdkThemeSettings(
 
   for (const sdkColorKey of SDK_COLORS_TO_PERSIST) {
     if (sdkColorKey === "charts") {
-      mappedColors.charts = WHITELABEL_CHART_COLOR_NAMES.map(
+      mappedColors.charts = WHITELABEL_ACCENT_KEYS.map(
         (colorName) => whitelabelColors?.[colorName] ?? sourceColors[colorName],
       );
 

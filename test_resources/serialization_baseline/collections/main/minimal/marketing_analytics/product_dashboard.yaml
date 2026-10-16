@@ -33,7 +33,6 @@ dashcards:
         - CATEGORY
       - null
   series: []
-  visualization_settings:
-    column_settings: null
+  visualization_settings: {}
 tabs: []
 width: fixed

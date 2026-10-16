@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 import Color from "color";
 
 import { render, screen } from "__support__/ui";
-import { colors } from "metabase/ui/colors/colors";
 import { color } from "metabase/ui/colors/palette";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
@@ -25,13 +24,7 @@ interface SetupOpts {
 const setup = ({ initialColors = DEFAULT_COLORS }: SetupOpts = {}) => {
   const onChange = jest.fn();
 
-  render(
-    <ColorSettings
-      initialColors={initialColors}
-      themeColors={colors}
-      onChange={onChange}
-    />,
-  );
+  render(<ColorSettings initialColors={initialColors} onChange={onChange} />);
 
   return { onChange };
 };

@@ -125,7 +125,7 @@ export function EmbeddingHubLayout() {
           align="center"
           justify="center"
         >
-          <FixedSizeIcon name="embed" size={14} c="brand" />
+          <FixedSizeIcon name="embed" size={14} c="core-brand" />
         </Flex>
       }
       title={t`Embedding hub`}

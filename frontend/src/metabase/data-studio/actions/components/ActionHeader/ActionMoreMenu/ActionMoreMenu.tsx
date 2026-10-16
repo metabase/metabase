@@ -47,7 +47,7 @@ export function ActionMoreMenu({ action }: ActionMoreMenuProps) {
     <>
       <Menu>
         <Menu.Target>
-          <ActionIcon size="sm" aria-label={t`Action options`}>
+          <ActionIcon variant="subtle" size="sm" aria-label={t`Action options`}>
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>
