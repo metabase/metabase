@@ -44,7 +44,7 @@ import { trackMetadataChange } from "../../analytics";
 import S from "./DataModel.module.css";
 import { DatabaseSection } from "./DatabaseSection";
 import { RouterTablePicker } from "./TablePicker";
-import type { TreePath } from "./TablePicker/types";
+import type { ChangeOptions, TreePath } from "./TablePicker/types";
 import { TableSection } from "./TableSection";
 import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
 import { COLUMN_CONFIG } from "./constants";
@@ -124,6 +124,25 @@ function DataModelContent() {
   const [onUpdateCallback, setOnUpdateCallback] = useState<
     ((path?: TreePath) => void) | null
   >(null);
+  // The database the person clicked in the tree. The tree also selects a lone
+  // database on its own, and that must not open the panel.
+  const [pickedDatabaseId, setPickedDatabaseId] = useState<DatabaseId | null>(
+    null,
+  );
+
+  const handlePathChange = useCallback(
+    (path: TreePath, options?: ChangeOptions) => {
+      if (options?.isAutomatic) {
+        return;
+      }
+      const isDatabasePick =
+        path.databaseId != null &&
+        path.schemaName == null &&
+        path.tableId == null;
+      setPickedDatabaseId(isDatabasePick ? (path.databaseId ?? null) : null);
+    },
+    [],
+  );
 
   useWindowEvent(
     "keydown",
@@ -171,6 +190,7 @@ function DataModelContent() {
     !showBulkTableEdit;
   const databaseDetailsId = getDatabaseDetailsId({
     databaseId,
+    pickedDatabaseId,
     databaseExists,
     fieldId,
     hasSelectedItems,
@@ -202,6 +222,7 @@ function DataModelContent() {
           tableId={navigationTableId}
           params={params}
           setOnUpdateCallback={setOnUpdateCallback}
+          onPathChange={handlePathChange}
         />
       </PageContainer>
 
@@ -224,6 +245,7 @@ function DataModelContent() {
           <DatabaseDetailsSection
             databaseId={databaseDetailsId}
             scrollToPanel={scrollToPanel}
+            onClose={() => setPickedDatabaseId(null)}
           />
         )}
 
@@ -410,12 +432,14 @@ function DataModelContent() {
 
 function getDatabaseDetailsId({
   databaseId,
+  pickedDatabaseId,
   databaseExists,
   fieldId,
   hasSelectedItems,
   tableId,
 }: {
   databaseId: DatabaseId | undefined;
+  pickedDatabaseId: DatabaseId | null;
   databaseExists: boolean | undefined;
   fieldId: FieldId | undefined;
   hasSelectedItems: boolean;
@@ -426,15 +450,19 @@ function getDatabaseDetailsId({
     tableId == null &&
     fieldId == null &&
     !hasSelectedItems;
-  return databaseId != null && isDatabaseOnly ? databaseId : null;
+  return databaseId != null && databaseId === pickedDatabaseId && isDatabaseOnly
+    ? databaseId
+    : null;
 }
 
 function DatabaseDetailsSection({
   databaseId,
   scrollToPanel,
+  onClose,
 }: {
   databaseId: DatabaseId;
   scrollToPanel: (el: HTMLDivElement | null) => void;
+  onClose: () => void;
 }) {
   return (
     <Stack
@@ -456,6 +484,14 @@ function DatabaseDetailsSection({
         px="xl"
       >
         <DataStudioBreadcrumbs>{t`Database details`}</DataStudioBreadcrumbs>
+        <ActionIcon
+          variant="subtle"
+          size="sm"
+          aria-label={t`Close`}
+          onClick={onClose}
+        >
+          <Icon name="close" />
+        </ActionIcon>
       </Group>
       <ScrollArea flex={1} px="xl" type="hover">
         <DatabaseSection databaseId={databaseId} />
