@@ -27,7 +27,11 @@ export function IndexRowMenu({ index, onEdit, onDelete }: IndexRowMenuProps) {
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <ActionIcon aria-label={t`Index actions`} onClick={handleIconClick}>
+        <ActionIcon
+          variant="subtle"
+          aria-label={t`Index actions`}
+          onClick={handleIconClick}
+        >
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>

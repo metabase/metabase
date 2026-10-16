@@ -242,7 +242,6 @@ export const ListViewConfiguration = ({
                 <Flex className={S.iconMenuButtonContainer}>
                   <ActionIcon
                     data-testid="list-view-icon"
-                    variant="subtle"
                     className={S.iconMenuButton}
                     style={{
                       backgroundColor: iconConfig.entityIconEnabled
@@ -310,17 +309,13 @@ export const ListViewConfiguration = ({
                 <Menu.Divider m={0} />
                 <SimpleGrid cols={5} p="lg">
                   <ActionIcon
-                    radius="lg"
-                    p="lg"
-                    w="2rem"
-                    h="2rem"
+                    variant="light"
+                    radius="xl"
                     disabled={!imageColumn}
-                    className={cx({
-                      [S.imageColumn]: !!imageColumn,
-                      [S.selected]:
-                        iconConfig.useImageColumn &&
-                        iconConfig.entityIconEnabled,
-                    })}
+                    selected={
+                      iconConfig.useImageColumn && iconConfig.entityIconEnabled
+                    }
+                    className={cx({ [S.imageColumn]: !!imageColumn })}
                     onClick={() => {
                       handleConfigurationChange({
                         left: leftValues,
@@ -353,14 +348,12 @@ export const ListViewConfiguration = ({
                   {Object.entries(ENTITY_ICONS).map(([key, iconName]) => (
                     <Flex justify="center" align="center" key={key}>
                       <ActionIcon
-                        w="2rem"
-                        h="2rem"
-                        radius="lg"
-                        className={cx({
-                          [S.selected]:
-                            iconConfig.selectedEntityIcon === iconName &&
-                            iconConfig.entityIconEnabled,
-                        })}
+                        variant="light"
+                        radius="xl"
+                        selected={
+                          iconConfig.selectedEntityIcon === iconName &&
+                          iconConfig.entityIconEnabled
+                        }
                         onClick={() => {
                           handleConfigurationChange({
                             left: leftValues,
@@ -370,7 +363,7 @@ export const ListViewConfiguration = ({
                           });
                         }}
                       >
-                        <Icon name={iconName} c="text-primary" />
+                        <Icon name={iconName} />
                       </ActionIcon>
                     </Flex>
                   ))}

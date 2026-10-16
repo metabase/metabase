@@ -54,8 +54,7 @@ result_metadata:
   lib/original-name: count
   lib/source: source/aggregations
   lib/source-column-alias: count
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
 - model: Card

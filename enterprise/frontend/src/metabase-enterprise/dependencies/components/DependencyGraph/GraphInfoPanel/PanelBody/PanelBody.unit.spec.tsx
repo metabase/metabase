@@ -3,6 +3,9 @@ import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 import {
+  createMockActionDependencyNode,
+  createMockActionDependencyNodeData,
+  createMockActionParameter,
   createMockCardDependencyNode,
   createMockCardDependencyNodeData,
   createMockLastEditInfo,
@@ -153,5 +156,44 @@ describe("PanelBody", () => {
     expect(screen.getByTestId("entity-creation-info-edited")).toHaveTextContent(
       /Carol White/,
     );
+  });
+
+  it("should display the parameters of an action", () => {
+    setup({
+      node: createMockActionDependencyNode({
+        data: createMockActionDependencyNodeData({
+          parameters: [
+            createMockActionParameter({
+              id: "price",
+              name: "Price",
+              type: "number/=",
+            }),
+            createMockActionParameter({
+              id: "day",
+              name: "Day",
+              type: "date/single",
+            }),
+          ],
+        }),
+      }),
+    });
+    expect(screen.getByText("Parameters")).toBeInTheDocument();
+    expect(screen.getByText("Price")).toBeInTheDocument();
+    expect(screen.getByText("Day")).toBeInTheDocument();
+    expect(screen.queryByText("No parameters")).not.toBeInTheDocument();
+  });
+
+  it("should display 'No parameters' for an action without parameters", () => {
+    setup({
+      node: createMockActionDependencyNode({
+        data: createMockActionDependencyNodeData({ parameters: [] }),
+      }),
+    });
+    expect(screen.getByText("No parameters")).toBeInTheDocument();
+  });
+
+  it("should not display parameters section for cards", () => {
+    setup({ node: createMockCardDependencyNode() });
+    expect(screen.queryByText("Parameters")).not.toBeInTheDocument();
   });
 });

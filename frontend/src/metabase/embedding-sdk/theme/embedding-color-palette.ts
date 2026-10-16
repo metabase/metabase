@@ -29,7 +29,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   ColorName[]
 > = {
   brand: ["core-brand"],
-  "brand-hover": ["background_surface-hover"],
+  "brand-hover": ["background_surface-hover", "button-default-neutral-hover"],
   "brand-hover-light": ["background_surface-hover"],
   border: ["border-neutral"],
   filter: ["core-filter"],

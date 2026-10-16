@@ -16,8 +16,15 @@ import type {
   IconName,
   MeasureId,
   NativeQuerySnippetId,
+  OpaqueDatasetQuery,
   SegmentId,
   TableId,
+  TestAggregationSpec,
+  TestNativeQuerySpec,
+  TestStageSpec,
+  TestStageWithSourceSpec,
+  WritebackActionId,
+  WritebackParameter,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -56,6 +63,10 @@ const SEGMENT_BASED_MODEL_NAME = "Segment-based model";
 const SEGMENT_BASED_MEASURE_NAME = "Segment-based measure";
 const SEGMENT_BASED_METRIC_NAME = "Segment-based metric";
 const SEGMENT_BASED_SEGMENT_NAME = "Segment-based segment";
+const DATA_ACTIONS_FOLDER_NAME = "Data actions folder";
+const TABLE_BASED_ACTION_NAME = "Table-based data action";
+const SNIPPET_BASED_ACTION_NAME = "Snippet-based data action";
+const DATA_ACTIONS_ROOT_NAME = "Data actions";
 const ROOT_COLLECTION_NAME = "Our analytics";
 const FIRST_COLLECTION_NAME = "First collection";
 const DASHBOARD_NAME = "Dashboard";
@@ -136,13 +147,20 @@ describe("scenarios > dependencies > dependency graph", () => {
         cy.findByLabelText("Close").click();
       });
       H.DependencyGraph.entryButton().icon("close").click();
+    }
 
+    function testEntityPickerSearch({
+      itemName,
+      itemIcon,
+    }: {
+      itemName: string;
+      itemIcon: IconName;
+    }) {
       cy.log(`verify that "${itemName}" can be found via search"`);
       H.DependencyGraph.entrySearchInput().click();
       H.popover().findByText("Browse all").click();
       H.entityPickerModal().within(() => {
-        // Unjustified type cast. FIXME
-        cy.findByPlaceholderText(/Search/).type(itemName as string);
+        cy.findByPlaceholderText(/Search/).type(itemName);
         cy.findByText(/results for/).should("be.visible");
         cy.findByTestId("search-scope-selector")
           .findByText("Everywhere")
@@ -159,6 +177,10 @@ describe("scenarios > dependencies > dependency graph", () => {
         createTableBasedMetric({ tableId });
         createTableBasedTransform({ tableName: TABLE_NAME });
       });
+      createEmptySnippet();
+      createDataActionsFolder().then(({ body: folder }) =>
+        createTableBasedAction({ collectionId: folder.id }),
+      );
       visitGraph();
 
       testEntitySearch({
@@ -201,21 +223,53 @@ describe("scenarios > dependencies > dependency graph", () => {
         path: ["Databases", /Sample Database/, "Products"],
         itemIcon: "table",
       });
+      testEntityPickerSearch({
+        itemName: "Products",
+        itemIcon: "table",
+      });
       testEntityPicker({
         path: ["Our analytics", "Orders, Count, Grouped by Created At (year)"],
+        itemIcon: "line",
+      });
+      testEntityPickerSearch({
+        itemName: "Orders, Count, Grouped by Created At (year)",
         itemIcon: "line",
       });
       testEntityPicker({
         path: ["Our analytics", "Orders Model"],
         itemIcon: "model",
       });
+      testEntityPickerSearch({
+        itemName: "Orders Model",
+        itemIcon: "model",
+      });
       testEntityPicker({
         path: ["Our analytics", TABLE_BASED_METRIC_NAME],
+        itemIcon: "metric",
+      });
+      testEntityPickerSearch({
+        itemName: TABLE_BASED_METRIC_NAME,
         itemIcon: "metric",
       });
       testEntityPicker({
         path: [/Transforms/, TABLE_BASED_TRANSFORM_NAME],
         itemIcon: "transform",
+      });
+      testEntityPickerSearch({
+        itemName: TABLE_BASED_TRANSFORM_NAME,
+        itemIcon: "transform",
+      });
+      testEntityPicker({
+        path: ["SQL Snippets", EMPTY_SNIPPET_NAME],
+        itemIcon: "snippet",
+      });
+      testEntityPicker({
+        path: [
+          DATA_ACTIONS_ROOT_NAME,
+          DATA_ACTIONS_FOLDER_NAME,
+          TABLE_BASED_ACTION_NAME,
+        ],
+        itemIcon: "bolt",
       });
     });
   });
@@ -262,6 +316,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         );
         createTableBasedSegment({ tableId });
         createTableBasedMeasure({ tableId });
+        createTableBasedAction();
         visitGraphForEntity(tableId, "table");
       });
 
@@ -339,6 +394,12 @@ describe("scenarios > dependencies > dependency graph", () => {
         groupTitle: "1 measure",
         dependentItemTitle: TABLE_BASED_MEASURE_NAME,
       });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 data action",
+        dependentItemTitle: TABLE_BASED_ACTION_NAME,
+        dependentItemLocation: DATA_ACTIONS_ROOT_NAME,
+      });
 
       cy.log("transform dependents");
       H.DependencyGraph.graph()
@@ -402,7 +463,7 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     it("should display dependencies for a question and a model and navigate to them", () => {
       getScoreboardTableId().then((tableId) => {
-        createTableBasedQuestion({ tableId }).then(({ body: card }) => {
+        createTableBasedQuestion({ tableId }).then((card) => {
           createCardBasedDependents({
             cardId: card.id,
             namePrefix: QUESTION_BASED_NAME_PREFIX,
@@ -410,7 +471,7 @@ describe("scenarios > dependencies > dependency graph", () => {
           });
           cy.wrap(card.id).as("questionId");
         });
-        createTableBasedModel({ tableId }).then(({ body: card }) => {
+        createTableBasedModel({ tableId }).then((card) => {
           createCardBasedDependents({
             cardId: card.id,
             namePrefix: MODEL_BASED_NAME_PREFIX,
@@ -494,7 +555,7 @@ describe("scenarios > dependencies > dependency graph", () => {
 
     it("should display dependencies for a metric and navigate to them", () => {
       getScoreboardTableId().then((tableId) =>
-        createTableBasedMetric({ tableId }).then(({ body: card }) => {
+        createTableBasedMetric({ tableId }).then((card) => {
           createMetricBasedQuestion({ tableId, metricId: card.id });
           createMetricBasedModel({ tableId, metricId: card.id });
           createMetricBasedMetric({ tableId, metricId: card.id });
@@ -542,6 +603,11 @@ describe("scenarios > dependencies > dependency graph", () => {
           snippetName: snippet.name,
         });
         createSnippetBasedSnippet({ snippetName: snippet.name });
+        createSnippetBasedAction({
+          tableName: TABLE_NAME,
+          snippetId: snippet.id,
+          snippetName: snippet.name,
+        });
         visitGraphForEntity(snippet.id, "snippet");
       });
       verifyPanelNavigation({
@@ -561,8 +627,53 @@ describe("scenarios > dependencies > dependency graph", () => {
       });
       verifyPanelNavigation({
         itemTitle: EMPTY_SNIPPET_NAME,
-        groupTitle: "1 snippet",
+        groupTitle: "1 SQL snippet",
         dependentItemTitle: SNIPPET_BASED_SNIPPET_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: EMPTY_SNIPPET_NAME,
+        groupTitle: "1 data action",
+        dependentItemTitle: SNIPPET_BASED_ACTION_NAME,
+      });
+    });
+
+    it("should display the dependencies and parameters of a data action", () => {
+      createDataActionsFolder().then(({ body: folder }) =>
+        createTableBasedAction({ collectionId: folder.id }).then(
+          ({ body: action }) => {
+            H.waitForBackfillComplete();
+            cy.visit(`/data-studio/actions/${action.id}`);
+          },
+        ),
+      );
+
+      cy.log("open the dependencies tab of the data action");
+      cy.findByRole("link", { name: "Dependencies" }).click();
+      H.DependencyGraph.graph().within(() => {
+        cy.findByLabelText(TABLE_DISPLAY_NAME).should("be.visible");
+        cy.findByLabelText(TABLE_BASED_ACTION_NAME).should("be.visible");
+      });
+
+      cy.log("the info panel shows the data action's folder and parameters");
+      H.DependencyGraph.graph()
+        .findByLabelText(TABLE_BASED_ACTION_NAME)
+        .findByText(TABLE_BASED_ACTION_NAME)
+        .click();
+      H.DependencyGraph.infoPanel().within(() => {
+        cy.findByText(DATA_ACTIONS_FOLDER_NAME).should("be.visible");
+        cy.findByText("Parameters").should("be.visible");
+        cy.findByText("Team ID").should("be.visible");
+      });
+
+      cy.log("navigate from the table to the data action");
+      getScoreboardTableId().then((tableId) =>
+        visitGraphForEntity(tableId, "table"),
+      );
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 data action",
+        dependentItemTitle: TABLE_BASED_ACTION_NAME,
+        dependentItemLocation: DATA_ACTIONS_FOLDER_NAME,
       });
     });
   });
@@ -634,8 +745,13 @@ function verifyCardDependentsNavigation({
   });
   verifyPanelNavigation({
     itemTitle,
-    groupTitle: "1 snippet",
+    groupTitle: "1 SQL snippet",
     dependentItemTitle: names.snippet,
+  });
+  verifyPanelNavigation({
+    itemTitle,
+    groupTitle: "1 data action",
+    dependentItemTitle: names.action,
   });
 }
 
@@ -712,6 +828,75 @@ function getScoreboardTableId() {
   return cy.get<number>(`@${TABLE_ID_ALIAS}`);
 }
 
+function createWritableQuery(stage: TestStageWithSourceSpec) {
+  return H.createTestQuery({ database: WRITABLE_DB_ID, stages: [stage] });
+}
+
+function createWritableNativeQuery(spec: TestNativeQuerySpec) {
+  return H.createTestNativeQuery({ database: WRITABLE_DB_ID, ...spec });
+}
+
+function createCardFromStage({
+  name,
+  type,
+  stage,
+  collectionId,
+  dashboardId,
+}: {
+  name: string;
+  type: CardType;
+  stage: TestStageWithSourceSpec;
+  collectionId?: CollectionId | null;
+  dashboardId?: DashboardId | null;
+}) {
+  return createWritableQuery(stage).then((query) =>
+    H.createCard({
+      name,
+      type,
+      dataset_query: query,
+      collection_id: collectionId,
+      dashboard_id: dashboardId,
+    }),
+  );
+}
+
+function createTransformFromQuery({
+  name,
+  tableName,
+  query,
+}: {
+  name: string;
+  tableName: string;
+  query: OpaqueDatasetQuery;
+}) {
+  return H.createTransform({
+    name,
+    source: { type: "query", query },
+    target: {
+      type: "table",
+      database: WRITABLE_DB_ID,
+      schema: "public",
+      name: tableName,
+    },
+  });
+}
+
+function getSnippetTemplateTags({
+  snippetId,
+  snippetName,
+}: {
+  snippetId: NativeQuerySnippetId;
+  snippetName: string;
+}): TestNativeQuerySpec["templateTags"] {
+  return {
+    [`snippet: ${snippetName}`]: {
+      type: "snippet",
+      "snippet-id": snippetId,
+      "snippet-name": snippetName,
+    },
+  };
+}
+
 function createTableBasedCard({
   name,
   type,
@@ -725,15 +910,12 @@ function createTableBasedCard({
   collectionId?: CollectionId | null;
   dashboardId?: DashboardId | null;
 }) {
-  return H.createQuestion({
+  return createCardFromStage({
     name,
     type,
-    database: WRITABLE_DB_ID,
-    query: {
-      "source-table": tableId,
-    },
-    collection_id: collectionId,
-    dashboard_id: dashboardId,
+    stage: { source: { type: "table", id: tableId } },
+    collectionId,
+    dashboardId,
   });
 }
 
@@ -752,7 +934,7 @@ function createTableBasedQuestion({
     name,
     type: "question",
     tableId,
-    collectionId: collectionId,
+    collectionId,
     dashboardId,
   });
 }
@@ -764,7 +946,7 @@ function createTableBasedModel({
 }: {
   name?: string;
   tableId: TableId;
-  collectionId?: number | null;
+  collectionId?: CollectionId | null;
 }) {
   return createTableBasedCard({
     name,
@@ -781,6 +963,7 @@ function getCardBasedDependentNames(namePrefix: string) {
     metric: `${namePrefix} metric`,
     transform: `${namePrefix} transform`,
     snippet: `${namePrefix} snippet`,
+    action: `${namePrefix} data action`,
   };
 }
 
@@ -794,59 +977,30 @@ function createCardBasedDependents({
   transformTableName: string;
 }) {
   const names = getCardBasedDependentNames(namePrefix);
-  createCardBasedCard({ name: names.question, type: "question", cardId });
-  createCardBasedCard({ name: names.model, type: "model", cardId });
-  H.createQuestion({
+  const source = { type: "card", id: cardId } as const;
+  createCardFromStage({
+    name: names.question,
+    type: "question",
+    stage: { source },
+  });
+  createCardFromStage({ name: names.model, type: "model", stage: { source } });
+  createCardFromStage({
     name: names.metric,
     type: "metric",
-    database: WRITABLE_DB_ID,
-    query: {
-      "source-table": `card__${cardId}`,
-      aggregation: [["count"]],
-    },
+    stage: { source, aggregations: [{ type: "operator", operator: "count" }] },
   });
-  H.createTransform({
-    name: names.transform,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": `card__${cardId}`,
-        },
-      },
-    },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      schema: "public",
-      name: transformTableName,
-    },
-  });
+  createWritableQuery({ source }).then((query) =>
+    createTransformFromQuery({
+      name: names.transform,
+      tableName: transformTableName,
+      query,
+    }),
+  );
   H.createSnippet({
     name: names.snippet,
     content: `{{#${cardId}}}`,
   });
-}
-
-function createCardBasedCard({
-  name,
-  type,
-  cardId,
-}: {
-  name: string;
-  type: CardType;
-  cardId: CardId;
-}) {
-  return H.createQuestion({
-    name,
-    type,
-    database: WRITABLE_DB_ID,
-    query: {
-      "source-table": `card__${cardId}`,
-    },
-  });
+  createCardBasedAction({ name: names.action, cardId });
 }
 
 function createMetricBasedCard({
@@ -860,13 +1014,12 @@ function createMetricBasedCard({
   tableId: TableId;
   metricId: CardId;
 }) {
-  return H.createQuestion({
+  return createCardFromStage({
     name,
     type,
-    database: WRITABLE_DB_ID,
-    query: {
-      "source-table": tableId,
-      aggregation: [["metric", metricId]],
+    stage: {
+      source: { type: "table", id: tableId },
+      aggregations: [{ type: "metric", id: metricId }],
     },
   });
 }
@@ -914,24 +1067,10 @@ function createSnippetBasedCard({
   snippetId: NativeQuerySnippetId;
   snippetName: string;
 }) {
-  return H.createNativeQuestion({
-    name,
-    type,
-    database: WRITABLE_DB_ID,
-    native: {
-      query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
-      "template-tags": {
-        [`snippet:${snippetName}`]: {
-          id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-          name: `snippet:${snippetName}`,
-          "display-name": `snippet:${snippetName}`,
-          type: "snippet",
-          "snippet-id": snippetId,
-          "snippet-name": snippetName,
-        },
-      },
-    },
-  });
+  return createWritableNativeQuery({
+    query: `SELECT * FROM ${tableName} WHERE {{snippet: ${snippetName}}}`,
+    templateTags: getSnippetTemplateTags({ snippetId, snippetName }),
+  }).then((query) => H.createCard({ name, type, dataset_query: query }));
 }
 
 function createSnippetBasedQuestion({
@@ -971,13 +1110,12 @@ function createSnippetBasedModel({
 }
 
 function createTableBasedMetric({ tableId }: { tableId: TableId }) {
-  return H.createQuestion({
+  return createCardFromStage({
     name: TABLE_BASED_METRIC_NAME,
     type: "metric",
-    database: WRITABLE_DB_ID,
-    query: {
-      "source-table": tableId,
-      aggregation: [["count"]],
+    stage: {
+      source: { type: "table", id: tableId },
+      aggregations: [{ type: "operator", operator: "count" }],
     },
   });
 }
@@ -989,38 +1127,24 @@ function createMetricBasedMetric({
   tableId: TableId;
   metricId: CardId;
 }) {
-  return H.createQuestion({
+  return createMetricBasedCard({
     name: METRIC_BASED_METRIC_NAME,
     type: "metric",
-    database: WRITABLE_DB_ID,
-    query: {
-      "source-table": tableId,
-      aggregation: [["metric", metricId]],
-    },
+    tableId,
+    metricId,
   });
 }
 
 function createTableBasedTransform({ tableName }: { tableName: string }) {
-  return H.createTransform({
-    name: TABLE_BASED_TRANSFORM_NAME,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "native",
-        native: {
-          query: `SELECT * from ${tableName}`,
-          "template-tags": {},
-        },
-      },
-    },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      schema: "public",
-      name: TRANSFORM_TABLE_NAME,
-    },
-  });
+  return createWritableNativeQuery({
+    query: `SELECT * from ${tableName}`,
+  }).then((query) =>
+    createTransformFromQuery({
+      name: TABLE_BASED_TRANSFORM_NAME,
+      tableName: TRANSFORM_TABLE_NAME,
+      query,
+    }),
+  );
 }
 
 function createMetricBasedTransform({
@@ -1030,26 +1154,16 @@ function createMetricBasedTransform({
   tableId: TableId;
   metricId: CardId;
 }) {
-  return H.createTransform({
-    name: METRIC_BASED_TRANSFORM_NAME,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": tableId,
-          aggregation: [["metric", metricId]],
-        },
-      },
-    },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      schema: "public",
-      name: TRANSFORM_TABLE_NAME,
-    },
-  });
+  return createWritableQuery({
+    source: { type: "table", id: tableId },
+    aggregations: [{ type: "metric", id: metricId }],
+  }).then((query) =>
+    createTransformFromQuery({
+      name: METRIC_BASED_TRANSFORM_NAME,
+      tableName: TRANSFORM_TABLE_NAME,
+      query,
+    }),
+  );
 }
 
 function createSnippetBasedTransform({
@@ -1061,33 +1175,107 @@ function createSnippetBasedTransform({
   snippetId: NativeQuerySnippetId;
   snippetName: string;
 }) {
-  return H.createTransform({
-    name: SNIPPET_BASED_TRANSFORM_NAME,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "native",
-        native: {
-          query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
-          "template-tags": {
-            [`snippet:${snippetName}`]: {
-              id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-              name: `snippet:${snippetName}`,
-              "display-name": `snippet:${snippetName}`,
-              type: "snippet",
-              "snippet-id": snippetId,
-              "snippet-name": snippetName,
-            },
-          },
-        },
+  return createWritableNativeQuery({
+    query: `SELECT * FROM ${tableName} WHERE {{snippet: ${snippetName}}}`,
+    templateTags: getSnippetTemplateTags({ snippetId, snippetName }),
+  }).then((query) =>
+    createTransformFromQuery({
+      name: SNIPPET_BASED_TRANSFORM_NAME,
+      tableName: TRANSFORM_TABLE_NAME,
+      query,
+    }),
+  );
+}
+
+function createDataActionsFolder() {
+  return cy.request<{ id: CollectionId }>("POST", "/api/collection", {
+    name: DATA_ACTIONS_FOLDER_NAME,
+    namespace: "data-actions",
+  });
+}
+
+function createDataAction({
+  name,
+  query,
+  templateTags,
+  parameters = [],
+  collectionId = null,
+}: {
+  name: string;
+  query: string;
+  templateTags?: TestNativeQuerySpec["templateTags"];
+  parameters?: WritebackParameter[];
+  collectionId?: CollectionId | null;
+}) {
+  H.setActionsEnabledForDB(WRITABLE_DB_ID);
+  return createWritableNativeQuery({ query, templateTags }).then(
+    (datasetQuery) =>
+      cy.request<{ id: WritebackActionId }>("POST", "/api/action", {
+        name,
+        type: "query",
+        database_id: WRITABLE_DB_ID,
+        collection_id: collectionId,
+        dataset_query: datasetQuery,
+        parameters,
+      }),
+  );
+}
+
+function createTableBasedAction({
+  collectionId = null,
+}: { collectionId?: CollectionId | null } = {}) {
+  return createDataAction({
+    name: TABLE_BASED_ACTION_NAME,
+    query: `DELETE FROM ${TABLE_NAME} WHERE id = {{team_id}}`,
+    templateTags: {
+      team_id: {
+        type: "number",
+        "display-name": "Team ID",
+        required: true,
       },
     },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      schema: "public",
-      name: TRANSFORM_TABLE_NAME,
+    parameters: [
+      {
+        id: "team_id",
+        slug: "team_id",
+        name: "Team ID",
+        type: "number/=",
+        target: ["variable", ["template-tag", "team_id"]],
+        required: true,
+      },
+    ],
+    collectionId,
+  });
+}
+
+function createSnippetBasedAction({
+  tableName,
+  snippetId,
+  snippetName,
+}: {
+  tableName: string;
+  snippetId: NativeQuerySnippetId;
+  snippetName: string;
+}) {
+  return createDataAction({
+    name: SNIPPET_BASED_ACTION_NAME,
+    query: `DELETE FROM ${tableName} WHERE {{snippet: ${snippetName}}}`,
+    templateTags: getSnippetTemplateTags({ snippetId, snippetName }),
+  });
+}
+
+function createCardBasedAction({
+  name,
+  cardId,
+}: {
+  name: string;
+  cardId: CardId;
+}) {
+  return createDataAction({
+    name,
+    query: `DELETE FROM ${TABLE_NAME} WHERE id IN (SELECT id FROM {{#${cardId}}})`,
+    templateTags: {
+      [`#${cardId}`]: { type: "card", "card-id": cardId },
     },
   });
 }
@@ -1102,23 +1290,30 @@ function createEmptySnippet() {
 function createSnippetBasedSnippet({ snippetName }: { snippetName: string }) {
   return H.createSnippet({
     name: SNIPPET_BASED_SNIPPET_NAME,
-    content: `{{snippet:${snippetName}}}`,
+    content: `{{snippet: ${snippetName}}}`,
   });
 }
 
 function createTableBasedSegment({ tableId }: { tableId: TableId }) {
-  return H.createSegment({
-    name: TABLE_BASED_SEGMENT_NAME,
-    description: "Segment description",
-    definition: {
-      database: WRITABLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": tableId,
-        filter: ["=", 1, 1],
+  return createWritableQuery({
+    source: { type: "table", id: tableId },
+    filters: [
+      {
+        type: "operator",
+        operator: "=",
+        args: [
+          { type: "literal", value: 1 },
+          { type: "literal", value: 1 },
+        ],
       },
-    },
-  });
+    ],
+  }).then((definition) =>
+    H.createSegment({
+      name: TABLE_BASED_SEGMENT_NAME,
+      description: "Segment description",
+      definition,
+    }),
+  );
 }
 
 function createSegmentBasedSegment({
@@ -1128,18 +1323,16 @@ function createSegmentBasedSegment({
   tableId: TableId;
   segmentId: SegmentId;
 }) {
-  return H.createSegment({
-    name: SEGMENT_BASED_SEGMENT_NAME,
-    description: "Segment description",
-    definition: {
-      database: WRITABLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": tableId,
-        filter: ["segment", segmentId],
-      },
-    },
-  });
+  return createWritableQuery({
+    source: { type: "table", id: tableId },
+    filters: [{ type: "segment", id: segmentId }],
+  }).then((definition) =>
+    H.createSegment({
+      name: SEGMENT_BASED_SEGMENT_NAME,
+      description: "Segment description",
+      definition,
+    }),
+  );
 }
 
 function createSegmentBasedCard({
@@ -1153,14 +1346,13 @@ function createSegmentBasedCard({
   tableId: TableId;
   segmentId: SegmentId;
 }) {
-  return H.createQuestion({
+  return createCardFromStage({
     name,
     type,
-    database: WRITABLE_DB_ID,
-    query: {
-      "source-table": tableId,
-      filter: ["segment", segmentId],
-      aggregation: [["count"]],
+    stage: {
+      source: { type: "table", id: tableId },
+      filters: [{ type: "segment", id: segmentId }],
+      aggregations: [{ type: "operator", operator: "count" }],
     },
   });
 }
@@ -1223,37 +1415,46 @@ function createDocumentWithTableBasedQuestion({
   name: string;
   tableId: TableId;
 }) {
-  return H.createDocument({
-    name: DOCUMENT_NAME,
-    document: { type: "doc", content: [] },
-    cards: {
-      "-1": createMockCard({
-        id: -1,
-        name,
-        dataset_query: {
-          database: WRITABLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": tableId,
-          },
+  return createWritableQuery({ source: { type: "table", id: tableId } }).then(
+    (query) =>
+      H.createDocument({
+        name: DOCUMENT_NAME,
+        document: { type: "doc", content: [] },
+        cards: {
+          "-1": createMockCard({
+            id: -1,
+            name,
+            dataset_query: query,
+            description: "Table based question",
+          }),
         },
-        description: "Table based question",
       }),
-    },
-  });
+  );
+}
+
+function createMeasure({
+  name,
+  tableId,
+  aggregation,
+  filters,
+}: {
+  name: string;
+  tableId: TableId;
+  aggregation: TestAggregationSpec;
+  filters?: TestStageSpec["filters"];
+}) {
+  return createWritableQuery({
+    source: { type: "table", id: tableId },
+    filters,
+    aggregations: [aggregation],
+  }).then((definition) => H.createMeasure({ name, definition }));
 }
 
 function createTableBasedMeasure({ tableId }: { tableId: TableId }) {
-  return H.createMeasure({
+  return createMeasure({
     name: TABLE_BASED_MEASURE_NAME,
-    definition: {
-      database: WRITABLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": tableId,
-        aggregation: [["count"]],
-      },
-    },
+    tableId,
+    aggregation: { type: "operator", operator: "count" },
   });
 }
 
@@ -1264,15 +1465,34 @@ function createSegmentBaseMeasure({
   tableId: TableId;
   segmentId: SegmentId;
 }) {
-  return H.createMeasure({
+  return createMeasure({
     name: SEGMENT_BASED_MEASURE_NAME,
-    definition: {
-      database: WRITABLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": tableId,
-        aggregation: [["count-where", ["segment", segmentId]]],
-      },
+    tableId,
+    aggregation: {
+      type: "operator",
+      operator: "count-where",
+      args: [{ type: "segment", id: segmentId }],
+    },
+  });
+}
+
+function createMeasureBasedCard({
+  name,
+  type,
+  tableId,
+  measureId,
+}: {
+  name: string;
+  type: CardType;
+  tableId: TableId;
+  measureId: MeasureId;
+}) {
+  return createCardFromStage({
+    name,
+    type,
+    stage: {
+      source: { type: "table", id: tableId },
+      aggregations: [{ type: "measure", id: measureId }],
     },
   });
 }
@@ -1284,12 +1504,11 @@ function createMeasureBasedQuestion({
   tableId: TableId;
   measureId: MeasureId;
 }) {
-  return H.createQuestion({
+  return createMeasureBasedCard({
     name: MEASURE_BASED_QUESTION_NAME,
-    query: {
-      "source-table": tableId,
-      aggregation: [["measure", measureId]],
-    },
+    type: "question",
+    tableId,
+    measureId,
   });
 }
 
@@ -1300,13 +1519,11 @@ function createMeasureBasedModel({
   tableId: TableId;
   measureId: MeasureId;
 }) {
-  return H.createQuestion({
+  return createMeasureBasedCard({
     name: MEASURE_BASED_MODEL_NAME,
     type: "model",
-    query: {
-      "source-table": tableId,
-      aggregation: [["measure", measureId]],
-    },
+    tableId,
+    measureId,
   });
 }
 
@@ -1317,13 +1534,11 @@ function createMeasureBasedMetric({
   tableId: TableId;
   measureId: MeasureId;
 }) {
-  return H.createQuestion({
+  return createMeasureBasedCard({
     name: MEASURE_BASED_METRIC_NAME,
     type: "metric",
-    query: {
-      "source-table": tableId,
-      aggregation: [["measure", measureId]],
-    },
+    tableId,
+    measureId,
   });
 }
 
@@ -1334,26 +1549,16 @@ function createMeasureBasedTransform({
   tableId: TableId;
   measureId: MeasureId;
 }) {
-  return H.createTransform({
-    name: MEASURE_BASED_TRANSFORM_NAME,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": tableId,
-          aggregation: [["measure", measureId]],
-        },
-      },
-    },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      schema: "public",
-      name: TRANSFORM_TABLE_NAME,
-    },
-  });
+  return createWritableQuery({
+    source: { type: "table", id: tableId },
+    aggregations: [{ type: "measure", id: measureId }],
+  }).then((query) =>
+    createTransformFromQuery({
+      name: MEASURE_BASED_TRANSFORM_NAME,
+      tableName: TRANSFORM_TABLE_NAME,
+      query,
+    }),
+  );
 }
 
 function createMeasureBasedMeasure({
@@ -1363,15 +1568,16 @@ function createMeasureBasedMeasure({
   tableId: TableId;
   measureId: MeasureId;
 }) {
-  return H.createMeasure({
+  return createMeasure({
     name: MEASURE_BASED_MEASURE_NAME,
-    definition: {
-      database: WRITABLE_DB_ID,
-      type: "query",
-      query: {
-        "source-table": tableId,
-        aggregation: ["+", 1, ["measure", measureId]],
-      },
+    tableId,
+    aggregation: {
+      type: "operator",
+      operator: "+",
+      args: [
+        { type: "literal", value: 1 },
+        { type: "measure", id: measureId },
+      ],
     },
   });
 }

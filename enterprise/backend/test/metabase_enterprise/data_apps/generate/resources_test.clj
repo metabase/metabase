@@ -514,7 +514,7 @@
                :creator_id             "crowberto@metabase.com"
                :created_at             string?
                :card_schema            pos-int?
-               :visualization_settings {:column_settings nil}
+               :visualization_settings {}
                :parameters             []
                :parameter_mappings     []
                :dataset_query          {:database (db-name)

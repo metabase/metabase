@@ -1,4 +1,6 @@
 import type {
+  ActionDependencyNode,
+  ActionDependencyNodeData,
   AnalysisFindingError,
   CardDependencyNode,
   CardDependencyNodeData,
@@ -26,6 +28,8 @@ import type {
   TransformDependencyNode,
   TransformDependencyNodeData,
 } from "metabase-types/api";
+
+import { createMockUserInfo } from "./user";
 
 export function createMockDependencyEntry(
   opts?: Partial<DependencyEntry>,
@@ -290,6 +294,34 @@ export function createMockMeasureDependencyNode(
     id: 1,
     type: "measure",
     data: createMockMeasureDependencyNodeData(),
+    dependents_count: {},
+    ...opts,
+  };
+}
+
+export function createMockActionDependencyNodeData(
+  opts?: Partial<ActionDependencyNodeData>,
+): ActionDependencyNodeData {
+  return {
+    name: "Action",
+    description: null,
+    type: "query",
+    model_id: null,
+    created_at: "2020-01-01T00:00:00Z",
+    creator_id: 1,
+    creator: createMockUserInfo(),
+    collection_id: null,
+    ...opts,
+  };
+}
+
+export function createMockActionDependencyNode(
+  opts?: Partial<ActionDependencyNode>,
+): ActionDependencyNode {
+  return {
+    id: 1,
+    type: "action",
+    data: createMockActionDependencyNodeData(),
     dependents_count: {},
     ...opts,
   };
