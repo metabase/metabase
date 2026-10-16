@@ -131,6 +131,7 @@ export const MainNavSharedCollections = ({
             {canCreateSharedCollection && (
               <Tooltip label={t`Create a shared collection`}>
                 <ActionIcon
+                  variant="subtle"
                   c="text-secondary"
                   onClick={() => setModalOpen(true)}
                 >

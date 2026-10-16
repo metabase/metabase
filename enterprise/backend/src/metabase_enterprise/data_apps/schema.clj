@@ -150,14 +150,17 @@
     [:error :string]]])
 
 (mr/def ::app-request
-  "What a new data app's files are generated from."
+  "What a data app's files are generated from. An existing app passes the entity IDs of its `data_app.yaml` and of its
+  collection, so its files keep them."
   [:map {:closed true}
    [:name ::display-name]
    [:slug {:optional true} [:maybe ::slug]]
-   [:description {:optional true} ::description]])
+   [:description {:optional true} ::description]
+   [:entity_id {:optional true} [:maybe ms/NanoIdString]]
+   [:collection_id {:optional true} [:maybe ms/NanoIdString]]])
 
 (mr/def ::app-files
-  "A new data app's files, each at its path from the repository root."
+  "A data app's files, each at its path from the repository root."
   [:map {:closed true}
    [:files [:sequential [:map {:closed true}
                          [:path :string]

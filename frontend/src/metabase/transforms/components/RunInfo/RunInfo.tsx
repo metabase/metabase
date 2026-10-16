@@ -45,7 +45,11 @@ export function RunInfo({ status, message, endTime }: RunInfoProps) {
   return (
     <>
       <Tooltip label={getTooltip(status)}>
-        <ActionIcon aria-label={t`See error`} onClick={handleIconClick}>
+        <ActionIcon
+          variant="subtle"
+          aria-label={t`See error`}
+          onClick={handleIconClick}
+        >
           <Icon name="document" />
         </ActionIcon>
       </Tooltip>

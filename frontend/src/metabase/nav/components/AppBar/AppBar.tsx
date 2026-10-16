@@ -30,6 +30,7 @@ export interface AppBarProps {
   questionLineage?: ReactNode;
   onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
+  onOpenNavbar: () => void;
   onCloseNavbar: () => void;
 }
 

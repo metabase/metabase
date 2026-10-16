@@ -69,6 +69,7 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -163,16 +164,6 @@
   metabase-enterprise.advanced-permissions.common
   [_db-id]
   (mi/superuser?))
-
-(defenterprise mark-transforms-stale-on-database-delete!
-  "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
-   is about to be SET NULL by the FK action survive the delete (so the analyst can read the
-   SQL/Python and rebuild against a new DB), but their dependency-analysis findings need to
-   be re-run so they surface on `/monitor/dependency-diagnostics/broken`. OSS is a no-op
-   (no dependencies module)."
-  metabase-enterprise.dependencies.events
-  [_db-id]
-  nil)
 
 (defn- can-write?
   [db-id]
@@ -433,11 +424,6 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
-  ;; Mark transforms with this DB as source as stale so dependency-diagnostics re-analyzes
-  ;; them after the row's gone. Must run BEFORE the FK SET NULL fires (which happens when
-  ;; the database row is deleted below) so we can still resolve the affected transforms by
-  ;; source_database_id.
-  (mark-transforms-stale-on-database-delete! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)

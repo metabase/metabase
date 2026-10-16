@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.sandbox.schema]
+   [metabase.actions.schema :as actions.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
@@ -201,7 +202,8 @@
                           ::documents.schema/document
                           :metabase-enterprise.sandbox.schema/sandbox
                           :metabase.segments.schema/segment
-                          :metabase.measures.schema/measure]]]]
+                          :metabase.measures.schema/measure
+                          ::actions.schema/action]]]]
   (boolean
    (case entity-type
      :card (some-> entity
@@ -212,6 +214,7 @@
                         :query
                         lib/any-native-stage?)
      :snippet true
+     :action (= :query (:type entity))
      false)))
 
 (defn- native-lookup-map [children]
