@@ -289,8 +289,6 @@
     (merge
      request
      (dissoc current-user-info :auth-provider)
-     ;; override for embedding auth methods
-     (m/assoc-some {} :embedding/auth-method (analytics/auth-method))
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
        {:user-locale (i18n/normalized-locale-string x-metabase-locale)}))))

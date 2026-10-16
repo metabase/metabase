@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.analytics.sdk :as sdk]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
    [metabase.app-db.core :as mdb]
@@ -283,25 +282,6 @@
                                  :user-locale             nil
                                  :embedding/auth-method   "api-key"})
                      (#'mw.session/merge-current-user-info nil req))))))))))
-
-(deftest auth-method-route-overrides-credential-test
-  (testing "A special route's auth method wins over the credential's, and applies to anonymous requests too"
-    (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
-                                    :user_id               (mt/user->id :lucky)
-                                    :creator_id            (mt/user->id :lucky)
-                                    :updated_by_id         (mt/user->id :lucky)
-                                    ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
-      (let [api-key-req {:headers {"x-api-key" "mb_foobar123"}}]
-        (are [req route expected]
-             (= expected (binding [sdk/*route* route]
-                           (:embedding/auth-method (#'mw.session/merge-current-user-info nil req))))
-          api-key-req nil           "api-key"
-          api-key-req "guest-embed" "guest"
-          api-key-req "public"      "public"
-          api-key-req "agent-api"   "agent-api"
-          {}          "guest-embed" "guest"
-          {}          "metabot"     "metabot"
-          {}          nil           nil)))))
 
 (deftest api-key-hash-encrypted-at-rest-test
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB

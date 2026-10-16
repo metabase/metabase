@@ -68,6 +68,22 @@
     (is (=? {:embedding_client_identifier "my-data-app"}
             (analytics.core/include-sdk-info {:embedding_client_identifier "my-data-app"})))))
 
+(deftest include-sdk-info-auth-method-test
+  (testing "A special route's auth method wins over the credential's, which wins over the row's existing value"
+    (are [route bound-method row-method expected]
+         (= expected (:auth_method (binding [sdk/*route*       route
+                                             sdk/*auth-method* bound-method]
+                                     (analytics.core/include-sdk-info {:auth_method row-method}))))
+      nil           "api-key" nil   "api-key"
+      nil           "api-key" "jwt" "api-key"
+      "guest-embed" "api-key" nil   "guest"
+      "public"      "session" nil   "public"
+      "agent-api"   "api-key" nil   "agent-api"
+      "guest-embed" nil       nil   "guest"
+      "metabot"     nil       nil   "metabot"
+      nil           nil       "jwt" "jwt"
+      nil           nil       nil   nil)))
+
 (deftest embeding-mw-bumps-metrics-with-react-sdk-client-header
   (mt/with-prometheus-system! [_ system]
     ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
@@ -264,21 +280,21 @@
                  (fn [_ respond _] (respond {:status 200 :body (sdk/get-client)})))]
     (:body (handler request identity identity))))
 
-(defn- auth-method-from-mw
-  "Runs a request through embedding-mw and returns the auth-method based on the route bound inside the handler."
+(defn- route-from-mw
+  "Runs a request through embedding-mw and returns the route bound inside the handler."
   [request]
   (let [handler (analytics.core/embedding-mw
-                 (fn [_ respond _] (respond {:status 200 :body (sdk/auth-method)})))]
+                 (fn [_ respond _] (respond {:status 200 :body sdk/*route*})))]
     (:body (handler request identity identity))))
 
 (deftest route-based-client-derivation-test
   (testing "route prefix populates *route*, not *client*"
     (are [uri expected]
-         (= expected (auth-method-from-mw (assoc (ring.mock/request :get uri)
+         (= expected (route-from-mw (assoc (ring.mock/request :get uri)
                                            :uri uri)))
       "/api/public/card/1"         "public"
-      "/api/embed/dashboard/42"    "guest"
-      "/api/preview_embed/card/1"  "guest"
+      "/api/embed/dashboard/42"    "guest-embed"
+      "/api/preview_embed/card/1"  "guest-embed"
       "/api/metabot/query"         "metabot"
       "/api/agent/chat"            "agent-api"))
   (testing "route requests without header give nil *client*"
@@ -290,14 +306,14 @@
                       (assoc :uri "/api/public/card/1")
                       (ring.mock/header "x-metabase-client" "embedding-sdk-react"))]
       (is (= "embedding-sdk-react" (client-from-mw request)))
-      (is (= "public" (auth-method-from-mw request)))))
+      (is (= "public" (route-from-mw request)))))
   (testing "falls back to header when no route matches"
     (let [request (-> (ring.mock/request :get "/api/card/1")
                       (ring.mock/header "x-metabase-client" "embedding-sdk-react"))]
       (is (= "embedding-sdk-react" (client-from-mw request)))))
   (testing "nil when no route match and no header"
     (is (nil? (client-from-mw (ring.mock/request :get "/api/card/1"))))
-    (is (nil? (auth-method-from-mw (ring.mock/request :get "/api/card/1"))))))
+    (is (nil? (route-from-mw (ring.mock/request :get "/api/card/1"))))))
 
 (deftest preview-suffix-test
   (testing "-preview only applies to *client*, not *route*"
@@ -306,13 +322,13 @@
                       (ring.mock/header "x-metabase-client" "embedding-sdk-react")
                       (ring.mock/header "x-metabase-embedded-preview" "true"))]
       (is (= "embedding-sdk-react-preview" (client-from-mw request)))
-      (is (= "guest" (auth-method-from-mw request)))))
+      (is (= "guest-embed" (route-from-mw request)))))
   (testing "preview with route but no header -> nil client"
     (let [request (-> (ring.mock/request :get "/api/embed/dashboard/42")
                       (assoc :uri "/api/embed/dashboard/42")
                       (ring.mock/header "x-metabase-embedded-preview" "true"))]
       (is (nil? (client-from-mw request)))
-      (is (= "guest" (auth-method-from-mw request)))))
+      (is (= "guest-embed" (route-from-mw request)))))
   (testing "preview header appends -preview to header-derived client"
     (let [request (-> (ring.mock/request :get "/api/card/1")
                       (ring.mock/header "x-metabase-client" "embedding-sdk-react")

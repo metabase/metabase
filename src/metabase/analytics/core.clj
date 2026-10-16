@@ -39,7 +39,6 @@
  [metabase.analytics.quartz
   add-listeners-to-scheduler!]
  [metabase.analytics.sdk
-  auth-method
   embedding-context?
   embedding-mw
   extract-hostname
@@ -47,7 +46,7 @@
   include-sdk-info
   pii-fields-from
   pii-request-info
-  with-auth-method! get-auth-method
+  with-auth-method!
   with-client! get-client
   with-version! get-version]
  [metabase.analytics.settings
