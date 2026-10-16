@@ -175,6 +175,14 @@
                             nil)))))
         (source.p/list-dir snapshot dir)))
 
+(defn- entity-file?
+  "Whether `path` in `snapshot` is an entity YAML file; in a folder of [[serialization/content-checked-path?]] its
+  content must show it."
+  [snapshot path]
+  (and (serialization/entity-file-path? path)
+       (or (not (serialization/content-checked-path? path))
+           (serialization/entity-content? (source.p/read-file snapshot path)))))
+
 (defn owned-paths
   "The managed paths among `paths` that serialization owns in `snapshot`: entity YAML files, and the resource files
   that a YAML file in one of their ancestor directories declares."
@@ -182,7 +190,7 @@
   (let [resources (memoize #(declared-resources snapshot %))]
     (filterv (fn [path]
                (and (managed-path? path)
-                    (or (serialization/entity-file-path? path)
+                    (or (entity-file? snapshot path)
                         (some #(contains? (resources %) path)
                               (take-while some? (iterate parent-dir (parent-dir path)))))))
              paths)))

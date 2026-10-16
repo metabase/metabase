@@ -119,14 +119,34 @@
   kind layout, and those of the kind layout."
   (into legacy-top-level-paths kind-layout/top-level-folders))
 
+(def ^:private kind-only-top-level-paths
+  "The top-level paths of the kind layout that the layout before it did not write."
+  (apply disj kind-layout/top-level-folders legacy-top-level-paths))
+
 (def shared-top-level-paths
   "The [[legal-top-level-paths]] whose directories may also hold files serialization does not own, such as a data
-  app's source code, to a predicate of a `.yaml` file's path that says whether it is an entity file. The kind layout's
-  new folders are shared, so that a full export deletes only the files serialization owns in a folder a repository may
-  already use for something else."
+  app's source code, to a predicate of a `.yaml` file's path that says whether it may be an entity file. In the
+  folders of [[content-checked-path?]] a file must also pass [[entity-content?]]."
   (into {"data_apps" data-app-entity-file?}
         (for [folder (remove legacy-top-level-paths kind-layout/top-level-folders)]
           [folder (constantly true)])))
+
+(defn content-checked-path?
+  "Whether a YAML file at the `/`-separated `path` is an entity file only when its content is one
+  ([[entity-content?]]): a file in a top-level folder that only the kind layout writes, or in a data app's
+  `resources/` folder. A repository may hold its own YAML files there; exports leave them, and imports skip them."
+  [^String path]
+  (boolean (or (contains? kind-only-top-level-paths (first (str/split path #"/" 2)))
+               (re-matches #"data_apps/[^/]+/resources/.+" path))))
+
+(defn entity-content?
+  "Whether the YAML text `content` is a serialized entity: a map with a `serdes/meta` key."
+  [content]
+  (boolean (try
+             (let [parsed (yaml/parse-string content)]
+               (and (map? parsed) (contains? parsed :serdes/meta)))
+             (catch Exception _
+               false))))
 
 (def replaced-top-level-paths
   "The [[legal-top-level-paths]] a full export may replace wholesale."
