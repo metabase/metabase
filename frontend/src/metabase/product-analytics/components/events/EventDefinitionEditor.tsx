@@ -4,7 +4,7 @@ import { c, t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { ActionIcon, Group, Icon, Stack, Tooltip } from "metabase/ui";
+import { Button, Group, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { readEventQuery } from "../../events/read-event-query";
@@ -96,6 +96,7 @@ export const EventDefinitionEditor = ({
           key={committedName}
           flex={1}
           miw={0}
+          w="100%"
           bg="input-background"
           bd="1px solid var(--mb-color-border-neutral)"
           bdrs="xs"
@@ -106,24 +107,15 @@ export const EventDefinitionEditor = ({
           onContentChange={setDraftName}
           onBlur={() => setDraftName(null)}
         />
-        <Tooltip label={t`Done`}>
-          <ActionIcon
-            size="lg"
-            c="icon-primary"
-            bd="1px solid var(--mb-color-border-neutral)"
-            aria-label={t`Done`}
-            disabled={!canSubmit}
-            onClick={handleSubmit}
-          >
-            <Icon name="check" />
-          </ActionIcon>
-        </Tooltip>
       </Group>
       <ConditionsEditor
         query={query}
         onChange={setQuery}
         initialOpened={filters.length === 0}
       />
+      <Button fullWidth disabled={!canSubmit} onClick={handleSubmit}>
+        {t`Done`}
+      </Button>
     </Stack>
   );
 };

@@ -3,8 +3,17 @@ import { t } from "ttag";
 
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { Box, Button, Flex, Icon, Popover, Stack } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Flex,
+  Icon,
+  Popover,
+  UnstyledButton,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import S from "./ConditionsEditor.module.css";
 
 const STAGE_INDEX = -1;
 
@@ -15,7 +24,10 @@ type ConditionsEditorProps = {
   initialOpened?: boolean;
 };
 
-/** The query's filters as pills, each editable, plus a button to add one. */
+/**
+ * The query's filters as pills, each editable. With none, an outlined pill
+ * invites the first; after that a plus at the end of the row adds more.
+ */
 export const ConditionsEditor = ({
   query,
   onChange,
@@ -24,26 +36,23 @@ export const ConditionsEditor = ({
   const filters = Lib.filters(query, STAGE_INDEX);
 
   return (
-    <Stack gap="sm">
-      {filters.length > 0 && (
-        <Flex gap="sm" wrap="wrap">
-          {filters.map((filter, filterIndex) => (
-            <ConditionPill
-              key={filterIndex}
-              query={query}
-              filter={filter}
-              filterIndex={filterIndex}
-              onChange={onChange}
-            />
-          ))}
-        </Flex>
-      )}
-      <AddConditionButton
+    <Flex gap="sm" wrap="wrap" align="center">
+      {filters.map((filter, filterIndex) => (
+        <ConditionPill
+          key={filterIndex}
+          query={query}
+          filter={filter}
+          filterIndex={filterIndex}
+          onChange={onChange}
+        />
+      ))}
+      <AddCondition
         query={query}
+        isFirst={filters.length === 0}
         onChange={onChange}
         initialOpened={initialOpened}
       />
-    </Stack>
+    </Flex>
   );
 };
 
@@ -95,17 +104,19 @@ const ConditionPill = ({
   );
 };
 
-type AddConditionButtonProps = {
+type AddConditionProps = {
   query: Lib.Query;
+  isFirst: boolean;
   onChange: (query: Lib.Query) => void;
   initialOpened: boolean;
 };
 
-const AddConditionButton = ({
+const AddCondition = ({
   query,
+  isFirst,
   onChange,
   initialOpened,
-}: AddConditionButtonProps) => {
+}: AddConditionProps) => {
   const [isOpened, setIsOpened] = useState(initialOpened);
 
   const handleSelect = (filter: Lib.Filterable) => {
@@ -116,12 +127,25 @@ const AddConditionButton = ({
   return (
     <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
       <Popover.Target>
-        <Button
-          leftSection={<Icon name="add" />}
-          onClick={() => setIsOpened(!isOpened)}
-        >
-          {t`Add a condition`}
-        </Button>
+        {isFirst ? (
+          <UnstyledButton
+            className={S.addPill}
+            onClick={() => setIsOpened(!isOpened)}
+          >
+            <Icon name="add" size={12} />
+            {t`Add a condition`}
+          </UnstyledButton>
+        ) : (
+          <ActionIcon
+            className={S.addIcon}
+            size="sm"
+            variant="filled"
+            aria-label={t`Add a condition`}
+            onClick={() => setIsOpened(!isOpened)}
+          >
+            <Icon name="add" size={12} />
+          </ActionIcon>
+        )}
       </Popover.Target>
       <Popover.Dropdown>
         <Box mah="80vh">
