@@ -8,19 +8,18 @@
   the dependency_status table. Entities that a write marked stale, or that were deleted, also have their dependents
   marked for re-analysis here, outside the write's transaction."
   (:require
-   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
-   [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
+   [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
@@ -93,7 +92,8 @@
 (defn- compute-deps-for-entity!
   "Mark the dependents of an entity that a write marked stale for re-analysis, and those that expand it for
   recalculation, then compute and store its dependencies and update its dependency_status, flagging the tables it
-  names that match nothing. Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
+  names that match nothing, and mark it for re-deriving its result metadata when it newly depends on entities whose
+  result metadata changed. Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (when (:stale (dependencies.db/dependency-status entity-type (:id entity)))
@@ -101,8 +101,12 @@
     (when (expanded-into-dependents entity-type)
       (mark-expanding-entities-stale! entity-type (:id entity))))
   (t2/with-transaction [_]
-    (let [deps (deps.calculation/calculate-deps entity-type entity)]
-      (models.dependency/replace-dependencies! entity-type (:id entity) (dissoc deps :unresolved-table))
+    (let [deps  (deps.calculation/calculate-deps entity-type entity)
+          added (models.dependency/replace-dependencies! entity-type (:id entity) (dissoc deps :unresolved-table))]
+      (when (and (contains? deps.result-metadata-status/derived-types entity-type)
+                 (dependencies.db/result-metadata-status-exists? added))
+        (deps.result-metadata-status/mark-stale! {entity-type #{(:id entity)}})
+        (task.result-metadata/trigger-result-metadata-job!))
       (post-deps-cleanup! entity-type entity)
       (deps.dependency-status/upsert-status! entity-type (:id entity) (contains? deps :unresolved-table)))))
 
@@ -236,16 +240,12 @@
 (defn- schedule-run!
   "Schedule a run of the backfill job `delay-in-seconds` from now."
   [scheduler delay-in-seconds]
-  (let [start-at (-> (t/instant)
-                     (t/+ (t/duration delay-in-seconds :seconds))
-                     java.util.Date/from)
-        trigger  (triggers/build
-                  (triggers/with-identity (triggers/key trigger-key))
-                  (triggers/for-job job-key)
-                  (triggers/start-at start-at))
-        job      (jobs/build (jobs/of-type BackfillDependencies) (jobs/with-identity job-key))]
-    (log/info "Scheduling next run of job Dependency Backfill at" start-at)
-    (task/schedule-task! scheduler job trigger)))
+  (deps.task-util/schedule-run! scheduler
+                                {:job-type    BackfillDependencies
+                                 :job-key     job-key
+                                 :trigger-key trigger-key
+                                 :job-name    "Dependency Backfill"}
+                                delay-in-seconds))
 
 (defn trigger-backfill-job!
   "Trigger the BackfillDependencies job to run after a brief delay, unless the batch size disables it.

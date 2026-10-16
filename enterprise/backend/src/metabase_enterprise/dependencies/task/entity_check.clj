@@ -1,8 +1,5 @@
 (ns metabase-enterprise.dependencies.task.entity-check
   (:require
-   [clojurewerkz.quartzite.jobs :as jobs]
-   [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]
@@ -65,16 +62,12 @@
 (defn- schedule-run!
   "Schedule a run of the entity check job `delay-in-seconds` from now."
   [scheduler delay-in-seconds]
-  (let [start-at (-> (t/instant)
-                     (t/+ (t/duration delay-in-seconds :seconds))
-                     java.util.Date/from)
-        trigger  (triggers/build
-                  (triggers/with-identity (triggers/key trigger-key))
-                  (triggers/for-job job-key)
-                  (triggers/start-at start-at))
-        job      (jobs/build (jobs/of-type DependencyEntityCheck) (jobs/with-identity job-key))]
-    (log/info "Scheduling next run of job Dependency Entity Check at" start-at)
-    (task/schedule-task! scheduler job trigger)))
+  (deps.task-util/schedule-run! scheduler
+                                {:job-type    DependencyEntityCheck
+                                 :job-key     job-key
+                                 :trigger-key trigger-key
+                                 :job-name    "Dependency Entity Check"}
+                                delay-in-seconds))
 
 (defmethod task/init! ::DependencyEntityCheck [_]
   (when-not (pos? (deps.settings/dependency-entity-check-batch-size))

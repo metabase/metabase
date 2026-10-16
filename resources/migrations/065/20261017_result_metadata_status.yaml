@@ -1,15 +1,15 @@
-## Tracks the entities whose result columns changed, so the dependencies module re-derives the result metadata of the
-## MBQL cards that depend on them, analogous to dependency_status.
+## Tracks the entities whose result columns changed and the MBQL cards depending on them, so the dependencies module
+## re-derives the result metadata of those cards, analogous to dependency_status.
 
 databaseChangeLog:
   - changeSet:
-      id: v65.2026-10-17T00:00:00
+      id: v65.upols4
       author: ranquild
       comment: Create result_metadata_status for re-deriving the result metadata of dependent cards
       changes:
         - createTable:
             tableName: result_metadata_status
-            remarks: Tracks entities whose dependent cards need their result metadata re-derived, analogous to dependency_status
+            remarks: Tracks entities whose result columns changed and the cards whose result metadata needs re-deriving, analogous to dependency_status
             columns:
               - column:
                   name: id
@@ -34,7 +34,7 @@ databaseChangeLog:
                   name: stale
                   type: ${boolean.type}
                   defaultValueBoolean: false
-                  remarks: True when the entity changed and its dependent cards need their result metadata re-derived
+                  remarks: True when the entity changed, so its dependent cards and, for a card, its own result metadata need re-deriving
                   constraints:
                     nullable: false
               - column:
@@ -52,7 +52,7 @@ databaseChangeLog:
                   name: terminal
                   type: ${boolean.type}
                   defaultValueBoolean: false
-                  remarks: True when the entity has exceeded max retries and should not be retried until it changes again
+                  remarks: True when the entity failed more than the max retries and is not retried until it or an upstream entity changes again
                   constraints:
                     nullable: false
               - column:
@@ -74,7 +74,7 @@ databaseChangeLog:
             tableName: result_metadata_status
 
   - changeSet:
-      id: v65.2026-10-17T00:00:01
+      id: v65.2n6p0h
       author: ranquild
       comment: Unique constraint to prevent duplicate result_metadata_status entries
       changes:
@@ -88,9 +88,9 @@ databaseChangeLog:
             constraintName: idx_unique_result_metadata_status
 
   - changeSet:
-      id: v65.2026-10-17T00:00:02
+      id: v65.1605lz
       author: ranquild
-      comment: Add partial index on result_metadata_status.stale for efficient polling
+      comment: Add an index on result_metadata_status.stale (partial on Postgres) for efficient polling
       changes:
         - sql:
             dbms: postgresql

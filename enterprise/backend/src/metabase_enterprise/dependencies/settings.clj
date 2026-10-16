@@ -63,7 +63,8 @@
   :export?    false)
 
 (defsetting dependency-result-metadata-delay-minutes
-  "The average delay between when the result metadata job will run."
+  "The average delay between runs of the result metadata job when it has retries pending, and the backoff per failure
+  of an entity it retries."
   :visibility :internal
   :type       :integer
   :default    60

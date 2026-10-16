@@ -17,6 +17,11 @@
   "The entity types whose result columns the result metadata of dependent MBQL cards is derived from."
   #{:card :measure :table})
 
+(def derived-types
+  "The entity types whose result columns are derived from those of the entities they depend on: cards, of which the
+  MBQL ones are re-derived, and measures, which pass the changes on."
+  #{:card :measure})
+
 (def ^:private mark-stale-batch-size
   "The number of statuses marked per query, below the bind-parameter limits of every app DB."
   1000)
@@ -35,16 +40,17 @@
         (dependencies.db/mark-result-metadata-status-stale! entity-type entity-id)))))
 
 (defn mark-dependents-stale!
-  "Mark the dependents in `type->ids`, `{entity-type ids}`, stale without touching the retry state of the ones that
-  already are, so a dependent that keeps failing still backs off."
+  "Mark the dependents in `type->ids`, `{entity-type ids}`, stale, resetting the ones that reached the retry limit but
+  not the backoff of the ones that are stale already, so a dependent that keeps failing still backs off."
   [type->ids]
   (doseq [[entity-type ids] type->ids
           batch             (partition-all mark-stale-batch-size ids)
           :let              [batch (vec batch)]]
-    (dependencies.db/mark-fresh-result-metadata-statuses-stale! entity-type batch)
+    (dependencies.db/mark-dependent-result-metadata-statuses-stale! entity-type batch)
     (let [existing (set (dependencies.db/result-metadata-status-entity-ids entity-type batch))]
-      (when-let [missing (not-empty (into [] (remove existing) batch))]
-        (dependencies.db/insert-stale-result-metadata-statuses! entity-type missing)))))
+      (doseq [entity-id batch
+              :when     (not (existing entity-id))]
+        (dependencies.db/insert-stale-result-metadata-status! entity-type entity-id)))))
 
 (defn stale-statuses
   "The stale statuses that are not terminal and whose retry time has passed."
@@ -71,23 +77,20 @@
     (dependencies.db/delete-deleted-result-metadata-statuses! entity-type)))
 
 (defn has-pending-retries?
-  "Whether any status is waiting for a retry."
+  "Whether any stale status is waiting for a retry."
   []
   (dependencies.db/result-metadata-pending-retry-exists?))
 
 (defn record-failure!
   "Record a failed attempt for the stale status `status`, backing off by `delay-minutes` per failure and marking it
-  terminal after `max-retries` failures."
-  [{:keys [entity_type entity_id]} max-retries delay-minutes]
-  (dependencies.db/record-result-metadata-status-failure!
-   entity_type entity_id
-   (fn [existing]
-     (let [new-fail-count (inc (:fail_count existing 0))]
-       (if (> new-fail-count max-retries)
-         {:fail_count new-fail-count
-          :terminal true
-          :next_retry_at nil}
-         (let [retry-minutes (* new-fail-count delay-minutes)]
-           {:fail_count new-fail-count
-            :next_retry_at (when (pos? retry-minutes)
-                             (t/plus (t/offset-date-time) (t/minutes retry-minutes)))}))))))
+  terminal once it failed more than `max-retries` times, unless it was marked again since it was read."
+  [{:keys [id updated_at fail_count]} max-retries delay-minutes]
+  (let [new-fail-count (inc (or fail_count 0))
+        retry-minutes  (* new-fail-count delay-minutes)]
+    (dependencies.db/update-unchanged-result-metadata-status!
+     id updated_at
+     (if (> new-fail-count max-retries)
+       {:fail_count new-fail-count :terminal true :next_retry_at nil}
+       {:fail_count    new-fail-count
+        :next_retry_at (when (pos? retry-minutes)
+                         (t/plus (t/offset-date-time) (t/minutes retry-minutes)))}))))

@@ -888,14 +888,15 @@
               :entity_type entity-type :entity_id [:in entity-ids]
               {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}))
 
-(mu/defn mark-fresh-result-metadata-statuses-stale!
-  "Mark the ResultMetadataStatuses of `entity-type` `entity-ids` that are not stale stale, returning the number
-  updated."
+(mu/defn mark-dependent-result-metadata-statuses-stale!
+  "Mark the ResultMetadataStatuses of `entity-type` `entity-ids` that are not stale, or are terminal, stale with their
+  retry state reset, returning the number updated."
   [entity-type :- EntityType
    entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/ResultMetadataStatus
-              :entity_type entity-type :entity_id [:in entity-ids] :stale false
-              {:stale true :updated_at (mi/now)}))
+  (let [changes {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}]
+    (+ (t2/update! :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids] :stale false changes)
+       (t2/update! :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids] :terminal true
+                   changes))))
 
 (mu/defn result-metadata-status-entity-ids
   "The IDs of the entities of `entity-type` among `entity-ids` that have a ResultMetadataStatus."
@@ -903,13 +904,29 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :entity_id :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids]))
 
-(mu/defn insert-stale-result-metadata-statuses!
-  "Insert stale ResultMetadataStatuses for the entities `entity-type` `entity-ids`, returning the number inserted."
+(mu/defn insert-stale-result-metadata-status!
+  "Insert a stale ResultMetadataStatus for the entity `entity-type` `entity-id`, or mark the existing one stale when a
+  concurrent write inserted it first."
   [entity-type :- EntityType
-   entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/insert! :model/ResultMetadataStatus
-              (for [entity-id entity-ids]
-                {:entity_type entity-type :entity_id entity-id :stale true})))
+   entity-id   :- ms/PositiveInt]
+  (mdb/update-or-insert!
+   :model/ResultMetadataStatus
+   {:entity_type entity-type :entity_id entity-id}
+   (fn [existing]
+     (when-not (:stale existing)
+       {:stale true :updated_at (mi/now)}))))
+
+(mu/defn result-metadata-status-exists?
+  "Whether any of the entities `nodes`, `[[entity-type entity-id]]`, has a ResultMetadataStatus."
+  [nodes :- [:sequential [:tuple EntityType ms/PositiveInt]]]
+  (boolean
+   (when (seq nodes)
+     (t2/exists? :model/ResultMetadataStatus
+                 {:where (into [:or]
+                               (for [[entity-type typed-nodes] (group-by first nodes)]
+                                 [:and
+                                  [:= :entity_type (name entity-type)]
+                                  [:in :entity_id (mapv second typed-nodes)]]))}))))
 
 (defn- processable-result-metadata-status-expr
   "The condition of a stale ResultMetadataStatus aliased `alias` that is not terminal and whose retry time has passed
@@ -962,8 +979,8 @@
               :limit    batch-size}))
 
 (mu/defn clear-unchanged-result-metadata-status!
-  "Clear the stale flag and retry state of the ResultMetadataStatus with `status-id` unless it was updated after
-  `updated-at`, returning the number updated."
+  "Clear the stale flag and retry state of the ResultMetadataStatus with `status-id` unless its `updated_at` is no
+  longer `updated-at`, returning the number updated."
   [status-id  :- ms/PositiveInt
    updated-at :- ms/TemporalInstant]
   (t2/update! :model/ResultMetadataStatus
@@ -982,31 +999,37 @@
                                  :from   [[table-name :entity]]
                                  :where  [:= :entity.id :result_metadata_status.entity_id]}]]]})))
 
-(mu/defn record-result-metadata-status-failure!
-  "Upsert the ResultMetadataStatus of `entity-type` `entity-id`. `update-fn` receives the existing row, or nil, and
-  returns the columns to set."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt
-   update-fn   :- fn?]
-  (mdb/update-or-insert!
-   :model/ResultMetadataStatus
-   {:entity_type entity-type :entity_id entity-id}
-   update-fn))
+(mu/defn update-unchanged-result-metadata-status!
+  "Apply `changes` to the ResultMetadataStatus with `status-id` unless its `updated_at` is no longer `updated-at`,
+  returning the number updated."
+  [status-id  :- ms/PositiveInt
+   updated-at :- ms/TemporalInstant
+   changes    :- (mut/select-keys ::dependencies.schema/result-metadata-status.update
+                                  [:fail_count :next_retry_at :terminal])]
+  (t2/update! :model/ResultMetadataStatus :id status-id :updated_at updated-at (assoc changes :updated_at (mi/now))))
 
 (mu/defn result-metadata-pending-retry-exists?
-  "Whether a non-terminal ResultMetadataStatus is waiting for a retry."
+  "Whether a stale, non-terminal ResultMetadataStatus is waiting for a retry."
   []
-  (t2/exists? :model/ResultMetadataStatus :terminal false :next_retry_at [:not= nil]))
+  (t2/exists? :model/ResultMetadataStatus :stale true :terminal false :next_retry_at [:not= nil]))
+
+(mu/defn lock-result-metadata-status
+  "The ResultMetadataStatus with `status-id`, locked for update until the current transaction ends, or nil."
+  [status-id :- ms/PositiveInt]
+  (t2/select-one :model/ResultMetadataStatus :id status-id {:for :update}))
+
+(mu/defn lock-card!
+  "Lock the Card with `card-id` for update until the current transaction ends, returning its ID, or nil when it
+  doesn't exist."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-pk [:model/Card :id] :id card-id {:for :update}))
 
 (mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id` without touching `updated_at`, unless the Card was updated
-  after `updated-at`, returning the number updated."
+  "Set the result metadata of the Card with `card-id` without touching `updated_at`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
-   updated-at      :- ms/TemporalInstant
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card :id card-id :updated_at updated-at
-              {:result_metadata result-metadata
-               :updated_at      :updated_at}))
+  (t2/update! :model/Card card-id {:result_metadata result-metadata
+                                   :updated_at      :updated_at}))
 
 ;;; ------------------------------------------------ Analysis findings ------------------------------------------------
 

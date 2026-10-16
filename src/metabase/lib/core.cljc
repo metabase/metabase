@@ -1582,7 +1582,8 @@
   metadata-provider?
   metadata-providerable?]
  [metabase.lib.metadata.result-metadata
-  normalize-result-metadata-column]
+  normalize-result-metadata-column
+  stored-column-matcher]
  [lib.native
   add-parameters-for-template-tags
   engine
