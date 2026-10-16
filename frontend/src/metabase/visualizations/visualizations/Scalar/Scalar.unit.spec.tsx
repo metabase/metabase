@@ -193,44 +193,50 @@ describe("Scalar", () => {
     expect(onChangeCardAndRun).not.toHaveBeenCalled();
   });
 
-  it("should show the description in a tooltip on the title info icon", async () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        showTitle
-        series={series(12345)}
-        rawSeries={series(12345)}
-        settings={{ ...settings, "card.description": "Scalar description" }}
-        visualizationIsClickable={() => false}
-        width={230}
-        height={150}
-      />,
-    );
+  it.each([82, 126, 230])(
+    "should show the description on info icon hover at %i pixels wide",
+    async (width) => {
+      render(
+        <Scalar
+          {...mockedProps}
+          showTitle
+          series={series(12345)}
+          rawSeries={series(12345)}
+          settings={{ ...settings, "card.description": "Scalar description" }}
+          visualizationIsClickable={() => false}
+          width={width}
+          height={150}
+        />,
+      );
 
-    await userEvent.hover(screen.getByLabelText("info icon"));
+      await userEvent.hover(screen.getByLabelText("info icon"));
 
-    expect(await screen.findByText("Scalar description")).toBeInTheDocument();
-  });
+      expect(await screen.findByText("Scalar description")).toBeInTheDocument();
+    },
+  );
 
-  it("should open the description tooltip with keyboard navigation", async () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        showTitle
-        series={series(12345)}
-        rawSeries={series(12345)}
-        settings={{ ...settings, "card.description": "Scalar description" }}
-        visualizationIsClickable={() => false}
-        width={230}
-        height={150}
-      />,
-    );
+  it.each([82, 126, 230])(
+    "should open the description tooltip with keyboard navigation at %i pixels wide",
+    async (width) => {
+      render(
+        <Scalar
+          {...mockedProps}
+          showTitle
+          series={series(12345)}
+          rawSeries={series(12345)}
+          settings={{ ...settings, "card.description": "Scalar description" }}
+          visualizationIsClickable={() => false}
+          width={width}
+          height={150}
+        />,
+      );
 
-    // without a title link, the info icon is the first tabbable element
-    await userEvent.tab();
+      // without a title link, the info icon is the first tabbable element
+      await userEvent.tab();
 
-    expect(await screen.findByText("Scalar description")).toBeInTheDocument();
-  });
+      expect(await screen.findByText("Scalar description")).toBeInTheDocument();
+    },
+  );
 
   it("should not show the info icon while editing a dashboard", () => {
     render(

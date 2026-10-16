@@ -7,6 +7,7 @@ import {
   ScalarCardShell,
   useScalarCardShell,
 } from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
+import { ScalarDescription } from "metabase/visualizations/components/ScalarValue/ScalarDescription";
 import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
@@ -68,6 +69,10 @@ function ScalarComponent(
     useScalarCardShell(props, {
       hideTitle: isMetricsViewer,
     });
+  const descriptionFooter =
+    tier.size === 100 && description ? (
+      <ScalarDescription description={description} />
+    ) : null;
 
   if (rawSeries.length > 1) {
     return (
@@ -129,7 +134,11 @@ function ScalarComponent(
   };
 
   return (
-    <ScalarCardShell tier={tier} actionButtons={actionButtons}>
+    <ScalarCardShell
+      tier={tier}
+      actionButtons={actionButtons}
+      footer={descriptionFooter}
+    >
       <Box maw="100%">
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
@@ -167,7 +176,9 @@ function ScalarComponent(
         </ScalarValueContainer>
       </Box>
       {titleElement && (
-        <ScalarLabel description={description}>{titleElement}</ScalarLabel>
+        <ScalarLabel description={descriptionFooter ? null : description}>
+          {titleElement}
+        </ScalarLabel>
       )}
     </ScalarCardShell>
   );

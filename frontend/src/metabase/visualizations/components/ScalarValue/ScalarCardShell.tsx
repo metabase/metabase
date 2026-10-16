@@ -1,7 +1,7 @@
 import { Children, type ReactNode } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { Stack } from "metabase/ui";
+import { Center, Stack } from "metabase/ui";
 import { getRootFontScale } from "metabase/visualizations/lib/scalar_utils";
 import type {
   VisualizationPassThroughProps,
@@ -81,12 +81,14 @@ interface ScalarCardShellProps {
   tier: ScalarSizeTier;
   actionButtons: ReactNode;
   children: ReactNode;
+  footer?: ReactNode;
 }
 
 export function ScalarCardShell({
   tier,
   actionButtons,
   children,
+  footer,
 }: ScalarCardShellProps) {
   return (
     <ScalarWrapper xPadding={tier.xPadding}>
@@ -99,6 +101,12 @@ export function ScalarCardShell({
         data-testid="scalar-content"
       >
         {children}
+        {/* Keep the footer out of flow so it cannot shift the centered content. */}
+        {footer && (
+          <Center pos="absolute" top="100%" mt={2} w="100%">
+            {footer}
+          </Center>
+        )}
       </Stack>
     </ScalarWrapper>
   );
