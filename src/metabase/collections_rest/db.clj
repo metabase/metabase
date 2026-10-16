@@ -29,6 +29,15 @@
                        :from            [:report_card]
                        :where           [:= :archived false]}))
 
+(mu/defn unarchived-dashboard-collection-ids
+  "The distinct `:collection_id`s of the unarchived Dashboards."
+  []
+  (t2/query {:select-distinct [:collection_id]
+             :from            [:report_dashboard]
+             :where           [:and
+                               [:= :archived false]
+                               [:not= :collection_id nil]]}))
+
 (mu/defn unarchived-action-collection-ids
   "The distinct `:collection_id`s of the unarchived Actions."
   []

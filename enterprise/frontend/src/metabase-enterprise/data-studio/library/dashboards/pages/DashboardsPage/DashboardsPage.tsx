@@ -14,7 +14,6 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import { isCollectionData } from "metabase/data-studio/common/utils";
 import type { CollectionItemModel } from "metabase-types/api";
 
-import { LibraryEmptyState } from "../../../components/LibraryEmptyState";
 import { useCollectionItemsTree } from "../../../hooks/use-collection-items-tree";
 import {
   type LibraryCollections,
@@ -121,14 +120,10 @@ export function DashboardsPage() {
 
 function getEmptyState({
   isLoading,
-  libraryCollection,
   dashboardCollection,
 }: LibraryCollections): ReactNode {
   if (isLoading) {
     return undefined;
-  }
-  if (libraryCollection == null) {
-    return <LibraryEmptyState />;
   }
   // The collection tree leaves out the sections the user cannot read
   if (dashboardCollection == null) {

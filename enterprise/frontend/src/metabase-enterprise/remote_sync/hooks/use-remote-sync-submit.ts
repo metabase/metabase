@@ -5,12 +5,8 @@ import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useGetSettingsQuery } from "metabase/settings";
-import { useCreateLibraryMutation } from "metabase-enterprise/api";
 import { useUpdateRemoteSyncSettingsMutation } from "metabase-enterprise/api/remote-sync";
-import type {
-  LibraryCollection,
-  RemoteSyncConfigurationSettings,
-} from "metabase-types/api";
+import type { RemoteSyncConfigurationSettings } from "metabase-types/api";
 import { isRemoteSyncDependencyError } from "metabase-types/guards";
 
 import {
@@ -22,7 +18,6 @@ import {
   BRANCH_KEY,
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
-  SYNC_LIBRARY_PENDING_KEY,
   TOKEN_KEY,
   TRANSFORMS_KEY,
   TYPE_KEY,
@@ -35,14 +30,12 @@ import type {
 
 interface UseRemoteSyncSubmitProps {
   initialValues: RemoteSyncSettingsFormState;
-  libraryCollection?: LibraryCollection;
   onSaveSuccess?: VoidFunction;
   variant: RemoteSyncSettingsVariant;
 }
 
 export const useRemoteSyncSubmit = ({
   initialValues,
-  libraryCollection,
   onSaveSuccess,
   variant,
 }: UseRemoteSyncSubmitProps) => {
@@ -52,8 +45,6 @@ export const useRemoteSyncSubmit = ({
     updateRemoteSyncSettings,
     { isLoading: isUpdating, error: updateError },
   ] = useUpdateRemoteSyncSettingsMutation();
-  const [createLibrary, { isLoading: isCreatingLibrary }] =
-    useCreateLibraryMutation();
   const [sendToast] = useToast();
   const {
     show: showBranchChangeConfirmation,
@@ -71,21 +62,6 @@ export const useRemoteSyncSubmit = ({
         ...values[COLLECTIONS_KEY],
       };
 
-      const wantsSyncLibrary = values[SYNC_LIBRARY_PENDING_KEY];
-      if (isModalVariant && !libraryCollection && wantsSyncLibrary) {
-        try {
-          const newLibrary = await createLibrary().unwrap();
-          // A freshly created library always has a numeric id; only seeded collections use string ids.
-          collectionsMap[newLibrary.id as number] = true;
-        } catch (error) {
-          sendToast({
-            message: t`Failed to create Library`,
-            variant: "negative",
-          });
-          throw error;
-        }
-      }
-
       const initialCollections = initialValues[COLLECTIONS_KEY] ?? {};
       const changedCollections: Record<number, boolean> = {};
       for (const [idStr, desired] of Object.entries(collectionsMap)) {
@@ -96,7 +72,6 @@ export const useRemoteSyncSubmit = ({
       }
       const hasCollectionChanges = Object.keys(changedCollections).length > 0;
 
-      // Listed key by key so the sync-library-pending form field, which is not a setting, stays out.
       const isReadOnly = values[TYPE_KEY] === "read-only";
       const settingsToSave: RemoteSyncConfigurationSettings = {
         [REMOTE_SYNC_KEY]: values[REMOTE_SYNC_KEY],
@@ -175,8 +150,6 @@ export const useRemoteSyncSubmit = ({
       initialValues,
       updateRemoteSyncSettings,
       isModalVariant,
-      libraryCollection,
-      createLibrary,
       sendToast,
       onSaveSuccess,
       showBranchChangeConfirmation,
@@ -193,7 +166,6 @@ export const useRemoteSyncSubmit = ({
     handleSubmit,
     branchChangeModal,
     isUpdating,
-    isCreatingLibrary,
     unsyncedDependenciesError,
   };
 };

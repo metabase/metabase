@@ -12,7 +12,7 @@ const dashboardsPage = () => cy.findByTestId("library-page");
 const dashboardHeader = () => cy.findByTestId("dashboard-pane-header");
 
 function createLibraryDashboard() {
-  H.createLibrary().then(({ body: library }) => {
+  H.getLibrary().then(({ body: library }) => {
     const dashboardsCollection = library.effective_children?.find(
       ({ type }) => type === "library-dashboards",
     );

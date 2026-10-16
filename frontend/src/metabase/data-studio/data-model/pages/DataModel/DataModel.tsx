@@ -13,7 +13,6 @@ import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/Da
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import {
   FieldSection,
@@ -24,7 +23,6 @@ import {
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
   ActionIcon,
@@ -107,16 +105,11 @@ function DataModelContent() {
   const parentField = fieldsByName[parentName];
 
   const hasLibraryFeature = useHasTokenFeature("library");
-  const { data: libraryCollection, isLoading: isLoadingLibrary } =
-    PLUGIN_LIBRARY.useGetLibraryCollectionQuery(undefined, {
-      skip: !hasLibraryFeature,
-    });
 
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const isLoading = isLoadingDatabases || isLoadingTables || isLoadingLibrary;
+  const isLoading = isLoadingDatabases || isLoadingTables;
   const error = databasesError ?? tableError;
 
-  const hasLibrary = hasLibraryCollection(libraryCollection);
   const canPublish = hasLibraryFeature;
 
   const [onUpdateCallback, setOnUpdateCallback] = useState<
@@ -222,7 +215,6 @@ function DataModelContent() {
           >
             <TableAttributesEditBulk
               canPublish={canPublish}
-              hasLibrary={hasLibrary}
               onUpdate={() => onUpdateCallback?.()}
             />
           </Stack>
@@ -278,7 +270,6 @@ function DataModelContent() {
                     activeFieldId={fieldId}
                     activeTab={activeTab}
                     canPublish={canPublish}
-                    hasLibrary={hasLibrary}
                     onUpdate={() =>
                       onUpdateCallback?.({
                         databaseId: table.db_id,

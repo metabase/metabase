@@ -273,57 +273,6 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
-    describe("library toggle when library does not exist", () => {
-      it("should show library toggle even when library collection does not exist", async () => {
-        setup({
-          remoteSyncType: "read-write",
-          variant: "settings-modal",
-          libraryCollection: null,
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText("Content to sync")).toBeInTheDocument();
-        });
-
-        expect(screen.getByLabelText("Sync Library")).toBeInTheDocument();
-        expect(screen.getByText("Library")).toBeInTheDocument();
-      });
-
-      it("should have library toggle checked by default when library does not exist", async () => {
-        setup({
-          remoteSyncType: "read-write",
-          remoteSyncEnabled: false,
-          variant: "settings-modal",
-          libraryCollection: null,
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText("Content to sync")).toBeInTheDocument();
-        });
-
-        const libraryToggle = screen.getByLabelText("Sync Library");
-        expect(libraryToggle).toBeChecked();
-      });
-
-      it("should allow toggling library sync state when library does not exist", async () => {
-        setup({
-          remoteSyncType: "read-write",
-          variant: "settings-modal",
-          libraryCollection: null,
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText("Content to sync")).toBeInTheDocument();
-        });
-
-        const libraryToggle = screen.getByLabelText("Sync Library");
-        expect(libraryToggle).toBeChecked();
-
-        await userEvent.click(libraryToggle);
-        expect(libraryToggle).not.toBeChecked();
-      });
-    });
-
     describe("transforms toggle", () => {
       afterEach(() => {
         PLUGIN_TRANSFORMS.isEnabled = false;

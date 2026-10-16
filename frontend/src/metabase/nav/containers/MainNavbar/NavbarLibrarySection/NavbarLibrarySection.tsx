@@ -19,6 +19,16 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
 import type { Collection, CollectionType } from "metabase-types/api";
 
+function hasContent(collection: Collection) {
+  return [...(collection.here ?? []), ...(collection.below ?? [])].some(
+    (model) => model !== "collection",
+  );
+}
+
+function hasTreeContent(item: CollectionTreeItem): boolean {
+  return hasContent(item) || item.children.some(hasTreeContent);
+}
+
 type LibraryCollectionSectionProps = {
   collections: Collection[];
   selectedId?: string | number;
@@ -100,7 +110,7 @@ export function NavbarLibrarySection({
 
   const libraryTree = useMemo(() => {
     const libraryCollection = collections.find(isLibraryCollection);
-    if (!libraryCollection) {
+    if (!libraryCollection || !hasContent(libraryCollection)) {
       return [];
     }
 
@@ -124,7 +134,8 @@ export function NavbarLibrarySection({
     );
 
     return [dataTree, metricsTree, dashboardsTree].filter(
-      (node): node is CollectionTreeItem => node != null,
+      (node): node is CollectionTreeItem =>
+        node != null && hasTreeContent(node),
     );
   }, [collections]);
 

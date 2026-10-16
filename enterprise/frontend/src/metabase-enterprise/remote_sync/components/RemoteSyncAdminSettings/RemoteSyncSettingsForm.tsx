@@ -57,17 +57,14 @@ export const RemoteSyncSettingsForm = ({
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-  const { initialValues, libraryCollection } =
-    useRemoteSyncInitialValues(variant);
+  const { initialValues } = useRemoteSyncInitialValues(variant);
   const {
     handleSubmit,
     branchChangeModal,
     isUpdating,
-    isCreatingLibrary,
     unsyncedDependenciesError,
   } = useRemoteSyncSubmit({
     initialValues,
-    libraryCollection,
     onSaveSuccess,
     variant,
   });
@@ -146,7 +143,7 @@ export const RemoteSyncSettingsForm = ({
                       disabled={
                         isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]
                       }
-                      loading={isSaving || isCreatingLibrary}
+                      loading={isSaving}
                     />
                   </Flex>
                 </Flex>

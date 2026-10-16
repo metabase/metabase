@@ -12,7 +12,6 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :as collections.tu]
    [metabase.events.core :as events]
    [metabase.glossary.core :as glossary.core]
    [metabase.search.core :as search]
@@ -24,18 +23,10 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(defn- clean-remote-sync-state
-  "Test fixture that cleans up remote sync state before and after each test."
-  [f]
-  (try
-    (t2/delete! :model/RemoteSyncObject)
-    (f)
-    (finally
-      (t2/delete! :model/RemoteSyncObject))))
-
 (use-fixtures :each (fn [f]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                        (clean-remote-sync-state f)))
+                        (f)))
+  test-helpers/clean-remote-sync-state
   test-helpers/commit-with-temp)
 
 (defn- rso [entry]
@@ -53,21 +44,21 @@
 ;;; ------------------------------------------- Event Handler Tests -------------------------------------------
 
 (deftest create-event-tracks-entry-when-library-synced-test
-  (collections.tu/with-library-synced
+  (test-helpers/with-library-synced
     (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
       (mt/with-model-cleanup [:model/Glossary]
         (let [entry (glossary.core/create-entry! (mt/user->id :rasta) {:term "ARR" :definition "Annual recurring revenue"})]
           (is (=? {:status "create" :model_name "ARR"} (rso entry))))))))
 
 (deftest create-event-ignored-when-library-not-synced-test
-  (collections.tu/with-library-not-synced
+  (test-helpers/with-library-not-synced
     (mt/with-temporary-setting-values [remote-sync-enabled true]
       (mt/with-model-cleanup [:model/Glossary]
         (let [entry (glossary.core/create-entry! (mt/user->id :rasta) {:term "ARR" :definition "Annual recurring revenue"})]
           (is (nil? (rso entry))))))))
 
 (deftest update-event-marks-synced-entry-for-update-test
-  (collections.tu/with-library-synced
+  (test-helpers/with-library-synced
     (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
       (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
         (with-rso! entry "synced")
@@ -79,7 +70,7 @@
           (is (=? {:status "update" :model_name "NRR"} (rso entry))))))))
 
 (deftest delete-event-test
-  (collections.tu/with-library-synced
+  (test-helpers/with-library-synced
     (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
       (testing "deleting a synced entry marks it for deletion and keeps the tracked name"
         (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
@@ -95,14 +86,14 @@
 ;;; ------------------------------------------- Library Tracking Enable/Disable Tests -------------------------------------------
 
 (deftest enable-library-tracking-marks-every-entry-test
-  (collections.tu/with-library-not-synced
+  (test-helpers/with-library-not-synced
     (mt/with-temporary-setting-values [remote-sync-enabled true]
       (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
         (rs-events/enable-library-tracking!)
         (is (=? {:status "create" :model_name "ARR"} (rso entry)))))))
 
 (deftest disable-library-tracking-removes-every-entry-test
-  (collections.tu/with-library-not-synced
+  (test-helpers/with-library-not-synced
     (mt/with-temporary-setting-values [remote-sync-enabled true]
       (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
         (with-rso! entry "synced")
@@ -111,8 +102,8 @@
 
 (deftest library-sync-status-change-toggles-glossary-tracking-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
-    (collections.tu/with-library [{library :library}]
-      (collections.tu/with-library-not-synced
+    (let [library (collection/library-collection)]
+      (test-helpers/with-library-not-synced
         (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
           (let [publish! (fn []
                            (events/publish-event! :event/collection-update
@@ -134,16 +125,16 @@
     (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
       (with-rso! entry "update")
       (testing "a pending glossary change counts as dirty when the Library is synced"
-        (collections.tu/with-library-synced
+        (test-helpers/with-library-synced
           (is (sync-object/dirty?))))
       (testing "and is ignored when the Library is not synced"
-        (collections.tu/with-library-not-synced
+        (test-helpers/with-library-not-synced
           (is (not (sync-object/dirty?))))))))
 
 ;;; ------------------------------------------- Deletion Conflict Tests -------------------------------------------
 
 (deftest unsynced-local-term-absent-from-import-is-a-deletion-conflict-test
-  (collections.tu/with-library-synced
+  (test-helpers/with-library-synced
     (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
       (let [glossary-conflicts (fn [imported-data]
                                  (filter #(= "Glossary" (:model %))
@@ -225,7 +216,7 @@
     mock))
 
 (deftest export-writes-glossary-file-and-marks-entry-synced-test
-  (collections.tu/with-library-synced
+  (test-helpers/with-library-synced
     (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temp [:model/Glossary {eid :entity_id :as entry} {:term "ARR" :definition "Annual recurring revenue"}]
@@ -237,7 +228,7 @@
               (is (=? {:status "synced" :file_path path :content_hash string?} (rso entry))))))))))
 
 (deftest export-removes-stale-glossary-files-when-library-not-synced-test
-  (collections.tu/with-library-not-synced
+  (test-helpers/with-library-not-synced
     (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         ;; No dirty rows: the export reaches the incremental path with an empty plan and only the stale deletes.
@@ -251,7 +242,7 @@
               "a glossary file left behind after the Library was un-synced is deleted on export"))))))
 
 (deftest term-rename-uses-incremental-export-path-test
-  (collections.tu/with-library-synced
+  (test-helpers/with-library-synced
     (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temp [:model/Glossary {eid :entity_id :as entry} {:term "ARR" :definition "Annual recurring revenue"}]
@@ -270,100 +261,75 @@
 
 ;;; ------------------------------------------- Import Tests -------------------------------------------
 
-(def ^:private library-yaml-path "collections/library/library.yaml")
-
-(defn- library-yaml
-  "The Library collection as a read-write instance exports it, so an import keeps the Library synced."
-  []
-  (test-helpers/generate-collection-yaml collection/library-entity-id "Library" :type "library" :is-remote-synced true))
-
-(defn- do-with-synced-library!
-  "Runs `f` with a remote-synced Library collection carrying the canonical Library entity_id, so it matches
-  the Library in an imported snapshot."
-  [f]
-  (t2/delete! :model/Collection :entity_id collection/library-entity-id)
-  (mt/with-temp [:model/Collection _ {:name             "Library"
-                                      :type             "library"
-                                      :entity_id        collection/library-entity-id
-                                      :is_remote_synced true
-                                      :location         "/"}]
-    (f)))
-
 (def ^:private test-collection-path "collections/main/test_coll/test_coll.yaml")
 
 (deftest import-creates-glossary-entries-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
     (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
-      (do-with-synced-library!
-       (fn []
-         (let [eid    "test-glossary-xxxxxxx"
-               path   "glossary/mrr.yaml"
-               files  {"main" {library-yaml-path    (library-yaml)
-                               test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                               path                 (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue")}}
-               mock   (test-helpers/create-mock-source :initial-files files)
-               result (run-import! (source.p/snapshot mock) :force? true)]
-           (is (= :success (:status result)) (str "import should succeed: " result))
-           (let [entry (t2/select-one :model/Glossary :entity_id eid)]
-             (is (=? {:term "MRR" :definition "Monthly recurring revenue"} entry))
-             (testing "the ledger is rebuilt with a synced row carrying the file path and content hash"
-               (is (=? {:status "synced" :model_name "MRR" :file_path path :content_hash string?} (rso entry)))))))))))
+      (test-helpers/with-library-synced
+        (let [eid    "test-glossary-xxxxxxx"
+              path   "glossary/mrr.yaml"
+              files  {"main" {test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                              path                 (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue")}}
+              mock   (test-helpers/create-mock-source :initial-files files)
+              result (run-import! (source.p/snapshot mock) :force? true)]
+          (is (= :success (:status result)) (str "import should succeed: " result))
+          (let [entry (t2/select-one :model/Glossary :entity_id eid)]
+            (is (=? {:term "MRR" :definition "Monthly recurring revenue"} entry))
+            (testing "the ledger is rebuilt with a synced row carrying the file path and content hash"
+              (is (=? {:status "synced" :model_name "MRR" :file_path path :content_hash string?} (rso entry))))))))))
 
 (deftest import-removes-synced-terms-absent-from-snapshot-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
     (mt/with-model-cleanup [:model/Collection :model/RemoteSyncTask]
-      (do-with-synced-library!
-       (fn []
-         (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
-           (let [files {"main" {library-yaml-path    (library-yaml)
-                                test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")}}
-                 mock  (test-helpers/create-mock-source :initial-files files)]
-             (testing "a never-pushed local term the import would delete blocks the import"
-               (with-rso! entry "create")
-               (let [result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
-                 (is (= :conflict (:status result)))
-                 (is (some #(= :glossary-deletion-conflict (:type %)) (:conflict-details result)))
-                 (is (t2/exists? :model/Glossary :id (:id entry)))))
-             (testing "an already-synced local term absent from the import is deleted"
-               (t2/update! :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry) {:status "synced"})
-               (let [result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
-                 (is (= :success (:status result)) (str "import should succeed: " result))
-                 (is (not (t2/exists? :model/Glossary :id (:id entry))))
-                 (is (nil? (rso entry))))))))))))
+      (test-helpers/with-library-synced
+        (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
+          (let [files {"main" {test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")}}
+                mock  (test-helpers/create-mock-source :initial-files files)]
+            (testing "a never-pushed local term the import would delete blocks the import"
+              (with-rso! entry "create")
+              (let [result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
+                (is (= :conflict (:status result)))
+                (is (some #(= :glossary-deletion-conflict (:type %)) (:conflict-details result)))
+                (is (t2/exists? :model/Glossary :id (:id entry)))))
+            (testing "an already-synced local term absent from the import is deleted"
+              (t2/update! :model/RemoteSyncObject :model_type "Glossary" :model_id (:id entry) {:status "synced"})
+              (let [result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
+                (is (= :success (:status result)) (str "import should succeed: " result))
+                (is (not (t2/exists? :model/Glossary :id (:id entry))))
+                (is (nil? (rso entry)))))))))))
 
 (deftest term-keyed-file-survives-full-import-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
     (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
-      (do-with-synced-library!
-       (fn []
-         (let [legacy (fn [term definition]
-                        {"main" {library-yaml-path    (library-yaml)
-                                 test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                                 (str "glossary/" (u/lower-case-en term) ".yaml")
-                                 (test-helpers/generate-legacy-glossary-yaml term definition)}})]
-           (testing "a term-keyed file updates the matching local row and the full import keeps it"
-             (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "local"}]
-               (with-rso! entry "synced")
-               (let [mock   (test-helpers/create-mock-source :initial-files (legacy "ARR" "from the repo"))
-                     result (run-import! (source.p/snapshot mock) :force? true)]
-                 (is (= :success (:status result)) (str "import should succeed: " result))
-                 (is (=? {:id (:id entry) :entity_id (:entity_id entry) :definition "from the repo"}
-                         (t2/select-one :model/Glossary :term "ARR")))
-                 (is (=? {:status "synced"} (rso entry))))))
-           (testing "a term-keyed file with no local match is inserted and kept across full imports"
-             (let [mock (test-helpers/create-mock-source :initial-files (legacy "Bookings" "Signed contracts"))]
-               (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true))))
-               (let [{:keys [id entity_id]} (t2/select-one :model/Glossary :term "Bookings")]
-                 (is (= 21 (count entity_id)))
-                 (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true))))
-                 (is (= [id] (t2/select-fn-vec :id :model/Glossary :term "Bookings"))))))
-           (testing "an unsynced local row matched by term is not reported as a deletion"
-             (mt/with-temp [:model/Glossary entry {:term "MRR" :definition "local"}]
-               (with-rso! entry "create")
-               (let [mock   (test-helpers/create-mock-source :initial-files (legacy "MRR" "from the repo"))
-                     result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
-                 (is (= :success (:status result)) (str "import should succeed: " result))
-                 (is (= "from the repo" (t2/select-one-fn :definition :model/Glossary :id (:id entry)))))))))))))
+      (test-helpers/with-library-synced
+        (let [legacy (fn [term definition]
+                       {"main" {test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                                (str "glossary/" (u/lower-case-en term) ".yaml")
+                                (test-helpers/generate-legacy-glossary-yaml term definition)}})]
+          (testing "a term-keyed file updates the matching local row and the full import keeps it"
+            (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "local"}]
+              (with-rso! entry "synced")
+              (let [mock   (test-helpers/create-mock-source :initial-files (legacy "ARR" "from the repo"))
+                    result (run-import! (source.p/snapshot mock) :force? true)]
+                (is (= :success (:status result)) (str "import should succeed: " result))
+                (is (=? {:id (:id entry) :entity_id (:entity_id entry) :definition "from the repo"}
+                        (t2/select-one :model/Glossary :term "ARR")))
+                (is (=? {:status "synced"} (rso entry))))))
+          (testing "a term-keyed file with no local match is inserted and kept across full imports"
+            (let [mock (test-helpers/create-mock-source :initial-files (legacy "Bookings" "Signed contracts"))]
+              (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true))))
+              (let [{:keys [id entity_id]} (t2/select-one :model/Glossary :term "Bookings")]
+                (is (= 21 (count entity_id)))
+                (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true))))
+                (is (= [id] (t2/select-fn-vec :id :model/Glossary :term "Bookings"))))))
+          (testing "an unsynced local row matched by term is not reported as a deletion"
+            (mt/with-temp [:model/Glossary entry {:term "MRR" :definition "local"}]
+              (with-rso! entry "create")
+              (let [mock   (test-helpers/create-mock-source :initial-files (legacy "MRR" "from the repo"))
+                    result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
+                (is (= :success (:status result)) (str "import should succeed: " result))
+                (is (= "from the repo" (t2/select-one-fn :definition :model/Glossary :id (:id entry))))))))))))
 
 (deftest extract-imported-entities-resolves-term-keyed-paths-test
   (mt/with-temp [:model/Glossary entry  {:term "ARR" :definition "Annual recurring revenue"}
@@ -391,9 +357,8 @@
                        [:by-entity-id "Glossary"])))))))
 
 (def ^:private base-tree
-  "A snapshot with the synced Library and one plain collection, and no glossary files."
-  {library-yaml-path    (library-yaml)
-   test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")})
+  "A snapshot with one plain collection and no glossary files."
+  {test-collection-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")})
 
 (defn- import-v0-then-v1!
   "Force-imports tree `v0`, then imports `v1` as a normal pull. Returns true when the second import took the
@@ -412,81 +377,76 @@
 (deftest changed-glossary-file-imports-incrementally-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
     (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
-      (do-with-synced-library!
-       (fn []
-         (let [eid  "test-glossary-xxxxxxx"
-               path "glossary/mrr.yaml"
-               v0   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue"))
-               v1   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue, net of churn"))]
-           (is (true? (import-v0-then-v1! v0 v1)) "a changed glossary file takes the incremental import fast path")
-           (let [entry (t2/select-one :model/Glossary :entity_id eid)]
-             (is (= "Monthly recurring revenue, net of churn" (:definition entry)))
-             (is (=? {:status "synced" :file_path path} (rso entry))))))))))
+      (test-helpers/with-library-synced
+        (let [eid  "test-glossary-xxxxxxx"
+              path "glossary/mrr.yaml"
+              v0   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue"))
+              v1   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue, net of churn"))]
+          (is (true? (import-v0-then-v1! v0 v1)) "a changed glossary file takes the incremental import fast path")
+          (let [entry (t2/select-one :model/Glossary :entity_id eid)]
+            (is (= "Monthly recurring revenue, net of churn" (:definition entry)))
+            (is (=? {:status "synced" :file_path path} (rso entry)))))))))
 
 (deftest added-glossary-file-imports-incrementally-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
     (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
-      (do-with-synced-library!
-       (fn []
-         (let [eid  "test-glossary-xxxxxxx"
-               path "glossary/mrr.yaml"
-               v1   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue"))]
-           (is (true? (import-v0-then-v1! base-tree v1)) "a new glossary file takes the incremental import fast path")
-           (let [entry (t2/select-one :model/Glossary :entity_id eid)]
-             (is (=? {:term "MRR" :definition "Monthly recurring revenue"} entry))
-             (is (=? {:status "synced" :model_name "MRR" :file_path path :content_hash string?} (rso entry))))))))))
+      (test-helpers/with-library-synced
+        (let [eid  "test-glossary-xxxxxxx"
+              path "glossary/mrr.yaml"
+              v1   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue"))]
+          (is (true? (import-v0-then-v1! base-tree v1)) "a new glossary file takes the incremental import fast path")
+          (let [entry (t2/select-one :model/Glossary :entity_id eid)]
+            (is (=? {:term "MRR" :definition "Monthly recurring revenue"} entry))
+            (is (=? {:status "synced" :model_name "MRR" :file_path path :content_hash string?} (rso entry)))))))))
 
 (deftest deleted-glossary-file-imports-incrementally-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
     (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
-      (do-with-synced-library!
-       (fn []
-         (let [eid  "test-glossary-xxxxxxx"
-               path "glossary/mrr.yaml"
-               v0   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue"))]
-           (is (true? (import-v0-then-v1! v0 base-tree)) "a deleted glossary file takes the incremental import fast path")
-           (is (nil? (t2/select-one :model/Glossary :entity_id eid)) "the entry is deleted")
-           (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :file_path path)) "its ledger row is removed")))))))
+      (test-helpers/with-library-synced
+        (let [eid  "test-glossary-xxxxxxx"
+              path "glossary/mrr.yaml"
+              v0   (assoc base-tree path (test-helpers/generate-glossary-yaml eid "MRR" "Monthly recurring revenue"))]
+          (is (true? (import-v0-then-v1! v0 base-tree)) "a deleted glossary file takes the incremental import fast path")
+          (is (nil? (t2/select-one :model/Glossary :entity_id eid)) "the entry is deleted")
+          (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Glossary" :file_path path)) "its ledger row is removed"))))))
 
 (deftest nano-id-shaped-term-keyed-file-survives-import-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
     (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
-      (do-with-synced-library!
-       (fn []
-         (let [term  "CustomerLifetimeValue"
-               path  (str "glossary/" (u/lower-case-en term) ".yaml")
-               files (assoc base-tree path (test-helpers/generate-legacy-glossary-yaml term "from the repo"))]
-           (testing "a synced local row matched by a 21-character term survives a full import"
-             (mt/with-temp [:model/Glossary entry {:term term :definition "local"}]
-               (with-rso! entry "synced")
-               (let [mock (test-helpers/create-mock-source :initial-files {"main" files})]
-                 (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true))))
-                 (is (=? {:id (:id entry) :entity_id (:entity_id entry) :definition "from the repo"}
-                         (t2/select-one :model/Glossary :term term)))
-                 (is (=? {:status "synced" :file_path path} (rso entry))))))
-           (testing "with no local row the term lands on a full import and gets a ledger row"
-             (let [mock (test-helpers/create-mock-source :initial-files {"main" files})]
-               (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true :force-deletion? false))))
-               (is (=? {:status "synced" :file_path path} (rso (t2/select-one :model/Glossary :term term))))))
-           (testing "the term lands with a ledger row on an incremental import"
-             (t2/delete! :model/Glossary :term term)
-             (is (true? (import-v0-then-v1! base-tree files)))
-             (is (=? {:status "synced" :file_path path} (rso (t2/select-one :model/Glossary :term term)))))))))))
+      (test-helpers/with-library-synced
+        (let [term  "CustomerLifetimeValue"
+              path  (str "glossary/" (u/lower-case-en term) ".yaml")
+              files (assoc base-tree path (test-helpers/generate-legacy-glossary-yaml term "from the repo"))]
+          (testing "a synced local row matched by a 21-character term survives a full import"
+            (mt/with-temp [:model/Glossary entry {:term term :definition "local"}]
+              (with-rso! entry "synced")
+              (let [mock (test-helpers/create-mock-source :initial-files {"main" files})]
+                (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true))))
+                (is (=? {:id (:id entry) :entity_id (:entity_id entry) :definition "from the repo"}
+                        (t2/select-one :model/Glossary :term term)))
+                (is (=? {:status "synced" :file_path path} (rso entry))))))
+          (testing "with no local row the term lands on a full import and gets a ledger row"
+            (let [mock (test-helpers/create-mock-source :initial-files {"main" files})]
+              (is (= :success (:status (run-import! (source.p/snapshot mock) :force? true :force-deletion? false))))
+              (is (=? {:status "synced" :file_path path} (rso (t2/select-one :model/Glossary :term term))))))
+          (testing "the term lands with a ledger row on an incremental import"
+            (t2/delete! :model/Glossary :term term)
+            (is (true? (import-v0-then-v1! base-tree files)))
+            (is (=? {:status "synced" :file_path path} (rso (t2/select-one :model/Glossary :term term))))))))))
 
 (deftest entity-id-keyed-file-matching-local-term-is-not-a-deletion-conflict-test
   (mt/with-temporary-setting-values [remote-sync-enabled true]
     (mt/with-model-cleanup [:model/Glossary :model/Collection :model/RemoteSyncTask]
-      (do-with-synced-library!
-       (fn []
-         (let [file-eid "glossaryfileeidAAAA01"
-               path     "glossary/arr.yaml"
-               files    (assoc base-tree path (test-helpers/generate-glossary-yaml file-eid "ARR" "from the repo"))
-               mock     (test-helpers/create-mock-source :initial-files {"main" files})]
-           (testing "an unsynced local row holding the file's term under another entity_id is updated in place"
-             (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "local"}]
-               (with-rso! entry "create")
-               (let [result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
-                 (is (= :success (:status result)) (str "import should succeed: " result))
-                 (is (= [(:id entry)] (t2/select-fn-vec :id :model/Glossary :term "ARR")))
-                 (is (=? {:entity_id file-eid :definition "from the repo"} (t2/select-one :model/Glossary :id (:id entry))))
-                 (is (=? {:status "synced" :file_path path} (rso entry))))))))))))
+      (test-helpers/with-library-synced
+        (let [file-eid "glossaryfileeidAAAA01"
+              path     "glossary/arr.yaml"
+              files    (assoc base-tree path (test-helpers/generate-glossary-yaml file-eid "ARR" "from the repo"))
+              mock     (test-helpers/create-mock-source :initial-files {"main" files})]
+          (testing "an unsynced local row holding the file's term under another entity_id is updated in place"
+            (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "local"}]
+              (with-rso! entry "create")
+              (let [result (run-import! (source.p/snapshot mock) :force? true :force-deletion? false)]
+                (is (= :success (:status result)) (str "import should succeed: " result))
+                (is (= [(:id entry)] (t2/select-fn-vec :id :model/Glossary :term "ARR")))
+                (is (=? {:entity_id file-eid :definition "from the repo"} (t2/select-one :model/Glossary :id (:id entry))))
+                (is (=? {:status "synced" :file_path path} (rso entry)))))))))))

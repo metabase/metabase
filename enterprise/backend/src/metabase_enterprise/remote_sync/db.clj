@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
+   [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -520,6 +521,41 @@
                      {:where [:and
                               [:= :is_remote_synced true]
                               (subtree-expr collections)]}))
+
+(mu/defn collection-content-exists? :- :boolean
+  "Whether a Card, Dashboard, Document, Timeline, or Action is in the Collections with `collection-ids`, or a Table is
+  published to one."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (boolean
+   (or (t2/exists? :model/Card :collection_id [:in collection-ids])
+       (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
+       (t2/exists? :model/Document :collection_id [:in collection-ids])
+       (t2/exists? :model/Timeline :collection_id [:in collection-ids])
+       (t2/exists? :model/Action :collection_id [:in collection-ids])
+       (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
+
+(mu/defn collection-ids-with-entity-ids :- [:set ::lib.schema.id/collection]
+  "The IDs of the Collections with `entity-ids`."
+  [entity-ids :- [:sequential :string]]
+  (set (t2/select-pks-set :model/Collection :entity_id [:in entity-ids])))
+
+(mu/defn snippets-exist? :- :boolean
+  "Whether a NativeQuerySnippet or snippet Collection exists."
+  []
+  (boolean (or (t2/exists? :model/NativeQuerySnippet)
+               (t2/exists? :model/Collection :namespace (name collections/snippets-ns)))))
+
+(mu/defn glossary-entries-exist? :- :boolean
+  "Whether a Glossary entry exists."
+  []
+  (t2/exists? :model/Glossary))
+
+(mu/defn data-actions-exist? :- :boolean
+  "Whether an Action without a model or a data actions Collection exists."
+  []
+  (boolean (or (t2/exists? :model/Action :model_id nil)
+               (t2/exists? :model/Collection :namespace (name collections/data-actions-ns)))))
 
 (mu/defn mark-subtree-remote-synced!
   "Mark `collections` and all of their descendants as remote-synced."

@@ -1189,7 +1189,7 @@ describe("Remote Sync", () => {
 
       it("flags a new term on the Glossary tab and pushes it to the repository", () => {
         // Glossary entries ride with the Library, so sync the Library rather than a plain collection.
-        H.createLibrary().then(({ body: library }) => {
+        H.getLibrary().then(({ body: library }) => {
           H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
         });
 
@@ -1235,9 +1235,9 @@ describe("Remote Sync", () => {
     describe("read-only mode", () => {
       beforeEach(() => {
         setup();
-        // The fixture carries the Library (matching the ids createLibrary assigns) with is_remote_synced set,
+        // The fixture carries the Library (matching the ids the Library is created with) with is_remote_synced set,
         // so the pull both loads the term and locks the glossary.
-        H.createLibrary();
+        H.getLibrary();
         H.copySyncedLibraryFixture();
         H.commitToRepo();
         H.configureGitAndPullChanges("read-only");

@@ -13,7 +13,7 @@ describe("scenarios > data studio > library > tables", () => {
 
   describe("overview", () => {
     it("should show the table overview, edit its description and name, and unpublish it", () => {
-      H.createLibrary();
+      H.getLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
 
@@ -88,7 +88,7 @@ describe("scenarios > data studio > library > tables", () => {
 
   describe("fields", () => {
     it("should view table dependencies, close field panels, rename a field, and view the table in the query builder", () => {
-      H.createLibrary();
+      H.getLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
       H.createQuestion({
         name: "Test question",

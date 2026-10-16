@@ -16,7 +16,7 @@ describe("scenarios > data apps > semantic schema", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    H.createLibrary().then(
+    H.getLibrary().then(
       ({ body: library }: Cypress.Response<LibraryResponse>) => {
         const metricsCollection = library.effective_children?.find(
           ({ type }) => type === "library-metrics",

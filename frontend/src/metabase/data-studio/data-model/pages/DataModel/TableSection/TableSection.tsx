@@ -52,18 +52,16 @@ interface Props {
   activeFieldId?: FieldId;
   activeTab: DataStudioTableMetadataTab;
   canPublish: boolean;
-  hasLibrary: boolean;
   onUpdate: () => void;
 }
 
-type TableModalType = "library" | "publish" | "unpublish";
+type TableModalType = "publish" | "unpublish";
 
 const TableSectionBase = ({
   table,
   activeFieldId,
   activeTab,
   canPublish,
-  hasLibrary,
   onUpdate,
 }: Props) => {
   const {
@@ -113,11 +111,7 @@ const TableSectionBase = ({
   );
 
   const handlePublishToggle = () => {
-    if (!hasLibrary) {
-      setModalType("library");
-    } else {
-      setModalType(table.is_published ? "unpublish" : "publish");
-    }
+    setModalType(table.is_published ? "unpublish" : "publish");
   };
 
   const handleCloseModal = () => {
@@ -292,13 +286,6 @@ const TableSectionBase = ({
         </Tabs>
       </Box>
 
-      <PLUGIN_LIBRARY.CreateLibraryModal
-        title={t`First, let's create your semantic layer`}
-        explanatorySentence={t`This is where published tables will go.`}
-        isOpened={modalType === "library"}
-        onCreate={() => setModalType("publish")}
-        onClose={handleCloseModal}
-      />
       <PLUGIN_LIBRARY.PublishTablesModal
         isOpened={modalType === "publish"}
         tableIds={[table.id]}

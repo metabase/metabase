@@ -60,7 +60,7 @@ function TestWrapper({
 
   return (
     <SelectionProvider>
-      <TableAttributesEditBulk hasLibrary canPublish onUpdate={_.noop} />
+      <TableAttributesEditBulk canPublish onUpdate={_.noop} />
       <SelectionController
         initialTables={initialTables}
         nextTables={nextTables}

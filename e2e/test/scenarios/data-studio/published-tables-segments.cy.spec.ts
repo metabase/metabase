@@ -12,7 +12,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.createLibrary();
+    H.getLibrary();
     H.publishTables({ table_ids: [ORDERS_ID] });
 
     cy.intercept("POST", "/api/segment").as("createSegment");

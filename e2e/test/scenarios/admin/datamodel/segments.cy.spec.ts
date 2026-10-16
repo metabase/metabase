@@ -392,7 +392,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.log("set up remote sync");
       H.setupGitSync();
       H.configureGitAndPullChanges("read-only");
-      H.createLibrary();
+      H.getLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
       // Let's leave PEOPLE_ID unpublished
 

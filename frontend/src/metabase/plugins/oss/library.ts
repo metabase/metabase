@@ -10,7 +10,6 @@ import type {
 import type { MiniPickerCollectionFolderItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type {
-  Collection,
   CollectionId,
   CollectionItem,
   CollectionNamespace,
@@ -23,14 +22,6 @@ import type {
 } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
-
-export type CreateLibraryModalProps = {
-  title?: string;
-  explanatorySentence?: string;
-  isOpened: boolean;
-  onCreate?: (collection: Collection) => void;
-  onClose: () => void;
-};
 
 export type PublishTablesModalProps = {
   databaseIds?: DatabaseId[];
@@ -111,7 +102,6 @@ type LibraryPlugin = {
     items: CollectionItem[];
   }) => OmniPickerItem[] | undefined;
   getEntityPickerSyntheticLibraryItem: GetEntityPickerSyntheticLibraryItemFunction;
-  CreateLibraryModal: ComponentType<CreateLibraryModalProps>;
   CollectionPermissionsModal: ComponentType<CollectionPermissionsModalProps>;
   PublishTablesModal: ComponentType<PublishTablesModalProps>;
   UnpublishTablesModal: ComponentType<UnpublishTablesModalProps>;
@@ -146,9 +136,6 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   }),
   getCollectionPickerItems: () => undefined,
   getEntityPickerSyntheticLibraryItem: () => undefined,
-  CreateLibraryModal:
-    // Unjustified type cast. FIXME
-    PluginPlaceholder as ComponentType<CreateLibraryModalProps>,
   CollectionPermissionsModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<CollectionPermissionsModalProps>,

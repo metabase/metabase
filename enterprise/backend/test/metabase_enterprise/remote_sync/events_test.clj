@@ -9,8 +9,7 @@
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.events :as remote-sync.events]
    [metabase-enterprise.remote-sync.spec :as spec]
-   [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :refer [with-library-synced]]
+   [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -19,6 +18,8 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(use-fixtures :each test-helpers/ensure-library)
 (defn- mark-synced!
   "Populate the RemoteSyncObject table with synced rows for `imported-data` (a `:by-entity-id` map), as a
   successful import does — used to set up a synced baseline before firing an event."
@@ -371,7 +372,7 @@
 (deftest snippet-create-event-creates-entry-test
   (testing "snippet-create event creates remote sync object entry with create status when Library is synced"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (with-library-synced
+      (test-helpers/with-library-synced
         (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
                        :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                           :content "SELECT 1"
@@ -389,7 +390,7 @@
 (deftest snippet-update-event-creates-entry-test
   (testing "snippet-update event creates or updates remote sync object entry with update status when Library is synced"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (with-library-synced
+      (test-helpers/with-library-synced
         (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
                        :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                           :content "SELECT 1"
@@ -407,7 +408,7 @@
 (deftest snippet-update-archived-sets-delete-test
   (testing "snippet-update event with archived=true sets delete status when Library is synced"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (with-library-synced
+      (test-helpers/with-library-synced
         (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
                        :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                           :content "SELECT 1"
@@ -426,7 +427,7 @@
 (deftest snippet-delete-event-creates-entry-test
   (testing "snippet-delete event creates remote sync object entry with delete status when Library is synced"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (with-library-synced
+      (test-helpers/with-library-synced
         (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
                        :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                           :content "SELECT 1"
@@ -443,17 +444,16 @@
 
 (deftest snippet-event-when-library-not-synced-no-entry-test
   (testing "snippet events don't create entries when Library is not synced"
-    (when-let [library (collection/library-collection)]
-      (t2/update! :model/Collection (:id library) {:is_remote_synced false}))
-    (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
-                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
-                                                      :content "SELECT 1"
-                                                      :collection_id (:id snippet-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (events/publish-event! :event/snippet-create
-                             {:object snippet :user-id (mt/user->id :rasta)})
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 0 (count entries)))))))
+    (test-helpers/with-library-not-synced
+      (mt/with-temp [:model/Collection snippet-collection {:name "Snippets" :namespace "snippets"}
+                     :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                        :content "SELECT 1"
+                                                        :collection_id (:id snippet-collection)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/snippet-create
+                               {:object snippet :user-id (mt/user->id :rasta)})
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 0 (count entries))))))))
 
 (deftest collection-create-event-creates-entry-test
   (testing "collection-create event creates remote sync object entry with create status"

@@ -573,7 +573,7 @@ describe("scenarios > native question > data reference sidebar", () => {
 
     H.activateToken("pro-self-hosted");
     H.addSqliteDatabase(SECOND_DB_NAME);
-    H.createLibrary();
+    H.getLibrary();
 
     cy.log("publish a table in each of two databases");
     H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });

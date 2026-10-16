@@ -11,21 +11,6 @@
 
 (set! *warn-on-reflection* true)
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/"
-  "Creates the Library if it doesn't exist. Returns the created collection.
-
-  Requires data analyst or superuser permissions."
-  [_route
-   _query
-   _body]
-  (api/check-data-studio-access)
-  (api/check-400 (not (collections/library-collection)) "Semantic layer already exists")
-  (collections/create-library-collection!))
-
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
         ;; Library questions are only ever dashboard questions, which aren't collection items

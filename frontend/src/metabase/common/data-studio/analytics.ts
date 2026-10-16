@@ -1,12 +1,5 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { CollectionId, ConcreteTableId } from "metabase-types/api";
-
-export const trackDataStudioLibraryCreated = (id: CollectionId) => {
-  trackSimpleEvent({
-    event: "data_studio_library_created",
-    target_id: Number(id),
-  });
-};
+import type { ConcreteTableId } from "metabase-types/api";
 
 export const trackDataStudioTablePublished = (id?: ConcreteTableId) => {
   trackSimpleEvent({

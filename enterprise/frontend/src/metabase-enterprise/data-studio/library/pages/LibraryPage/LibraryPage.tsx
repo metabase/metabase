@@ -18,7 +18,6 @@ import {
   type TableModalState,
 } from "metabase-enterprise/data-studio/library/tables/components/TableModal";
 
-import { LibraryEmptyState } from "../../components/LibraryEmptyState";
 import { useLibraryCollections } from "../../hooks/use-library-collections";
 import type { LibrarySearchModel } from "../../hooks/use-library-search-results";
 
@@ -157,11 +156,6 @@ function LibraryPageContent() {
       emptyMessage={t`No tables or metrics yet`}
       defaultExpandedIds={defaultExpandedIds}
       defaultMoveCollectionIds={defaultMoveCollectionIds}
-      emptyState={
-        !libraryCollection && !isLoadingCollections ? (
-          <LibraryEmptyState />
-        ) : undefined
-      }
       createMenu={
         <CreateMenu
           metricCollectionId={writableMetricCollection?.id}

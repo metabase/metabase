@@ -315,6 +315,15 @@
                    #(contains? #{(:id personal-collection) (:id a)} (:id %))
                    (mt/user-http-request :rasta :get 200 "collection/tree")))))))))
 
+(deftest collection-tree-here-and-below-dashboards-test
+  (testing "Tree reports the dashboards in a collection and below it"
+    (with-collection-hierarchy! [a b]
+      (mt/with-temp [:model/Dashboard _ {:name "B Dashboard" :collection_id (:id b)}]
+        (let [tree-a (first (filter #(= (:id a) (:id %)) (mt/user-http-request :rasta :get 200 "collection/tree")))
+              tree-b (first (filter #(= (:id b) (:id %)) (:children tree-a)))]
+          (is (some #{"dashboard"} (:below tree-a)))
+          (is (some #{"dashboard"} (:here tree-b))))))))
+
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
     (with-collection-hierarchy! [a b c d e f g]
@@ -573,7 +582,7 @@
 (deftest collection-tree-library-test
   (testing "GET /api/collection/tree"
     (without-library
-     (let [_ (collection/create-library-collection!)]
+     (let [_ (collection/ensure-library-collection!)]
        (testing "By default it does not include library items"
          (let [response (mt/user-http-request :rasta :get 200 "collection/tree")
                all-types (flatten-tree-types response)]
@@ -600,7 +609,7 @@
   (testing "GET /api/collection/tree with include-library"
     (without-library
      (mt/with-model-cleanup [:model/Collection]
-       (collection/create-library-collection!)
+       (collection/ensure-library-collection!)
        (with-library-not-synced
          (let [data-coll    (t2/select-one :model/Collection :entity_id @#'collection/library-data-entity-id)
                _subcoll     (mt/user-http-request :crowberto :post 200 "collection"
@@ -612,7 +621,7 @@
              (doseq [coll (concat (get by-type collection/library-collection-type)
                                   (get by-type collection/library-data-collection-type)
                                   (get by-type collection/library-metrics-collection-type))]
-               (when (contains? @#'collection/library-entity-id? (:entity_id coll))
+               (when (contains? collection/library-root-entity-ids (:entity_id coll))
                  (is (true? (:is_library_root coll))
                      (str "System library collection " (:name coll) " should have is_library_root true")))))
            (testing "User-created subcollections do NOT have is_library_root true"
@@ -625,7 +634,7 @@
   (testing "GET /api/collection/:id/items"
     (without-library
      (mt/with-model-cleanup [:model/Collection]
-       (collection/create-library-collection!)
+       (collection/ensure-library-collection!)
        (with-library-not-synced
          (let [library      (t2/select-one :model/Collection :type collection/library-collection-type)
                data-coll    (t2/select-one :model/Collection :entity_id @#'collection/library-data-entity-id)
@@ -1209,7 +1218,10 @@
                                               :models "collection")
                 with    (mt/user-http-request :crowberto :get 200 "collection/root/items/metadata"
                                               :models "collection" :include-library true)]
-            (is (= (inc (:total_items without)) (:total_items with)))))))
+            (is (= (+ (:total_items without)
+                      (t2/count :model/Collection :location "/" :archived false
+                                :type [:in (vec collection/library-collection-types)]))
+                   (:total_items with)))))))
     (testing "restricts a user without root read permission to collections, like the items list"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Card       _                  {:name "Root question"}
@@ -2207,7 +2219,7 @@
 (deftest collection-root-items-library-test
   (testing "GET /api/collection/root/items"
     (without-library
-     (let [_ (collection/create-library-collection!)]
+     (let [_ (collection/ensure-library-collection!)]
        (testing "By default it does not include library items"
          (let [response (mt/user-http-request :rasta :get 200 "collection/root/items")
                all-types (map :type (:data response))]
@@ -3249,7 +3261,7 @@
   (testing "POST /api/collection"
     (testing "Child collection of library collection should inherit the :type"
       (mt/with-model-cleanup [:model/Collection]
-        (collection/create-library-collection!)
+        (collection/ensure-library-collection!)
         (with-library-not-synced
           (doseq [[entity-id collection-type] [[@#'collection/library-data-entity-id    "library-data"]
                                                [@#'collection/library-metrics-entity-id "library-metrics"]]]

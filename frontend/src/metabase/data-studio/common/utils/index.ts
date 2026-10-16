@@ -1,5 +1,3 @@
-import type { GetLibraryCollectionResponse } from "metabase-types/api";
-
 import type {
   CollectionData,
   EmptyStateData,
@@ -18,11 +16,6 @@ export { getLibraryCollectionDisplayName } from "./get-library-collection-displa
 export { getTreeRowHref } from "./get-tree-row-href";
 export { openNewCollectionModal } from "./open-new-collection-modal";
 export { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
-
-// TODO Alex P 12/05/2025 Fix the endpoint to return sensible data
-export const hasLibraryCollection = (
-  libraryCollection?: GetLibraryCollectionResponse,
-) => libraryCollection != null && "name" in libraryCollection;
 
 export const isCollectionData = (
   data: TreeItem["data"],

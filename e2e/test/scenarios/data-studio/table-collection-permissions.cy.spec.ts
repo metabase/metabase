@@ -54,7 +54,7 @@ describe("scenarios > data studio > table collection permissions", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    H.createLibrary();
+    H.getLibrary();
   });
 
   describe("queries", () => {

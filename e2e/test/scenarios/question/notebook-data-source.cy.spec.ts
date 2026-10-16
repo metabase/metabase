@@ -172,7 +172,7 @@ describe("scenarios > notebook > data source", () => {
       H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
-      H.createLibrary();
+      H.getLibrary();
     });
 
     it("should allow to pick a published table from the mini picker and the data picker", () => {

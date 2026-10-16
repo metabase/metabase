@@ -3,12 +3,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection :as collections]
-   [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
+
+(use-fixtures :each test-helpers/ensure-library)
 
 (defn- text->prose-mirror-ast
   "Convert text to a simple ProseMirror AST for document content."
@@ -763,7 +768,7 @@
   (testing "POST/PUT/DELETE /api/glossary reject with 403 when remote sync is read-only and the Library is synced"
     (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                        settings/remote-sync-type :read-only]
-      (collections.tu/with-library-synced
+      (test-helpers/with-library-synced
         (mt/with-model-cleanup [:model/Glossary :model/RemoteSyncObject]
           (mt/with-temp [:model/Glossary {id :id} {:term "ARR" :definition "Annual recurring revenue"}]
             (testing "POST is rejected"
@@ -788,7 +793,7 @@
       (testing "PUT /api/glossary/:id succeeds in read-write mode with the Library synced"
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
-          (collections.tu/with-library-synced
+          (test-helpers/with-library-synced
             (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary"))))
             (is (= "read-write edit"
                    (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)
@@ -796,7 +801,7 @@
       (testing "PUT /api/glossary/:id succeeds in read-only mode when the Library is not synced"
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-only]
-          (collections.tu/with-library-not-synced
+          (test-helpers/with-library-not-synced
             (is (true? (:can_write (mt/user-http-request :crowberto :get 200 "glossary"))))
             (is (= "unsynced edit"
                    (:definition (mt/user-http-request :crowberto :put 200 (str "glossary/" id)

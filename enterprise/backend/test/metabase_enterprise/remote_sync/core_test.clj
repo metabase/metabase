@@ -8,7 +8,6 @@
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :refer [with-library with-library-synced with-library-not-synced]]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -17,7 +16,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 ;; Disabling a collection now marks its RemoteSyncObject rows rather than deleting them, so rows seeded by
 ;; a test outlive it without this — leaking dirty state into every later test.
-(use-fixtures :each rs.test/clean-object)
+(use-fixtures :each rs.test/clean-remote-sync-state)
 
 ;; bulk-set-remote-sync tests
 
@@ -221,8 +220,8 @@
 
 (deftest bulk-set-remote-sync-snippet-dependency-remedy-is-library-test
   (testing "a snippet dependency names the Library collection, which an admin switches on like any other"
-    (with-library [{:keys [library]}]
-      (with-library-not-synced
+    (let [library (collection/library-collection)]
+      (rs.test/with-library-not-synced
         (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
                        :model/NativeQuerySnippet {snippet-id :id} {:name "active_users" :content "1 = 1"}
                        :model/Card _ {:name "Snippet Card"
@@ -255,8 +254,8 @@
   (testing "a remedy resolved through the top-level-ancestor lookup still reports the collection's type"
     ;; Distinct from the snippet case above, whose Library is loaded whole. This one goes through
     ;; `collections-by-id`, so it is what proves that select carries `:type`.
-    (with-library [{:keys [library]}]
-      (with-library-not-synced
+    (let [library (collection/library-collection)]
+      (rs.test/with-library-not-synced
         (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :location "/" :is_remote_synced false}
                        :model/Card {source-card-id :id} {:name "Library Card"
                                                          :collection_id (:id library)
@@ -735,7 +734,7 @@
 
 (deftest batch-model-eligible-for-remote-sync-snippets-library-synced-test
   (testing "snippets eligible when Library is synced"
-    (with-library-synced
+    (rs.test/with-library-synced
       (mt/with-temp [:model/Collection {snippet-coll-id :id} {:namespace "snippets"}
                      :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                         :content "SELECT 1"
@@ -745,7 +744,7 @@
 
 (deftest batch-model-eligible-for-remote-sync-snippets-library-not-synced-test
   (testing "snippets NOT eligible when Library is not synced"
-    (with-library-not-synced
+    (rs.test/with-library-not-synced
       (mt/with-temp [:model/Collection {snippet-coll-id :id} {:namespace "snippets"}
                      :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                         :content "SELECT 1"

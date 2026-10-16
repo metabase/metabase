@@ -24,9 +24,8 @@
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
-  create-library-collection!
-  ensure-library-dashboards-collection!
   descendant-ids
+  ensure-library-collection!
   ineligible-dependencies
   instance-analytics-collection-type
   library-collection
@@ -35,6 +34,8 @@
   library-dashboards-collection?
   library-data-collection-type
   library-metrics-collection-type
+  library-root-collection?
+  library-root-entity-ids
   location-path
   location-path->ids
   moving-from-remote-synced?
@@ -46,6 +47,7 @@
   shared-tenant-collection?
   slugify
   transforms-ns
+  snippets-ns
   data-apps-ns
   data-actions-ns
   default-allowed-namespaces]

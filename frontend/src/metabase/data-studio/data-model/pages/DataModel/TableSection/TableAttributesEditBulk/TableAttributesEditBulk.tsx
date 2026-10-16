@@ -31,15 +31,13 @@ import { SyncOptionsModal } from "./SyncOptionsModal";
 
 type TableAttributesEditBulkProps = {
   canPublish: boolean;
-  hasLibrary: boolean;
   onUpdate: () => void;
 };
 
-type TableModalType = "library" | "publish" | "unpublish" | "sync";
+type TableModalType = "publish" | "unpublish" | "sync";
 
 export function TableAttributesEditBulk({
   canPublish,
-  hasLibrary,
   onUpdate,
 }: TableAttributesEditBulkProps) {
   const remoteSyncReadOnly = useSelector(
@@ -204,12 +202,12 @@ export function TableAttributesEditBulk({
               <Button
                 flex={1}
                 leftSection={<Icon name="publish" />}
-                onClick={() => setModalType(hasLibrary ? "publish" : "library")}
+                onClick={() => setModalType("publish")}
               >
                 {t`Publish`}
               </Button>
             )}
-            {canPublish && !remoteSyncReadOnly && hasLibrary && (
+            {canPublish && !remoteSyncReadOnly && (
               <Button
                 flex={1}
                 leftSection={<Icon name="unpublish" />}
@@ -305,14 +303,6 @@ export function TableAttributesEditBulk({
           </TableSectionGroup>
         </Box>
       </Stack>
-
-      <PLUGIN_LIBRARY.CreateLibraryModal
-        title={t`First, let's create your semantic layer`}
-        explanatorySentence={t`This is where published tables will go.`}
-        isOpened={modalType === "library"}
-        onCreate={() => setModalType("publish")}
-        onClose={handleCloseModal}
-      />
 
       <PLUGIN_LIBRARY.PublishTablesModal
         isOpened={modalType === "publish"}

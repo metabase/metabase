@@ -62,7 +62,6 @@ export const TopLevelCollectionsList = ({
       error={error ? t`Failed to load collections` : null}
       isLoading={isLoading || isLoadingLibrary}
       showTransformsRow={PLUGIN_TRANSFORMS.isEnabled}
-      showLibraryPlaceholder={skipCollections && !libraryCollection}
     />
   );
 };
