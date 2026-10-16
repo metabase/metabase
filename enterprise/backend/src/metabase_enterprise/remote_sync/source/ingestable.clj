@@ -43,8 +43,11 @@
   [snapshot]
   (let [files    (vec (for [path (source.p/list-files snapshot)
                             :when (serialization/entity-file-path? path)
+                            :let [content (source.p/read-file snapshot path)]
+                            :when (or (not (serialization/content-checked-path? path))
+                                      (serialization/entity-content? content))
                             :let [entity (try
-                                           (ingest-content (source.p/read-file snapshot path))
+                                           (ingest-content content)
                                            (catch Exception _ nil))]
                             :when (or entity (re-matches #"data_apps/[^/]+/data_app\.yaml" path))]
                         {:path path :entity entity}))
@@ -60,7 +63,8 @@
   The repo `:path` is the actual file the entity was read from (including any dedup suffix), so callers
   can record where each entity lives without recomputing — recomputation would diverge on name
   collisions and slug changes. Dotfiles are silently skipped (editor temp files, see #41567).
-  Non-dotfile YAML parse/read failures are collected in :errors."
+  Non-dotfile YAML parse/read failures are collected in :errors. In a folder of
+  [[serialization/content-checked-path?]], a file that is not an entity is skipped."
   [snapshot]
   (let [errors (atom [])]
     {:entities (into {} (for [path (source.p/list-files snapshot)
@@ -71,8 +75,12 @@
                                                 (log/warn (u/strip-error e "Error reading file during ingestion"))
                                                 (swap! errors conj (ex-info (format "Failed to read file: %s" path)
                                                                             {:file path :reason (error-reason e)} e))
-                                                nil))
-                                    loaded (try
+                                                nil))]
+                              ;; a file the user keeps in a folder only the kind layout writes is not read
+                              :when (or (not (serialization/content-checked-path? path))
+                                        (nil? content)
+                                        (serialization/entity-content? content))
+                              :let [loaded (try
                                              (when content
                                                (serdes/path (ingest-content content)))
                                              (catch Exception e

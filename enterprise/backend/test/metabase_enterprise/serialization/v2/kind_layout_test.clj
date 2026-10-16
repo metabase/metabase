@@ -173,6 +173,8 @@
             (ts/with-db source-db
               (storage/store! entities (storage.files/file-writer dump-dir kind-layout/kind-layout)))
             (is (not (.exists (io/file dump-dir "collections" "main"))))
+            ;; a file the user keeps in a folder of the kind layout is skipped, not an error
+            (spit (io/file dump-dir "data" "list.yaml") "- a\n- b\n")
             (ts/with-db dest-db
               (collections/create-library-collection!)
               (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))

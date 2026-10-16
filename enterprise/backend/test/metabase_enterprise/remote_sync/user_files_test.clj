@@ -65,3 +65,12 @@
         (is (= user-files (select-keys (repo mock) (keys user-files))))
         (is (not (contains? (repo mock) (first stale-entity-file))))
         (is (contains? (repo mock) "collections/main/bench/card_a.yaml"))))))
+
+(deftest import-skips-user-files-test
+  (testing "an import skips the files in the new folders that are not entity files"
+    (with-bench! {}
+      (fn [mock]
+        (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task! "export") "full" :force? true))))
+        (swap! (:files-atom mock) update "main" merge user-files)
+        (let [result (impl/import! (source.p/snapshot mock) (new-task! "import") :force? true)]
+          (is (= :success (:status result)) (:message result)))))))

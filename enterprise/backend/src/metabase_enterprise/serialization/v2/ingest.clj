@@ -186,11 +186,14 @@
       (mapv intern-seg hierarchy))))
 
 (defn- ingestible-file?
-  "Whether `file` is a regular file that [[entity-file-path?]] accepts. Dotfiles are excluded (editor temp files, see
-  #41567)."
+  "Whether `file` is a regular file that [[entity-file-path?]] accepts, and, in a folder of [[content-checked-path?]],
+  whose content is an entity. Dotfiles are excluded (editor temp files, see #41567)."
   [^File root-dir ^File file]
-  (and (.isFile file)
-       (entity-file-path? (str/replace (str (.relativize (.toPath root-dir) (.toPath file))) "\\" "/"))))
+  (let [path (str/replace (str (.relativize (.toPath root-dir) (.toPath file))) "\\" "/")]
+    (and (.isFile file)
+         (entity-file-path? path)
+         (or (not (content-checked-path? path))
+             (entity-content? (slurp file))))))
 
 (defn- file-hierarchy!
   "Parses `file` and returns its `:serdes/meta` abstract path, or nil on parse failure.
