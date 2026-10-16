@@ -54,6 +54,7 @@
  [metabase-enterprise.serialization.v2.storage.kind-folders
   library-content-folders]
  [metabase-enterprise.serialization.v2.storage.kind-layout
+  ai-context-path
   item-file-name
   kind-layout
   kind-layout-path?

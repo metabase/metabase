@@ -1153,12 +1153,6 @@
             (:identity (spec/spec-for-model-type model_type)))
       :remote-sync/incremental-not-possible
 
-      ;; a card's AI context is a file in the card's folder, which moves and goes with the card
-      (and (= "Card" model_type)
-           (remote-sync.layout/kind-layout?)
-           (remote-sync.db/ai-context-exists? "card" model_id))
-      :remote-sync/incremental-not-possible
-
       (:resources? (spec/spec-for-model-type model_type))
       :remote-sync/incremental-not-possible
 
@@ -1270,6 +1264,33 @@
     (catch Exception _
       :remote-sync/incremental-not-possible)))
 
+(defn- items-with-ai-context
+  "The `[model_type model_id]` of each of `rows` ({:model_type :model_id}) whose item has an AI context."
+  [rows]
+  (into #{}
+        (mapcat (fn [[model-type type-rows]]
+                  (when-let [entity-type (spec/ai-context-entity-types model-type)]
+                    (for [chunk (partition-all app-db-batch-size (map :model_id type-rows))
+                          row   (remote-sync.db/ai-contexts-of-items entity-type (vec chunk))]
+                      [model-type (:entity_local_id row)]))))
+        (group-by :model_type rows)))
+
+(defn- with-stale-ai-context-deletes
+  "`plan` with the AI context files of `snapshot` that the export leaves stale also deleted: that of an item whose file
+  moves or goes, and that of a written item that no longer has an AI context. An item's AI context is the file
+  `ai_context.yaml` in the item's folder, which a write of the item writes only while it has one."
+  [snapshot plan]
+  (if (or (= :remote-sync/incremental-not-possible plan)
+          (not (remote-sync.layout/kind-layout?)))
+    plan
+    (let [writes     (filter #(spec/ai-context-entity-types (:model_type %)) (:writes plan))
+          with-ai    (items-with-ai-context writes)
+          candidates (concat (map serialization/ai-context-path (:delete-paths plan))
+                             (for [{:keys [model_type model_id file_path]} writes
+                                   :when (not (contains? with-ai [model_type model_id]))]
+                               (serialization/ai-context-path file_path)))]
+      (update plan :delete-paths into (filter #(source.p/read-file snapshot %)) (distinct candidates)))))
+
 (defn- incremental-export-plan
   "Build an incremental export plan for `rows` (`RemoteSyncObject`s) against `snapshot`, one chunk at a time.
 
@@ -1300,7 +1321,7 @@
                            (merge-incremental-export-plans plan))]
     (if (= plan :remote-sync/incremental-not-possible)
       :remote-sync/incremental-not-possible
-      (dissoc plan :pull))))
+      (with-stale-ai-context-deletes snapshot (dissoc plan :pull)))))
 
 (defn- path-top-level-dir [^String path]
   (let [i (str/index-of path "/")]

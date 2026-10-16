@@ -493,6 +493,28 @@
 (defn- ai-context [entity-type entity-id]
   (t2/select-one-fn :ai_context :model/OsiAiContext :entity_type entity-type :entity_local_id entity-id))
 
+(deftest deleting-ai-context-removes-its-file-test
+  (testing "deleting an item's AI context marks the item changed, and the next push removes ai_context.yaml"
+    (mt/with-model-cleanup [:model/OsiAiContext]
+      (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                         remote-sync-transforms false]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
+                       :model/Card       {card-id :id} {:name "Orders" :collection_id coll-id}]
+          (t2/insert! :model/OsiAiContext {:entity_type "card" :entity_local_id card-id
+                                           :ai_context {:instructions "v1"}})
+          (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
+                files #(set (keys (get @(:files-atom mock) "main")))
+                file  "collections/main/bench/orders.question/ai_context.yaml"]
+            (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
+            (is (contains? (files) file))
+            (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
+            (is (t2/exists? :model/RemoteSyncObject :model_type "Card" :model_id card-id :status "update"))
+            (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "delete ai context"))))
+            (is (not (contains? (files) file)))
+            (is (contains? (files) "collections/main/bench/orders.question.yaml"))
+            (is (= :success (:status (impl/import! (source.p/snapshot mock) (new-task!) :force? true))))
+            (is (nil? (ai-context "card" card-id)))))))))
+
 (deftest pull-of-an-earlier-layout-repo-keeps-ai-context-test
   (testing "the first pull of a repo written before the kind layout, which never holds AI context, keeps it"
     (mt/with-model-cleanup [:model/OsiAiContext]

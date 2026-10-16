@@ -870,6 +870,12 @@
    "measure"  :model/Measure
    "segment"  :model/Segment})
 
+(def ai-context-entity-types
+  "The OsiAiContext `entity_type` of the items of each serdes model an incremental export writes that have one."
+  {"Card"    "card"
+   "Measure" "measure"
+   "Segment" "segment"})
+
 (defn ai-context-item-synced?
   "Whether the item an OsiAiContext of `entity-type` describes, `item` (nil when it is gone), syncs: an item's AI
   context syncs exactly when the item does."

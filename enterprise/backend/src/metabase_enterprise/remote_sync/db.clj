@@ -464,11 +464,14 @@
   []
   (t2/select [:model/OsiAiContext :entity_type :entity_local_id]))
 
-(mu/defn ai-context-exists? :- :boolean
-  "Whether the item of `entity-type` with `entity-local-id` has an OsiAiContext."
-  [entity-type     :- :string
-   entity-local-id :- pos-int?]
-  (t2/exists? :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
+(mu/defn ai-contexts-of-items
+  "The `:entity_type` and `:entity_local_id` of the OsiAiContexts of the items of `entity-type` with
+  `entity-local-ids`."
+  [entity-type      :- :string
+   entity-local-ids :- [:sequential pos-int?]]
+  (t2/select [:model/OsiAiContext :entity_type :entity_local_id]
+             :entity_type entity-type
+             :entity_local_id [:in entity-local-ids]))
 
 (mu/defn delete-ai-context!
   "Delete the OsiAiContext of the item of `entity-type` with `entity-local-id`."

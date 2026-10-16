@@ -507,6 +507,12 @@
   "The name of the file, in an item's folder, of the item's AI context."
   "ai_context.yaml")
 
+(defn ai-context-path
+  "The path of the AI context file of the item whose file is at `item-path` (`<folder>/<name>.<kind>.yaml`), in the
+  item's folder `<folder>/<name>.<kind>/`."
+  [item-path]
+  (str (str/replace item-path #"\.yaml$" "") "/" ai-context-file))
+
 (defn- ai-contexts
   "Every extracted OsiAiContext, by `[entity_type portable-id]` of the item it describes."
   [{:keys [extract-opts] :as ctx}]
