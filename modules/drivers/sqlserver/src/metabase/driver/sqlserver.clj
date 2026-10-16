@@ -298,14 +298,11 @@
   [driver]
   (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) sqlserver-disallowed-parameters))
 
-(def ^:private disallowed-in-host-or-additional-options
-  (re-pattern (str "(?i)(?:" (str/join "|" sqlserver-disallowed-parameters) ")")))
-
 (defmethod driver/validate-db-details! :sqlserver
-  [driver {:keys [host additional-options] :as details}]
+  [driver {:keys [host] :as details}]
   ;; `host` is written into the connection string too, so a property can be smuggled in through it after a `;`
-  (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-in-host-or-additional-options))]
-    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match})))
+  (when-let [match (driver.u/disallowed-connection-parameter driver host)]
+    (throw (ex-info "Potentially dangerous keys in connection details" {:status-code 400, :disallowed-key match})))
   (driver.u/validate-connection-parameters! driver details))
 
 (defmethod driver/can-connect? :sqlserver

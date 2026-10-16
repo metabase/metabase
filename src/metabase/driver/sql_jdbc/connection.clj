@@ -285,6 +285,8 @@
                              driver
                              id
                              details-with-tunnel)
+        ;; the auth provider's response is merged into the details, so it can set parameters too
+        _                   (driver.u/validate-connection-parameters! driver details-with-auth)
         spec                (connection-details->spec driver details-with-auth)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
@@ -529,7 +531,9 @@
       (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
                                driver
                                details-with-tunnel)
-            spec (connection-details->spec driver details-with-auth)]
+            ;; the auth provider's response is merged into the details, so it can set parameters too
+            _                 (driver.u/validate-connection-parameters! driver details-with-auth)
+            spec              (connection-details->spec driver details-with-auth)]
         (f spec)))))
 
 (defmacro with-connection-spec-for-testing-connection

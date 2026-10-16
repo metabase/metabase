@@ -231,7 +231,7 @@
 (defmethod driver/disallowed-connection-parameters :mysql
   [driver]
   (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
-        ["allowLocalInfile" "allowLoadLocalInfile" "allowUrlInLocalInfile" "autoDeserialize" "serverRSAPublicKeyFile", "allowLoadLocalInfileInPath"]))
+        ["allowLocalInfile" "allowLoadLocalInfile" "allowUrlInLocalInfile" "autoDeserialize" "serverRSAPublicKeyFile" "allowLoadLocalInfileInPath"]))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
