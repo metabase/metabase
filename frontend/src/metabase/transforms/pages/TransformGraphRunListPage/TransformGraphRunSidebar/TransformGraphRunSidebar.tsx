@@ -283,7 +283,7 @@ function TransformGraphRunSidebarHeader({
       </Title>
       <Group gap="xxs" wrap="nowrap">
         <HeaderEntityActions run={run} />
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
@@ -301,6 +301,7 @@ function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
     return (
       <Tooltip label={t`View this job`}>
         <ActionIcon
+          variant="subtle"
           component={ForwardRefLink}
           to={Urls.transformJob(entity_id)}
           target="_blank"
@@ -316,6 +317,7 @@ function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
     <>
       <Tooltip label={t`View this transform`}>
         <ActionIcon
+          variant="subtle"
           component={ForwardRefLink}
           to={Urls.transform(entity_id)}
           target="_blank"
@@ -327,6 +329,7 @@ function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Tooltip label={t`View in dependency graph`}>
           <ActionIcon
+            variant="subtle"
             component={ForwardRefLink}
             to={Urls.dependencyGraph({
               entry: { id: entity_id, type: "transform" },

@@ -11,8 +11,8 @@ import { ClientSortableTable } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import { SettingHeader } from "metabase/settings-components";
 import {
+  ActionIcon,
   Box,
-  Button,
   Checkbox,
   Ellipsified,
   Flex,
@@ -207,14 +207,14 @@ const UploadTableRow = ({
       <td>{item.schema}</td>
       <td>
         <Flex align="center" justify="flex-end" py="sm">
-          {/* TODO: replace with ActionIcon (GDGT-2457) */}
-          <Button
+          <ActionIcon
             onClick={() => onTrash(item)}
             variant="subtle"
-            color="neutral"
             size="sm"
-            leftSection={<Icon name="trash" />}
-          />
+            aria-label={t`Delete table`}
+          >
+            <Icon name="trash" />
+          </ActionIcon>
         </Flex>
       </td>
     </tr>

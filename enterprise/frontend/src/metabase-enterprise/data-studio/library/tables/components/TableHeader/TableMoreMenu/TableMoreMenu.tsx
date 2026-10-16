@@ -29,6 +29,7 @@ export function TableMoreMenu({ table, onOpenModal }: TableMoreMenuProps) {
       <Menu withinPortal>
         <Menu.Target>
           <ActionIcon
+            variant="subtle"
             aria-label={t`Show table options`}
             size="md"
             onClick={(event) => {

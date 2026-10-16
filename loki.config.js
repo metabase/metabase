@@ -22,6 +22,7 @@ module.exports = {
     "^Components/Inputs/Switch (Overview|Switch\\.Group)$",
     "^Components/Parameters/DatePicker",
     "^Components/Buttons/Button (Variant|Compact|Sections)",
+    "^Components/Buttons/ActionIcon (Variant|Selectable)",
     "^Components/Overlays/Tooltip",
     "^Components/Documents",
     "^Components/Feedback/Alert",

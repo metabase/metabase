@@ -238,6 +238,7 @@ const namespaceMap: Record<string, CollectionNamespace[]> = {
   normal: [null, "analytics", "shared-tenant-collection", "tenant-specific"],
   snippet: ["snippets"],
   transform: ["transforms"],
+  action: ["data-actions"],
 };
 
 export const getNamespacesFromModels = (
@@ -250,6 +251,10 @@ export const getNamespacesFromModels = (
 
   if (models.includes("transform")) {
     modelNamespaces.push(...namespaceMap.transform);
+  }
+
+  if (models.includes("action")) {
+    modelNamespaces.push(...namespaceMap.action);
   }
 
   if (models.some((model) => model !== "snippet" && model !== "transform")) {
