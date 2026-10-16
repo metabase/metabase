@@ -4,14 +4,17 @@
    branches on a capability."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.tools.charts :as charts]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.charts.edit :as edit-chart-tools]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 ;; create-chart only needs the query present in queries-state; the link builder
-;; json-encodes it and `->legacy-mbql` passes a non-MBQL 5 value through unchanged,
+;; json-encodes it and `->frontend-query` passes a non-MBQL 5 value through unchanged,
 ;; so a stub query is enough to exercise the emission branch without a database.
 (def ^:private stub-query
   {:database 1 :type "query" :query {:source-table 1}})
@@ -44,6 +47,22 @@
         (is (some? (get-in entity [:query :query]))))
       (testing "keeps the query in structured-output so chart memory stores it for later edits"
         (is (= stub-query (get-in result [:structured-output :query])))))))
+
+(deftest create-chart-keeps-mbql5-temporal-filter-test
+  (testing "the generated_entity part carries a during filter through JSON intact (BOT-1972)"
+    (let [date   (meta/field-metadata :checkins :date)
+          query  (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                     (lib/filter [:during {:lib/uuid (str (random-uuid))} (lib/ref date) "2026-07-01" :month]))
+          memory (atom {:state {:queries {"q-1" query}}})
+          result (binding [shared/*memory-atom* memory]
+                   (charts/create-chart-tool {:data_source  {:query_id "q-1"}
+                                              :viz_settings {:chart_type "bar"}
+                                              :title        "Check-ins in July"
+                                              :description  "Check-ins during July 2026."}))
+          sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
+      (is (= "mbql/query" (:lib/type sent)))
+      (is (= (lib/filters query)
+             (-> sent lib/normalize :stages first :filters))))))
 
 (deftest create-chart-new-chart-types-test
   (testing "the tool schema accepts newly added chart types"

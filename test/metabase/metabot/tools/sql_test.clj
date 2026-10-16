@@ -237,7 +237,7 @@
                   (is (= 1 (count parts)))
                   (is (= "generated_entity" (:data-type (first parts))))
                   (is (= "card" (:type entity)))
-                  (is (= :native (get-in entity [:query :query :type])))))
+                  (is (= :mbql.stage/native (get-in entity [:query :query :stages 0 :lib/type])))))
               (testing "an open code-editor buffer wins"
                 (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
                                                                   :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]

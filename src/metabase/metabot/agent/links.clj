@@ -9,7 +9,8 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,11 +29,11 @@
 ;;; Query/Chart URL Generation
 
 (defn ->legacy-mbql
-  "Normalize a MBQL 5 query to legacy MBQL. Frontend /question# URLs require legacy
-  MBQL format; non-MBQL 5 values pass through unchanged. A MBQL 5 query that fails
-  conversion is also returned unchanged rather than raising."
+  "Normalize a MBQL 5 query to legacy MBQL; non-MBQL 5 values pass through unchanged. A MBQL 5
+  query that fails conversion is also returned unchanged rather than raising.
+
+  Not for anything bound for the frontend: use [[->frontend-query]]."
   [query]
-  ;; builds the legacy-MBQL /question# hash; the FE also accepts MBQL 5, so this could migrate
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query)
            ;; `:stages` alone (no `:lib/type`) also counts: a query round-tripped through
@@ -53,10 +54,32 @@
         query))
     query))
 
+(defn ->frontend-query
+  "Prepare a query for the frontend: a `/question#` hash, or a viz data part the frontend builds one from.
+
+  A MBQL 5 query stays MBQL 5. The frontend opens one as-is, while a legacy query goes through
+  `lib.convert/->mbql5` after a JSON hop that stringifies every keyword. Legacy normalization cannot
+  decode the unit on `absolute-datetime` / `during` back from a string, so `clean` silently deleted
+  such a filter and the question answered something else (BOT-1972).
+
+  A query with `:stages` but no `:lib/type` (its `:lib/*` keys stripped, `:lib/uuid`s with them) stays MBQL 5 too
+  when it normalizes to a valid query. One that doesn't, because normalizing minted fresh uuids its aggregation refs
+  no longer match, goes to [[->legacy-mbql]], as does anything that isn't MBQL 5 at all."
+  [query]
+  (or (when (and (map? query) (or (:lib/type query) (:stages query)))
+        (try
+          (let [normalized (lib/normalize :metabase.lib.schema/query query)]
+            (when (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized))
+              (lib/prepare-for-serialization normalized)))
+          (catch Exception e
+            (log/warn e "Failed to normalize MBQL 5 query for the frontend")
+            nil)))
+      (->legacy-mbql query)))
+
 (defn- query->url-hash
   "Convert an MBQL query to a base64-encoded URL hash for /question# URLs."
   [query]
-  (-> {:dataset_query          (->legacy-mbql query)
+  (-> {:dataset_query          (->frontend-query query)
        :type                   "question"
        :visualization_settings {}}
       json/encode
@@ -66,10 +89,10 @@
 (defn pseudo-card->link
   "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked.
   `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from.
-  A MBQL 5 `:dataset_query` is normalized to legacy MBQL (/question# URLs are legacy-only)."
+  `:dataset_query` goes through [[->frontend-query]]."
   [pc]
   (let [pc (cond-> (merge {:visualization_settings {}} pc)
-             (:dataset_query pc) (update :dataset_query ->legacy-mbql))]
+             (:dataset_query pc) (update :dataset_query ->frontend-query))]
     (str "/question#"
          (-> pc
              json/encode
