@@ -64,6 +64,11 @@ export const Markdown = {
           canvasElement.querySelectorAll(".cm-content .cm-line span").length,
         ).toBeGreaterThan(0),
       );
+      // A late monospace-font swap drifts the glyph metrics sub-pixel, and the
+      // drift accumulates down the document until the last line crosses the
+      // antialiasing threshold. The burn-in caught that swap mid-flight. Hold
+      // the snapshot until the fonts are ready.
+      await document.fonts.ready;
     } finally {
       asyncCallback();
     }
