@@ -1,4 +1,36 @@
-bun run precommit
+# If lint-staged dies before restoring its backup stash, restore it and the merge state ourselves
+git_dir=$(git rev-parse --git-dir)
+merge_backup=$(mktemp -d) || exit 1
+trap 'rm -rf "$merge_backup"' 0
+for f in MERGE_HEAD MERGE_MODE MERGE_MSG; do
+  [ -f "$git_dir/$f" ] && cp "$git_dir/$f" "$merge_backup/"
+done
+stash_before=$(git rev-parse -q --verify refs/stash || true)
+
+if ! bun run precommit; then
+  stash_after=$(git rev-parse -q --verify refs/stash || true)
+  if [ -n "$stash_after" ] && [ "$stash_after" != "$stash_before" ] &&
+     git log -g -1 --format=%gs refs/stash | grep -q "lint-staged automatic backup"; then
+    echo "lint-staged failed and left its backup. Restoring your changes..."
+    restore_succeeded=true
+    if ! git read-tree --reset -u "$stash_after" || ! git read-tree "$stash_after^2"; then
+      restore_succeeded=false
+    fi
+    for f in MERGE_HEAD MERGE_MODE MERGE_MSG; do
+      if [ -f "$merge_backup/$f" ] && [ ! -f "$git_dir/$f" ] && ! cp "$merge_backup/$f" "$git_dir/"; then
+        restore_succeeded=false
+      fi
+    done
+    if [ "$restore_succeeded" = true ]; then
+      echo "Your staged and unstaged changes were restored."
+      echo "Safety backup retained ($stash_after)."
+      echo "After verifying your work, drop the 'lint-staged automatic backup' entry shown by: git stash list"
+    else
+      echo "Automatic restoration failed. Safety backup retained ($stash_after)." >&2
+    fi
+  fi
+  exit 1
+fi
 
 # Run the formatter
 # Note that this is stubbed in for now until we can gobally resolve some formatting issues such as what is described
