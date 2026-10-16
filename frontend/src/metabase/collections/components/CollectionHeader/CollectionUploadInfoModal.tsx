@@ -37,7 +37,7 @@ export const UploadInfoModal = ({
     >
       {isAdmin ? (
         <>
-          <Stack gap="md">
+          <Stack gap="md" ta="start">
             <Text c="text-secondary">
               {t`Team members will be able to upload CSV files and work with them just like any other data source.`}
             </Text>
@@ -58,7 +58,7 @@ export const UploadInfoModal = ({
         </>
       ) : (
         <>
-          <Text c="text-secondary">
+          <Text c="text-secondary" ta="start">
             {t`You'll need to ask your admin to enable this feature to get started. Then, you'll be able to upload CSV files and work with them just like any other data source.`}
           </Text>
           <Modal.Footer>

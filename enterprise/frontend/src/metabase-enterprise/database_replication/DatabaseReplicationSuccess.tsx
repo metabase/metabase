@@ -20,7 +20,7 @@ export const DatabaseReplicationSuccess = ({
 }) => {
   return (
     <>
-      <Text c="text-secondary">
+      <Text c="text-secondary" ta="start">
         {t`The process runs in the background. Depending on the database size, this can take up to several hours. You will get an email once your data is ready to use.`}
       </Text>
       <Modal.Footer>
