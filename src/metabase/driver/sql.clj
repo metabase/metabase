@@ -324,7 +324,8 @@
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
   (into (driver-api/native-query-table-references query)
-        (sql-tools/referenced-tables driver query)))
+        (cond-> (sql-tools/referenced-tables driver query)
+          (seq (lib/all-template-tags query)) (->> (remove :unresolved-table)))))
 
 (mu/defmethod driver/native-result-metadata :sql
   [driver       :- :keyword
