@@ -17,7 +17,6 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     text: Sales Overview
     virtual_card:
       display: heading
@@ -31,7 +30,6 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     text: |-
       This dashboard provides an overview of sales metrics.
       **Key metrics** include revenue, order count, and average order value.
@@ -48,7 +46,6 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     link:
       url: https://metabase.com/docs
     virtual_card:
@@ -63,7 +60,6 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     link:
       entity:
         id: Q_jD-f-9clKLFZ2TfUG2h
@@ -80,7 +76,6 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     iframe: <iframe src="https://example.com/embed" width="100%" height="400"></iframe>
     virtual_card:
       display: iframe
@@ -94,7 +89,6 @@ dashcards:
   parameter_mappings: []
   series: []
   visualization_settings:
-    column_settings: null
     virtual_card:
       display: placeholder
 tabs: []

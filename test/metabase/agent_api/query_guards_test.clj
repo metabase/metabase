@@ -253,12 +253,6 @@
   (testing "the literal agent:sql:run grant passes"
     (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query! sql-allowed
                                                                                (ui-request #{"agent:sql:run"}) legacy-native)))))
-  (testing "a wildcard grant does not: MCP honors literal scopes only"
-    (are [scopes] (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query! sql-allowed
-                                                                                  (ui-request scopes) legacy-native)))
-      #{"agent:sql:*"}
-      #{"agent:*"}
-      #{"*"}))
   (testing "v1's concrete agent:sql:execute does not grant raw SQL: an OAuth MCP session holds only literal v2
             scopes, so no credential minted today can carry it"
     (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query! sql-allowed
@@ -273,13 +267,6 @@
     (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query! sql-allowed {} legacy-native))))
     (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query! sql-allowed
                                                                         {:uid 1 :sid "session"} legacy-native)))))
-  (testing "a user whose groups deny execute_sql is refused raw SQL whatever the grant, and keeps MBQL"
-    (is (re-find #"execute_sql is not enabled"
-                 (try (query-guards/check-mcp-ui-native-query! sql-denied (ui-request #{"agent:sql:run"}) legacy-native)
-                      ""
-                      (catch clojure.lang.ExceptionInfo e (ex-message e)))))
-    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
-                                       sql-denied (ui-request #{"agent:sql:run"}) mbql-query)))))
   (testing "the kill switch outranks the grant"
     (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
       (is (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query! sql-allowed
@@ -295,3 +282,24 @@
           (is (re-find #"agent:sql:run" msg))
           (is (not (re-find #"mcp-execute-sql-enabled" msg))
               "the scope refusal must not reveal the kill-switch setting to an unauthorized caller"))))))
+
+(deftest check-mcp-ui-native-query!-group-policy-test
+  (testing "a user whose groups deny execute_sql is refused native queries, whatever the grant"
+    (are [query] (= "execute_sql is not enabled for your groups"
+                    (try (query-guards/check-mcp-ui-native-query!
+                          sql-denied (ui-request #{"agent:sql:run"}) query)
+                         ""
+                         (catch clojure.lang.ExceptionInfo e (ex-message e))))
+      legacy-native
+      mbql-5-native))
+  (testing "and keeps MBQL"
+    (is (= ::no-throw (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                       sql-denied (ui-request #{"agent:sql:run"}) mbql-query))))))
+
+(deftest check-mcp-ui-native-query!-wildcard-test
+  (testing "GHY-4942: a wildcard is not a registered scope, so it does not cover agent:sql:run"
+    (are [scopes] (= 403 (thrown-status #(query-guards/check-mcp-ui-native-query!
+                                          sql-allowed (ui-request scopes) legacy-native)))
+      #{"*"}
+      #{"agent:*"}
+      #{"agent:sql:*"})))

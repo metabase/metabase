@@ -496,7 +496,7 @@
 (deftest derive-gates-test
   (mt/with-model-cleanup [:model/McpQueryHandle]
     (testing "Gate 1: derive costs agent:query:run"
-      (is (= 403 (:status (derive! :rasta #{"agent:search"} (checkins-by-month)
+      (is (= 403 (:status (derive! :rasta #{"agent:content:read"} (checkins-by-month)
                                    {:operations [{:type "temporal-bucket/set" :unit "year"}]})))))
     (testing "a handle another user stored does not resolve"
       (let [owner-id (mt/user->id :crowberto)

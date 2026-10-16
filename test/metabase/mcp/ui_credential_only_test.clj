@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.oauth-server.core :as oauth-server]
@@ -86,7 +86,7 @@
 
 (def ^:private all-scopes
   "Every MCP v2 scope."
-  (set mcp.paths/v2-surface-scopes))
+  (set mcp.scope/v2-surface-scopes))
 
 (defn- do-with-site-url!
   "Call `thunk` with a Site URL set, which the OAuth provider needs."

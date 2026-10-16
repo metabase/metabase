@@ -12,9 +12,9 @@
   query-handle lifecycle management."
   (:require
    [clojure.string :as str]
-   [metabase.api.macros.scope :as scope]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.models.mcp-query-handle]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
    [metabase.util.json :as json]
@@ -118,23 +118,17 @@
 (declare valid-id?)
 
 (defn- encode-token-scopes
-  "Serialize `token-scopes` into credential claims.
-
-  Named scope strings go in `:scp`; the `::scope/unrestricted` sentinel gets its own boolean claim `:unr`. They are
-  kept in separate claims deliberately: JSON has no keywords, so folding the sentinel into `:scp` would turn it into
-  a string that a granted scope could be equal to. Nothing that can appear in `:scp` can appear in `:unr`."
+  "Serialize the scope strings of `token-scopes` into the `:scp` credential claim."
   [token-scopes]
-  (cond-> {:scp (vec (sort (filter string? token-scopes)))}
-    (contains? token-scopes ::scope/unrestricted) (assoc :unr true)))
+  {:scp (vec (sort (filter string? token-scopes)))})
 
 (defn- decode-token-scopes
   "Rebuild the scope set from credential `claims`, reversing [[encode-token-scopes]].
 
-  Absent claims read as the empty set rather than as unrestricted, so a credential minted by a node that predates
-  the claim fails closed for the five minutes it stays valid."
-  [{:keys [scp unr]}]
-  (cond-> (into #{} (filter string?) scp)
-    (true? unr) (conj ::scope/unrestricted)))
+  An absent claim reads as the empty set, so a credential minted by a node that predates the claim fails closed for
+  the five minutes it stays valid."
+  [{:keys [scp]}]
+  (into #{} (filter string?) scp))
 
 (defn- sign-ui-credential
   "Sign the standard credential claims plus `extra-claims` into a `<payload>.<signature>` string."
@@ -151,8 +145,12 @@
 
   `token-scopes` is the minting MCP session's scope set. It rides along as a signed claim because the iframe routes
   charge their scope against it. `token-id` is the row id of the OAuth access token behind the minting MCP session;
-  the iframe routes refuse the credential once that token stops authenticating at the MCP endpoint."
+  the iframe routes refuse the credential once that token stops authenticating at the MCP endpoint.
+
+  Throws a 403 when `token-scopes` holds no MCP scope (see [[mcp.scope/valid-scope?]])."
   [session-id user-id token-scopes token-id]
+  (when-not (some mcp.scope/valid-scope? token-scopes)
+    (throw (ex-info "A session with no MCP scope cannot mint an MCP UI credential." {:status-code 403})))
   (sign-ui-credential session-id user-id (cond-> (encode-token-scopes token-scopes)
                                            token-id (assoc :tid token-id))))
 

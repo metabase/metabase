@@ -9,10 +9,10 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
-   [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -48,7 +48,7 @@
   "The stored `:output` value for a v2 tool part. A map result is trimmed to
   `:output` (the LLM-facing text adapters read on history replay) plus the
   `persisted-structured-output-keys` subset of structured output, canonicalized
-  to `:structured_output`; everything else (`:resources`, `:data-parts`,
+  to `:structured_output`; everything else (`:data-parts`,
   `:reactions`, …) is dropped — that's where the bulk of the bloat lives. A
   non-map result (a tool that returned a bare string/scalar) is stored as-is —
   the v2 part schema types `:output` as any JSON value — so readers must
@@ -81,7 +81,10 @@
                          :text {:type "text" :text (:text part) :state "done"}
                          :tool-input
                          (let [output (get outputs (:id part))
-                               error  (:error output)]
+                               ;; From the result, not the part: a failed call carries its `:error`
+                               ;; there and nowhere else. Reading the part stored every failure as
+                               ;; `output-available`, so history and replay saw a success.
+                               error  (get-in output [:result :error])]
                            (cond-> {:type       (str "tool-" (:function part))
                                     :toolCallId (:id part)
                                     :state      (cond
@@ -93,7 +96,14 @@
                              (assoc :output (tool-result->storable-output (:result output)))
 
                              (some? error)
-                             (assoc :errorText (migrate/error->text error))))
+                             ;; The model-facing text, not the reader-facing one. `:errorText` is
+                             ;; what [[tool-part->llm-messages]] replays to the model for a failed
+                             ;; step, so storing a generic sentence here would lose the authored
+                             ;; failure — the table that was missing, the argument to repair — on
+                             ;; every replay. One field, two audiences; the model wins, because the
+                             ;; live SSE channel has its own and the whole point of the text is that
+                             ;; the agent can act on it.
+                             (assoc :errorText (str (get-in output [:result :output])))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -466,19 +476,33 @@
   [conversation-id]
   (:external_id (leaf-message conversation-id)))
 
+(def ^:private hidden-query-results
+  "Replayed in place of a stored query result while query execution is off."
+  "Results hidden: query execution is turned off.")
+
+(defn- hidden-query-results?
+  "Whether the stored output of tool `part` holds query results that must not reach the model.
+  Turning query execution off hides them without changing what is stored, so turning it on again restores them."
+  [part]
+  (and (not (metabot.settings/metabot-query-execution-enabled?))
+       (metabot.tools/query-result-tool? (schema.v2/tool-part-name part))))
+
 (defn tool-part->llm-messages
   "A stored v2 tool part → LLM history pair: the assistant tool call plus its
   tool result. An unresolved (`input-available`) call is paired with a
   synthetic interrupted result by default, so an aborted turn's partial content
   stays replayable rather than being silently dropped. Pass
   `:on-unresolved :skip` to drop it instead (Slack replays only completed tool
-  calls and gets assistant text from its own thread copy)."
+  calls and gets assistant text from its own thread copy).
+  While query execution is off, a stored query result is replaced with a note that it is hidden."
   ([part] (tool-part->llm-messages part nil))
   ([part {:keys [on-unresolved]}]
    (when (schema.v2/tool-part? part)
      (let [{:keys [state input output errorText toolCallId]} part
            content (case state
-                     "output-available" (str (if (map? output) (:output output) output))
+                     "output-available" (if (hidden-query-results? part)
+                                          hidden-query-results
+                                          (str (if (map? output) (:output output) output)))
                      "output-error"     (or errorText "Tool execution failed")
                      "input-available"  (when-not (= on-unresolved :skip)
                                           "Tool execution interrupted by user")

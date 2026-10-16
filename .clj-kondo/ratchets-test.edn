@@ -25,7 +25,7 @@
                                 :metabase/namespace-name                                             1
                                 :metabase/prefer-with-dynamic-fn-redefs                              :unlimited
                                 :metabase/test-helpers-use-non-thread-safe-functions                 18
-                                :metabase/validate-deftest                                           9
+                                :metabase/validate-deftest                                           8
                                 :missing-protocol-method                                             3
                                 :uninitialized-var                                                   1
                                 :unresolved-symbol                                                   2

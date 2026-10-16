@@ -279,7 +279,7 @@
   (testing "GHY-4400: a credential whose minting session lacked agent:query:run is refused the query routes, while
             the routes that cost no scope still serve it"
     (mt/with-model-cleanup [:model/McpQueryHandle]
-      (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! :crowberto #{"agent:search"})
+      (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! :crowberto #{"agent:content:read"})
             handle (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA==")]
         (is (= 403 (:status (post-drill! auth 403))))
         (is (= 403 (:status (get-query-by-handle! auth 403 handle))))

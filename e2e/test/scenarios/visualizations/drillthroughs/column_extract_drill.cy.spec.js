@@ -161,6 +161,8 @@ describe("extract action", { viewportWidth: 1600 }, () => {
         // this is the way to open model definition with columns
         cy.visit(`/model/${modelId}/query`);
         cy.findByTestId("dataset-edit-bar").findByText("Cancel").click();
+        // the model editor has no navbar; close it once we're back on the model
+        H.closeNavigationSidebar();
       });
 
       cy.findByTestId("table-scroll-container").scrollTo("right");

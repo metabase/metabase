@@ -78,7 +78,7 @@
   (mt/with-full-data-perms-for-all-users!
     (mt/with-model-cleanup [:model/McpQueryHandle]
       (let [token-a  (auth-for-token! token-a-scopes)
-            no-query (auth-for-token! #{"agent:search"})
+            no-query (auth-for-token! #{"agent:content:read"})
             handle   (ui.tu/store-query-handle! (:session-id token-a) (:user-id token-a) (mbql-query))]
         (testing "a credential whose token lacks agent:query:run cannot spend a handle another token minted"
           (doseq [route ["run" "pivot" "query_metadata" "derive"]]

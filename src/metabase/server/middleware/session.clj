@@ -192,8 +192,9 @@
 
 (defn- oauth-token->token-scopes
   "Map the OAuth scopes granted to a bearer access token onto the `:token-scopes` value the API
-   scope middleware understands. A token carrying the full-access scope (`mb:full`) becomes the
-   unrestricted sentinel — reachable across the whole REST API as the user. Any narrower scope
+   scope middleware understands. A token carrying the full-access scope (`mb:full`) gets the
+   unrestricted sentinel — reachable across the whole REST API as the user — next to the other
+   scopes it was granted, which MCP gates on because it ignores the sentinel. Any narrower scope
    set is passed through verbatim, so the token can reach only the agent endpoints that opt into
    those scopes and is rejected elsewhere by `ensure-scopes-checked`.
 
@@ -202,7 +203,7 @@
    security invariant can't silently regress."
   [full-access-scope granted-scopes]
   (if (contains? granted-scopes full-access-scope)
-    full-access-token-scopes
+    (into full-access-token-scopes (disj granted-scopes full-access-scope))
     granted-scopes))
 
 (mu/defn- current-user-info-for-oauth-token :- [:maybe ::request.schema/current-user-info]

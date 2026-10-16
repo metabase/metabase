@@ -12,7 +12,6 @@
    [compojure.response :as compojure.response]
    [metabase.ai-tracing.core :as ait]
    [metabase.api.common :as api]
-   [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
    [metabase.mcp.core :as mcp]
    [metabase.mcp.permissions :as mcp.perms]
@@ -763,17 +762,18 @@
            (some? origin-error)
            (respond origin-error)
 
-           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, the
-           ;; `session-auth` branch below would dispatch nil scopes as unrestricted, so refuse it as an invalid token.
+           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, refuse it
+           ;; as an invalid token.
            (and (:authenticated-via-oauth? request) (empty? token-scopes))
            (respond @invalid-token)
 
-           ;; Respect the scope set attached to an authenticated request. Sessions without one
-           ;; retain unrestricted access.
+           ;; Dispatch with the scope strings attached to an authenticated request. A cookie or API-key session
+           ;; carries none, so it reaches no scoped tool. An `mb:full` token carries the unrestricted sentinel next to
+           ;; its other granted scopes; the sentinel is not an MCP scope, so only those strings reach MCP.
            session-auth
            ;; An OAuth bearer request lands here too — the session middleware resolves the token and
            ;; attaches `:token-scopes`, so this branch is not "cookie sessions only".
-           (dispatch session-auth (or token-scopes #{::scope/unrestricted}))
+           (dispatch session-auth (into #{} (filter string?) token-scopes))
 
            ;; A bearer token that reaches here did NOT authenticate upstream: the session middleware
            ;; ([[metabase.server.middleware.session/current-user-info-for-oauth-token]]) resolves every *valid* bearer

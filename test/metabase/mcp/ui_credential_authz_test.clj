@@ -56,12 +56,14 @@
     (mt/with-full-data-perms-for-all-users!
       (doseq [route ["run" "pivot" "query_metadata"]]
         (testing route
-          (is (= 403 (:status (handle-post! #{"agent:search"} route (venues-query))))))))))
+          (is (= 403 (:status (handle-post! #{"agent:content:read"} route (venues-query))))))))))
 
 (deftest wildcard-scopes-grant-nothing-test
-  (testing "MCP compares scopes literally: a credential whose claim holds only a wildcard is refused"
+  (testing "MCP compares scopes literally: a credential whose claim holds a wildcard and no query scope is refused"
     (mt/with-full-data-perms-for-all-users!
-      (doseq [scopes [#{"agent:*"} #{"agent:query:*"} #{"*"}]]
+      (doseq [scopes [#{"agent:content:read" "agent:*"}
+                      #{"agent:content:read" "agent:query:*"}
+                      #{"agent:content:read" "*"}]]
         (testing (pr-str scopes)
           (is (= 403 (:status (handle-post! scopes "run" (venues-query)))))
           (is (= 403 (:status (handle-post! scopes "derive" (venues-query)
