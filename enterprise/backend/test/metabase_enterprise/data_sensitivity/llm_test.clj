@@ -144,6 +144,20 @@
   (is (= 7712 (llm/max-tokens llm/default-chunk-size)))
   (is (= 8192 (llm/max-tokens 500))))
 
+(deftest parse-response-string-keys-test
+  (testing "entries with string keys, as the structured call returns nested objects, parse like keyword-keyed ones"
+    (let [{:keys [fields counts]} (llm/parse-response
+                                   [(field "A") (field "B")]
+                                   {:fields [{"name" "A" "reasoning" "r" "data_sensitivity" "PII"
+                                              "confidence" "high" "semantic_type" "type/Email"}
+                                             {"name" "B" "reasoning" "r" "data_sensitivity" "UNSURE"
+                                              "confidence" "low" "semantic_type" "none"}]})]
+      (is (= {:data-sensitivity :PII :semantic-type :type/Email :status :labeled :confidence "high" :reasoning "r"}
+             (get fields "A")))
+      (is (= :abstain (:status (get fields "B"))))
+      (is (zero? (:dropped-unknown counts)))
+      (is (zero? (:dropped-missing counts))))))
+
 (deftest parse-response-test
   (let [fields [(field "A") (field "B") (field "C") (field "D") (field "E")]
         parsed (llm/parse-response
