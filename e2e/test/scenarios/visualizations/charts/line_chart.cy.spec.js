@@ -123,10 +123,10 @@ describe("scenarios > visualizations > line chart", () => {
 
       // For bar chart
       cy.icon("bar").click();
-      cy.findByText("Line shape").should("not.be.visible");
-      cy.findByText("Line style").should("not.be.visible");
-      cy.findByText("Line size").should("not.be.visible");
-      cy.findByText("Show dots on lines").should("not.be.visible");
+      cy.findByText("Line shape").should("not.exist");
+      cy.findByText("Line style").should("not.exist");
+      cy.findByText("Line size").should("not.exist");
+      cy.findByText("Show dots on lines").should("not.exist");
     });
   });
 
@@ -943,14 +943,9 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.queryBuilderMain().within(() => {
-      H.echartsContainer().findByText("Quantity").should("exist");
+      H.echartsContainer().findByText("Quantity").should("be.visible");
     });
-    cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-
-    cy.findByTestId("query-visualization-root")
-      .trigger("mousedown", 180, 200)
-      .trigger("mousemove", 180, 200)
-      .trigger("mouseup", 220, 200);
+    H.applyBrushToPoints(6, 10);
 
     cy.wait("@dataset");
 
@@ -961,7 +956,7 @@ describe("scenarios > visualizations > line chart", () => {
     const X_AXIS_VALUE = 8;
     H.echartsContainer().within(() => {
       cy.get("text").contains("Quantity").should("be.visible");
-      cy.findByText(X_AXIS_VALUE);
+      cy.findByText(X_AXIS_VALUE).should("be.visible");
     });
   });
 
@@ -993,7 +988,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.echartsContainer().findByText("$50.0k").should("exist");
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
@@ -1018,7 +1013,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     H.echartsContainer().findByText("50.0k%").should("exist");
-    H.echartsContainer().findByText("Goal").trigger("mousemove");
+    H.goalLineMarker().trigger("mousemove");
 
     H.tooltip().within(() => {
       cy.findByText("Goal:").should("exist");
@@ -1221,7 +1216,7 @@ describe("scenarios > visualizations > line chart", () => {
         cy.findByText("8").should("be.visible");
       });
 
-      H.splitPanelAxisLines().should("have.length", 2);
+      H.splitPanelSeparators().should("have.length", 1);
 
       H.cartesianChartCircleWithColor("#88BF4D");
       H.cartesianChartCircleWithColor("#A989C5");
@@ -1267,10 +1262,7 @@ describe("scenarios > visualizations > line chart", () => {
       });
 
       // Brush
-      cy.findByTestId("query-visualization-root")
-        .trigger("mousedown", 180, 200)
-        .trigger("mousemove", 180, 200)
-        .trigger("mouseup", 400, 200);
+      H.applyBrushToPoints(6, 10);
 
       cy.wait("@dataset");
       cy.findByTestId("qb-filters-panel").should(
@@ -1303,7 +1295,7 @@ describe(
     function assertOnTheYAxis() {
       H.echartsContainer().find("text").contains("Count");
 
-      H.echartsContainer().find("text").contains("6,000");
+      H.echartsContainer().find("text").contains("7.0k").should("be.visible");
     }
 
     beforeEach(() => {
