@@ -207,6 +207,10 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       ) : (
         <TableFlow
           key={galleryTableId}
+          question={question}
+          onQuestionChange={(nextQuestion) =>
+            updateQuestion(nextQuestion, { run: true })
+          }
           tableId={galleryTableId}
           isGalleryOpen={isGalleryOpen}
           viewportHeight={viewportHeight}

@@ -156,15 +156,15 @@ export function ViewTitleHeaderRightSide({
       data-testid="qb-header-action-panel"
     >
       {hasGalleryButton && (
-        <Tooltip label={t`Gallery`}>
+        <Tooltip label={t`Explore`}>
           <ActionIcon
             size="lg"
             variant={isGalleryOpen ? "filled" : "viewHeader"}
-            aria-label={t`Gallery`}
+            aria-label={t`Explore`}
             aria-pressed={isGalleryOpen}
             onClick={onToggleGallery}
           >
-            <Icon name="image" />
+            <Icon name="compass" />
           </ActionIcon>
         </Tooltip>
       )}

@@ -14,10 +14,13 @@
   border-radius: var(--mantine-radius-md);
 }
 
-.searchBar {
-  flex-shrink: 0;
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
-  border-bottom: 1px solid var(--mb-color-border-neutral);
+.searchField {
+  flex: 1;
+  min-width: 0;
+}
+
+.searchFieldCompact {
+  flex: 0 0 14rem;
 }
 
 .searchInput {

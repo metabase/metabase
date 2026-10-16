@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -7,6 +9,7 @@ import type {
   DashCardId,
   Dashboard,
   RowValues,
+  SeriesCard,
 } from "metabase-types/api";
 
 export type XrayChart = {
@@ -25,6 +28,34 @@ export function getGalleryTableId(question: Question): ConcreteTableId | null {
   }
   const sourceId = Lib.sourceTableOrCardId(query);
   return typeof sourceId === "number" ? sourceId : null;
+}
+
+function getReturnedColumnNames(question: Question): string[] {
+  const query = question.query();
+  return Lib.returnedColumns(query, -1).map(
+    (column) => Lib.displayInfo(query, -1, column).displayName,
+  );
+}
+
+/**
+ * Applies a drill made from the chart's data table. Table drills produce table cards, so
+ * only the query is taken: the chart keeps its display while the drill returns the same
+ * columns (filters, sorts) and picks a fresh default display when it reshapes them.
+ */
+export function applyTableDrill(
+  question: Question,
+  nextCard: SeriesCard,
+): Question {
+  const nextQuestion = question.setDatasetQuery(nextCard.dataset_query);
+  return _.isEqual(
+    getReturnedColumnNames(question),
+    getReturnedColumnNames(nextQuestion),
+  )
+    ? nextQuestion
+    : nextQuestion
+        .setSettings({})
+        .setDisplayIsLocked(false)
+        .setDefaultDisplay();
 }
 
 /**

@@ -2,21 +2,25 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 
 import { Skeleton } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type { ConcreteTableId, RawSeries } from "metabase-types/api";
 
+import { ChartDetail, ResultTable } from "./ChartDetail";
 import S from "./TableFlow.module.css";
-import { TableSearchBar } from "./TableSearchBar";
 import { XrayChartDetail } from "./XrayChartDetail";
 import { XrayGallery } from "./XrayGallery";
 import { useSelectedXrayChart } from "./use-xray-selection";
 
 type TableFlowProps = {
+  /** The query builder's question. */
+  question: Question;
+  onQuestionChange: (question: Question) => void;
   /** Source table of the question; the gallery is unavailable without one. */
   tableId: ConcreteTableId | null;
   isGalleryOpen: boolean;
   /** Height of the scrollable area the flow is laid out in. */
   viewportHeight: number;
-  /** The question's results, shown as the gallery's raw records card. */
+  /** The question's results, shown as the gallery's raw records card and below its chart. */
   rawSeries: RawSeries | null;
   /** `null` hides the search bar. */
   searchText: string | null;
@@ -25,14 +29,18 @@ type TableFlowProps = {
   children: ReactNode;
 };
 
+const TABULAR_DISPLAYS = ["table", "object"];
+
 /**
  * Lays out the query builder's view as inset cards: an optional strip of the
- * source table's raw records and x-ray charts, then either the question's own
- * visualization (with an attached search bar for tables) or the selected
- * x-ray chart above its data. The selection lives in the URL and outlasts
- * closing the gallery.
+ * source table's raw records and x-ray charts, then the selected x-ray chart above
+ * its data, or else the question itself — a table with an attached search bar, or
+ * a chart above its data, editable like an x-ray chart. The x-ray selection lives
+ * in the URL and outlasts closing the gallery.
  */
 export function TableFlow({
+  question,
+  onQuestionChange,
   tableId,
   isGalleryOpen,
   viewportHeight,
@@ -54,6 +62,7 @@ export function TableFlow({
 
   // The main card fills the visible area so the page scrolls only once the gallery or a chart is added above it.
   const mainCardHeight = `max(20rem, calc(${viewportHeight}px - var(--mantine-spacing-xxs) - var(--mantine-spacing-md)))`;
+  const isChart = !TABULAR_DISPLAYS.includes(question.display());
 
   return (
     <div className={S.root}>
@@ -77,18 +86,31 @@ export function TableFlow({
       ) : isSelectedChartLoading ? (
         <Skeleton className={cx(S.card, S.detailChartCard)} />
       ) : (
-        <div
-          className={cx(S.card, S.tableCard)}
-          style={{ height: mainCardHeight }}
-        >
-          {searchText != null && (
-            <TableSearchBar
-              searchText={searchText}
-              onSearchTextChange={onSearchTextChange}
-            />
-          )}
-          <div className={S.tableArea}>{children}</div>
-        </div>
+        // one element for both shapes, so the side panel stays open when a summary turns the table into a chart
+        <ChartDetail
+          question={question}
+          chart={isChart ? children : null}
+          table={
+            isChart ? (
+              <ResultTable
+                question={question}
+                rawSeries={rawSeries}
+                error={null}
+                onQuestionChange={onQuestionChange}
+              />
+            ) : (
+              children
+            )
+          }
+          search={
+            searchText != null
+              ? { text: searchText, onChange: onSearchTextChange }
+              : undefined
+          }
+          tableHeight={mainCardHeight}
+          isMetadataReady
+          onQuestionChange={onQuestionChange}
+        />
       )}
     </div>
   );

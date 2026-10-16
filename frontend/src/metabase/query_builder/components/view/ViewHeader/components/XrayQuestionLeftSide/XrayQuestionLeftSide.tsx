@@ -4,6 +4,7 @@ import type { Card } from "metabase-types/api";
 
 import { ViewHeading, ViewSubHeading } from "../../../ViewSection";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
+import { shouldRenderAdhocDescription } from "../AdHocQuestionDescription/AdHocQuestionDescription";
 import AdHocQuestionLeftSideS from "../AdHocQuestionLeftSide/AdHocQuestionLeftSide.module.css";
 import { QuestionDataSource } from "../QuestionDataSource";
 import { QuestionDescription } from "../QuestionDescription";
@@ -23,6 +24,8 @@ export function XrayQuestionLeftSide({
   isEdited,
 }: XrayQuestionLeftSideProps) {
   const question = useQuestionFromCard(card);
+  // an edited chart without a summary (e.g. drilled to raw rows) is titled by its data source already
+  const hasSubHeading = !isEdited || shouldRenderAdhocDescription({ question });
 
   return (
     <Box className={AdHocQuestionLeftSideS.AdHocLeftSideRoot}>
@@ -35,9 +38,11 @@ export function XrayQuestionLeftSide({
           )}
         </ViewHeading>
       </Flex>
-      <ViewSubHeading className={ViewTitleHeaderS.ViewHeaderLeftSubHeading}>
-        <QuestionDataSource question={question} subHead />
-      </ViewSubHeading>
+      {hasSubHeading && (
+        <ViewSubHeading className={ViewTitleHeaderS.ViewHeaderLeftSubHeading}>
+          <QuestionDataSource question={question} subHead />
+        </ViewSubHeading>
+      )}
     </Box>
   );
 }
