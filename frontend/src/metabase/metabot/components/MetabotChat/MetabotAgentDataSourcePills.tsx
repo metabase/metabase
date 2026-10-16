@@ -13,12 +13,10 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useToast } from "metabase/common/hooks";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { getMetabotId } from "metabase/metabot/state";
 import {
   getCollectionLocationLabel,
   getDatabaseLocationLabel,
 } from "metabase/metabot/utils/source-location";
-import { useSelector } from "metabase/redux";
 import { EntitySmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/EntitySmartLink";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
 import {
@@ -192,7 +190,6 @@ const SourceFeedbackButtons = ({
   const iconSize = size === "sm" ? 12 : 16;
   const [feedback, setFeedback] = useState<boolean | null>(null);
   const [sendToast] = useToast();
-  const metabotId = useSelector(getMetabotId);
   const [submitMetabotSourceFeedback, { isLoading }] =
     useSubmitMetabotSourceFeedbackMutation();
 
@@ -206,14 +203,13 @@ const SourceFeedbackButtons = ({
 
     try {
       await submitMetabotSourceFeedback({
-        metabot_id: metabotId,
         message_id: messageId,
         positive,
         ...source,
       }).unwrap();
     } catch {
       setFeedback(previousFeedback);
-      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+      sendToast({ variant: "negative", message: t`Failed to submit feedback` });
     }
   };
 
@@ -222,7 +218,7 @@ const SourceFeedbackButtons = ({
       <Tooltip label={t`Source is correct`}>
         <ActionIcon
           aria-label={t`Source is correct`}
-          size={24}
+          size="sm"
           variant="subtle"
           bdrs="xs"
           className={S.feedbackButton}
@@ -236,7 +232,7 @@ const SourceFeedbackButtons = ({
       <Tooltip label={t`Source is wrong`}>
         <ActionIcon
           aria-label={t`Source is wrong`}
-          size={24}
+          size="sm"
           variant="subtle"
           bdrs="xs"
           className={S.feedbackButton}
@@ -297,7 +293,7 @@ const SourceFeedbackRow = ({
           <EntityIcon
             {...getIcon({ model: source.iconModel })}
             size="0.75rem"
-            c="brand"
+            c="core-brand"
           />
           <Text fz="md" lh="sm" fw="bold" truncate>
             {source.name}
@@ -332,25 +328,23 @@ const SourceFeedbackModal = ({
     title={t`Give feedback`}
     data-testid="metabot-source-feedback-modal"
   >
-    <Stack gap="lg">
-      <Stack
-        gap={0}
-        bdrs="sm"
-        bd="1px solid var(--mb-color-border-neutral)"
-        className={S.feedbackList}
-      >
-        {sources.map((source) => (
-          <SourceFeedbackRow
-            key={`${source.model}-${source.id}`}
-            messageId={messageId}
-            source={source}
-          />
-        ))}
-      </Stack>
-      <Group justify="flex-end">
-        <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
-      </Group>
+    <Stack
+      gap={0}
+      bdrs="sm"
+      bd="1px solid var(--mb-color-border-neutral)"
+      className={S.feedbackList}
+    >
+      {sources.map((source) => (
+        <SourceFeedbackRow
+          key={`${source.model}-${source.id}`}
+          messageId={messageId}
+          source={source}
+        />
+      ))}
     </Stack>
+    <Modal.Footer>
+      <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
+    </Modal.Footer>
   </Modal>
 );
 

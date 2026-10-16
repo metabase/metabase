@@ -40,6 +40,24 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
     );
   }
 
+  it("uses a number for a metric with an empty filter stage (#84409)", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    });
+
+    const result = getMetricSeriesWithDefaultDisplay(
+      [createMetricSeries(Lib.appendStage(query))],
+      SAMPLE_PROVIDER,
+    );
+
+    expect(result[0].card.display).toBe("scalar");
+  });
+
   it("uses a bar chart for a metric with a binned numeric breakout", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [
@@ -50,8 +68,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
             {
               type: "column",
               name: "TOTAL",
-              sourceName: "ORDERS",
-              bins: 10,
+              binning: { strategy: "num-bins", numBins: 10 },
             },
           ],
         },
@@ -72,9 +89,7 @@ describe("getMetricSeriesWithDefaultDisplay", () => {
         {
           source: { type: "table", id: ORDERS_ID },
           aggregations: [{ type: "operator", operator: "count", args: [] }],
-          breakouts: [
-            { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
-          ],
+          breakouts: [{ type: "column", name: "CREATED_AT" }],
         },
       ],
     });

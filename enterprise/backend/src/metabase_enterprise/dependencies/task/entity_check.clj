@@ -7,11 +7,9 @@
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
-   [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,16 +28,7 @@
       (< 1)))
 
 (defn- check-entities!
-  "Drain the currently-stale entities, analyzing each one.
-
-  Staleness is propagated up front, at the moment an entity changes (see the dependencies event handlers, which mark the
-  whole affected subtree via [[deps.findings/mark-entity-and-transitive-dependents-stale!]]). The drain therefore works through a
-  fixed set that only shrinks — it never re-marks anything stale during draining — so it always terminates, even when the
-  dependency graph has cycles.
-
-  As a safety net, the loop also stops as soon as a pass fails to reduce the stale count (e.g. an entity whose analysis
-  can't be persisted). That keeps a single unprocessable entity from spinning the loop forever; the next scheduled run
-  retries it."
+  "Analyze stale entities in batches until none are left or a pass stops reducing their count."
   []
   (when (premium-features/has-feature? :dependencies)
     (loop [prev-stale nil]
@@ -52,18 +41,7 @@
 (declare schedule-run!)
 
 (defn- reschedule-after-run!
-  "Schedule the next periodic run of the entity check job, unless the `:dependencies` feature is absent.
-
-  Unlike the backfill job this one has no terminal state — it is a periodic checker, so while licensed it always queues
-  another run rather than stopping once the stale set is drained. Without the feature there is nothing the next run
-  could do, since [[check-entities!]] is gated on it, so rescheduling would just wake the instance forever. The job
-  restarts from the token event above, from the content-change handlers, or on the next restart.
-
-  Scheduling deliberately fails open on an indeterminate token status: `has-feature?` cannot tell a network failure
-  from being unlicensed, and nothing re-fires when the check later succeeds, so reading a blip as `false` would end
-  the chain for good. Only a definitive `false` stops it — which is the common unlicensed case, since no token at all
-  answers `false`. A token that cannot be validated answers `nil` and keeps the job scheduled: if there is a token, we
-  keep trying. Doing the work still fails closed — see [[check-entities!]]."
+  "Schedule the next run of the entity check job unless the `:dependencies` feature is definitively absent."
   [scheduler]
   (if (false? (premium-features/canonically-has-feature? :dependencies))
     (log/debug "Not rescheduling job Dependency Entity Check: the dependencies feature is not enabled")
@@ -72,10 +50,11 @@
                     (deps.settings/dependency-entity-check-delay-minutes)
                     (deps.settings/dependency-entity-check-variance-minutes)))))
 
-(task/defjob
-  ^{:doc "Check all entities for validity"
-    org.quartz.DisallowConcurrentExecution true}
-  DependencyEntityCheck [ctx]
+(task/defjob DependencyEntityCheck
+  "Check all entities for validity"
+  {:saved-class "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
+   :concurrent? false}
+  [ctx]
   (log/info "Executing DependencyEntityCheck job...")
   (check-entities!)
   (reschedule-after-run! (.getScheduler ctx)))
@@ -116,14 +95,3 @@
   []
   (when (pos? (deps.settings/dependency-entity-check-batch-size))
     (schedule-run! (task/scheduler) 1)))
-
-;;; Mirrors the backfill job's wiring: enabling the feature has to restart the job, because
-;;; [[reschedule-after-run!]] stops the periodic chain while it is disabled and the content-change handlers that
-;;; would otherwise revive it are themselves gated on the feature.
-(events/derive! ::entity-check :metabase/event)
-(events/derive! :event/set-premium-embedding-token ::entity-check)
-
-(methodical/defmethod events/publish-event! ::entity-check
-  [_ _]
-  (when (premium-features/has-feature? :dependencies)
-    (trigger-entity-check-job!)))

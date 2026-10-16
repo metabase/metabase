@@ -21,6 +21,9 @@ import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
 import { SettingsJWTForm } from "./SettingsJWTForm";
 
+const GENERATED_TOKEN =
+  "590ab155f412d477b8ab9c8b0e7b2e3ab4d4523e83770a724a2088edbde7f19a";
+
 const GROUPS = [
   createMockGroup(),
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
@@ -227,7 +230,7 @@ const setup = async ({
       { name: "update-setting" },
     );
   }
-  setupGenerateRandomTokenEndpoint("1234abcd");
+  setupGenerateRandomTokenEndpoint(GENERATED_TOKEN);
 
   fetchMock.get("path:/api/permissions/group", async () => {
     await groupsGate;
@@ -314,8 +317,7 @@ const modeLabel = (name: string) => {
 describe("SettingsJWTForm", () => {
   const ATTRS = {
     "jwt-identity-provider-uri": "http://example.com",
-    "jwt-shared-secret":
-      "590ab155f412d477b8ab9c8b0e7b2e3ab4d4523e83770a724a2088edbde7f19a",
+    "jwt-shared-secret": GENERATED_TOKEN,
     "jwt-attribute-email": "john@example.com",
     "jwt-attribute-firstname": "John",
     "jwt-attribute-lastname": "Doe",
@@ -332,12 +334,12 @@ describe("SettingsJWTForm", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /Set up key/ }),
     );
-    await userEvent.clear(await screen.findByLabelText(/New secret key/));
-    await userEvent.type(
-      await screen.findByLabelText(/New secret key/),
-      ATTRS["jwt-shared-secret"],
+    expect(await screen.findByLabelText("New secret key")).toHaveValue(
+      GENERATED_TOKEN,
     );
-    await userEvent.click(await screen.findByRole("button", { name: /Done/ }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create" }),
+    );
   };
 
   it("saves the server settings, turns automatic on and enables the other cards", async () => {
@@ -404,7 +406,9 @@ describe("SettingsJWTForm", () => {
     expect(saveButton).toBeDisabled();
 
     await userEvent.click(screen.getByRole("button", { name: /Set up key/ }));
-    await userEvent.click(await screen.findByRole("button", { name: /Done/ }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create" }),
+    );
 
     await waitFor(() => expect(saveButton).toBeEnabled());
   });
@@ -594,15 +598,15 @@ describe("SettingsJWTForm", () => {
   });
 
   describe("user provisioning", () => {
-    it("sits at the top of the page", async () => {
+    it("sits right below the server settings", async () => {
       await setup();
 
       const cardTitles = screen
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent);
       expect(cardTitles).toEqual([
-        "User provisioning",
         "Server settings",
+        "User provisioning",
         "User attribute configuration",
         "Group mapping",
       ]);
@@ -652,7 +656,7 @@ describe("SettingsJWTForm", () => {
         await screen.findByRole("button", { name: /Set up key/ }),
       );
       await userEvent.click(
-        await screen.findByRole("button", { name: /Done/ }),
+        await screen.findByRole("button", { name: "Create" }),
       );
       await userEvent.click(
         screen.getByRole("button", { name: /Save and enable/ }),

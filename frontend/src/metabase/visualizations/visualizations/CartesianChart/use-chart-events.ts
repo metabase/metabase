@@ -23,12 +23,12 @@ import {
   type EChartsSeriesBrushEvent,
   type EChartsSeriesBrushSelectedEvent,
   type EChartsSeriesMouseEvent,
-  GOAL_LINE_SERIES_ID,
   INDEX_KEY,
   type RenderingContext,
   buildBrushMirrorGraphics,
   buildClearBrushMirrorGraphics,
   getVisualizerSeriesCardIndex,
+  isGoalLineSeriesId,
   isLineXBrushRange,
   useClickedStateTooltipSync,
 } from "metabase/viz-core";
@@ -157,10 +157,12 @@ export const useChartEvents = (
             return;
           }
 
-          if (event.seriesId === GOAL_LINE_SERIES_ID) {
+          if (isGoalLineSeriesId(event.seriesId)) {
+            chartRef.current?.getZr().setCursorStyle("default");
+
             const eventData = getGoalLineHoverData(
               settings,
-              event,
+              event.event.event.target,
               chartModel.leftAxisModel?.formatGoal,
             );
 

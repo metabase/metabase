@@ -117,6 +117,24 @@
               [{:type :reasoning :id "r1" :text "alone"}]
               {:reasoning-part->message top-level-hook}))))))
 
+(deftest ^:parallel whitespace-only-argument-fragments-survive-test
+  (testing (str "fragments are joined verbatim, so a whitespace-only one cannot be dropped: inside a "
+                "JSON string those characters are content — indentation in streamed SQL, and syntax "
+                "in streamed Python")
+    (let [fragments ["{\"code\": \"def f():" "\\n" "    " "return 1\"}"]
+          chunk     (fn [delta] {:id "c" :model "m" :choices [{:index 0 :delta delta}]})
+          parts     (into [] (chat-completions/chat-completions->aisdk-chunks-xf
+                              chat-completions/stop-reasons {})
+                          (concat [(chunk {:role "assistant" :content ""})
+                                   (chunk {:tool_calls [{:index 0 :id "call-1" :type "function"
+                                                         :function {:name      "run_python"
+                                                                    :arguments (first fragments)}}]})]
+                                  (for [f (rest fragments)]
+                                    (chunk {:tool_calls [{:index 0 :function {:arguments f}}]}))))]
+      (is (= (apply str fragments)
+             (apply str (keep :inputTextDelta parts)))
+          "the indented line is not silently deleted from the arguments"))))
+
 (deftest ^:parallel parts->cc-messages-tool-call-test
   (testing "text + tool call merges into single assistant message"
     (is (=? [{:role       "assistant"
@@ -247,7 +265,7 @@
                  :id        "call-1"
                  :function  "construct_notebook_query"
                  :arguments {:query query}}
-          ;; the stream parser decodes the arguments with keyword keys at every depth
+          ;; the stream parser keywordizes only the top-level argument names
           parts (into [] (self.core/aisdk-xf) (metabot.tu/parts->aisdk-chunks [call]))]
       (is (=? {:messages [{:role       "assistant"
                            :tool_calls [{:function {:name      "construct_notebook_query"
@@ -262,18 +280,21 @@
                             :id        "call-1"
                             :function  "f"
                             :arguments arguments}]}))]
-    (testing "decoded JSON replays at any depth, keyed by strings, keywords or both"
+    (testing "decoded JSON replays at any depth, with keyword argument names and string keys below them"
       (are [arguments] (=? {:messages [{:tool_calls [{:function {:arguments string?}}]}]}
                            (replay arguments))
-        ;; keyword keys, as the stream decodes them
-        {:a {:b {:c [{:d [1 nil true "x" :kw]}]}}}
-        ;; string keys, as replayed history decodes them
-        {"a" {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}
-        ;; both
-        {:a {"b" [{:c {"d" [{:e 1}]}}]}}))
+        ;; string keys below the argument names, as the stream parser and replayed history decode them
+        {:a {"b" {"c" [{"d" [1 nil true "x" :kw]}]}}}
+        {:a {"b" {"c" [{"d" [1.5 [[]] {}]}]}}}))
+    (testing "a string argument name is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {"a" 1}))))
+    (testing "a keyword key below the argument names is rejected"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                            (replay {:a {"b" [{:c 1}]}}))))
     (testing "a value JSON cannot hold is rejected, however deep"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
-                            (replay {:a {"b" [{:c (java.time.Instant/now)}]}}))))))
+                            (replay {:a {"b" [{"c" (java.time.Instant/now)}]}}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -324,6 +345,78 @@
                                   :finish_reason "tool_calls"
                                   :usage         dual-location-usage}]}
                       {:choices [] :usage dual-location-usage}]))))))
+
+(def ^:private running-usage-chunks
+  "A reply from a server that repeats its running usage totals on every chunk."
+  [{:id      "chatcmpl-5"
+    :model   "qwen3-235b"
+    :choices [{:index 0 :delta {:role "assistant" :content "Hel"}}]
+    :usage   {:prompt_tokens 120 :completion_tokens 1}}
+   {:choices [{:index 0 :delta {:content "lo"}}]
+    :usage   {:prompt_tokens 120 :completion_tokens 2}}
+   {:choices [{:index 0 :delta {} :finish_reason "stop"}]
+    :usage   {:prompt_tokens 120 :completion_tokens 3}}])
+
+(deftest ^:parallel usage-once-counts-running-usage-once-test
+  (testing "a server that repeats its running totals on every chunk is counted once, with its last totals"
+    (is (= [:start :text-start :text-delta :text-delta :text-end :usage]
+           (chunk-types (chat-completions/usage-once running-usage-chunks))))
+    (is (=? [{:usage         {:promptTokens 120 :completionTokens 3}
+              :finish-reason "stop"}]
+            (usage-parts (chat-completions/usage-once running-usage-chunks))))))
+
+(defn- sse-stream
+  "An SSE body that sends `chunks`."
+  [chunks]
+  (java.io.ByteArrayInputStream.
+   (.getBytes ^String (str/join (map #(str "data: " (json/encode %) "\n\n") chunks)) "UTF-8")))
+
+(defn- failing-sse-stream
+  "An SSE body that sends `chunks`, then fails the way a reset connection does."
+  [chunks]
+  (java.io.SequenceInputStream.
+   (sse-stream chunks)
+   (proxy [java.io.InputStream] []
+     (read
+       ([] (throw (java.io.IOException. "Connection reset")))
+       ([_bytes _offset _length] (throw (java.io.IOException. "Connection reset")))))))
+
+(deftest ^:parallel usage-once-passes-on-usage-when-the-stream-fails-test
+  (testing "a stream that fails partway still counts the usage it received, once, before the failure"
+    (let [parts (atom [])]
+      (is (thrown-with-msg?
+           java.io.IOException #"Connection reset"
+           (transduce (chat-completions/chat-completions->aisdk-chunks-xf)
+                      (fn ([acc] acc) ([acc part] (swap! parts conj part) acc))
+                      nil
+                      (chat-completions/usage-once
+                       (self.core/sse-reducible (failing-sse-stream (pop running-usage-chunks)))))))
+      (is (=? [{:type :usage :usage {:promptTokens 120 :completionTokens 2}}]
+              (filterv #(= :usage (:type %)) @parts))))))
+
+(deftest ^:parallel usage-once-passes-on-usage-when-the-consumer-stops-test
+  (testing "a consumer that stops partway, as a disconnected client does, still counts the usage it received, once"
+    (let [parts (atom [])]
+      (transduce (chat-completions/chat-completions->aisdk-chunks-xf)
+                 (fn ([acc] acc)
+                   ([acc part]
+                    (swap! parts conj part)
+                    (cond-> acc (= "lo" (:delta part)) reduced)))
+                 nil
+                 (chat-completions/usage-once
+                  (self.core/sse-reducible (sse-stream running-usage-chunks))))
+      (is (=? [{:type :usage :usage {:promptTokens 120 :completionTokens 2}}]
+              (filterv #(= :usage (:type %)) @parts))))))
+
+(deftest ^:parallel count-reasoning-as-output-test
+  (testing "reasoning tokens reported next to completion_tokens count as output, whether or not they're inside it"
+    (are [usage completion-tokens] (= completion-tokens
+                                      (get-in (chat-completions/count-reasoning-as-output {:usage usage})
+                                              [:usage :completion_tokens]))
+      {:prompt_tokens 32 :completion_tokens 9 :total_tokens 135}   103
+      {:prompt_tokens 32 :completion_tokens 103 :total_tokens 135} 103
+      {:prompt_tokens 32 :completion_tokens 103 :total_tokens 100} 103
+      {:prompt_tokens 32 :completion_tokens 9}                     9)))
 
 (deftest ^:parallel chunks-xf-cache-reads-come-from-prompt-tokens-details-test
   (testing "cacheReadTokens is read from prompt_tokens_details, and cached tokens are a subset of promptTokens"
@@ -625,6 +718,115 @@
                                                              :function {:arguments ": \"Berlin\"}"}}]}}]}
                   {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
 
+(deftest ^:parallel chunks-xf-batched-tool-calls-all-reach-the-caller-test
+  (testing "a server may put a whole turn's worth of calls in one delta's `tool_calls` array — Ollama
+           does when a model's tool parser flushes more than one at a time. Reading one call per delta
+           kept the first and silently dropped the rest, and a dropped call is a tool that never runs."
+    (is (= [{:type :start :messageId "chatcmpl-b"}
+            {:type :tool-input-start :toolCallId "call-a" :toolName "get_table"}
+            {:type :tool-input-delta :toolCallId "call-a" :inputTextDelta "{\"id\":1}"}
+            {:type :tool-input-available :toolCallId "call-a" :toolName "get_table"}
+            {:type :tool-input-start :toolCallId "call-b" :toolName "get_table"}
+            {:type :tool-input-delta :toolCallId "call-b" :inputTextDelta "{\"id\":2}"}
+            {:type :tool-input-available :toolCallId "call-b" :toolName "get_table"}]
+           (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                 [{:id "chatcmpl-b" :model "m" :choices [{:index 0 :delta {:role "assistant" :content ""}}]}
+                  {:id      "chatcmpl-b"
+                   :model   "m"
+                   :choices [{:index 0
+                              :delta {:tool_calls [{:index 0 :id "call-a" :type "function"
+                                                    :function {:name "get_table" :arguments "{\"id\":1}"}}
+                                                   {:index 1 :id "call-b" :type "function"
+                                                    :function {:name "get_table" :arguments "{\"id\":2}"}}]}}]}
+                  {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
+
+(deftest ^:parallel chunks-xf-batched-tool-calls-end-the-turn-once-test
+  (testing "`finish_reason` and `usage` riding the batched delta are reported once, after the calls —
+           asserted over the whole sequence, since the ordering is the claim"
+    (is (= [{:type :start :messageId "chatcmpl-b"}
+            {:type :tool-input-start :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-a" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-start :toolCallId "call-b" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-b" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-b" :toolName "t"}
+            {:type              :usage
+             :usage             {:promptTokens 10 :completionTokens 4
+                                 :cacheCreationTokens 0 :cacheReadTokens 0}
+             :id                "chatcmpl-b"
+             :model             "m"
+             :finish-reason     "tool-calls"
+             :raw-finish-reason "tool_calls"}]
+           (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                 [{:id      "chatcmpl-b"
+                   :model   "m"
+                   :choices [{:index         0
+                              :delta         {:tool_calls [{:index 0 :id "call-a" :type "function"
+                                                            :function {:name "t" :arguments "{}"}}
+                                                           {:index 1 :id "call-b" :type "function"
+                                                            :function {:name "t" :arguments "{}"}}]}
+                              :finish_reason "tool_calls"}]
+                   :usage   {:prompt_tokens 10 :completion_tokens 4}}])))))
+
+(deftest ^:parallel chunks-xf-content-and-tool-calls-in-one-delta-test
+  (testing "a delta can carry text and tool calls together. Ollama sends this shape when its parser flushes text
+           and a call at the same time. The text comes first and its block closes, then every call follows in
+           wire order."
+    (is (= [{:type :start :messageId "chatcmpl-b"}
+            {:type :text-start}
+            {:type :text-delta :delta "on it"}
+            {:type :text-end}
+            {:type :tool-input-start :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-a" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-a" :toolName "t"}
+            {:type :tool-input-start :toolCallId "call-b" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-b" :inputTextDelta "{}"}
+            {:type :tool-input-available :toolCallId "call-b" :toolName "t"}]
+           (mapv #(dissoc % :id)
+                 (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                       [{:id      "chatcmpl-b"
+                         :model   "m"
+                         :choices [{:index 0
+                                    :delta {:content    "on it"
+                                            :tool_calls [{:index 0 :id "call-a" :type "function"
+                                                          :function {:name "t" :arguments "{}"}}
+                                                         {:index 1 :id "call-b" :type "function"
+                                                          :function {:name "t" :arguments "{}"}}]}}]}]))))))
+
+(deftest ^:parallel chunks-xf-empty-continuation-arguments-emit-nothing-test
+  (testing "a continuation fragment carrying \"\" emits no delta, since an empty string adds nothing
+           to the joined arguments. This pins the chunk stream, which is what a consumer counting
+           deltas would notice."
+    (is (= [{:type :start :messageId "chatcmpl-s"}
+            {:type :tool-input-start :toolCallId "call-1" :toolName "t"}
+            {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"a\":1}"}
+            {:type :tool-input-available :toolCallId "call-1" :toolName "t"}]
+           (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                 [{:id      "chatcmpl-s"
+                   :model   "m"
+                   :choices [{:index 0
+                              :delta {:tool_calls [{:index 0 :id "call-1" :type "function"
+                                                    :function {:name "t" :arguments "{\"a\":1}"}}]}}]}
+                  ;; the empty fragment some servers send between meaningful ones
+                  {:choices [{:index 0 :delta {:tool_calls [{:index 0 :function {:arguments ""}}]}}]}
+                  {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
+
+(deftest ^:parallel chunks-xf-arguments-without-an-open-call-are-dropped-test
+  (testing "arguments that belong to no open call emit no delta, so aggregation never sees a delta without a toolCallId"
+    (doseq [[label entries]
+            {"a new id without a name"
+             [{:index 0 :id "call-1" :type "function" :function {:name "t" :arguments "{\"a\":1}"}}
+              {:index 1 :id "call-2" :type "function" :function {:arguments "{\"b\":2}"}}]}]
+      (testing label
+        (is (=? [{:type :start}
+                 {:type :tool-input :id "call-1" :function "t" :arguments {:a 1}}]
+                (into [] (comp (chat-completions/chat-completions->aisdk-chunks-xf)
+                               (self.core/aisdk-xf))
+                      (concat [{:id "chatcmpl-o" :model "m" :choices [{:index 0 :delta {:role "assistant"}}]}]
+                              (for [entry entries]
+                                {:choices [{:index 0 :delta {:tool_calls [entry]}}]})
+                              [{:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}]))))))))
+
 (deftest ^:parallel chunks-xf-reasoning-deltas-open-no-text-block-test
   (testing "reasoning_content deltas and empty-string content produce no chunks"
     ;; Without `:forward-reasoning?` reasoning deltas are dropped rather than surfaced as text.
@@ -662,6 +864,10 @@
                :error    {:code "server_error" :message "Provider disconnected unexpectedly"}
                :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}
               "Provider disconnected unexpectedly"]
+             ["OpenRouter's error finish reason without an error envelope"
+              (openrouter/openrouter->aisdk-chunks-xf)
+              {:choices [{:index 0 :delta {:content ""} :finish_reason "error"}]}
+              "The model provider failed to complete the response"]
              ["Mistral's error finish reason, which carries no message"
               (mistral/mistral->aisdk-chunks-xf)
               {:id      "cmpl-e5cc70bb28c444948073e77776eb30ef"
@@ -687,17 +893,45 @@
                           :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
                          error-chunk]))))
         (testing "without emitting any chunk of a half-streamed tool call"
-          (is (= [{:type :start :messageId "chatcmpl-5"}
-                  {:type :error :errorText message}]
-                 (into [] xf
-                       [{:id      "chatcmpl-5"
-                         :model   "kimi-k2.6"
-                         :choices [{:index 0
-                                    :delta {:tool_calls [{:index    0
-                                                          :id       "call-1"
-                                                          :type     "function"
-                                                          :function {:name "search" :arguments "{\"query\": \"rev"}}]}}]}
-                        error-chunk]))))))))
+          (is (=? [{:type :start :messageId "chatcmpl-5"}
+                   {:type :error :errorText message}]
+                  (into [] xf
+                        [{:id      "chatcmpl-5"
+                          :model   "kimi-k2.6"
+                          :choices [{:index 0
+                                     :delta {:tool_calls [{:index    0
+                                                           :id       "call-1"
+                                                           :type     "function"
+                                                           :function {:name "search" :arguments "{\"query\": \"rev"}}]}}]}
+                         error-chunk]))))))))
+
+(def ^:private openrouter-midstream-overflow-chunk
+  "OpenRouter's documented mid-stream error event for a context overflow.
+
+  The event is the Chat Completions example at https://openrouter.ai/docs/api_reference/errors-and-debugging, with
+  `error.code` 400, `error.message` \"Provider returned error\" and `error.metadata.error_type`
+  \"context_length_exceeded\" in place of the example's rate-limit values."
+  {:id       "gen-abc123"
+   :object   "chat.completion.chunk"
+   :created  1234567890
+   :model    "anthropic/claude-haiku-4.5"
+   :provider "Anthropic"
+   :error    {:code 400 :message "Provider returned error" :metadata {:error_type "context_length_exceeded"}}
+   :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]})
+
+(deftest ^:parallel chunks-xf-streamed-error-keeps-the-error-object-test
+  (testing "an error object sent partway through a stream rides on the error chunk, with its typed fields"
+    (is (= [{:type      :error
+             :errorText "Provider returned error"
+             :error     {:code     400
+                         :message  "Provider returned error"
+                         :metadata {:error_type "context_length_exceeded"}}}]
+           (filterv #(= :error (:type %)) (into [] (openrouter/openrouter->aisdk-chunks-xf)
+                                                [openrouter-midstream-overflow-chunk])))))
+  (testing "an error finish reason with no error object carries only the text"
+    (is (= [{:type :error :errorText "The model provider failed to complete the response"}]
+           (filterv #(= :error (:type %)) (into [] (openrouter/openrouter->aisdk-chunks-xf)
+                                                [{:choices [{:index 0 :delta {} :finish_reason "error"}]}]))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Error finish reason tests

@@ -48,6 +48,7 @@ import {
   parameterValues,
   sidebar,
   slowCards,
+  timelineEvents,
 } from "./reducers-typed";
 import { calculateDashCardRowAfterUndo } from "./utils";
 
@@ -274,6 +275,7 @@ const combinedDashboardReducer = combineReducers({
   editingDashboard,
   loadingControls,
   sidebar,
+  timelineEvents,
   parameterValues,
   dashboards,
   loadingDashCards,

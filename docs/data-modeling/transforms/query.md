@@ -127,7 +127,7 @@ FROM
 
 To make this transform incrementally load the data based on new values of `orders.id` column, you need to:
 
-1. Add a table variable, for example `{{orders_var}}` replacing `orders` in the `FROM` statement;
+1. Add a table variable, for example `{% raw %}{{orders_var}}{% endraw %}` replacing `orders` in the `FROM` statement;
 2. In the table variable settings, connect the table variable to the `orders` table;
 3. Replace other references to the table in your query with either:
    - The name of the table variable (if you have "Emit table alias" toggled on in variable's setting).

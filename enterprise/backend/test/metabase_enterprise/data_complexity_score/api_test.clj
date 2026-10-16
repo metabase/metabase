@@ -42,8 +42,7 @@
   []
   (mt/initialize-if-needed! :db)
   (t2/select-one-pk :model/Metabot
-                    :entity_id (get-in metabot.config/metabot-config
-                                       [metabot.config/internal-metabot-id :entity-id])))
+                    :entity_id metabot.config/internal-metabot-id))
 
 (deftest complexity-endpoint-requires-superuser-test
   (testing "non-superusers are rejected"

@@ -18,6 +18,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import type { SettingsJWTFormProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
@@ -74,7 +75,9 @@ const JWT_TEXT_KEYS = [
   "jwt-attribute-tenant",
 ] satisfies JWTTextKey[];
 
-export const SettingsJWTForm = () => {
+export const SettingsJWTForm = ({
+  title = t`JWT`,
+}: SettingsJWTFormProps = {}) => {
   const {
     data: settingDetails,
     isLoading: isLoadingDetails,
@@ -180,7 +183,7 @@ export const SettingsJWTForm = () => {
   );
 
   return (
-    <SettingsPageWrapper title={t`JWT`}>
+    <SettingsPageWrapper title={title}>
       <FormProvider
         initialValues={getFormValues(settingDetails, settingValues)}
         onSubmit={saveSettings}
@@ -190,11 +193,6 @@ export const SettingsJWTForm = () => {
         {({ dirty, isSubmitting }) => (
           <Form>
             <Stack gap="xl">
-              <UserProvisioningSection
-                settingKey="jwt-user-provisioning-enabled?"
-                providerName="JWT"
-                reactivatesAccounts
-              />
               <SettingsSection
                 title={t`Server settings`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -221,6 +219,11 @@ export const SettingsJWTForm = () => {
                   />
                 </Stack>
               </SettingsSection>
+              <UserProvisioningSection
+                settingKey="jwt-user-provisioning-enabled?"
+                providerName="JWT"
+                reactivatesAccounts
+              />
               <CollapsibleSettingsSection
                 title={t`User attribute configuration`}
                 description={t`You can send additional user attributes to ${applicationName} by adding the attributes as key/value pairs to your JWT`}

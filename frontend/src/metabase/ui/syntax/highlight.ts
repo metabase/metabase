@@ -1,4 +1,4 @@
-import { HighlightStyle } from "@codemirror/language";
+import { HighlightStyle, type Language } from "@codemirror/language";
 import type { Tag } from "@lezer/highlight";
 import { tags } from "@lezer/highlight";
 
@@ -31,6 +31,17 @@ const styledTags = [
 ];
 
 export const metabaseSyntaxHighlighting = HighlightStyle.define(styledTags);
+
+/**
+ * Markdown markup characters (`#`, `*`, `-`, backticks) share the processingInstruction tag with other
+ * grammars, so they are recolored only within the Markdown language passed as `scope`.
+ */
+export function markdownMarkHighlighting(scope: Language) {
+  return HighlightStyle.define(
+    [{ tag: tags.processingInstruction, class: S.markdownMark }],
+    { scope },
+  );
+}
 
 /**
  * Returns the correct css class name for a @lezer/highlight tag.

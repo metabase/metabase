@@ -26,6 +26,7 @@
    [metabase.slackbot.query :as slackbot.query]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str])
@@ -246,8 +247,12 @@
       "You do not have permission to use the AI assistant."
 
       (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"
-         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth"} code)
+         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth" "ai_provider_unavailable"} code)
       (:message error)
+
+      ;; Not the web copy in `:message`: in Slack, the user continues in a new thread, not a new chat.
+      (= code self.core/context-full-error-code)
+      (tru "This conversation has reached its maximum length and can''t continue. Please start a new thread.")
 
       (provider-config-error-codes code)
       "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."
@@ -278,7 +283,8 @@
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
            request-prompt team-id thread-ts]}]
-  (let [message         (metabot.envelope/user-message prompt)
+  (let [metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+        message         (metabot.envelope/user-message prompt)
         model-ref       (metabot.settings/llm-metabot-provider)
         ai-proxy?       (llm.provider/managed-model-ref? model-ref)
         ;; Read with `ai-proxy?`, before the loop, so the row's verdict uses the model the turn ran on.
@@ -314,7 +320,7 @@
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
                           :slack_channel_id           channel-id}
-                         {:metabot-id metabot.config/internal-metabot-id
+                         {:metabot metabot
                           :profile-id :slackbot})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
@@ -360,6 +366,7 @@
                  (agent/run-agent-loop
                   {:messages        messages
                    :state           baseline-state
+                   :metabot         metabot
                    :profile-id      :slackbot
                    :conversation-id conversation-id
                    :context         context

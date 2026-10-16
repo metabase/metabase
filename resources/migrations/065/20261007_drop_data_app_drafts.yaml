@@ -1,0 +1,33 @@
+## Data app drafts reserved a slug and the app's resources before the app itself existed, for the SDK's query
+## sync, which is gone. A draft row has no bundle and can never be served: the rows go, with the collections
+## they left empty, and the column with them.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-07T00:00:00
+      author: timofei
+      comment: Remove data app drafts and the collections they left empty
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.DeleteDataAppDrafts
+      rollback: []
+
+  - changeSet:
+      id: v65.2026-10-07T00:00:01
+      author: timofei
+      comment: Drop data_app.draft, nothing creates drafts anymore
+      changes:
+        - dropColumn:
+            tableName: data_app
+            columnName: draft
+      rollback:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: draft
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether this row is a data app draft before its first repository import
+                  constraints:
+                    nullable: false

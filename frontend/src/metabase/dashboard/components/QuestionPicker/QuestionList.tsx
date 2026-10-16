@@ -144,10 +144,7 @@ export function QuestionList({
           <Flex key={item.id} className={S.QuestionListItemRoot} gap="2px">
             <SelectList.Item
               id={item.id}
-              classNames={{
-                root: S.QuestionListItemRoot,
-                label: S.QuestionListItemLabel,
-              }}
+              classNames={{ root: S.QuestionListItemRoot }}
               className={S.QuestionListItem}
               name={item.name}
               icon={{
@@ -162,8 +159,9 @@ export function QuestionList({
             />
             <Tooltip label={t`Visualize another way`}>
               <ActionIcon
+                variant="filled"
                 className={S.VisualizerButton}
-                size="41px"
+                size="lg"
                 aria-label={t`Visualize another way`}
                 onClick={() => {
                   trackVisualizeAnotherWayClicked();
