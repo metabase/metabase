@@ -17,7 +17,7 @@ const libraryPage = () =>
 
 export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
   return (
-    <Route path="library" element={<LibrarySectionLayout />}>
+    <Route path="library" element={<LibrarySectionLayout section="library" />}>
       <Route index lazy={libraryPage} />
       {getDataStudioTableRoutes(IsAdmin)}
       {getDataStudioMetricRoutes()}

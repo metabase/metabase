@@ -1,5 +1,23 @@
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import type { CollectionItemModel, CollectionType } from "metabase-types/api";
+import {
+  type CollectionItemModel,
+  type CollectionType,
+  LIBRARY_SUB_COLLECTION_TYPES,
+  type LibrarySubCollectionType,
+} from "metabase-types/api";
+
+import { LIBRARY_SECTIONS } from "./library-sections";
+
+// Questions can be saved into the dashboards inside the Dashboards section
+const SECTION_DESCENDANT_MODELS: Record<
+  LibrarySubCollectionType,
+  readonly CollectionItemModel[]
+> = {
+  "library-data": [],
+  "library-metrics": [],
+  "library-dashboards": ["card"],
+  "library-documents": [],
+};
 
 export function canPlaceEntityInCollection(
   entityType: CollectionItemModel,
@@ -14,19 +32,10 @@ export function canPlaceEntityInCollection(
     return false;
   }
 
-  if (collectionType === "library-data") {
-    return entityType === "table" || entityType === "collection";
-  }
-
-  if (collectionType === "library-metrics") {
-    return entityType === "metric" || entityType === "collection";
-  }
-
-  if (collectionType === "library-dashboards") {
-    return entityType === "dashboard" || entityType === "collection";
-  }
-
-  return false;
+  return (
+    entityType === "collection" ||
+    entityType === LIBRARY_SECTIONS[collectionType].model
+  );
 }
 
 export function canPlaceEntityInCollectionOrDescendants(
@@ -37,17 +46,14 @@ export function canPlaceEntityInCollectionOrDescendants(
     return true;
   }
 
-  // Questions can be saved into the dashboards inside the Dashboards section
-  if (collectionType === "library-dashboards") {
-    return entityType === "card";
+  if (collectionType === "library") {
+    return LIBRARY_SUB_COLLECTION_TYPES.some((sectionType) =>
+      canPlaceEntityInCollectionOrDescendants(entityType, sectionType),
+    );
   }
 
-  if (collectionType === "library") {
-    return (
-      canPlaceEntityInCollection(entityType, "library-data") ||
-      canPlaceEntityInCollection(entityType, "library-metrics") ||
-      canPlaceEntityInCollectionOrDescendants(entityType, "library-dashboards")
-    );
+  if (PLUGIN_LIBRARY.isLibrarySubCollectionType(collectionType)) {
+    return SECTION_DESCENDANT_MODELS[collectionType].includes(entityType);
   }
 
   return false;

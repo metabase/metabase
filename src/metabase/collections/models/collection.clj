@@ -65,27 +65,28 @@
 
 (def ^:constant library-collection-type
   "The value of the `:type` field for library collections."
-  "library")
+  collections.schema/library-collection-type)
 
 (def ^:constant library-data-collection-type
   "The value of the `:type` field for collections that only allow tables."
-  "library-data")
+  collections.schema/library-data-collection-type)
 
 (def ^:constant library-metrics-collection-type
   "The value of the `:type` field for collections that only allow metrics."
-  "library-metrics")
+  collections.schema/library-metrics-collection-type)
 
 (def ^:constant library-dashboards-collection-type
   "The value of the `:type` field for collections that only allow dashboards and their questions."
-  "library-dashboards")
+  collections.schema/library-dashboards-collection-type)
+
+(def ^:constant library-documents-collection-type
+  "The value of the `:type` field for collections that only allow documents and their questions."
+  collections.schema/library-documents-collection-type)
 
 (def library-collection-types
   "All library `:type` values — collections users curate as the canonical place to find content.
    Kept as a set so callers (e.g. search ranking) can enumerate them without hard-coding strings."
-  #{library-collection-type
-    library-data-collection-type
-    library-metrics-collection-type
-    library-dashboards-collection-type})
+  collections.schema/library-collection-types)
 
 (def ^:constant tenant-specific-root-collection-type
   "The value of the `:type` field for root collections that belong to a single tenant"
@@ -164,21 +165,6 @@
   "Is this the Library collection?"
   [collection]
   (= (:type collection) library-collection-type))
-
-(defn- is-library-data-collection?
-  "Is this the Data collection?"
-  [collection]
-  (= (:type collection) library-data-collection-type))
-
-(defn- is-library-metrics-collection?
-  "Is this the Metrics collection?"
-  [collection]
-  (= (:type collection) library-metrics-collection-type))
-
-(defn- is-library-dashboards-collection?
-  "Is this the Dashboards collection?"
-  [collection]
-  (= (:type collection) library-dashboards-collection-type))
 
 (defn remote-synced-collection
   "Get the remote-synced collection if it exists."
@@ -263,16 +249,31 @@
 (def ^:private library-metrics-entity-id
   "librarylibrarymetrics")
 
-(def library-dashboards-entity-id
-  "The entity_id for the Library's Dashboards collection."
+(def ^:private library-dashboards-entity-id
   "librarylibrarydashbrd")
+
+(def ^:private library-documents-entity-id
+  "librarylibrarydocumnt")
+
+(def library-sections
+  "The Library's section collections by `:type`, in creation order: the `:name` the app DB stores, its translation,
+  and the fixed `:entity-id`."
+  {library-data-collection-type       {:name           "Data"
+                                       :localized-name (deferred-tru "Data")
+                                       :entity-id      library-data-entity-id}
+   library-metrics-collection-type    {:name           "Metrics"
+                                       :localized-name (deferred-tru "Metrics")
+                                       :entity-id      library-metrics-entity-id}
+   library-dashboards-collection-type {:name           "Dashboards"
+                                       :localized-name (deferred-tru "Dashboards")
+                                       :entity-id      library-dashboards-entity-id}
+   library-documents-collection-type  {:name           "Documents"
+                                       :localized-name (deferred-tru "Documents")
+                                       :entity-id      library-documents-entity-id}})
 
 (def ^:private library-entity-id?
   "Returns true if the given entity ID is one of the hard-coded Library keys."
-  #{library-entity-id
-    library-data-entity-id
-    library-metrics-entity-id
-    library-dashboards-entity-id})
+  (into #{library-entity-id} (map :entity-id) (vals library-sections)))
 
 (defn- grant-library-collection-permissions!
   "Gives All Users read and Data Analysts read-write access to the Library `collection`."
@@ -281,43 +282,36 @@
   (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
   (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
 
-(defn- insert-library-dashboards-collection!
-  "Inserts the Dashboards collection under `library` and returns it."
-  [library]
-  (u/prog1 (collections.db/insert-collection! {:name             "Dashboards"
-                                               :type             library-dashboards-collection-type
-                                               :location         (str "/" (:id library) "/")
-                                               :entity_id        library-dashboards-entity-id
-                                               :is_remote_synced (boolean (:is_remote_synced library))})
-    (grant-library-collection-permissions! <>)))
+(defn- insert-library-section-collection!
+  "Inserts the [[library-sections]] collection of `type` under `library` and returns it."
+  [library type]
+  (let [{section-name :name :keys [entity-id]} (library-sections type)]
+    (u/prog1 (collections.db/insert-collection! {:name             section-name
+                                                 :type             type
+                                                 :location         (str "/" (:id library) "/")
+                                                 :entity_id        entity-id
+                                                 :is_remote_synced (boolean (:is_remote_synced library))})
+      (grant-library-collection-permissions! <>))))
 
-(defn ensure-library-dashboards-collection!
-  "Creates the Library's Dashboards collection when the Library exists without one, returning the created collection."
-  []
+(mu/defn ensure-library-section-collection!
+  "Creates the Library's [[library-sections]] collection of `type` when the Library exists without one, returning
+  the created collection."
+  [type :- (into [:enum] (keys library-sections))]
   (when-let [library (collections.db/collection-with-entity-id library-entity-id)]
-    (when-not (collections.db/collection-with-entity-id library-dashboards-entity-id)
-      (insert-library-dashboards-collection! library))))
+    (when-not (collections.db/collection-with-entity-id (:entity-id (library-sections type)))
+      (insert-library-section-collection! library type))))
 
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
   (when-not (nil? (library-collection))
     (throw (ex-info "Semantic layer already exists" {})))
-  (let [library       (collections.db/insert-collection! {:name      "Library"
-                                                          :type      library-collection-type
-                                                          :location  "/"
-                                                          :entity_id library-entity-id})
-        base-location (str "/" (:id library) "/")
-        data          (collections.db/insert-collection! {:name      "Data"
-                                                          :type      library-data-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-data-entity-id})
-        metrics       (collections.db/insert-collection! {:name      "Metrics"
-                                                          :type      library-metrics-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-metrics-entity-id})]
-    (run! grant-library-collection-permissions! [library data metrics])
-    (insert-library-dashboards-collection! library)
+  (let [library (collections.db/insert-collection! {:name      "Library"
+                                                    :type      library-collection-type
+                                                    :location  "/"
+                                                    :entity_id library-entity-id})]
+    (grant-library-collection-permissions! library)
+    (run! (partial insert-library-section-collection! library) (keys library-sections))
     library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
@@ -331,32 +325,24 @@
    :authority_level mi/transform-keyword})
 
 (defn library-root-collection?
-  "Is this one of the immutable system-created Library collections (root, data, metrics, or dashboards)?
+  "Is this one of the immutable system-created Library collections (root or a section)?
   Returns false for user-created subcollections that inherit a library type."
   [collection]
   (library-entity-id? (:entity_id collection)))
 
 (defn maybe-localize-system-collection-name
-  "If the collection is a system-defined collection (Trash, Library, Data, Metrics, or Dashboards), translate the `name`.
+  "If the collection is a system-defined collection (Trash, Library, or a Library section), translate the `name`.
   Only overrides names for the system-created library collections, not user-created subcollections.
   This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
   or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
-  (cond-> collection
-    (is-trash? collection)
-    (assoc :name (tru "Trash"))
-
-    (and (is-library? collection) (library-root-collection? collection))
-    (assoc :name (tru "Library"))
-
-    (and (is-library-data-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Data"))
-
-    (and (is-library-metrics-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Metrics"))
-
-    (and (is-library-dashboards-collection? collection) (library-root-collection? collection))
-    (assoc :name (tru "Dashboards"))))
+  (cond
+    (is-trash? collection)                      (assoc collection :name (tru "Trash"))
+    (not (library-root-collection? collection)) collection
+    (is-library? collection)                    (assoc collection :name (tru "Library"))
+    :else (if-let [{:keys [localized-name]} (library-sections (:type collection))]
+            (assoc collection :name (str localized-name))
+            collection)))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-system-collection-name collection))
@@ -621,11 +607,11 @@
   [model-type collection-id]
   ;; a data app's collection holds only what a pull of the app accepts; a bookmark is a user's pointer, not content.
   ;; A load checks every question as a possible dashboard question before its dashboard is known, so that is a
-  ;; question here.
+  ;; question here, as is a question a document owns.
   (when (and collection-id
              (some? model-type)
              (not= :model/CollectionBookmark model-type)
-             (not (contains? #{:question :dashboard-question :metric :action} (keyword model-type)))
+             (not (contains? #{:question :dashboard-question :document-question :metric :action} (keyword model-type)))
              (perms/data-app-collection? collection-id))
     (throw (ex-info "A data app's collection can hold only questions, metrics, and query actions" {:status-code 400})))
   (check-library-content model-type collection-id))

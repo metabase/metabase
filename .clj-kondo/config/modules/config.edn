@@ -4011,6 +4011,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/Document
                     :model/Pulse
                     :model/Table
                     :model/Timeline}}

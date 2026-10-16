@@ -1,7 +1,7 @@
 import { PLUGIN_AUDIT, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
-import { DashboardsSectionLayout } from "./pages/DashboardsSectionLayout";
+import { LibrarySectionLayout } from "../pages/LibrarySectionLayout";
 
 /**
  * The Data Studio dashboard pages, in one chunk. The section layout stays
@@ -50,7 +50,10 @@ const dashboardSubscriptionsPage = () =>
 
 export function getDataStudioDashboardRoutes() {
   return (
-    <Route path="dashboards" element={<DashboardsSectionLayout />}>
+    <Route
+      path="dashboards"
+      element={<LibrarySectionLayout section="library-dashboards" />}
+    >
       <Route index lazy={dashboardsPage} />
       <Route path=":dashboardId" lazy={dashboardOverviewPage} />
       <Route path=":dashboardId/contents" lazy={dashboardContentsPage} />

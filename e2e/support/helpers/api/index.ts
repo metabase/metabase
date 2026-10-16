@@ -13,7 +13,7 @@ export type { DashboardDetails } from "./createDashboard";
 export { createDashboardWithQuestions } from "./createDashboardWithQuestions";
 export { createDashboardWithTabs } from "./createDashboardWithTabs";
 export { createDocument } from "./createDocument";
-export { createLibrary } from "./createLibrary";
+export { createLibrary, createLibrarySection } from "./createLibrary";
 export { createModerationReview } from "./createModerationReview";
 export { createNativeQuestion } from "./createNativeQuestion";
 export type { NativeQuestionDetails } from "./createNativeQuestion";

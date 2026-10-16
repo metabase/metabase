@@ -37,14 +37,23 @@ export type CollectionContentModel = CollectionItemModel;
 
 export type CollectionAuthorityLevel = "official" | null;
 
+export const LIBRARY_SUB_COLLECTION_TYPES = [
+  "library-data",
+  "library-metrics",
+  "library-dashboards",
+  "library-documents",
+] as const;
+
+export type LibrarySubCollectionType =
+  (typeof LIBRARY_SUB_COLLECTION_TYPES)[number];
+
+export type LibraryCollectionType = "library" | LibrarySubCollectionType;
+
 export type CollectionType =
   | "instance-analytics"
   | "trash"
   | "remote-synced"
-  | "library"
-  | "library-data"
-  | "library-metrics"
-  | "library-dashboards"
+  | LibraryCollectionType
   | "shared-tenant-collection"
   | "tenant-specific-root-collection"
   | null;
@@ -67,6 +76,8 @@ export interface Collection {
   can_restore: boolean;
   can_delete: boolean;
   archived?: boolean;
+  /** Whether the collection itself was trashed; `null` on rows older than the trash */
+  archived_directly?: boolean | null;
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;

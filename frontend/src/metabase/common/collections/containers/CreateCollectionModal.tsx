@@ -3,11 +3,13 @@ import { t } from "ttag";
 
 import { useCreateCollectionMutation } from "metabase/api";
 import { getCollectionPathAsArray } from "metabase/common/collections/utils";
+import { LIBRARY_SECTIONS } from "metabase/common/data-studio/library-sections";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useNavigate } from "metabase/router";
 import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
+import { isLibrarySubCollectionType } from "metabase-types/guards/collection";
 
 import type { CreateCollectionFormOwnProps } from "../components/CreateCollectionForm";
 import { CreateCollectionForm } from "../components/CreateCollectionForm";
@@ -84,9 +86,12 @@ export function getCreatedCollectionUrl(collection: Collection): string {
   if (collection.namespace === "data-actions") {
     return Urls.dataStudioActions({ expandedIds });
   }
-  // The Dashboards page lists the section's contents, so only its folders are rows there
-  if (collection.type === "library-dashboards") {
-    return Urls.dataStudioDashboards({
+  // A section page lists the section's contents, so only its folders are rows there
+  const getSectionPageUrl = isLibrarySubCollectionType(collection.type)
+    ? LIBRARY_SECTIONS[collection.type].getUrl
+    : undefined;
+  if (getSectionPageUrl) {
+    return getSectionPageUrl({
       expandedIds: expandedIds.slice(LIBRARY_SECTION_FOLDER_DEPTH),
     });
   }

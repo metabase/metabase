@@ -155,6 +155,7 @@ describe("DataStudioLayout", () => {
     const LIBRARY_TABS = [
       "Semantic layer",
       "Dashboards",
+      "Documents",
       "SQL snippets",
       "Data actions",
     ];
@@ -201,6 +202,7 @@ describe("DataStudioLayout", () => {
         expect(getTabStatus("Semantic layer")).toBeInTheDocument();
       });
       expect(getTabStatus("Dashboards")).not.toBeInTheDocument();
+      expect(getTabStatus("Documents")).not.toBeInTheDocument();
       expect(getTabStatus("SQL snippets")).not.toBeInTheDocument();
       expect(getTabStatus("Data actions")).not.toBeInTheDocument();
     });

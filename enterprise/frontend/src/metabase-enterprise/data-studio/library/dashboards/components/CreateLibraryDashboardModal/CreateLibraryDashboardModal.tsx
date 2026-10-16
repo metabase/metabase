@@ -24,6 +24,7 @@ import * as Urls from "metabase/urls";
 import * as Errors from "metabase/utils/errors";
 import type { CollectionId } from "metabase-types/api";
 
+import type { LibrarySectionCreateModalProps } from "../../../components/LibrarySectionPage";
 import { LIBRARY_COLLECTION_PICKER_OPTIONS } from "../../../constants";
 import { trackDataStudioDashboardCreated } from "../../analytics";
 
@@ -46,17 +47,11 @@ type CreateLibraryDashboardValues = {
   collection_id: CollectionId;
 };
 
-type CreateLibraryDashboardModalProps = {
-  opened: boolean;
-  collectionId: CollectionId;
-  onClose: () => void;
-};
-
 export function CreateLibraryDashboardModal({
   opened,
   collectionId,
   onClose,
-}: CreateLibraryDashboardModalProps) {
+}: LibrarySectionCreateModalProps) {
   const navigate = useNavigate();
   const [createDashboard] = useCreateDashboardMutation();
 
@@ -82,7 +77,7 @@ export function CreateLibraryDashboardModal({
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        <Form as={Stack} gap={0}>
+        <Form as={Stack} gap="lg">
           <FormTextInput
             labelProps={{ mb: "xxs" }}
             name="name"
@@ -100,7 +95,6 @@ export function CreateLibraryDashboardModal({
             autosize={false}
             minRows={5}
             maxRows={5}
-            my="lg"
           />
           <FormCollectionPicker
             name="collection_id"
@@ -110,7 +104,7 @@ export function CreateLibraryDashboardModal({
               options: LIBRARY_COLLECTION_PICKER_OPTIONS,
             }}
           />
-          <FormFooter mt="lg">
+          <FormFooter>
             <FormErrorMessage inline />
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
             <FormSubmitButton label={t`Create`} variant="filled" />

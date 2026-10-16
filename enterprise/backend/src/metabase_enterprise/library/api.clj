@@ -28,10 +28,11 @@
 
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
-        ;; Library questions are only ever dashboard questions, which aren't collection items
+        ;; Library questions are only ever dashboard or document questions, which aren't collection items
         below-card-types (disj (library.db/card-types-in-collections descendent-ids) :question)
         below-tables? (library.db/published-table-in-collections? descendent-ids)
-        below-dashboards? (library.db/dashboard-in-collections? descendent-ids)]
+        below-dashboards? (library.db/dashboard-in-collections? descendent-ids)
+        below-documents? (library.db/document-in-collections? descendent-ids)]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
     (assoc collection :here #{"collection"}
@@ -40,6 +41,7 @@
                     (-> (disj :model) (conj :dataset))
                     below-tables? (conj :table)
                     below-dashboards? (conj :dashboard)
+                    below-documents? (conj :document)
                     true sort
                     true ((partial map name))))))
 

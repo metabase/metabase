@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 
+import { LIBRARY_SECTIONS } from "metabase/common/data-studio/library-sections";
 import type {
   LibrarySectionType,
   TreeItem,
@@ -13,14 +13,11 @@ import type {
   Collection,
   CollectionId,
   CollectionItemModel,
-  IconName,
+  LibrarySubCollectionType,
 } from "metabase-types/api";
 
 import { useCollectionItemsTree } from "../../hooks/use-collection-items-tree";
-import {
-  type LibrarySearchModel,
-  useLibrarySearchResults,
-} from "../../hooks/use-library-search-results";
+import { useLibrarySearchResults } from "../../hooks/use-library-search-results";
 
 const SECTION_ITEM_MODELS: Record<LibrarySectionType, CollectionItemModel[]> = {
   data: ["table", "collection"],
@@ -85,27 +82,19 @@ export function useLibraryCollectionTree(
   };
 }
 
-type SearchSection = {
-  id: string;
-  name: string;
-  icon: IconName;
-};
+/** The models the Semantic layer page searches */
+export type LibraryRootSearchModel = "table" | "metric";
 
-const getSearchSections = (): Record<LibrarySearchModel, SearchSection> => ({
-  table: { id: "search-section:data", name: t`Data`, icon: "table" },
-  metric: { id: "search-section:metrics", name: t`Metrics`, icon: "metric" },
-  dashboard: {
-    id: "search-section:dashboards",
-    name: t`Dashboards`,
-    icon: "dashboard",
-  },
-});
+const SEARCH_SECTION_TYPES = {
+  table: "library-data",
+  metric: "library-metrics",
+} as const satisfies Record<LibraryRootSearchModel, LibrarySubCollectionType>;
 
 /** Search results across the Library, grouped under a row per section */
 export function useLibrarySearch(
   searchQuery: string,
   libraryCollectionId: CollectionId | undefined,
-  models: LibrarySearchModel[],
+  models: LibraryRootSearchModel[],
 ) {
   const { items, isActive, isLoading, error } = useLibrarySearchResults(
     searchQuery,
@@ -114,16 +103,17 @@ export function useLibrarySearch(
   );
 
   const tree = useMemo((): TreeItem[] => {
-    const sections = getSearchSections();
     return models.flatMap((model): TreeItem[] => {
       const children = items.filter((item) => item.model === model);
       if (children.length === 0) {
         return [];
       }
-      const { id, name, icon } = sections[model];
+      const { key, icon, getName } =
+        LIBRARY_SECTIONS[SEARCH_SECTION_TYPES[model]];
+      const name = getName();
       return [
         {
-          id,
+          id: `search-section:${key}`,
           name,
           icon,
           model: "collection",

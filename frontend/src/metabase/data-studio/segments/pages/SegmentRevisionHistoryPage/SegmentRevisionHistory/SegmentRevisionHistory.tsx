@@ -16,8 +16,10 @@ export function SegmentRevisionHistory({
       entityType="segment"
       entityId={segment.id}
       getActionDescription={getSegmentActionDescription}
-      definitionLabel={t`Filter`}
-      definitionType="filters"
+      diffOptions={{
+        definitionLabel: t`Filter`,
+        definitionType: "filters",
+      }}
     />
   );
 }

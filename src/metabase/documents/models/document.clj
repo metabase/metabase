@@ -38,8 +38,11 @@
   [_original-model _k]
   :model/Document)
 
+(def ^:private document-body-in
+  (comp mi/json-in prose-mirror/normalize-document))
+
 (t2/deftransforms :model/Document
-  {:document    {:in  (comp mi/json-in prose-mirror/normalize-document)
+  {:document    {:in  document-body-in
                  :out (comp (mi/catch-normalization-exceptions prose-mirror/normalize-document)
                             mi/json-out-with-keywordization)}
    :public_uuid (mi/transform-encrypted-text "document.public_uuid")})
@@ -226,6 +229,19 @@
                              (fn update-card-id [embed]
                                (update-in embed [:attrs "id"] card-id-map)))))
 
+(mu/defn remap-new-document-card-embeds!
+  "Point the cardEmbed nodes of the Document `document-id`, just inserted with body `document`, at the Cards in
+  `card-id-map` (old id -> new id), without running the model's update hooks. No-op for an empty map."
+  [document-id :- ms/PositiveInt
+   document    :- [:map {:closed true}
+                   [:document ::documents.schema/document.document]
+                   [:content_type :string]]
+   card-id-map :- [:maybe [:map-of :int ms/PositiveInt]]]
+  (when (seq card-id-map)
+    (documents.db/update-document-body-without-hooks!
+     document-id
+     (document-body-in (:document (update-cards-in-ast document card-id-map))))))
+
 (mu/defn- create-cards-for-document! :- [:map-of ms/NegativeInt ms/PositiveInt]
   "Creates cards for a document from the cards map.
    Returns a mapping from the original negative integer keys to the newly created card IDs.
@@ -288,7 +304,7 @@
   publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
   both semantically wrong and an extra, avoidable round-trip."
   [id]
-  (t2/hydrate (documents.db/document id) :creator :can_write :can_delete :can_restore :is_remote_synced))
+  (t2/hydrate (documents.db/document id) :creator :collection :can_write :can_delete :can_restore :is_remote_synced))
 
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists.
@@ -349,12 +365,10 @@
                                                                                           :content_type prose-mirror/prose-mirror-content-type})
                                                                (when-not (empty? cards)
                                                                  (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
-                             (when (seq cards-to-update-in-ast)
-                               (documents.db/update-document! document-id
-                                                              (update-cards-in-ast
-                                                               {:document document
-                                                                :content_type prose-mirror/prose-mirror-content-type}
-                                                               cards-to-update-in-ast)))
+                             (remap-new-document-card-embeds! document-id
+                                                              {:document     document
+                                                               :content_type prose-mirror/prose-mirror-content-type}
+                                                              cards-to-update-in-ast)
                              ;; `get-document`, so `:event/document-read` fires: the creator has to find the
                              ;; document they just made in their recents, and that row is written only by this
                              ;; event's handler. Creating is arguably not viewing — but the view count and
@@ -378,10 +392,9 @@
 (mu/defn update-document!
   "Apply `body` (any of `:name`, `:document`, `:collection_id`, `:collection_position`,
   `:cards`, `:archived`) to `existing-document`, clone any newly-embedded cards the document
-  doesn't own, publish `:event/document-update` (or `:event/document-delete` when archiving),
-  and return the updated document. Permission checks (write-check, archived state,
-  collection-move) are the caller's job, run before this — the same split the REST
-  `PUT /api/document/:id` handler uses."
+  doesn't own, and return the updated document. Publishes `:event/document-delete` when it moves the document to
+  the Trash. Permission checks (write-check, archived state, collection-move) are the caller's job, run before this —
+  the same split the REST `PUT /api/document/:id` handler uses."
   [existing-document :- ::documents.schema/document
    {:keys [name document collection_id collection_position cards] :as body}
    :- [:map {:closed true}
@@ -431,12 +444,8 @@
           (card/carry-pairings-for-document! document-id pairings)))
       (collections/check-for-remote-sync-update existing-document))
     (let [updated-document (hydrate-document document-id)]
-      ;; Publish appropriate events
-      (if (:archived document-updates)
+      (when (:archived document-updates)
         (events/publish-event! :event/document-delete
-                               {:object updated-document
-                                :user-id api/*current-user-id*})
-        (events/publish-event! :event/document-update
                                {:object updated-document
                                 :user-id api/*current-user-id*}))
       updated-document)))
@@ -490,9 +499,10 @@
     ;; recorded for content updates. Promote it to a real instance here so the
     ;; revisions push can complete cleanly.
     (events/publish-event! :event/document-update
-                           {:object (if (t2/instance-of? :model/Document instance)
-                                      instance
-                                      (t2.instance/instance :model/Document instance))}))
+                           {:object  (if (t2/instance-of? :model/Document instance)
+                                       instance
+                                       (t2.instance/instance :model/Document instance))
+                            :user-id api/*current-user-id*}))
   instance)
 
 (t2/define-after-select :model/Document

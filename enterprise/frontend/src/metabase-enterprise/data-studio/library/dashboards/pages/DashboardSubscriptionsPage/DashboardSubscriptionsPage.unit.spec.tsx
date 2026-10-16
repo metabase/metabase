@@ -1,10 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupDashboardEndpoints,
-} from "__support__/server-mocks";
+import { setupDashboardEndpoints } from "__support__/server-mocks";
 import {
   setupListSubscriptionsEndpoint,
   setupNotificationChannelsEndpointError,
@@ -18,7 +15,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
 import type {
   DashboardSubscription,
@@ -29,13 +25,17 @@ import type {
 import {
   createMockCard,
   createMockChannel,
-  createMockCollection,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardSubscription,
   createMockParameter,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import {
+  DASHBOARDS_COLLECTION,
+  setupLibraryCollectionEndpoints,
+} from "../../../test-utils";
 
 import { DashboardSubscriptionsPage } from "./DashboardSubscriptionsPage";
 
@@ -49,6 +49,7 @@ const CATEGORY_PARAMETER = createMockParameter({
 const DASHBOARD = createMockDashboard({
   id: 10,
   name: "Sales overview",
+  collection: DASHBOARDS_COLLECTION,
   parameters: [CATEGORY_PARAMETER],
   dashcards: [createMockDashboardCard({ card: createMockCard() })],
 });
@@ -166,6 +167,7 @@ type SetupOpts = {
   isSlackConfigured?: boolean;
   hasChannelInfoError?: boolean;
   isAdmin?: boolean;
+  isArchived?: boolean;
 };
 
 function setup({
@@ -176,12 +178,16 @@ function setup({
   isSlackConfigured = true,
   hasChannelInfoError = false,
   isAdmin = true,
+  isArchived = false,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 800 });
-  setupDashboardEndpoints({ ...DASHBOARD, parameters: dashboardParameters });
-  setupCollectionByIdEndpoint({
-    collections: [createMockCollection(ROOT_COLLECTION)],
+  setupDashboardEndpoints({
+    ...DASHBOARD,
+    parameters: dashboardParameters,
+    archived: isArchived,
+    archived_directly: isArchived,
   });
+  setupLibraryCollectionEndpoints();
   setupListSubscriptionsEndpoint(subscriptions);
   if (hasChannelInfoError) {
     setupNotificationChannelsEndpointError();
@@ -326,6 +332,27 @@ describe("DashboardSubscriptionsPage", () => {
     expect(
       await screen.findByRole("link", { name: "Manage subscriptions" }),
     ).toHaveAttribute("href", MANAGE_URL);
+  });
+
+  it("does not link a trashed dashboard's list to its hidden subscriptions sidebar", async () => {
+    setup({ isArchived: true });
+
+    expect(await screen.findByTestId("archive-banner")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("columnheader", { name: /Recipients/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Manage subscriptions" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not offer to set up a subscription on a trashed dashboard", async () => {
+    setup({ subscriptions: [], isArchived: true });
+
+    expect(await screen.findByText("No subscriptions yet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Set up a subscription" }),
+    ).not.toBeInTheDocument();
   });
 
   it("offers to set up a subscription when there is none", async () => {

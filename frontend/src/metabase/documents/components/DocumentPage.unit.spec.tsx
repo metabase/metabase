@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupBookmarksEndpoints,
   setupCommentEndpoints,
+  setupDocumentCardsEndpoint,
   setupDocumentEndpoints,
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
@@ -13,15 +14,15 @@ import { createMockDocument } from "metabase-types/api/mocks";
 import { DocumentPage } from "./DocumentPage";
 
 const setup = () => {
+  const document = createMockDocument({
+    name: "Ends with whitespace ",
+    id: 1,
+    can_write: true,
+  });
   setupBookmarksEndpoints([]);
-  setupDocumentEndpoints(
-    createMockDocument({
-      name: "Ends with whitespace ",
-      id: 1,
-      can_write: true,
-    }),
-  );
+  setupDocumentEndpoints(document);
   setupCommentEndpoints([], { target_type: "document", target_id: 1 });
+  setupDocumentCardsEndpoint(document, { cards: [] });
   setupTimelinesEndpoints([]);
 
   renderWithProviders(
@@ -52,6 +53,22 @@ const getDocumentTitle = async () =>
   await screen.findByRole("textbox", { name: /document title/i });
 
 describe("Document Page", () => {
+  it("asks before moving the document to the trash", async () => {
+    setup();
+    await waitFor(async () =>
+      expect(await getDocumentTitle()).toHaveValue("Ends with whitespace "),
+    );
+
+    await userEvent.click(screen.getByLabelText("More options"));
+    await userEvent.click(screen.getByText("Move to trash"));
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "Move this document to trash?",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("should show a save button when title changes", async () => {
     setup();
     await waitFor(async () =>

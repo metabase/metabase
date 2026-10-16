@@ -10,6 +10,7 @@ import {
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
+import { LIBRARY_SECTIONS } from "metabase/common/data-studio/library-sections";
 import {
   SidebarHeading,
   SidebarSection,
@@ -17,7 +18,11 @@ import {
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
-import type { Collection, CollectionType } from "metabase-types/api";
+import {
+  type Collection,
+  LIBRARY_SUB_COLLECTION_TYPES,
+  type LibrarySubCollectionType,
+} from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
   collections: Collection[];
@@ -25,14 +30,13 @@ type LibraryCollectionSectionProps = {
   onItemSelect: () => void;
 };
 
-/** Build the tree for a single library section (Data, Metrics, or Dashboards).
+/** Build the tree for a single library section (Data, Metrics, Dashboards, or Documents).
  *  If the user has access to the root collection, use it directly.
  *  If not, create a synthetic container for any promoted children. */
 function buildSectionTree(
   libraryCollection: Collection,
   allCollections: Collection[],
-  sectionType: CollectionType,
-  sectionName: string,
+  sectionType: LibrarySubCollectionType,
 ): CollectionTreeItem | null {
   // Look for the real root collection (has is_library_root)
   const rootCollection = libraryCollection.children?.find(
@@ -67,7 +71,7 @@ function buildSectionTree(
   // Create a synthetic container node
   return {
     id: `synthetic-${sectionType}`,
-    name: sectionName,
+    name: LIBRARY_SECTIONS[sectionType].getName(),
     description: null,
     icon: getCollectionIcon({
       type: sectionType,
@@ -104,28 +108,9 @@ export function NavbarLibrarySection({
       return [];
     }
 
-    const dataTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-data",
-      t`Data`,
-    );
-    const metricsTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-metrics",
-      t`Metrics`,
-    );
-    const dashboardsTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-dashboards",
-      t`Dashboards`,
-    );
-
-    return [dataTree, metricsTree, dashboardsTree].filter(
-      (node): node is CollectionTreeItem => node != null,
-    );
+    return LIBRARY_SUB_COLLECTION_TYPES.map((sectionType) =>
+      buildSectionTree(libraryCollection, collections, sectionType),
+    ).filter((node): node is CollectionTreeItem => node != null);
   }, [collections]);
 
   const showChangesBadge = useCallback(

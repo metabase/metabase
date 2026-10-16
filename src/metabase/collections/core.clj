@@ -25,7 +25,7 @@
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
   create-library-collection!
-  ensure-library-dashboards-collection!
+  ensure-library-section-collection!
   descendant-ids
   ineligible-dependencies
   instance-analytics-collection-type
@@ -34,6 +34,7 @@
   library-dashboards-collection-type
   library-dashboards-collection?
   library-data-collection-type
+  library-documents-collection-type
   library-metrics-collection-type
   location-path
   location-path->ids

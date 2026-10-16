@@ -34,6 +34,7 @@ describe("DataStudioLayout", () => {
       for (const label of [
         "Semantic layer",
         "Dashboards",
+        "Documents",
         "SQL snippets",
         "Data actions",
         "Glossary",
@@ -43,6 +44,9 @@ describe("DataStudioLayout", () => {
       expect(
         within(nav).getByRole("link", { name: /Dashboards/ }),
       ).toHaveAttribute("href", "/data-studio/dashboards");
+      expect(
+        within(nav).getByRole("link", { name: /Documents/ }),
+      ).toHaveAttribute("href", "/data-studio/documents");
       expect(
         within(nav).getByRole("link", { name: /SQL snippets/ }),
       ).toHaveAttribute("href", "/data-studio/snippets");

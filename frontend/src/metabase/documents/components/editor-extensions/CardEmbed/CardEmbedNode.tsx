@@ -1,4 +1,3 @@
-import { useMergedRef } from "@mantine/hooks";
 import {
   Node,
   findParentNodeClosestToPos,
@@ -18,6 +17,7 @@ import { ExplicitSizeRefreshModeContext } from "metabase/common/components/Expli
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
+import { canDownloadResults } from "metabase/common/utils/dataset";
 import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
@@ -48,8 +48,8 @@ import {
   TextInput,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { isWithinIframe } from "metabase/utils/iframe";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import {
   extractRemappings,
@@ -66,10 +66,12 @@ import type {
 
 import { useDocumentEditorHost } from "../../Editor/DocumentEditorHost";
 
+import { CardDataErrorView } from "./CardDataErrorView";
 import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
 import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
+import { getCardEmbedMenuItems } from "./card-embed-menu-items";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { NativeQueryModal } from "./modals/NativeQueryModal";
 import { useUpdateCardOperations } from "./use-update-card-operations";
@@ -337,8 +339,6 @@ export const CardEmbedComponent = memo(
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
 
-    const setRef = useMergedRef<HTMLDivElement>(viewportRef, cardEmbedRef);
-
     const shouldAllowAddingSupportingText = () => {
       const pos = getPos();
       if (!pos) {
@@ -485,6 +485,18 @@ export const CardEmbedComponent = memo(
       return isTimeseries(settings);
     }, [series]);
 
+    const menuItems = getCardEmbedMenuItems({
+      canEdit: host.capabilities.canEdit,
+      canWrite,
+      canOpenComments: commentsPath !== "" && !hasUnsavedChanges,
+      canAddSupportingText: handleAddSupportingText != null,
+      canDownloadResults: canDownloadResults(dataset),
+      hasTimelineEvents: shouldShowTimelineEventsMenu,
+      isStatic,
+      isInIframe: isWithinIframe(),
+    });
+    const hasCardMenu = (canWrite || dataset != null) && menuItems.length > 0;
+
     const handleEditTimelineEvents = () => {
       if (embedIndex !== -1) {
         dispatch(host.actions.openTimelineEventsSidebar({ embedIndex }));
@@ -540,6 +552,8 @@ export const CardEmbedComponent = memo(
       }
     };
 
+    const hasVisualization = series != null && isInViewport;
+
     const handleReplaceQuestion = () => {
       setIsReplaceModalOpen(true);
     };
@@ -577,9 +591,12 @@ export const CardEmbedComponent = memo(
       editor.chain().focus();
     }, [deleteNode, editor, node]);
 
+    // Every state renders the observed element as the same NodeViewWrapper:
+    // swapping it resets the intersection, which unloads and refetches the card
     if (isLoading && !card) {
       return (
         <NodeViewWrapper
+          ref={viewportRef}
           aria-expanded={isOpen}
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen || isHovered,
@@ -610,9 +627,10 @@ export const CardEmbedComponent = memo(
       );
     }
 
-    if (error) {
+    if (error && !card) {
       return (
         <NodeViewWrapper
+          ref={viewportRef}
           aria-expanded={isOpen}
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen || isHovered,
@@ -628,13 +646,7 @@ export const CardEmbedComponent = memo(
             })}
           >
             <Flex className={styles.questionResults}>
-              <ErrorView
-                error={
-                  error === "not found"
-                    ? t`Couldn't find this chart.`
-                    : t`Failed to load question.`
-                }
-              />
+              <CardDataErrorView error={error} />
             </Flex>
           </Box>
         </NodeViewWrapper>
@@ -644,6 +656,7 @@ export const CardEmbedComponent = memo(
     return (
       <>
         <NodeViewWrapper
+          ref={viewportRef}
           aria-expanded={isOpen}
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen || isHovered,
@@ -670,7 +683,7 @@ export const CardEmbedComponent = memo(
             </>
           )}
           <Box
-            ref={setRef}
+            ref={cardEmbedRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
@@ -759,7 +772,7 @@ export const CardEmbedComponent = memo(
                   {!isEditingTitle &&
                     (isExternalDocument && dataset && !canWrite ? (
                       <ExternalDocumentCardMenu card={card} dataset={dataset} />
-                    ) : !isExternalDocument && (canWrite || dataset) ? (
+                    ) : !isExternalDocument && hasCardMenu ? (
                       <Menu
                         withinPortal
                         position="bottom-end"
@@ -789,8 +802,7 @@ export const CardEmbedComponent = memo(
                           <CardEmbedMenuDropdown
                             menuView={menuView}
                             setMenuView={setMenuView}
-                            canWrite={canWrite}
-                            isStatic={isStatic}
+                            items={menuItems}
                             dataset={dataset}
                             question={question}
                             isNativeQuestion={isNativeQuestion}
@@ -799,16 +811,12 @@ export const CardEmbedComponent = memo(
                             handleEditVisualizationSettings={
                               handleEditVisualizationSettings
                             }
-                            shouldShowTimelineEventsMenu={
-                              shouldShowTimelineEventsMenu
-                            }
                             handleEditTimelineEvents={handleEditTimelineEvents}
                             handleAddSupportingText={handleAddSupportingText}
                             setIsModifyModalOpen={setIsModifyModalOpen}
                             handleReplaceQuestion={handleReplaceQuestion}
                             handleRemoveNode={handleRemoveNode}
                             commentsPath={commentsPath}
-                            hasUnsavedChanges={hasUnsavedChanges}
                           />
                         </Menu.Dropdown>
                       </Menu>
@@ -817,7 +825,7 @@ export const CardEmbedComponent = memo(
                 {slots.belowTitle}
               </Box>
             )}
-            {series && isInViewport ? (
+            {hasVisualization && (
               <>
                 <Box className={styles.questionResults}>
                   <ExplicitSizeRefreshModeContext.Provider value="layout">
@@ -862,7 +870,13 @@ export const CardEmbedComponent = memo(
                   </ExplicitSizeRefreshModeContext.Provider>
                 </Box>
               </>
-            ) : (
+            )}
+            {!hasVisualization && error && (
+              <Flex className={styles.questionResults}>
+                <CardDataErrorView error={error} />
+              </Flex>
+            )}
+            {!hasVisualization && !error && (
               <Box className={styles.questionResults}>
                 <ChartSkeleton
                   // Unjustified type cast. FIXME

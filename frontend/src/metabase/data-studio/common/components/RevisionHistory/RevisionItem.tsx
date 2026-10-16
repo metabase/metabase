@@ -9,22 +9,20 @@ import type { FieldDiff, Revision } from "metabase-types/api";
 
 import { RevisionDiff } from "./RevisionDiff";
 import S from "./RevisionHistory.module.css";
-import type { DefinitionType, RevisionActionDescriptor } from "./types";
+import type { RevisionActionDescriptor, RevisionDiffOptions } from "./types";
 
 type RevisionItemProps = {
   revision: Revision;
   userColor?: string;
   getActionDescription: RevisionActionDescriptor;
-  definitionLabel: string;
-  definitionType: DefinitionType;
+  diffOptions?: RevisionDiffOptions;
 };
 
 export function RevisionItem({
   revision,
   userColor,
   getActionDescription,
-  definitionLabel,
-  definitionType,
+  diffOptions,
 }: RevisionItemProps) {
   const currentUserId = useSelector(getUserId);
   const isCurrentUser = revision.user.id === currentUserId;
@@ -62,15 +60,15 @@ export function RevisionItem({
           </Box>
         )}
 
-        {diffKeys.length > 0 && (
+        {diffOptions && diffKeys.length > 0 && (
           <Stack gap="sm" mt="sm">
             {diffKeys.map((key) => (
               <RevisionDiff
                 key={key}
                 property={key}
                 diff={getDiffForKey(revision.diff, key)}
-                definitionLabel={definitionLabel}
-                definitionType={definitionType}
+                definitionLabel={diffOptions.definitionLabel}
+                definitionType={diffOptions.definitionType}
               />
             ))}
           </Stack>

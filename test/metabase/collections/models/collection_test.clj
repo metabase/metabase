@@ -3327,24 +3327,27 @@
                                                                             non-archived-dash
                                                                             non-archived-card]))))))))
 
-(deftest ensure-library-dashboards-collection-test
+(deftest ensure-library-section-collection-test
   (mt/with-empty-h2-app-db!
     (testing "Without a Library there is nothing to restore"
-      (is (nil? (collection/ensure-library-dashboards-collection!))))
+      (doseq [section-type (keys collection/library-sections)]
+        (is (nil? (collection/ensure-library-section-collection! section-type)))))
     (let [library (collection/create-library-collection!)]
-      (testing "An existing Dashboards collection is kept"
-        (is (nil? (collection/ensure-library-dashboards-collection!))))
-      (testing "A missing Dashboards collection is recreated with the Library's permissions"
-        (t2/delete! :model/Collection :type collection/library-dashboards-collection-type)
-        (let [dashboards (collection/ensure-library-dashboards-collection!)]
-          (is (=? {:name     "Dashboards"
-                   :type     collection/library-dashboards-collection-type
-                   :location (str "/" (:id library) "/")}
-                  dashboards))
-          (binding [api/*current-user*                 (mt/user->id :rasta)
-                    api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
-            (is (true? (mi/can-read? dashboards)))
-            (is (false? (mi/can-write? dashboards)))))))))
+      (doseq [[section-type {section-name :name}] collection/library-sections]
+        (testing section-type
+          (testing "An existing section is kept"
+            (is (nil? (collection/ensure-library-section-collection! section-type))))
+          (testing "A missing section is recreated with the Library's permissions"
+            (t2/delete! :model/Collection :type section-type)
+            (let [section (collection/ensure-library-section-collection! section-type)]
+              (is (=? {:name     section-name
+                       :type     section-type
+                       :location (str "/" (:id library) "/")}
+                      section))
+              (binding [api/*current-user*                 (mt/user->id :rasta)
+                        api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
+                (is (true? (mi/can-read? section)))
+                (is (false? (mi/can-write? section)))))))))))
 
 (deftest data-apps-collection-is-read-only-test
   (testing "Nobody writes a collection of the data apps namespace, administrators included"
@@ -3358,7 +3361,7 @@
     (testing "Can create a library if none exist"
       (let [library (collection/create-library-collection!)]
         (is (= "Library" (:name library)))
-        (is (= ["Dashboards" "Data" "Metrics"] (sort (map :name (collection/descendants library)))))
+        (is (= ["Dashboards" "Data" "Documents" "Metrics"] (sort (map :name (collection/descendants library)))))
         (testing "Only admins can write to the library, all users can read"
           (binding [api/*current-user*                 (mt/user->id :rasta)
                     api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]

@@ -56,7 +56,36 @@
                             :model/Card      _         {:collection_id dashboards-id
                                                         :dashboard_id  (:id dashboard)
                                                         :type          :question}]
-               (is (= ["dashboard"] (:below (mt/user-http-request :crowberto :get 200 "ee/library"))))))))))))
+               (is (= ["dashboard"] (:below (mt/user-http-request :crowberto :get 200 "ee/library")))))))
+         (testing "Documents and their questions show up as documents"
+           (let [documents-id (t2/select-one-pk :model/Collection :type collection/library-documents-collection-type)]
+             (mt/with-temp [:model/Document document {:collection_id documents-id}
+                            :model/Card     _        {:collection_id documents-id
+                                                      :document_id   (:id document)
+                                                      :type          :question}]
+               (is (= ["document"] (:below (mt/user-http-request :crowberto :get 200 "ee/library"))))))))))))
+
+(deftest get-library-ignores-trashed-content-test
+  (testing "GET /ee/library counts no trashed content, nor documents attached to an exploration, as below the Library"
+    (mt/with-premium-features #{:library}
+      (mt/with-discard-model-updates! [:model/Collection]
+        (without-library
+         (collection/create-library-collection!)
+         (let [section-id #(t2/select-one-pk :model/Collection :type %)]
+           (mt/with-temp [:model/Table _ {:collection_id (section-id collection/library-data-collection-type)
+                                          :is_published  true
+                                          :archived_at   :%now}
+                          :model/Card _ {:collection_id (section-id collection/library-metrics-collection-type)
+                                         :type          :metric
+                                         :archived      true}
+                          :model/Dashboard _ {:collection_id (section-id collection/library-dashboards-collection-type)
+                                              :archived      true}
+                          :model/Document _ {:collection_id (section-id collection/library-documents-collection-type)
+                                             :archived      true}
+                          :model/Exploration {exploration-id :id} {}
+                          :model/Document _ {:collection_id  (section-id collection/library-documents-collection-type)
+                                             :exploration_id exploration-id}]
+             (is (= [] (:below (mt/user-http-request :crowberto :get 200 "ee/library")))))))))))
 
 (deftest disallow-cross-type-collection-move-via-api-test
   (mt/with-premium-features #{:library}

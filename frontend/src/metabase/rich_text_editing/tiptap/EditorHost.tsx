@@ -13,6 +13,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+export type CardDataError = "not found" | "forbidden" | "unknown";
+
 /**
  * Result returned by the card-data hooks the host provides to the CardEmbed
  * extension. Declared by the editor primitive so extensions can depend on the
@@ -24,7 +26,7 @@ export interface UseCardDataResult {
   isLoading: boolean;
   series: RawSeries | null;
   question?: Question;
-  error?: "not found" | "unknown" | null;
+  error: CardDataError | null;
   draftCard?: Card;
   regularDataset?: Dataset;
 }
@@ -66,6 +68,11 @@ export interface EditorCapabilities {
   canEmbedCharts: boolean;
   canUseMetabot: boolean;
   canOpenCardInQueryBuilder: boolean;
+  /**
+   * Off for a read-only view, which hides edit actions. An editor the user
+   * cannot write to keeps them, disabled.
+   */
+  canEdit: boolean;
 }
 
 /** Capabilities for an unrestricted surface (standalone documents, comments, …). */
@@ -73,6 +80,7 @@ export const DEFAULT_EDITOR_CAPABILITIES: EditorCapabilities = {
   canEmbedCharts: true,
   canUseMetabot: true,
   canOpenCardInQueryBuilder: true,
+  canEdit: true,
 };
 
 /** Document state read by most extensions, regardless of which are enabled. */
@@ -247,8 +255,12 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
     trackAddSupportingText: noop,
   },
   navigateToCard: () => ({ type: "@@editor-host/noop" }),
-  useCardData: () => ({ isLoading: false, series: null }),
-  useExternalCardDataLoader: () => ({ isLoading: false, series: null }),
+  useCardData: () => ({ isLoading: false, series: null, error: null }),
+  useExternalCardDataLoader: () => ({
+    isLoading: false,
+    series: null,
+    error: null,
+  }),
   useCommentUrl: () => "",
   useUnresolvedCommentsCount: () => 0,
   useNodeInViewport: () => ({

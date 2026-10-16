@@ -10,6 +10,11 @@ import {
   dataStudioDataModelSegment,
   dataStudioDataModelSegmentDependencies,
   dataStudioDataModelSegmentRevisions,
+  dataStudioDocument,
+  dataStudioDocumentContents,
+  dataStudioDocumentDependencies,
+  dataStudioDocumentHistory,
+  dataStudioDocuments,
   dataStudioGuide,
   dataStudioLibrary,
   dataStudioTable,
@@ -142,6 +147,33 @@ describe("urls > data-studio", () => {
       );
       expect(dataStudioDashboardSubscriptions(7, 3)).toBe(
         "/data-studio/dashboards/7/subscriptions/3",
+      );
+    });
+  });
+
+  describe("dataStudioDocuments", () => {
+    it("should return the documents URL", () => {
+      expect(dataStudioDocuments()).toBe("/data-studio/documents");
+    });
+
+    it("should carry expanded collection ids", () => {
+      expect(dataStudioDocuments({ expandedIds: [1, 2] })).toBe(
+        "/data-studio/documents?expandedId=1&expandedId=2",
+      );
+    });
+  });
+
+  describe("dataStudioDocument", () => {
+    it("should return the document tab URLs", () => {
+      expect(dataStudioDocument(7)).toBe("/data-studio/documents/7");
+      expect(dataStudioDocumentContents(7)).toBe(
+        "/data-studio/documents/7/contents",
+      );
+      expect(dataStudioDocumentDependencies(7)).toBe(
+        "/data-studio/documents/7/dependencies",
+      );
+      expect(dataStudioDocumentHistory(7)).toBe(
+        "/data-studio/documents/7/history",
       );
     });
   });

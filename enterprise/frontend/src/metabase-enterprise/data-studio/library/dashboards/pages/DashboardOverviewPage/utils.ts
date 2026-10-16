@@ -1,5 +1,5 @@
 import type { Dashboard } from "metabase-types/api";
-import { isReadableCard } from "metabase-types/guards/dashboard";
+import { isReadableCard } from "metabase-types/guards/card";
 
 import { getDashcardCards } from "../../utils";
 

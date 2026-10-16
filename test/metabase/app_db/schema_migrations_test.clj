@@ -3826,6 +3826,47 @@
       (migrate!)
       (is (not (t2/exists? :collection :entity_id "librarylibrarydashbrd"))))))
 
+(deftest add-library-documents-section-test
+  (testing "v65.2026-10-14T00:00:00 through v65.2026-10-14T00:00:02: an existing Library gets a Documents section with its permissions"
+    (impl/test-migrations ["v65.2026-10-14T00:00:00" "v65.2026-10-14T00:00:02"] [migrate!]
+      (let [library-id    (insert-legacy-library-collection! {:name             "Library"
+                                                              :slug             "library"
+                                                              :type             "library"
+                                                              :entity_id        "librarylibrarylibrary"
+                                                              :is_remote_synced true})
+            read-group    (t2/insert-returning-pk! :permissions_group {:name (mt/random-name) :entity_id (u/generate-nano-id)})
+            write-group   (t2/insert-returning-pk! :permissions_group {:name (mt/random-name) :entity_id (u/generate-nano-id)})
+            analyst-group (t2/select-one-pk :permissions_group :magic_group_type "data-analyst")
+            library-perms (fn [group-id object perm-value]
+                            {:group_id      group-id
+                             :object        object
+                             :perm_type     "perms/collection-access"
+                             :perm_value    perm-value
+                             :collection_id library-id})]
+        (t2/insert! :permissions [(library-perms read-group (format "/collection/%d/read/" library-id) "read")
+                                  (library-perms write-group (format "/collection/%d/" library-id) "read-and-write")
+                                  (library-perms analyst-group (format "/collection/%d/read/" library-id) "read")])
+        (migrate!)
+        (let [{documents-id :id :as documents} (t2/select-one :collection :entity_id "librarylibrarydocumnt")]
+          (is (=? {:name             "Documents"
+                   :slug             "documents"
+                   :type             "library-documents"
+                   :location         (str "/" library-id "/")
+                   :is_remote_synced true}
+                  documents))
+          (is (= #{[read-group (format "/collection/%d/read/" documents-id) "read"]
+                   [write-group (format "/collection/%d/" documents-id) "read-and-write"]
+                   [analyst-group (format "/collection/%d/" documents-id) "read-and-write"]}
+                 (into #{}
+                       (map (juxt :group_id :object :perm_value))
+                       (t2/select :permissions :collection_id documents-id)))))))))
+
+(deftest add-library-documents-section-without-library-test
+  (testing "v65.2026-10-14T00:00:00: no Documents section is created without a Library"
+    (impl/test-migrations ["v65.2026-10-14T00:00:00" "v65.2026-10-14T00:00:02"] [migrate!]
+      (migrate!)
+      (is (not (t2/exists? :collection :entity_id "librarylibrarydocumnt"))))))
+
 (deftest metabot-message-finish-reason-column-test
   (testing "v65.2026-10-08T00:00:00: metabot_message gains a nullable finish_reason, and finished is left alone"
     (impl/test-migrations ["v65.2026-10-08T00:00:00"] [migrate!]

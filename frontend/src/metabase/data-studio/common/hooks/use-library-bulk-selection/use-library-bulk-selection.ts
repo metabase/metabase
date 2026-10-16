@@ -5,7 +5,7 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import type { SelectionState } from "metabase/ui";
 
 import {
-  type LibrarySection,
+  type LibraryTreeSection,
   type SelectedItem,
   deriveSelectedItems,
   getCoveredKeys,
@@ -23,7 +23,7 @@ import {
 
 export type UseLibraryBulkSelectionResult = {
   selectedItems: SelectedItem[];
-  selectionSection: LibrarySection | null;
+  selectionSection: LibraryTreeSection | null;
   isAllTables: boolean;
   getSelectionState: (row: Row<TreeItem>) => SelectionState;
   getRowCovered: (row: Row<TreeItem>) => boolean;

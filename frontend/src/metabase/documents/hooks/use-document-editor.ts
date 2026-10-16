@@ -89,7 +89,6 @@ interface UseDocumentEditorResult {
   ) => Promise<{ document?: Document; error?: unknown } | undefined>;
   handleUpdate: (payload: {
     collection_id?: CollectionId | null;
-    archived?: boolean;
   }) => Promise<void>;
   handleQuestionSelect: (
     cardId: number | null,
@@ -442,7 +441,6 @@ export function useDocumentEditor({
 
   const handleUpdate = async (payload: {
     collection_id?: CollectionId | null;
-    archived?: boolean;
   }) => {
     if (documentData?.id) {
       await updateDocument({ id: documentData.id, ...payload });

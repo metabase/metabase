@@ -10,22 +10,21 @@ import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import type { RevisionEntityType } from "metabase-types/api";
 
 import { RevisionItem } from "./RevisionItem";
-import type { DefinitionType, RevisionActionDescriptor } from "./types";
+import type { RevisionActionDescriptor, RevisionDiffOptions } from "./types";
 
 type RevisionHistoryTimelineProps = {
   entityType: RevisionEntityType;
   entityId: number;
   getActionDescription: RevisionActionDescriptor;
-  definitionLabel: string;
-  definitionType: DefinitionType;
+  /** Omitted for entities whose revisions carry no per-field diff, so only the action descriptions show */
+  diffOptions?: RevisionDiffOptions;
 };
 
 export function RevisionHistoryTimeline({
   entityType,
   entityId,
   getActionDescription,
-  definitionLabel,
-  definitionType,
+  diffOptions,
 }: RevisionHistoryTimelineProps) {
   const currentUserId = useSelector(getUserId);
   const {
@@ -69,8 +68,7 @@ export function RevisionHistoryTimeline({
             revision={revision}
             userColor={userColorAssignments[String(revision.user.id)]}
             getActionDescription={getActionDescription}
-            definitionLabel={definitionLabel}
-            definitionType={definitionType}
+            diffOptions={diffOptions}
           />
         ))}
       </Timeline>

@@ -18,6 +18,8 @@ import type {
   DatabaseId,
   GetLibraryCollectionResponse,
   LibraryCollection,
+  LibraryCollectionType,
+  LibrarySubCollectionType,
   SchemaId,
   TableId,
 } from "metabase-types/api";
@@ -56,17 +58,6 @@ export type CollectionPermissionsModalProps = {
   onClose: () => void;
 };
 
-export type LibraryCollectionType =
-  | "library"
-  | "library-data"
-  | "library-metrics"
-  | "library-dashboards";
-
-export type LibrarySubCollectionType =
-  | "library-data"
-  | "library-metrics"
-  | "library-dashboards";
-
 export type GetEntityPickerSyntheticLibraryItemFunction = {
   (params: {
     collectionId: CollectionId;
@@ -85,6 +76,7 @@ type LibraryPlugin = {
   isEnabled: boolean;
   getDataStudioLibraryRoutes: (IsAdmin: ComponentType) => ReactNode;
   getDataStudioDashboardRoutes: () => ReactNode;
+  getDataStudioDocumentRoutes: () => ReactNode;
   useGetLibraryCollection: (params?: { skip?: boolean }) => {
     data: undefined | LibraryCollection;
     isLoading: boolean;
@@ -135,6 +127,7 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   isEnabled: false,
   getDataStudioLibraryRoutes: () => null,
   getDataStudioDashboardRoutes: () => null,
+  getDataStudioDocumentRoutes: () => null,
   useGetLibraryCollection: () => ({ isLoading: false, data: undefined }),
   useGetLibraryChildCollectionByType: () => ({
     data: undefined,

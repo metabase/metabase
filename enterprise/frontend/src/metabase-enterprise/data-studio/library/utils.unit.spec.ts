@@ -4,7 +4,11 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import { getAccessibleCollection, getCollectionPickerItems } from "./utils";
+import {
+  getAccessibleCollection,
+  getCollectionPickerItems,
+  getLibrarySectionFolders,
+} from "./utils";
 
 const libraryParentItem: OmniPickerItem = {
   id: 1,
@@ -75,6 +79,38 @@ describe("getCollectionPickerItems", () => {
         model: "collection",
         type: "library-metrics",
         childTypeFilter: "library-metrics",
+      }),
+    ]);
+  });
+
+  it("should list the Documents section after the Dashboards section", () => {
+    const documentsChild = createMockCollectionItem({
+      id: 8,
+      name: "Documents Child",
+      model: "collection",
+      type: "library-documents",
+      is_library_root: false,
+    });
+    const dashboardsRoot = createMockCollectionItem({
+      id: 9,
+      name: "Dashboards",
+      model: "collection",
+      type: "library-dashboards",
+      is_library_root: true,
+    });
+
+    expect(
+      getCollectionPickerItems({
+        parentItem: libraryParentItem,
+        items: [documentsChild, dashboardsRoot],
+      }),
+    ).toEqual([
+      dashboardsRoot,
+      expect.objectContaining({
+        id: "library-documents-1",
+        name: "Documents",
+        type: "library-documents",
+        childTypeFilter: "library-documents",
       }),
     ]);
   });
@@ -161,5 +197,39 @@ describe("getAccessibleCollection", () => {
     const result = getAccessibleCollection(rootCollection, "library-data");
 
     expect(result).toBeUndefined();
+  });
+});
+
+describe("getLibrarySectionFolders", () => {
+  const LIBRARY = createMockCollection({ id: 1, type: "library" });
+  const DASHBOARDS = createMockCollection({
+    id: 2,
+    type: "library-dashboards",
+  });
+  const SALES = createMockCollection({ id: 3, type: "library-dashboards" });
+  const EMEA = createMockCollection({ id: 4, type: "library-dashboards" });
+
+  it("returns the folders below the section", () => {
+    expect(
+      getLibrarySectionFolders(
+        [LIBRARY, DASHBOARDS, SALES, EMEA],
+        "library-dashboards",
+      ),
+    ).toEqual([SALES, EMEA]);
+  });
+
+  it("returns no folders for an item at the section root", () => {
+    expect(
+      getLibrarySectionFolders([LIBRARY, DASHBOARDS], "library-dashboards"),
+    ).toEqual([]);
+  });
+
+  it("returns nothing for a path outside the section", () => {
+    expect(
+      getLibrarySectionFolders(
+        [LIBRARY, DASHBOARDS, SALES],
+        "library-documents",
+      ),
+    ).toBeUndefined();
   });
 });

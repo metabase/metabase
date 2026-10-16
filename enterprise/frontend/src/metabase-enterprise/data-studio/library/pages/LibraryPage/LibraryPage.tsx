@@ -10,7 +10,7 @@ import {
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
-import type { LibrarySection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
+import type { LibraryTreeSection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages/LibraryUpsellPage";
 import {
@@ -20,20 +20,23 @@ import {
 
 import { LibraryEmptyState } from "../../components/LibraryEmptyState";
 import { useLibraryCollections } from "../../hooks/use-library-collections";
-import type { LibrarySearchModel } from "../../hooks/use-library-search-results";
 
 import { ActionCell } from "./ActionCell";
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
-import { useLibraryCollectionTree, useLibrarySearch } from "./hooks";
+import {
+  type LibraryRootSearchModel,
+  useLibraryCollectionTree,
+  useLibrarySearch,
+} from "./hooks";
 import {
   getArchiveLibraryCollectionsMessage,
   getWritableCollection,
 } from "./utils";
 
-const SEARCH_MODELS: LibrarySearchModel[] = ["table", "metric"];
+const SEARCH_MODELS: LibraryRootSearchModel[] = ["table", "metric"];
 
-function getTrashMessage(section: LibrarySection, count: number) {
+function getTrashMessage(section: LibraryTreeSection, count: number) {
   return section === "data"
     ? getArchiveLibraryCollectionsMessage(count)
     : undefined;

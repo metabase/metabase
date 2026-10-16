@@ -122,6 +122,14 @@ export function DataStudioLayout() {
           isGated={!hasLibraryFeature}
         />
         <AreaTab
+          label={t`Documents`}
+          icon="document"
+          to={Urls.dataStudioDocuments()}
+          isSelected={currentTab === "documents"}
+          showLabel={isNavbarOpened}
+          isGated={!hasLibraryFeature}
+        />
+        <AreaTab
           label={t`SQL snippets`}
           icon="snippet"
           to={Urls.dataStudioSnippets()}

@@ -635,11 +635,12 @@
                                                                        :entity_id @#'collection/library-metrics-entity-id))})
                lib-items    (:data (mt/user-http-request :crowberto :get 200
                                                          (str "collection/" (:id library) "/items")))]
-           (testing "Data, Metrics, and Dashboards collections are all marked as is_library_root"
+           (testing "Data, Metrics, Dashboards, and Documents collections are all marked as is_library_root"
              (let [roots (filter :is_library_root lib-items)]
                (is (= #{collection/library-data-collection-type
                         collection/library-metrics-collection-type
-                        collection/library-dashboards-collection-type}
+                        collection/library-dashboards-collection-type
+                        collection/library-documents-collection-type}
                       (set (map :type roots))))))
            (testing "User-created subcollections inside Data do NOT have is_library_root"
              (let [data-items (:data (mt/user-http-request :crowberto :get 200
@@ -1736,7 +1737,17 @@
                 (is (= #{"card"} (set (:below (item))))))))
           (mt/with-temp [:model/Dashboard _ {:collection_id id2}]
             (testing "when the item has a dashboard, that's reflected in `here` too"
-              (is (= #{"collection" "dashboard"} (set (:here (item))))))))))))
+              (is (= #{"collection" "dashboard"} (set (:here (item)))))))
+          (mt/with-temp [:model/Document _ {:collection_id id2}]
+            (testing "when the item has a document, that's reflected in `here` too"
+              (is (= #{"collection" "document"} (set (:here (item)))))))
+          (mt/with-temp [:model/Document _ {:collection_id id3}]
+            (testing "when the item contains a collection that contains a document, that's `below`"
+              (is (= #{"document"} (set (:below (item)))))))
+          (mt/with-temp [:model/Exploration {exploration-id :id} {:collection_id id2}
+                         :model/Document    _                   {:collection_id id2 :exploration_id exploration-id}]
+            (testing "a document attached to an exploration is not listed, so it is not `here` either"
+              (is (= #{"collection"} (set (:here (item))))))))))))
 
 (deftest dashboards-include-here
   (testing "GET /api/collection/:id/items"

@@ -2310,39 +2310,58 @@
                 (is (= (:id new-dash)
                        (:dashboard_id new-card)))))))))))
 
-(deftest library-dashboards-questions-test
+(deftest library-owner-questions-test
   (mt/with-premium-features #{:library}
-    (ts/with-dbs [source-db dest-db]
-      (ts/with-db source-db
-        (let [coll       (ts/create! :model/Collection :name "dashboards" :type collection/library-dashboards-collection-type)
-              regular    (ts/create! :model/Collection :name "regular")
-              dash       (ts/create! :model/Dashboard :name "dash" :collection_id (:id coll))
-              dq         (ts/create! :model/Card :name "dq card" :type :question :dashboard_id (:id dash))
-              _          (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id dq))
-              standalone (ts/create! :model/Card :name "standalone" :type :question :collection_id (:id regular))
-              ser        (vec (serdes.extract/extract {:no-settings   true
-                                                       :no-data-model true
-                                                       :no-transforms true}))
-              card-ser   (fn [card] (first (filter #(and (= "Card" (:model (last (serdes/path %))))
-                                                         (= (:entity_id card) (:entity_id %)))
-                                                   ser)))
-              messages   (fn [e] (map ex-message (take-while some? (iterate ex-cause e))))]
-          (ts/with-db dest-db
-            (testing "A dashboard question loads into Library Dashboards before its dashboard"
-              (is (serdes.load/load-metabase! (ts/ingestion-in-memory (cons (card-ser dq) (remove #{(card-ser standalone)} ser)))))
-              (is (= (t2/select-one-pk :model/Dashboard :entity_id (:entity_id dash))
-                     (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id dq)))))
-            (testing "A standalone question can't load into Library Dashboards"
-              (let [e (is (thrown? clojure.lang.ExceptionInfo
-                                   (serdes.load/load-metabase!
-                                    (ts/ingestion-in-memory [(assoc (card-ser standalone) :collection_id (:entity_id coll))]))))]
-                (is (some #(re-find #"Can only add dashboards to the 'Dashboards' collection" %) (messages e)))
-                (is (not (t2/exists? :model/Card :entity_id (:entity_id standalone))))))
-            (testing "A dashboard question can't become a standalone question in Library Dashboards"
-              (let [e (is (thrown? clojure.lang.ExceptionInfo
-                                   (serdes.load/load-metabase!
-                                    (ts/ingestion-in-memory [(assoc (card-ser dq) :dashboard_id nil)]))))]
-                (is (some #(re-find #"Can only add dashboards to the 'Dashboards' collection" %) (messages e)))))))))))
+    (doseq [{:keys [section-type owner-model owner-fk link! message]}
+            [{:section-type collection/library-dashboards-collection-type
+              :owner-model  :model/Dashboard
+              :owner-fk     :dashboard_id
+              :link!        (fn [dash card]
+                              (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card)))
+              :message      #"Can only add dashboards to the 'Dashboards' collection"}
+             {:section-type collection/library-documents-collection-type
+              :owner-model  :model/Document
+              :owner-fk     :document_id
+              :link!        (fn [doc card]
+                              (t2/update! :model/Document (:id doc)
+                                          {:document {:type    "doc"
+                                                      :content [{:type "cardEmbed" :attrs {:id (:id card)}}]}}))
+              :message      #"Can only add documents to the 'Documents' collection"}]]
+      (testing section-type
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (let [coll       (ts/create! :model/Collection :name "section" :type section-type)
+                  regular    (ts/create! :model/Collection :name "regular")
+                  owner      (ts/create! owner-model :name "owner" :collection_id (:id coll))
+                  owned      (ts/create! :model/Card :name "owned card" :type :question
+                                         owner-fk (:id owner) :collection_id (:id coll))
+                  _          (link! owner owned)
+                  standalone (ts/create! :model/Card :name "standalone" :type :question :collection_id (:id regular))
+                  ser        (vec (serdes.extract/extract {:no-settings   true
+                                                           :no-data-model true
+                                                           :no-transforms true}))
+                  card-ser   (fn [card] (first (filter #(and (= "Card" (:model (last (serdes/path %))))
+                                                             (= (:entity_id card) (:entity_id %)))
+                                                       ser)))
+                  messages   (fn [e] (map ex-message (take-while some? (iterate ex-cause e))))]
+              (ts/with-db dest-db
+                (testing "An owned question loads into its Library section before its owner"
+                  (is (serdes.load/load-metabase!
+                       (ts/ingestion-in-memory (cons (card-ser owned) (remove #{(card-ser standalone)} ser)))))
+                  (is (= (t2/select-one-pk owner-model :entity_id (:entity_id owner))
+                         (t2/select-one-fn owner-fk :model/Card :entity_id (:entity_id owned)))))
+                (testing "A standalone question can't load into the section"
+                  (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                       (serdes.load/load-metabase!
+                                        (ts/ingestion-in-memory
+                                         [(assoc (card-ser standalone) :collection_id (:entity_id coll))]))))]
+                    (is (some #(re-find message %) (messages e)))
+                    (is (not (t2/exists? :model/Card :entity_id (:entity_id standalone))))))
+                (testing "An owned question can't become a standalone question in the section"
+                  (let [e (is (thrown? clojure.lang.ExceptionInfo
+                                       (serdes.load/load-metabase!
+                                        (ts/ingestion-in-memory [(assoc (card-ser owned) owner-fk nil)]))))]
+                    (is (some #(re-find message %) (messages e)))))))))))))
 
 (deftest continue-on-error-test
   (let [change-ser   (fn [ser changes] ;; kind of like left-join, but right side is indexed

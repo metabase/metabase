@@ -113,6 +113,22 @@
   ;; `m.document/get-document` already does the 404 and read check internally.
   (m.document/get-document document-id))
 
+(api.macros/defendpoint :get "/:document-id/cards" :- [:map {:closed true}
+                                                       [:cards [:sequential [:map [:id ms/PositiveInt]]]]]
+  "The saved Cards the Document with `document-id` embeds, each once, in document order.
+
+  Embeds can reference any Card, not only the ones saved in the Document, so a Card the current user cannot read is
+  listed by its id alone, in its place. A Card that no longer exists is left out."
+  [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
+  (let [document (api/read-check (api/check-404 (documents.db/document document-id)))
+        card-ids (distinct (prose-mirror/card-ids document))
+        id->card (when (seq card-ids)
+                   (u/index-by :id (documents.db/cards card-ids)))]
+    {:cards (into []
+                  (comp (keep id->card)
+                        (map #(if (mi/can-read? %) % (select-keys % [:id]))))
+                  card-ids)}))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -209,12 +225,9 @@
                          (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
                        (let [new-document-id (documents.db/insert-document! document-data)
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
-                         (when (seq card-id-map)
-                           (documents.db/update-document! new-document-id
-                                                          (m.document/update-cards-in-ast
-                                                           {:document (:document existing-document)
-                                                            :content_type (:content_type existing-document)}
-                                                           card-id-map)))
+                         (m.document/remap-new-document-card-embeds! new-document-id
+                                                                     (select-keys existing-document [:document :content_type])
+                                                                     card-id-map)
                          (u/prog1 (m.document/get-document new-document-id)
                            (when (collections/remote-synced-collection? collection_id)
                              (collections/check-non-remote-synced-dependencies <>)))))]

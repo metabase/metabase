@@ -73,31 +73,39 @@
           (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type collection/library-metrics-collection-type)))
               "new collection with :type set is allowed"))))))
 
-(deftest check-allowed-content-dashboards
+(deftest check-allowed-content-dashboards-and-documents-test
   (mt/with-premium-features #{:library}
-    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Base Library" :type collection/library-dashboards-collection-type}
-                   :model/Dashboard  dashboard        {:collection_id (:id allow-dashboards)}
-                   :model/Card       dashboard-card   {:collection_id (:id allow-dashboards)
-                                                       :dashboard_id  (:id dashboard)
-                                                       :type          :question}]
-      (testing "Can add dashboards and their questions"
-        (is (some? dashboard))
-        (is (some? dashboard-card)))
-      (testing "Cannot add standalone questions, models, or metrics"
-        (doseq [card-type [:question :model :metric]]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add dashboards to the 'Dashboards' collection"
-                                (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type card-type :collection_id (:id allow-dashboards)}))))))
-      (testing "Cannot turn a dashboard question into a standalone question"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add dashboards to the 'Dashboards' collection"
-                              (t2/update! :model/Card (:id dashboard-card) {:dashboard_id nil}))))
-      (testing "Can add collections iff they have the same :type"
-        (let [new-coll (merge (mt/with-temp-defaults :model/Collection)
-                              {:location (str "/" (:id allow-dashboards) "/")})]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add dashboards to the 'Dashboards' collection"
-                                (t2/insert! :model/Collection new-coll))
-              "basic new collection is rejected")
-          (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type collection/library-dashboards-collection-type)))
-              "new collection with :type set is allowed"))))))
+    (doseq [[section-type owner-model owner-fk other-model message]
+            [[collection/library-dashboards-collection-type :model/Dashboard :dashboard_id :model/Document
+              #"Can only add dashboards to the 'Dashboards' collection"]
+             [collection/library-documents-collection-type :model/Document :document_id :model/Dashboard
+              #"Can only add documents to the 'Documents' collection"]]]
+      (testing section-type
+        (mt/with-temp [:model/Collection section    {:name "Test Base Library" :type section-type}
+                       owner-model       owner      {:collection_id (:id section)}
+                       :model/Card       owned-card {:collection_id (:id section)
+                                                     owner-fk       (:id owner)
+                                                     :type          :question}]
+          (testing "Can add the owners and their questions"
+            (is (some? owner))
+            (is (some? owned-card)))
+          (testing "Cannot add standalone questions, models, metrics, or the other owner"
+            (doseq [card-type [:question :model :metric]]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                    (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type card-type :collection_id (:id section)})))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                  (t2/insert! other-model (merge (mt/with-temp-defaults other-model) {:collection_id (:id section)})))))
+          (testing "Cannot turn an owned question into a standalone question"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                  (t2/update! :model/Card (:id owned-card) {owner-fk nil}))))
+          (testing "Can add collections iff they have the same :type"
+            (let [new-coll (merge (mt/with-temp-defaults :model/Collection)
+                                  {:location (str "/" (:id section) "/")})]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                    (t2/insert! :model/Collection new-coll))
+                  "basic new collection is rejected")
+              (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type section-type)))
+                  "new collection with :type set is allowed"))))))))
 
 (deftest library-dashboards-allow-dashboard-companions-test
   (mt/with-premium-features #{:library}
@@ -151,17 +159,62 @@
                        {:type :question :dashboard_id copy-id :collection_id (:id allow-dashboards) :collection_position nil}]
                       (sort-by (comp name :type) cards))))))))))
 
-(deftest move-dashboard-into-library-dashboards-test
+(deftest move-owner-into-its-library-section-test
   (mt/with-premium-features #{:library}
-    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Base Library" :type collection/library-dashboards-collection-type}
-                   :model/Collection regular          {:name "Regular Collection" :type nil}
-                   :model/Dashboard  dashboard        {:collection_id (:id regular)}
-                   :model/Card       dashboard-card   {:collection_id (:id regular)
-                                                       :dashboard_id  (:id dashboard)
-                                                       :type          :question}]
-      (testing "Moving a dashboard moves its questions along"
-        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id dashboard)) {:collection_id (:id allow-dashboards)})
-        (is (= (:id allow-dashboards) (t2/select-one-fn :collection_id :model/Card :id (:id dashboard-card))))))))
+    (doseq [[section-type owner-model owner-fk route]
+            [[collection/library-dashboards-collection-type :model/Dashboard :dashboard_id "dashboard/"]
+             [collection/library-documents-collection-type :model/Document :document_id "document/"]]]
+      (testing section-type
+        (mt/with-temp [:model/Collection section    {:name "Test Base Library" :type section-type}
+                       :model/Collection regular    {:name "Regular Collection" :type nil}
+                       owner-model       owner      {:collection_id (:id regular)}
+                       :model/Card       owned-card {:collection_id (:id regular)
+                                                     owner-fk       (:id owner)
+                                                     :type          :question}]
+          (testing "Moving the owner moves its questions along"
+            (mt/user-http-request :crowberto :put 200 (str route (:id owner)) {:collection_id (:id section)})
+            (is (= (:id section) (t2/select-one-fn :collection_id :model/Card :id (:id owned-card))))))))))
+
+(deftest documents-only-in-library-documents-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection data       {:name "Test Data" :type collection/library-data-collection-type}
+                   :model/Collection metrics    {:name "Test Metrics" :type collection/library-metrics-collection-type}
+                   :model/Collection dashboards {:name "Test Dashboards" :type collection/library-dashboards-collection-type}
+                   :model/Collection regular    {:name "Regular Collection"}
+                   :model/Document   document   {:collection_id (:id regular)}]
+      (doseq [[coll message] {data       #"Can only add tables to the 'Data' collection"
+                              metrics    #"Can only add metrics to the 'Metrics' collection"
+                              dashboards #"Can only add dashboards to the 'Dashboards' collection"}]
+        (testing (:type coll)
+          (testing "rejects a new document"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                  (t2/insert! :model/Document (merge (mt/with-temp-defaults :model/Document)
+                                                                     {:collection_id (:id coll)})))))
+          (testing "rejects a moved document"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                  (t2/update! :model/Document (:id document) {:collection_id (:id coll)}))))
+          (testing "rejects a document question"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                  (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                                 {:type          :question
+                                                                  :document_id   (:id document)
+                                                                  :collection_id (:id coll)}))))))))))
+
+(deftest create-document-in-library-documents-via-api-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection allow-documents  {:name "Test Documents" :type collection/library-documents-collection-type}
+                   :model/Collection allow-dashboards {:name "Test Dashboards" :type collection/library-dashboards-collection-type}]
+      (mt/with-model-cleanup [:model/Document]
+        (testing "POST /api/document creates a document in the Documents collection"
+          (is (=? {:collection_id (:id allow-documents)}
+                  (mt/user-http-request :crowberto :post 200 "document/" {:name          "Heron field notes"
+                                                                          :document      {:type "doc" :content []}
+                                                                          :collection_id (:id allow-documents)}))))
+        (testing "POST /api/document rejects the Dashboards collection"
+          (is (= "Can only add dashboards to the 'Dashboards' collection"
+                 (mt/user-http-request :crowberto :post 400 "document/" {:name          "Heron field notes"
+                                                                         :document      {:type "doc" :content []}
+                                                                         :collection_id (:id allow-dashboards)}))))))))
 
 (deftest tables-cannot-be-moved-to-non-library-data-collections
   (mt/with-premium-features #{:library}
@@ -185,9 +238,10 @@
     (mt/with-temp [:model/Collection library {:name "Test Library" :type collection/library-collection-type}
                    :model/Collection models {:name "Test Semantic Model Layer" :type collection/library-data-collection-type}
                    :model/Collection metrics {:name "Test Semantic Metrics Layer" :type collection/library-metrics-collection-type}
-                   :model/Collection dashboards {:name "Test Semantic Dashboards Layer" :type collection/library-dashboards-collection-type}]
+                   :model/Collection dashboards {:name "Test Semantic Dashboards Layer" :type collection/library-dashboards-collection-type}
+                   :model/Collection documents {:name "Test Semantic Documents Layer" :type collection/library-documents-collection-type}]
       (mt/with-dynamic-fn-redefs [collection/library-root-collection? (constantly true)]
-        (doseq [col [library models metrics dashboards]]
+        (doseq [col [library models metrics dashboards documents]]
           (testing (str "Checking type " (:type col))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                   #"Cannot update properties on a semantic layer collection"

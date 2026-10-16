@@ -11,6 +11,7 @@ export function selectedItemToMovable(item: SelectedItem): MovableItem {
     .with({ model: "table" }, () => ({ model: "table", id }))
     .with({ model: "metric" }, () => ({ model: "metric", id }))
     .with({ model: "dashboard" }, () => ({ model: "dashboard", id }))
+    .with({ model: "document" }, () => ({ model: "document", id }))
     .with({ model: "snippet" }, () => ({ model: "snippet", id }))
     .with({ model: "action" }, () => ({ model: "action", id }))
     .with({ model: "collection", section: "snippets" }, () => ({
@@ -31,6 +32,11 @@ export function selectedItemToArchivable(item: SelectedItem): ArchivableItem {
     }))
     .with({ model: "dashboard" }, () => ({
       model: "dashboard",
+      id,
+      can_write: canWrite,
+    }))
+    .with({ model: "document" }, () => ({
+      model: "document",
       id,
       can_write: canWrite,
     }))

@@ -5,6 +5,7 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
@@ -582,7 +583,7 @@
 (mu/defn library-collection-ids
   "The IDs of the library Collections."
   []
-  (t2/select-pks-set :model/Collection :type [:in ["library" "library-data" "library-metrics" "library-dashboards"]]))
+  (t2/select-pks-set :model/Collection :type [:in (vec collections.schema/library-collection-types)]))
 
 (mu/defn namespace-clause
   "Honey SQL clause to filter `namespace-keyword` by `namespace-val`, also matching the audit-app and tenant

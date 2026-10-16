@@ -4,6 +4,7 @@ import {
   canPlaceEntityInCollection as canPlaceEntityInCollectionImpl,
   canPlaceEntityInCollectionOrDescendants as canPlaceEntityInCollectionOrDescendantsImpl,
 } from "metabase/common/data-studio/collection-utils";
+import { getLibraryRootIconName } from "metabase/common/utils/icon";
 import { getUserPersonalCollectionId } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS, PLUGIN_LIBRARY } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
@@ -30,7 +31,9 @@ import { PERSONAL_COLLECTIONS, ROOT_COLLECTION } from "./constants";
 
 export type EntityType = CollectionItemModel;
 
-export function getEntityTypeFromCardType(cardType: CardType): EntityType {
+export function getEntityTypeFromCardType(
+  cardType: CardType,
+): Extract<EntityType, "card" | "dataset" | "metric"> {
   switch (cardType) {
     case "question":
       return "card";
@@ -434,17 +437,11 @@ export function getCollectionIcon(
     return { name: "synced_collection" };
   }
 
-  if (collection.is_library_root) {
-    switch (collection.type) {
-      case "library":
-        return { name: "repository" };
-      case "library-data":
-        return { name: "table" };
-      case "library-metrics":
-        return { name: "metric" };
-      case "library-dashboards":
-        return { name: "dashboard" };
-    }
+  const libraryRootIconName = collection.is_library_root
+    ? getLibraryRootIconName(collection.type)
+    : undefined;
+  if (libraryRootIconName) {
+    return { name: libraryRootIconName };
   }
 
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);

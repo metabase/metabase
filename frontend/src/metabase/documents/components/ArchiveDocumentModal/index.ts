@@ -1,0 +1,1 @@
+export { ArchiveDocumentModal } from "./ArchiveDocumentModal";

@@ -17,7 +17,6 @@ import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import type { LibrarySubCollectionType } from "metabase/plugins/oss/library";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
@@ -35,6 +34,7 @@ import {
 import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   CollectionItem,
+  LibrarySubCollectionType,
   SchemaName,
   SearchModel,
   SearchRequest,

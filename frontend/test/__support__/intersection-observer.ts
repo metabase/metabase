@@ -1,5 +1,13 @@
 import { act } from "@testing-library/react";
 
+type MockIntersectionObserverOptions = {
+  /**
+   * Report every observed element as intersecting right after `observe`, the
+   * way a browser reports a newly observed element's intersection.
+   */
+  intersectOnObserve?: boolean;
+};
+
 /**
  * Replaces the default no-op IntersectionObserver stub (see
  * frontend/test/jest-setup.js) with a mock that captures the observer
@@ -8,12 +16,14 @@ import { act } from "@testing-library/react";
  * Call inside a `describe` block — it registers beforeEach/afterEach hooks
  * that install the mock and restore the original observer.
  */
-export function setupMockIntersectionObserver() {
+export function setupMockIntersectionObserver({
+  intersectOnObserve = false,
+}: MockIntersectionObserverOptions = {}) {
   const originalIntersectionObserver = globalThis.IntersectionObserver;
 
   let intersectionCallback: IntersectionObserverCallback | null = null;
   let observerOptions: IntersectionObserverInit | undefined;
-  const observeMock = jest.fn();
+  const observeMock = jest.fn<void, [Element]>();
   const disconnectMock = jest.fn();
 
   beforeEach(() => {
@@ -24,7 +34,7 @@ export function setupMockIntersectionObserver() {
 
     globalThis.IntersectionObserver = class MockIntersectionObserver implements IntersectionObserver {
       constructor(
-        callback: IntersectionObserverCallback,
+        private callback: IntersectionObserverCallback,
         options?: IntersectionObserverInit,
       ) {
         intersectionCallback = callback;
@@ -35,7 +45,14 @@ export function setupMockIntersectionObserver() {
       rootMargin = "";
       scrollMargin = "";
       thresholds: ReadonlyArray<number> = [];
-      observe = observeMock;
+      observe(target: Element) {
+        observeMock(target);
+        if (intersectOnObserve) {
+          setTimeout(() =>
+            this.callback([createIntersectingEntry(target)], this),
+          );
+        }
+      }
       disconnect = disconnectMock;
       unobserve() {}
       takeRecords(): IntersectionObserverEntry[] {
@@ -64,5 +81,18 @@ export function setupMockIntersectionObserver() {
     observe: observeMock,
     disconnect: disconnectMock,
     getObserverOptions: () => observerOptions,
+  };
+}
+
+function createIntersectingEntry(target: Element): IntersectionObserverEntry {
+  const rect = target.getBoundingClientRect();
+  return {
+    target,
+    isIntersecting: true,
+    intersectionRatio: 1,
+    boundingClientRect: rect,
+    intersectionRect: rect,
+    rootBounds: null,
+    time: 0,
   };
 }

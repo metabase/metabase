@@ -1,10 +1,14 @@
 (ns metabase.revisions.impl.document-integration-test
   "Integration tests for Document revision history including API endpoints, events, and permissions."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.revisions.impl.document]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -215,6 +219,50 @@
             (is (some #(= :event/document-create (first %)) @events-received))
             (is (some #(= :event/document-update (first %)) @events-received))))))))
 
+(deftest document-api-content-edit-records-one-revision-test
+  (testing "PUT /api/document/:id with new content records exactly one revision, without hydrated keys"
+    (mt/with-model-cleanup [:model/Document]
+      (let [doc-id (:id (mt/user-http-request :crowberto :post 200 "document"
+                                              {:name     "Bird sightings"
+                                               :document (documents.test-util/text->prose-mirror-ast "A heron")}))
+            revision-ids #(t2/select-pks-set :model/Revision :model "Document" :model_id doc-id)
+            ids-before (revision-ids)]
+        (mt/user-http-request :crowberto :put 200 (format "document/%d" doc-id)
+                              {:document (documents.test-util/text->prose-mirror-ast "A heron and a kingfisher")})
+        (let [new-ids (remove ids-before (revision-ids))]
+          (is (= 1 (count new-ids)))
+          (is (= "edited the content."
+                 (:description (first (mt/user-http-request :crowberto :get 200
+                                                            (format "revision/document/%d" doc-id))))))
+          (is (= #{}
+                 (-> (t2/select-one-fn :object :model/Revision :id (first new-ids))
+                     keys
+                     set
+                     (set/intersection #{:collection :creator :can_write :can_delete :can_restore
+                                         :is_remote_synced})))))))))
+
+(deftest document-api-edit-publishes-one-update-event-test
+  (testing "PUT /api/document/:id publishes one :event/document-update, with the acting user, and audits it once"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/Document]
+        (let [doc-id          (:id (mt/user-http-request :crowberto :post 200 "document"
+                                                         {:name     "Bird sightings"
+                                                          :document (documents.test-util/text->prose-mirror-ast
+                                                                     "A heron")}))
+              original-event  (mt/original-fn #'events/publish-event!)
+              update-events   (atom [])]
+          (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
+                                                              (when (= :event/document-update topic)
+                                                                (swap! update-events conj event))
+                                                              (original-event topic event))]
+            (mt/user-http-request :crowberto :put 200 (format "document/%d" doc-id)
+                                  {:document (documents.test-util/text->prose-mirror-ast
+                                              "A heron and a kingfisher")}))
+          (is (=? [{:user-id (mt/user->id :crowberto)
+                    :object  {:id doc-id}}]
+                  @update-events))
+          (is (= 1 (t2/count :model/AuditLog :topic "document-update" :model_id doc-id))))))))
+
 (deftest document-revision-diff-and-descriptions-test
   (testing "Document revision diffs and descriptions work correctly"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Original Title"
@@ -238,3 +286,44 @@
                  (get-in content-revision [:diff :before :document])))
           (is (= {:content [{:content [{:text "New content"}]}]}
                  (get-in content-revision [:diff :after :document]))))))))
+
+(defn- venues-query []
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
+
+(defn- revisions-and-audit-topics
+  [doc-id]
+  {:revisions    (t2/select-fn-vec :is_creation :model/Revision :model "Document" :model_id doc-id)
+   :audit-topics (t2/select-fn-vec :topic :model/AuditLog :model "Document" :model_id doc-id)})
+
+(deftest document-created-with-embedded-cards-records-only-its-creation-test
+  (testing "POST /api/document with an embedded card and a new card records one creation revision and audit row"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Card {card-id :id} {:name "Herons" :dataset_query (venues-query)}]
+          (let [doc-id (:id (mt/user-http-request
+                             :crowberto :post 200 "document"
+                             {:name     "Bird sightings"
+                              :document {:type    "doc"
+                                         :content [{:type "cardEmbed" :attrs {:id card-id}}
+                                                   {:type "cardEmbed" :attrs {:id -1}}]}
+                              :cards    {-1 {:name                   "Kingfishers"
+                                             :dataset_query          (venues-query)
+                                             :display                "table"
+                                             :visualization_settings {}}}}))]
+            (is (= {:revisions [true] :audit-topics [:document-create]}
+                   (revisions-and-audit-topics doc-id)))))))))
+
+(deftest copied-document-with-cards-records-only-its-creation-test
+  (testing "POST /api/document/:id/copy of a document with cards records one creation revision and audit row"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/Document :model/Card]
+        (mt/with-temp [:model/Document {source-id :id} {:name "Bird sightings"}
+                       :model/Card {card-id :id} {:name          "Herons"
+                                                  :document_id   source-id
+                                                  :dataset_query (venues-query)}]
+          (t2/update! :model/Document source-id {:document {:type    "doc"
+                                                            :content [{:type "cardEmbed" :attrs {:id card-id}}]}})
+          (let [copy-id (:id (mt/user-http-request :crowberto :post 200 (format "document/%d/copy" source-id) {}))]
+            (is (= {:revisions [true] :audit-topics [:document-create]}
+                   (revisions-and-audit-topics copy-id)))))))))

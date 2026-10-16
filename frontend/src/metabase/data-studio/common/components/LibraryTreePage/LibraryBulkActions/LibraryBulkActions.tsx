@@ -17,7 +17,7 @@ import {
   useSetCollection,
 } from "metabase/common/hooks";
 import type {
-  LibrarySection,
+  LibraryTreeSection,
   SelectedItem,
 } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
@@ -31,13 +31,19 @@ import {
 
 type BulkAction = "move" | "unpublish";
 
+type BulkActionToast = {
+  success: string;
+  error: (failedCount: number) => string;
+  undo?: () => Promise<void>;
+};
+
 type LibraryBulkActionsProps = {
   selectedItems: SelectedItem[];
-  selectionSection: LibrarySection | null;
+  selectionSection: LibraryTreeSection | null;
   isAllTables: boolean;
   defaultCollectionId: CollectionId | undefined;
   getTrashMessage?: (
-    section: LibrarySection,
+    section: LibraryTreeSection,
     count: number,
   ) => string | undefined;
   onClear: () => void;
@@ -75,22 +81,21 @@ export function LibraryBulkActions({
     [selectedItems],
   );
 
-  const runBulkAction = async (
+  const updateSelectedItems = async (
     applyToItem: (item: SelectedItem) => Promise<unknown>,
-    toast: { success: string; error: (failedCount: number) => string },
+    toast: BulkActionToast,
   ) => {
     const failedCount = await runLibraryItemUpdates(selectedItems, applyToItem);
     if (failedCount > 0) {
       sendErrorToast(toast.error(failedCount));
     } else {
-      sendSuccessToast(toast.success);
+      sendSuccessToast(toast.success, toast.undo);
     }
-    onClear();
   };
 
   const handleMove = async (destinationId: RegularCollectionId | null) => {
     try {
-      await runBulkAction(
+      await updateSelectedItems(
         (item) =>
           setCollection(
             selectedItemToMovable(item),
@@ -103,6 +108,7 @@ export function LibraryBulkActions({
             t`Couldn't move ${failedCount} of ${count} items`,
         },
       );
+      onClear();
     } finally {
       setAction(undefined);
     }
@@ -113,16 +119,26 @@ export function LibraryBulkActions({
     onClear();
   };
 
-  const handleTrash = () =>
-    runBulkAction(
-      (item) =>
-        setArchive(selectedItemToArchivable(item), true, { notify: false }),
-      {
-        success: t`Moved to trash`,
-        error: (failedCount) =>
-          t`Couldn't move ${failedCount} of ${count} items to trash`,
-      },
-    );
+  const archiveItem = (archived: boolean) => (item: SelectedItem) =>
+    setArchive(selectedItemToArchivable(item), archived, { notify: false });
+
+  // Undo can run after the user has made a new selection, so it doesn't clear it
+  const handleRestore = () =>
+    updateSelectedItems(archiveItem(false), {
+      success: t`Restored`,
+      error: (failedCount) =>
+        t`Couldn't restore ${failedCount} of ${count} items`,
+    });
+
+  const handleTrash = async () => {
+    await updateSelectedItems(archiveItem(true), {
+      success: t`Moved to trash`,
+      error: (failedCount) =>
+        t`Couldn't move ${failedCount} of ${count} items to trash`,
+      undo: handleRestore,
+    });
+    onClear();
+  };
 
   const confirmTrash = () => {
     showConfirm({
@@ -193,7 +209,7 @@ export function isMoveDestinationDisabled(
 }
 
 type LibraryMoveModalProps = {
-  section: LibrarySection;
+  section: LibraryTreeSection;
   initialCollectionId: CollectionId | null;
   movingCollectionIds: string[];
   onMove: (destinationId: RegularCollectionId | null) => void;
@@ -261,6 +277,7 @@ function LibraryMoveModal({
         .with("data", () => "table" as const)
         .with("metrics", () => "metric" as const)
         .with("dashboards", () => "dashboard" as const)
+        .with("documents", () => "document" as const)
         .exhaustive()}
     />
   );

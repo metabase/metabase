@@ -7,7 +7,11 @@ import {
 } from "metabase/api/dataset";
 import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
-import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
+import type {
+  CardDataError,
+  UseCardDataResult,
+} from "metabase/rich_text_editing/tiptap/EditorHost";
+import { is403Error, isResourceNotFoundError } from "metabase/utils/errors";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
 import type {
   Card,
@@ -15,7 +19,6 @@ import type {
   RawSeries,
   StoredResultSort,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import { getCardWithDraft, getDraftCardOriginalId } from "../selectors";
 
@@ -44,40 +47,35 @@ function buildSeries(card: Card, dataset: Dataset): RawSeries {
   ];
 }
 
-function selectDataset(
+function selectForQueryKind<T>(
   isDraft: boolean,
   isPivot: boolean,
-  regularDataset?: Dataset,
-  draftDataset?: Dataset,
-  draftPivotDataset?: Dataset,
-): Dataset | undefined {
+  regular: T,
+  draft: T,
+  draftPivot: T,
+): T {
   if (!isDraft) {
-    return regularDataset;
+    return regular;
   }
 
   if (isPivot) {
-    return draftPivotDataset;
+    return draftPivot;
   }
 
-  return draftDataset;
+  return draft;
 }
 
-function selectIsLoadingDataset(
-  isDraft: boolean,
-  isPivot: boolean,
-  isLoadingRegular: boolean,
-  isLoadingDraft: boolean,
-  isLoadingDraftPivot: boolean,
-): boolean {
-  if (!isDraft) {
-    return isLoadingRegular;
+function getRequestError(error: unknown): CardDataError | null {
+  if (error == null) {
+    return null;
   }
-
-  if (isPivot) {
-    return isLoadingDraftPivot;
+  if (is403Error(error)) {
+    return "forbidden";
   }
-
-  return isLoadingDraft;
+  if (isResourceNotFoundError(error)) {
+    return "not found";
+  }
+  return "unknown";
 }
 
 export function useCardData({
@@ -93,7 +91,11 @@ export function useCardData({
     data: card,
     isLoading: isLoadingCard,
     error: cardError,
-  } = useGetCardQuery({ id }, { skip: shouldSkipSavedCard });
+  } = useGetCardQuery(
+    // A card the user cannot read is this embed's error state, not the page's
+    { id, ignore_error: true },
+    { skip: shouldSkipSavedCard },
+  );
 
   const cardWithDraft = useSelector((state) =>
     getCardWithDraft(state, id, card),
@@ -131,33 +133,42 @@ export function useCardData({
     }
   }, [shouldUseDraftQuery, isPivotTable, cardToUse, buildQuestion]);
 
-  const { data: regularDataset, isLoading: isLoadingRegularDataset } =
-    useGetCardQueryQuery(
-      {
-        cardId: queryCardId,
-        ...(storedResultId != null
-          ? { stored_result_id: storedResultId, sort: storedResultSort }
-          : {}),
-      },
-      { skip: shouldSkipRegularQuery },
-    );
+  const {
+    data: regularDataset,
+    isLoading: isLoadingRegularDataset,
+    error: regularDatasetError,
+  } = useGetCardQueryQuery(
+    {
+      cardId: queryCardId,
+      ...(storedResultId != null
+        ? { stored_result_id: storedResultId, sort: storedResultSort }
+        : {}),
+    },
+    { skip: shouldSkipRegularQuery },
+  );
 
-  const { data: draftDataset, isLoading: isLoadingDraftDataset } =
-    useGetAdhocQueryQuery(
-      shouldQueryDraftNonPivot ? buildAdhocQueryParams(cardToUse) : skipToken,
-    );
+  const {
+    data: draftDataset,
+    isLoading: isLoadingDraftDataset,
+    error: draftDatasetError,
+  } = useGetAdhocQueryQuery(
+    shouldQueryDraftNonPivot ? buildAdhocQueryParams(cardToUse) : skipToken,
+  );
 
-  const { data: draftPivotDataset, isLoading: isLoadingDraftPivotDataset } =
-    useGetAdhocPivotQueryQuery(
-      shouldQueryDraftPivot
-        ? {
-            ...buildAdhocQueryParams(cardToUse),
-            ...(pivotOptions || {}),
-          }
-        : skipToken,
-    );
+  const {
+    data: draftPivotDataset,
+    isLoading: isLoadingDraftPivotDataset,
+    error: draftPivotDatasetError,
+  } = useGetAdhocPivotQueryQuery(
+    shouldQueryDraftPivot
+      ? {
+          ...buildAdhocQueryParams(cardToUse),
+          ...(pivotOptions || {}),
+        }
+      : skipToken,
+  );
 
-  const dataset = selectDataset(
+  const dataset = selectForQueryKind(
     shouldUseDraftQuery,
     isPivotTable,
     regularDataset,
@@ -165,12 +176,20 @@ export function useCardData({
     draftPivotDataset,
   );
 
-  const isLoadingDataset = selectIsLoadingDataset(
+  const isLoadingDataset = selectForQueryKind(
     shouldUseDraftQuery,
     isPivotTable,
     isLoadingRegularDataset,
     isLoadingDraftDataset,
     isLoadingDraftPivotDataset,
+  );
+
+  const datasetError = selectForQueryKind(
+    shouldUseDraftQuery,
+    isPivotTable,
+    regularDatasetError,
+    draftDatasetError,
+    draftPivotDatasetError,
   );
 
   const isLoading = isLoadingCard || isLoadingDataset;
@@ -185,18 +204,7 @@ export function useCardData({
     [cardToUse, buildQuestion],
   );
 
-  const hasTriedToLoad =
-    cardToUse !== undefined || isLoadingCard || isLoadingDataset;
-  const hasFailedToLoadCard = hasTriedToLoad && !isLoading && id && !cardToUse;
-  const getError = () => {
-    if (isObject(cardError) && cardError.status === 404) {
-      return "not found";
-    }
-    if (hasFailedToLoadCard) {
-      return "unknown";
-    }
-  };
-  const error = getError();
+  const error = getRequestError(cardError) ?? getRequestError(datasetError);
 
   return {
     card: cardToUse,

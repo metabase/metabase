@@ -4,6 +4,7 @@ import type {
   DashboardId,
   DashboardSubscription,
   DatabaseId,
+  DocumentId,
   ErdParams,
   FieldId,
   MeasureId,
@@ -96,7 +97,7 @@ export function dataStudioData({
   return parts.join("/");
 }
 
-type ExpandedIdsParams = { expandedIds?: CollectionId[] };
+export type ExpandedIdsParams = { expandedIds?: CollectionId[] };
 
 function getExpandedIdsQueryString({ expandedIds }: ExpandedIdsParams) {
   if (!expandedIds?.length) {
@@ -145,6 +146,26 @@ export function dataStudioDashboardSubscriptions(
 ) {
   const baseUrl = `${dataStudioDashboard(dashboardId)}/subscriptions`;
   return subscriptionId != null ? `${baseUrl}/${subscriptionId}` : baseUrl;
+}
+
+export function dataStudioDocuments(params: ExpandedIdsParams = {}) {
+  return `${ROOT_URL}/documents${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioDocument(documentId: DocumentId) {
+  return `${dataStudioDocuments()}/${documentId}`;
+}
+
+export function dataStudioDocumentContents(documentId: DocumentId) {
+  return `${dataStudioDocument(documentId)}/contents`;
+}
+
+export function dataStudioDocumentDependencies(documentId: DocumentId) {
+  return `${dataStudioDocument(documentId)}/dependencies`;
+}
+
+export function dataStudioDocumentHistory(documentId: DocumentId) {
+  return `${dataStudioDocument(documentId)}/history`;
 }
 
 export function dataStudioTable(tableId: TableId) {

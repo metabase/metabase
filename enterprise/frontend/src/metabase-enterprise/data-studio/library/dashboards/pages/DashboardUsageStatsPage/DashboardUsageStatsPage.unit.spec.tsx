@@ -2,24 +2,26 @@ import fetchMock from "fetch-mock";
 
 import {
   setupAuditInfoEndpoint,
-  setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupListSubscriptionsEndpoint } from "__support__/server-mocks/pulse";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
 import type { DashboardCard, RawSeries } from "metabase-types/api";
 import {
   createMockCard,
-  createMockCollection,
   createMockDashboard,
   createMockDashboardCard,
   createMockDataset,
   createMockParameter,
 } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
+
+import {
+  DASHBOARDS_COLLECTION,
+  setupLibraryCollectionEndpoints,
+} from "../../../test-utils";
 
 import { DashboardUsageStatsPage } from "./DashboardUsageStatsPage";
 import { USAGE_STATS_CARD_ENTITY_IDS } from "./constants";
@@ -31,7 +33,11 @@ jest.mock("metabase/visualizations/components/Visualization", () => {
   return { __esModule: true, default: StubVisualization };
 });
 
-const DASHBOARD = createMockDashboard({ id: 10, name: "Sales overview" });
+const DASHBOARD = createMockDashboard({
+  id: 10,
+  name: "Sales overview",
+  collection: DASHBOARDS_COLLECTION,
+});
 const AUDIT_DASHBOARD_ID = 201;
 
 const DATE_FILTER_PARAMETER = createMockParameter({
@@ -117,9 +123,7 @@ function setup({
   auditDashcards = [ACTIVITY_DASHCARD, VIEWS_DASHCARD, PEOPLE_DASHCARD],
 }: SetupOpts = {}) {
   setupDashboardEndpoints(DASHBOARD);
-  setupCollectionByIdEndpoint({
-    collections: [createMockCollection(ROOT_COLLECTION)],
-  });
+  setupLibraryCollectionEndpoints();
   setupListSubscriptionsEndpoint([]);
   setupAuditInfoEndpoint({
     auditInfo: hasUsageAnalyticsAccess

@@ -50,6 +50,21 @@ describe("canPlaceEntityInCollection", () => {
     );
   });
 
+  it("should only allow documents and collections in Library Documents collections", () => {
+    expect(canPlaceEntityInCollection("document", "library-documents")).toBe(
+      true,
+    );
+    expect(canPlaceEntityInCollection("collection", "library-documents")).toBe(
+      true,
+    );
+    expect(canPlaceEntityInCollection("dashboard", "library-documents")).toBe(
+      false,
+    );
+    expect(canPlaceEntityInCollection("document", "library-dashboards")).toBe(
+      false,
+    );
+  });
+
   it("should allow entities in non-Library collections", () => {
     expect(canPlaceEntityInCollection("table", null)).toBe(true);
     expect(canPlaceEntityInCollection("metric", undefined)).toBe(true);
@@ -83,6 +98,24 @@ describe("canPlaceEntityInCollectionOrDescendants", () => {
     ).toBe(true);
     expect(
       canPlaceEntityInCollectionOrDescendants("dashboard", "library-metrics"),
+    ).toBe(false);
+  });
+
+  it("should let documents reach the Library's Documents collection", () => {
+    expect(canPlaceEntityInCollectionOrDescendants("document", "library")).toBe(
+      true,
+    );
+    expect(
+      canPlaceEntityInCollectionOrDescendants("document", "library-documents"),
+    ).toBe(true);
+    expect(
+      canPlaceEntityInCollectionOrDescendants("document", "library-dashboards"),
+    ).toBe(false);
+  });
+
+  it("should not offer the Documents section as a place for questions", () => {
+    expect(
+      canPlaceEntityInCollectionOrDescendants("card", "library-documents"),
     ).toBe(false);
   });
 });

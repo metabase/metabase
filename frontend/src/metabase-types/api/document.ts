@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 
-import type { Card, CreateCardRequest } from "./card";
+import type { Card, CreateCardRequest, UnreadableCard } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { BaseUser, UserId } from "./user";
 
@@ -19,6 +19,8 @@ export type Document = {
   created_at: string;
   updated_at: string;
   archived: boolean;
+  /** Whether the document itself was trashed, rather than a collection above it */
+  archived_directly: boolean;
   is_remote_synced?: boolean;
   can_delete: boolean;
   can_restore: boolean;
@@ -28,11 +30,17 @@ export type Document = {
   made_public_by_id?: UserId | null;
   cards?: Record<number, Card>; // Map of card ID -> card metadata, hydrated for public documents
   view_count?: number;
+  last_viewed_at?: string;
   exploration_id?: number | null;
   is_placeholder?: boolean;
 };
 
 export type GetDocumentRequest = { id: DocumentId };
+
+/** The embedded cards in document order; one the user cannot read is a bare `{ id }` */
+export type GetDocumentCardsResponse = {
+  cards: (Card | UnreadableCard)[];
+};
 
 export type DocumentCardToCreate = Pick<
   CreateCardRequest,

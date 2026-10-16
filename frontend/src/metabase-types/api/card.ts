@@ -605,6 +605,9 @@ export type VisualizationSettingKey = Exclude<
 
 export type CardId = number;
 
+/** The stub the backend sends in place of a card the user cannot read: only its id. Narrow with `isReadableCard`. */
+export type UnreadableCard = Pick<Card, "id">;
+
 export type CardFilterOption =
   | "all"
   | "mine"

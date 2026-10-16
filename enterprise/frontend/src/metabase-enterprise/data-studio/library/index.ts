@@ -2,6 +2,7 @@ import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { PLUGIN_DATA_REFERENCE } from "metabase/querying/components/DataReference/plugins";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { isLibrarySubCollectionType } from "metabase-types/guards/collection";
 
 import { CollectionPermissionsModal } from "./components/CollectionPermissionsModal";
 import { CreateLibraryModal } from "./components/CreateLibraryModal";
@@ -9,6 +10,7 @@ import { DataReferenceLibraryPane } from "./components/DataReferenceLibraryPane"
 import { PublishTablesModal } from "./components/PublishTablesModal";
 import { UnpublishTablesModal } from "./components/UnpublishTablesModal";
 import { getDataStudioDashboardRoutes } from "./dashboards/routes";
+import { getDataStudioDocumentRoutes } from "./documents/routes";
 import { useGetLibraryChildCollectionByType } from "./hooks/use-get-library-child-collection-by-type";
 import { useGetLibraryCollection } from "./hooks/use-get-library-collection";
 import { useGetResolvedLibraryCollection } from "./hooks/use-get-resolved-library-collection";
@@ -19,7 +21,6 @@ import {
   getLibraryCollectionEmptyStateMessages,
   isLibraryCollectionType,
   isLibraryDataCollectionType,
-  isLibrarySubCollectionType,
 } from "./utils";
 
 export function initializePlugin() {
@@ -27,6 +28,7 @@ export function initializePlugin() {
     PLUGIN_LIBRARY.isEnabled = true;
     PLUGIN_LIBRARY.getDataStudioLibraryRoutes = getDataStudioLibraryRoutes;
     PLUGIN_LIBRARY.getDataStudioDashboardRoutes = getDataStudioDashboardRoutes;
+    PLUGIN_LIBRARY.getDataStudioDocumentRoutes = getDataStudioDocumentRoutes;
     PLUGIN_LIBRARY.useGetLibraryCollection = useGetLibraryCollection;
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType =
       useGetLibraryChildCollectionByType;

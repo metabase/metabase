@@ -1,5 +1,5 @@
 import type {
-  LibrarySection,
+  LibraryTreeSection,
   SelectedItem,
 } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 
@@ -9,7 +9,7 @@ function item(
   model: SelectedItem["model"],
   entityId: number,
   sourceCollectionId: number | null,
-  section?: LibrarySection,
+  section?: LibraryTreeSection,
 ): SelectedItem {
   return {
     key: `${model}:${entityId}`,

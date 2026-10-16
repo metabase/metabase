@@ -40,22 +40,26 @@ describe("getCreatedCollectionUrl", () => {
   it.each([
     {
       name: "a top-level folder",
+      type: "library-dashboards" as const,
       location: "/7/10/",
       expectedUrl: "/data-studio/dashboards?expandedId=12",
     },
     {
       name: "a nested folder",
+      type: "library-dashboards" as const,
       location: "/7/10/11/",
       expectedUrl: "/data-studio/dashboards?expandedId=11&expandedId=12",
     },
+    {
+      name: "a nested folder",
+      type: "library-documents" as const,
+      location: "/7/10/11/",
+      expectedUrl: "/data-studio/documents?expandedId=11&expandedId=12",
+    },
   ])(
-    "opens $name on the Dashboards tab with only its folders expanded",
-    ({ location, expectedUrl }) => {
-      const collection = createMockCollection({
-        id: 12,
-        type: "library-dashboards",
-        location,
-      });
+    "opens $name of $type on its section page with only its folders expanded",
+    ({ type, location, expectedUrl }) => {
+      const collection = createMockCollection({ id: 12, type, location });
 
       expect(getCreatedCollectionUrl(collection)).toBe(expectedUrl);
     },

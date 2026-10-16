@@ -1,32 +1,25 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  setupCollectionByIdEndpoint,
-  setupDashboardEndpoints,
-} from "__support__/server-mocks";
+import { setupDashboardEndpoints } from "__support__/server-mocks";
 import { setupListSubscriptionsEndpoint } from "__support__/server-mocks/pulse";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
+import { createMockDashboard } from "metabase-types/api/mocks";
+
 import {
-  createMockCollection,
-  createMockDashboard,
-} from "metabase-types/api/mocks";
+  DASHBOARDS_COLLECTION,
+  setupLibraryCollectionEndpoints,
+} from "../../../test-utils";
 
 import { DashboardDependenciesPage } from "./DashboardDependenciesPage";
 
 jest.mock("../../analytics");
 
-const DASHBOARDS_COLLECTION = createMockCollection({
-  id: 2,
-  name: "Dashboards",
-  type: "library-dashboards",
-});
-
 const DASHBOARD = createMockDashboard({
   id: 10,
   name: "Sales overview",
   collection_id: DASHBOARDS_COLLECTION.id,
+  collection: DASHBOARDS_COLLECTION,
 });
 
 const DEPENDENCIES_PATH = `/data-studio/dashboards/${DASHBOARD.id}/dependencies`;
@@ -38,9 +31,7 @@ type SetupOpts = {
 function setup({ search }: SetupOpts) {
   setupDashboardEndpoints(DASHBOARD);
   setupListSubscriptionsEndpoint([]);
-  setupCollectionByIdEndpoint({
-    collections: [createMockCollection(ROOT_COLLECTION), DASHBOARDS_COLLECTION],
-  });
+  setupLibraryCollectionEndpoints();
 
   const { router } = renderWithProviders(
     <>

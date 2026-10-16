@@ -13,7 +13,7 @@ import { Button, Modal, Text } from "metabase/ui";
 interface ArchiveModalProps {
   title?: string;
   message?: ReactNode;
-  model: "card" | "model" | "metric" | "dashboard" | "collection";
+  model: "card" | "model" | "metric" | "dashboard" | "collection" | "document";
   // null matches SimpleEventSchema's target_id for entities without a numeric id
   modelId: number | null;
   isLoading?: boolean;

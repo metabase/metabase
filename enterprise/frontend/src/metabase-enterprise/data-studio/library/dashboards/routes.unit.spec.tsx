@@ -1,7 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAuditInfoEndpoint,
-  setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { setupDependencyGraphEndpoint } from "__support__/server-mocks/dependencies";
@@ -11,19 +10,26 @@ import {
 } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import {
-  createMockCollection,
   createMockDashboard,
   createMockDependencyGraph,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
+import {
+  DASHBOARDS_COLLECTION,
+  setupLibraryCollectionEndpoints,
+} from "../test-utils";
+
 import { getDataStudioDashboardRoutes } from "./routes";
 
-const DASHBOARD = createMockDashboard({ id: 10, name: "Sales overview" });
+const DASHBOARD = createMockDashboard({
+  id: 10,
+  name: "Sales overview",
+  collection: DASHBOARDS_COLLECTION,
+});
 const CONTENTS_PATH = "/data-studio/dashboards/10/contents";
 const DEPENDENCIES_PATH = "/data-studio/dashboards/10/dependencies";
 const USAGE_PATH = "/data-studio/dashboards/10/usage";
@@ -49,9 +55,7 @@ function setup({ initialRoute, hasUsageAnalyticsAccess = true }: SetupOpts) {
       ? { dashboard_overview: AUDIT_DASHBOARD.id }
       : {},
   });
-  setupCollectionByIdEndpoint({
-    collections: [createMockCollection(ROOT_COLLECTION)],
-  });
+  setupLibraryCollectionEndpoints();
   setupDependencyGraphEndpoint(createMockDependencyGraph());
 
   renderWithProviders(

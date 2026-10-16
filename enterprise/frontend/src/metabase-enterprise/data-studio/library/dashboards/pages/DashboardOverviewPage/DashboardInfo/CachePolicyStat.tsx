@@ -9,7 +9,7 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import { UnstyledButton } from "metabase/ui";
 import type { CacheableDashboard, CacheableModel } from "metabase-types/api";
 
-import { DashboardStat } from "./DashboardStat";
+import { InfoStatSection } from "../../../../components/InfoStatSection";
 
 const CACHE_CONFIG_MODELS: CacheableModel[] = ["dashboard"];
 
@@ -33,7 +33,7 @@ export function CachePolicyStat({ dashboard }: CachePolicyStatProps) {
 
   if (error != null) {
     return (
-      <DashboardStat label={t`Caching policy`} value={t`Failed to load`} />
+      <InfoStatSection label={t`Caching policy`} value={t`Failed to load`} />
     );
   }
 
@@ -45,12 +45,12 @@ export function CachePolicyStat({ dashboard }: CachePolicyStatProps) {
     getShortStrategyLabel(config?.strategy, "dashboard") ?? t`Default`;
 
   if (dashboard.archived) {
-    return <DashboardStat label={t`Caching policy`} value={strategyLabel} />;
+    return <InfoStatSection label={t`Caching policy`} value={strategyLabel} />;
   }
 
   return (
     <>
-      <DashboardStat
+      <InfoStatSection
         label={t`Caching policy`}
         labelId={labelId}
         value={
