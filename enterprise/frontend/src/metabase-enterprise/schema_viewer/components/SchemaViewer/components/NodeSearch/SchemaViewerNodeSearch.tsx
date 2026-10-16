@@ -1,5 +1,5 @@
 import { useHotkeys } from "@mantine/hooks";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -35,8 +35,18 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
 
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
-    onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
   });
+
+  // Highlight the first match on open and on every query change so Enter
+  // jumps to it, like Mantine Autocomplete's `selectFirstOptionOnDropdownOpen`
+  // and `selectFirstOptionOnChange`. Runs after render, once the options are
+  // in the DOM.
+  const { dropdownOpened, selectFirstOption } = combobox;
+  useEffect(() => {
+    if (dropdownOpened) {
+      selectFirstOption();
+    }
+  }, [dropdownOpened, query, selectFirstOption]);
 
   useHotkeys([
     [
@@ -108,7 +118,6 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
           onChange={(event) => {
             setQuery(event.currentTarget.value);
             combobox.openDropdown();
-            combobox.updateSelectedOptionIndex();
           }}
           onFocus={() => {
             setQuery("");

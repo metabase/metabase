@@ -474,6 +474,10 @@ export function SchemaViewer({
         maxZoom={MAX_ZOOM}
         colorMode={colorScheme === "dark" ? "dark" : "light"}
         nodesConnectable={false}
+        // The canvas is operated with a mouse or touchpad only, so tables are
+        // not tab stops and get no keyboard-selection descriptions.
+        nodesFocusable={false}
+        disableKeyboardA11y
         onInit={setReactFlowInstance}
         onMoveEnd={handleMoveEnd}
         onNodesChange={onNodesChange}
