@@ -113,9 +113,11 @@ export const EventDefinitionEditor = ({
         onChange={setQuery}
         initialOpened={filters.length === 0}
       />
-      <Button fullWidth disabled={!canSubmit} onClick={handleSubmit}>
-        {t`Done`}
-      </Button>
+      {filters.length > 0 && (
+        <Button fullWidth disabled={!canSubmit} onClick={handleSubmit}>
+          {t`Done`}
+        </Button>
+      )}
     </Stack>
   );
 };
