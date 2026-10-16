@@ -25,6 +25,8 @@ type EventDefinitionSummaryProps = {
   removeLabel?: string;
   /** Lets a palette segment be dropped on the summary to fill it in. */
   dropTarget?: SegmentDropTarget;
+  /** A slot still to fill: drawn dashed, with its placeholder. */
+  empty?: boolean;
   onEdit: () => void;
   onRemove?: () => void;
 };
@@ -37,6 +39,7 @@ export const EventDefinitionSummary = ({
   disabled,
   removeLabel = t`Remove`,
   dropTarget = NO_DROP_TARGET,
+  empty = false,
   onEdit,
   onRemove,
 }: EventDefinitionSummaryProps) => {
@@ -47,6 +50,7 @@ export const EventDefinitionSummary = ({
     <Group
       id={id}
       className={S.root}
+      data-empty={empty}
       gap="xs"
       wrap="nowrap"
       p="sm"

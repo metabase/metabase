@@ -12,6 +12,8 @@ import {
 import type { PaletteSegment } from "./types";
 
 type SegmentDragState = {
+  /** Whether the palette is showing, so slots can say to drag from it. */
+  isPaletteOpen: boolean;
   dragging: PaletteSegment | null;
   /** The palette item under the pointer, so targets can hint before a drag. */
   hovering: PaletteSegment | null;
@@ -21,6 +23,7 @@ type SegmentDragState = {
 };
 
 const SegmentDragContext = createContext<SegmentDragState>({
+  isPaletteOpen: false,
   dragging: null,
   hovering: null,
   startDrag: () => undefined,
@@ -35,7 +38,15 @@ const DATA_TYPE = "application/x-metabase-segment";
  * drop. The segment lives here rather than in the drag data, so drop targets
  * can light up while it's still in the air.
  */
-export const SegmentDragProvider = ({ children }: { children: ReactNode }) => {
+type SegmentDragProviderProps = {
+  isPaletteOpen: boolean;
+  children: ReactNode;
+};
+
+export const SegmentDragProvider = ({
+  isPaletteOpen,
+  children,
+}: SegmentDragProviderProps) => {
   const [dragging, setDragging] = useState<PaletteSegment | null>(null);
   const [hovering, setHovering] = useState<PaletteSegment | null>(null);
 
@@ -51,8 +62,15 @@ export const SegmentDragProvider = ({ children }: { children: ReactNode }) => {
   const endDrag = useCallback(() => setDragging(null), []);
 
   const value = useMemo(
-    () => ({ dragging, hovering, startDrag, endDrag, setHovering }),
-    [dragging, hovering, startDrag, endDrag],
+    () => ({
+      isPaletteOpen,
+      dragging,
+      hovering,
+      startDrag,
+      endDrag,
+      setHovering,
+    }),
+    [isPaletteOpen, dragging, hovering, startDrag, endDrag],
   );
 
   return (

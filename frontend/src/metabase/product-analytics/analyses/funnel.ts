@@ -77,6 +77,8 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
     getProps: (context) => ({
       ...getEventDefinitionProps(context),
       addLabel: t`Add a step`,
+      dropLabel: t`Drop a segment here to add a step`,
+      minSlots: MIN_STEPS + 1,
     }),
   }),
   "funnel.view": withWidgetProps({

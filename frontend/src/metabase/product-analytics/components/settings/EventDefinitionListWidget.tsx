@@ -10,11 +10,12 @@ import {
 } from "metabase/common/components/Sortable";
 import { useDndSensors, useToast } from "metabase/common/hooks";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { Box, Button, Group, Icon, Stack } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import { moveElement } from "metabase/utils/arrays";
 import type { Table } from "metabase-types/api";
 
 import type { EventDefinition } from "../../events/types";
+import { useSegmentDrag } from "../../segments/drag-context";
 import {
   isEventSegment,
   segmentToEventDefinition,
@@ -39,6 +40,8 @@ type EventDefinitionListWidgetProps = SettingWidgetProps<EventDefinition[]> & {
   table: Table | undefined;
   addLabel?: string;
   dropLabel?: string;
+  /** Empty slots shown until the list has this many events. */
+  minSlots?: number;
 };
 
 /**
@@ -47,8 +50,8 @@ type EventDefinitionListWidgetProps = SettingWidgetProps<EventDefinition[]> & {
  * edit first, or discards it when it can't be submitted. Nothing can be
  * dragged during an edit.
  *
- * A palette segment dropped on an item replaces it; dropped on the zone
- * below the list, it's added.
+ * A palette segment dropped on an item replaces it; dropped on an empty slot
+ * or the zone below the list, it's added.
  */
 export const EventDefinitionListWidget = ({
   id,
@@ -57,7 +60,9 @@ export const EventDefinitionListWidget = ({
   table,
   addLabel = t`Add an event`,
   dropLabel = t`Drop a segment here to add it`,
+  minSlots = 0,
 }: EventDefinitionListWidgetProps) => {
+  const { isPaletteOpen } = useSegmentDrag();
   const tableQuery = useTableQuery(table);
   const metadataProvider = useMetadataProvider(table?.db_id ?? null);
   const [sendToast] = useToast();
@@ -66,6 +71,14 @@ export const EventDefinitionListWidget = ({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const isAdding = editingIndex === value.length;
   const isDragDisabled = editingIndex !== null;
+  // The editor for a new event takes the first empty slot's place.
+  const emptySlotCount = Math.max(
+    0,
+    minSlots - value.length - (isAdding ? 1 : 0),
+  );
+  const emptySlotLabel = isPaletteOpen
+    ? t`Drag an event segment here`
+    : t`Click to define this step`;
   // Events have no ids, and positions are stable while nothing is edited.
   const items = useMemo(
     () => value.map((event, index) => ({ id: `event-${index}`, event })),
@@ -169,13 +182,36 @@ export const EventDefinitionListWidget = ({
         />
       </Stack>
       {isAdding && <ListRow>{editor}</ListRow>}
-      <ListRow>
-        <SegmentDropZone
-          label={dropLabel}
-          accepts={isEventSegment}
-          onDrop={(segment) => handleDropSegment(segment, value.length)}
-        />
-      </ListRow>
+      {Array.from({ length: emptySlotCount }, (_slot, offset) => {
+        const slotNumber = value.length + (isAdding ? 1 : 0) + offset + 1;
+        return (
+          <ListRow
+            key={`slot-${slotNumber}`}
+            handle={<SlotNumber n={slotNumber} />}
+          >
+            <EventDefinitionSummary
+              name={undefined}
+              placeholder={emptySlotLabel}
+              empty
+              disabled={tableQuery === undefined}
+              dropTarget={{
+                accepts: isEventSegment,
+                onDrop: (segment) => handleDropSegment(segment, value.length),
+              }}
+              onEdit={() => setEditingIndex(value.length)}
+            />
+          </ListRow>
+        );
+      })}
+      {emptySlotCount === 0 && (
+        <ListRow>
+          <SegmentDropZone
+            label={dropLabel}
+            accepts={isEventSegment}
+            onDrop={(segment) => handleDropSegment(segment, value.length)}
+          />
+        </ListRow>
+      )}
       <Box>
         <Button
           variant="light"
@@ -205,6 +241,13 @@ const ListRow = ({ handle, children }: ListRowProps) => (
       {children}
     </Box>
   </Group>
+);
+
+/** Stands where the drag handle goes on a slot that has nothing to drag yet. */
+const SlotNumber = ({ n }: { n: number }) => (
+  <Text size="sm" c="text-tertiary" ta="center" lh={1}>
+    {n}
+  </Text>
 );
 
 type DragHandleProps = {

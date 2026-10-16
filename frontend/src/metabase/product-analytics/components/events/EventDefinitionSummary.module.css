@@ -6,6 +6,11 @@
     border-color 120ms ease;
 }
 
+.root[data-empty="true"] {
+  border-style: dashed;
+  background-color: transparent;
+}
+
 .root:has(.editButton:hover:not(:disabled)) {
   background-color: var(--mb-color-background-secondary);
 }
