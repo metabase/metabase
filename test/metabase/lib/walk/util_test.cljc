@@ -409,6 +409,26 @@
      :native        (str "SELECT * FROM " (str/join " " (map #(str "{{" % "}}") (keys tags))))
      :template-tags tags}]))
 
+(deftest ^:parallel all-template-tag-snippet-ids-same-tag-name-test
+  (testing "Snippets from every native stage are found, even when two stages use the same template tag name"
+    (let [value (fn [] [:value {:lib/uuid (str (random-uuid)), :effective-type :type/Integer} 1])
+          stage (fn [snippet-id]
+                  {:lib/type      :mbql.stage/native
+                   :native        "SELECT {{snippet: x}}"
+                   :template-tags [(assoc (snippet-tag "x" snippet-id) :id (str (random-uuid)))]})
+          query (lib/query meta/metadata-provider
+                           {:lib/type :mbql/query
+                            :database (meta/id)
+                            :stages   [(stage 1)
+                                       {:lib/type :mbql.stage/mbql
+                                        :joins    [{:lib/type   :mbql/join
+                                                    :alias      "J"
+                                                    :strategy   :left-join
+                                                    :conditions [[:= {:lib/uuid (str (random-uuid))} (value) (value)]]
+                                                    :stages     [(stage 2)]}]}]})]
+      (is (= #{1 2}
+             (lib.walk.util/all-template-tag-snippet-ids query))))))
+
 (deftest ^:parallel all-referenced-entity-ids-recursive-snippet-test
   (testing "follows snippet -> snippet and snippet -> card edges through the snippets' stored template tags"
     (let [card-id  5

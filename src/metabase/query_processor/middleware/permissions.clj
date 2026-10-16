@@ -125,6 +125,9 @@
                 (query-perms/check-card-read-perms database-id card-id))
               ;; Check that we have the data permissions to run this card
               (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
+              ;; Snippets are spliced into the compiled SQL returned with the results, so a query you author may only
+              ;; use Snippets you can read. Saved Cards (above) skip this: their author vouched for their Snippets.
+              (query-perms/check-snippet-read-perms (:query-permissions/referenced-snippet-ids outer-query))
               ;; Check that all columns from source cards result_metadata are accessible
               (doseq [card-id source-card-ids]
                 (query-perms/check-card-result-metadata-data-perms database-id card-id))
