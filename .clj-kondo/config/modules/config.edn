@@ -3846,8 +3846,7 @@
                     :model/Field
                     :model/Measure
                     :model/Permissions
-                    :model/Table
-                    :model/Transform}
+                    :model/Table}
    :model-exports #{:model/DataApp}}
 
   enterprise/data-studio

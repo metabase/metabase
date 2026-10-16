@@ -77,10 +77,14 @@
   (let [nodes (models.dependency/entities->nodes {:card   (data-apps.db/collection-card-ids collection-id)
                                                   :action (data-apps.db/collection-action-ids collection-id)})
         graph (models.dependency/filtered-graph-dependencies nil {:types #{:action :card :measure :segment :snippet}})
-        {:keys [table transform]} (models.dependency/group-nodes (graph/transitive graph (vec nodes)))]
-    (vec (into (set table)
-               (when (seq transform)
-                 (data-apps.db/transform-target-table-ids transform))))))
+        {:keys [table transform]} (models.dependency/group-nodes (graph/transitive graph (vec nodes)))
+        outputs (->> (models.dependency/entities->nodes {:transform transform})
+                     models.dependency/direct-dependents
+                     vals
+                     (apply concat)
+                     models.dependency/group-nodes
+                     :table)]
+    (vec (into (set table) outputs))))
 
 (defn permission-warnings
   "Missing table access for assigned groups, including access inherited from All Users."

@@ -155,11 +155,6 @@
   [collection-id]
   (t2/select-pks-vec :model/Action :collection_id collection-id))
 
-(defn transform-target-table-ids
-  "The IDs of the output tables of the transforms with `transform-ids` that have run."
-  [transform-ids]
-  (t2/select-fn-set :target_table_id :model/Transform :id [:in transform-ids] :target_table_id [:not= nil]))
-
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."
   [collection-id]
