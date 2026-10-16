@@ -1278,7 +1278,7 @@
 (defn- with-stale-ai-context-deletes
   "`plan` with the AI context files of `snapshot` that the export leaves stale also deleted: that of an item whose file
   moves or goes, and that of a written item that no longer has an AI context. An item's AI context is the file
-  `ai_context.yaml` in the item's folder, which a write of the item writes only while it has one."
+  `osi_ai_context.yaml` in the item's folder, which a write of the item writes only while it has one."
   [snapshot plan]
   (if (or (= :remote-sync/incremental-not-possible plan)
           (not (remote-sync.layout/kind-layout?)))

@@ -497,14 +497,14 @@
 (defmethod item-path "Measure" [ctx entity]
   (item-file ctx (definition-table-path ctx (:definition entity)) :measure (:entity_id entity) (:name entity)))
 
-;; An item's AI context is the file `ai_context.yaml` in the item's folder `<name>.<kind>/` (see [[document]]), so it
-;; has no file of its own here.
+;; An item's AI context is the file `osi_ai_context.yaml` in the item's folder `<name>.<kind>/` (see [[document]]),
+;; so it has no file of its own here.
 (defmethod item-path "OsiAiContext" [_ctx _entity]
   nil)
 
 (def ^:private ai-context-file
   "The name of the file, in an item's folder, of the item's AI context."
-  "ai_context.yaml")
+  "osi_ai_context.yaml")
 
 (defn ai-context-path
   "The path of the AI context file of the item whose file is at `item-path` (`<folder>/<name>.<kind>.yaml`), in the
@@ -534,8 +534,8 @@
     nil))
 
 (defn- with-ai-context
-  "`document`, the file of the extracted `entity`, with the entity's AI context as the file `ai_context.yaml` in the
-  entity's folder, beside its file, when it has one."
+  "`document`, the file of the extracted `entity`, with the entity's AI context as the file `osi_ai_context.yaml` in
+  the entity's folder, beside its file, when it has one."
   [ctx entity document]
   (if-let [ai-context (some->> (ai-context-key entity) (get (ai-contexts ctx)))]
     (assoc document :serdes/resources {(str (peek (item-path ctx entity)) "/" ai-context-file)

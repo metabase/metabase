@@ -339,7 +339,7 @@
 
 (deftest ai-context-in-its-items-folder-test
   (testing "a serdes export in the kind layout writes AI context in its item's folder; the old flat folder still loads"
-    (doseq [[layout expected-file] [[kind-layout/kind-layout ["databases" "shop" "public" "orders.table" "ai_context.yaml"]]
+    (doseq [[layout expected-file] [[kind-layout/kind-layout ["databases" "shop" "public" "orders.table" "osi_ai_context.yaml"]]
                                     [storage.util/storage-path-layout ["osi_ai_context"]]]]
       (testing (str expected-file)
         (ts/with-random-dump-dir [dump-dir "ai-context-"]

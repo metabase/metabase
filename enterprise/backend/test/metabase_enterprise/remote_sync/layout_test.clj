@@ -494,7 +494,7 @@
   (t2/select-one-fn :ai_context :model/OsiAiContext :entity_type entity-type :entity_local_id entity-id))
 
 (deftest deleting-ai-context-removes-its-file-test
-  (testing "deleting an item's AI context marks the item changed, and the next push removes ai_context.yaml"
+  (testing "deleting an item's AI context marks the item changed, and the next push removes osi_ai_context.yaml"
     (mt/with-model-cleanup [:model/OsiAiContext]
       (mt/with-temporary-setting-values [remote-sync-type       :read-write
                                          remote-sync-transforms false]
@@ -504,7 +504,7 @@
                                            :ai_context {:instructions "v1"}})
           (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
                 files #(set (keys (get @(:files-atom mock) "main")))
-                file  "collections/main/bench/orders.question/ai_context.yaml"]
+                file  "collections/main/bench/orders.question/osi_ai_context.yaml"]
             (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
             (is (contains? (files) file))
             (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
@@ -547,9 +547,9 @@
                 (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
                 (testing "each item's AI context is in the item's folder"
                   (is (=? {:ai_context {:instructions "Monthly recurring revenue"}}
-                          (yaml/parse-string (get (files) "metrics/mrr.metric/ai_context.yaml"))))
+                          (yaml/parse-string (get (files) "metrics/mrr.metric/osi_ai_context.yaml"))))
                   (is (=? {:ai_context {:synonyms ["places"]}}
-                          (yaml/parse-string (get (files) "data/venues.table/ai_context.yaml"))))
+                          (yaml/parse-string (get (files) "data/venues.table/osi_ai_context.yaml"))))
                   (is (not-any? #(str/starts-with? % "osi_ai_context/") (keys (files)))))
                 (testing "a pull loads it back"
                   (t2/delete! :model/OsiAiContext)
@@ -563,9 +563,9 @@
                   (is (t2/exists? :model/RemoteSyncObject :model_type "Card" :model_id card-id :status "update"))
                   (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "edit"))))
                   (is (=? {:ai_context {:instructions "MRR, net of refunds"}}
-                          (yaml/parse-string (get (files) "metrics/mrr.metric/ai_context.yaml")))))
+                          (yaml/parse-string (get (files) "metrics/mrr.metric/osi_ai_context.yaml")))))
                 (testing "a pull removes AI context the repo no longer holds for a synced item"
-                  (swap! (:files-atom mock) update "main" dissoc "data/venues.table/ai_context.yaml")
+                  (swap! (:files-atom mock) update "main" dissoc "data/venues.table/osi_ai_context.yaml")
                   (is (= :success (:status (impl/import! (source.p/snapshot mock) (new-task!) :force? true))))
                   (is (nil? (ai-context "table" (mt/id :venues))))
                   (is (some? (ai-context "card" card-id))))
