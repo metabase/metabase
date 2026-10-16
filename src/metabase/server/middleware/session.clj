@@ -95,6 +95,12 @@
 ;;; |                                             wrap-current-user-info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mr/def ::current-user-info
+  [:merge
+   ::request.schema/current-user-info
+   [:map {:closed true}
+    [:embedding/auth-method {:optional true} :string]]])
+
 (defn- valid-session-key?
   "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared
   against `core_session.key_hashed`; this check short-circuits obviously-invalid values before we hash them."
@@ -102,11 +108,11 @@
   (or (not session-key) (string/valid-uuid? session-key)))
 
 (mu/defn- current-user-info-for-session :- [:maybe [:merge
-                                                    ::request.schema/current-user-info
+                                                    ::current-user-info
                                                     [:map {:closed true}
-                                                     [:session-key-hash :string]]]]
+                                                     [:metabase/authed-session-key-hash :string]]]]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired, plus
-  `:session-key-hash`, the `key_hashed` value the row was matched on."
+  `:metabase/authed-session-key-hash`, the `key_hashed` value the row was matched on."
   [session-key     :- [:maybe :string]
    anti-csrf-token :- [:maybe :string]]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
@@ -121,8 +127,16 @@
                                            (session/mfa-required?))
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)
-              ;; so that whatever refers to this session later can do so by the hash without handling the key again
-              (assoc :session-key-hash session-key-hash)))))
+              ;; `:metabase-session-key` is attached by [[wrap-session-key]] from an unvalidated cookie or header, so
+              ;; its presence says nothing about whether the session is the credential that authenticated this
+              ;; request.  `:metabase/authed-session-key-hash` identifies the session that did, and being namespaced
+              ;; it cannot arrive from anywhere a request has been: Ring keys are unqualified, so only this function
+              ;; can set it. It carries the `key_hashed` value rather than the key itself, since that is all anything
+              ;; downstream needs and the key is the credential.
+              (assoc :metabase/authed-session-key-hash session-key-hash)
+              (as-> $
+                    (assoc $ :embedding/auth-method (or (:auth-provider $)
+                                                        "session")))))))
 
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
@@ -145,7 +159,7 @@
     (u.password/verify-password passed-api-key "" stored-hash)
     (do-useless-hash)))
 
-(mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
+(mu/defn- current-user-info-for-api-key :- [:maybe ::current-user-info]
   "Return User ID and superuser status for an API Key with `api-key-id"
   [api-key :- [:maybe :string]]
   (when (and api-key
@@ -166,7 +180,8 @@
                           (m/update-existing :is-group-manager? boolean))]
         (when (matching-api-key? user-info api-key)
           (-> user-info
-              (dissoc :api-key)))))))
+              (dissoc :api-key)
+              (assoc :embedding/auth-method "api-key")))))))
 
 (mr/def ::oauth-bearer
   "Fns that authenticate a request by its OAuth bearer token, and the scope that grants full access."
@@ -207,7 +222,7 @@
     (into full-access-token-scopes (disj granted-scopes full-access-scope))
     granted-scopes))
 
-(mu/defn- current-user-info-for-oauth-token :- [:maybe ::request.schema/current-user-info]
+(mu/defn- current-user-info-for-oauth-token :- [:maybe ::current-user-info]
   "Return current-user-info for a valid OAuth bearer access token on `request`, or nil. Mirrors the
    shape returned by the session/api-key resolvers and additionally attaches `:token-scopes`, so the
    merged request carries both the user identity and the access the token was granted, and marks it
@@ -223,7 +238,8 @@
           (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
                   (m/update-existing :is-group-manager? boolean)
                   (assoc :token-scopes             (oauth-token->token-scopes full-access-scope scopes)
-                         :authenticated-via-oauth? true)))))))
+                         :authenticated-via-oauth? true
+                         :embedding/auth-method "oauth")))))))
 
 (defn- current-user-info-for-mcp-ui-credential
   "Resolve the short-lived credential from an MCP App tool result.
@@ -258,41 +274,21 @@
               (assoc :token-scopes #{::scope/mcp-ui}
                      :token-scopes-checked (scope-satisfied? (:request-method request) (:uri request) claims)
                      :mcp-ui-session-id sid
-                     :mcp-ui-credential claims)))))
-
-(defn- auth-method
-  [session-info api-key-info oauth-info mcp-ui-info embedding-route]
-  (or ({"guest-embed" "guest"} embedding-route embedding-route)
-      (cond session-info (or (:auth-provider session-info) "session")
-            api-key-info "api-key"
-            oauth-info   "oauth"
-            mcp-ui-info  "mcp-ui")))
+                     :mcp-ui-credential claims
+                     :embedding/auth-method "mcp-ui")))))
 
 (defn- merge-current-user-info
   [{:keys [oauth-bearer mcp-ui-credentials]}
    {:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
-  (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
-        api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
-        ;; Bearer and MCP UI credentials are consulted only when no normal session/API key authenticated.
-        oauth-info   (when-not (or session-info api-key-info)
-                       (current-user-info-for-oauth-token oauth-bearer request))
-        mcp-ui-info  (when-not (or session-info api-key-info oauth-info)
-                       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))
-        embedding-route (analytics/get-route)
-        auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info embedding-route)]
+  ;; order of authentication sources is important, bearer and mcp ui credentials last
+  (let [current-user-info (or (current-user-info-for-session metabase-session-key anti-csrf-token)
+                              (current-user-info-for-api-key x-api-key)
+                              ;; oauth also carries `:token-scopes`
+                              (current-user-info-for-oauth-token oauth-bearer request)
+                              (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))]
     (merge
      request
-     ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
-     ;; merging it whole both authenticates the request and records the granted scopes.
-     (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider :session-key-hash)
-     ;; `:metabase-session-key` is attached by [[wrap-session-key]] from an unvalidated cookie or header, so its
-     ;; presence says nothing about whether the session is the credential that authenticated this request.
-     ;; `:metabase/authed-session-key-hash` identifies the session that did, and being namespaced it cannot arrive
-     ;; from anywhere a request has been: Ring keys are unqualified, so only this function can set it. It carries the
-     ;; `key_hashed` value rather than the key itself, since that is all anything downstream needs and the key is
-     ;; the credential.
-     (when session-info {:metabase/authed-session-key-hash (:session-key-hash session-info)})
-     (when auth-method {:embedding/auth-method auth-method})
+     (dissoc current-user-info :auth-provider)
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
        {:user-locale (i18n/normalized-locale-string x-metabase-locale)}))))

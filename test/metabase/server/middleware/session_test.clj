@@ -445,7 +445,8 @@
                 :user-locale nil
                 :is-data-analyst? false
                 :auth-provider nil
-                :session-key-hash test-session-key-hashed}
+                :metabase/authed-session-key-hash test-session-key-hashed
+                :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
         (finally
           (t2/delete! :model/Session :id test-session-id))))))
@@ -463,7 +464,8 @@
                 :user-locale nil
                 :is-data-analyst? false
                 :auth-provider nil
-                :session-key-hash test-session-key-hashed}
+                :metabase/authed-session-key-hash test-session-key-hashed
+                :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
         (finally
           (t2/delete! :model/Session :id test-session-id))))))
@@ -517,7 +519,8 @@
                   :user-locale nil
                   :is-data-analyst? false
                   :auth-provider nil
-                  :session-key-hash test-session-key-hashed}
+                  :metabase/authed-session-key-hash test-session-key-hashed
+                  :embedding/auth-method "session"}
                  (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
           (finally
             (t2/delete! :model/Session :id test-session-id)))
@@ -730,32 +733,6 @@
                       {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
                        :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
-
-(deftest auth-method-test
-  (testing "auth-method prefers route-based override on special routes"
-    (let [f #'mw.session/auth-method]
-      (are [session-info api-key-info oauth-info mcp-ui-info embedding-route expected]
-           (= expected (f session-info api-key-info oauth-info mcp-ui-info embedding-route))
-        ;; session-based auth on non-special routes
-        {:auth-provider "password"} nil nil nil nil            "password"
-        {:auth-provider "saml"}     nil nil nil nil            "saml"
-        {:auth-provider "jwt"}      nil nil nil nil            "jwt"
-        {:auth-provider "ldap"}     nil nil nil nil            "ldap"
-        {}                          nil nil nil nil            "session"
-        ;; api-key on non-special route
-        nil                         {}  nil nil nil            "api-key"
-        ;; oauth bearer on non-special route
-        nil                         nil {:metabase-user-id 1} nil nil "oauth"
-        ;; mcp-ui credential on non-special route
-        nil                         nil nil {:metabase-user-id 1} nil "mcp-ui"
-        ;; route override: special routes win over credentials
-        nil                         {}  nil nil "guest-embed"  "guest"   ; api-key + embed -> guest
-        nil                         nil nil nil "guest-embed"  "guest"   ; anon guest embed
-        nil                         nil nil nil "public"       "public"
-        nil                         nil nil nil "metabot"      "metabot"
-        nil                         nil nil nil "agent-api"    "agent-api"
-        ;; fully anonymous, non-special route
-        nil                         nil nil nil nil            nil))))
 
 (defn session-valid?
   [session-key]
