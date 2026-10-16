@@ -4,7 +4,14 @@ import { t } from "ttag";
 
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
-import { Badge, Button, Icon, Popover, Tooltip } from "metabase/ui";
+import {
+  Badge,
+  Button,
+  Icon,
+  Popover,
+  Tooltip,
+  useStablePopoverPosition,
+} from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -27,6 +34,7 @@ export function EditTableDataFilterButton({
   onQuestionChange,
 }: EditTableDataFilterButtonProps) {
   const [isOpened, { close, toggle }] = useDisclosure();
+  const stablePosition = useStablePopoverPosition("bottom-start");
   const query = question.query();
   const items = useMemo(() => (query ? getFilterItems(query) : []), [query]);
   const hasFilters = items.length > 0;
@@ -39,7 +47,7 @@ export function EditTableDataFilterButton({
 
   return (
     <Button.Group>
-      <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
+      <Popover {...stablePosition} opened={isOpened} onDismiss={close}>
         <Popover.Target>
           <Button
             className={className}

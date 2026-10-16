@@ -3,7 +3,13 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { AggregationPicker } from "metabase/querying/common/components/AggregationPicker";
-import { Button, Icon, Popover, Tooltip } from "metabase/ui";
+import {
+  Button,
+  Icon,
+  Popover,
+  Tooltip,
+  useStablePopoverPosition,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import AddAggregationButtonS from "./AddAggregationButton.module.css";
@@ -20,6 +26,7 @@ export function AddAggregationButton({
   onQueryChange,
 }: AddAggregationButtonProps) {
   const [isOpened, setIsOpened] = useState(false);
+  const stablePosition = useStablePopoverPosition();
   const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
   const operators = Lib.availableAggregationOperators(query, stageIndex);
 
@@ -31,7 +38,7 @@ export function AddAggregationButton({
     );
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover {...stablePosition} opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
         {renderTooltip(
           <Button
