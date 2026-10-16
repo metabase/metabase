@@ -37,6 +37,7 @@ function SmartScalarComponent(
     series,
     rawSeries,
     width,
+    height,
     fontFamily,
     onRenderError,
     actionButtons,
@@ -90,6 +91,10 @@ function SmartScalarComponent(
   };
 
   const isCompact = tier.size < 200;
+  const listsAllComparisons =
+    comparisons.length > 1 &&
+    tier.multiComparisonMinHeight != null &&
+    (height ?? 0) >= tier.multiComparisonMinHeight;
 
   const primaryComparison = comparisons[0];
   const symbolDirection =
@@ -209,6 +214,7 @@ function SmartScalarComponent(
         description={description}
         trend={trend}
         availableWidth={availableWidth}
+        listsAllComparisons={listsAllComparisons}
       />
     </ScalarCardShell>
   );

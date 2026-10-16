@@ -7,6 +7,7 @@ import _ from "underscore";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
@@ -174,15 +175,14 @@ export const ChartSettingSeriesOrder = ({
               />
               <Text truncate fw="bold">{t`Other`}</Text>
             </Group>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
-            <Button
+            <ActionIcon
               variant="subtle"
-              color="neutral"
               size="sm"
-              leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
               onClick={handleOtherSeriesSettingsClick}
-            />
+            >
+              <Icon name="gear" />
+            </ActionIcon>
           </Flex>
         ),
       },

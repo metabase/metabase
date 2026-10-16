@@ -21,7 +21,6 @@ export const DataAppsBanner = () => (
             top="1rem"
             right="1rem"
             variant="subtle"
-            c="text-primary"
             aria-label={t`Dismiss`}
             onClick={ack}
           >

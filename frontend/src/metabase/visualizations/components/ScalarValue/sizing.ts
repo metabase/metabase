@@ -8,6 +8,7 @@ export interface ScalarSizeTier {
   symbolSize: number;
   symbolGap: number;
   comparisonGap: number;
+  multiComparisonMinHeight: number | null;
   menuOffset: { top: number; right: number };
   skeleton: { valueWidth: number; valueHeight: number; titleWidth: number };
 }
@@ -17,7 +18,8 @@ const LARGE_MENU_OFFSET = { top: 22, right: 24 };
 
 // Largest tier first; both measured dimensions must fit.
 // Values come from the "Charts visual improvements" Figma specs (nodes 314-478 and 915-2038);
-// skeleton pill sizes come from the loading states spec (node 431-1518).
+// skeleton pill sizes come from the loading states spec (node 431-1518) and
+// the multiple-comparison heights from the Trend card spec (node 528-2394).
 export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
   {
     size: 600,
@@ -29,6 +31,7 @@ export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
     symbolSize: 24,
     symbolGap: 20,
     comparisonGap: 12,
+    multiComparisonMinHeight: 320,
     menuOffset: LARGE_MENU_OFFSET,
     skeleton: { valueWidth: 200, valueHeight: 32, titleWidth: 256 },
   },
@@ -42,6 +45,7 @@ export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
     symbolSize: 20,
     symbolGap: 16,
     comparisonGap: 12,
+    multiComparisonMinHeight: 288,
     menuOffset: LARGE_MENU_OFFSET,
     skeleton: { valueWidth: 160, valueHeight: 32, titleWidth: 256 },
   },
@@ -55,6 +59,7 @@ export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
     symbolSize: 20,
     symbolGap: 16,
     comparisonGap: 8,
+    multiComparisonMinHeight: 264,
     menuOffset: LARGE_MENU_OFFSET,
     skeleton: { valueWidth: 96, valueHeight: 32, titleWidth: 128 },
   },
@@ -68,6 +73,7 @@ export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
     symbolSize: 16,
     symbolGap: 12,
     comparisonGap: 8,
+    multiComparisonMinHeight: 256,
     menuOffset: SMALL_MENU_OFFSET,
     skeleton: { valueWidth: 72, valueHeight: 24, titleWidth: 128 },
   },
@@ -81,6 +87,7 @@ export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
     symbolSize: 16,
     symbolGap: 8,
     comparisonGap: 6,
+    multiComparisonMinHeight: 240,
     menuOffset: SMALL_MENU_OFFSET,
     skeleton: { valueWidth: 72, valueHeight: 24, titleWidth: 128 },
   },
@@ -94,6 +101,7 @@ export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
     symbolSize: 12,
     symbolGap: 6,
     comparisonGap: 6,
+    multiComparisonMinHeight: null,
     menuOffset: SMALL_MENU_OFFSET,
     skeleton: { valueWidth: 40, valueHeight: 21, titleWidth: 72 },
   },
@@ -107,6 +115,7 @@ export const SCALAR_SIZE_TIERS: readonly ScalarSizeTier[] = [
     symbolSize: 12,
     symbolGap: 6,
     comparisonGap: 6,
+    multiComparisonMinHeight: null,
     menuOffset: SMALL_MENU_OFFSET,
     skeleton: { valueWidth: 40, valueHeight: 17, titleWidth: 128 },
   },

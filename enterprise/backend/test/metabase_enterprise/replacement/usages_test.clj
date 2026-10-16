@@ -1,7 +1,7 @@
 (ns metabase-enterprise.replacement.usages-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.graph.core :as graph]
@@ -11,9 +11,6 @@
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
-
-(comment
-  metabase-enterprise.dependencies.events/keep-me)
 
 ;;; ------------------------------------------------ In-memory graph helpers ------------------------------------------------
 

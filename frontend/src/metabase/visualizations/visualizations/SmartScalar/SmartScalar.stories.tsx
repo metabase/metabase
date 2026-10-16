@@ -73,8 +73,8 @@ const MOCK_MULTI_COMPARISON_SERIES = mockSeries({
   ],
 });
 
-// dashboards show the compact row with a "+N" badge; the extra comparisons
-// live in the hover panel
+// short dashcards show the compact row with a "+N" badge; the extra
+// comparisons live in the hover panel
 export const DashcardMultipleComparisons: StoryFn = () => (
   <VisualizationWrapper>
     <Flex gap="lg" align="flex-start" wrap="wrap" p="lg">
@@ -92,6 +92,44 @@ export const DashcardMultipleComparisons: StoryFn = () => (
             rawSeries={MOCK_MULTI_COMPARISON_SERIES}
             showTitle
             width={width}
+          />
+        </Box>
+      ))}
+    </Flex>
+  </VisualizationWrapper>
+);
+
+// spec min-heights at which a dashcard lists every comparison, per tier
+const TALL_CARD_SIZES = [
+  { width: 256, height: 240 },
+  { width: 345, height: 256 },
+  { width: 433, height: 264 },
+  { width: 521, height: 288 },
+  { width: 620, height: 320 },
+];
+
+// the box border takes a pixel on each side, so the box is 2px larger than
+// the size the visualization inside gets measured at
+const BOX_BORDER_WIDTH = 2;
+
+export const DashcardMultipleComparisonsTall: StoryFn = () => (
+  <VisualizationWrapper>
+    <Flex gap="lg" align="flex-start" p="lg" wrap="wrap">
+      {TALL_CARD_SIZES.map(({ width, height }) => (
+        <Box
+          key={`${width}x${height}`}
+          w={width + BOX_BORDER_WIDTH}
+          h={height + BOX_BORDER_WIDTH}
+          style={{
+            borderRadius: 12,
+            border: "1px solid var(--mb-color-border-neutral)",
+          }}
+        >
+          <Visualization
+            rawSeries={MOCK_MULTI_COMPARISON_SERIES}
+            showTitle
+            width={width}
+            height={height}
           />
         </Box>
       ))}

@@ -31,4 +31,14 @@ describe("getScalarSizeTier", () => {
     expect(getScalarSizeTier(160, 119).size).toBe(150);
     expect(getScalarSizeTier(160, 120).size).toBe(200);
   });
+
+  it("lists every comparison only from the spec min-height of each tier", () => {
+    expect(getScalarSizeTier(100, 400).multiComparisonMinHeight).toBeNull();
+    expect(getScalarSizeTier(126, 400).multiComparisonMinHeight).toBeNull();
+    expect(getScalarSizeTier(160, 120).multiComparisonMinHeight).toBe(240);
+    expect(getScalarSizeTier(320, 160).multiComparisonMinHeight).toBe(256);
+    expect(getScalarSizeTier(400, 200).multiComparisonMinHeight).toBe(264);
+    expect(getScalarSizeTier(500, 240).multiComparisonMinHeight).toBe(288);
+    expect(getScalarSizeTier(600, 320).multiComparisonMinHeight).toBe(320);
+  });
 });

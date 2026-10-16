@@ -117,8 +117,8 @@
                 (mt/user-http-request :rasta :post "dataset"
                                       (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"})))))
       (testing "POST /api/dataset/native refuses to compile a query to SQL"
-        (is (=? {:permissions-error? true
-                 :message            "You do not have permissions to run this query."}
+        (is (=? {:required-permissions {(mt/id) {:perms/create-queries "query-builder-and-native"}}
+                 :message              "You do not have permissions to run this query."}
                 (mt/user-http-request :rasta :post "dataset/native" (mt/mbql-query venues)))))
       (testing "MBQL queries are still sandboxed"
         (is (= [[10]]

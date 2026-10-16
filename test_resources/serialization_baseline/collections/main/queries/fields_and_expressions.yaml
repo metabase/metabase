@@ -162,8 +162,7 @@ result_metadata:
   lib/original-name: Profit
   lib/source: source/expressions
   lib/source-column-alias: Profit
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
 - model: Card

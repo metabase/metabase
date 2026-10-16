@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [environ.core :as env]
    [metabase-enterprise.dependencies.task.entity-check :as dependencies.entity-check]
-   [metabase.events.core :as events]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt])
@@ -61,18 +61,15 @@
 (def ^:private entity-check-job-name "metabase.dependencies.task.entity-check.job")
 
 (defn- scheduled-job-names
-  "Job names from captured [[task/schedule-task!]] calls. Needed because several jobs listen for the same events, so a
-  bare call count cannot tell us which job got scheduled."
+  "Job names from captured [[task/schedule-task!]] calls, since a token update schedules both dependency jobs."
   [calls]
   (into #{} (map (fn [args] (.getName (.getKey ^JobDetail (nth args 1))))) calls))
 
-(deftest ^:synchronized token-event-restarts-the-job-test
-  (testing "Setting a premium token must restart the entity check job. The backfill job derives
-           :event/set-premium-embedding-token for this; entity check had no event wiring at all, so its only restarts
-           came from content-change handlers. Enabling the feature on an idle instance left the periodic checker dead
-           until the next process restart."
+(deftest ^:synchronized token-update-restarts-the-job-test
+  (testing "Setting a premium token must restart the entity check job, or enabling the feature on an idle instance
+           leaves the periodic checker dead until the next process restart."
     (let [scheduled (atom [])]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (mt/with-premium-features #{:dependencies}
-          (events/publish-event! :event/set-premium-embedding-token {})
+          (dependencies.hooks/after-premium-token-update)
           (is (contains? (scheduled-job-names @scheduled) entity-check-job-name)))))))

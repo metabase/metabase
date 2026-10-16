@@ -5,6 +5,7 @@ import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/Scal
 import type { ScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 
 import { TrendComparisonRow } from "./TrendComparisonRow";
+import { TrendComparisonStack } from "./TrendComparisonStack";
 import type { Trend } from "./compute";
 
 interface TrendCardComparisonProps {
@@ -13,6 +14,7 @@ interface TrendCardComparisonProps {
   description?: string | null;
   trend: Trend;
   availableWidth: number;
+  listsAllComparisons: boolean;
 }
 
 export function TrendCardComparison({
@@ -21,6 +23,7 @@ export function TrendCardComparison({
   description,
   trend,
   availableWidth,
+  listsAllComparisons,
 }: TrendCardComparisonProps) {
   const titleWithDescription = title ? (
     <ScalarLabel description={description}>{title}</ScalarLabel>
@@ -70,7 +73,17 @@ export function TrendCardComparison({
         w={`${availableWidth}px`}
         style={{ transform: "translateX(-50%)" }}
       >
-        <TrendComparisonRow trend={trend} formatOptions={trend.formatOptions} />
+        {listsAllComparisons ? (
+          <TrendComparisonStack
+            trend={trend}
+            formatOptions={trend.formatOptions}
+          />
+        ) : (
+          <TrendComparisonRow
+            trend={trend}
+            formatOptions={trend.formatOptions}
+          />
+        )}
       </Box>
     </>
   );

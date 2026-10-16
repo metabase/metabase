@@ -56,7 +56,7 @@ export const MetricsViewer = {
   getMetricControls: () => cy.findByTestId("metrics-viewer-controls"),
   changeVizType: (display: string) =>
     MetricsViewer.getMetricControls()
-      .findByRole("button", { name: display })
-      .click(),
+      .findByRole("radio", { name: display })
+      .click({ force: true }),
   runButton: () => cy.findByTestId("run-expression-button"),
 };
