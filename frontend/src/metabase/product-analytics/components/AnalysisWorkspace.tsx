@@ -50,7 +50,7 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
 };
 
 /**
- * The event analysis page: the title, the kind tabs for a new analysis and
+ * The event analysis page: the kind tabs for a new analysis, the title and
  * the toolbar across the top; below them the segment palette on the far
  * left, then the setup panel beside the result. A saved analysis opens on
  * its result, with both side panels collapsed.
@@ -182,12 +182,12 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             bg="background-primary"
             style={{ borderBottom: "1px solid var(--mb-color-border)" }}
           >
-            <Title order={3} fw="normal">
-              {title}
-            </Title>
             {onKindChange !== undefined && (
               <AnalysisTabs kind={kind} onChange={onKindChange} />
             )}
+            <Title order={3} fw="normal">
+              {title}
+            </Title>
             <AnalysisToolbar
               widgets={widgets}
               panel={panel}
