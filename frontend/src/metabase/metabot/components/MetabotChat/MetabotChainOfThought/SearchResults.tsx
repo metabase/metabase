@@ -13,7 +13,7 @@ import Animation from "metabase/css/core/animation.module.css";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { MetabotChainStep } from "metabase/metabot/state";
 import { Text } from "metabase/ui";
-import { modelToUrl } from "metabase/urls";
+import { exploreMeasure, modelToUrl } from "metabase/urls";
 
 import S from "./MetabotChainOfThought.module.css";
 import { resultContextParts, toSearchModel } from "./utils";
@@ -55,6 +55,19 @@ const ResultIcon = ({ result }: { result: SearchResultItem }) => {
   return <EntityIcon {...iconData} size={13} className={S.resultIcon} />;
 };
 
+// Measures open in the explorer: their `modelToUrl` page is in Data Studio,
+// which only admins and analysts can open.
+const resultUrl = (result: SearchResultItem) =>
+  result.type === "measure"
+    ? exploreMeasure(result.id)
+    : modelToUrl({
+        id: result.id,
+        model: toSearchModel(result.type),
+        name: result.name,
+        database_id: result.database_id,
+        table_id: result.table_id,
+      });
+
 const SearchResultRow = ({
   result,
   index,
@@ -65,12 +78,7 @@ const SearchResultRow = ({
   animate: boolean;
 }) => (
   <Link
-    to={modelToUrl({
-      id: result.id,
-      model: toSearchModel(result.type),
-      name: result.name,
-      database_id: result.database_id,
-    })}
+    to={resultUrl(result)}
     className={cx(S.resultRow, animate && Animation.fadeIn)}
     style={
       animate ? { animationDelay: `${Math.min(index * 45, 360)}ms` } : undefined

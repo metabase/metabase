@@ -434,7 +434,7 @@ function MetabasePricingRow({
 
 function PricingCallout({ children }: { children: ReactNode }) {
   return (
-    <Stack gap="xxs" bg="background-secondary" p="lg" bdrs="sm">
+    <Stack gap="xxs" bg="background_page-secondary" p="lg" bdrs="sm">
       {children}
     </Stack>
   );

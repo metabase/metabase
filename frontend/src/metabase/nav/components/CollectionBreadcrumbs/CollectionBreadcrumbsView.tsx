@@ -84,6 +84,7 @@ export const CollectionBreadcrumbsView = ({
           key: "expand",
           node: (
             <ActionIcon
+              variant="subtle"
               onClick={() => setIsExpanded(true)}
               aria-label={t`Expand`}
             >

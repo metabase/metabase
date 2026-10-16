@@ -53,9 +53,9 @@ const RATING_BADGE_COLORS = {
 } satisfies Record<RatingColorKey, BadgeColor>;
 
 const RATING_TEXT_COLORS = {
-  low: "success",
-  medium: "warning",
-  high: "error",
+  low: "feedback-positive",
+  medium: "feedback-warning",
+  high: "feedback-negative",
   default: "text-secondary",
 } satisfies Record<RatingColorKey, MetabaseColorKey>;
 

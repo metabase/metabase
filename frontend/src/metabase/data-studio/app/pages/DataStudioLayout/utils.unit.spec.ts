@@ -16,6 +16,8 @@ describe("getCurrentTab", () => {
     ${"/data-studio/library/metrics/456"}          | ${"library"}
     ${"/data-studio/library/metrics/456/overview"} | ${"library"}
     ${"/data-studio/library/tables/42"}            | ${"library"}
+    ${"/data-studio/dashboards"}                   | ${"dashboards"}
+    ${"/data-studio/dashboards/7/contents"}        | ${"dashboards"}
     ${"/data-studio/snippets"}                     | ${"snippets"}
     ${"/data-studio/snippets/12"}                  | ${"snippets"}
     ${"/data-studio/actions"}                      | ${"actions"}

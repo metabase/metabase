@@ -131,9 +131,9 @@ export function IndexEditorModal({
 
   return (
     <Modal
+      density="relaxed"
       opened
       title={isEditing ? t`Edit index` : t`Create an index`}
-      padding="xxl"
       onClose={onClose}
     >
       {isLoading || error !== undefined ? (

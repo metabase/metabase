@@ -227,6 +227,11 @@ describe("scenarios > visualizer > cartesian", () => {
     });
 
     H.saveDashcardVisualizerModal({ mode: "create" });
+
+    // the new dashcard is below the minimum size for showing a legend,
+    // so enlarge it before asserting on the legend items
+    H.resizeDashboardCard({ card: H.getDashboardCard(0), x: 2000, y: 600 });
+
     // Wait for card queries before saving the dashboard
     H.getDashboardCard(0).within(() => {
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
@@ -583,8 +588,8 @@ describe("scenarios > visualizer > cartesian", () => {
           cy.findByText("Doohickey").should("exist");
           cy.findByText("Widget").should("exist");
           // y-axis labels
-          cy.findByText("6,000").should("exist");
-          cy.findByText("1,000").should("exist");
+          cy.findByText("6.0k").should("be.visible");
+          cy.findByText("3.0k").should("be.visible");
         });
 
         H.dataSource(Q1_NAME).should("exist");

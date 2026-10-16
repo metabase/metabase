@@ -54,11 +54,11 @@
 (defn- whitelisted-id
   "The [[supported-models]] id that a `/models` catalog entry resolves to, or nil when unsupported.
 
-  Each catalog entry has one `:id` and a list of `:aliases`
-  (https://docs.mistral.ai/openapi.yaml, `BaseModelCard`). One model can have several names: Mistral Medium 3.5
-  has `mistral-medium-3-5`, `mistral-medium-3` and `mistral-medium-latest`
-  (https://docs.mistral.ai/models/mistral-medium-3-5-26-04). The whitelisted id can be the `:id` or an alias, so
-  this checks both."
+  Each catalog entry has one `:id` and a list of `:aliases` (https://docs.mistral.ai/openapi.yaml, `BaseModelCard`).
+  One model can have several names, and the catalog can list one entry for each name. Each of these entries gives
+  the other names of the model in `:aliases` (`GET /v1/models`, probed 2026-10-13). Thus the whitelisted id can be
+  the `:id` or an alias, and this function checks both. Several entries can resolve to the same id, and [[list-models]]
+  removes the duplicates."
   [{:keys [id aliases]}]
   (some #(when (contains? supported-models %) %)
         (cons id aliases)))

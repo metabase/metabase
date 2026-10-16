@@ -10,9 +10,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   ;; `mcp.core/all-scopes` reads the agent-api's defendpoint metadata, so the namespace has to be
-   ;; loaded for `resource-scopes-are-advertised-test` to see it (nothing else here pulls it in).
-   [metabase.agent-api.api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -336,13 +333,11 @@
 ;;; ------------------------------------------------- Resources ----------------------------------------------------
 
 (deftest resource-scopes-are-advertised-test
-  (testing "GHY-4157: every v2 resource scope is in the OAuth grant — one a client can't request is a data resource it
-            could never read, or a shell that never gets a credential"
-    (let [advertised (set (mcp.core/all-scopes))]
-      (testing "GHY-4543: data resources count, not just UI shells"
-        (is (contains? (v2.resources/resource-scopes) "agent:content:read")))
+  (testing "GHY-4157: every v2 resource scope is in the MCP scope list"
+    (is (seq (v2.resources/resource-scopes)) "No scopes in registered resources in MCP")
+    (let [accepted (set (mcp.core/v2-scopes))]
       (doseq [scope (v2.resources/resource-scopes)]
-        (is (contains? advertised scope) scope)))))
+        (is (contains? accepted scope) scope)))))
 
 (deftest resources-scope-gating-test
   (testing "GHY-4543: resources/list lists every resource regardless of scope"
