@@ -28,10 +28,14 @@ const MOCK_SERIES = mockSeries({
   rows: MOCK_ROWS,
   insights: [{ unit: "month", col: "Count" }],
   name: "Last invoice",
+  settings: { "card.description": "Total invoices" },
 });
 
-// spec card sizes: size-200, size-300, and size-400 tiers
+// spec card sizes: size-100 through size-400 tiers
 const CARD_SIZES = [
+  { width: 82, height: 82 },
+  { width: 126, height: 82 },
+  { width: 170, height: 82 },
   { width: 256, height: 126 },
   { width: 345, height: 170 },
   { width: 433, height: 214 },
@@ -39,7 +43,7 @@ const CARD_SIZES = [
 
 export const Default: StoryFn = () => (
   <VisualizationWrapper>
-    <Flex gap="lg" align="flex-start" p="lg">
+    <Flex gap="lg" align="flex-start" wrap="wrap" p="lg">
       {CARD_SIZES.map(({ width, height }) => (
         <Box
           key={`${width}x${height}`}
@@ -61,6 +65,7 @@ const MOCK_MULTI_COMPARISON_SERIES = mockSeries({
   rows: MOCK_ROWS,
   insights: [{ unit: "month", col: "Count" }],
   name: "Last invoice",
+  settings: { "card.description": "Total invoices" },
   comparisonTypes: [
     { id: "1", type: "previousPeriod" },
     { id: "2", type: "periodsAgo", value: 2 },
@@ -72,7 +77,7 @@ const MOCK_MULTI_COMPARISON_SERIES = mockSeries({
 // comparisons live in the hover panel
 export const DashcardMultipleComparisons: StoryFn = () => (
   <VisualizationWrapper>
-    <Flex gap="lg" align="flex-start" p="lg">
+    <Flex gap="lg" align="flex-start" wrap="wrap" p="lg">
       {CARD_SIZES.map(({ width, height }) => (
         <Box
           key={`${width}x${height}`}

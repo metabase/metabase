@@ -19,6 +19,7 @@ interface TrendComparisonRowProps {
   trend: Trend;
   formatOptions: ColumnSettings;
   percentOnly?: boolean;
+  showComparisonCount?: boolean;
   size?: TrendComparisonTextSize;
   compactValue?: boolean;
 }
@@ -27,6 +28,7 @@ export function TrendComparisonRow({
   trend,
   formatOptions,
   percentOnly = false,
+  showComparisonCount = true,
   size = "sm",
   compactValue = true,
 }: TrendComparisonRowProps) {
@@ -75,7 +77,7 @@ export function TrendComparisonRow({
             compactValue={compactValue}
           />
         </Box>
-        {!percentOnly && extraComparisonsCount > 0 && (
+        {showComparisonCount && extraComparisonsCount > 0 && (
           <Badge
             px={6}
             size="xs"
