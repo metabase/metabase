@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
    [metabase.app-db.core :as mdb]
@@ -735,7 +736,8 @@
   (testing "auth-method prefers route-based override on special routes"
     (let [f #'mw.session/auth-method]
       (are [session-info api-key-info oauth-info mcp-ui-info embedding-route expected]
-           (= expected (f session-info api-key-info oauth-info mcp-ui-info embedding-route))
+           (= expected (mt/with-dynamic-fn-redefs [analytics/get-route (constantly embedding-route)]
+                         (f session-info api-key-info oauth-info mcp-ui-info)))
         ;; session-based auth on non-special routes
         {:auth-provider "password"} nil nil nil nil            "password"
         {:auth-provider "saml"}     nil nil nil nil            "saml"
