@@ -24,7 +24,7 @@ import {
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_LIBRARY, PLUGIN_METADATA_GENERATION } from "metabase/plugins";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
   Box,
@@ -40,7 +40,11 @@ import * as Urls from "metabase/urls";
 import type { DatabaseId, FieldId, TableId } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
-import { RouterTablePicker, TableSection } from "../../components";
+import {
+  DatabaseSection,
+  RouterTablePicker,
+  TableSection,
+} from "../../components";
 import type { TreePath } from "../../components/TablePicker/types";
 import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
@@ -426,11 +430,7 @@ function getDatabaseDetailsId({
     tableId == null &&
     fieldId == null &&
     !hasSelectedItems;
-  return PLUGIN_METADATA_GENERATION.isEnabled &&
-    databaseId != null &&
-    isDatabaseOnly
-    ? databaseId
-    : null;
+  return databaseId != null && isDatabaseOnly ? databaseId : null;
 }
 
 function DatabaseDetailsSection({
@@ -462,7 +462,7 @@ function DatabaseDetailsSection({
         <DataStudioBreadcrumbs>{t`Database details`}</DataStudioBreadcrumbs>
       </Group>
       <ScrollArea flex={1} px="xl" type="hover">
-        <PLUGIN_METADATA_GENERATION.DatabasePane databaseId={databaseId} />
+        <DatabaseSection databaseId={databaseId} />
       </ScrollArea>
     </Stack>
   );

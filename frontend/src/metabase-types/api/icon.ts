@@ -173,6 +173,7 @@ export type IconName =
   | "metabot"
   | "metabot_sad"
   | "metric"
+  | "minimize"
   | "mode"
   | "model"
   | "model_with_badge"

@@ -1,8 +1,10 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type KeyboardEvent, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
 import {
   DataSensitivityPicker,
@@ -30,20 +32,23 @@ import {
   useApplyMetadataGenerationRunMutation,
   useDecideMetadataGenerationSuggestionsMutation,
   useEditMetadataGenerationSuggestionMutation,
+  useGetMetadataGenerationRunQuery,
   useListMetadataGenerationRunTablesQuery,
   useListMetadataGenerationSuggestionsQuery,
+  useStartMetadataGenerationRunMutation,
 } from "metabase-enterprise/api";
 import type {
   ConcreteTableId,
   MetadataGenerationApplyResult,
   MetadataGenerationDecisionRequest,
+  MetadataGenerationRun,
   MetadataGenerationRunId,
   MetadataGenerationRunTable,
   MetadataGenerationSuggestion,
   MetadataGenerationSuggestionId,
 } from "metabase-types/api";
 
-import { getAttributeLabel } from "../../utils";
+import { getAttributeLabel, getRunRequest } from "../../utils";
 
 import S from "./ReviewModal.module.css";
 import {
@@ -73,17 +78,24 @@ type ReviewModalProps = {
   runId: MetadataGenerationRunId;
   opened: boolean;
   onClose: () => void;
+  /** Called with the new run after the person regenerates the suggestions. */
+  onRegenerate?: (run: MetadataGenerationRun) => void;
 };
 
-export function ReviewModal({ runId, opened, onClose }: ReviewModalProps) {
+export function ReviewModal({
+  runId,
+  opened,
+  onClose,
+  onRegenerate,
+}: ReviewModalProps) {
   return (
     <Modal
       opened={opened}
-      title={t`Review AI metadata`}
+      title={t`Review AI-generated metadata suggestions`}
       size="90rem"
       onClose={onClose}
     >
-      {opened && <ReviewContent runId={runId} />}
+      {opened && <ReviewContent runId={runId} onRegenerate={onRegenerate} />}
     </Modal>
   );
 }
@@ -132,7 +144,12 @@ function useDecide(runId: MetadataGenerationRunId): DecideState {
   return { decide, isDeciding: requestCount > 0, decidingIds };
 }
 
-function ReviewContent({ runId }: { runId: MetadataGenerationRunId }) {
+type ReviewContentProps = {
+  runId: MetadataGenerationRunId;
+  onRegenerate?: (run: MetadataGenerationRun) => void;
+};
+
+function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
   const {
     data: tables,
     error,
@@ -166,6 +183,7 @@ function ReviewContent({ runId }: { runId: MetadataGenerationRunId }) {
         totals={getRunTotals(tables)}
         decideState={decideState}
         onApply={setApplyResult}
+        onRegenerate={onRegenerate}
       />
       {applyResult && (
         <ApplyResult
@@ -199,6 +217,7 @@ type RunHeaderProps = {
   totals: RunTotals;
   decideState: DecideState;
   onApply: (result: MetadataGenerationApplyResult) => void;
+  onRegenerate?: (run: MetadataGenerationRun) => void;
 };
 
 function RunHeader({
@@ -206,12 +225,35 @@ function RunHeader({
   totals,
   decideState: { decide, isDeciding },
   onApply,
+  onRegenerate,
 }: RunHeaderProps) {
   const [applyRun, { isLoading: isApplying }] =
     useApplyMetadataGenerationRunMutation();
+  const [startRun, { isLoading: isRegenerating }] =
+    useStartMetadataGenerationRunMutation();
+  const { data: run } = useGetMetadataGenerationRunQuery(runId);
+  const [
+    isRegenerateConfirmOpen,
+    { open: openRegenerateConfirm, close: closeRegenerateConfirm },
+  ] = useDisclosure();
   const { sendErrorToast } = useMetadataToasts();
   const { counts, humanSetPending } = totals;
   const notAccepted = getNotAcceptedCount(counts);
+
+  const handleRegenerate = async () => {
+    if (run == null) {
+      return;
+    }
+    const { data, error } = await startRun(getRunRequest(run));
+    if (error) {
+      sendErrorToast(
+        getErrorMessage(error, t`Failed to regenerate the suggestions`),
+      );
+    } else if (data) {
+      closeRegenerateConfirm();
+      onRegenerate?.(data);
+    }
+  };
 
   const handleApply = async () => {
     const { data, error } = await applyRun({ run_id: runId });
@@ -244,6 +286,26 @@ function RunHeader({
         )}
       </Stack>
       <Group gap="sm" wrap="nowrap">
+        {onRegenerate != null && (
+          <Tooltip label={t`Regenerate suggestions`}>
+            <ActionIcon
+              aria-label={t`Regenerate suggestions`}
+              disabled={run == null}
+              onClick={openRegenerateConfirm}
+            >
+              <Icon name="refresh" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+        <ConfirmModal
+          opened={isRegenerateConfirmOpen}
+          title={t`Regenerate suggestions?`}
+          message={t`This discards the current suggestions, including the ones you accepted or edited, and starts a new run.`}
+          confirmButtonText={t`Regenerate`}
+          confirmButtonProps={{ loading: isRegenerating }}
+          onConfirm={handleRegenerate}
+          onClose={closeRegenerateConfirm}
+        />
         <Tooltip
           label={t`Accepts every suggestion, except those that would replace a value a person set.`}
         >
@@ -561,7 +623,11 @@ function SuggestionRow({
       </td>
       <td className={S.value}>
         <Stack gap={4} align="flex-start">
-          <ProposedValue runId={runId} suggestion={suggestion} />
+          <ProposedValue
+            runId={runId}
+            suggestion={suggestion}
+            decide={decide}
+          />
           {!isSuggestionDecidable(suggestion) && (
             <Tooltip label={getFixedStatusTooltip(suggestion)}>
               <Badge
@@ -594,10 +660,10 @@ function SuggestionRow({
 type ProposedValueProps = {
   runId: MetadataGenerationRunId;
   suggestion: MetadataGenerationSuggestion;
+  decide: Decide;
 };
 
-function ProposedValue({ runId, suggestion }: ProposedValueProps) {
-  const [isEditing, setIsEditing] = useState(false);
+function ProposedValue({ runId, suggestion, decide }: ProposedValueProps) {
   const [editSuggestion] = useEditMetadataGenerationSuggestionMutation();
   const { sendErrorToast } = useMetadataToasts();
   const { attribute, proposed_value } = suggestion;
@@ -608,7 +674,6 @@ function ProposedValue({ runId, suggestion }: ProposedValueProps) {
   const fieldLabel = getFieldLabel(suggestion);
 
   const save = async (newValue: string | null) => {
-    setIsEditing(false);
     const editedValue = newValue === proposed_value ? null : newValue;
     if (editedValue === suggestion.edited_value) {
       return;
@@ -620,177 +685,158 @@ function ProposedValue({ runId, suggestion }: ProposedValueProps) {
     });
     if (error) {
       sendErrorToast(getErrorMessage(error, t`Failed to save the value`));
+      return;
+    }
+    // Saving a value accepts the suggestion on the backend. Going back to the
+    // AI proposal does not, so the row is checked here.
+    if (editedValue == null && !isSuggestionChecked(suggestion)) {
+      await decide({ decision: "accept", suggestion_ids: [suggestion.id] });
     }
   };
 
-  if (isEditing) {
+  if (!canEdit) {
     return (
-      <ValueEditor
-        suggestion={suggestion}
-        value={value}
-        onSave={save}
-        onCancel={() => setIsEditing(false)}
-      />
+      <Stack
+        gap={4}
+        align="flex-start"
+        data-testid="metadata-generation-proposed"
+      >
+        <Text>{formatSuggestionValue(attribute, value)}</Text>
+        {isEdited && <EditedBadge suggestion={suggestion} />}
+      </Stack>
     );
   }
 
   return (
-    <Stack
-      gap={4}
-      align="flex-start"
-      data-testid="metadata-generation-proposed"
-    >
-      <Group gap={4} wrap="nowrap" align="flex-start">
-        <Text>{formatSuggestionValue(attribute, value)}</Text>
-        {canEdit && (
-          <ActionIcon
-            size="sm"
-            aria-label={t`Edit ${attributeLabel} of ${fieldLabel}`}
-            onClick={() => setIsEditing(true)}
-          >
-            <Icon name="pencil" size={12} />
-          </ActionIcon>
-        )}
-      </Group>
+    <Stack gap={4} align="stretch" data-testid="metadata-generation-proposed">
+      <ValueInput
+        suggestion={suggestion}
+        value={value}
+        label={t`Proposed ${attributeLabel} of ${fieldLabel}`}
+        onChange={save}
+      />
       {isEdited && (
         <Group gap={4} wrap="nowrap">
-          <Tooltip
-            label={t`AI proposal: ${formatSuggestionValue(attribute, proposed_value)}`}
-            maw="25rem"
-            multiline
+          <EditedBadge suggestion={suggestion} />
+          <Button
+            size="compact-sm"
+            variant="subtle"
+            leftSection={<Icon name="undo" size={12} />}
+            onClick={() => save(null)}
           >
-            <Badge variant="light" color="brand">{t`Edited`}</Badge>
-          </Tooltip>
-          {canEdit && (
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              leftSection={<Icon name="undo" size={12} />}
-              onClick={() => save(null)}
-            >
-              {t`Use AI proposal`}
-            </Button>
-          )}
+            {t`Use AI proposal`}
+          </Button>
         </Group>
       )}
     </Stack>
   );
 }
 
-type ValueEditorProps = {
+function EditedBadge({
+  suggestion,
+}: {
+  suggestion: MetadataGenerationSuggestion;
+}) {
+  const proposal = formatSuggestionValue(
+    suggestion.attribute,
+    suggestion.proposed_value,
+  );
+  return (
+    <Tooltip label={t`AI proposal: ${proposal}`} maw="25rem" multiline>
+      <Badge variant="light" color="brand">{t`Edited`}</Badge>
+    </Tooltip>
+  );
+}
+
+type ValueInputProps = {
   suggestion: MetadataGenerationSuggestion;
   value: string;
-  onSave: (value: string) => void;
-  onCancel: () => void;
+  label: string;
+  onChange: (value: string) => void;
 };
 
-function ValueEditor({
-  suggestion,
-  value,
-  onSave,
-  onCancel,
-}: ValueEditorProps) {
-  const attributeLabel = getAttributeLabel(suggestion.attribute);
-
+function ValueInput({ suggestion, value, label, onChange }: ValueInputProps) {
   switch (suggestion.attribute) {
     case "description":
       return (
-        <DescriptionEditor
+        <DescriptionInput
+          // Reset the draft when the saved value changes, e.g. after "Use AI proposal".
+          key={value}
           value={value}
-          label={attributeLabel}
-          onSave={onSave}
-          onCancel={onCancel}
+          label={label}
+          onChange={onChange}
         />
       );
     case "semantic_type":
       return (
         <SemanticTypePicker
-          aria-label={attributeLabel}
+          aria-label={label}
           field={{
             base_type: suggestion.field_base_type,
             effective_type: suggestion.field_effective_type ?? undefined,
           }}
           value={value}
           canSetKeyOrEmpty={false}
-          defaultDropdownOpened
           w="100%"
-          onChange={(newValue) => (newValue ? onSave(newValue) : onCancel())}
-          onDropdownClose={onCancel}
+          onChange={(newValue) => newValue != null && onChange(newValue)}
         />
       );
     case "data_sensitivity":
       return (
         <DataSensitivityPicker
-          aria-label={attributeLabel}
+          aria-label={label}
           value={isFieldDataSensitivity(value) ? value : null}
           source={null}
           canClear={false}
-          defaultDropdownOpened
           w="100%"
-          onChange={(newValue) => (newValue ? onSave(newValue) : onCancel())}
-          onDropdownClose={onCancel}
-          onReset={onCancel}
+          onChange={(newValue) => newValue != null && onChange(newValue)}
+          onReset={() => undefined}
         />
       );
   }
 }
 
-type DescriptionEditorProps = {
+type DescriptionInputProps = {
   value: string;
   label: string;
-  onSave: (value: string) => void;
-  onCancel: () => void;
+  onChange: (value: string) => void;
 };
 
-function DescriptionEditor({
-  value,
-  label,
-  onSave,
-  onCancel,
-}: DescriptionEditorProps) {
+function DescriptionInput({ value, label, onChange }: DescriptionInputProps) {
   const [text, setText] = useState(value);
-  const trimmed = text.trim();
-  const canSave = trimmed.length > 0;
+
+  const commit = () => {
+    const trimmed = text.trim();
+    if (trimmed.length > 0 && trimmed !== value) {
+      onChange(trimmed);
+    } else {
+      setText(value);
+    }
+  };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Escape") {
-      // Escape closes the editor, not the modal.
+      // Escape drops the draft, not the modal.
       event.stopPropagation();
-      onCancel();
+      setText(value);
+      event.currentTarget.blur();
     } else if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (canSave) {
-        onSave(trimmed);
-      }
+      event.currentTarget.blur();
     }
   };
 
   return (
-    <Stack gap={4} w="100%">
-      <Textarea
-        aria-label={label}
-        value={text}
-        maxLength={DESCRIPTION_MAX_LENGTH}
-        autosize
-        minRows={2}
-        autoFocus
-        onChange={(event) => setText(event.currentTarget.value)}
-        onKeyDown={handleKeyDown}
-      />
-      <Group gap="xs" justify="flex-end">
-        <Button size="compact-sm" variant="subtle" onClick={onCancel}>
-          {t`Cancel`}
-        </Button>
-        <Button
-          size="compact-sm"
-          variant="filled"
-          disabled={!canSave}
-          onClick={() => onSave(trimmed)}
-        >
-          {t`Save`}
-        </Button>
-      </Group>
-    </Stack>
+    <Textarea
+      aria-label={label}
+      value={text}
+      maxLength={DESCRIPTION_MAX_LENGTH}
+      autosize
+      minRows={1}
+      onChange={(event) => setText(event.currentTarget.value)}
+      onBlur={commit}
+      onKeyDown={handleKeyDown}
+    />
   );
 }
 
