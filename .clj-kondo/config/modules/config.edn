@@ -3892,7 +3892,8 @@
   {:team "Graphy"
    :module-exports #{enterprise/dependencies.replacement}
    :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
-   :uses #{api
+   :uses #{actions
+           api
            app-db
            batch-processing
            collections
@@ -3923,7 +3924,8 @@
            util.graph
            warehouse-schema-overlay
            enterprise/permissions.sandbox}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
@@ -3936,6 +3938,7 @@
                     :model/FieldUserSettings
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/QueryAction
                     :model/Sandbox
                     :model/Segment
                     :model/Table
