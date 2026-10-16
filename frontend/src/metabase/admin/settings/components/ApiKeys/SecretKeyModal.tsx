@@ -42,6 +42,7 @@ export const SecretKeyModal = ({
               <Tooltip label={t`Copied!`} opened={copied}>
                 <ActionIcon
                   variant="subtle"
+                  size="sm"
                   aria-label={t`Copy`}
                   onClick={copy}
                 >

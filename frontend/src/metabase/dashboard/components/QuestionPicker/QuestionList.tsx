@@ -159,8 +159,9 @@ export function QuestionList({
             />
             <Tooltip label={t`Visualize another way`}>
               <ActionIcon
+                variant="filled"
                 className={S.VisualizerButton}
-                size="41px"
+                size="lg"
                 aria-label={t`Visualize another way`}
                 onClick={() => {
                   trackVisualizeAnotherWayClicked();

@@ -117,9 +117,7 @@ export const MetabotGreeting = ({
           </Box>
           <Box className={S.inputActions}>
             <ActionIcon
-              className={S.sendButton}
               variant="filled"
-              size="2rem"
               disabled={!canUseNlq || inputDisabled}
               loading={metabot.isDoingScience}
               onClick={handleSubmit}

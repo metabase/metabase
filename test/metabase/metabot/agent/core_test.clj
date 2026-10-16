@@ -105,7 +105,8 @@
                                                                            :query-id "q1"}}}]
         failure  [{:type :tool-input :id "b" :function "edit_sql_query"}
                   {:type :tool-output :id "b" :result {:output "validation error"
-                                                       :instructions "fix it"}}]
+                                                       :error  {:class :validation
+                                                                :code  :invalid-arguments}}}]
         read     [{:type :tool-input :id "c" :function "read_resource"}
                   {:type :tool-output :id "c" :result {:output "<fields/>"}}]]
     (testing "a successful terminal-tool call ends the turn"
@@ -119,6 +120,17 @@
       (is (not (#'agent/terminal-tool-call? terminal read))))
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
       (is (not (#'agent/terminal-tool-call? #{} success))))
+    (testing (str "an unconverted tool's returned failure does not end the turn either. Every "
+                  "terminal tool catches its own exceptions and returns `{:output \"Query 3 not "
+                  "found\"}`, so there is no `:error` for the adapter to find — ending the turn on "
+                  "the absence of one would deliver that sentence to the user as the answer. The "
+                  "`:structured-output` it does not attach is what tells them apart until they are "
+                  "converted.")
+      (let [legacy-failure [{:type :tool-input :id "d" :function "edit_sql_query"}
+                            {:type :tool-output :id "d" :result {:output "Query 3 not found"}}]]
+        (is (not (#'agent/terminal-tool-call? terminal legacy-failure)))
+        (is (#'agent/should-continue? 0 20 terminal legacy-failure)
+            "the model gets another turn to fix the id")))
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
@@ -226,22 +238,34 @@
           (is (contains? tools "document_construct_sql_chart"))
           (is (contains? tools "document_schema_collect")))))))
 
+(defn- unrecoverable-part
+  [id user-message]
+  {:type   :tool-output
+   :id     id
+   :result (cond-> {:output "This call failed and the user was shown the error (:x). Don't retry it."
+                    :error  {:class :unrecoverable :code :x}}
+             user-message (assoc-in [:error :user-message] user-message))})
+
 (deftest terminal-error-message-test
   (let [denial [{:type :tool-input :id "a" :function "create_sql_query"}
-                {:type :tool-output :id "a" :result {:output "No native permission."
-                                                     :terminal-error? true}}]]
-    (testing "reads the message off a tool result marked terminal"
+                (unrecoverable-part "a" "No native permission.")]]
+    (testing "reads the user-facing message off an unrecoverable failure"
       (is (= "No native permission." (#'agent/terminal-error-message denial))))
-    (testing "an ordinary tool failure is not terminal"
+    (testing "a recoverable failure is not terminal — the model can still self-correct"
       (is (nil? (#'agent/terminal-error-message
-                 [{:type :tool-output :id "b" :result {:output "syntax error"}}]))))
-    (testing "a terminal marker with no message yields nil so no empty text part is emitted"
+                 [{:type :tool-output :id "b" :result {:output "syntax error"
+                                                       :error {:class :recoverable :code :x}}}]))))
+    (testing "and neither is a success"
       (is (nil? (#'agent/terminal-error-message
-                 [{:type :tool-output :id "c" :result {:output "" :terminal-error? true}}]))))
+                 [{:type :tool-output :id "b" :result {:output "fine"}}]))))
+    (testing "an unrecoverable failure with no :user-message gets the generic one, so the user is
+             always told something"
+      (is (= "Something went wrong."
+             (#'agent/terminal-error-message [(unrecoverable-part "c" nil)]))))
     (testing "the first denial wins when an iteration produces several"
       (is (= "first" (#'agent/terminal-error-message
-                      [{:type :tool-output :id "a" :result {:output "first" :terminal-error? true}}
-                       {:type :tool-output :id "b" :result {:output "second" :terminal-error? true}}]))))
+                      [(unrecoverable-part "a" "first")
+                       (unrecoverable-part "b" "second")]))))
     (testing "should-continue? is unaffected — the gate lives in loop-step, per profile"
       (is (#'agent/should-continue? 0 20 #{} denial)))))
 
@@ -294,14 +318,19 @@
                 "the refusal is emitted as assistant text — a tool result is not rendered to the user")
             (is (some #(= :data (:type %)) parts)
                 "state data part still closes the turn")))
-        (testing ":internal lets the model explain the denial itself, so the loop continues"
+        (testing (str ":internal stops on the same denial. The class decides, not the profile: only "
+                      "the user can grant this permission, so there is nothing for the agent to do "
+                      "with the turn. This used to continue, and the model paraphrased the refusal "
+                      "in its own words — nicer wording, bought with an extra LLM call, a profile "
+                      "exception, and a model that might have said something else entirely.")
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal builder-db)]
-            (is (= 2 llm-calls))
-            (is (= :stop (:finish-reason (last parts))))
-            (is (not-any? #(and (= :text (:type %))
-                                (str/includes? (str (:text %)) "do not have permission"))
-                          parts)
-                "no canned text — the model's own wording is used")))
+            (is (= 1 llm-calls)
+                "one call, where the profile gate used to allow a second")
+            (is (= :terminal-error (:finish-reason (last parts))))
+            (is (some #(and (= :text (:type %))
+                            (str/includes? (:text %) "do not have permission"))
+                      parts)
+                "the tool's own `:user-message`, which is authored and specific")))
         (testing "a database the user cannot read at all stops the turn the same way"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
             (is (= 1 llm-calls)

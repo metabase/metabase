@@ -6,7 +6,8 @@
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
-   [metabase.settings.core :as setting]))
+   [metabase.settings.core :as setting]
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,15 +54,15 @@
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []
   (perms/check-has-application-permission :setting)
-  (when-not (and (channel.settings/email-smtp-port) (channel.settings/email-smtp-host))
+  (if-not (channel.settings/email-configured?)
     {:status 400
-     :body   "Wrong host or port"})
-  (let [response (email/send-message-or-throw!
-                  {:subject      "Metabase Test Email"
-                   :recipients   [(:email @api/*current-user*)]
-                   :message-type :text
-                   :message      "Your Metabase emails are working — hooray!"})]
-    (if-not (::email/error response)
-      {:ok true}
-      {:status 400
-       :body   (email/humanize-error-messages mb-to-smtp-settings response)})))
+     :body   (tru "SMTP host is not set.")}
+    (let [response (email/send-message-or-throw!
+                    {:subject      "Metabase Test Email"
+                     :recipients   [(:email @api/*current-user*)]
+                     :message-type :text
+                     :message      "Your Metabase emails are working — hooray!"})]
+      (if-not (::email/error response)
+        {:ok true}
+        {:status 400
+         :body   (email/humanize-error-messages mb-to-smtp-settings response)}))))

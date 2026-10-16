@@ -25,8 +25,7 @@ dataset_query:
     - PRODUCTS
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
 - model: Card
