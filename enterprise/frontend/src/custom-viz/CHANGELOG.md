@@ -4,10 +4,6 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 
 ## 2.1.0
 
-### Features
-
-- New `@metabase/custom-viz/host-contract.json` describes what Metabase provides to and restricts for custom visualizations: the sandbox blocklists (tags, global event listeners, API calls, URL-valued attributes) and HTML sanitizer rules, theme color names with what each is for, and the type predicates each kind of column passes. Coding agents and other tools can read it from the installed package, so it always matches the package version. `contractVersion` changes when its shape changes.
-
 ### Bug Fixes
 
 - The scaffolded dev server no longer crashes when an asset file disappears before it's copied, which happened with editors that save through atomic writes.

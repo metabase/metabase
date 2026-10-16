@@ -1,36 +1,14 @@
 /* eslint-disable import/no-default-export */
-import { cpSync } from "node:fs";
 import { resolve } from "path";
 
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
-
-const STATIC_FILES = [
-  "templates/dev-server-landing.html",
-  "host-contract.json",
-];
-
-const copyStaticFiles = () => ({
-  name: "copy-static-files",
-  closeBundle: () => {
-    STATIC_FILES.forEach((path) =>
-      cpSync(
-        resolve(__dirname, "src", path),
-        resolve(__dirname, "dist", path),
-        {
-          recursive: true,
-        },
-      ),
-    );
-  },
-});
 
 export default defineConfig({
   plugins: [
     dts({
       tsconfigPath: resolve(__dirname, "tsconfig.lib.json"),
     }),
-    copyStaticFiles(),
   ],
   build: {
     target: "node20",

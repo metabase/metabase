@@ -33,18 +33,6 @@ bun run format
 bun run format:check
 ```
 
-## Host contract
-
-`src/host-contract.json` ships as `@metabase/custom-viz/host-contract.json`. It holds what tools need to know about the Metabase host:
-
-- `sandbox` — every blocklist from `frontend/src/metabase/utils/scripts-sandbox`, plus the HTML sanitizer rules (forbidden tags and attributes, allowed URL pattern)
-- `colors` — the color names a visualization may use, each with its role (what to use it for). Values come from the host at runtime (`var(--mb-color-<name>)`, `renderingContext.getColor`). Renaming a color token means renaming it here and keeping its role
-- `columns` — a representative column for each kind, with the column type predicates it passes
-
-Bump `contractVersion` when the shape of the file changes.
-
-`custom-viz-host-contract.unit.spec.ts` in `metabase-enterprise/custom_viz` checks the file against the host. On drift it prints the up-to-date file to paste in. It runs in the main frontend unit tests, not in the package's own `bun run test`.
-
 ## Releasing
 
 Releases are published via the **Release Custom Viz Package** GitHub Actions workflow ([`.github/workflows/release-custom-viz.yml`](../../../.github/workflows/release-custom-viz.yml)).
