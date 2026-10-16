@@ -123,7 +123,7 @@
   display: inline-block;
   padding: 0.25rem 0.625rem;
   border-radius: 0.5rem;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-brand);
   font-size: 0.8125rem;
   font-weight: 700;

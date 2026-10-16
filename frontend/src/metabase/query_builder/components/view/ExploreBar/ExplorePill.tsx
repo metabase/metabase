@@ -187,20 +187,22 @@ function BreakoutPill({
 type PillBodyProps = {
   pill: ExplorePillItem;
   hasMenu?: boolean;
+  className?: string;
   onClick?: () => void;
   onRemove: () => void;
 };
 
 const PillBody = forwardRef<HTMLDivElement, PillBodyProps>(function PillBody(
-  { pill, hasMenu, onClick, onRemove, ...props },
+  { pill, hasMenu, className, onClick, onRemove, ...props },
   ref,
 ) {
+  // popover and menu targets pass their own props, className included, so merge rather than replace
   return (
     <Box
       ref={ref}
-      className={cx(S.pill, S[`pill-${pill.kind}`])}
-      data-testid="explore-pill"
       {...props}
+      className={cx(S.pill, S[`pill-${pill.kind}`], className)}
+      data-testid="explore-pill"
     >
       <UnstyledButton
         className={S.pillButton}
