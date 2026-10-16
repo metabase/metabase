@@ -303,6 +303,18 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post "revision/revert" update-req))))))))
 
+(deftest revert-card-to-revision-with-sensitive-field-test
+  (testing "a non-admin can revert a card to a revision that references a :sensitive column (SEC-829)"
+    (mt/with-temp [:model/Card {card-id :id} {:creator_id    (mt/user->id :crowberto)
+                                              :dataset_query (mt/mbql-query users {:fields [$id $password]})}]
+      (create-card-revision! card-id true :crowberto)
+      (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query users {:fields [$id]})})
+      (create-card-revision! card-id false :crowberto)
+      (let [[_ {earlier-revision-id :id}] (revision/revisions :model/Card card-id)]
+        (mt/user-http-request :rasta :post 200 "revision/revert"
+                              {:entity :card, :id card-id, :revision_id earlier-revision-id})
+        (is (= 2 (-> (t2/select-one :model/Card :id card-id) :dataset_query lib/fields count)))))))
+
 (deftest dashboard-revision-description-test
   (testing "revision description for dashboard are generated correctly"
     (mt/with-temp
