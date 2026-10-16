@@ -194,7 +194,16 @@ const QUERY_PAGE = /\/(model|question|table|dashboard|metric)(\/|#|$|-|\$)/;
 
 // A click on an element with one of these labels probably sends a request.
 const SUBMIT_LABEL =
-  /^(save|connect|create|send|submit|delete|remove|add|apply|update|done|confirm|load|test|clear|publish|archive|move|duplicate|revoke|regenerate|enable|disable|run|import|upload|sync|discard|reset|invite|deactivate|reactivate)\b/i;
+  /^(save|connect|create|send|submit|delete|remove|add|apply|update|done|confirm|load|test|clear|publish|archive|move|duplicate|revoke|regenerate|enable|disable|run|import|upload|sync|discard|reset|invite|deactivate|reactivate|sign in|log in|finish|next|continue|dismiss|hide)\b/i;
+
+// Test IDs of elements that show query results.
+const QUERY_TEST_IDS = new Set([
+  "table-body",
+  "cell-data",
+  "query-visualization-root",
+  "visualization-root",
+  "scalar-value",
+]);
 
 const HTTP_METHOD = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/i;
 
@@ -558,9 +567,26 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
   ) {
     const page = call.arguments
       .map((arg) => stringValue(arg) ?? text(arg, sf))
-      .find((value) => QUERY_PAGE.test(value));
+      .find((value) => QUERY_PAGE.test(value.replace(/\\/g, "")));
     if (page) {
       events.push({ kind: "query", name: `lands on ${page}` });
+    }
+  }
+  const firstArg = stringValue(call.arguments[0]);
+  if (
+    (method === "findByTestId" || method === "findAllByTestId") &&
+    firstArg &&
+    QUERY_TEST_IDS.has(firstArg)
+  ) {
+    events.push({ kind: "query", name: `test ID ${firstArg}` });
+  }
+  if ((method === "get" || method === "find") && firstArg) {
+    if (/^iframe\b/.test(firstArg)) {
+      events.push({ kind: "realBrowser", what: "iframe" });
+    }
+    // `cy.get("@alias.all")` reads the requests that an intercept saw.
+    if (root === "cy" && /^@[\w-]+\.all$/.test(firstArg)) {
+      events.push({ kind: "backend", name: `asserts on requests ${firstArg}` });
     }
   }
   if (helper && UI_ACTION_HELPERS.has(helper)) {

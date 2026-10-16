@@ -133,6 +133,26 @@ describe("rules beyond the pilot", () => {
     expect(triage(landsOn("/browse/models")).bucket).toBe("B");
   });
 
+  it("puts an assertion on intercepted requests in C?", () => {
+    const body = (alias: string) =>
+      `cy.intercept("PUT", "/api/x").as("x"); cy.visit("/"); cy.get("${alias}").should("have.length", 0);`;
+    expect(triage(body("@x.all")).bucket).toBe("C?");
+    expect(triage(body("[data-x]")).bucket).toBe("B");
+  });
+
+  it("puts query result elements and raw iframes in C?", () => {
+    expect(triage(`cy.visit("/"); cy.findByTestId("table-body");`).bucket).toBe("C?");
+    expect(triage(`cy.visit("/"); cy.get("iframe");`).bucket).toBe("C?");
+    expect(triage(`cy.visit("/"); cy.findByTestId("changelog-iframe");`).bucket).toBe("B");
+  });
+
+  it("matches query pages in escaped regex literals", () => {
+    const body = (re: string) =>
+      `cy.visit("/"); cy.location("pathname").should("match", ${re});`;
+    expect(triage(body("/^\\/table\\/\\d+/")).bucket).toBe("C?");
+    expect(triage(body("/^\\/browse\\/\\d+/")).bucket).toBe("B");
+  });
+
   it("follows local functions", () => {
     const header = `function save() { cy.button("Save").click(); }`;
     expect(triage(`cy.visit("/"); save();`, header).bucket).toBe("C?");
