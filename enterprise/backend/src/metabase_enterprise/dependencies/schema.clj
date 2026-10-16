@@ -19,6 +19,26 @@
                                               [:schema {:optional true} :string]
                                               [:table :string]]]]])
 
+(mr/def ::result-metadata-status
+  "A ResultMetadataStatus as selected from the app DB: every column of `:result_metadata_status`."
+  [:merge
+   ::result-metadata-status.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
+(mr/def ::result-metadata-status.update
+  "What an update (or insert) of a ResultMetadataStatus accepts: every column of `:result_metadata_status` except `id`,
+  all optional."
+  [:map {:closed true}
+   [:entity_type   {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:stale         {:optional true} [:maybe :boolean]]
+   [:fail_count    {:optional true} [:maybe :int]]
+   [:next_retry_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:terminal      {:optional true} [:maybe :boolean]]
+   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]])
+
 (mr/def ::analysis-finding
   "A AnalysisFinding as selected from the app DB: every column of `:analysis_finding`."
   [:merge

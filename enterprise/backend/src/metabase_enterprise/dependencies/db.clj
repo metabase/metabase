@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util.honey-sql-2 :as h2x]
@@ -864,6 +865,171 @@
                               [:or [:= :dependency_status.entity_id nil] [:= :dependency_status.stale true]] [:inline 0]
                               :else [:inline 1]]]]
                 :limit     batch-size})))
+
+;;; --------------------------------------------- Result metadata status ---------------------------------------------
+
+(mu/defn mark-result-metadata-status-stale!
+  "Mark the ResultMetadataStatus of `entity-type` `entity-id` stale, creating it if it doesn't exist, and reset its
+  retry state."
+  [entity-type :- EntityType
+   entity-id   :- ms/PositiveInt]
+  (mdb/update-or-insert!
+   :model/ResultMetadataStatus
+   {:entity_type entity-type :entity_id entity-id}
+   (fn [_existing]
+     {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)})))
+
+(mu/defn mark-result-metadata-statuses-stale!
+  "Mark the existing ResultMetadataStatuses of `entity-type` `entity-ids` stale and reset their retry state, returning
+  the number updated."
+  [entity-type :- EntityType
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (t2/update! :model/ResultMetadataStatus
+              :entity_type entity-type :entity_id [:in entity-ids]
+              {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}))
+
+(mu/defn mark-dependent-result-metadata-statuses-stale!
+  "Mark the ResultMetadataStatuses of `entity-type` `entity-ids` that are not stale, or are terminal, stale with their
+  retry state reset, returning the number updated."
+  [entity-type :- EntityType
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (let [changes {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}]
+    (+ (t2/update! :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids] :stale false changes)
+       (t2/update! :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids] :terminal true
+                   changes))))
+
+(mu/defn result-metadata-status-entity-ids
+  "The IDs of the entities of `entity-type` among `entity-ids` that have a ResultMetadataStatus."
+  [entity-type :- EntityType
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (t2/select-fn-set :entity_id :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids]))
+
+(mu/defn insert-stale-result-metadata-status!
+  "Insert a stale ResultMetadataStatus for the entity `entity-type` `entity-id`, or mark the existing one stale when a
+  concurrent write inserted it first."
+  [entity-type :- EntityType
+   entity-id   :- ms/PositiveInt]
+  (mdb/update-or-insert!
+   :model/ResultMetadataStatus
+   {:entity_type entity-type :entity_id entity-id}
+   (fn [existing]
+     (when-not (:stale existing)
+       {:stale true :updated_at (mi/now)}))))
+
+(mu/defn result-metadata-status-exists?
+  "Whether any of the entities `nodes`, `[[entity-type entity-id]]`, has a ResultMetadataStatus."
+  [nodes :- [:sequential [:tuple EntityType ms/PositiveInt]]]
+  (boolean
+   (when (seq nodes)
+     (t2/exists? :model/ResultMetadataStatus
+                 {:where (into [:or]
+                               (for [[entity-type typed-nodes] (group-by first nodes)]
+                                 [:and
+                                  [:= :entity_type (name entity-type)]
+                                  [:in :entity_id (mapv second typed-nodes)]]))}))))
+
+(defn- processable-result-metadata-status-expr
+  "The condition of a stale ResultMetadataStatus aliased `alias` that is not terminal and whose retry time has passed
+  at `now`."
+  [alias now]
+  (let [column #(keyword (name alias) (name %))]
+    [:and
+     [:= (column :stale) true]
+     [:= (column :terminal) false]
+     [:or
+      [:= (column :next_retry_at) nil]
+      [:<= (column :next_retry_at) now]]]))
+
+(mu/defn stale-result-metadata-statuses
+  "The `:entity_type` and `:entity_id` of the stale ResultMetadataStatuses that are not terminal and whose retry time
+  has passed at `now`."
+  [now :- ms/TemporalInstant]
+  (t2/select [:model/ResultMetadataStatus :entity_type :entity_id]
+             {:where (processable-result-metadata-status-expr :result_metadata_status now)}))
+
+(mu/defn stale-result-metadata-statuses-batch
+  "Up to `batch-size` stale ResultMetadataStatuses that are not terminal and whose retry time has passed at `now`."
+  [batch-size :- ms/PositiveInt
+   now        :- ms/TemporalInstant]
+  (t2/select :model/ResultMetadataStatus
+             {:where    (processable-result-metadata-status-expr :result_metadata_status now)
+              :order-by [[:updated_at :asc] [:id :asc]]
+              :limit    batch-size}))
+
+(mu/defn ready-result-metadata-statuses
+  "Up to `batch-size` stale ResultMetadataStatuses that are not terminal and whose retry time has passed at `now`,
+  of entities that depend on no entity whose ResultMetadataStatus is processable too."
+  [batch-size :- ms/PositiveInt
+   now        :- ms/TemporalInstant]
+  (t2/select :model/ResultMetadataStatus
+             {:where    [:and
+                         (processable-result-metadata-status-expr :result_metadata_status now)
+                         [:not [:exists ^:allow-subquery
+                                {:select [1]
+                                 :from   [[(t2/table-name :model/Dependency) :dep]]
+                                 :join   [[(t2/table-name :model/ResultMetadataStatus) :upstream]
+                                          [:and
+                                           [:= :upstream.entity_type :dep.to_entity_type]
+                                           [:= :upstream.entity_id :dep.to_entity_id]]]
+                                 :where  [:and
+                                          [:= :dep.from_entity_type :result_metadata_status.entity_type]
+                                          [:= :dep.from_entity_id :result_metadata_status.entity_id]
+                                          (processable-result-metadata-status-expr :upstream now)]}]]]
+              :order-by [[:updated_at :asc] [:id :asc]]
+              :limit    batch-size}))
+
+(mu/defn clear-unchanged-result-metadata-status!
+  "Clear the stale flag and retry state of the ResultMetadataStatus with `status-id` unless its `updated_at` is no
+  longer `updated-at`, returning the number updated."
+  [status-id  :- ms/PositiveInt
+   updated-at :- ms/TemporalInstant]
+  (t2/update! :model/ResultMetadataStatus
+              :id status-id :updated_at updated-at
+              {:stale false :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}))
+
+(mu/defn delete-deleted-result-metadata-statuses!
+  "Delete the ResultMetadataStatuses of the deleted entities of `entity-type`, returning the number deleted."
+  [entity-type :- ::deps.dependency-types/dependency-types]
+  (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))]
+    (t2/delete! :model/ResultMetadataStatus
+                {:where [:and
+                         [:= :result_metadata_status.entity_type (name entity-type)]
+                         [:not [:exists ^:allow-subquery
+                                {:select [1]
+                                 :from   [[table-name :entity]]
+                                 :where  [:= :entity.id :result_metadata_status.entity_id]}]]]})))
+
+(mu/defn update-unchanged-result-metadata-status!
+  "Apply `changes` to the ResultMetadataStatus with `status-id` unless its `updated_at` is no longer `updated-at`,
+  returning the number updated."
+  [status-id  :- ms/PositiveInt
+   updated-at :- ms/TemporalInstant
+   changes    :- (mut/select-keys ::dependencies.schema/result-metadata-status.update
+                                  [:fail_count :next_retry_at :terminal])]
+  (t2/update! :model/ResultMetadataStatus :id status-id :updated_at updated-at (assoc changes :updated_at (mi/now))))
+
+(mu/defn result-metadata-pending-retry-exists?
+  "Whether a stale, non-terminal ResultMetadataStatus is waiting for a retry."
+  []
+  (t2/exists? :model/ResultMetadataStatus :stale true :terminal false :next_retry_at [:not= nil]))
+
+(mu/defn lock-result-metadata-status
+  "The ResultMetadataStatus with `status-id`, locked for update until the current transaction ends, or nil."
+  [status-id :- ms/PositiveInt]
+  (t2/select-one :model/ResultMetadataStatus :id status-id {:for :update}))
+
+(mu/defn lock-card!
+  "Lock the Card with `card-id` for update until the current transaction ends, returning its ID, or nil when it
+  doesn't exist."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-pk [:model/Card :id] :id card-id {:for :update}))
+
+(mu/defn set-card-result-metadata!
+  "Set the result metadata of the Card with `card-id` without touching `updated_at`, returning the number updated."
+  [card-id         :- ::lib.schema.id/card
+   result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
+  (t2/update! :model/Card card-id {:result_metadata result-metadata
+                                   :updated_at      :updated_at}))
 
 ;;; ------------------------------------------------ Analysis findings ------------------------------------------------
 

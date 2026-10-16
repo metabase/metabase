@@ -4,7 +4,7 @@
    [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.task.backfill :as task.backfill]
+   [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
@@ -52,6 +52,36 @@
             (is (not (finding-stale?)))
             (t2/update! :model/Card card-id {:dataset_query (table-query :orders)})
             (is (finding-stale?))))))))
+
+(deftest card-update-marks-only-the-jobs-its-columns-matter-to-test
+  (testing "a card update marks and triggers only the jobs that read the columns it changes"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/DependencyStatus :model/AnalysisFinding :model/ResultMetadataStatus]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
+          (deps.analysis-finding/upsert-analysis! :card card-id true [])
+          (let [submitted (atom [])
+                update!   (fn [changes]
+                            (reset! submitted [])
+                            (t2/delete! :model/DependencyStatus :entity_type "card" :entity_id card-id)
+                            (t2/delete! :model/ResultMetadataStatus :entity_type "card" :entity_id card-id)
+                            (deps.analysis-finding/upsert-analysis! :card card-id true [])
+                            (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
+                              (deps.test/do-with-immediate-hook-writes #(t2/update! :model/Card card-id changes)))
+                            {:jobs              (into #{} (mapcat :jobs) @submitted)
+                             :dependencies      (stale? :card card-id)
+                             :analysis-findings (t2/select-one-fn :stale :model/AnalysisFinding
+                                                                  :analyzed_entity_type :card :analyzed_entity_id card-id)
+                             :result-metadata   (t2/exists? :model/ResultMetadataStatus
+                                                            :entity_type :card :entity_id card-id :stale true)})]
+            (testing "parameters"
+              (is (= {:jobs #{:dependencies} :dependencies true :analysis-findings false :result-metadata false}
+                     (update! {:parameters [{:id "p" :type :category :slug "p" :name "P"}]}))))
+            (testing "query"
+              (is (= {:jobs              #{:dependencies :analysis-findings :result-metadata}
+                      :dependencies      true
+                      :analysis-findings true
+                      :result-metadata   true}
+                     (update! {:dataset_query (table-query :orders)}))))))))))
 
 (deftest card-update-without-feature-test
   (testing "without the dependencies feature the hooks do nothing"
@@ -101,7 +131,7 @@
         (deps.dependency-status/upsert-status! :card card-id false)
         (t2/delete! :model/Card :id card-id)
         (is (stale? :card card-id))
-        (deps.test/synchronously-run-backfill!)
+        (deps.test/synchronously-run-dependency-job!)
         (is (not (t2/exists? :model/Dependency :from_entity_type "card" :from_entity_id card-id)))
         (is (not (t2/exists? :model/DependencyStatus :entity_type "card" :entity_id card-id)))))))
 
@@ -162,7 +192,7 @@
                                               :row 4 :col 0 :size_x 4 :size_y 4})
             (deps.dependency-status/upsert-status! :dashboard dashboard-id false)
             (mt/with-dynamic-fn-redefs [grouper/submit!                     (fn [_queue write] (swap! submitted conj write))
-                                        task.backfill/trigger-backfill-job! (fn [] (swap! triggered inc))]
+                                        task.dependency/trigger-dependency-job! (fn [] (swap! triggered inc))]
               (deps.test/do-with-immediate-hook-writes
                #(serdes/with-cache
                   (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))
@@ -183,7 +213,7 @@
                                                                 :visualization_settings {}}]
           (let [exported (ts/extract-one "Dashboard" dashboard-id)]
             (deps.dependency-status/upsert-status! :dashboard dashboard-id false)
-            (mt/with-dynamic-fn-redefs [task.backfill/trigger-backfill-job! (fn [])]
+            (mt/with-dynamic-fn-redefs [task.dependency/trigger-dependency-job! (fn [])]
               (deps.test/do-with-immediate-hook-writes
                #(serdes/with-cache
                   (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))

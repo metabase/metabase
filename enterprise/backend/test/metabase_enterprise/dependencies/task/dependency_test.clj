@@ -1,5 +1,5 @@
-(ns metabase-enterprise.dependencies.task.backfill-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.task.backfill-test]}}}}}}
+(ns metabase-enterprise.dependencies.task.dependency-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.task.dependency-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -8,7 +8,7 @@
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.core :as lib]
@@ -27,12 +27,12 @@
 
 (defn- backfill-all-existing-entities!
   []
-  (deps.test/synchronously-run-backfill!))
+  (deps.test/synchronously-run-dependency-job!))
 
 (defn- backfill-dependencies-single-trigger!
   []
   (mt/with-premium-features #{:dependencies}
-    (#'dependencies.backfill/backfill-dependencies!)))
+    (#'task.dependency/update-dependencies!)))
 
 (defn- mark-stale!
   "Mark an entity as stale in dependency_status for testing."
@@ -50,7 +50,7 @@
       (str "Expected " (name entity-type) " " entity-id " to be processed")))
 
 (deftest ^:synchronized backfill-dependency-analysis-test
-  (testing "Test that the backfill job correctly processes stale entities"
+  (testing "Test that the dependency job correctly processes stale entities"
     (backfill-all-existing-entities!)
     (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "2")]
       (let [query (mt/mbql-query orders)]
@@ -221,18 +221,18 @@
                                                   :dependency_analysis_version dependencies.model/current-dependency-analysis-version)))]
                   (is (not (processed?)))
                   (mt/with-premium-features #{:dependencies}
-                    (task/init! ::dependencies.backfill/DependencyBackfill)
+                    (task/init! ::task.dependency/UpdateDependencies)
                     (wait-for-condition processed? 2500)
                     (is (processed?))))))))))))
 
 (deftest ^:synchronized backfill-no-trigger-pile-up-test
-  (testing "Scheduling new runs while the backfill job is executing keeps the trigger count ≤ 1"
+  (testing "Scheduling new runs while the dependency job is executing keeps the trigger count ≤ 1"
     (let [job-started (promise)
           can-finish  (promise)]
       ;; the job body runs on a Quartz worker thread, which does not inherit *local-redefs* —
       ;; only a root swap is visible there
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [dependencies.backfill/backfill-dependencies!
+      (with-redefs [task.dependency/update-dependencies!
                     (fn []
                       (deliver job-started true)
                       (deref can-finish 1500 :timeout)
@@ -240,15 +240,15 @@
                       true)]
         (mt/with-temp-scheduler!
           ;; Start the job immediately.
-          (#'dependencies.backfill/schedule-run! (task/scheduler) 0)
+          (#'task.dependency/schedule-run! (task/scheduler) 0)
           (is (true? (deref job-started 1000 :timeout))
-              "BackfillDependencies job did not start within 1s")
+              "UpdateDependencies job did not start within 1s")
           (let [scheduler (task/scheduler)
                 job-key   (JobKey. "metabase.task.dependency-backfill.job")
                 trigger-count #(count (.getTriggersOfJob scheduler job-key))]
             ;; Spam 50 event-driven schedule attempts while the job is in-flight.
             (dotimes [_ 50]
-              (dependencies.backfill/trigger-backfill-job!))
+              (task.dependency/trigger-dependency-job!))
             (is (<= (trigger-count) 1)
                 (str "During execution: expected ≤ 1 trigger, got " (trigger-count)))
             ;; Release the job; on exit it self-reschedules via the in-job path.
@@ -311,7 +311,7 @@
         (mark-stale! :card card-id)
         (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
         (let [compute-attempts (volatile! 0)
-              failures (inc @#'dependencies.backfill/max-retries)]
+              failures (inc @#'task.dependency/max-retries)]
           (with-redefs [env/env (assoc env/env
                                        :mb-dependency-backfill-delay-minutes "0"
                                        :mb-dependency-backfill-variance-minutes "0")
@@ -378,7 +378,7 @@
             (is (= 1 deps-after))))))))
 
 (deftest ^:synchronized backfill-dependencies-on-token-update-test
-  (testing "Token update triggers the backfill job (entities remain stale until job runs)"
+  (testing "Token update triggers the dependency job (entities remain stale until job runs)"
     (backfill-all-existing-entities!)
     (let [query (mt/mbql-query orders)]
       (mt/with-premium-features #{:dependencies}
@@ -435,7 +435,7 @@
                         :to_entity_type :table :to_entity_id (mt/id :orders)))))))
 
 (deftest ^:synchronized has-stale-or-outdated?-counts-no-status-row-test
-  (testing "has-stale-or-outdated? (backing /backfill-status) stays consistent with what the backfill processes"
+  (testing "has-stale-or-outdated? (backing /backfill-status) stays consistent with what the dependency job processes"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       ;; Clean slate: nothing left to process.
@@ -467,15 +467,15 @@
                                                         nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
           (testing "the 1-second event-driven trigger is suppressed"
-            (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!))))
+            (is (zero? (scheduled-by task.dependency/trigger-dependency-job!))))
           (testing "but task/init! still puts the job on its periodic schedule"
-            (is (= 1 (scheduled-by #(task/init! ::dependencies.backfill/DependencyBackfill)))))
+            (is (= 1 (scheduled-by #(task/init! ::task.dependency/UpdateDependencies)))))
           (testing "and a run keeps the chain going rather than stopping"
             (mt/with-premium-features #{:dependencies}
-              (is (= 1 (scheduled-by #(#'dependencies.backfill/run-and-reschedule! nil)))))))
+              (is (= 1 (scheduled-by #(#'task.dependency/run-and-reschedule! nil)))))))
         (testing "a positive batch size schedules from the event trigger too"
           (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "5")]
-            (is (= 1 (scheduled-by dependencies.backfill/trigger-backfill-job!)))))))))
+            (is (= 1 (scheduled-by task.dependency/trigger-dependency-job!)))))))))
 
 (deftest ^:synchronized backfill-batch-shares-one-metadata-provider-test
   (testing "GHY-4251: every entity in a batch must share one MetadataProvider per database. Reading an entity attaches
@@ -525,7 +525,7 @@
             (is (false? terminal))))))))
 
 (deftest ^:synchronized pending-retries-licence-states-test
-  (testing "A pending retry keeps the backfill job scheduled, but only when the licence permits acting on it. A retry
+  (testing "A pending retry keeps the dependency job scheduled, but only when the licence permits acting on it. A retry
            marker is cleared by processing the entity -- on success via upsert-status!, or by going terminal past
            max-retries -- and both are gated on the feature, so without it the job could never resolve the condition
            keeping it awake and rescheduled hourly forever.
@@ -545,7 +545,7 @@
           "test setup: the card must be in retry backoff")
       (let [actionable? (fn [licence]
                           (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly licence)]
-                            (#'dependencies.backfill/has-pending-retries?)))]
+                            (#'task.dependency/has-pending-retries?)))]
         (testing "licensed: the pending retry keeps the job scheduled"
           (is (true? (actionable? true))))
         (testing "indeterminate: treated as actionable, so a blip cannot end the chain"
@@ -580,11 +580,11 @@
            AssertionError, a LinkageError -- leave a live process with a dead job."
     (let [scheduled (atom [])]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)
-                                  dependencies.backfill/backfill-dependencies!
+                                  task.dependency/update-dependencies!
                                   (fn [& _] (throw (Error. "simulated fatal error")))]
         (testing "the Error still propagates"
           (is (thrown-with-msg? Error #"simulated fatal error"
-                                (#'dependencies.backfill/run-and-reschedule! nil))))
+                                (#'task.dependency/run-and-reschedule! nil))))
         (testing "and the next run was scheduled anyway"
           (is (= 1 (count @scheduled))))))))
 

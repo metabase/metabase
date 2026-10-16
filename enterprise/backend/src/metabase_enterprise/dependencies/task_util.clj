@@ -1,6 +1,10 @@
 (ns metabase-enterprise.dependencies.task-util
   (:require
-   [java-time.api :as t]))
+   [clojurewerkz.quartzite.jobs :as jobs]
+   [clojurewerkz.quartzite.triggers :as triggers]
+   [java-time.api :as t]
+   [metabase.task.core :as task]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,3 +29,18 @@
   `variance` is in minutes and the result will vary between 0 and `variance`"
   [variance]
   (rand-int (.toSeconds (t/duration variance :minutes))))
+
+(defn schedule-run!
+  "Schedule a run of the job of `job-type`, keyed by `job-key` and `trigger-key` and logged as `job-name`,
+  `delay-in-seconds` from now on `scheduler`."
+  [scheduler {:keys [job-type job-key trigger-key job-name]} delay-in-seconds]
+  (let [start-at (-> (t/instant)
+                     (t/+ (t/duration delay-in-seconds :seconds))
+                     java.util.Date/from)
+        trigger  (triggers/build
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/for-job job-key)
+                  (triggers/start-at start-at))
+        job      (jobs/build (jobs/of-type job-type) (jobs/with-identity job-key))]
+    (log/info "Scheduling next run of job" job-name "at" start-at)
+    (task/schedule-task! scheduler job trigger)))

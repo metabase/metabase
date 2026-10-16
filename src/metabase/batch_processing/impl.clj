@@ -110,7 +110,8 @@
    sdk-tracked-row
    id+timestamp
    [:map {:closed true}
-    [:table-id ms/PositiveInt]]
+    [:table-id {:optional true} ms/PositiveInt]
+    [:jobs     [:set :keyword]]]
    [:map {:closed true}
     [:host      :string]
     [:timestamp (ms/InstanceOfClass java.time.temporal.Temporal)]]

@@ -180,6 +180,12 @@
   "No foreign key connects the two tables, so they cannot be joined implicitly."
   [metric-dimensions-step])
 
+(defpipeline-error unresolved-join-alias-field!
+  "A join-alias field reference named a column its join doesn't return."
+  [{:uses #{}
+    :text (str "Reference only the columns the error lists as available for that join, by their machine names "
+               "(`count`, `sum`, a breakout's column name), never by display labels.")}])
+
 ;;; Saved entities
 
 (defpipeline-error unknown-card!

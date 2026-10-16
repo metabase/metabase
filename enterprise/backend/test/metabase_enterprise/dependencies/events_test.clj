@@ -5,7 +5,7 @@
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
@@ -31,7 +31,7 @@
       (str "Expected " (name entity-type) " " entity-id " to be marked stale")))
 
 (defn- assert-pending
-  "Assert that the given entity awaits the backfill job, having no dependency_status row or a stale one."
+  "Assert that the given entity awaits the dependency job, having no dependency_status row or a stale one."
   [entity-type entity-id]
   (is (not (t2/exists? :model/DependencyStatus :entity_type entity-type :entity_id entity-id :stale false))
       (str "Expected " (name entity-type) " " entity-id " to be pending")))
@@ -59,7 +59,7 @@
                                                     :card_id series-card-id
                                                     :position 0}]
          (assert-pending :dashboard dashboard-id)
-         (deps.test/synchronously-run-backfill!)
+         (deps.test/synchronously-run-dependency-job!)
          (is (=? #{{:from_entity_type :dashboard
                     :from_entity_id dashboard-id
                     :to_entity_type :card
@@ -114,7 +114,7 @@
                                                 :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
                                                                                                                                        :linkType "dashboard"
                                                                                                                                        :targetId column-click-target-dashboard-id}}}}}]
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (=? #{{:from_entity_type :dashboard
                       :from_entity_id dashboard-id
                       :to_entity_type :card
@@ -150,7 +150,7 @@
                    (into #{} (map #(dissoc % :id)
                                   (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
            (t2/delete! :model/Dashboard dashboard-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))))))
 
 (deftest document-update-sets-correct-dependencies
@@ -171,7 +171,7 @@
                                                                                              {:type "cardEmbed"
                                                                                               :attrs {"id" embedded-card-id}}]}}]
            (assert-pending :document document-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (=? #{{:from_entity_type :document
                       :from_entity_id document-id
                       :to_entity_type :card
@@ -191,7 +191,7 @@
                                                                               :attrs {"entityId" products-id
                                                                                       "model" "table"}}]}]})]
              (t2/update! :model/Document document-id updated-doc)
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (=? #{{:from_entity_type :document
                         :from_entity_id document-id
                         :to_entity_type :dashboard
@@ -203,7 +203,7 @@
                      (into #{} (map #(dissoc % :id)
                                     (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
              (t2/delete! :model/Document document-id)
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (empty? (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document))))))))))
 
 (deftest sandbox-update-sets-correct-dependencies
@@ -217,7 +217,7 @@
                                                                    :table_id (mt/id :products)
                                                                    :card_id card1-id}]
          (assert-pending :sandbox sandbox-id)
-         (deps.test/synchronously-run-backfill!)
+         (deps.test/synchronously-run-dependency-job!)
          (is (=? #{{:from_entity_type :sandbox
                     :from_entity_id sandbox-id
                     :to_entity_type :card
@@ -225,7 +225,7 @@
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
          (t2/update! :model/Sandbox sandbox-id (assoc sandbox :card_id card2-id))
-         (deps.test/synchronously-run-backfill!)
+         (deps.test/synchronously-run-dependency-job!)
          (is (=? #{{:from_entity_type :sandbox
                     :from_entity_id sandbox-id
                     :to_entity_type :card
@@ -233,18 +233,18 @@
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
          (t2/delete! :model/Sandbox sandbox-id)
-         (deps.test/synchronously-run-backfill!)
+         (deps.test/synchronously-run-dependency-job!)
          (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))
 
 (deftest card-marks-pending-on-create-and-stale-on-update-test
-  (testing "A created card is pending for the backfill job, and changing its query marks it stale in dependency_status"
+  (testing "A created card is pending for the dependency job, and changing its query marks it stale in dependency_status"
     (run-with-dependencies-setup!
      (fn [mp]
        (let [products (lib.metadata/table mp (mt/id :products))
              orders   (lib.metadata/table mp (mt/id :orders))]
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
            (assert-pending :card card-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                            :to_entity_type :table :to_entity_id (mt/id :products)))
            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale false))
@@ -271,7 +271,7 @@
                                               :table-id     (mt/id :categories)
                                               :target       [:field {} (mt/id :categories :name)]}]})
            (assert-stale :card card-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                            :to_entity_type :table :to_entity_id (mt/id :categories))
                "the mapped dimension's table becomes a dependency")
@@ -280,13 +280,13 @@
                "the query's own table remains a dependency")))))))
 
 (deftest snippet-marks-pending-on-create-and-stale-on-update-test
-  (testing "A created snippet is pending for the backfill job, and changing its content marks it stale in dependency_status"
+  (testing "A created snippet is pending for the dependency job, and changing its content marks it stale in dependency_status"
     (run-with-dependencies-setup!
      (fn [_]
        (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "test snippet"
                                                                   :content "SELECT 1"}]
          (assert-pending :snippet snippet-id)
-         (deps.test/synchronously-run-backfill!)
+         (deps.test/synchronously-run-dependency-job!)
          (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id snippet-id :stale false))
          (t2/update! :model/NativeQuerySnippet snippet-id {:content "SELECT 2"})
          (assert-stale :snippet snippet-id))))))
@@ -298,7 +298,7 @@
        (let [products (lib.metadata/table mp (mt/id :products))
              orders   (lib.metadata/table mp (mt/id :orders))]
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (mt/with-dynamic-fn-redefs [deps.dependency-status/mark-stale!
                                        (fn [_] (throw (ex-info "Simulated DB failure" {})))]
              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated DB failure"
@@ -314,7 +314,7 @@
                      :type :query}]
          (mt/with-temp [:model/Transform {transform-id :id} {:source source}]
            (assert-pending :transform transform-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (=? [{:from_entity_type :transform,
                      :from_entity_id transform-id,
                      :to_entity_type :table,
@@ -329,7 +329,7 @@
                      :type :query}]
          (mt/with-temp [:model/Transform {transform-id :id} {:source source}]
            (assert-pending :transform transform-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (=? [{:from_entity_type :transform,
                      :from_entity_id transform-id,
                      :to_entity_type :table,
@@ -351,7 +351,7 @@
                      "import pandas as pd\n\ndef transform(orders):\n    return orders"}]
          (mt/with-temp [:model/Transform {transform-id :id} {:source source}]
            (assert-pending :transform transform-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (=? [{:from_entity_type :transform,
                      :from_entity_id transform-id,
                      :to_entity_type :table,
@@ -383,13 +383,13 @@
          (is (nil? (t2/select-one :model/Database db-id))
              "the Database row is actually gone")
          (assert-stale :transform transform-id)
-         (deps.test/synchronously-run-backfill!)
+         (deps.test/synchronously-run-dependency-job!)
          (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                       :analyzed_entity_type :transform
                                       :analyzed_entity_id transform-id))
              "after db-delete the backfill marks the transform's finding stale")
-         (testing "and re-running the entity-check job flips :result false so the transform shows on broken-diagnostics"
-           (#'task.entity-check/check-entities!)
+         (testing "and re-running the analysis finding job flips :result false so the transform shows on broken-diagnostics"
+           (#'task.analysis-finding/check-entities!)
            (let [{:keys [stale result]} (t2/select-one :model/AnalysisFinding
                                                        :analyzed_entity_type :transform
                                                        :analyzed_entity_id transform-id)]
@@ -445,7 +445,7 @@
            (testing "keeping target"
              (t2/update! :model/Transform transform-id {:source (update source :body str "\n")})
              (assert-stale :transform transform-id)
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,
@@ -453,7 +453,7 @@
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
              (t2/update! :model/Transform transform-id {:target (assoc target :name "test_table2")})
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (empty?
                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
 
@@ -477,7 +477,7 @@
            (testing "keeping target"
              (t2/update! :model/Transform transform-id {:source (assoc source :query (lib/native-query mp "select * from orders limit 10"))})
              (assert-stale :transform transform-id)
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
                        :to_entity_type :transform,
@@ -485,7 +485,7 @@
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
              (t2/update! :model/Transform transform-id {:target (assoc target :name "test_table2")})
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (empty?
                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
 
@@ -499,7 +499,7 @@
                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}]
          (testing "creating a segment creates dependency to its table"
            (assert-pending :segment segment-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
                      :from_entity_id segment-id
                      :to_entity_type :table
@@ -509,7 +509,7 @@
          (testing "updating segment definition recalculates dependencies"
            (t2/update! :model/Segment segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
            (assert-stale :segment segment-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
                      :from_entity_id segment-id
                      :to_entity_type :table
@@ -518,7 +518,7 @@
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "deleting segment removes all dependencies"
            (t2/delete! :model/Segment segment-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))))
 
 (deftest card-with-segment-dependencies
@@ -529,12 +529,12 @@
        (mt/with-temp [:model/Segment {segment-id :id} {:table_id products-id
                                                        :definition {:filter [:> [:field price-field-id nil] 50]}}]
          (testing "creating a card using a segment creates dependencies to both segment and table"
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
                                                                      :type :query
                                                                      :query {:source-table products-id
                                                                              :filter [:segment segment-id]}}}]
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (= #{{:from_entity_type :card
                        :from_entity_id card-id
                        :to_entity_type :segment
@@ -559,7 +559,7 @@
                                                                          (lib/aggregate (lib/sum quantity)))}]
            (testing "creating a measure creates dependency to its table"
              (assert-pending :measure measure-id)
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (= #{{:from_entity_type :measure
                        :from_entity_id measure-id
                        :to_entity_type :table
@@ -570,7 +570,7 @@
              (t2/update! :model/Measure measure-id {:definition (-> (lib/query mp orders)
                                                                     (lib/aggregate (lib/sum subtotal)))})
              (assert-stale :measure measure-id)
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (= #{{:from_entity_type :measure
                        :from_entity_id measure-id
                        :to_entity_type :table
@@ -579,7 +579,7 @@
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "deleting measure removes all dependencies"
              (t2/delete! :model/Measure measure-id)
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))))))
 
 (deftest action-update-sets-correct-dependencies
@@ -595,18 +595,18 @@
                                             :dataset_query (sql-query "venues")}]
          (testing "creating an action creates dependencies on the tables its query reads"
            (assert-stale :action action-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:table (mt/id :venues)]}
                   (action-deps action-id))))
          (testing "updating an action's query recalculates its dependencies"
            (t2/update! :model/QueryAction action-id {:dataset_query (sql-query "checkins")})
            (assert-stale :action action-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:table (mt/id :checkins)]}
                   (action-deps action-id))))
          (testing "deleting an action removes its dependencies and status"
            (t2/delete! :model/Action action-id)
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (is (empty? (action-deps action-id)))
            (is (not (t2/exists? :model/DependencyStatus :entity_type :action :entity_id action-id)))))))))
 
@@ -629,13 +629,13 @@
                     :model/QueryAction _ {:action_id     query-id
                                           :database_id   (mt/id)
                                           :dataset_query (lib/native-query mp "DELETE FROM venues WHERE id = 1")}]
-       (deps.test/synchronously-run-backfill!)
+       (deps.test/synchronously-run-dependency-job!)
        (testing "the model's actions have dependency rows"
          (is (= {:dependencies #{implicit-id query-id}, :statuses #{implicit-id query-id}}
                 (action-dependency-rows [implicit-id query-id]))))
        (testing "deleting the model removes the dependency rows of its actions"
          (t2/delete! :model/Card model-id)
-         (deps.test/synchronously-run-backfill!)
+         (deps.test/synchronously-run-dependency-job!)
          (is (= {:dependencies #{}, :statuses #{}}
                 (action-dependency-rows [implicit-id query-id]))))))))
 
@@ -654,13 +654,13 @@
                         :model/QueryAction _ {:action_id     query-id
                                               :database_id   db-id
                                               :dataset_query (lib/native-query db-mp "DELETE FROM venues WHERE id = 1")}]
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (testing "the actions of the database's model have status rows"
              (is (= #{implicit-id query-id}
                     (:statuses (action-dependency-rows [implicit-id query-id])))))
            (testing "deleting the database removes the dependency rows of the actions of its models"
              (t2/delete! :model/Database db-id)
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (= {:dependencies #{}, :statuses #{}}
                     (action-dependency-rows [implicit-id query-id]))))
            (is (some? table-id))))))))
@@ -681,7 +681,7 @@
                                                                             (lib/aggregate (lib/+ (lib.metadata/measure mp' measure1-id)
                                                                                                   (lib/sum subtotal))))}]
              (testing "creating a measure that references another measure creates dependencies to both"
-               (deps.test/synchronously-run-backfill!)
+               (deps.test/synchronously-run-dependency-job!)
                (is (= #{{:from_entity_type :measure
                          :from_entity_id measure2-id
                          :to_entity_type :table
@@ -702,13 +702,13 @@
        (mt/with-temp [:model/Measure {measure-id :id} {:table_id orders-id
                                                        :definition (-> (lib/query mp orders)
                                                                        (lib/aggregate (lib/sum quantity)))}]
-         (deps.test/synchronously-run-backfill!)
+         (deps.test/synchronously-run-dependency-job!)
          (testing "creating a card using a measure creates dependencies to both measure and table"
            (let [mp' (mt/metadata-provider)
                  query (-> (lib/query mp' orders)
                            (lib/aggregate (lib.metadata/measure mp' measure-id)))]
              (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-               (deps.test/synchronously-run-backfill!)
+               (deps.test/synchronously-run-dependency-job!)
                (is (= #{{:from_entity_type :card
                          :from_entity_id card-id
                          :to_entity_type :measure
@@ -790,7 +790,7 @@
                       other-card-id old-version}}))
            (testing "changing the card query marks its finding and its dependents' stale, not unrelated ones"
              (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp orders)})
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (assert-has-analyses
               {:card {parent-card-id old-version
                       child-card-id -1
@@ -810,7 +810,7 @@
 (deftest ^:synchronized card-update-triggers-native-cards-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card update marks the card and its transitive dependents stale, and the entity-check job re-analyzes them"
+     (testing "Card update marks the card and its transitive dependents stale, and the analysis finding job re-analyzes them"
        (mt/with-temp [:model/Card {parent-id :id :as parent} {:dataset_query (lib/native-query mp "select * from products")}
                       :model/Card {child-id :id :as child} {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))}
                       :model/Dependency _ {:from_entity_type :card :from_entity_id child-id
@@ -819,13 +819,13 @@
          (deps.findings/upsert-analysis! child)
          (deps.dependency-status/upsert-status! :card child-id false)
          (t2/update! :model/Card parent-id {:dataset_query (lib/native-query mp "select * from orders")})
-         (deps.test/synchronously-run-backfill!)
+         (deps.test/synchronously-run-dependency-job!)
          (testing "Parent card should be marked stale"
            (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                         :analyzed_entity_type :card
                                         :analyzed_entity_id parent-id))))
-         ;; Run entity-check job to process stale entities
-         (#'task.entity-check/check-entities!)
+         ;; Run analysis finding job to process stale entities
+         (#'task.analysis-finding/check-entities!)
          (testing "Parent should be re-analyzed"
            (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                          :analyzed_entity_type :card
@@ -861,8 +861,8 @@
             {:card {parent-card-id old-version child-card-id old-version}
              :transform {transform-id old-version}})
            (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp orders)})
-           ;; Run entity-check job to drain the stale entities
-           (#'task.entity-check/check-entities!)
+           ;; Run analysis finding job to drain the stale entities
+           (#'task.analysis-finding/check-entities!)
            (testing "All entities should be re-analyzed after the drain"
              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                            :analyzed_entity_type :card :analyzed_entity_id parent-card-id)))
@@ -889,7 +889,7 @@
 (deftest ^:synchronized transform-update-updates-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Transform update marks entity stale, entity-check job re-analyzes it"
+     (testing "Transform update marks entity stale, analysis finding job re-analyzes it"
        (let [products (lib.metadata/table mp (mt/id :products))
              old-version models.analysis-finding/*current-analysis-finding-version*]
          (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source {:type :query
@@ -902,12 +902,12 @@
            (assert-has-analyses {:transform {transform-id old-version}})
            (t2/update! :model/Transform transform-id {:source {:type :query
                                                                :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (testing "Transform should be marked stale"
              (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                           :analyzed_entity_type :transform
                                           :analyzed_entity_id transform-id))))
-           (#'task.entity-check/check-entities!)
+           (#'task.analysis-finding/check-entities!)
            (testing "Transform should be re-analyzed"
              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                            :analyzed_entity_type :transform
@@ -981,7 +981,7 @@
 (deftest ^:synchronized segment-update-updates-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Segment update marks entity stale, entity-check job re-analyzes and propagates"
+     (testing "Segment update marks entity stale, analysis finding job re-analyzes and propagates"
        (let [products-id (mt/id :products)
              price-field-id (mt/id :products :price)
              products (lib.metadata/table mp products-id)
@@ -996,11 +996,11 @@
            (deps.dependency-status/upsert-status! :card card-id false)
            (assert-has-analyses {:card {card-id old-version} :segment {segment-id old-version}})
            (t2/update! :model/Segment segment-id {:definition {:filter [:< [:field price-field-id nil] 50]}})
-           (deps.test/synchronously-run-backfill!)
+           (deps.test/synchronously-run-dependency-job!)
            (testing "Segment should be marked stale"
              (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                           :analyzed_entity_type :segment :analyzed_entity_id segment-id))))
-           (#'task.entity-check/check-entities!)
+           (#'task.analysis-finding/check-entities!)
            (testing "Both segment and dependent card should be re-analyzed"
              (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                            :analyzed_entity_type :segment :analyzed_entity_id segment-id)))
@@ -1094,13 +1094,13 @@
            (let [exported (serdes/extract-one "Card" {} card)]
              (t2/update! :model/Card card-id {:dataset_query (query :orders)})
              (deps.dependency-status/mark-stale! {:card #{card-id other-id}})
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (= #{[:table (mt/id :orders)]} (card-deps card-id)))
              (load! [exported])
              (testing "only the changed card is marked stale"
                (assert-stale :card card-id)
                (is (processed other-id)))
-             (deps.test/synchronously-run-backfill!)
+             (deps.test/synchronously-run-dependency-job!)
              (is (= #{[:table (mt/id :products)]} (card-deps card-id)))
              (testing "reloading it unchanged marks nothing"
                (load! [exported])

@@ -6,7 +6,7 @@
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
-   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -233,7 +233,7 @@
                      (stale-map [gp-id p-id c-id]))
                   "the grandparent and its whole subtree should be stale")
               ;; The drain analyzes each once, without re-marking anything stale during draining
-              (#'task.entity-check/check-entities!)
+              (#'task.analysis-finding/check-entities!)
               (is (= {gp-id false, p-id false, c-id false}
                      (stale-map [gp-id p-id c-id]))
                   "after check-entities!, the whole subtree should be re-analyzed (not stale)"))))))))
@@ -271,7 +271,7 @@
               (is (true? (finding-stale? :card card-id))
                   "card should be stale — transitive marking reached it via the non-analyzable table")
               ;; Run entity-check to drain stale entities
-              (#'task.entity-check/check-entities!)
+              (#'task.analysis-finding/check-entities!)
               (is (false? (finding-stale? :card card-id))
                   "card should be re-analyzed after entity-check"))))))))
 
@@ -297,7 +297,7 @@
                      (stale-map [a-id b-id]))
                   "both cycle members should be marked stale")
               ;; Under the old wave-propagation design this drain would loop forever; bound it so a regression fails fast.
-              (let [done (future (#'task.entity-check/check-entities!))]
+              (let [done (future (#'task.analysis-finding/check-entities!))]
                 (is (not= ::timeout (deref done 30000 ::timeout))
                     "check-entities! must terminate on a cyclic graph")
                 (is (= {a-id false, b-id false}

@@ -267,8 +267,8 @@
   id)
 
 (defn replace-dependencies!
-  "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
-  the ones specified in `dependencies-by-type`. "
+  "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with the ones specified in
+  `dependencies-by-type`, returning the added ones as `[[entity-type entity-id]]`."
   [entity-type entity-id dependencies-by-type]
   (let [current-dependencies (dependencies.db/dependencies-from entity-type entity-id)
         to-remove (keep (fn [{:keys [id to_entity_type to_entity_id]}]
@@ -287,7 +287,8 @@
       (when (seq to-remove)
         (dependencies.db/delete-dependencies! to-remove))
       (when (seq to-add)
-        (dependencies.db/insert-dependencies! to-add)))))
+        (dependencies.db/insert-dependencies! to-add)))
+    (mapv (juxt :to_entity_type :to_entity_id) to-add)))
 
 (defn swap-dependency!
   "Efficiently swap a dependency from old-source to new-source during replacement operations.
