@@ -104,6 +104,7 @@ const BACKEND_HELPERS = new Set([
   "publishChanges",
   "archiveQuestion",
   "archiveDashboard",
+  "getInbox",
 ]);
 
 // `H.*` helpers that run or show real query results.
@@ -178,7 +179,20 @@ const DRAG_EVENTS = new Set([
   "drop",
 ]);
 
-// A click on a button with one of these labels probably sends a request.
+// Queries that find an element by its visible text or label.
+const LABEL_QUERIES = new Set([
+  "button",
+  "contains",
+  "findByText",
+  "findAllByText",
+  "findByLabelText",
+  "findAllByLabelText",
+]);
+
+// URL paths of pages that run a query.
+const QUERY_PAGE = /\/(model|question|table|dashboard|metric)(\/|#|$|-|\$)/;
+
+// A click on an element with one of these labels probably sends a request.
 const SUBMIT_LABEL =
   /^(save|connect|create|send|submit|delete|remove|add|apply|update|done|confirm|load|test|clear|publish|archive|move|duplicate|revoke|regenerate|enable|disable|run|import|upload|sync|discard|reset|invite|deactivate|reactivate)\b/i;
 
@@ -204,6 +218,7 @@ type Event =
   | { kind: "realBrowser"; what: string }
   | { kind: "token"; value: string }
   | { kind: "assert"; absence: boolean }
+  | { kind: "commit"; how: string }
   | { kind: "anti"; what: string }
   | { kind: "opaque"; name: string };
 
@@ -477,6 +492,16 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
       events.push({ kind: "anti", what: `raw cy.visit, use ${suggestion}` });
     }
   }
+  // Inline edits often save when the input loses focus.
+  if (method === "blur") {
+    events.push({ kind: "commit", how: "blur" });
+  }
+  if (
+    method === "realPress" &&
+    call.arguments.some((arg) => /\bTab\b/.test(text(arg, sf)))
+  ) {
+    events.push({ kind: "commit", how: "Tab" });
+  }
   if (helper === "activateToken") {
     const value = stringValue(call.arguments[0]);
     if (value) {
@@ -485,25 +510,28 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
   }
   if (method && UI_ACTIONS.has(method)) {
     const receivers = receiverCalls(call);
-    const buttonLabel = receivers
+    const label = receivers
       .map((r) => {
         const name = methodName(r);
-        if (name === "button") {
-          return stringValue(r.arguments[0]);
+        const arg = r.arguments.at(-1);
+        if (name === "findByRole" || name === "findAllByRole") {
+          const roleName = objectProp(r.arguments[1], "name");
+          return roleName ? (stringValue(roleName) ?? text(roleName, sf)) : null;
         }
-        if (
-          (name === "findByRole" || name === "findAllByRole") &&
-          stringValue(r.arguments[0]) === "button"
-        ) {
-          const label = objectProp(r.arguments[1], "name");
-          return label ? (stringValue(label) ?? text(label, sf)) : null;
-        }
-        return null;
+        return name && LABEL_QUERIES.has(name) && arg
+          ? (stringValue(arg) ?? text(arg, sf))
+          : null;
       })
       .find((label) => label !== null);
-    const submitLabel =
-      buttonLabel && SUBMIT_LABEL.test(buttonLabel.replace(/^\/|\/\w*$/g, ""))
-        ? buttonLabel
+    const keys = call.arguments
+      .flatMap((arg) =>
+        ts.isArrayLiteralExpression(arg) ? [...arg.elements] : [arg],
+      )
+      .map((arg) => stringValue(arg) ?? "");
+    const submitLabel = keys.some((key) => /^Enter$|\{enter\}/i.test(key))
+      ? "Enter key"
+      : label && SUBMIT_LABEL.test(label.replace(/^\/|\/\w*$/g, ""))
+        ? label
         : null;
     events.push({ kind: "action", name: method, submitLabel });
 
@@ -519,6 +547,20 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
       DRAG_EVENTS.has(stringValue(call.arguments[0]) ?? "")
     ) {
       events.push({ kind: "realBrowser", what: "drag" });
+    }
+  }
+  if (
+    (method === "should" || method === "and") &&
+    receiverCalls(call).some((r) => {
+      const name = methodName(r);
+      return name === "url" || name === "location";
+    })
+  ) {
+    const page = call.arguments
+      .map((arg) => stringValue(arg) ?? text(arg, sf))
+      .find((value) => QUERY_PAGE.test(value));
+    if (page) {
+      events.push({ kind: "query", name: `lands on ${page}` });
     }
   }
   if (helper && UI_ACTION_HELPERS.has(helper)) {
@@ -614,7 +656,22 @@ const backendEffects = (events: Event[]): string[] => {
   );
   const firstAction = events.findIndex((event) => event.kind === "action");
   const afterAction = firstAction < 0 ? [] : events.slice(firstAction + 1);
+  const firstTyping = events.findIndex(
+    (event) =>
+      event.kind === "action" && /^(type|realType|clear)$/.test(event.name),
+  );
+  const commits =
+    firstTyping < 0
+      ? []
+      : events
+          .slice(firstTyping + 1)
+          .flatMap((event) =>
+            event.kind === "commit"
+              ? [`typed text committed by ${event.how}`]
+              : [],
+          );
   return [
+    ...commits,
     ...afterAction.flatMap((event) => {
       if (event.kind === "wait") {
         return event.aliases.map(
@@ -633,7 +690,7 @@ const backendEffects = (events: Event[]): string[] => {
       event.kind === "backend"
         ? [`${event.name}`]
         : event.kind === "action" && event.submitLabel
-          ? [`clicks "${event.submitLabel}" (submit-like button)`]
+          ? [`submit-like ${event.name}: "${event.submitLabel}"`]
           : [],
     ),
   ];

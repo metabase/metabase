@@ -109,6 +109,30 @@ describe("rules beyond the pilot", () => {
     expect(triage(intercept("/api/other")).bucket).toBe("B");
   });
 
+  it("puts a submit-like click by text or label in C?", () => {
+    expect(triage(`cy.visit("/"); cy.findByLabelText("Send").click();`).bucket).toBe("C?");
+    expect(triage(`cy.visit("/"); cy.findByText("Delete").click();`).bucket).toBe("C?");
+    expect(triage(`cy.visit("/"); cy.findByText("Details").click();`).bucket).toBe("B");
+  });
+
+  it("puts an Enter key press in C?", () => {
+    expect(triage(`cy.visit("/"); cy.realPress(["Meta", "Enter"]);`).bucket).toBe("C?");
+    expect(triage(`cy.visit("/"); cy.realPress("Escape");`).bucket).toBe("B");
+  });
+
+  it("puts typed text committed by blur or Tab in C?", () => {
+    expect(triage(`cy.visit("/"); cy.get("input").type("x"); cy.realPress("Tab");`).bucket).toBe("C?");
+    expect(triage(`cy.visit("/"); cy.get("input").type("x").blur();`).bucket).toBe("C?");
+    expect(triage(`cy.visit("/"); cy.get("input").type("x");`).bucket).toBe("B");
+  });
+
+  it("puts a click that lands on a query page in C?", () => {
+    const landsOn = (path: string) =>
+      `cy.visit("/"); cy.findByText("Orders").click(); cy.url().should("include", "${path}");`;
+    expect(triage(landsOn("/model/1-orders")).bucket).toBe("C?");
+    expect(triage(landsOn("/browse/models")).bucket).toBe("B");
+  });
+
   it("follows local functions", () => {
     const header = `function save() { cy.button("Save").click(); }`;
     expect(triage(`cy.visit("/"); save();`, header).bucket).toBe("C?");
