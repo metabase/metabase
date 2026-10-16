@@ -1342,12 +1342,12 @@
                                 :let             [scope (get-in form [:metadata :scope])]
                                 :when            (string? scope)]
                             scope)
-          ;; mb:full is left out: the session middleware maps it to the unrestricted sentinel, which MCP accepts.
+          ;; mb:full is left out: the session middleware expands it to the named MCP scopes.
           non-mcp-scopes  (into (sorted-set)
-                                (remove (conj (set mcp.paths/v2-surface-scopes) "mb:full"))
+                                (remove (conj v2.tu/all-scopes "mb:full"))
                                 (concat endpoint-scopes (map :scope (api-scope/all-scopes))))]
       (is (seq non-mcp-scopes))
-      (do-with-bearer-token!
+      (v2.tu/do-with-bearer-token!
        non-mcp-scopes
        (fn [headers]
          (let [session-id (-> (client/client-full-response :post 200 endpoint
