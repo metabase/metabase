@@ -98,6 +98,7 @@ const ColumnFormattingTemplate: StoryFn<{
 };
 
 export const DefaultTable = {
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
@@ -350,6 +351,7 @@ export const DashboardTableWithRowId = {
 };
 
 export const PreserveWhitespaceWrapped = {
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
@@ -367,6 +369,7 @@ export const PreserveWhitespaceUnwrapped = {
 };
 
 export const Watermark = {
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
