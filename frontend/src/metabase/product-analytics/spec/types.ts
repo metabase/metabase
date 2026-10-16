@@ -100,7 +100,8 @@ export interface PathsSpec {
 }
 
 export interface HabitSpec {
-  active: FlagRef;
+  /** What counts as showing up. Undefined: any event does. */
+  active?: FlagRef;
   lookback: Duration;
   subPeriod: Extract<Period, "day" | "week">;
   measure: "histogram" | "ratio" | "threshold";
@@ -114,7 +115,8 @@ export type LifecycleStateName =
   | "dormant";
 
 export interface LifecycleSpec {
-  active: FlagRef;
+  /** What counts as being active. Undefined: any event does. */
+  active?: FlagRef;
   period: Period;
 }
 

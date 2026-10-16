@@ -12,7 +12,6 @@ import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
   getEventDefinitionProps,
-  incomplete,
   isOneOf,
   isOptionalEventDefinition,
   isPositiveDuration,
@@ -43,7 +42,10 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
     widget: EventDefinitionWidget,
     getDefault: () => null,
     isValid: (value) => isOptionalEventDefinition(value),
-    getProps: getEventDefinitionProps,
+    getProps: (context) => ({
+      ...getEventDefinitionProps(context),
+      emptyLabel: t`Any action or event`,
+    }),
   }),
   "habit.lookback": {
     getTitle: () => t`Look back`,
@@ -107,18 +109,11 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
   settings: SETTINGS,
   toSpec: (settings, events) => {
     const active = settings["habit.active"];
-    if (active === null) {
-      return incomplete([
-        {
-          key: "habit.active",
-          message: t`Define the event that counts as showing up.`,
-        },
-      ]);
-    }
     return ready({
       ...getCommonSpec("habit", settings),
       habit: {
-        active: { flag: events.flagFor(active) },
+        // Empty means any event counts as showing up.
+        active: active === null ? undefined : { flag: events.flagFor(active) },
         lookback: settings["habit.lookback"],
         subPeriod: settings["habit.sub_period"],
         measure: settings["habit.measure"],

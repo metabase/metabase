@@ -426,19 +426,19 @@ describe("analysis settings", () => {
     it.each([
       { kind: "habit", key: "habit.active" },
       { kind: "lifecycle", key: "lifecycle.active" },
-    ] as const)(
-      "reports $key as missing when it has no event",
-      ({ kind, key }) => {
-        const { computed, specResult, allocation } = setup({
-          kind,
-          stored: { ...REQUIRED_EVENTS[kind], [key]: null },
-        });
+    ] as const)("counts any event when $key is empty", ({ kind, key }) => {
+      const { computed, specResult, allocation } = setup({
+        kind,
+        stored: { ...REQUIRED_EVENTS[kind], [key]: null },
+      });
 
-        expect(computed).toHaveProperty([key], null);
-        expect(getMissingKeys(specResult)).toEqual([key]);
-        expect(allocation.events).toHaveLength(0);
-      },
-    );
+      expect(computed).toHaveProperty([key], null);
+      expect(specResult.status).toBe("ready");
+      expect(
+        specResult.status === "ready" ? specResult.spec[kind]?.active : null,
+      ).toBeUndefined();
+      expect(allocation.events).toHaveLength(0);
+    });
 
     it("keeps an empty lifecycle group list and reports it as incomplete", () => {
       const { computed, specResult } = setup({
