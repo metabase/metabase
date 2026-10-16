@@ -15,6 +15,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
@@ -464,8 +465,8 @@
      :left-join (build-left-joins join all-joins)
      :where (into [:and join-filter item-visible-expr] (keep identity) exprs)}))
 
-(def ^:private DependencyItemParams
-  "Params shared by [[dependency-item-ids]] and [[dependency-item-count]]."
+(mr/def ::dependency-item-filter-params
+  "Filter params shared by [[dependency-item-ids]] and [[dependency-item-count]]."
   [:map {:closed true}
    [:query-type [:enum :unreferenced :breaking]]
    [:entity-types [:sequential ::deps.dependency-types/dependency-types]]
@@ -473,12 +474,18 @@
    [:search-text {:optional true} [:maybe :string]]
    [:include-personal-collections? :boolean]
    [:sort-column {:optional true} [:maybe [:enum :name :location :dependents-errors :dependents-with-errors]]]
-   [:sort-direction [:enum :asc :desc]]
-   [:offset ms/IntGreaterThanOrEqualToZero]
-   [:limit ms/PositiveInt]
    [:user-id ::lib.schema.id/user]
    [:is-superuser? {:optional true} [:maybe :boolean]]
    [:is-data-analyst? {:optional true} [:maybe :boolean]]])
+
+(mr/def ::dependency-item-page-params
+  "[[::dependency-item-filter-params]] plus the sort direction and page bounds for [[dependency-item-ids]]."
+  [:merge
+   ::dependency-item-filter-params
+   [:map {:closed true}
+    [:sort-direction [:enum :asc :desc]]
+    [:offset ms/IntGreaterThanOrEqualToZero]
+    [:limit ms/PositiveInt]]])
 
 (mu/defn dependency-item-ids
   "A page of `[entity-type entity-id]` pairs for `query-type` (`:unreferenced` or `:breaking`), restricted to
@@ -487,7 +494,7 @@
   `:dependents-with-errors`) in `sort-direction`, skipping `offset` and returning up to `limit`. Entities are
   restricted to those visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`; throws
   when `user-id` is missing."
-  [{:keys [entity-types sort-direction offset limit] :as params} :- DependencyItemParams]
+  [{:keys [entity-types sort-direction offset limit] :as params} :- ::dependency-item-page-params]
   (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
                                                        entity-types)}]
     (->> (t2/query (assoc union-query
@@ -499,7 +506,7 @@
 (mu/defn dependency-item-count
   "The total count of items matching the same criteria as [[dependency-item-ids]] (ignoring sort direction, offset,
   and limit); throws when `user-id` is missing."
-  [{:keys [entity-types] :as params} :- DependencyItemParams]
+  [{:keys [entity-types] :as params} :- ::dependency-item-filter-params]
   (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
                                                        entity-types)}]
     (-> (t2/query {:select [[:%count.* :total]] :from [[union-query :subquery]]})
