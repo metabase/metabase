@@ -5,7 +5,6 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { Button, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
-import { useCanQueryAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useCanQueryAuditTable";
 import * as Lib from "metabase-lib";
 
 type NewQuestionButtonProps = {
@@ -13,7 +12,6 @@ type NewQuestionButtonProps = {
 };
 
 export function NewQuestionButton({ viewName }: NewQuestionButtonProps) {
-  const canQuery = useCanQueryAuditTable(viewName);
   const { provider, table } = useAuditTable(viewName);
 
   const url = useMemo(() => {
@@ -27,7 +25,7 @@ export function NewQuestionButton({ viewName }: NewQuestionButtonProps) {
     });
   }, [provider, table]);
 
-  if (!canQuery || url == null) {
+  if (url == null) {
     return null;
   }
 

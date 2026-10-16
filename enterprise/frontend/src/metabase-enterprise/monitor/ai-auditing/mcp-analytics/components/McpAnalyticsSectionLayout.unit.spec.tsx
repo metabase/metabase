@@ -182,10 +182,6 @@ function setupEndpoints(
   datasetError = false,
 ) {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
-  fetchMock.get(
-    `path:/api/database/${AUDIT_DB_ID}/schema/public`,
-    auditDatabase.tables ?? [],
-  );
   // useAuditTable pulls the table's fields (and its FK targets') from here.
   fetchMock.post("path:/api/dataset/query_metadata", {
     databases: [auditDatabase],

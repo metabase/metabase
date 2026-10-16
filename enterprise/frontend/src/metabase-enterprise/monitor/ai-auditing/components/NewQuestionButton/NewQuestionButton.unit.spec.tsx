@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import {
   createMockDatabase,
@@ -29,42 +29,22 @@ const auditDatabase = createMockDatabase({
   tables: [viewTable],
 });
 
-function setup({ canQuery }: { canQuery: boolean }) {
+function setup() {
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   fetchMock.post("path:/api/dataset/query_metadata", {
     databases: [auditDatabase],
     tables: [viewTable],
     fields: viewTable.fields ?? [],
   });
-  fetchMock.get({
-    url: `path:/api/database/${AUDIT_DB_ID}/schema/public`,
-    query: { "can-query": "true" },
-    response: canQuery ? [viewTable] : [],
-  });
 
   renderWithProviders(<NewQuestionButton viewName={VIEW_NAME} />);
 }
 
 describe("NewQuestionButton", () => {
-  it("links to a notebook question on the view when the user can query it", async () => {
-    setup({ canQuery: true });
+  it("links to a notebook question on the view", async () => {
+    setup();
 
     const link = await screen.findByRole("link", { name: /New question/ });
     expect(link).toHaveAttribute("href", expect.stringContaining("/question"));
-  });
-
-  it("is hidden when the user cannot query the view", async () => {
-    setup({ canQuery: false });
-
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.called(
-          `path:/api/database/${AUDIT_DB_ID}/schema/public`,
-        ),
-      ).toBe(true),
-    );
-    expect(
-      screen.queryByRole("link", { name: /New question/ }),
-    ).not.toBeInTheDocument();
   });
 });
