@@ -51,6 +51,25 @@ function findBlockingGuard(
   return null;
 }
 
+/**
+ * Asks every mounted guard whether it is holding unsaved work, ignoring the
+ * subtree exemption `findBlockingGuard` applies.
+ *
+ * That exemption is what lets a page navigate within itself without prompting,
+ * so a guard is never consulted for a destination inside its own route. A caller
+ * that is about to replace the whole document, rather than move within it, has
+ * to ask the question the exemption skips.
+ *
+ * Published from the mounted provider rather than read from a module-level
+ * registry, for the reason `RouteLeaveGuards` keeps the registry local: a guard
+ * rendered outside a router must not answer for a router mounted elsewhere.
+ */
+let currentUnsavedWorkProbe: ((args: BlockerArgs) => boolean) | null = null;
+
+export function hasUnsavedChanges(args: BlockerArgs | null): boolean {
+  return args != null && (currentUnsavedWorkProbe?.(args) ?? false);
+}
+
 interface RouteLeaveGuardsValue {
   registerGuard: (id: string, guard: Guard) => () => void;
   blockedGuardId: string | null;
@@ -106,6 +125,20 @@ export function RouteLeaveGuards({ children }: PropsWithChildren): JSX.Element {
     const id = findBlockingGuard(guardsRef.current, args, answeredRef.current);
     setBlockedGuardId(id);
     return id != null;
+  }, []);
+
+  useLayoutEffect(() => {
+    currentUnsavedWorkProbe = (args) => {
+      for (const { shouldBlock: guarded } of guardsRef.current.values()) {
+        if (guarded.current?.(args)) {
+          return true;
+        }
+      }
+      return false;
+    };
+    return () => {
+      currentUnsavedWorkProbe = null;
+    };
   }, []);
 
   const blocker = useBlocker(shouldBlock);
