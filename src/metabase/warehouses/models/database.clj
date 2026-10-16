@@ -668,10 +668,11 @@
                  :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
                  :default_schema :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
-     :skip      [;; deprecated field
+     :skip      [:created_at :updated_at
+                 ;; deprecated field
                  :cache_ttl
                  ;; describes a sync on the source instance, and may name its connection details
-                 :initial_sync_error :created_at :updated_at]
+                 :initial_sync_error]
      :transform {:details             details-transform
                  :write_data_details  details-transform
                  :admin_details       details-transform

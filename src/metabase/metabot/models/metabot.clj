@@ -54,5 +54,5 @@
   {:copy      [:name :description :entity_id :use_verified_content]
    :skip [:created_at :updated_at]
    :transform {:collection_id (serdes/fk :model/Collection)
-               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id (merge {:sort-by (juxt :prompt :created_at)} opts))}
+               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id (merge {:sort-by (juxt :prompt :entity_id)} opts))}
    :defaults  {:use_verified_content false}})

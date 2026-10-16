@@ -58,7 +58,37 @@
                              (isa? model :hook/updated-at-timestamped?) (conj :updated_at))]
             column hooked]
       (testing (format "%s.%s" m (name column))
-        (is (contains? skip column))))))
+        (is (contains? skip column)))))
+  (testing "No serialized model exports or loads created_at or updated_at"
+    (doseq [m    (-> (methods serdes/make-spec) (dissoc :default) keys)
+            :let [{:keys [copy transform]} (serdes/make-spec m nil)]
+            column [:created_at :updated_at]]
+      (testing (format "%s.%s" m (name column))
+        (is (not (some #{column} copy)))
+        (is (not (contains? transform column)))))))
+
+(defn- entity-id-collation
+  "The collation of `table`'s entity_id column in the app DB's current schema."
+  [table schema-fn]
+  (first (vals (t2/query-one {:select [:collation_name]
+                              :from   [:information_schema.columns]
+                              :where  [:and
+                                       [:= :table_schema [:raw schema-fn]]
+                                       [:= :table_name table]
+                                       [:= :column_name "entity_id"]]}))))
+
+(deftest entity-id-binary-collation-test
+  (testing "entity_id columns compare byte by byte, so every app DB orders exported entities, and names same-named
+           files, the same way"
+    (when-let [[expected schema-fn] (case (mdb/db-type)
+                                      :postgres ["C" "current_schema()"]
+                                      :mysql    ["utf8mb4_bin" "database()"]
+                                      nil)]
+      (doseq [model (keys models.resolution/model->namespace)
+              :when (isa? model :hook/entity-id)
+              :let  [table (name (t2/table-name model))]]
+        (testing table
+          (is (= expected (entity-id-collation table schema-fn))))))))
 
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db!
