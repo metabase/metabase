@@ -42,6 +42,7 @@ const MAX_FRAMES = 5;
 // The runner shows the message of an Error without its name.
 const PLAIN_ERROR_PREFIX = /^Error: /;
 
+// eslint-disable-next-line import/no-default-export -- jest loads a reporter from its default export
 export default class AgentReporter {
   readonly #reporter: Reporter;
   readonly #patterns: string[];

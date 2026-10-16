@@ -127,6 +127,7 @@ const NO_SNAPSHOTS: TestResult["snapshot"] = {
   updated: 0,
 };
 
+// eslint-disable-next-line import/no-default-export -- jest loads a runner from its default export
 export default class HarnessRunner {
   readonly supportsEventEmitters = false;
   readonly #globalConfig: GlobalConfig;
@@ -221,12 +222,14 @@ function toTestResult(
   globalConfig: GlobalConfig,
 ): TestResult {
   const { result } = done;
-  const failed = result.failures.filter((failure) => failure.identity);
+  const failed = result.failures.flatMap((failure) =>
+    failure.identity ? [{ failure, identity: failure.identity }] : [],
+  );
   const testResults = [
     ...result.passedTests.map((identity) => assertion(identity, "passed")),
     ...result.skippedTests.map((identity) => assertion(identity, "pending")),
-    ...failed.map((failure) =>
-      assertion(failure.identity as TestIdentity, "failed", failure),
+    ...failed.map(({ failure, identity }) =>
+      assertion(identity, "failed", failure),
     ),
   ];
   const runtime = done.durationMs;
@@ -274,9 +277,7 @@ function assertion(
     title: identity.title,
     fullName: [...identity.ancestors, identity.title].join(" "),
     status,
-    failureMessages: failure
-      ? [stackOf(failure) || failure.message]
-      : [],
+    failureMessages: failure ? [stackOf(failure) || failure.message] : [],
     failureDetails: [],
     numPassingAsserts: 0,
     location: null,

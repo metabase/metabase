@@ -2,11 +2,7 @@
 // of each test.
 import { format } from "node:util";
 
-import type {
-  FileResult,
-  SnapshotSummary,
-  TestIdentity,
-} from "../types.ts";
+import type { FileResult, SnapshotSummary, TestIdentity } from "../types.ts";
 
 import { projectFrames } from "./transform.ts";
 
