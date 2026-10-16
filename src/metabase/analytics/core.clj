@@ -39,6 +39,7 @@
  [metabase.analytics.quartz
   add-listeners-to-scheduler!]
  [metabase.analytics.sdk
+  auth-method
   embedding-context?
   embedding-mw
   extract-hostname
@@ -48,7 +49,6 @@
   pii-request-info
   with-auth-method! get-auth-method
   with-client! get-client
-  get-route
   with-version! get-version]
  [metabase.analytics.settings
   anon-tracking-enabled

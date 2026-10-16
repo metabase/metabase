@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
+   [metabase.analytics.sdk :as sdk]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
    [metabase.app-db.core :as mdb]
@@ -283,6 +284,25 @@
                                  :embedding/auth-method   "api-key"})
                      (#'mw.session/merge-current-user-info nil req))))))))))
 
+(deftest auth-method-route-overrides-credential-test
+  (testing "A special route's auth method wins over the credential's, and applies to anonymous requests too"
+    (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
+                                    :user_id               (mt/user->id :lucky)
+                                    :creator_id            (mt/user->id :lucky)
+                                    :updated_by_id         (mt/user->id :lucky)
+                                    ::api-key/unhashed-key (u.secret/secret "mb_foobar123")}]
+      (let [api-key-req {:headers {"x-api-key" "mb_foobar123"}}]
+        (are [req route expected]
+             (= expected (binding [sdk/*route* route]
+                           (:embedding/auth-method (#'mw.session/merge-current-user-info nil req))))
+          api-key-req nil           "api-key"
+          api-key-req "guest-embed" "guest"
+          api-key-req "public"      "public"
+          api-key-req "agent-api"   "agent-api"
+          {}          "guest-embed" "guest"
+          {}          "metabot"     "metabot"
+          {}          nil           nil)))))
+
 (deftest api-key-hash-encrypted-at-rest-test
   ;; isolated app DB: runs with an encryption key active, so nothing here may touch the shared test DB
   (mt/with-temp-empty-app-db [_conn :h2]
@@ -445,7 +465,8 @@
                 :user-locale nil
                 :is-data-analyst? false
                 :auth-provider nil
-                :session-key-hash test-session-key-hashed}
+                :metabase/authed-session-key-hash test-session-key-hashed
+                :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
         (finally
           (t2/delete! :model/Session :id test-session-id))))))
@@ -463,7 +484,8 @@
                 :user-locale nil
                 :is-data-analyst? false
                 :auth-provider nil
-                :session-key-hash test-session-key-hashed}
+                :metabase/authed-session-key-hash test-session-key-hashed
+                :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
         (finally
           (t2/delete! :model/Session :id test-session-id))))))
@@ -517,7 +539,8 @@
                   :user-locale nil
                   :is-data-analyst? false
                   :auth-provider nil
-                  :session-key-hash test-session-key-hashed}
+                  :metabase/authed-session-key-hash test-session-key-hashed
+                  :embedding/auth-method "session"}
                  (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
           (finally
             (t2/delete! :model/Session :id test-session-id)))
@@ -730,32 +753,6 @@
                       {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
                        :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
-
-(deftest auth-method-test
-  (testing "auth-method prefers route-based override on special routes"
-    (let [f #'mw.session/auth-method]
-      (are [session-info api-key-info oauth-info mcp-ui-info embedding-route expected]
-           (= expected (f session-info api-key-info oauth-info mcp-ui-info embedding-route))
-        ;; session-based auth on non-special routes
-        {:auth-provider "password"} nil nil nil nil            "password"
-        {:auth-provider "saml"}     nil nil nil nil            "saml"
-        {:auth-provider "jwt"}      nil nil nil nil            "jwt"
-        {:auth-provider "ldap"}     nil nil nil nil            "ldap"
-        {}                          nil nil nil nil            "session"
-        ;; api-key on non-special route
-        nil                         {}  nil nil nil            "api-key"
-        ;; oauth bearer on non-special route
-        nil                         nil {:metabase-user-id 1} nil nil "oauth"
-        ;; mcp-ui credential on non-special route
-        nil                         nil nil {:metabase-user-id 1} nil "mcp-ui"
-        ;; route override: special routes win over credentials
-        nil                         {}  nil nil "guest-embed"  "guest"   ; api-key + embed -> guest
-        nil                         nil nil nil "guest-embed"  "guest"   ; anon guest embed
-        nil                         nil nil nil "public"       "public"
-        nil                         nil nil nil "metabot"      "metabot"
-        nil                         nil nil nil "agent-api"    "agent-api"
-        ;; fully anonymous, non-special route
-        nil                         nil nil nil nil            nil))))
 
 (defn session-valid?
   [session-key]

@@ -54,7 +54,12 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *route* "Used to track the API route for the current request (e.g. \"public\", \"guest-embed\")." nil)
 
-(defn get-route "Returns [[*route*]]." [] *route*)
+(defn auth-method
+  "Returns the route-based auth-method or nil when route is not special"
+  []
+  (if (= "guest-embed" *route*)
+    "guest"
+    *route*))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *auth-method* "Used to track the authentication method for the current request (e.g. \"password\", \"jwt\", \"api-key\")." nil)
