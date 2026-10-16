@@ -17,7 +17,7 @@ export const questionShortcuts = {
   },
   "query-builder-visualization-open-filter": {
     get name() {
-      return t`Open filter dropdown`;
+      return t`Open filter panel`;
     },
     shortcut: ["f"],
     shortcutGroup: "question" as const,

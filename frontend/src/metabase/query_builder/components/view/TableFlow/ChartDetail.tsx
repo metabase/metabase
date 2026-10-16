@@ -3,6 +3,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import {
@@ -69,6 +70,20 @@ export function ChartDetail({
 
   const togglePanel = (panel: SidePanel) =>
     setSidePanel(sidePanel === panel ? null : panel);
+
+  useRegisterShortcut(
+    [
+      {
+        id: "query-builder-visualization-open-filter",
+        perform: () => togglePanel("filter"),
+      },
+      {
+        id: "query-builder-toggle-summarize-sidebar",
+        perform: () => togglePanel("summarize"),
+      },
+    ],
+    [sidePanel],
+  );
 
   return (
     <div className={S.detailLayout}>
@@ -242,6 +257,42 @@ export function SeriesVisualization({
       mode={defaultClickActionMode}
       onChangeCardAndRun={({ nextCard }) => onDrill(nextCard)}
     />
+  );
+}
+
+/** Each column of a one-row result as its own number, side by side. */
+export function ValuesRow({ rawSeries }: { rawSeries: RawSeries | null }) {
+  const [series] = rawSeries ?? [];
+  if (series == null) {
+    return <Skeleton h="100%" />;
+  }
+  const { card, data } = series;
+  return (
+    <Flex className={S.valuesRow} data-testid="chart-values-row">
+      {data.cols.map((col, index) => (
+        <Box key={col.name} className={S.valuesRowItem}>
+          <Visualization
+            rawSeries={[
+              {
+                card: {
+                  ...card,
+                  name: col.display_name,
+                  display: "scalar",
+                  visualization_settings: {},
+                },
+                data: {
+                  ...data,
+                  cols: [col],
+                  rows: data.rows.map((row) => [row[index]]),
+                },
+              },
+            ]}
+            isQueryBuilder={false}
+            showTitle
+          />
+        </Box>
+      ))}
+    </Flex>
   );
 }
 

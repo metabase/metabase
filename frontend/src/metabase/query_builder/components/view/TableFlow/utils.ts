@@ -30,6 +30,27 @@ export function getGalleryTableId(question: Question): ConcreteTableId | null {
   return typeof sourceId === "number" ? sourceId : null;
 }
 
+/** Whether the question groups or aggregates its data, so it reads as a chart above its rows. */
+export function isSummarized(question: Question): boolean {
+  const query = question.query();
+  return (
+    Lib.aggregations(query, -1).length > 0 ||
+    Lib.breakouts(query, -1).length > 0
+  );
+}
+
+/**
+ * Whether the question computes several values without grouping them, which no single
+ * chart shows: Metabase falls back to a table, so it's shown as a row of numbers instead.
+ */
+export function hasUngroupedValues(question: Question): boolean {
+  const query = question.query();
+  return (
+    Lib.aggregations(query, -1).length > 1 &&
+    Lib.breakouts(query, -1).length === 0
+  );
+}
+
 function getReturnedColumnNames(question: Question): string[] {
   const query = question.query();
   return Lib.returnedColumns(query, -1).map(

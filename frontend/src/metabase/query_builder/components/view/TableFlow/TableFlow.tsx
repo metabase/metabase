@@ -5,11 +5,12 @@ import { Skeleton } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { ConcreteTableId, RawSeries } from "metabase-types/api";
 
-import { ChartDetail, ResultTable } from "./ChartDetail";
+import { ChartDetail, ResultTable, ValuesRow } from "./ChartDetail";
 import S from "./TableFlow.module.css";
 import { XrayChartDetail } from "./XrayChartDetail";
 import { XrayGallery } from "./XrayGallery";
 import { useSelectedXrayChart } from "./use-xray-selection";
+import { hasUngroupedValues, isSummarized } from "./utils";
 
 type TableFlowProps = {
   /** The query builder's question. */
@@ -62,7 +63,9 @@ export function TableFlow({
 
   // The main card fills the visible area so the page scrolls only once the gallery or a chart is added above it.
   const mainCardHeight = `max(20rem, calc(${viewportHeight}px - var(--mantine-spacing-xxs) - var(--mantine-spacing-md)))`;
-  const isChart = !TABULAR_DISPLAYS.includes(question.display());
+  // a summary always gets its chart: several ungrouped values default to a table display
+  const isChart =
+    isSummarized(question) || !TABULAR_DISPLAYS.includes(question.display());
 
   return (
     <div className={S.root}>
@@ -89,7 +92,13 @@ export function TableFlow({
         // one element for both shapes, so the side panel stays open when a summary turns the table into a chart
         <ChartDetail
           question={question}
-          chart={isChart ? children : null}
+          chart={
+            !isChart ? null : hasUngroupedValues(question) ? (
+              <ValuesRow rawSeries={rawSeries} />
+            ) : (
+              children
+            )
+          }
           table={
             isChart ? (
               <ResultTable
@@ -103,7 +112,7 @@ export function TableFlow({
             )
           }
           search={
-            searchText != null
+            !isChart && searchText != null
               ? { text: searchText, onChange: onSearchTextChange }
               : undefined
           }

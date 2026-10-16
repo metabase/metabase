@@ -3,9 +3,14 @@ import { useQuestionFromCard } from "metabase/metadata-store";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-import { ChartDetail, ResultTable, SeriesVisualization } from "./ChartDetail";
+import {
+  ChartDetail,
+  ResultTable,
+  SeriesVisualization,
+  ValuesRow,
+} from "./ChartDetail";
 import { useCardSeries } from "./XrayGallery";
-import type { XrayChart } from "./utils";
+import { type XrayChart, hasUngroupedValues } from "./utils";
 
 type XrayChartDetailProps = {
   chart: XrayChart;
@@ -40,12 +45,16 @@ export function XrayChartDetail({
       isMetadataReady={!isMetadataFetching}
       onQuestionChange={handleQuestionChange}
       chart={
-        <SeriesVisualization
-          rawSeries={rawSeries}
-          error={error}
-          // drills stay in this view: they replace the chart's card instead of navigating away
-          onDrill={(nextCard) => onCardChange({ ...card, ...nextCard })}
-        />
+        hasUngroupedValues(question) ? (
+          <ValuesRow rawSeries={rawSeries} />
+        ) : (
+          <SeriesVisualization
+            rawSeries={rawSeries}
+            error={error}
+            // drills stay in this view: they replace the chart's card instead of navigating away
+            onDrill={(nextCard) => onCardChange({ ...card, ...nextCard })}
+          />
+        )
       }
       table={
         <ResultTable
