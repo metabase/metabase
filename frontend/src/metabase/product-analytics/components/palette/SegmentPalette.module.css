@@ -1,0 +1,44 @@
+.root {
+  flex-shrink: 0;
+  height: 100%;
+  background-color: var(--mb-color-background-secondary);
+  border-right: 1px solid var(--mb-color-border);
+  transition: border-color 120ms ease;
+  box-shadow: inset -8px 0 10px -10px var(--mb-color-shadow);
+}
+
+.handle {
+  cursor: col-resize;
+  z-index: 1;
+}
+
+/* Hovering the grab strip only darkens the panel's edge. */
+.root:has(.handle:hover) {
+  border-right-color: var(--mb-color-border-strong);
+}
+
+.section {
+  border: 1px dashed transparent;
+  border-radius: var(--mantine-radius-sm);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.section[data-drop-active="true"] {
+  border-color: var(--mb-color-border-brand);
+}
+
+.section[data-drop-over="true"] {
+  background-color: var(--mb-color-background-brand);
+}
+
+.section[data-drop-active="true"] * {
+  pointer-events: none;
+}
+
+/* On the body while the panel is being resized. */
+.noSelect {
+  user-select: none;
+  -webkit-user-select: none;
+}

@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { ActionIcon, Button, Group, Icon } from "metabase/ui";
+import { ActionIcon, Button, Group, Icon, Tooltip } from "metabase/ui";
 
 import type { CommonSettings } from "../analyses/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
@@ -22,6 +22,8 @@ type AnalysisToolbarProps = {
   sql: string | null;
   canSave: boolean;
   isSaveDisabled: boolean;
+  isPaletteOpen: boolean;
+  onTogglePalette: () => void;
   onPanelChange: (panel: AnalysisPanel | null) => void;
   onSave: () => void;
 };
@@ -37,6 +39,8 @@ export const AnalysisToolbar = ({
   sql,
   canSave,
   isSaveDisabled,
+  isPaletteOpen,
+  onTogglePalette,
   onPanelChange,
   onSave,
 }: AnalysisToolbarProps) => {
@@ -56,6 +60,19 @@ export const AnalysisToolbar = ({
     <>
       <Group justify="space-between" align="center" wrap="wrap" gap="sm">
         <Group gap="sm">
+          <Tooltip label={isPaletteOpen ? t`Hide segments` : t`Show segments`}>
+            <Button
+              variant="default"
+              aria-label={isPaletteOpen ? t`Hide segments` : t`Show segments`}
+              aria-pressed={isPaletteOpen}
+              leftSection={
+                <Icon
+                  name={isPaletteOpen ? "sidebar_open" : "sidebar_closed"}
+                />
+              }
+              onClick={onTogglePalette}
+            />
+          </Tooltip>
           <Button.Group>
             <Button
               variant="default"

@@ -1,6 +1,7 @@
 import { PRODUCT_ANALYTICS_KINDS } from "metabase-types/api";
 import { isProductAnalyticsKind } from "metabase-types/guards";
 
+import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 
 import { COHORTS_CONFIG } from "./cohorts";
@@ -26,8 +27,13 @@ export const getAnalysisConfig = <K extends AnalysisKind>(
   kind: K,
 ): AnalysisConfig<K> => ANALYSIS_CONFIG[kind];
 
-/** What the analysis picker shows for each kind. */
-export type AnalysisSummary = Pick<
-  AnalysisConfig<AnalysisKind>,
-  "kind" | "name" | "question"
->;
+/** The stored settings a kind reads: its own and the common ones. */
+export const pickSettingsForKind = (
+  kind: AnalysisKind,
+  stored: StoredSettings,
+): StoredSettings => {
+  const keys = new Set(Object.keys(getAnalysisConfig(kind).settings));
+  return Object.fromEntries(
+    Object.entries(stored).filter(([key]) => keys.has(key)),
+  );
+};

@@ -1,0 +1,30 @@
+/* The filter pill's shape, outlined instead of filled, for the first condition. */
+.addPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  padding-inline: var(--mantine-spacing-sm);
+  line-height: 1.5rem;
+  font-weight: bold;
+  color: var(--mb-color-core-filter);
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-core-filter);
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.addPill:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+/* Sits at the end of the pills: the filter color, with a white plus. */
+.addIcon {
+  background-color: var(--mb-color-core-filter);
+  color: var(--mb-color-text-primary-inverse);
+  border-radius: 0.75rem;
+}
+
+.addIcon:hover {
+  background-color: var(--mb-color-core-filter);
+  opacity: 0.85;
+}

@@ -6,7 +6,7 @@ import {
   DataPickerModal,
   MiniPicker,
 } from "metabase/common/components/Pickers";
-import { Button, Icon } from "metabase/ui";
+import { Button, type ButtonProps, Icon } from "metabase/ui";
 import { isConcreteTableId } from "metabase-types/api";
 import type { ConcreteTableId, TableId } from "metabase-types/api";
 
@@ -14,12 +14,16 @@ type EventTablePickerProps = {
   tableId: ConcreteTableId | undefined;
   isLoading: boolean;
   onChange: (tableId: ConcreteTableId) => void;
+  size?: ButtonProps["size"];
+  fullWidth?: boolean;
 };
 
 export const EventTablePicker = ({
   tableId,
   isLoading,
   onChange,
+  size = "lg",
+  fullWidth = false,
 }: EventTablePickerProps) => {
   const [isOpened, setIsOpened] = useState(false);
   const [isBrowsing, setIsBrowsing] = useState(false);
@@ -64,8 +68,10 @@ export const EventTablePicker = ({
       >
         <Button
           variant="default"
-          size="lg"
+          size={size}
           fw="bold"
+          fullWidth={fullWidth}
+          justify={fullWidth ? "flex-start" : undefined}
           loading={isLoading || table.isLoading}
           leftSection={<Icon name="database" />}
         >
