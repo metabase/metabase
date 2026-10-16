@@ -18,7 +18,7 @@ import { ignoreUnmatchedCallsAfterBody } from "./fetch-mock.ts";
 import { startFileLog } from "./file-log.ts";
 import { installJestObject } from "./jest-object.ts";
 import { prepareMocks } from "./mocks.ts";
-import { registerModuleHooks } from "./module-hooks.ts";
+import { aPackageHoldsAMock, registerModuleHooks } from "./module-hooks.ts";
 import { watchPackageLoading } from "./package-loading.ts";
 import { project } from "./project.ts";
 import { recordEnvironmentBaseline, recordRealmBaseline } from "./realm.ts";
@@ -97,6 +97,7 @@ async function runFilesFromPool(): Promise<void> {
     filesRun += 1;
     if (
       isPoisoned() ||
+      aPackageHoldsAMock() ||
       residentMb() > MAX_RESIDENT_MB ||
       filesRun >= MAX_FILES
     ) {

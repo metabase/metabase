@@ -60,6 +60,14 @@ export function isMocked(key: string): boolean {
   return factories.has(key);
 }
 
+/**
+ * Whether the setup files mock this module. They mock it again for every file,
+ * so each file gets the same mock.
+ */
+export function isMockedBySetup(key: string): boolean {
+  return factoriesFromSetup?.has(key) ?? false;
+}
+
 export function isBypassingMocks(): boolean {
   return bypassDepth > 0;
 }

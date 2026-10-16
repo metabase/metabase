@@ -8,7 +8,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { root } from "../jest-config.ts";
 
-import { isBypassingMocks, isMocked, stubFileOf } from "./mocks.ts";
+import {
+  isBypassingMocks,
+  isMocked,
+  isMockedBySetup,
+  stubFileOf,
+} from "./mocks.ts";
 import {
   type ResolveContext,
   type ResolveResult,
@@ -33,6 +38,7 @@ const transformedPackages = readTransformedPackages();
 const packageTypes = new Map<string, string>();
 const packageResolutions = new Map<string, ResolveResult>();
 let mockResolutionDepth = 0;
+let packageHoldsMock = false;
 
 export function registerModuleHooks(): void {
   registerHooks({
@@ -42,6 +48,7 @@ export function registerModuleHooks(): void {
       if (!isBypassingMocks()) {
         const stub = mockStubFor(result.url);
         if (stub) {
+          notePackageHoldingMock(parentFile, result.url);
           return stub;
         }
       }
@@ -124,6 +131,31 @@ function resolveAny(
     packageResolutions.set(key, result);
   }
   return result;
+}
+
+/**
+ * Whether a package was handed a mock of the running spec file. A package
+ * stays loaded for the life of the worker, so it would keep the mock for every
+ * later file. jest loads packages again for each file, which scopes the mock.
+ */
+export function aPackageHoldsAMock(): boolean {
+  return packageHoldsMock;
+}
+
+function notePackageHoldingMock(
+  parentFile: string | undefined,
+  mockedUrl: string,
+): void {
+  const mockedKey = mockedUrl.startsWith("file:")
+    ? fileURLToPath(mockedUrl.split("?")[0])
+    : mockedUrl;
+  if (
+    parentFile &&
+    !isProjectSource(parentFile) &&
+    !isMockedBySetup(mockedKey)
+  ) {
+    packageHoldsMock = true;
+  }
 }
 
 function mockStubFor(url: string): ResolveResult | null {
