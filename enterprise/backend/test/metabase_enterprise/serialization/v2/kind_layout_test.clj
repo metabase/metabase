@@ -119,7 +119,7 @@
    :weekly     "collections/main/ops/daily.dashboard/weekly_actives.question.yaml"
    :ops        "collections/main/ops/collection.yaml"
    :model      "collections/main/ops/orders_model.model.yaml"
-   :refund     "collections/main/ops/refund.action.yaml"
+   :refund     "collections/main/ops/orders_model.model/refund.action.yaml"
    :launches   "collections/main/ops/launches.timeline.yaml"
    :question   "collections/main/ops/orders.question.yaml"
    :notes      "collections/main/ops/q3_notes.document.yaml"

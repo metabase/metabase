@@ -86,8 +86,8 @@
 
 (def ^:private action-in-model-folder?
   "Whether an action on a model goes in the model's folder `<name>.model/`, rather than in the model's collection."
-  ;; Open item 10: no; it stays in the model's collection, as in the default layout.
-  false)
+  ;; Open item 10, decided: yes, as a dashboard's questions go in the dashboard's folder.
+  true)
 
 ;;; ------------------------------------------------- Folders --------------------------------------------------------
 
@@ -137,13 +137,13 @@
 (declare rows)
 
 (defn- containers
-  "The `:entity_id`, `:name`, `:collection_id` (an entity_id) and `:created_at` of every instance of the kind `k` of
-  [[row-queries]], by entity_id."
+  "The `:entity_id`, `:name`, `:collection_id` (an entity_id), `:created_at` and, for a card, `:type` of every
+  instance of the kind `k` of [[row-queries]], by entity_id."
   [ctx k]
   (cached ctx [::containers k]
           #(u/index-by :entity_id
                        (map (fn [row] (-> row
-                                          (select-keys [:entity_id :name :collection_id :created_at])
+                                          (select-keys [:entity_id :name :collection_id :created_at :type])
                                           (update :collection_id (partial collection-eid ctx))))
                             (rows ctx k)))))
 
@@ -225,9 +225,9 @@
      :snippet        (assoc by-collection :rows (live-rows :snippets))
      :transform      (assoc by-collection :rows (live-rows :transforms))
      :action         {:rows  (live-rows :actions)
-                      ;; with no collection, an action on a model is in collections/, one on no model in data_actions/
+                      ;; an action on a model is in the model's folder; one on no model is in its collection's folder
                       :group (fn [{:keys [collection_id model_id]}]
-                               [collection_id (and (nil? collection_id) (some? model_id))])}
+                               (if model_id [:model model_id] [:collection collection_id]))}
      :transform-test {:rows (live-rows :transform-tests) :group :transform_id}
      :transform-tag  {:rows (live-rows :transform-tags) :group (constantly nil)}
      :transform-job  {:rows (live-rows :transform-jobs) :group (constantly nil)}
