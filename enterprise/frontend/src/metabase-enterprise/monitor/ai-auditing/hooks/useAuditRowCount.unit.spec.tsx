@@ -364,18 +364,14 @@ describe("audit tab count freshness and failures", () => {
   it("keeps the table and navigation usable while the count is pending", async () => {
     const pending = defer<Dataset>();
     setup({ getCountResponse: () => pending.promise });
-    try {
-      expect(await findEventRow()).toBeVisible();
-      await userEvent.click(screen.getByRole("link", { name: "Usage" }));
-      expect(screen.getByRole("link", { name: "Usage" })).toHaveAttribute(
-        "aria-current",
-        "page",
-      );
-      await act(async () => pending.resolve(countDataset(137)));
-      expect(await within(getTab(CLI_SECTION)).findByText("137")).toBeVisible();
-    } finally {
-      pending.resolve(countDataset(137));
-    }
+    expect(await findEventRow()).toBeVisible();
+    await userEvent.click(screen.getByRole("link", { name: "Usage" }));
+    expect(screen.getByRole("link", { name: "Usage" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await act(async () => pending.resolve(countDataset(137)));
+    expect(await within(getTab(CLI_SECTION)).findByText("137")).toBeVisible();
   });
 
   it("does not refetch for optional filters or pages, but refreshes on section entry", async () => {
@@ -417,25 +413,21 @@ describe("audit tab count freshness and failures", () => {
         ++calls === 1 ? countDataset(137) : pending.promise,
     });
     setupFieldEndpoints(createMockField({ id: EVENTS_TABLE_ID * 100 }));
-    try {
-      expect(await within(getTab(CLI_SECTION)).findByText("137")).toBeVisible();
-      await act(async () => {
-        await store
-          .dispatch(
-            fieldApi.endpoints.updateField.initiate({
-              id: EVENTS_TABLE_ID * 100,
-              description: "Audit event identifier",
-            }),
-          )
-          .unwrap();
-      });
-      await waitFor(() => expect(countCalls()).toHaveLength(2));
-      expect(within(getTab(CLI_SECTION)).getByText("137")).toBeVisible();
-      await act(async () => pending.resolve(countDataset(138)));
-      expect(await within(getTab(CLI_SECTION)).findByText("138")).toBeVisible();
-    } finally {
-      pending.resolve(countDataset(138));
-    }
+    expect(await within(getTab(CLI_SECTION)).findByText("137")).toBeVisible();
+    await act(async () => {
+      await store
+        .dispatch(
+          fieldApi.endpoints.updateField.initiate({
+            id: EVENTS_TABLE_ID * 100,
+            description: "Audit event identifier",
+          }),
+        )
+        .unwrap();
+    });
+    await waitFor(() => expect(countCalls()).toHaveLength(2));
+    expect(within(getTab(CLI_SECTION)).getByText("137")).toBeVisible();
+    await act(async () => pending.resolve(countDataset(138)));
+    expect(await within(getTab(CLI_SECTION)).findByText("138")).toBeVisible();
   });
 
   it.each([
