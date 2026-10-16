@@ -1,18 +1,16 @@
 import {
   createMockCartesianChartModel,
+  createMockChartContext,
   createMockSeriesModel,
 } from "__support__/echarts";
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui";
+import type { VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import {
-  DEFAULT_VISUALIZATION_THEME,
-  getVisualizationTheme,
-} from "../../../shared/utils/theme";
-import type { RenderingContext } from "../../../types";
+import { getVisualizationTheme } from "../../../shared/utils/theme";
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE } from "../constants/style";
 import type { XAxisModel, YAxisModel } from "../model/types";
@@ -72,23 +70,16 @@ const currencySettings = createMockVisualizationSettings({
   column: () => ({ number_style: "currency" }),
 });
 
-const getChartContext = (): RenderingContext => {
-  const measureText = jest.fn((text: string) => {
-    if (text === "$720.00") {
-      return WIDEST_MEASURED_TICK_WIDTH;
-    }
+const getChartContext = () =>
+  createMockChartContext({
+    measureText: jest.fn((text: string) => {
+      if (text === "$720.00") {
+        return WIDEST_MEASURED_TICK_WIDTH;
+      }
 
-    return 20;
+      return 20;
+    }),
   });
-
-  return {
-    getColor: (name) => name,
-    measureText,
-    measureTextHeight: () => 0,
-    fontFamily: "",
-    theme: DEFAULT_VISUALIZATION_THEME,
-  };
-};
 
 describe("getChartLayout", () => {
   it.each([
@@ -290,6 +281,53 @@ describe("getChartLayout", () => {
     );
     expect(chartLayout.ticksDimensions.yTicksWidthLeft).not.toBe(
       WIDEST_MEASURED_TICK_WIDTH + 24 + CHART_STYLE.padding.x,
+    );
+  });
+
+  describe("goal line", () => {
+    const formatPercent = (value: unknown) =>
+      `${Number((Number(value) * 100).toFixed(2))}%`;
+    const normalizedInput: ChartLayoutInput = {
+      ...input,
+      leftAxisModel: {
+        ...yAxisModel,
+        extent: [0, 1],
+        isNormalized: true,
+        formatter: formatPercent,
+        formatGoal: formatPercent,
+      },
+    };
+    const getLeftTicksWidth = (
+      layoutInput: ChartLayoutInput,
+      goalSettings: VisualizationSettings,
+    ) =>
+      getChartLayout(
+        layoutInput,
+        createMockVisualizationSettings({ ...settings, ...goalSettings }),
+        false,
+        480,
+        274,
+        createMockChartContext({ measureText: (text) => text.length * 8 }),
+      ).ticksDimensions.yTicksWidthLeft;
+    const withoutGoal = (layoutInput: ChartLayoutInput) =>
+      getLeftTicksWidth(layoutInput, { "graph.show_goal": false });
+    const withGoal = (layoutInput: ChartLayoutInput, goalValue: number) =>
+      getLeftTicksWidth(layoutInput, {
+        "graph.show_goal": true,
+        "graph.goal_value": goalValue,
+      });
+
+    it("widens the y-axis gutter for a goal wider than the ticks", () => {
+      expect(withGoal(input, 1_000_000)).toBeGreaterThan(withoutGoal(input));
+    });
+
+    it.each([12.5, 33.33, 100, 1000])(
+      "does not widen the y-axis gutter for a %s goal on a normalized stack (metabase#82424)",
+      (goalValue) => {
+        expect(withGoal(normalizedInput, goalValue)).toBe(
+          withoutGoal(normalizedInput),
+        );
+      },
     );
   });
 });

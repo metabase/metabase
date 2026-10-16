@@ -7,8 +7,10 @@ import { assignLazily } from "metabase/utils/merge-lazily";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -70,7 +72,7 @@ function BoxPlotInner({
     [rawSeries],
   );
 
-  const settings = useMemo(
+  const adjustedSettings = useMemo(
     () =>
       getSizeAdjustedSettings({
         settings: originalSettings,
@@ -79,6 +81,12 @@ function BoxPlotInner({
         gridSize: isMobile ? undefined : gridSize, // mobile doesn't use the grid layout
       }),
     [originalSettings, height, width, isMobile, gridSize],
+  );
+
+  const { status: goalStatus, settings } = useResolvedGoalSettings(
+    card,
+    rawSeries[0].data,
+    adjustedSettings,
   );
 
   const renderingContext = useBrowserRenderingContext({
@@ -225,39 +233,43 @@ function BoxPlotInner({
           titleMenuItems={titleMenuItems}
         />
       )}
-      <CartesianChartLegendLayout
-        isReversed={settings["legend.is_reversed"]}
-        hasLegend={hasLegend}
-        alwaysVisible={isVisualizer}
-        items={legendItems}
-        actionButtons={!showTitle ? actionButtons : undefined}
-        hovered={hovered}
-        isFullscreen={isFullscreen}
-        isQueryBuilder={isQueryBuilder}
-        fontFamily={renderingContext.fontFamily}
-        measureText={renderingContext.measureText}
-        onToggleSeriesVisibility={handleToggleSeriesVisibility}
-        onHoverChange={onHoverChange}
-        width={width}
-        height={height}
-        chartHeight={chartSize.height || undefined}
-        indent={cartesianLayout.padding.left - cartesianLayout.padding.right}
-      >
-        <ResponsiveEChartsRenderer
-          key={hasValidOption ? "chart" : "measuring"}
-          ref={containerRef}
-          option={option ?? {}}
-          eventHandlers={hasValidOption ? eventHandlers : undefined}
-          onInit={handleInit}
-          onResize={handleResize}
+      {goalStatus === "resolving" ? (
+        <GoalResolvingState />
+      ) : (
+        <CartesianChartLegendLayout
+          isReversed={settings["legend.is_reversed"]}
+          hasLegend={hasLegend}
+          alwaysVisible={isVisualizer}
+          items={legendItems}
+          actionButtons={!showTitle ? actionButtons : undefined}
+          hovered={hovered}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
+          fontFamily={renderingContext.fontFamily}
+          measureText={renderingContext.measureText}
+          onToggleSeriesVisibility={handleToggleSeriesVisibility}
+          onHoverChange={onHoverChange}
+          width={width}
+          height={height}
+          chartHeight={chartSize.height || undefined}
+          indent={cartesianLayout.padding.left - cartesianLayout.padding.right}
         >
-          <DataPointsVisiblePopover
-            isDashboard={isDashboard}
-            isVisualizer={isVisualizer}
-            chartInstance={chartInstance}
-          />
-        </ResponsiveEChartsRenderer>
-      </CartesianChartLegendLayout>
+          <ResponsiveEChartsRenderer
+            key={hasValidOption ? "chart" : "measuring"}
+            ref={containerRef}
+            option={option ?? {}}
+            eventHandlers={hasValidOption ? eventHandlers : undefined}
+            onInit={handleInit}
+            onResize={handleResize}
+          >
+            <DataPointsVisiblePopover
+              isDashboard={isDashboard}
+              isVisualizer={isVisualizer}
+              chartInstance={chartInstance}
+            />
+          </ResponsiveEChartsRenderer>
+        </CartesianChartLegendLayout>
+      )}
     </CartesianChartRoot>
   );
 }

@@ -136,6 +136,30 @@
                    :blocks (default-slack-blocks (-> notification :payload :card_id) true)}
                   (notification.tu/slack-message->boolean message))))}))))
 
+(deftest line-graph-with-unresolved-dynamic-goal-test
+  (testing "a has_result alert on a chart whose dynamic goal can't resolve still sends the email (GDGT-3346)"
+    (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (mt/native-query {:query "SELECT * FROM NONEXISTENT_TABLE"})}]
+      (notification.tu/with-card-notification
+        [notification {:card              {:dataset_query          (mt/mbql-query orders {:aggregation [["count"]]
+                                                                                          :breakout    [!day.created_at]})
+                                           :display                :line
+                                           :visualization_settings {:graph.show_goal  true
+                                                                    :graph.goal_value {:id     goal-card-id
+                                                                                       :type   "card"
+                                                                                       :column "count"}}}
+                       :notification-card {:send_condition :has_result}
+                       :handlers          [@notification.tu/default-email-handler]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [[email :as emails]]
+            (is (= 1 (count emails)))
+            (is (= {notification.tu/default-card-name true
+                    "its goal of"                     false}
+                   (-> (mt/summarize-multipart-single-email email card-name-regex #"its goal of")
+                       :message
+                       first))))})))))
+
 (deftest card-with-rows-saved-to-disk-test
   (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"
     (doseq [limit [1 10]]
@@ -291,6 +315,36 @@
                            :effective-type :type/Integer
                            :semantic_type  :type/Quantity}]
                    :rows [["2021-01-01T00:00:00Z" val]]}}})
+
+(defn- referenced-timeseries-result
+  "Like [[timeseries-result]] but with the goal referencing another entity's value."
+  [val goal-part]
+  (-> (timeseries-result val)
+      (assoc-in [:card :visualization_settings :graph.goal_value] {:id 42 :type "card" :column "target"})
+      (assoc-in [:result :data :referenced_entities] {"card" {"42" goal-part}})))
+
+(deftest ^:parallel goal-met-referenced-goal-test
+  (testing "Timeseries whose goal is another card's value"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          goal-part {:status "completed"
+                     :data   {:cols [{:name "target"}]
+                              :rows [[5]]}}]
+      (testing "alert above"
+        (let [alert {:send_condition "goal_above"}]
+          (testing "value below goal"  (is (false? (goal-met? alert (referenced-timeseries-result 4 goal-part)))))
+          (testing "value equals goal" (is (true?  (goal-met? alert (referenced-timeseries-result 5 goal-part)))))
+          (testing "value above goal"  (is (true?  (goal-met? alert (referenced-timeseries-result 6 goal-part)))))))
+      (testing "alert below"
+        (let [alert {:send_condition "goal_below"}]
+          (testing "value below goal" (is (true?  (goal-met? alert (referenced-timeseries-result 4 goal-part)))))
+          (testing "value above goal" (is (false? (goal-met? alert (referenced-timeseries-result 6 goal-part))))))))))
+
+(deftest ^:parallel goal-met-referenced-goal-failed-test
+  (testing "a failed referenced query makes the alert error instead of silently (not) firing"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                            (goal-met? {:send_condition "goal_above"}
+                                       (referenced-timeseries-result 4 {:status "failed" :error "boom"})))))))
 
 (deftest ^:parallel goal-met-progress-bar-alert-above-test
   (testing "Progress bar with alert above"

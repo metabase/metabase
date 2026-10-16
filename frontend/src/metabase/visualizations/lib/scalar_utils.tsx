@@ -2,11 +2,8 @@ import { ColorPill } from "metabase/common/components/ColorPill";
 import { Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import { formatValue } from "metabase/value-formatting";
-import type {
-  ColumnSettings,
-  RowValue,
-  ScalarSegment,
-} from "metabase-types/api";
+import type { ResolvedOpenEndedGoalSegment } from "metabase/viz-core";
+import type { ColumnSettings, RowValue } from "metabase-types/api";
 
 // slight overestimates of Lato Bold character widths (digits ≈0.58em,
 // separators ≈0.22em), so borderline values compact instead of overflowing
@@ -73,35 +70,50 @@ export function compactifyValue(
 
 const DEFAULT_COLOR = color("text-primary");
 
-const isFiniteNumber = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value);
-
-const getSegmentBounds = ({ min, max }: ScalarSegment) => ({
-  min: isFiniteNumber(min) ? min : -Infinity,
-  max: isFiniteNumber(max) ? max : Infinity,
+const getSegmentBounds = ({ min, max }: ResolvedOpenEndedGoalSegment) => ({
+  min: min ?? -Infinity,
+  max: max ?? Infinity,
 });
 
-const formatSegmentRange = ({ min, max }: ScalarSegment) => {
-  const hasMin = isFiniteNumber(min);
-  const hasMax = isFiniteNumber(max);
+const formatSegmentRange = (
+  { min, max }: ResolvedOpenEndedGoalSegment,
+  formatOptions: ColumnSettings,
+) => {
+  const format = (bound: number) =>
+    formatValue(bound, { ...formatOptions, jsx: false, compact: false });
 
-  if (hasMin && hasMax) {
-    return `${min} - ${max}`;
+  if (min != null && max != null) {
+    return `${format(min)} - ${format(max)}`;
   }
 
-  if (hasMin) {
-    return `≥ ${min}`;
+  if (min != null) {
+    return `≥ ${format(min)}`;
   }
 
-  if (hasMax) {
-    return `≤ ${max}`;
+  if (max != null) {
+    return `≤ ${format(max)}`;
   }
 
   return "";
 };
 
-export function getColor(_value: RowValue, segments?: ScalarSegment[]) {
-  const value = parseFloat(String(_value));
+function toNumber(value: RowValue): number {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    return Number(value);
+  }
+
+  return NaN;
+}
+
+export function getColor(
+  _value: RowValue,
+  segments?: ResolvedOpenEndedGoalSegment[],
+) {
+  const value = toNumber(_value);
 
   if (!segments || segments.length === 0 || Number.isNaN(value)) {
     return DEFAULT_COLOR;
@@ -118,7 +130,10 @@ export function getColor(_value: RowValue, segments?: ScalarSegment[]) {
   return segment.color;
 }
 
-export function getTooltipContent(segments?: ScalarSegment[]) {
+export function getTooltipContent(
+  segments?: ResolvedOpenEndedGoalSegment[],
+  formatOptions: ColumnSettings = {},
+) {
   if (!segments || segments.length === 0) {
     return null;
   }
@@ -126,19 +141,19 @@ export function getTooltipContent(segments?: ScalarSegment[]) {
   return (
     <table style={{ borderSpacing: "0.75rem 0.25rem" }}>
       <tbody>
-        {segments.map(({ color, min, max, label }: ScalarSegment, index) => (
+        {segments.map((segment, index) => (
           <tr key={index}>
             <td>
-              <ColorPill color={color} pillSize="xsmall" />
+              <ColorPill color={segment.color} pillSize="xsmall" />
             </td>
             <td>
               <Text c="inherit" lh="md">
-                {formatSegmentRange({ min, max, color, label })}
+                {formatSegmentRange(segment, formatOptions)}
               </Text>
             </td>
             <td>
               <Text c="inherit" lh="md">
-                {label}
+                {segment.label}
               </Text>
             </td>
           </tr>

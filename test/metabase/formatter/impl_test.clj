@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.formatter.impl :as formatter]
-   [metabase.models.visualization-settings :as mb.viz]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.visualization-settings.core :as mb.viz]))
 
 (defn- format-with-field-id
   [value viz]

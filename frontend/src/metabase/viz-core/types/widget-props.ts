@@ -1,10 +1,14 @@
 import type { AccentColorOptions } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  ColumnSettings,
   DatasetColumn,
+  DatasetData,
+  DatasetQuery,
+  GoalSegment,
+  GoalValue,
   IconName,
   RawSeries,
-  ScalarSegment,
   Series,
   SmartScalarComparison,
   SmartScalarComparisonType,
@@ -42,12 +46,16 @@ export type ChartSettingSegmentedControlProps = {
   value: string;
 };
 
-export type ChartSettingGoalInputProps = {
+export type ChartSettingGoalValueProps = {
+  data: DatasetData;
+  datasetQuery?: DatasetQuery;
+  excludedSelfColumn?: string;
+  formatOptions?: ColumnSettings;
   id: string;
-  value: number | string;
-  onChange: (value: number | string) => void;
-  columns?: DatasetColumn[];
-  valueField?: string;
+  placeholder?: string;
+  showSelfColumns?: boolean;
+  value: GoalValue | null | undefined;
+  onChange: (value: GoalValue | undefined) => void;
 };
 
 export type AggregationFunction = Exclude<
@@ -61,9 +69,12 @@ export type ChartSettingMaxCategoriesProps = ChartSettingWidgetProps<number> & {
 };
 
 export type ChartSettingSegmentsEditorProps = {
-  value: ScalarSegment[];
-  onChange: (value: ScalarSegment[]) => void;
   canRemoveAll?: boolean;
+  data?: DatasetData;
+  datasetQuery?: DatasetQuery;
+  formatOptions?: ColumnSettings;
+  value: GoalSegment[];
+  onChange: (value: GoalSegment[]) => void;
 };
 
 // The fields ChartSettingOrderedItems reads off every row it renders.

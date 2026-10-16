@@ -6,6 +6,8 @@ import { getFontFamilyValue } from "metabase/utils/fonts";
 import type { FontStyle } from "metabase/utils/measure-text";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { assignLazily } from "metabase/utils/merge-lazily";
+import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
+import { useResolvedGoalSettings } from "metabase/visualizations/hooks/use-resolved-goal-settings";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   getClickData,
@@ -113,7 +115,9 @@ const RowChartVisualization = ({
     () => getGroupedDataset(data, chartColumns, settings, formatColumnValue),
     [chartColumns, data, settings, formatColumnValue],
   );
-  const goal = useMemo(() => getChartGoal(settings), [settings]);
+  const { status: goalStatus, settings: goalSettings } =
+    useResolvedGoalSettings(card, chartSeries.data, settings);
+  const goal = useMemo(() => getChartGoal(goalSettings), [goalSettings]);
   const stackOffset = getStackOffset(settings);
   const theme = useRowChartTheme(getFontFamilyValue(fontFamily), isDashboard);
 
@@ -285,46 +289,50 @@ const RowChartVisualization = ({
           getHref={getHref}
         />
       )}
-      <RowChartLegendLayout
-        width={outerWidth}
-        height={outerHeight}
-        hasLegend={hasLegend}
-        alwaysVisible={isVisualizer}
-        items={legendItems}
-        actionButtons={!hasTitle ? actionButtons : undefined}
-        hovered={hovered}
-        onHoverChange={onHoverChange}
-        isFullscreen={isFullscreen}
-        isQueryBuilder={isQueryBuilder}
-        fontFamily={fontFamily}
-        measureText={textMeasurer}
-        onSelectSeries={handleSelectSeries}
-      >
-        <RowChartRenderer
-          className={CS.flexFull}
-          data={groupedData}
-          trimData={trimData}
-          series={series}
-          seriesColors={seriesColors}
-          goal={goal}
-          theme={theme}
-          stackOffset={stackOffset}
-          tickFormatters={tickFormatters}
-          labelsFormatter={labelsFormatter}
-          measureTextWidth={textMeasurer}
-          hoveredData={hoverData}
-          onClick={handleClick}
-          onHover={handleHover}
-          onGoalHover={handleGoalHover}
-          xLabel={xLabel}
-          yLabel={yLabel}
-          xScaleType={settings["graph.y_axis.scale"]}
-          xValueRange={xValueRange}
-          labelledSeries={labelledSeries}
-          hasXAxis={hasXAxis}
-          hasYAxis={hasYAxis}
-        />
-      </RowChartLegendLayout>
+      {goalStatus === "resolving" ? (
+        <GoalResolvingState />
+      ) : (
+        <RowChartLegendLayout
+          width={outerWidth}
+          height={outerHeight}
+          hasLegend={hasLegend}
+          alwaysVisible={isVisualizer}
+          items={legendItems}
+          actionButtons={!hasTitle ? actionButtons : undefined}
+          hovered={hovered}
+          onHoverChange={onHoverChange}
+          isFullscreen={isFullscreen}
+          isQueryBuilder={isQueryBuilder}
+          fontFamily={fontFamily}
+          measureText={textMeasurer}
+          onSelectSeries={handleSelectSeries}
+        >
+          <RowChartRenderer
+            className={CS.flexFull}
+            data={groupedData}
+            trimData={trimData}
+            series={series}
+            seriesColors={seriesColors}
+            goal={goal}
+            theme={theme}
+            stackOffset={stackOffset}
+            tickFormatters={tickFormatters}
+            labelsFormatter={labelsFormatter}
+            measureTextWidth={textMeasurer}
+            hoveredData={hoverData}
+            onClick={handleClick}
+            onHover={handleHover}
+            onGoalHover={handleGoalHover}
+            xLabel={xLabel}
+            yLabel={yLabel}
+            xScaleType={settings["graph.y_axis.scale"]}
+            xValueRange={xValueRange}
+            labelledSeries={labelledSeries}
+            hasXAxis={hasXAxis}
+            hasYAxis={hasYAxis}
+          />
+        </RowChartLegendLayout>
+      )}
     </RowVisualizationRoot>
   );
 };

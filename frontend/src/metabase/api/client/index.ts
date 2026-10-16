@@ -1,6 +1,7 @@
 export * from "./client";
 export * from "./method";
 export * from "./errors";
+export { shouldShowNotAuthorizedPage } from "./not-authorized";
 export type {
   OnBeforeRequestHandler,
   OnBeforeRequestHandlerConfig,

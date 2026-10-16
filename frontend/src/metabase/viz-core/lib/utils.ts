@@ -609,13 +609,4 @@ export function findSensibleSankeyColumns(
   };
 }
 
-export const segmentIsValid = (
-  { min, max }: { min: number | null; max: number | null },
-  { allowOpenEnded = false } = {},
-): boolean => {
-  const hasMin = typeof min === "number" && Number.isFinite(min);
-  const hasMax = typeof max === "number" && Number.isFinite(max);
-  return allowOpenEnded ? hasMin || hasMax : hasMin && hasMax;
-};
-
 export const DATA_IMAGE_URI_PATTERN: RegExp = data_image_uri_pattern;

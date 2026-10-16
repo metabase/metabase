@@ -1,3 +1,13 @@
+import type {
+  DatasetData,
+  RawSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockFailedReferencedEntitiesResults,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -28,6 +38,13 @@ const metricColumn = createMockColumn({
 });
 
 const columns = [categoryColumn, idColumn, metricColumn];
+
+const GOAL_SETTINGS: VisualizationSettings = {
+  "graph.dimensions": ["Category"],
+  "graph.metrics": ["Value"],
+  "graph.show_goal": true,
+  "graph.goal_value": { type: "card", id: 9, column: "goal" },
+};
 
 describe("BoxPlot", () => {
   describe("isSensible", () => {
@@ -115,4 +132,55 @@ describe("BoxPlot", () => {
       expect(BOXPLOT_CHART_DEFINITION.isSensible?.(data)).toBe(true);
     });
   });
+
+  describe("graph.goal_value widget", () => {
+    it("reads the raw series", () => {
+      const series = createGoalSeries();
+      const setting = BOXPLOT_CHART_DEFINITION.settings?.["graph.goal_value"];
+
+      expect(setting?.widget).toBe("goalValue");
+      expect(setting?.useRawSeries).toBe(true);
+      expect(
+        setting?.getProps?.(series, GOAL_SETTINGS, jest.fn(), {}, jest.fn()),
+      ).toEqual({
+        data: series[0].data,
+        datasetQuery: series[0].card.dataset_query,
+        formatOptions: expect.any(Object),
+        showSelfColumns: false,
+      });
+    });
+  });
+
+  describe("checkRenderable", () => {
+    const { checkRenderable } = BOXPLOT_CHART_DEFINITION;
+
+    it("renders when the referenced query failed", () => {
+      const series = createGoalSeries({
+        referenced_entities: createMockFailedReferencedEntitiesResults(),
+      });
+
+      expect(() => checkRenderable(series, GOAL_SETTINGS)).not.toThrow();
+    });
+  });
 });
+
+function createGoalSeries(data: Partial<DatasetData> = {}): RawSeries {
+  return [
+    createMockSingleSeries(
+      createMockCard({
+        display: "boxplot",
+        visualization_settings: GOAL_SETTINGS,
+      }),
+      {
+        data: createMockDatasetData({
+          cols: [categoryColumn, metricColumn],
+          rows: [
+            ["A", 10],
+            ["A", 20],
+          ],
+          ...data,
+        }),
+      },
+    ),
+  ];
+}

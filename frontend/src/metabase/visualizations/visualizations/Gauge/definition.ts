@@ -8,11 +8,12 @@ import {
   columnSettings,
   getDefaultSize,
   getMinSize,
-  segmentIsValid,
+  resolveGoalSegments,
 } from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import { isGaugeSegmentsArray } from "./types";
+import { DEFAULT_GAUGE_RANGE } from "./constants";
+import { getSegmentsRange } from "./utils";
 
 export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Gauge`,
@@ -47,18 +48,12 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
     }),
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
-      getDefault(_series, vizSettings) {
-        const gaugeSegments = vizSettings["gauge.segments"];
-        const segments = isGaugeSegmentsArray(gaugeSegments)
-          ? gaugeSegments.filter((segment) => segmentIsValid(segment))
-          : [];
-        const values = [
-          ...segments.map((segment) => segment.max),
-          ...segments.map((segment) => segment.min),
-        ];
-        return values.length > 0
-          ? [Math.min(...values), Math.max(...values)]
-          : [0, 1];
+      getDefault(series, vizSettings) {
+        const segments = resolveGoalSegments(
+          series[0].data,
+          vizSettings["gauge.segments"],
+        );
+        return getSegmentsRange(segments) ?? DEFAULT_GAUGE_RANGE;
       },
       readDependencies: ["gauge.segments"],
     },
@@ -84,10 +79,15 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
-      getWrapperStyle: () => ({
-        marginLeft: 0,
-        marginRight: 0,
-      }),
+      getProps: ([{ card, data }], settings) => {
+        const column = data.cols[0];
+
+        return {
+          data,
+          datasetQuery: card.dataset_query,
+          formatOptions: column && settings.column?.(column),
+        };
+      },
     },
   },
 };

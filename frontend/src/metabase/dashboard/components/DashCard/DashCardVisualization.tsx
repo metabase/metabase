@@ -48,6 +48,7 @@ import type {
 import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
 import {
   createDataSource,
+  createDataSourceQuery,
   formatVisualizerClickObject,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
@@ -61,7 +62,6 @@ import {
   isCartesianChart,
 } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   CardId,
@@ -301,7 +301,7 @@ export function DashCardVisualization({
         description: dashcard.card.description,
         display: display ?? DEFAULT_VISUALIZER_DISPLAY,
         visualization_settings: _.omit(settings, "click_behavior"),
-        dataset_query: STRUCTURED_QUERY_TEMPLATE,
+        dataset_query: createDataSourceQuery(dashcard.card),
       },
       _.omit(dashcard.visualization_settings, "visualization"),
     );

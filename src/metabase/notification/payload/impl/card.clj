@@ -10,7 +10,7 @@
    [metabase.notification.send :as notification.send]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.ui-logic :as ui-logic]))
+   [metabase.visualization-settings.ui-logic :as ui-logic]))
 
 (mu/defmethod notification.payload/payload :notification/card
   [{:keys [creator_id payload subscriptions] :as _notification-info} :- ::notification.payload/Notification]
