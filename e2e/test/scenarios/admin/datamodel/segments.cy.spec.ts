@@ -389,11 +389,13 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     beforeEach(() => {
       H.activateToken("pro-self-hosted");
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+      // Let's leave PEOPLE_ID unpublished
+
       cy.log("set up remote sync");
       H.setupGitSync();
       H.configureGitAndPullChanges("read-only");
-      H.publishTables({ table_ids: [ORDERS_ID] });
-      // Let's leave PEOPLE_ID unpublished
 
       cy.log("create segments");
       H.createSegment({

@@ -737,8 +737,13 @@ describe("Remote Sync", () => {
         });
       });
 
-      it("offers the Library, which setting up remote sync creates, for a snippet dependency", () => {
+      it("offers the unsynced Library for a snippet dependency", () => {
         createSnippetDependencyFixture().then(({ blocked }) => {
+          cy.request("/api/ee/library").then(({ body: library }) => {
+            cy.request("PUT", "/api/ee/remote-sync/settings", {
+              collections: { [library.id]: false },
+            });
+          });
           cy.visit("/admin/settings/remote-sync");
 
           cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({

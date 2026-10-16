@@ -191,7 +191,7 @@
     (or (some (complement collection/library-root-collection?) (remote-sync.db/collections collection-ids))
         (remote-sync.db/collection-content-exists? collection-ids))))
 
-(defn- ensure-library!
+(defn- ensure-library-sync!
   "Creates the Library when it's missing and marks it remote-synced when it holds no content, counting the snippets,
   glossary entries, and data actions that sync with it; saving the remote sync settings and every pull run it."
   []
@@ -401,7 +401,7 @@
                     (remote-sync.task/update-progress! task-id fraction))))}))
 
 (defn- library-root-ids
-  "The IDs of the Library's system collections, which remote sync never writes or tracks."
+  "The IDs of the Library's system collections, which remote sync writes but never tracks."
   []
   (remote-sync.db/collection-ids-with-entity-ids (vec collection/library-root-entity-ids)))
 
@@ -409,14 +409,6 @@
   "Whether `row` (`{:model_type :model_id}`) is one of the Library's system collections, given their `root-ids`."
   [root-ids {:keys [model_type model_id]}]
   (and (= "Collection" model_type) (contains? root-ids model_id)))
-
-(defn- exportable-entities
-  "What an export serializes: [[spec/exportable-entities]] without the Library's system collections."
-  []
-  (let [targets  (spec/exportable-entities)
-        root-ids (library-root-ids)]
-    (cond-> targets
-      (some root-ids (get targets "Collection")) (update "Collection" #(vec (remove root-ids %))))))
 
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
@@ -436,7 +428,7 @@
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
         has-transforms?     (snapshot-has-transforms? base-ingestable)
-        _                   (ensure-library!)
+        _                   (ensure-library-sync!)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
         load-result         (serdes/with-cache
                               (serialization/load-metabase! ingestable-snapshot :reindex? false))
@@ -549,7 +541,7 @@
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
   [{:keys [ingestable deleted-rsos] :as _plan} snapshot-version report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
-  (ensure-library!)
+  (ensure-library-sync!)
   (let [load-result   (when ingestable
                         (serdes/with-cache
                           (serialization/load-metabase!
@@ -634,7 +626,7 @@
     - Sets version to remote tip"
   [snapshot base-snapshot task-id report sync-timestamp finalize!]
   (let [{:keys [conflicts merged summary]} (serdes/with-cache
-                                             (let [targets (exportable-entities)]
+                                             (let [targets (spec/exportable-entities)]
                                                (source/compute-merge (spec/extract-entities-for-export targets)
                                                                      snapshot base-snapshot task-id
                                                                      :total (spec/exportable-entity-count targets))))]
@@ -941,14 +933,12 @@
   content but have no RemoteSyncObject row — untracked deps an incremental export must write to match a full
   export. Excludes the entity itself and non-content deps (e.g. databases)."
   [model-type model-id]
-  (let [root-ids (library-root-ids)]
-    (into #{}
-          (filter (fn [{:keys [model_type model_id] :as dep}]
-                    (and (not (and (= model_type model-type) (= model_id model-id)))
-                         (spec/spec-for-model-type model_type)
-                         (not (library-root-row? root-ids dep))
-                         (not (remote-sync.db/rso-exists? model_type model_id)))))
-          (export-closure model-type model-id))))
+  (into #{}
+        (filter (fn [{:keys [model_type model_id]}]
+                  (and (not (and (= model_type model-type) (= model_id model-id)))
+                       (spec/spec-for-model-type model_type)
+                       (not (remote-sync.db/rso-exists? model_type model_id)))))
+        (export-closure model-type model-id)))
 
 (defn- ->sized-chunks
   "Builds chunks of maximum size based on model type."
@@ -1203,7 +1193,7 @@
   Dimensions, whose RemoteSyncObject is keyed by their Field, get :id nil)."
   []
   (let [rso-id (u/index-by (juxt :model_type :model_id) :id (remote-sync.db/rso-keys))]
-    (for [[model ids] (exportable-entities)
+    (for [[model ids] (spec/exportable-entities)
           id          ids]
       {:model_type model :model_id id :id (when-not (= "Dimension" model) (rso-id [model id]))})))
 
@@ -1349,7 +1339,7 @@
                :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
 
               :else
-              (let [targets (exportable-entities)]
+              (let [targets (spec/exportable-entities)]
                 (export-merged! src snapshot base-snapshot task-id message sync-timestamp
                                 (spec/extract-entities-for-export targets)
                                 :total (spec/exportable-entity-count targets))))
@@ -1773,7 +1763,7 @@
       no-changes
       (if-let [base-snapshot (source.p/snapshot-at source base-version)]
         (serdes/with-cache
-          (let [targets (exportable-entities)]
+          (let [targets (spec/exportable-entities)]
             (if (seq targets)
               (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil)
                      :diverged? true)
@@ -1783,7 +1773,7 @@
         {:diverged? true :clean? false :reason :history-rewritten
          :conflicts [] :summary {:added 0 :updated 0 :removed 0}
          :force-push-casualties (serdes/with-cache
-                                  (let [targets (exportable-entities)]
+                                  (let [targets (spec/exportable-entities)]
                                     (if (seq targets)
                                       (source/force-push-casualties-no-base
                                        (spec/extract-entities-for-export targets) snapshot)
@@ -1808,6 +1798,16 @@
     (source.p/create-branch source new-branch (settings/remote-sync-branch))
     (async-export! new-branch false message :on-success on-success)))
 
+(defn- ensure-transforms-sync!
+  "Turns on transforms sync on a read-write instance with no custom collection synced, unless an environment variable
+  sets it; turning it on records the Transforms root only when there is transforms content to publish."
+  []
+  (when (and (= :read-write (settings/remote-sync-type))
+             (not (settings/remote-sync-custom-collections-synced))
+             (not (settings/remote-sync-transforms))
+             (not (settings/transforms-set-by-env?)))
+    (settings/remote-sync-transforms! true)))
+
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
 
@@ -1819,7 +1819,8 @@
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
-      (ensure-library!)
+      (ensure-library-sync!)
+      (ensure-transforms-sync!)
       (when (= :read-only (settings/remote-sync-type))
         ;; force? true bypasses the version/dirty guards for setup, but force-deletion? false keeps unsynced
         ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).

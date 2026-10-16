@@ -496,14 +496,3 @@
                              ;; collection is the model originally loaded set the correct sync state
                              {:object (assoc collection :is_remote_synced false)
                               :user-id api/*current-user-id*}))))
-
-(defn sync-transforms-without-custom-collections!
-  "Turns on transforms sync on a read-write instance where no custom collection is synced, per
-  [[settings/remote-sync-custom-collections-synced]], unless an environment variable sets it."
-  []
-  (when (and (settings/remote-sync-enabled)
-             (= :read-write (settings/remote-sync-type))
-             (not (settings/remote-sync-custom-collections-synced))
-             (not (settings/remote-sync-transforms))
-             (not (settings/transforms-set-by-env?)))
-    (settings/remote-sync-transforms! true)))
