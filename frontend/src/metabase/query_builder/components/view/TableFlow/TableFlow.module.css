@@ -35,6 +35,12 @@
   min-height: 0;
 }
 
+.tableHeader {
+  flex-shrink: 0;
+  padding: var(--mantine-spacing-sm);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
 .galleryStrip {
   display: flex;
   flex-shrink: 0;
@@ -93,4 +99,29 @@
   height: 25rem;
   padding: var(--mantine-spacing-md);
   gap: var(--mantine-spacing-sm);
+}
+
+.detailLayout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-md);
+}
+
+.detailMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  flex: 1;
+  min-width: 0;
+}
+
+/* Floats beside the chart and its data, staying in view while the page scrolls. */
+.sidePanel {
+  position: sticky;
+  top: var(--mantine-spacing-md);
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 25rem;
+  overflow: hidden;
+  box-shadow: var(--mantine-shadow-md);
 }

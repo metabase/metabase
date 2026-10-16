@@ -20,8 +20,10 @@ import { SummaryFieldList } from "./SummaryFieldList";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 import {
+  type SummarySession,
   getSummaryQuestion,
   getSummarySession,
+  isSessionOf,
   rememberSummarySession,
 } from "./summary-session";
 import {
@@ -39,9 +41,15 @@ import {
 
 type SummarySidebarProps = {
   question: Question;
+  /** Starts a session for a question the sidebar isn't already showing. Defaults to a pivot of `question`. */
+  createSession?: (question: Question) => SummarySession;
   onQuestionChange: (question: Question) => void;
   onClose: () => void;
 };
+
+function createPivotSession(question: Question): SummarySession {
+  return getSummarySession(question);
+}
 
 function getDropWellId(data: unknown): SummaryWellId | null {
   if (typeof data !== "object" || data == null || !("wellId" in data)) {
@@ -56,16 +64,21 @@ function getDropWellId(data: unknown): SummaryWellId | null {
  */
 export function SummarySidebar({
   question,
+  createSession = createPivotSession,
   onQuestionChange,
   onClose,
 }: SummarySidebarProps) {
-  const [session, setSession] = useState(() => getSummarySession(question));
+  const [session, setSession] = useState(() => createSession(question));
   const { base, definition } = session;
 
-  // the question changed outside the sidebar (e.g. a new filter): summarize it from scratch
+  // the question changed outside the sidebar (e.g. a new filter): start over from it
   useEffect(() => {
-    setSession((currentSession) => getSummarySession(question, currentSession));
-  }, [question]);
+    setSession((currentSession) =>
+      isSessionOf(currentSession, question)
+        ? currentSession
+        : createSession(question),
+    );
+  }, [question, createSession]);
 
   useEffect(() => {
     rememberSummarySession(session);

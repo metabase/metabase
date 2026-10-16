@@ -14,6 +14,8 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
+import { useSelectedXrayChart } from "../TableFlow/use-xray-selection";
+import { getGalleryTableId } from "../TableFlow/utils";
 import { ViewSection } from "../ViewSection";
 
 import ViewTitleHeaderS from "./ViewTitleHeader.module.css";
@@ -24,6 +26,7 @@ import {
   SavedQuestionLeftSide,
   ViewTitleHeaderRightSide,
 } from "./components";
+import { XrayQuestionLeftSide } from "./components/XrayQuestionLeftSide";
 
 interface ViewTitleHeaderProps {
   question: Question;
@@ -145,6 +148,9 @@ export function ViewTitleHeader({
   const isModelOrMetric =
     question.type() === "model" || question.type() === "metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
+  const { selectedCard: xrayCard, isSelectedCardEdited: isXrayCardEdited } =
+    useSelectedXrayChart(getGalleryTableId(question), false);
+  const isShowingXrayChart = xrayCard != null && queryBuilderMode === "view";
 
   return (
     <>
@@ -157,7 +163,9 @@ export function ViewTitleHeader({
       >
         <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
           <QueryBuilderBackButton mr="sm" />
-          {isSaved ? (
+          {isShowingXrayChart ? (
+            <XrayQuestionLeftSide card={xrayCard} isEdited={isXrayCardEdited} />
+          ) : isSaved ? (
             <SavedQuestionLeftSide
               question={question}
               isObjectDetail={isObjectDetail}

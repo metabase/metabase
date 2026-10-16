@@ -2,29 +2,30 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetAdhocQueryQuery, useGetXrayDashboardQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetAdhocQueryQuery,
+  useGetXrayDashboardQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { Box, Repeat, Skeleton, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type {
-  ConcreteTableId,
-  DashCardId,
-  RawSeries,
-} from "metabase-types/api";
+import type { Card, ConcreteTableId, RawSeries } from "metabase-types/api";
 
 import S from "./TableFlow.module.css";
 import { type XrayChart, getXrayCharts } from "./utils";
 
-type XrayChartSeries = {
+type CardSeries = {
   rawSeries: RawSeries | null;
   error: string | null;
 };
 
 /**
- * Runs an x-ray chart's query. `rawSeries` is `null` while loading or on error.
+ * Runs a card's ad-hoc query. `rawSeries` is `null` while loading (including reruns after the
+ * card changes, so a new display never pairs with stale columns) or on error.
  */
-export function useXrayChartSeries({ card }: XrayChart): XrayChartSeries {
-  const { data, error } = useGetAdhocQueryQuery({
+export function useCardSeries(card: Card): CardSeries {
+  const { currentData: data, error } = useGetAdhocQueryQuery({
     ...card.dataset_query,
     ignore_error: true,
   });
@@ -44,25 +45,42 @@ export function useXrayChartSeries({ card }: XrayChart): XrayChartSeries {
   };
 }
 
-type XrayGalleryProps = {
-  tableId: ConcreteTableId;
+type XrayCharts = {
+  /** `null` while loading, when skipped, or on error. */
+  charts: XrayChart[] | null;
+  hasError: boolean;
+};
+
+/** The x-ray charts of `tableId`, fetched only while `isEnabled`. */
+export function useXrayCharts(
+  tableId: ConcreteTableId | null,
+  isEnabled: boolean,
+): XrayCharts {
+  const { data: dashboard, isError } = useGetXrayDashboardQuery(
+    tableId != null && isEnabled ? { subPath: `table/${tableId}` } : skipToken,
+  );
+  const charts = useMemo(
+    () => (dashboard ? getXrayCharts(dashboard) : null),
+    [dashboard],
+  );
+  return { charts, hasError: isError };
+}
+
+type XrayGalleryProps = XrayCharts & {
   /** The question's results, shown as the leading raw records card. */
   rawSeries: RawSeries | null;
-  /** `null` selects the raw records card. */
-  selectedChartId: DashCardId | null;
-  onSelectChart: (chart: XrayChart | null) => void;
+  /** 1-based position of the selected chart; `null` selects the raw records card. */
+  selectedPosition: number | null;
+  onSelectPosition: (position: number | null) => void;
 };
 
 export function XrayGallery({
-  tableId,
+  charts,
+  hasError,
   rawSeries,
-  selectedChartId,
-  onSelectChart,
+  selectedPosition,
+  onSelectPosition,
 }: XrayGalleryProps) {
-  const { data: dashboard, error } = useGetXrayDashboardQuery({
-    subPath: `table/${tableId}`,
-  });
-  const charts = useMemo(() => getXrayCharts(dashboard), [dashboard]);
   const rawRecordsSeries = useMemo<RawSeries | null>(
     () =>
       rawSeries?.map(({ card, data }) => ({
@@ -78,18 +96,18 @@ export function XrayGallery({
         title={t`Raw records`}
         rawSeries={rawRecordsSeries}
         error={null}
-        isSelected={selectedChartId == null}
-        onSelect={() => onSelectChart(null)}
+        isSelected={selectedPosition == null}
+        onSelect={() => onSelectPosition(null)}
       />
-      {error ? (
+      {hasError ? (
         <Text c="text-secondary">{t`Couldn't load x-rays for this table.`}</Text>
-      ) : dashboard ? (
-        charts.map((chart) => (
+      ) : charts ? (
+        charts.map((chart, index) => (
           <XrayThumbnail
             key={chart.id}
             chart={chart}
-            isSelected={chart.id === selectedChartId}
-            onSelect={() => onSelectChart(chart)}
+            isSelected={index + 1 === selectedPosition}
+            onSelect={() => onSelectPosition(index + 1)}
           />
         ))
       ) : (
@@ -108,7 +126,7 @@ type XrayThumbnailProps = {
 };
 
 function XrayThumbnail({ chart, isSelected, onSelect }: XrayThumbnailProps) {
-  const { rawSeries, error } = useXrayChartSeries(chart);
+  const { rawSeries, error } = useCardSeries(chart.card);
 
   return (
     <GalleryThumbnail

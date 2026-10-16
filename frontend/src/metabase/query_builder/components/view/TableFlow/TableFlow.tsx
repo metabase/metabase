@@ -1,13 +1,14 @@
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 
+import { Skeleton } from "metabase/ui";
 import type { ConcreteTableId, RawSeries } from "metabase-types/api";
 
 import S from "./TableFlow.module.css";
 import { TableSearchBar } from "./TableSearchBar";
 import { XrayChartDetail } from "./XrayChartDetail";
 import { XrayGallery } from "./XrayGallery";
-import type { XrayChart } from "./utils";
+import { useSelectedXrayChart } from "./use-xray-selection";
 
 type TableFlowProps = {
   /** Source table of the question; the gallery is unavailable without one. */
@@ -28,7 +29,8 @@ type TableFlowProps = {
  * Lays out the query builder's view as inset cards: an optional strip of the
  * source table's raw records and x-ray charts, then either the question's own
  * visualization (with an attached search bar for tables) or the selected
- * x-ray chart above its data.
+ * x-ray chart above its data. The selection lives in the URL and outlasts
+ * closing the gallery.
  */
 export function TableFlow({
   tableId,
@@ -39,10 +41,16 @@ export function TableFlow({
   onSearchTextChange,
   children,
 }: TableFlowProps) {
-  const [selectedChart, setSelectedChart] = useState<XrayChart | null>(null);
-  if (!isGalleryOpen && selectedChart) {
-    setSelectedChart(null);
-  }
+  const {
+    charts,
+    hasError,
+    selectedPosition,
+    onSelectPosition,
+    selectedChart,
+    selectedCard,
+    onSelectedCardChange,
+    isSelectedChartLoading,
+  } = useSelectedXrayChart(tableId, isGalleryOpen);
 
   // The main card fills the visible area so the page scrolls only once the gallery or a chart is added above it.
   const mainCardHeight = `max(20rem, calc(${viewportHeight}px - 2 * var(--mantine-spacing-md)))`;
@@ -51,19 +59,24 @@ export function TableFlow({
     <div className={S.root}>
       {isGalleryOpen && tableId != null && (
         <XrayGallery
-          tableId={tableId}
+          charts={charts}
+          hasError={hasError}
           rawSeries={rawSeries}
-          selectedChartId={selectedChart?.id ?? null}
-          onSelectChart={setSelectedChart}
+          selectedPosition={selectedChart ? selectedPosition : null}
+          onSelectPosition={onSelectPosition}
         />
       )}
-      {selectedChart ? (
+      {selectedChart && selectedCard ? (
         <XrayChartDetail
           key={selectedChart.id}
           chart={selectedChart}
+          card={selectedCard}
           tableHeight={mainCardHeight}
-          onClose={() => setSelectedChart(null)}
+          onCardChange={onSelectedCardChange}
+          onClose={() => onSelectPosition(null)}
         />
+      ) : isSelectedChartLoading ? (
+        <Skeleton className={cx(S.card, S.detailChartCard)} />
       ) : (
         <div
           className={cx(S.card, S.tableCard)}

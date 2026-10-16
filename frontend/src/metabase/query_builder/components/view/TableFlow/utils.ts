@@ -28,6 +28,27 @@ export function getGalleryTableId(question: Question): ConcreteTableId | null {
 }
 
 /**
+ * Search param holding the selected x-ray chart as `<tableId>-<position>`, with a 1-based
+ * position in {@link getXrayCharts} order. X-rays are regenerated on every load, so the
+ * position is the stable identifier; the table id keeps the selection from leaking into
+ * another table's gallery.
+ */
+export const XRAY_SEARCH_PARAM = "xray";
+
+/** The selected chart position for `tableId`, or `null` when `value` is absent, malformed, or for another table. */
+export function parseXraySearchParam(
+  value: string | null,
+  tableId: ConcreteTableId,
+): number | null {
+  const match = value?.match(/^(\d+)-(\d+)$/);
+  if (match == null || Number(match[1]) !== tableId) {
+    return null;
+  }
+  const position = Number(match[2]);
+  return position >= 1 ? position : null;
+}
+
+/**
  * Returns the chart-backed cards of an x-ray dashboard in layout order,
  * skipping text/heading cards. Dashcard-level settings override card-level ones.
  */

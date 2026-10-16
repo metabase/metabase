@@ -206,7 +206,7 @@ export function buildSummaryQuery(
     query = Lib.breakout(
       query,
       stageIndex,
-      Lib.withDefaultBucket(query, stageIndex, column),
+      withDimensionBucket(query, stageIndex, column, dimension.column),
     );
   }
 
@@ -219,6 +219,24 @@ export function buildSummaryQuery(
   }
 
   return query;
+}
+
+/** Keeps the temporal unit or binning a dimension came with (e.g. from an existing breakout), else the default. */
+function withDimensionBucket(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  dimensionColumn: Lib.ColumnMetadata,
+): Lib.ColumnMetadata {
+  const temporalBucket = Lib.temporalBucket(dimensionColumn);
+  if (temporalBucket != null) {
+    return Lib.withTemporalBucket(column, temporalBucket);
+  }
+  const binning = Lib.binning(dimensionColumn);
+  if (binning != null) {
+    return Lib.withBinning(column, binning);
+  }
+  return Lib.withDefaultBucket(query, stageIndex, column);
 }
 
 function getFallbackValueLabel(base: SummaryBase, value: SummaryValue) {
@@ -328,7 +346,7 @@ export function canDropOnWell(
   }
 }
 
-function createItemId() {
+export function createItemId() {
   return _.uniqueId("summary-item-");
 }
 
