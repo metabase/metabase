@@ -131,6 +131,8 @@
   stays a no-op)."
   [collection-ids]
   (doseq [{:keys [model-key model-type archived-key] :as spec} (collection-content-specs)
+          :let  [collection-ids (vec (remove (spec/excluded-collection-ids spec) collection-ids))]
+          :when (seq collection-ids)
           :let  [tracked  (remote-sync.db/tracked-model-ids model-type)
                  entities (remote-sync.db/instances-in-collections model-key collection-ids archived-key)]
           entity entities

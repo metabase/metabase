@@ -201,6 +201,8 @@
                                       :model_collection_id :collection_id}}
     :removal        {:statuses  #{"removed"}
                      :scope-key :collection_id}
+    ;; timelines in the Library's Dashboards collection do not sync
+    :excluded-collection-types #{collections/library-dashboards-collection-type}
     :enabled?       true}
 
    :model/Collection
@@ -663,13 +665,22 @@
     (when (rs-settings/library-is-remote-synced?)
       (assoc conditions :collection_id nil))))
 
+(defn excluded-collection-ids
+  "The IDs of the Collections whose content of `spec`'s model never syncs: those of its `:excluded-collection-types`."
+  [{:keys [excluded-collection-types]}]
+  (if (seq excluded-collection-types)
+    (remote-sync.db/collection-ids-of-types (vec excluded-collection-types))
+    #{}))
+
 (defn removal-opts
   "The `metabase-enterprise.remote-sync.db` removal-opts (`:scope-key`, `:synced-collection-ids`, `:entity-ids`,
   `:removal-conditions`) for removing the entity-id `spec`'s rows not in the import, scoped to
   `synced-collection-ids` when the spec has a `:scope-key`, minus the imported `entity-ids`."
   [spec synced-collection-ids entity-ids]
   {:scope-key              (get-in spec [:removal :scope-key])
-   :synced-collection-ids  synced-collection-ids
+   :synced-collection-ids  (if (:excluded-collection-types spec)
+                             (vec (remove (excluded-collection-ids spec) synced-collection-ids))
+                             synced-collection-ids)
    :unscoped-conditions    (library-synced-root-conditions spec)
    :entity-ids             entity-ids
    :removal-conditions     (removal-conditions spec)})
@@ -831,12 +842,21 @@
   {:arglists '([spec object])}
   (fn [spec _object] (get-in spec [:eligibility :type])))
 
+(defn- in-excluded-collection?
+  "Whether `object` is in a Collection of one of `spec`'s `:excluded-collection-types`."
+  [{:keys [excluded-collection-types]} {:keys [collection_id]}]
+  (boolean (and (seq excluded-collection-types)
+                collection_id
+                (contains? excluded-collection-types (remote-sync.db/collection-type collection_id)))))
+
 (defn check-eligibility
   "Determines if a model instance should be tracked for remote sync.
-   Applies the spec's `:conditions` filter and then delegates to the eligibility-type method."
+   Applies the spec's `:conditions` filter and its `:excluded-collection-types`, and then delegates to the
+   eligibility-type method."
   [spec object]
   (boolean
    (and (object-matches-conditions? (:conditions spec) object)
+        (not (in-excluded-collection? spec object))
         (check-eligibility-by-type spec object))))
 
 (defn library-synced-object?
@@ -1341,6 +1361,20 @@
   "Models git sync walks through but never writes."
   #{"Table" "Field"})
 
+(defn- without-excluded-collection-content
+  "`targets` (a map of {model-name [id ...]}) without the instances in the Collections whose content of their model
+  never syncs."
+  [targets]
+  (reduce (fn [targets {:keys [model-type model-key] :as spec}]
+            (let [excluded (some->> (seq (excluded-collection-ids spec))
+                                    vec
+                                    (remote-sync.db/ids-in-collections model-key))]
+              (cond-> targets
+                (and (seq excluded) (contains? targets model-type))
+                (update model-type #(vec (remove excluded %))))))
+          targets
+          (filter :excluded-collection-types (vals remote-sync-specs))))
+
 (defn exportable-entities
   "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
   `serdes/descendants`/`required` closure — or `{}` when there is no remote-syncable content."
@@ -1351,7 +1385,8 @@
         targets (-> #{}
                     (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) git-sync-extract-opts))))
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
-    (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)))
+    (-> (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)
+        without-excluded-collection-content)))
 
 (defn exportable-entity-count
   "Number of entities `targets` (a map as returned by [[exportable-entities]]) names. An upper bound on what

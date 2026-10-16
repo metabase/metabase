@@ -434,6 +434,22 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
 
+(mu/defn collection-ids-of-types :- [:set ::lib.schema.id/collection]
+  "The IDs of the Collections whose type is one of `collection-types`."
+  [collection-types :- [:sequential :string]]
+  (set (t2/select-pks-set :model/Collection :type [:in collection-types])))
+
+(mu/defn ids-in-collections :- [:set pos-int?]
+  "The IDs of the instances of `model` in the Collections with `collection-ids`."
+  [model          :- :keyword
+   collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (set (t2/select-pks-set model :collection_id [:in collection-ids])))
+
+(mu/defn collection-type :- [:maybe :string]
+  "The type of the Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one-fn :type :model/Collection :id collection-id))
+
 (mu/defn library-collection
   "The Library Collection of `library-type`, or nil."
   [library-type :- :string]
