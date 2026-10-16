@@ -18,6 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.sensitive-fields :as qp.sensitive-fields]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -442,29 +443,36 @@
   "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
   queries they wouldn't be allowed to run!
 
-  Checks the query the query processor would actually run, not the one it was handed: until a source card has been
-  resolved into the stages it stands for, the joins and tables around it are not there to be checked, and a query
-  built on a Card could name any table it liked."
-  [query :- :map]
-  {:pre [(map? query)]}
-  (let [query    (dissoc query :query-permissions/perms)
-        expanded (try
-                   (preprocess-query query)
-                   (catch Throwable _
-                     nil))
-        query    (or expanded query)
-        expanded? (some? expanded)]
-    (when-not (can-run-query? query expanded?)
-      (let [required-perms (try
-                             (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)
-                             (catch Throwable e
-                               e))]
-        (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                        {:status-code    403
-                         :query          query
-                         :required-perms (if (instance? Throwable required-perms)
-                                           :error
-                                           required-perms)
-                         :actual-perms   @api/*current-user-permissions-set*}
-                        (when (instance? Throwable required-perms)
-                          required-perms)))))))
+  Checks the query the query processor would actually run, after expanding source cards.
+
+  Also rejects queries that reference `:sensitive` columns, unless `allow-sensitive-fields?` is set because `query`
+  is saved content being restored rather than a new query."
+  ([query :- :map]
+   (check-run-permissions-for-query query nil))
+  ([query                             :- :map
+    {:keys [allow-sensitive-fields?]} :- [:maybe [:map {:closed true}
+                                                  [:allow-sensitive-fields? {:optional true} :boolean]]]]
+   {:pre [(map? query)]}
+   (when-not allow-sensitive-fields?
+     (qp.sensitive-fields/check-query-can-be-saved! query))
+   (let [query    (dissoc query :query-permissions/perms)
+         expanded (try
+                    (preprocess-query query)
+                    (catch Throwable _
+                      nil))
+         query    (or expanded query)
+         expanded? (some? expanded)]
+     (when-not (can-run-query? query expanded?)
+       (let [required-perms (try
+                              (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)
+                              (catch Throwable e
+                                e))]
+         (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                         {:status-code    403
+                          :query          query
+                          :required-perms (if (instance? Throwable required-perms)
+                                            :error
+                                            required-perms)
+                          :actual-perms   @api/*current-user-permissions-set*}
+                         (when (instance? Throwable required-perms)
+                           required-perms))))))))
