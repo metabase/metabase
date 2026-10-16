@@ -1093,9 +1093,9 @@
            (vals spec/remote-sync-specs)))))
 
 (defn- lazy-computed-paths
-  "Each of `rows` ({:model_type :model_id}) paired with a delay of its computed path in storage context `opts`. The
-  rows are extracted a chunk at a time, the first time a delay of the chunk is dereferenced; an entity that no longer
-  exists has a nil path."
+  "Each of `rows` ({:model_type :model_id :file_path}) paired with a delay of its computed path in storage context
+  `opts`. The rows are extracted a chunk at a time, the first time a delay of the chunk is dereferenced. A row whose
+  entity the extraction skips keeps its stored `:file_path`: no export writes it, so a move rule can't move it."
   [opts rows]
   (for [chunk (->sized-chunks rows)
         :let  [paths (delay (into {}
@@ -1103,7 +1103,7 @@
                                          [(:model_id row) (serialization/entity-file-path opts entity)]))
                                   (extract-chunk chunk)))]
         row   (:rows chunk)]
-    [row (delay (get @paths (:model_id row)))]))
+    [row (delay (get @paths (:model_id row) (:file_path row)))]))
 
 (defn- clean-row->incremental-export-plan
   "Plan fragment for the synced `row`, from the move rule: nothing, a rewrite at its stored path, deletions, or
@@ -1360,8 +1360,8 @@
               disabled-files (delay (filterv (comp (disabled-content-dirs) path-top-level-dir)
                                              (source.p/list-files snapshot)))
               dirty-rows     (delay (remote-sync.object/dirty-rows))
-              plan           (delay (when (seq @dirty-rows)
-                                      (incremental-export-plan snapshot @dirty-rows)))]
+              ;; computed with no dirty rows too: the move rule may move unchanged items
+              plan           (delay (incremental-export-plan snapshot @dirty-rows))]
           (cond
             ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
             force?
@@ -1392,8 +1392,12 @@
              :outcome   {:kind "remote-changed"}
              :message   "The remote branch has changed since your last sync. Choose how to proceed."}
 
-            ;; There's nothing to export: no dirty rows and no stale files.
-            (and (empty? @dirty-rows) (empty? @disabled-files))
+            ;; There's nothing to export: no dirty rows, no stale files, and nothing the move rule moves.
+            (and (empty? @dirty-rows)
+                 (empty? @disabled-files)
+                 (not= :remote-sync/incremental-not-possible @plan)
+                 (empty? (:writes @plan))
+                 (empty? (:delete-paths @plan)))
             (do
               (log/info "Remote sync export: no changes to export")
               {:status :success

@@ -207,6 +207,37 @@
                 (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
                 (is (= incremental (files)) "a full export gives the same names")))))))))
 
+(deftest move-every-item-moves-the-repo-in-one-push-test
+  (testing "with the move-every-item rule, the first push after a layout switch moves every file in one commit"
+    (with-exported-bench!
+      (fn [{:keys [mock card-a]}]
+        (let [files #(get @(:files-atom mock) "main")]
+          (is (= #{"collections/main/bench.yaml"
+                   "collections/main/bench/card_a.yaml"
+                   "collections/main/bench/card_b.yaml"}
+                 (set (keys (files)))))
+          (with-redefs [remote-sync.layout/layout    kind-layout/kind-layout
+                        remote-sync.layout/move-rule remote-sync.layout/move-every-item]
+            (testing "a push with no local change moves every file"
+              (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "switch"))))
+              (is (= "write-files-version" (written-version)))
+              (is (= #{"collections/bench/_collection.yaml"
+                       "collections/bench/card_a.question.yaml"
+                       "collections/bench/card_b.question.yaml"}
+                     (set (keys (files)))))
+              (is (= "collections/bench/card_a.question.yaml"
+                     (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Card" :model_id card-a))))
+            (testing "the next push moves nothing"
+              (is (=? {:status :success :outcome {:kind "push-skipped"}}
+                      (impl/export! (source.p/snapshot mock) (new-task!) "nothing"))))
+            (testing "an edit after the switch is incremental"
+              (let [before (files)]
+                (t2/update! :model/Card card-a {:description "edited"})
+                (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-a} {:status "update"})
+                (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "edit"))))
+                (is (= "apply-changes-version" (written-version)))
+                (is (= (set (keys before)) (set (keys (files)))))))))))))
+
 (deftest import-reads-the-kind-layout-test
   (testing "an export rewritten to the kind layout's paths loads to the same app-DB state"
     (with-kind-layout-content!

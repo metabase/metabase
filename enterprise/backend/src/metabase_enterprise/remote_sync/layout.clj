@@ -33,6 +33,18 @@
     (= "Collection" model-type)              :remote-sync/incremental-not-possible
     :else                                    {:write @computed-path :delete [stored-path]}))
 
+(defn move-every-item
+  "Rule (b) of the layout spec: every item moves to its computed path at each push. Changed items move as with
+  [[current-move-rule]]; an unchanged item whose stored path differs from its computed one makes the push a full
+  export. So the first push after a change of layout moves every file in one commit, and a push with no layout change
+  moves nothing. Each incremental export extracts every synced item to compute its path."
+  [{:keys [export status stored-path computed-path] :as item}]
+  (if (and (= :incremental export)
+           (= "synced" status)
+           (not= (not-empty stored-path) @computed-path))
+    :remote-sync/incremental-not-possible
+    (current-move-rule item)))
+
 (def move-rule
   "The move rule remote sync exports with. It is called once per item, with:
   - `:export`        `:full` (every managed file is deleted first) or `:incremental` (only the files named are touched)
