@@ -186,6 +186,12 @@
       :else
       (format "Failed to reload from git repository: %s" (or (ex-message e) (.getName (class e)))))))
 
+(defn- repo-in-kind-layout?
+  "Whether `snapshot` is a repository in the kind layout: it holds a file name only that layout writes. A repository
+  written before it never holds AI context."
+  [snapshot]
+  (boolean (some serialization/kind-layout-path? (source.p/list-files snapshot))))
+
 (defn- repo-library-content?
   "Whether `snapshot` holds an entity file in a folder whose content syncs with the Library."
   [snapshot]
@@ -455,7 +461,8 @@
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
             _                     (remove-unsynced! synced-collection-ids (keep-library-roots imported-data))
             settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)
-            _                     (when (remote-sync.layout/kind-layout?)
+            _                     (when (and (remote-sync.layout/kind-layout?)
+                                             (repo-in-kind-layout? snapshot))
                                     (remove-unsynced-ai-contexts! seen-paths))]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
         ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the

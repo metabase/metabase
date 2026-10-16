@@ -47,6 +47,19 @@
    :custom-viz-plugin "custom_viz_plugin"
    :field-values      "field_values"})
 
+(def ^:private kind-layout-file-re
+  "An item's file name in the kind layout, `<name>.<kind>.yaml`."
+  ;; not `collection.yaml`: the earlier layout gives a collection named "Collection" that name
+  (re-pattern (str "[^/]\\.(?:"
+                   (str/join "|" (map #(java.util.regex.Pattern/quote %) (vals kind-words)))
+                   ")\\.yaml$")))
+
+(defn kind-layout-path?
+  "Whether the repository path `path` is an item's file as only the kind layout names it, `<name>.<kind>.yaml`, so
+  that a repository holding it is in the kind layout."
+  [path]
+  (boolean (re-find kind-layout-file-re path)))
+
 (defn- python-library-file
   "The file stem of the Python library at `path` (`common.py`): the path itself, without a kind word."
   ;; Open item 2: the fixed file names stay exceptions to rule 1 (`common.py.yaml`; `data_app.yaml` comes from the

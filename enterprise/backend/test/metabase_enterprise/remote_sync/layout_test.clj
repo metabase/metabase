@@ -87,23 +87,27 @@
                 remote-sync.layout/move-rule remote-sync.layout/current-move-rule]
     (f)))
 
-(defn- with-exported-bench!
-  "In the layout of repos before the kind layout (see [[in-storage-path-layout!]]), exports a remote-synced
-  collection with two cards into a fresh MockSource, then calls `f` with `{:mock :card-a :card-b}`."
+(defn- export-bench!
+  "Exports a remote-synced collection with two cards into a fresh MockSource in the layout of repos before the kind
+  layout (see [[in-storage-path-layout!]]), then calls `f` with `{:mock :card-a :card-b}`."
   [f]
-  (in-storage-path-layout!
-   (fn []
-     (mt/with-temporary-setting-values [remote-sync-type       :read-write
-                                        remote-sync-transforms false]
-       (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
-                      :model/Card       {card-a :id}  {:name "Card A" :collection_id coll-id}
-                      :model/Card       {card-b :id}  {:name "Card B" :collection_id coll-id}]
-         (t2/delete! :model/RemoteSyncObject)
-         (doseq [[model-type model-id] [["Collection" coll-id] ["Card" card-a] ["Card" card-b]]]
-           (seed-create-row! model-type model-id))
-         (let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
-           (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "init"))))
-           (f {:mock mock :card-a card-a :card-b card-b})))))))
+  (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                     remote-sync-transforms false]
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
+                   :model/Card       {card-a :id}  {:name "Card A" :collection_id coll-id}
+                   :model/Card       {card-b :id}  {:name "Card B" :collection_id coll-id}]
+      (t2/delete! :model/RemoteSyncObject)
+      (doseq [[model-type model-id] [["Collection" coll-id] ["Card" card-a] ["Card" card-b]]]
+        (seed-create-row! model-type model-id))
+      (let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
+        (is (= :success (:status (in-storage-path-layout!
+                                  #(impl/export! (source.p/snapshot mock) (new-task!) "init")))))
+        (f {:mock mock :card-a card-a :card-b card-b})))))
+
+(defn- with-exported-bench!
+  "Like [[export-bench!]], with `f` also in the layout of repos before the kind layout."
+  [f]
+  (in-storage-path-layout! #(export-bench! f)))
 
 (defn- written-version []
   (t2/select-one-fn :version :model/RemoteSyncTask))
@@ -474,6 +478,18 @@
 
 (defn- ai-context [entity-type entity-id]
   (t2/select-one-fn :ai_context :model/OsiAiContext :entity_type entity-type :entity_local_id entity-id))
+
+(deftest pull-of-an-earlier-layout-repo-keeps-ai-context-test
+  (testing "the first pull of a repo written before the kind layout, which never holds AI context, keeps it"
+    (mt/with-model-cleanup [:model/OsiAiContext]
+      (export-bench!
+       (fn [{:keys [mock card-a]}]
+         (t2/insert! :model/OsiAiContext {:entity_type "card" :entity_local_id card-a
+                                          :ai_context {:instructions "keep me"}})
+         (is (not-any? #(str/includes? % "ai_context") (keys (get @(:files-atom mock) "main"))))
+         (let [result (impl/import! (source.p/snapshot mock) (new-task!) :force? true)]
+           (is (= :success (:status result)) (:message result)))
+         (is (= {:instructions "keep me"} (ai-context "card" card-a))))))))
 
 (deftest ai-context-syncs-with-its-item-test
   (mt/with-model-cleanup [:model/OsiAiContext]

@@ -56,6 +56,7 @@
  [metabase-enterprise.serialization.v2.storage.kind-layout
   item-file-name
   kind-layout
+  kind-layout-path?
   label-slug]
  [metabase-enterprise.serialization.v2.storage.util
   entity-document
