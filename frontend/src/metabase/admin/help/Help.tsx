@@ -21,6 +21,7 @@ import {
 import { Box, Code, Group } from "metabase/ui";
 import { getBasename } from "metabase/utils/basename";
 
+import { HelpAssistant } from "./HelpAssistant";
 import S from "./help.module.css";
 
 function navigatorInfo() {
@@ -133,6 +134,8 @@ export const Help = () => {
             link={githubIssueLink(detailString)}
           />
         </Group>
+
+        <HelpAssistant diagnosticInfo={detailString} />
 
         <UpsellBetterSupport location="settings-troubleshooting" />
 

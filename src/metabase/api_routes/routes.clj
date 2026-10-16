@@ -32,6 +32,7 @@
    [metabase.geojson.api]
    [metabase.glossary.api]
    [metabase.health-inspector.api]
+   [metabase.help-assistant.api]
    [metabase.indexed-entities.api]
    [metabase.indexes-rest.api]
    [metabase.llm.api]
@@ -235,6 +236,7 @@
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
    "/health-inspector"     (+auth 'metabase.health-inspector.api)
+   "/help-assistant"       (+auth 'metabase.help-assistant.api)
    "/index"                (+auth 'metabase.indexes-rest.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
