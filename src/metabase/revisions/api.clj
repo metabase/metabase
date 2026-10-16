@@ -140,7 +140,7 @@
       ;; doesn't actually check important stuff like this.
       ;; Restoring saved content may retain references to sensitive fields.
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)
-                                                 {:allow-sensitive-fields? true}))
+                                                   {:allow-sensitive-fields? true}))
     (when (= model :model/Transform)
       (api/check-403 (mi/can-write? (merge instance (:object revision)))))
     ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
