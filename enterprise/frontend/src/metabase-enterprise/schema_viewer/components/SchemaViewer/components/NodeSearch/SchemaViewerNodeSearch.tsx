@@ -132,7 +132,13 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
           }}
         />
       </Combobox.Target>
-      <Combobox.Dropdown p={0} data-testid="schema-viewer-node-search-dropdown">
+      {/* The dropdown scrolls, which makes it a Tab stop in Chrome; it is
+          navigated with the arrow keys from the input instead. */}
+      <Combobox.Dropdown
+        p={0}
+        tabIndex={-1}
+        data-testid="schema-viewer-node-search-dropdown"
+      >
         {filteredItems.length === 0 ? (
           <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
         ) : (

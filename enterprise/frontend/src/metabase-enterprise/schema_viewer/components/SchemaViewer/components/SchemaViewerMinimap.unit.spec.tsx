@@ -8,7 +8,9 @@ import { makeFlowNode } from "../utils/test-utils";
 
 import { SchemaViewerMinimap } from "./SchemaViewerMinimap";
 
-// Bounds 1000x800 fit the 200x160 minimap exactly at scale 0.2.
+// Bounds 1000x800 fit the 200x160 minimap inside its 8px padding at scale
+// 0.18, offset by (10, 8): minimap pixel (x, y) is graph point
+// ((x - 10) / 0.18, (y - 8) / 0.18).
 const NODES = [
   makeFlowNode({ id: 1, position: { x: 0, y: 0 }, width: 500, height: 160 }),
   makeFlowNode({
@@ -96,14 +98,14 @@ describe("SchemaViewerMinimap", () => {
     const minimap = getMinimap();
 
     firePointer(minimap, "pointerdown", 100, 80);
-    firePointer(minimap, "pointermove", 20, 16);
-    firePointer(minimap, "pointerup", 20, 16);
+    firePointer(minimap, "pointermove", 28, 26);
+    firePointer(minimap, "pointerup", 28, 26);
     firePointer(minimap, "pointermove", 0, 0);
 
     expect(onPanStart).toHaveBeenCalledTimes(1);
     expect(onPanTo.mock.calls).toEqual([
       [{ x: 500, y: 400 }],
-      [{ x: 100, y: 80 }],
+      [{ x: 100, y: 100 }],
     ]);
     expect(onPanEnd).toHaveBeenCalledTimes(1);
   });

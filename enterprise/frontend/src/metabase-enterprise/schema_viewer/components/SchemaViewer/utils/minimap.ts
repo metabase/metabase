@@ -10,6 +10,9 @@ const SHADE_LIGHTNESS = {
   dark: { leaf: 28, hub: 80 },
 };
 
+// Space between the fitted graph and the minimap edges.
+const MINIMAP_PADDING_PX = 8;
+
 /** Maps graph coordinates into minimap pixels, fitted and centered. */
 export type MinimapTransform = {
   bounds: Rect;
@@ -31,8 +34,8 @@ export function getMinimapTransform(
     return null;
   }
   const scale = Math.min(
-    size.width / bounds.width,
-    size.height / bounds.height,
+    (size.width - 2 * MINIMAP_PADDING_PX) / bounds.width,
+    (size.height - 2 * MINIMAP_PADDING_PX) / bounds.height,
   );
   return {
     bounds,

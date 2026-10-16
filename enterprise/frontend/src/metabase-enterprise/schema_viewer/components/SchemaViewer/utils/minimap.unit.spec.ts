@@ -10,19 +10,22 @@ import {
 } from "./minimap";
 import { makeFlowNode } from "./test-utils";
 
-// Graph spans x 0..1000, y 0..500; a 200x100 minimap fits it at scale 0.2.
+// Graph spans x 0..1000, y 0..500. The minimap is 200x100 inside 8px padding,
+// so the graph fits at scale 0.2 and every projected point shifts by 8px.
 const BOUNDS = { x: 0, y: 0, width: 1000, height: 500 };
-const MINIMAP_SIZE = { width: 200, height: 100 };
+const MINIMAP_SIZE = { width: 216, height: 116 };
 
 describe("getMinimapTransform", () => {
-  it("fits and centers the graph bounds inside the minimap", () => {
+  it("fits and centers the graph bounds inside the padded minimap", () => {
     const tallBounds = { x: -100, y: 0, width: 500, height: 500 };
 
+    // Height limits the scale (100 / 500); the 100px-wide result is centered
+    // in the 216px width.
     expect(getMinimapTransform(tallBounds, MINIMAP_SIZE)).toEqual({
       bounds: tallBounds,
       scale: 0.2,
-      offsetX: 50,
-      offsetY: 0,
+      offsetX: 58,
+      offsetY: 8,
     });
   });
 
@@ -37,7 +40,7 @@ describe("minimapToWorld", () => {
   it("maps a minimap pixel back to graph coordinates", () => {
     const transform = getMinimapTransform(BOUNDS, MINIMAP_SIZE);
 
-    expect(transform && minimapToWorld(transform, { x: 100, y: 50 })).toEqual({
+    expect(transform && minimapToWorld(transform, { x: 108, y: 58 })).toEqual({
       x: 500,
       y: 250,
     });
@@ -56,14 +59,14 @@ describe("getViewportIndicator", () => {
           { x: -200, y: -100, zoom: 2 },
           { width: 800, height: 400 },
         ),
-    ).toEqual({ x: 20, y: 10, width: 80, height: 40 });
+    ).toEqual({ x: 28, y: 18, width: 80, height: 40 });
   });
 
   it("keeps a tiny viewport visible at a minimum size around the same center", () => {
     const transform = getMinimapTransform(BOUNDS, MINIMAP_SIZE);
 
-    // At zoom 5 a 100x50 canvas projects to a 4x2px box at (100, 50); with an
-    // 8px minimum it grows around its center (102, 51).
+    // At zoom 5 a 100x50 canvas projects to a 4x2px box at (108, 58); with an
+    // 8px minimum it grows around its center (110, 59).
     expect(
       transform &&
         getViewportIndicator(
@@ -72,7 +75,7 @@ describe("getViewportIndicator", () => {
           { width: 100, height: 50 },
           8,
         ),
-    ).toEqual({ x: 98, y: 47, width: 8, height: 8 });
+    ).toEqual({ x: 106, y: 55, width: 8, height: 8 });
   });
 });
 
@@ -111,10 +114,10 @@ describe("drawMinimapNodes", () => {
       node.id === "table-1" ? "red" : "blue",
     );
 
-    expect(context.clearRect).toHaveBeenCalledWith(0, 0, 200, 100);
+    expect(context.clearRect).toHaveBeenCalledWith(0, 0, 216, 116);
     expect(fillRects).toEqual([
-      [0, 0, 100, 20],
-      [100, 50, 100, 50],
+      [8, 8, 100, 20],
+      [108, 58, 100, 50],
     ]);
     expect(fillStyles).toEqual(["red", "blue"]);
   });

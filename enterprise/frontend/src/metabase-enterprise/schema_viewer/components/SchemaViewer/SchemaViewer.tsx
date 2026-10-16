@@ -493,14 +493,6 @@ export function SchemaViewer({
             selectedEdgeIds={selectedEdgeIds}
           />
         </ViewportPortal>
-        <SchemaViewerMinimap
-          nodes={settledNodes}
-          edges={edges}
-          onPanStart={handleMinimapPanStart}
-          onPanTo={handleMinimapPanTo}
-          onPanEnd={handleMinimapPanEnd}
-        />
-
         <SchemaViewerCanvasControls
           databaseId={databaseId}
           schema={schema}
@@ -511,6 +503,15 @@ export function SchemaViewer({
           onSchemaChange={handleSchemaChange}
           onResetLayout={resetLayout}
           onFocusNode={focusOnNode}
+        />
+
+        {/* After the controls so it comes after them in the tab order. */}
+        <SchemaViewerMinimap
+          nodes={settledNodes}
+          edges={edges}
+          onPanStart={handleMinimapPanStart}
+          onPanTo={handleMinimapPanTo}
+          onPanEnd={handleMinimapPanEnd}
         />
 
         <SelectedNodeInfoPanel
