@@ -174,9 +174,11 @@ export const useCartesianChartSeriesColorsClasses = (
 export const useSankeyChartColorsClasses = (chartModel: SankeyChartModel) => {
   const hexColors = useMemo(() => {
     const linkColors = chartModel.data.links.map((link) => link.color);
-    return [...Object.values(chartModel.nodeColors), ...linkColors].filter(
-      isNotNull,
-    );
+    return [
+      ...Object.values(chartModel.nodeColors),
+      ...linkColors,
+      ...(chartModel.conversion?.colors ?? []),
+    ].filter(isNotNull);
   }, [chartModel]);
 
   return useInjectSeriesColorsClasses(hexColors);

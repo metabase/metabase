@@ -1,3 +1,4 @@
+import Color from "color";
 import _ from "underscore";
 
 import { color } from "metabase/ui/colors";
@@ -7,11 +8,17 @@ import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 import type { ComputedVisualizationSettings } from "../../../../types";
 
 import { getSankeyBreakout } from "./breakout";
+import {
+  getConversionColor,
+  getConversionScale,
+  getSankeyConversion,
+} from "./conversion";
 import { getSankeyData } from "./dataset";
 import { getSankeyFormatters } from "./formatters";
 import type {
   SankeyChartColumns,
   SankeyChartModel,
+  SankeyConversion,
   SankeyData,
   SankeyLink,
   SankeyNode,
@@ -49,11 +56,17 @@ const findColumnIndex = (cols: DatasetColumn[], name: string) => {
   return index >= 0 ? index : undefined;
 };
 
-/** The palette hook for paths colors. */
+// Hex drops alpha, so a translucent palette color is blended onto the background first.
+const toOpaqueHex = (paletteColor: string) => {
+  const parsed = Color(paletteColor);
+  return Color(color("white")).mix(parsed.alpha(1), parsed.alpha()).hex();
+};
+
+/** The palette hook for paths colors, in hex so scale shades compare equal to their ends. */
 export const getPathColors = () => ({
-  neutral: color("text-tertiary"),
-  converted: color("success"),
-  dropped: color("error"),
+  neutral: toOpaqueHex(color("text-tertiary")),
+  converted: toOpaqueHex(color("success")),
+  dropped: toOpaqueHex(color("error")),
 });
 
 const getNodeKinds = (
@@ -87,12 +100,14 @@ const getLinkValue = ({ value }: SankeyLink) =>
   typeof value === "number" ? value : 0;
 
 /**
- * The nodes column by column, each column by kind, then events by the mean
+ * The nodes column by column, each column by kind, then events from highest
+ * to lowest conversion when there is one. Otherwise events go by the mean
  * position of where their flows come from, which keeps crossings down.
  */
 const orderNodes = (
   data: SankeyData,
   kinds: Map<RowValue, PathNodeKind>,
+  conversion: SankeyConversion | undefined,
 ): SankeyNode[] => {
   const incomingLinks = _.groupBy(data.links, (link) =>
     String(link.targetNode.rawName),
@@ -121,6 +136,7 @@ const orderNodes = (
         return {
           node,
           kindOrder: KIND_ORDER[kinds.get(node.rawName) ?? "step"],
+          rate: conversion?.byNode.get(node.rawName)?.rate ?? 0,
           sourcePosition: inflow > 0 ? weightedPosition / inflow : 0,
           volume: Math.max(inflow, outflowByNode.get(node.rawName) ?? 0),
         };
@@ -128,6 +144,7 @@ const orderNodes = (
       .sort(
         (a, b) =>
           a.kindOrder - b.kindOrder ||
+          b.rate - a.rate ||
           a.sourcePosition - b.sourcePosition ||
           b.volume - a.volume,
       );
@@ -136,10 +153,40 @@ const orderNodes = (
   });
 };
 
+const isOutcomeKind = (kind: PathNodeKind) =>
+  kind === "converted" || kind === "dropped";
+
+/**
+ * Conversion at each node, when the links are split by outcome. The links
+ * into a converted node tell which breakout value means converting.
+ */
+const getConversion = (
+  data: SankeyData,
+  kinds: Map<RowValue, PathNodeKind>,
+): SankeyConversion | undefined => {
+  const convertedValue = data.links.find(
+    (link) => kinds.get(link.targetNode.rawName) === "converted",
+  )?.breakoutValue;
+  if (convertedValue === undefined) {
+    return undefined;
+  }
+  const colors = getPathColors();
+  return {
+    byNode: getSankeyConversion({
+      data,
+      convertedValue,
+      isOutcome: (node) => isOutcomeKind(kinds.get(node.rawName) ?? "step"),
+      colors,
+    }),
+    colors: getConversionScale(colors),
+  };
+};
+
 const getNodeColors = (
   data: SankeyData,
   kinds: Map<RowValue, PathNodeKind>,
   hasBreakout: boolean,
+  conversion: SankeyConversion | undefined,
 ): Record<string, string> => {
   const pathColors = getPathColors();
   const kindOf = (node: SankeyNode) => kinds.get(node.rawName) ?? "step";
@@ -152,7 +199,14 @@ const getNodeColors = (
     ),
   );
   const getNodeColor = (node: SankeyNode): string => {
-    switch (kindOf(node)) {
+    const kind = kindOf(node);
+    if (conversion !== undefined && !isOutcomeKind(kind)) {
+      return getConversionColor(
+        conversion.byNode.get(node.rawName)?.lift,
+        pathColors,
+      );
+    }
+    switch (kind) {
       case "step":
         return hasBreakout
           ? pathColors.neutral
@@ -199,13 +253,23 @@ export const getPathsSankeyChartModel = (
     breakout,
   });
   const kinds = getNodeKinds(rows, sankeyColumns, kindIndex);
-  const data = { ...unorderedData, nodes: orderNodes(unorderedData, kinds) };
+  // Rates don't depend on the order, but each node's next steps are listed in it.
+  const data = {
+    ...unorderedData,
+    nodes: orderNodes(
+      unorderedData,
+      kinds,
+      getConversion(unorderedData, kinds),
+    ),
+  };
+  const conversion = getConversion(data, kinds);
 
   return {
     data,
     formatters: getSankeyFormatters(sankeyColumns, settings),
     sankeyColumns,
-    nodeColors: getNodeColors(data, kinds, breakout !== undefined),
+    nodeColors: getNodeColors(data, kinds, breakout !== undefined, conversion),
     keepsNodeOrder: true,
+    conversion,
   };
 };

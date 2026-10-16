@@ -57,6 +57,31 @@ export interface SankeyFormatters {
   nodeLabel: (node: SankeyNode) => string;
 }
 
+export interface SankeyConversionStep {
+  node: SankeyNode;
+  people: number;
+  converted: number;
+  rate: number;
+  /** Colored by how the rate compares with the rate of the step before. */
+  color: string;
+}
+
+export interface SankeyNodeConversion {
+  people: number;
+  converted: number;
+  rate: number;
+  /** The rate over the average of the people still on their way at this step. */
+  lift: number | undefined;
+  /** Where people went next, in node order. */
+  nextSteps: SankeyConversionStep[];
+}
+
+export interface SankeyConversion {
+  byNode: Map<RowValue, SankeyNodeConversion>;
+  /** Every color the conversion scale can produce. */
+  colors: string[];
+}
+
 export interface SankeyChartModel {
   data: SankeyData;
   formatters: SankeyFormatters;
@@ -64,4 +89,6 @@ export interface SankeyChartModel {
   nodeColors: Record<string, string>;
   /** Draw the nodes in `data.nodes` order, rather than reordering them to reduce crossings. */
   keepsNodeOrder?: boolean;
+  /** Set when links are split by an outcome, to show conversion at each node. */
+  conversion?: SankeyConversion;
 }

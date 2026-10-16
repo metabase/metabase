@@ -103,7 +103,7 @@ export const planFunnelPaths = (
   const endLabel = funnel.steps[end - 1].label;
   const window = seconds(funnel.window);
   const outcomes = getOutcomeLabels();
-  const moreLabel = t`(More than ${steps} steps)`;
+  const moreLabel = t`(> ${steps} steps)`;
   const windowStart = funnel.anchor === "each" ? `c.c_${start}` : "c.c_1";
 
   // Splitting would give an actor a row per split value.

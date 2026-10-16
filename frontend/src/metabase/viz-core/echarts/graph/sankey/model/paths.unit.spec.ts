@@ -1,4 +1,3 @@
-import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import type { RowValue } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
@@ -7,6 +6,8 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
 
+import { getPathColors } from "./paths";
+
 import { getSankeyChartModel } from "./index";
 
 type SetupOpts = {
@@ -14,6 +15,7 @@ type SetupOpts = {
   hasOutcome?: boolean;
 };
 
+const COLORS = getPathColors();
 const CONVERTED = "Converted";
 const NOT_CONVERTED = "Didn't convert";
 
@@ -43,8 +45,8 @@ const setup = ({ rows, hasOutcome = false }: SetupOpts) => {
       ...(hasOutcome && {
         "sankey.breakout": "outcome",
         "sankey.breakout_colors": {
-          [CONVERTED]: color("success"),
-          [NOT_CONVERTED]: color("error"),
+          [CONVERTED]: COLORS.converted,
+          [NOT_CONVERTED]: COLORS.dropped,
         },
       }),
     },
@@ -94,8 +96,8 @@ describe("getSankeyChartModel with product analytics paths", () => {
     const pricingColor = nodeByKey(model, "1. /pricing").color;
     expect(nodeByKey(model, "3. /pricing").color).toBe(pricingColor);
     expect(nodeByKey(model, "2. /signup").color).not.toBe(pricingColor);
-    expect(nodeByKey(model, "3. (other)").color).toBe(color("text-tertiary"));
-    expect(nodeByKey(model, "3. (dropped)").color).toBe(color("text-tertiary"));
+    expect(nodeByKey(model, "3. (other)").color).toBe(COLORS.neutral);
+    expect(nodeByKey(model, "3. (dropped)").color).toBe(COLORS.neutral);
     expect(model.data.links.every((link) => link.color === undefined)).toBe(
       true,
     );
@@ -155,15 +157,15 @@ describe("getSankeyChartModel with product analytics paths", () => {
         label,
       })),
     ).toEqual([
-      { value: 3, color: color("success"), label: CONVERTED },
-      { value: 7, color: color("error"), label: NOT_CONVERTED },
+      { value: 3, color: COLORS.converted, label: CONVERTED },
+      { value: 7, color: COLORS.dropped, label: NOT_CONVERTED },
     ]);
-    expect(nodeByKey(model, "2. /signup").color).toBe(color("text-tertiary"));
+    expect(nodeByKey(model, "2. /signup").color).toBe(COLORS.neutral);
     expect(nodeByKey(model, "3. (converted) Purchased")).toEqual({
       displayName: "Purchased",
-      color: color("success"),
+      color: COLORS.converted,
     });
-    expect(nodeByKey(model, "3. (dropped)").color).toBe(color("error"));
+    expect(nodeByKey(model, "3. (dropped)").color).toBe(COLORS.dropped);
   });
 
   it("colors a few events repeated over many steps from the main palette", () => {
@@ -195,39 +197,13 @@ describe("getSankeyChartModel with product analytics paths", () => {
     expect(new Set(colors).size).toBe(events.length);
   });
 
-  it("orders each column with outcomes at the edges and events by where they come from", () => {
+  it("without conversion, orders each column by kind, then events by where they come from", () => {
     const model = setup({
-      hasOutcome: true,
       rows: [
-        [
-          "1. /",
-          "2. (dropped)",
-          "/",
-          "(Dropped off)",
-          "dropped",
-          NOT_CONVERTED,
-          50,
-        ],
-        ["1. /", "2. /app", "/", "/app", "step", NOT_CONVERTED, 10],
-        [
-          "1. /pricing",
-          "2. (converted) Purchased",
-          "/pricing",
-          "Purchased",
-          "converted",
-          CONVERTED,
-          2,
-        ],
-        [
-          "1. /pricing",
-          "2. /signup",
-          "/pricing",
-          "/signup",
-          "step",
-          NOT_CONVERTED,
-          40,
-        ],
-        ["1. /", "2. (other)", "/", "(Other)", "other", NOT_CONVERTED, 30],
+        ["1. /", "2. (dropped)", "/", "(Dropped off)", "dropped", 50],
+        ["1. /", "2. /app", "/", "/app", "step", 10],
+        ["1. /pricing", "2. /signup", "/pricing", "/signup", "step", 40],
+        ["1. /", "2. (other)", "/", "(Other)", "other", 30],
       ],
     });
 
@@ -235,7 +211,6 @@ describe("getSankeyChartModel with product analytics paths", () => {
     expect(model.data.nodes.map(({ rawName }) => rawName)).toEqual([
       "1. /",
       "1. /pricing",
-      "2. (converted) Purchased",
       "2. /app",
       "2. /signup",
       "2. (other)",
