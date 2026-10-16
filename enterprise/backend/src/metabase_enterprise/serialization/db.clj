@@ -72,10 +72,11 @@
   (t2/select-fn->fn :resource_collection_id :name :model/DataApp {:where [:not= :resource_collection_id nil]}))
 
 (mu/defn layout-cards
-  "The `:entity_id`, `:name`, `:created_at`, `:archived`, `:collection_id`, `:dashboard_id`, `:document_id` and
-  `:type` of every Card."
+  "The `:id`, `:entity_id`, `:name`, `:created_at`, `:archived`, `:collection_id`, `:dashboard_id`, `:document_id`
+  and `:type` of every Card."
   []
-  (t2/select [:model/Card :entity_id :name :created_at :archived :collection_id :dashboard_id :document_id :type]))
+  (t2/select [:model/Card :id :entity_id :name :created_at :archived :collection_id :dashboard_id :document_id
+              :type]))
 
 (mu/defn layout-dashboards
   "The `:entity_id`, `:name`, `:created_at`, `:archived` and `:collection_id` of every Dashboard."
@@ -123,14 +124,24 @@
   (t2/select [:model/TransformJob :entity_id :name :created_at]))
 
 (mu/defn layout-segments
-  "The `:entity_id`, `:name`, `:created_at`, `:archived` and `:table_id` of every Segment."
+  "The `:id`, `:entity_id`, `:name`, `:created_at`, `:archived` and `:table_id` of every Segment."
   []
-  (t2/select [:model/Segment :entity_id :name :created_at :archived :table_id]))
+  (t2/select [:model/Segment :id :entity_id :name :created_at :archived :table_id]))
 
 (mu/defn layout-measures
-  "The `:entity_id`, `:name`, `:created_at`, `:archived` and `:table_id` of every Measure."
+  "The `:id`, `:entity_id`, `:name`, `:created_at`, `:archived` and `:table_id` of every Measure."
   []
-  (t2/select [:model/Measure :entity_id :name :created_at :archived :table_id]))
+  (t2/select [:model/Measure :id :entity_id :name :created_at :archived :table_id]))
+
+(mu/defn ai-context-rows
+  "Every OsiAiContext."
+  []
+  (t2/select :model/OsiAiContext))
+
+(mu/defn tables-by-id
+  "The `:id`, `:name`, `:schema` and `:db_id` of the Tables with `table-ids`."
+  [table-ids :- [:sequential pos-int?]]
+  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids]))
 
 (mu/defn layout-glossary
   "The `:entity_id`, `:term` and `:created_at` of every Glossary entry."

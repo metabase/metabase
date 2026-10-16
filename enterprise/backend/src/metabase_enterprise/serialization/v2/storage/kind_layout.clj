@@ -130,7 +130,8 @@
 
 (defn- collections-index [ctx]
   (cached ctx ::collections
-          #(let [rows (serialization.db/layout-collections)]
+          ;; the base storage context has read every collection already
+          #(let [rows (or (:collection-rows ctx) (serialization.db/layout-collections))]
              {:by-eid (u/index-by :entity_id rows)
               :by-id  (u/index-by :id rows)})))
 
@@ -512,34 +513,56 @@
   [item-path]
   (str (str/replace item-path #"\.yaml$" "") "/" ai-context-file))
 
-(defn- ai-contexts
-  "Every extracted OsiAiContext, by `[entity_type portable-id]` of the item it describes."
-  [{:keys [extract-opts] :as ctx}]
-  (cached ctx ::ai-contexts
-          #(let [opts (or extract-opts {})]
-             (into {}
-                   (map (fn [row]
-                          (let [entity (serdes/extract-one "OsiAiContext" opts row)]
-                            [[(:entity_type entity) (:entity_local_id entity)] entity])))
-                   (serdes/extract-query "OsiAiContext" opts)))))
+(defn- ai-context-rows
+  "Every OsiAiContext row, by `[entity_type entity_local_id]`."
+  [ctx]
+  (cached ctx ::ai-context-rows
+          #(u/index-by (juxt :entity_type :entity_local_id) (serialization.db/ai-context-rows))))
+
+(defn- ids-by-entity-id
+  "The id of each instance of the kind `k` of [[row-queries]], by entity_id."
+  [ctx k]
+  (cached ctx [::ids k] #(into {} (map (juxt :entity_id :id)) (rows ctx k))))
+
+(defn- table-ids-by-ref
+  "The id of each Table with an AI context, by `[db schema table]`."
+  [ctx]
+  (cached ctx ::table-ids
+          #(let [ids (into [] (keep (fn [[entity-type id]] (when (= "table" entity-type) id))) (keys (ai-context-rows ctx)))]
+             (if (empty? ids)
+               {}
+               (let [db-names (serialization.db/database-names-by-id)]
+                 (into {}
+                       (map (fn [{:keys [id db_id schema] table-name :name}]
+                              [[(db-names db_id) schema table-name] id]))
+                       (serialization.db/tables-by-id ids)))))))
 
 (defn- ai-context-key
-  "The `[entity_type portable-id]` of the AI context of the extracted `entity`, or nil for a kind that has none."
-  [entity]
+  "The `[entity_type entity_local_id]` of the AI context of the extracted `entity`, or nil for a kind that has none."
+  [ctx entity]
   (case (model-of entity)
-    "Card"    ["card" (:entity_id entity)]
-    "Measure" ["measure" (:entity_id entity)]
-    "Segment" ["segment" (:entity_id entity)]
-    "Table"   ["table" (table-ref (serdes/path entity))]
+    "Card"    ["card" (get (ids-by-entity-id ctx :cards) (:entity_id entity))]
+    "Measure" ["measure" (get (ids-by-entity-id ctx :measures) (:entity_id entity))]
+    "Segment" ["segment" (get (ids-by-entity-id ctx :segments) (:entity_id entity))]
+    "Table"   ["table" (get (table-ids-by-ref ctx) (table-ref (serdes/path entity)))]
     nil))
+
+(defn- extract-ai-context
+  "The extracted form of the OsiAiContext `row` of the extracted `entity`. The row's portable reference to its item is
+  the item's own, so the extraction looks nothing up."
+  [{:keys [extract-opts]} entity row]
+  (binding [serdes/*export-fk*       (fn [_id _model] (:entity_id entity))
+            serdes/*export-table-fk* (fn [_id] (table-ref (serdes/path entity)))]
+    (serdes/extract-one "OsiAiContext" (or extract-opts {}) row)))
 
 (defn- with-ai-context
   "`document`, the file of the extracted `entity`, with the entity's AI context as the file `osi_ai_context.yaml` in
   the entity's folder, beside its file, when it has one."
   [ctx entity document]
-  (if-let [ai-context (some->> (ai-context-key entity) (get (ai-contexts ctx)))]
+  (if-let [row (when-let [[_ id :as k] (ai-context-key ctx entity)]
+                 (when id (get (ai-context-rows ctx) k)))]
     (assoc document :serdes/resources {(str (peek (item-path ctx entity)) "/" ai-context-file)
-                                       (storage.util/entity-yaml ai-context)})
+                                       (storage.util/entity-yaml (extract-ai-context ctx entity row))})
     document))
 
 (defn- document

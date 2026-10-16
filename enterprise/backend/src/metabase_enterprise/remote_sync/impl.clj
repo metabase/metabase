@@ -379,22 +379,60 @@
         (remote-sync.db/delete-dimensions! (vec batch)))
       table-ids)))
 
+(defn- seen-ai-context-keys
+  "The `[entity_type entity_local_id]` of each AI context among `seen-paths` (the serdes paths a load read), read with
+  one query per kind of item."
+  [seen-paths]
+  (let [parents (for [path seen-paths
+                      :when (= "OsiAiContext" (:model (last path)))]
+                  (pop (serialization/strip-labels path)))
+        {tables "Table" :as by-model} (group-by (comp :model last) parents)]
+    (into (set (for [[model-type entity-type] spec/ai-context-entity-types
+                     :let  [eids (seq (map (comp :id last) (get by-model model-type)))]
+                     :when eids
+                     {:keys [id]} (remote-sync.db/ids-by-entity-ids (keyword "model" model-type) (vec eids))]
+                 [entity-type id]))
+          (when (seq tables)
+            (let [refs     (into #{} (map serdes/table-path->table-ref) tables)
+                  db-names (into {} (map (juxt :id :name))
+                                 (remote-sync.db/databases-named (vec (into #{} (map first) refs))))]
+              (for [{:keys [id db_id schema] table-name :name}
+                    (remote-sync.db/tables-named (vec (into #{} (map peek) refs)))
+                    :when (contains? refs [(db-names db_id) schema table-name])]
+                ["table" id]))))))
+
 (defn- remove-unsynced-ai-contexts!
   "Deletes the AI context of each synced item that `seen-paths` did not import, and of each item that is gone: an
-  item's AI context syncs exactly when the item does."
+  item's AI context syncs exactly when the item does. Runs after the RemoteSyncObject table is rebuilt, which says
+  which cards, measures and segments sync; a table syncs when it is published in a remote-synced collection."
   [seen-paths]
-  (let [seen (into #{}
-                   (comp (filter #(= "OsiAiContext" (:model (last %))))
-                         (map serialization/strip-labels))
-                   seen-paths)]
-    (doseq [{:keys [entity_type entity_local_id] :as row} (remote-sync.db/ai-contexts)
-            :let  [model-key (spec/ai-context-parent-models entity_type)
-                   item      (some-> model-key (remote-sync.db/instance entity_local_id))]
-            :when (and model-key
-                       (or (nil? item)
-                           (and (spec/ai-context-item-synced? entity_type item)
-                                (not (contains? seen (serialization/strip-labels
-                                                      (serdes/generate-path "OsiAiContext" row)))))))]
+  (let [rows     (remote-sync.db/ai-contexts)
+        seen     (seen-ai-context-keys seen-paths)
+        synced   (into #{} (map (juxt :model_type :model_id)) (remote-sync.db/rso-keys))
+        items    (into {}
+                       (for [[entity-type type-rows] (group-by :entity_type rows)
+                             :let  [model-key (spec/ai-context-parent-models entity-type)]
+                             :when model-key
+                             item  (remote-sync.db/instances-by-ids model-key (vec (map :entity_local_id type-rows)))]
+                         [[entity-type (:id item)] item]))
+        model-of (into {} (map (fn [[model-type entity-type]] [entity-type model-type])) spec/ai-context-entity-types)
+        synced-collections (let [ids (into [] (keep (fn [[[entity-type _] item]]
+                                                      (when (= "table" entity-type) (:collection_id item))))
+                                           items)]
+                             (if (seq ids)
+                               (into #{} (keep #(when (:is_remote_synced %) (:id %)))
+                                     (remote-sync.db/collection-sync-states ids))
+                               #{}))
+        synced?  (fn [entity-type {:keys [id is_published collection_id]}]
+                   (if (= "table" entity-type)
+                     (boolean (and is_published (contains? synced-collections collection_id)))
+                     (contains? synced [(model-of entity-type) id])))]
+    (doseq [{:keys [entity_type entity_local_id]} rows
+            :when (spec/ai-context-parent-models entity_type)
+            :let  [item (get items [entity_type entity_local_id])]
+            :when (or (nil? item)
+                      (and (synced? entity_type item)
+                           (not (contains? seen [entity_type entity_local_id]))))]
       (remote-sync.db/delete-ai-context! entity_type entity_local_id))))
 
 (defn- track-user-settings!
@@ -470,8 +508,9 @@
         has-transforms?     (snapshot-has-transforms? base-ingestable)
         _                   (sync-library-with-repo! snapshot)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
-        load-result         (serdes/with-cache
-                              (serialization/load-metabase! ingestable-snapshot :reindex? false))
+        load-result         (binding [spec/*loading-from-repo?* true]
+                              (serdes/with-cache
+                                (serialization/load-metabase! ingestable-snapshot :reindex? false)))
         seen-paths          (:seen load-result)
         imported-data       (spec/extract-imported-entities seen-paths)]
     (report 0.7 {:force? true})
@@ -485,10 +524,7 @@
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
             _                     (remove-unsynced! synced-collection-ids (keep-library-roots imported-data))
-            settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)
-            _                     (when (and (remote-sync.layout/kind-layout?)
-                                             (repo-in-kind-layout? snapshot))
-                                    (remove-unsynced-ai-contexts! seen-paths))]
+            settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
         ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
         ;; insert. Chunked so insert/IN params and memory stay bounded.
@@ -496,6 +532,9 @@
         (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
                                (source.ingestable/cached-file-paths base-ingestable))
         (track-user-settings! settings-table-ids sync-timestamp)
+        (when (and (remote-sync.layout/kind-layout?)
+                   (repo-in-kind-layout? snapshot))
+          (remove-unsynced-ai-contexts! seen-paths))
         (collection/ensure-library-dashboards-collection!)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
@@ -589,10 +628,11 @@
   [{:keys [ingestable deleted-rsos] :as _plan} snapshot-version report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
   (let [load-result   (when ingestable
-                        (serdes/with-cache
-                          (serialization/load-metabase!
-                           (source.ingestable/wrap-progress-ingestable report [0.05 0.7] ingestable)
-                           :reindex? false)))
+                        (binding [spec/*loading-from-repo?* true]
+                          (serdes/with-cache
+                            (serialization/load-metabase!
+                             (source.ingestable/wrap-progress-ingestable report [0.05 0.7] ingestable)
+                             :reindex? false))))
         imported-data (spec/extract-imported-entities (:seen load-result))
         loaded-eid?   (fn [model-type eid]
                         ;; by-entity-id holds sets of raw entity_id strings, keyed by model type
@@ -1296,10 +1336,11 @@
 
   Returns:
    - {:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}, or
-   - :remote-sync/incremental-not-possible when any row can't go incrementally"
-  [rule snapshot rows]
-  (let [opts          (remote-sync.layout/storage-context)
-        ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
+   - :remote-sync/incremental-not-possible when any row can't go incrementally
+
+  `opts` is the storage context of the export, which its writes use too."
+  [rule snapshot opts rows]
+  (let [;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
         ;; (removed/delete, non-entity-id, bad status) is decided with no entity
         {cu-rows true other-rows false} (group-by #(boolean (and (#{"create" "update"} (:status %))
                                                                  (= :entity-id (:identity (spec/spec-for-model-type (:model_type %))))))
@@ -1472,7 +1513,7 @@
            :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
 
 (defn- incremental-export!
-  [plan disabled-files task-id snapshot message sync-timestamp]
+  [plan opts disabled-files task-id snapshot message sync-timestamp]
   (let [{:keys [writes delete-paths removed-ids]} plan
         delete-paths (into (vec delete-paths) disabled-files)
         report       (remote-sync.task/make-progress-reporter task-id)
@@ -1481,7 +1522,7 @@
     (report export-progress-plan-done {:force? true})
     (let [[synced version] (commit-staged! snapshot message
                                            (fn [commit]
-                                             (let [synced (stage-writes commit (remote-sync.layout/storage-context)
+                                             (let [synced (stage-writes commit opts
                                                                         (fn [row _entity] (:file_path row)) writes
                                                                         (fn [staged]
                                                                           (report (+ export-progress-plan-done
@@ -1533,8 +1574,10 @@
                                       (not= base-version remote-version))
                   disabled-files (delay (disabled-files snapshot))
                   dirty-rows     (delay (remote-sync.object/dirty-rows))
+                  ;; one storage context for the plan and the writes, so the layout reads the app DB once
+                  storage-ctx    (delay (remote-sync.layout/storage-context))
                   ;; computed with no dirty rows too: the move rule may move unchanged items
-                  plan           (delay (incremental-export-plan rule snapshot @dirty-rows))]
+                  plan           (delay (incremental-export-plan rule snapshot @storage-ctx @dirty-rows))]
               (cond
                 ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
                 force?
@@ -1577,7 +1620,7 @@
                    :outcome {:kind "push-skipped"}})
 
                 (not= @plan :remote-sync/incremental-not-possible)
-                (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp)
+                (incremental-export! @plan @storage-ctx @disabled-files task-id snapshot message sync-timestamp)
 
                 :else ;; fall back to full
                 (do

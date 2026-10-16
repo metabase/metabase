@@ -823,8 +823,12 @@
   "Creates the basic context for storage.
   - `:collections` maps collection entity_id to a vector of `{:label ... :key ...}` maps representing
     the collection hierarchy.
-  - `:dashboards` maps dashboard entity_id to `{:label ... :key ...}` for use as virtual subcollections.
-  - `:documents` maps document entity_id to `{:label ... :key ...}` for use as virtual subcollections.
+  - `:collection-rows` is every Collection's row (see [[models.db/collection-paths-columns]]), for a layout that
+    places collections itself.
+  - `:dashboards` is a delay of a map of dashboard entity_id to `{:label ... :key ...}` for use as virtual
+    subcollections.
+  - `:documents` is a delay of a map of document entity_id to `{:label ... :key ...}` for use as virtual
+    subcollections.
   - `:collection-namespace-folders` maps collection entity_id to the folder under `collections/` its namespace
     is written to (see [[collection-namespace-folder]]).
   - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
@@ -841,13 +845,15 @@
                                                           {:label (:name c) :key (:entity_id c)}))
                                                       all-ids)]]
                            [entity_id path-maps]))
-        dashboards (into {}
-                         (for [{:keys [entity_id name]} (models.db/dashboard-entity-ids-and-names)]
-                           [entity_id {:label name :key entity_id}]))
-        documents  (into {}
-                         (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)]
-                           [entity_id {:label name :key entity_id}]))]
+        ;; read only when a card in a dashboard or document is placed, so a context for one other item doesn't
+        dashboards (delay (into {}
+                                (for [{:keys [entity_id name]} (models.db/dashboard-entity-ids-and-names)]
+                                  [entity_id {:label name :key entity_id}])))
+        documents  (delay (into {}
+                                (for [{:keys [entity_id name]} (models.db/document-entity-ids-and-names)]
+                                  [entity_id {:label name :key entity_id}])))]
     {:collections coll->path
+     :collection-rows colls
      :collection-namespace-folders (into {}
                                          (for [{:keys [entity_id namespace]} colls]
                                            [entity_id (collection-namespace-folder namespace)]))

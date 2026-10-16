@@ -68,19 +68,23 @@
 ;;; lingering until the periodic full reconcile. Outside a transaction the write has already committed, so
 ;;; [[app-db/do-after-commit]] runs the nudge immediately.
 (defn- nudge-entity-sync!
-  "After the surrounding transaction commits, nudge a targeted reconcile of `row`'s entity slice, and publish
-  `:event/osi-ai-context-change` for it, so that a handler reads the committed state (a deleted row is gone).
-  Returns `row`."
-  [{:keys [entity_type entity_local_id] :as row}]
-  (u/prog1 row
-    (app-db/do-after-commit
-     (fn []
-       (mirror/request-entity-sync! entity_type entity_local_id)
-       (events/publish-event! :event/osi-ai-context-change {:object (select-keys row [:entity_type :entity_local_id])})))))
+  "After the surrounding transaction commits, nudge a targeted reconcile of `row`'s entity slice. Publish
+  `:event/osi-ai-context-change` for it now, or, when `after-commit?`, after the commit, so that a handler reads the
+  committed state (a deleted row is gone). Returns `row`."
+  ([row]
+   (nudge-entity-sync! row false))
+  ([{:keys [entity_type entity_local_id] :as row} after-commit?]
+   (let [publish! #(events/publish-event! :event/osi-ai-context-change
+                                          {:object (select-keys row [:entity_type :entity_local_id])})]
+     (u/prog1 row
+       (app-db/do-after-commit #(mirror/request-entity-sync! entity_type entity_local_id))
+       (if after-commit?
+         (app-db/do-after-commit publish!)
+         (publish!))))))
 
 (t2/define-after-insert :model/OsiAiContext [row] (nudge-entity-sync! row))
 (t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))
-(t2/define-before-delete :model/OsiAiContext [row] (nudge-entity-sync! row))
+(t2/define-before-delete :model/OsiAiContext [row] (nudge-entity-sync! row true))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 ;;;

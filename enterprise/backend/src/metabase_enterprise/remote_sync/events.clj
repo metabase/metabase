@@ -336,7 +336,8 @@
   "An item's AI context is a file in the item's folder, so a change to it is a change to the item: mark the item
   changed when it syncs."
   [{{:keys [entity_type entity_local_id]} :object}]
-  (when (remote-sync.layout/kind-layout?)
+  (when (and (remote-sync.layout/kind-layout?)
+             (not spec/*loading-from-repo?*))
     (when-let [model-spec (some-> (spec/ai-context-parent-models entity_type) spec/spec-for-model-key)]
       (let [item (remote-sync.db/instance (:model-key model-spec) entity_local_id)]
         (when (and (spec/ai-context-item-synced? entity_type item)

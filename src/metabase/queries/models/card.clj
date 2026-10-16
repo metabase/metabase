@@ -1650,13 +1650,13 @@
   (let [base (serdes/storage-default-collection-path card ctx)]
     (cond
       (:dashboard_id card)
-      (let [dash-segment (get (:dashboards ctx) (:dashboard_id card))]
+      (let [dash-segment (get (force (:dashboards ctx)) (:dashboard_id card))]
         (if dash-segment
           (into (vec (butlast base)) [dash-segment (last base)])
           base))
 
       (:document_id card)
-      (let [doc-segment (get (:documents ctx) (:document_id card))]
+      (let [doc-segment (get (force (:documents ctx)) (:document_id card))]
         (if doc-segment
           (into (vec (butlast base)) [doc-segment (last base)])
           base))

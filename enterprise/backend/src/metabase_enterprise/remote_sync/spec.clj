@@ -862,6 +862,11 @@
         (not (in-excluded-collection? spec object))
         (check-eligibility-by-type spec object))))
 
+(def ^:dynamic *loading-from-repo?*
+  "True while a pull loads the repository's content, which the pull then records as synced; a change it makes is not a
+  local change to push."
+  false)
+
 (def ai-context-parent-models
   "The model of the item each OsiAiContext `entity_type` describes."
   {"card"     :model/Card

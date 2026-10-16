@@ -459,6 +459,28 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
 
+(mu/defn ids-by-entity-ids
+  "The `:id` and `:entity_id` of the instances of `model-key` with `entity-ids`."
+  [model-key  :- :keyword
+   entity-ids :- [:sequential :string]]
+  (t2/select [model-key :id :entity_id] :entity_id [:in entity-ids]))
+
+(mu/defn instances-by-ids
+  "The instances of `model-key` with `ids`."
+  [model-key :- :keyword
+   ids       :- [:sequential pos-int?]]
+  (t2/select model-key :id [:in ids]))
+
+(mu/defn tables-named
+  "The `:id`, `:name`, `:schema` and `:db_id` of the Tables named one of `table-names`."
+  [table-names :- [:sequential :string]]
+  (t2/select [:model/Table :id :name :schema :db_id] :name [:in table-names]))
+
+(mu/defn databases-named
+  "The `:id` and `:name` of the Databases named one of `database-names`."
+  [database-names :- [:sequential :string]]
+  (t2/select [:model/Database :id :name] :name [:in database-names]))
+
 (mu/defn ai-contexts
   "The `:entity_type` and `:entity_local_id` of every OsiAiContext."
   []
