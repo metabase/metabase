@@ -269,7 +269,7 @@
     (testing "should-continue? is unaffected — the gate lives in loop-step, per profile"
       (is (#'agent/should-continue? 0 20 #{} denial)))))
 
-(deftest a-failed-call-shows-its-error-in-the-trace-summary-test
+(deftest ^:parallel a-failed-call-shows-its-error-in-the-trace-summary-test
   (is (= {:class :unrecoverable :code :x}
          (-> (#'agent/summarize-tool-ios [(unrecoverable-part "a" nil)])
              :tool-results first :error))))
