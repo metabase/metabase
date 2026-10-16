@@ -339,7 +339,7 @@ settings: {
 
 ## Formatting and theming
 
-Render numbers, dates, and currencies the way the rest of Metabase does with `formatValue`. Pass the column the value comes from (required, Metabase formats a value according to its column's type) to pick up that column's formatting settings, and override with options like `currency`, `decimals`, `compact`, or `date_style`:
+Render numbers, dates, and currencies the way the rest of Metabase does with `formatValue`. Always pass the column the value comes from, since Metabase picks the formatting based on the column's type. Add options like `currency`, `decimals`, `compact`, or `date_style` to adjust it:
 
 ```tsx
 import { formatValue } from "@metabase/custom-viz";

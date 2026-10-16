@@ -90,10 +90,10 @@ export function toPluginSettings(
 
   const merged = Object.fromEntries([...hostEntries, ...pluginEntries]);
 
-  // Deep-clone so a plugin can't mutate a shared nested host object (e.g. `click_behavior`)
-  // through the sandbox membrane.
   const hostColumn = merged.column;
   const pluginSettings: PluginSettings = {
+    // Deep-clone so a plugin can't mutate a shared nested host object (e.g. `click_behavior`)
+    // through the sandbox membrane.
     ...cloneCloneableEntries(merged),
     column: (column) => {
       if (typeof hostColumn !== "function") {
