@@ -65,11 +65,7 @@ export const AnalysisToolbar = ({
               variant="default"
               aria-label={isPaletteOpen ? t`Hide segments` : t`Show segments`}
               aria-pressed={isPaletteOpen}
-              leftSection={
-                <Icon
-                  name={isPaletteOpen ? "sidebar_open" : "sidebar_closed"}
-                />
-              }
+              leftSection={<Icon name="database" />}
               onClick={onTogglePalette}
             />
           </Tooltip>
