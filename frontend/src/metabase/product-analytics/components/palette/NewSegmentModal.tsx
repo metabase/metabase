@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useCreateSegmentMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useMetadataProvider } from "metabase/metadata-store";
+import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import {
   Button,
+  Flex,
   Group,
   Modal,
   Stack,
@@ -19,7 +21,6 @@ import type { Segment, Table } from "metabase-types/api";
 
 import { readEventQuery } from "../../events/read-event-query";
 import type { SegmentDraft } from "../../segments/types";
-import { ConditionsEditor } from "../events/ConditionsEditor";
 
 const STAGE_INDEX = -1;
 
@@ -43,10 +44,12 @@ export const NewSegmentModal = ({
   const [createSegment, { isLoading }] = useCreateSegmentMutation();
   const [sendToast] = useToast();
   const metadataProvider = useMetadataProvider(Lib.databaseID(tableQuery));
-  const [query, setQuery] = useState(
-    () => (draft && readEventQuery(metadataProvider, draft)) ?? tableQuery,
+  // The draft's conditions are fixed here; edit the draft itself to change them.
+  const query = useMemo(
+    () => readEventQuery(metadataProvider, draft) ?? tableQuery,
+    [metadataProvider, draft, tableQuery],
   );
-  const [name, setName] = useState(draft?.name ?? "");
+  const [name, setName] = useState(draft.name);
   const [description, setDescription] = useState("");
   const filters = Lib.filters(query, STAGE_INDEX);
   const canSubmit = name.trim() !== "" && filters.length > 0 && !isLoading;
@@ -80,11 +83,13 @@ export const NewSegmentModal = ({
       <Stack gap="lg" pt="sm">
         <Stack gap="xs">
           <Text fw="bold">{t`Conditions`}</Text>
-          <ConditionsEditor
-            query={query}
-            onChange={setQuery}
-            initialOpened={filters.length === 0}
-          />
+          <Flex gap="sm" wrap="wrap">
+            {filters.map((filter, index) => (
+              <FilterPill key={index} readOnly>
+                {Lib.displayInfo(query, STAGE_INDEX, filter).displayName}
+              </FilterPill>
+            ))}
+          </Flex>
         </Stack>
         <TextInput
           label={t`Name`}
