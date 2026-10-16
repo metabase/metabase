@@ -36,6 +36,29 @@ that the runner tests against the path of each spec.
 `it.only`, `describe.only`, `it.skip`, `it.todo`, `it.failing` and `it.each`
 work as they do in jest.
 
+## Run it through jest
+
+`jest-runner.ts` is a jest runner. With it, jest selects the spec files and
+reports the results, and this runner runs the files in its worker pool. jest's
+options work as with jest, and so do its reporters, jest-junit among them.
+
+```sh
+bun run test-unit-agent                   # build cljs, then run every spec
+bun run test-unit-agent-keep-cljs ForgotPassword -t "submits"
+bun run test-unit-harness-jest            # jest's own output, as in CI
+```
+
+`test-unit-agent` prints the output of `--reporter agent` through
+`jest-agent-reporter.ts`. That reporter reads jest's results, so it also works
+with jest's own runner.
+
+jest's `--ignoreProjects` takes every argument after it, up to the next option.
+So the scripts end with `--runner`, and a spec pattern after the script name
+reaches jest as a pattern.
+
+Through jest, a failed spec file does not run a second time. Coverage is not
+available, and the runner stops with an error when it is on.
+
 ## Read the output
 
 A test that passes prints nothing. The runner keeps the console output of a
@@ -112,18 +135,16 @@ Testing Library keep their own limit.
 
 ## In CI
 
-The `fe-tests-unit` job in `.github/workflows/frontend.yml` runs this runner, in
-two shards, on each pull request and on each push to a merge target. The steps
-after it were written for jest: the result check, the report to ci-conductor
-and the quarantine gate. They read the two files that `--json-file` and
-`--junit-file` write. The quarantine list knows a test by its file and its
-full name, and the runner writes both as jest-junit does.
+The `fe-tests-unit` job in `.github/workflows/frontend.yml` runs the specs
+through jest with this runner, in two shards, on each pull request and on each
+push to a merge target. jest selects the files, with `--shard` and `JEST_TEST_PATHS_FILE`, the list of spec
+files that the test plan selects for a pull request. jest writes the JUnit
+report through jest-junit and the JSON summary through `--json`. The steps
+after it read those two files: the result check, the report to ci-conductor
+and the quarantine gate.
 
-The job also reads `JEST_TEST_PATHS_FILE`, the list of spec files that the test
-plan selects for a pull request.
-
-The job runs with `--no-confirm`, so a failed spec file does not run a second
-time. Each failed test fails the job, as under jest, and ci-conductor sees it.
+A failed spec file does not run a second time. Each failed test fails the job,
+as under jest, and ci-conductor sees it.
 
 The `fe-tests-unit-jest` job runs the same specs under jest on each push to a
 merge target, and not on a pull request. A test that passes in one job and
@@ -154,6 +175,8 @@ own files are never transformed or evaluated again between spec files.
 | File | What it holds |
 |---|---|
 | `cli.ts` | The command line and watch mode. |
+| `jest-runner.ts` | The jest runner. It runs jest's selected files in the pool, and turns each result into jest's `TestResult`. |
+| `jest-agent-reporter.ts` | A jest reporter that prints the output of `--reporter agent`. |
 | `pool.ts` | The worker pool. It hands spec files to workers and replaces a worker that uses too much memory. |
 | `reporters.ts` | The three kinds of output. |
 | `ci-results.ts` | The JUnit report and the JSON summary that the CI job reads. |
