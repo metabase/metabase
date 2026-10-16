@@ -81,6 +81,16 @@
                    (throw (ex-info "is-exclude option is only compatible with hour-of-day and day-of-week units"
                                    {:options options})))
 
+      ;; Numbered the way queries group weeks, like the labels from `u.time/format-unit`.
+      (= unit :week-of-year)
+      (u.time/format-unit time-config
+                          (cond
+                            (number? value)   value
+                            (u.time/valid? t) t
+                            ;; Not a date. Formatting the input keeps its text.
+                            :else             value)
+                          :week-of-year)
+
       ;; Weeks in tooltips and cells get formatted specially.
       (and (= unit :week) (#{"tooltip" "cell"} type) (not no-range))
       (format-range-with-unit time-config value options)
