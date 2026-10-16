@@ -39,6 +39,7 @@ import {
 } from "metabase-enterprise/api";
 import type {
   ConcreteTableId,
+  FieldId,
   MetadataGenerationApplyResult,
   MetadataGenerationDecisionRequest,
   MetadataGenerationRun,
@@ -50,6 +51,7 @@ import type {
 
 import { getAttributeLabel, getRunRequest } from "../../utils";
 
+import { FieldDetailsPane } from "./FieldDetailsPane";
 import S from "./ReviewModal.module.css";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -240,6 +242,7 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
     useState<ConcreteTableId | null>(null);
   const [applyResult, setApplyResult] =
     useState<MetadataGenerationApplyResult | null>(null);
+  const [detailFieldId, setDetailFieldId] = useState<FieldId | null>(null);
   const decideState = useDecide(runId);
 
   if (error) {
@@ -273,7 +276,10 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
           <TableList
             tables={tables}
             selectedTableId={selectedTable.table_id}
-            onSelect={setSelectedTableId}
+            onSelect={(tableId) => {
+              setSelectedTableId(tableId);
+              setDetailFieldId(null);
+            }}
           />
         </ScrollArea>
         <Box flex={1} miw={0}>
@@ -282,8 +288,22 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
             runId={runId}
             table={selectedTable}
             decideState={decideState}
+            detailFieldId={detailFieldId}
+            onToggleFieldDetails={(fieldId) =>
+              setDetailFieldId((current) =>
+                current === fieldId ? null : fieldId,
+              )
+            }
           />
         </Box>
+        {detailFieldId != null && (
+          <FieldDetailsPane
+            key={detailFieldId}
+            tableId={selectedTable.table_id}
+            fieldId={detailFieldId}
+            onClose={() => setDetailFieldId(null)}
+          />
+        )}
       </Flex>
     </Stack>
   );
@@ -499,9 +519,18 @@ type TableReviewProps = {
   runId: MetadataGenerationRunId;
   table: MetadataGenerationRunTable;
   decideState: DecideState;
+  /** The field whose details pane is open. */
+  detailFieldId: FieldId | null;
+  onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
-function TableReview({ runId, table, decideState }: TableReviewProps) {
+function TableReview({
+  runId,
+  table,
+  decideState,
+  detailFieldId,
+  onToggleFieldDetails,
+}: TableReviewProps) {
   const { decide, isDeciding } = decideState;
   const {
     data: suggestions,
@@ -565,7 +594,8 @@ function TableReview({ runId, table, decideState }: TableReviewProps) {
             <col className={S.attributeColumn} />
             <col className={S.currentColumn} />
             <col />
-            <col className={S.reasoningColumn} />
+            <col className={S.explanationColumn} />
+            <col className={S.detailsColumn} />
           </colgroup>
           <thead>
             <tr>
@@ -595,7 +625,8 @@ function TableReview({ runId, table, decideState }: TableReviewProps) {
               <th>{t`Attribute`}</th>
               <th>{t`Current`}</th>
               <th>{t`Proposed`}</th>
-              <th aria-label={t`Reasoning`} />
+              <th>{t`Explanation`}</th>
+              <th aria-label={t`Field details`} />
             </tr>
           </thead>
           <tbody>
@@ -610,6 +641,8 @@ function TableReview({ runId, table, decideState }: TableReviewProps) {
                 runId={runId}
                 isDeciding={decideState.decidingIds.has(suggestion.id)}
                 decide={decide}
+                isDetailOpen={suggestion.field_id === detailFieldId}
+                onToggleFieldDetails={onToggleFieldDetails}
               />
             ))}
           </tbody>
@@ -625,6 +658,8 @@ type SuggestionRowProps = {
   isFirstOfField: boolean;
   isDeciding: boolean;
   decide: Decide;
+  isDetailOpen: boolean;
+  onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
 function SuggestionRow({
@@ -633,6 +668,8 @@ function SuggestionRow({
   isFirstOfField,
   isDeciding,
   decide,
+  isDetailOpen,
+  onToggleFieldDetails,
 }: SuggestionRowProps) {
   const humanSet = isHumanSet(suggestion);
   const isConflict = humanSet && isSuggestionDecidable(suggestion);
@@ -713,13 +750,29 @@ function SuggestionRow({
         {suggestion.reasoning && (
           <Tooltip label={suggestion.reasoning} maw="25rem" multiline>
             <Icon
-              name="info"
+              name="comment"
               c="text-secondary"
-              aria-label={t`Reasoning`}
+              aria-label={t`Explanation`}
               aria-hidden={false}
             />
           </Tooltip>
         )}
+      </td>
+      <td>
+        <Tooltip
+          label={isDetailOpen ? t`Hide field details` : t`Field details`}
+        >
+          <ActionIcon
+            variant="subtle"
+            size="sm"
+            aria-label={t`Field details of ${fieldLabel}`}
+            aria-pressed={isDetailOpen}
+            c={isDetailOpen ? "text-brand" : "text-secondary"}
+            onClick={() => onToggleFieldDetails(suggestion.field_id)}
+          >
+            <Icon name="info" />
+          </ActionIcon>
+        </Tooltip>
       </td>
     </tr>
   );
