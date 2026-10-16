@@ -511,6 +511,7 @@
     "test-unit-keep-cljs": "jest --ignoreProjects ci-scripts",
     "test-unit-harness": "bun run build:cljs && bun run test-unit-harness-keep-cljs",
     "test-unit-harness-keep-cljs": "node frontend/test/harness/cli.ts --ignore-projects ci-scripts",
+    "test-unit-harness-jest": "bun run build:cljs && jest --runner ./frontend/test/harness/jest-runner.ts --ignoreProjects ci-scripts",
     "test-unit-harness-watch": "bun run test-unit-harness-keep-cljs --watch",
     "test-unit-watch": "bun run test-unit --watch",
     "test-unit-watch:cljs": "bun run concurrently -n 'cljs,tests' 'bun run build-watch:cljs' 'bun run test-unit-keep-cljs --watch'",
