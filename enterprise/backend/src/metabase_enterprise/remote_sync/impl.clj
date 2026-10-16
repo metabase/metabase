@@ -185,6 +185,24 @@
       :else
       (format "Failed to reload from git repository: %s" (or (ex-message e) (.getName (class e)))))))
 
+(defn- repo-library-content?
+  "Whether `snapshot` holds an entity file in a folder whose content syncs with the Library."
+  [snapshot]
+  (boolean (seq (source/owned-paths snapshot
+                                    (filter #(contains? serialization/library-content-folders
+                                                        (first (str/split % #"/" 2)))
+                                            (source.p/list-files snapshot))))))
+
+(defn- sync-library-with-repo!
+  "In a layout that gives the Library no files, turns Library sync on when `snapshot` holds Library content. In a
+  layout that writes them, the Library's own file says whether it syncs."
+  [snapshot]
+  (when (and (remote-sync.layout/library-without-files?)
+             (repo-library-content? snapshot))
+    (when-let [library (remote-sync.db/library-collection collection/library-collection-type)]
+      (when-not (:is_remote_synced library)
+        (remote-sync.db/mark-subtree-remote-synced! [library])))))
+
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
    - :first-import-conflicts - feature/namespace/library conflicts that only block on the very first import
@@ -400,6 +418,7 @@
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
         has-transforms?     (snapshot-has-transforms? base-ingestable)
+        _                   (sync-library-with-repo! snapshot)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
         load-result         (serdes/with-cache
                               (serialization/load-metabase! ingestable-snapshot :reindex? false))
@@ -794,7 +813,9 @@
               ;; conflict. It touches only changed files, so it can't wholesale-delete unsynced transforms.
               (and (not @dirty?)
                    (not= :remote-sync/incremental-not-possible @incremental-plan))
-              (incremental-load-snapshot! @incremental-plan snapshot-version report sync-timestamp :finalize! finalize!)
+              (do
+                (sync-library-with-repo! snapshot)
+                (incremental-load-snapshot! @incremental-plan snapshot-version report sync-timestamp :finalize! finalize!))
 
               (seq @blocking-conflicts)
               (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]

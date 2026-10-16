@@ -19,6 +19,12 @@
   []
   (serialization/storage-context layout))
 
+(defn library-without-files?
+  "Whether [[layout]] gives the Library's own collections no files, so that the repository holds only the Library's
+  content."
+  []
+  (identical? serialization/kind-layout layout))
+
 (defn current-move-rule
   "A full export writes every item at its computed path. An incremental export writes each changed
   item at its computed path and deletes its stored file when that differs; a moved collection needs a full export,
