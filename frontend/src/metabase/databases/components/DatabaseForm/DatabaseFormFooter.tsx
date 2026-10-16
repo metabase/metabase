@@ -1,4 +1,5 @@
 import { useFormikContext } from "formik";
+import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -36,6 +37,12 @@ export const DatabaseFormFooter = ({
   const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
   const isFullPage = location === "full-page";
+  // In the admin modal, lines up with DatabaseFormBody's `xl` side padding
+  const advancedFooterPx = match(location)
+    .with("full-page", () => undefined)
+    .with("admin", () => "xl")
+    .with("setup", "embedding_setup", () => "xxl")
+    .exhaustive();
   const hasConnectionError = useHasConnectionError();
   const isDirty = useIsFormDirty();
 
@@ -46,7 +53,7 @@ export const DatabaseFormFooter = ({
 
   if (isAdvanced) {
     return (
-      <FormFooter data-testid="form-footer" px={isFullPage ? undefined : "xxl"}>
+      <FormFooter data-testid="form-footer" px={advancedFooterPx}>
         <Flex justify="space-between" align="center" w="100%">
           <Flex gap="sm" align="center">
             <DatabaseTestConnectionButton />
