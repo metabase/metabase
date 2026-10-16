@@ -543,7 +543,10 @@
                       :ttl/threshold (.toMillis ^java.time.Duration local-ttl))]
     (reify TokenChecker
       (-check-token [_ token]
-        (cached-check token))
+        ;; don't cache the app-db-not-ready failure past setup
+        (if (app-db/db-is-set-up?)
+          (cached-check token)
+          (-check-token token-checker token)))
       (-clear-cache! [_]
         (memoize/memo-clear! cached-check)
         (-clear-cache! token-checker))
