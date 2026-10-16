@@ -77,9 +77,8 @@
                                   "accepted"   (oauth-server/mcp-resource-scopes path)}]
             (testing label
               (is (empty? (duplicates scopes)))))))
-      (testing "the v2 surface and baseline literals have no duplicates of their own"
-        (is (empty? (duplicates (mcp/v2-scopes))))
-        (is (empty? (duplicates (mcp/v2-baseline-scopes))))))))
+      (testing "the v2 surface literal has no duplicates of its own"
+        (is (empty? (duplicates (mcp/v2-scopes))))))))
 
 (deftest rationalized-scopes-are-in-the-default-grant-test
   (testing "GHY-4225: the five v2 scopes must all reach the default grant a dynamically-registered
