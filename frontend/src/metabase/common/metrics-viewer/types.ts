@@ -14,7 +14,7 @@ import type { CardDisplayType } from "metabase-types/api";
 
 export type MetricsViewerDisplayType = Extract<
   CardDisplayType,
-  "line" | "area" | "bar" | "map" | "scatter" | "scalar"
+  "line" | "area" | "bar" | "map" | "scatter" | "scalar" | "table"
 >;
 
 export type MetricsViewerDimensionBreakoutType = DimensionType | "scalar";

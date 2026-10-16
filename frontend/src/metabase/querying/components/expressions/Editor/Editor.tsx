@@ -394,7 +394,7 @@ function useExpression({
   };
 }
 
-function getTooltipPosition(state: EditorState) {
+export function getTooltipPosition(state: EditorState) {
   const pos = state.selection.main.head;
   const source = state.doc.toString();
   let token = tokenAtPos(source, pos);
