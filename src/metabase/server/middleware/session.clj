@@ -135,8 +135,8 @@
               ;; downstream needs and the key is the credential.
               (assoc :metabase/authed-session-key-hash session-key-hash)
               (as-> $
-                  (assoc $ :embedding/auth-method (or (:auth-provider $)
-                                                      "session")))))))
+                    (assoc $ :embedding/auth-method (or (:auth-provider $)
+                                                        "session")))))))
 
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
