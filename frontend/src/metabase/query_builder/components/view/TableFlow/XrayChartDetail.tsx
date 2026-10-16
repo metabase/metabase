@@ -22,6 +22,7 @@ import type { Card, IconName, RawSeries } from "metabase-types/api";
 
 import { SummarySidebar, getChartSummarySession } from "../SummarySidebar";
 
+import { ChartMetricBar } from "./ChartMetricBar";
 import S from "./TableFlow.module.css";
 import { XrayFilterPills } from "./XrayFilterPills";
 import { XrayFilterSidebar } from "./XrayFilterSidebar";
@@ -35,24 +36,24 @@ type XrayChartDetailProps = {
   /** CSS height of the data table card and the side panel. */
   tableHeight: string;
   onCardChange: (card: Card) => void;
-  onClose: () => void;
 };
 
 type SidePanel = "filter" | "summarize";
 
 /**
- * An x-ray chart at full width above its data. Filter and Summarize open a floating side
- * panel that edits the chart's card.
+ * An x-ray chart at full width above its data. The metric bar, the Summarize panel, and
+ * the Filter panel all edit the chart's card, so the chart, its data, and both editors
+ * always show the same summary.
  */
 export function XrayChartDetail({
   chart,
   card,
   tableHeight,
   onCardChange,
-  onClose,
 }: XrayChartDetailProps) {
   const [sidePanel, setSidePanel] = useState<SidePanel | null>(null);
-  // loads the columns of every table the chart touches, so filters and summaries can offer them
+  const [isMetricBarOpen, setIsMetricBarOpen] = useState(false);
+  // loads the columns and metrics of every table the chart touches, so the editors can offer them
   const { isFetching: isMetadataFetching } = useGetAdhocQueryMetadataQuery(
     chart.card.dataset_query,
   );
@@ -77,15 +78,24 @@ export function XrayChartDetail({
     <div className={S.detailLayout}>
       <div className={S.detailMain}>
         <div className={cx(S.card, S.detailChartCard)}>
-          {/* the page header titles the chart, so the card only needs a way back */}
-          <Flex justify="flex-end">
-            <Tooltip label={t`Back to table`}>
+          <Flex align="flex-start" gap="sm">
+            <Box flex={1} miw={0}>
+              {isMetricBarOpen && !isMetadataFetching && (
+                <ChartMetricBar
+                  question={question}
+                  onQuestionChange={handleQuestionChange}
+                  onOpenSummary={() => setSidePanel("summarize")}
+                />
+              )}
+            </Box>
+            <Tooltip label={t`Add a metric`}>
               <ActionIcon
                 variant="viewHeader"
-                aria-label={t`Back to table`}
-                onClick={onClose}
+                aria-label={t`Add a metric`}
+                aria-pressed={isMetricBarOpen}
+                onClick={() => setIsMetricBarOpen(!isMetricBarOpen)}
               >
-                <Icon name="close" />
+                <Icon name="add" />
               </ActionIcon>
             </Tooltip>
           </Flex>

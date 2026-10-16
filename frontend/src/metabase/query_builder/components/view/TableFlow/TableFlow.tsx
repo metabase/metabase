@@ -73,7 +73,6 @@ export function TableFlow({
           card={selectedCard}
           tableHeight={mainCardHeight}
           onCardChange={onSelectedCardChange}
-          onClose={() => onSelectPosition(null)}
         />
       ) : isSelectedChartLoading ? (
         <Skeleton className={cx(S.card, S.detailChartCard)} />
