@@ -18,7 +18,7 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
+(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp rs.test/restore-library-sync)
 
 (defn- new-task! [task-type]
   (t2/delete! :model/RemoteSyncTask)

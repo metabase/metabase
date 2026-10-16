@@ -29,6 +29,29 @@
                         [:= :id (:id library)]
                         [:like :location (str "/" (:id library) "/%")]]})))
 
+(defn restore-library-sync
+  "A fixture for tests that create the Library or turn its sync on or off: after each test it puts back the
+  remote-sync flag of every collection in the Library, and deletes the Library when the test created it."
+  [f]
+  (let [library-ids #(when-let [library (collection/library-collection)]
+                       (t2/select-pks-set :model/Collection {:where [:or
+                                                                     [:= :id (:id library)]
+                                                                     [:like :location (str "/" (:id library) "/%")]]}))
+        existed?    (some? (collection/library-collection))
+        synced      (into #{} (filter (set (library-ids))) (t2/select-pks-set :model/Collection :is_remote_synced true))]
+    (try
+      (f)
+      (finally
+        (if existed?
+          (doseq [[synced? ids] (group-by synced (library-ids))
+                  :when (seq ids)]
+            (t2/query {:update (t2/table-name :model/Collection)
+                       :set    {:is_remote_synced (boolean synced?)}
+                       :where  [:in :id ids]}))
+          (when-let [ids (seq (library-ids))]
+            ;; raw delete: the Library's system collections refuse deletion through the model
+            (t2/query {:delete-from (t2/table-name :model/Collection) :where [:in :id ids]})))))))
+
 (defn generate-collection-yaml
   "Generate YAML content for a collection with the given `entity-id` and `name`.
   Optionally accepts `:parent-id` for nested collections, `:namespace` for namespace collections (e.g.,

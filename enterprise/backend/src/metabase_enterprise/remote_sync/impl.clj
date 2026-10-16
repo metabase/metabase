@@ -59,12 +59,13 @@
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
 
-(defn- keep-library-dashboards
-  "Adds the Library's Dashboards collection to `imported-data` when it has the Library, since repos may predate it."
+(defn- keep-library-roots
+  "`imported-data` with the Library's own collections (the Library and its system sections) added, so that a pull
+  never removes them: the kind layout writes no files for them, and a repo may predate the Dashboards section."
   [imported-data]
-  (cond-> imported-data
-    (contains? (get-in imported-data [:by-entity-id "Collection"]) collection/library-entity-id)
-    (update-in [:by-entity-id "Collection"] conj collection/library-dashboards-entity-id)))
+  (update-in imported-data [:by-entity-id "Collection"] (fnil into #{})
+             (keep #(when (collection/library-root-collection? %) (:entity_id %)))
+             (remote-sync.db/collections-of-types (vec collection/library-collection-types))))
 
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
@@ -452,7 +453,7 @@
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
-            _                     (remove-unsynced! synced-collection-ids (keep-library-dashboards imported-data))
+            _                     (remove-unsynced! synced-collection-ids (keep-library-roots imported-data))
             settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)
             _                     (when (remote-sync.layout/kind-layout?)
                                     (remove-unsynced-ai-contexts! seen-paths))]

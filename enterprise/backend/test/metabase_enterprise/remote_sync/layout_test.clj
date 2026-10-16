@@ -19,7 +19,7 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp)
+(use-fixtures :each rs.test/clean-remote-sync-state rs.test/commit-with-temp rs.test/restore-library-sync)
 
 (defn- test-entity [eid entity-name]
   {:serdes/meta [{:id eid :label entity-name :model "Card"}]
@@ -360,6 +360,22 @@
             (is (not-any? #(str/starts-with? % "collections/") (keys (get @(:files-atom mock) "main")))
                 "the Library has no files of its own")
             (f mock card-id)))))))
+
+(defn- library-root-ids []
+  (into #{}
+        (comp (filter collection/library-root-collection?) (map :id))
+        (t2/select :model/Collection :type [:in collection/library-collection-types])))
+
+(deftest kind-layout-pull-keeps-the-library-test
+  (testing "a pull of a kind-layout repo, which has no files for the Library's own collections, keeps them all"
+    (export-library-metric!
+     (fn [mock card-id]
+       (let [before (library-root-ids)
+             result (impl/import! (source.p/snapshot mock) (new-task!) :force? true)]
+         (is (= :success (:status result)) (:message result))
+         (is (= 4 (count before)))
+         (is (= before (library-root-ids)))
+         (is (t2/exists? :model/Card :id card-id :archived false)))))))
 
 (deftest kind-layout-pull-turns-library-sync-on-test
   (testing "a pull of a kind-layout repo that holds Library content turns Library sync on"

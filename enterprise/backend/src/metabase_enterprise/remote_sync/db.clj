@@ -467,6 +467,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one-fn :type :model/Collection :id collection-id))
 
+(mu/defn collections-of-types
+  "The `:id`, `:entity_id` and `:type` of the Collections whose type is one of `collection-types`."
+  [collection-types :- [:sequential :string]]
+  (t2/select [:model/Collection :id :entity_id :type] :type [:in collection-types]))
+
 (mu/defn library-collection
   "The Library Collection of `library-type`, or nil."
   [library-type :- :string]
