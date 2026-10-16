@@ -239,27 +239,21 @@ describe("SessionsPage", () => {
         response: () => refreshedCounts.promise,
       });
 
-      try {
-        await clickRevokeAll();
-        await confirmRevoke();
+      await clickRevokeAll();
+      await confirmRevoke();
 
-        await waitFor(() => {
-          expect(
-            fetchMock.callHistory.calls(
-              "path:/api/ee/session-management/counts",
-            ),
-          ).toHaveLength(2);
-        });
-        expect(within(activeTab).getByText("137")).toBeInTheDocument();
-        expect(within(endedTab).getByText("241")).toBeInTheDocument();
-        await act(async () => {
-          refreshedCounts.resolve({ active: 134, ended: 244 });
-        });
-        expect(await within(activeTab).findByText("134")).toBeInTheDocument();
-        expect(within(endedTab).getByText("244")).toBeInTheDocument();
-      } finally {
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/ee/session-management/counts"),
+        ).toHaveLength(2);
+      });
+      expect(within(activeTab).getByText("137")).toBeInTheDocument();
+      expect(within(endedTab).getByText("241")).toBeInTheDocument();
+      await act(async () => {
         refreshedCounts.resolve({ active: 134, ended: 244 });
-      }
+      });
+      expect(await within(activeTab).findByText("134")).toBeInTheDocument();
+      expect(within(endedTab).getByText("244")).toBeInTheDocument();
     });
 
     it("refreshes cached populations on section re-entry", async () => {

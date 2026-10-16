@@ -104,16 +104,12 @@ describe("task section counts", () => {
     const pending = defer<TaskCountsResponse>();
     setup();
     fetchMock.modifyRoute("task-counts", { response: () => pending.promise });
-    try {
-      expect(await screen.findByText("No results")).toBeVisible();
-      await switchToRuns();
-      await switchToTasks();
-      expect(getCountCalls()).toHaveLength(1);
-      await act(async () => pending.resolve({ tasks: 137, runs: 1 }));
-      expect(await within(getTasksTab()).findByText("137")).toBeVisible();
-    } finally {
-      pending.resolve({ tasks: 137, runs: 1 });
-    }
+    expect(await screen.findByText("No results")).toBeVisible();
+    await switchToRuns();
+    await switchToTasks();
+    expect(getCountCalls()).toHaveLength(1);
+    await act(async () => pending.resolve({ tasks: 137, runs: 1 }));
+    expect(await within(getTasksTab()).findByText("137")).toBeVisible();
   });
 
   it("reuses loaded counts across tab switches", async () => {
