@@ -63,7 +63,8 @@ type ConditionPillProps = {
   onChange: (query: Lib.Query) => void;
 };
 
-const ConditionPill = ({
+/** A filter as a pill that opens its picker; segments get their icon. */
+export const ConditionPill = ({
   query,
   filter,
   filterIndex,

@@ -5,7 +5,7 @@ import { useMetadataProvider } from "metabase/metadata-store";
 import { FilterPanelPopover } from "metabase/querying/filters/components/FilterPanel/FilterPanelPopover";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
-import { Flex, Tooltip } from "metabase/ui";
+import { Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Table } from "metabase-types/api";
 
@@ -17,6 +17,8 @@ import {
   withFilterQuery,
 } from "../filters";
 import type { Grain } from "../spec/types";
+
+import { ConditionPill } from "./events/ConditionsEditor";
 
 export const getCountLabel = (grain: Grain, count: number): string => {
   const formatted = count.toLocaleString();
@@ -86,6 +88,7 @@ export const FilterPills = ({
           readOnly={onChange === undefined}
           onRemoveClick={() => removePeople(people)}
         >
+          <Icon name="segment" size={12} />
           {t`People in ${people.label}`}
         </FilterPill>
       ))}
@@ -104,24 +107,38 @@ export const FilterPills = ({
         </Tooltip>
       ))}
       {query &&
-        items.map(({ filter, filterIndex, stageIndex }, index) =>
-          onChange ? (
+        items.map(({ filter, filterIndex, stageIndex }, index) => {
+          const isSegment = Lib.isSegmentFilter(query, stageIndex, filter);
+          if (onChange === undefined) {
+            return (
+              <FilterPill key={index} readOnly>
+                {isSegment && <Icon name="segment" size={12} />}
+                {Lib.displayInfo(query, stageIndex, filter).displayName}
+              </FilterPill>
+            );
+          }
+          const handleChange = (newQuery: Lib.Query) =>
+            onChange(withFilterQuery(value, newQuery));
+          // The shared popover pill can't carry the segment icon.
+          return isSegment ? (
+            <ConditionPill
+              key={index}
+              query={query}
+              filter={filter}
+              filterIndex={filterIndex}
+              onChange={handleChange}
+            />
+          ) : (
             <FilterPanelPopover
               key={index}
               query={query}
               stageIndex={stageIndex}
               filter={filter}
               filterIndex={filterIndex}
-              onChange={(newQuery) =>
-                onChange(withFilterQuery(value, newQuery))
-              }
+              onChange={handleChange}
             />
-          ) : (
-            <FilterPill key={index} readOnly>
-              {Lib.displayInfo(query, stageIndex, filter).displayName}
-            </FilterPill>
-          ),
-        )}
+          );
+        })}
       {extraLabels.map((label) => (
         <FilterPill key={label} readOnly>
           {label}
