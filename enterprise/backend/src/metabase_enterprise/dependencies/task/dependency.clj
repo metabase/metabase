@@ -1,10 +1,10 @@
-(ns metabase-enterprise.dependencies.task.backfill
+(ns metabase-enterprise.dependencies.task.dependency
   "Implements a task that brings all entities with dependencies tracked in the dependency table
   (see [[metabase-enterprise.dependencies.models.dependency]]) up to date, that is, makes sure
   the dependency table contains fresh entries.
 
   This is done by querying the dependency_status table for entities that are stale or have an
-  outdated dependency_analysis_version. The backfill task computes dependencies and updates
+  outdated dependency_analysis_version. The dependency job computes dependencies and updates
   the dependency_status table. Entities that a write marked stale, or that were deleted, also have their dependents
   marked for re-analysis here, outside the write's transaction."
   (:require
@@ -18,7 +18,7 @@
    [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
-   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
@@ -74,7 +74,7 @@
                                                         (map :id) outdated-tables))]
       (dependencies.db/delete-table-dependencies-on-transform! outdated-downstream-table-ids id))))
 
-;;; ------------------------------ Backfill orchestration ------------------------------
+;;; ------------------------------ Job orchestration ------------------------------
 
 (defn- processable-instances [entity-type batch-size]
   (deps.dependency-status/hydrate-for-deps
@@ -122,7 +122,7 @@
         (dependencies.db/delete-dependency-statuses! entity-type entity-ids)))
     (count entity-ids)))
 
-(defn- backfill-entity-batch!
+(defn- update-entity-batch!
   [entity-type batch-size]
   (lib-be/with-metadata-provider-cache
     (let [type-name (name entity-type)
@@ -157,8 +157,8 @@
               0
               instances))))
 
-(defn- backfill-dependencies!
-  "Job to backfill dependencies for all entities, triggering the entity-check job for the findings it marked stale.
+(defn- update-dependencies!
+  "Job to update the dependencies of all entities, triggering the analysis finding job for the findings it marked stale.
   Returns true if a full batch has been selected, nil or false otherwise."
   []
   (when (premium-features/has-feature? :dependencies)
@@ -168,7 +168,7 @@
                                  (reduced 0)
                                  (let [removed   (remove-deleted-entity-batch! entity-type remaining)
                                        processed (if (< removed remaining)
-                                                   (backfill-entity-batch! entity-type (- remaining removed))
+                                                   (update-entity-batch! entity-type (- remaining removed))
                                                    0)]
                                    (when (pos? processed)
                                      (log/info "Updated" processed "entities."))
@@ -176,7 +176,7 @@
                              batch-size
                              entity-types)]
       (when (< remaining batch-size)
-        (task.entity-check/trigger-entity-check-job!))
+        (task.analysis-finding/trigger-analysis-finding-job!))
       (< remaining 1))))
 
 (defn- has-pending-retries?
@@ -187,7 +187,7 @@
   for good — nothing re-fires when the check recovers, because the token never changed. Only a definitive `false`
   counts as unlicensed here — which is the common case, since no token at all answers `false`. A token that cannot be
   validated answers `nil` and keeps the job alive. Doing the work still fails closed — see
-  [[backfill-dependencies!]]."
+  [[update-dependencies!]]."
   []
   (and (not (false? (premium-features/canonically-has-feature? :dependencies)))
        (deps.dependency-status/has-pending-retries?)))
@@ -208,11 +208,11 @@
   pathological SQL that leaves a live process behind."
   [scheduler]
   (try
-    (let [full-batch-selected? (backfill-dependencies!)
+    (let [full-batch-selected? (update-dependencies!)
           retries?             (has-pending-retries?)]
       (if (or full-batch-selected? retries?)
         (schedule-run! scheduler (next-run-delay))
-        (log/info "No more entities to backfill for, stopping.")))
+        (log/info "No more entities to update dependencies for, stopping.")))
     (catch Throwable e
       (schedule-run! scheduler (next-run-delay))
       (throw e))))
@@ -225,8 +225,8 @@
         active-triggers-count (try (count (qs/get-triggers-of-job scheduler job-key)) (catch Exception _))]
     (log/infof "Executing %s job. %s total triggers active." job-class active-triggers-count)))
 
-(task/defjob BackfillDependencies
-  "Backfill the dependency table."
+(task/defjob UpdateDependencies
+  "Update the dependency table."
   {:saved-class "metabase_enterprise.dependencies.task.backfill.BackfillDependencies"
    :concurrent? false}
   [ctx]
@@ -238,17 +238,17 @@
 (def ^:private trigger-key "metabase.task.dependency-backfill.trigger")
 
 (defn- schedule-run!
-  "Schedule a run of the backfill job `delay-in-seconds` from now."
+  "Schedule a run of the dependency job `delay-in-seconds` from now."
   [scheduler delay-in-seconds]
   (deps.task-util/schedule-run! scheduler
-                                {:job-type    BackfillDependencies
+                                {:job-type    UpdateDependencies
                                  :job-key     job-key
                                  :trigger-key trigger-key
-                                 :job-name    "Dependency Backfill"}
+                                 :job-name    "Update Dependencies"}
                                 delay-in-seconds))
 
-(defn trigger-backfill-job!
-  "Trigger the BackfillDependencies job to run after a brief delay, unless the batch size disables it.
+(defn trigger-dependency-job!
+  "Trigger the UpdateDependencies job to run after a brief delay, unless the batch size disables it.
 
   The 1-second delay ensures the calling transaction has committed before the job checks for stale entities. Entity
   changes fire this, so leaving it ungated is what made a disabled job wake roughly once a second; the job's own
@@ -259,7 +259,7 @@
   (when (pos? (deps.settings/dependency-backfill-batch-size))
     (schedule-run! (task/scheduler) 1)))
 
-(defmethod task/init! ::DependencyBackfill [_]
+(defmethod task/init! ::UpdateDependencies [_]
   (when-not (pos? (deps.settings/dependency-backfill-batch-size))
     (log/info "Dependency backfill batch size is not positive; the job will run but process nothing"))
   (schedule-run!

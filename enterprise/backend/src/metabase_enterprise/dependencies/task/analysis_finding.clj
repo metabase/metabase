@@ -1,4 +1,4 @@
-(ns metabase-enterprise.dependencies.task.entity-check
+(ns metabase-enterprise.dependencies.task.analysis-finding
   (:require
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
@@ -38,21 +38,21 @@
 (declare schedule-run!)
 
 (defn- reschedule-after-run!
-  "Schedule the next run of the entity check job unless the `:dependencies` feature is definitively absent."
+  "Schedule the next run of the analysis finding job unless the `:dependencies` feature is definitively absent."
   [scheduler]
   (if (false? (premium-features/canonically-has-feature? :dependencies))
-    (log/debug "Not rescheduling job Dependency Entity Check: the dependencies feature is not enabled")
+    (log/debug "Not rescheduling job Update Analysis Findings: the dependencies feature is not enabled")
     (schedule-run! scheduler
                    (deps.task-util/job-delay
                     (deps.settings/dependency-entity-check-delay-minutes)
                     (deps.settings/dependency-entity-check-variance-minutes)))))
 
-(task/defjob DependencyEntityCheck
+(task/defjob UpdateAnalysisFindings
   "Check all entities for validity"
   {:saved-class "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
    :concurrent? false}
   [ctx]
-  (log/info "Executing DependencyEntityCheck job...")
+  (log/info "Executing UpdateAnalysisFindings job...")
   (check-entities!)
   (reschedule-after-run! (.getScheduler ctx)))
 
@@ -60,16 +60,16 @@
 (def ^:private trigger-key "metabase.dependencies.task.entity-check.trigger")
 
 (defn- schedule-run!
-  "Schedule a run of the entity check job `delay-in-seconds` from now."
+  "Schedule a run of the analysis finding job `delay-in-seconds` from now."
   [scheduler delay-in-seconds]
   (deps.task-util/schedule-run! scheduler
-                                {:job-type    DependencyEntityCheck
+                                {:job-type    UpdateAnalysisFindings
                                  :job-key     job-key
                                  :trigger-key trigger-key
-                                 :job-name    "Dependency Entity Check"}
+                                 :job-name    "Update Analysis Findings"}
                                 delay-in-seconds))
 
-(defmethod task/init! ::DependencyEntityCheck [_]
+(defmethod task/init! ::UpdateAnalysisFindings [_]
   (when-not (pos? (deps.settings/dependency-entity-check-batch-size))
     (log/info "Dependency entity check batch size is not positive; the job will run but process nothing"))
   (schedule-run!
@@ -77,8 +77,8 @@
    (deps.task-util/job-initial-delay
     (deps.settings/dependency-entity-check-variance-minutes))))
 
-(defn trigger-entity-check-job!
-  "Trigger the DependencyEntityCheck job to run after a brief delay, unless the batch size disables it.
+(defn trigger-analysis-finding-job!
+  "Trigger the UpdateAnalysisFindings job to run after a brief delay, unless the batch size disables it.
 
   The 1-second delay ensures the calling transaction has committed before the job checks for stale entities. Entity
   changes fire this, so leaving it ungated is what made a disabled job wake roughly once a second; the job's own

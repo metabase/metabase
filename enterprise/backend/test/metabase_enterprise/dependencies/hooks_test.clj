@@ -4,7 +4,7 @@
    [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.task.backfill :as task.backfill]
+   [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
@@ -131,7 +131,7 @@
         (deps.dependency-status/upsert-status! :card card-id false)
         (t2/delete! :model/Card :id card-id)
         (is (stale? :card card-id))
-        (deps.test/synchronously-run-backfill!)
+        (deps.test/synchronously-run-dependency-job!)
         (is (not (t2/exists? :model/Dependency :from_entity_type "card" :from_entity_id card-id)))
         (is (not (t2/exists? :model/DependencyStatus :entity_type "card" :entity_id card-id)))))))
 
@@ -192,7 +192,7 @@
                                               :row 4 :col 0 :size_x 4 :size_y 4})
             (deps.dependency-status/upsert-status! :dashboard dashboard-id false)
             (mt/with-dynamic-fn-redefs [grouper/submit!                     (fn [_queue write] (swap! submitted conj write))
-                                        task.backfill/trigger-backfill-job! (fn [] (swap! triggered inc))]
+                                        task.dependency/trigger-dependency-job! (fn [] (swap! triggered inc))]
               (deps.test/do-with-immediate-hook-writes
                #(serdes/with-cache
                   (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))
@@ -213,7 +213,7 @@
                                                                 :visualization_settings {}}]
           (let [exported (ts/extract-one "Dashboard" dashboard-id)]
             (deps.dependency-status/upsert-status! :dashboard dashboard-id false)
-            (mt/with-dynamic-fn-redefs [task.backfill/trigger-backfill-job! (fn [])]
+            (mt/with-dynamic-fn-redefs [task.dependency/trigger-dependency-job! (fn [])]
               (deps.test/do-with-immediate-hook-writes
                #(serdes/with-cache
                   (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))

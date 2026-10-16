@@ -52,14 +52,14 @@
         (mt/with-premium-features #{:dependencies}
           (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
             (let [card1 (card/create-card! (basic-orders) user)]
-              (deps.test/synchronously-run-backfill!)
+              (deps.test/synchronously-run-dependency-job!)
               (is (integer? (:id card1)))
               (testing "when creating a new card"
                 (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
                         (upstream-of :card (:id card1))))
                 (testing "that depends on another card"
                   (let [card2 (card/create-card! (wrap-card card1) user)]
-                    (deps.test/synchronously-run-backfill!)
+                    (deps.test/synchronously-run-dependency-job!)
                     (is (=? #{(depends-on-> :card (:id card2) :card (:id card1))}
                             (upstream-of :card (:id card2))))
                     (testing "but that doesn't affect the upstream deps of the inner card"
@@ -73,7 +73,7 @@
                                                         {:joins [{:alias "Products"
                                                                   :source-table (mt/id :products)
                                                                   :condition [:= $id &Products.$products.id]}]})}})
-                  (deps.test/synchronously-run-backfill!)
+                  (deps.test/synchronously-run-dependency-job!)
                   (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
                             (depends-on-> :card (:id card1) :table (mt/id :products))}
                           (upstream-of :card (:id card1)))))
@@ -81,7 +81,7 @@
                   (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))
                                       :card-updates
                                       {:dataset_query (mt/mbql-query products)}})
-                  (deps.test/synchronously-run-backfill!)
+                  (deps.test/synchronously-run-dependency-job!)
                   (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
                           (upstream-of :card (:id card1)))))))))))))
 
@@ -94,7 +94,7 @@
             (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
                   {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
                   {id3 :id :as card3} (card/create-card! (wrap-card card2) user)]
-              (deps.test/synchronously-run-backfill!)
+              (deps.test/synchronously-run-dependency-job!)
               (testing "raw deps are recorded correctly"
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
                 (is (=? #{(depends-on-> :card id2 :card id1)} (upstream-of :card id2)))
@@ -133,7 +133,7 @@
                   {id1 :id :as card1} (card/create-card! (sql-card mp "SELECT * FROM orders;") user)
                   {id2 :id :as card2} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id1 "}}")) user)
                   {id3 :id :as card3} (card/create-card! (sql-card mp (str "SELECT * FROM {{#" id2 "}}")) user)]
-              (deps.test/synchronously-run-backfill!)
+              (deps.test/synchronously-run-dependency-job!)
               (testing "raw deps are recorded correctly"
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
                 (is (=? #{(depends-on-> :card id2 :card id1)} (upstream-of :card id2)))
@@ -176,7 +176,7 @@
                                                                      {:aggregation [[:metric (:id metric-card)]]})
                                                     :visualization_settings {}}
                                                    user)]
-              (deps.test/synchronously-run-backfill!)
+              (deps.test/synchronously-run-dependency-job!)
               (testing "raw deps are recorded correctly for question using metric"
                 (is (=? #{(depends-on-> :card (:id question-card) :table (mt/id :orders))
                           (depends-on-> :card (:id question-card) :card (:id metric-card))}
@@ -214,13 +214,13 @@
             (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet) :stale true))))))))
 
 (deftest dependency-status-absent-until-backfill-on-card-create-test
-  (testing "a created card has no dependency_status row until the backfill job processes it"
+  (testing "a created card has no dependency_status row until the dependency job processes it"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user]
           (let [card (card/create-card! (basic-orders) user)]
             (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card))))
-            (deps.test/synchronously-run-backfill!)
+            (deps.test/synchronously-run-dependency-job!)
             (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card) :stale false))))))))
 
 (deftest filtered-graph-dependencies-test
@@ -231,7 +231,7 @@
           (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
                 {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
                 {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
-            (deps.test/synchronously-run-backfill!)
+            (deps.test/synchronously-run-dependency-job!)
             (testing "without filter, returns all dependencies"
               (let [graph (deps.graph/graph-dependencies)
                     deps (graph/transitive graph [[:card id3]])]
@@ -258,7 +258,7 @@
           (let [{id1 :id :as card1} (card/create-card! (basic-orders) user)
                 {id2 :id :as card2} (card/create-card! (wrap-card card1) user)
                 {id3 :id :as _card3} (card/create-card! (wrap-card card2) user)]
-            (deps.test/synchronously-run-backfill!)
+            (deps.test/synchronously-run-dependency-job!)
             (testing "without filter, returns all dependents"
               (let [graph (deps.graph/graph-dependents)
                     deps (graph/transitive graph [[:card id1]])]
@@ -290,7 +290,7 @@
                                          :to_entity_type :table
                                          :to_entity_id (:id table1)})
           (deps.graph/swap-dependency! :card (:id card1) [:table (:id table1)] [:table (:id table2)])
-          (deps.test/synchronously-run-backfill!)
+          (deps.test/synchronously-run-dependency-job!)
           (is (not (t2/exists? :model/Dependency
                                :from_entity_type :card
                                :from_entity_id (:id card1)
@@ -315,7 +315,7 @@
                                           :to_entity_id (:id table2)}])
           ;; This would fail with duplicate key error before the fix
           (deps.graph/swap-dependency! :card (:id card2) [:table (:id table1)] [:table (:id table2)])
-          (deps.test/synchronously-run-backfill!)
+          (deps.test/synchronously-run-dependency-job!)
           (is (not (t2/exists? :model/Dependency
                                :from_entity_type :card
                                :from_entity_id (:id card2)

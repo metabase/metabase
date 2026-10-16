@@ -8,8 +8,8 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
-   [metabase-enterprise.dependencies.task.backfill :as task.backfill]
-   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
+   [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
@@ -24,8 +24,8 @@
   "The function that triggers each job: `:dependencies` recomputes the dependencies of stale entities,
   `:analysis-findings` re-analyzes them, and `:result-metadata` re-derives the result metadata of the MBQL cards
   depending on them."
-  {:dependencies      #'task.backfill/trigger-backfill-job!
-   :analysis-findings #'task.entity-check/trigger-entity-check-job!
+  {:dependencies      #'task.dependency/trigger-dependency-job!
+   :analysis-findings #'task.analysis-finding/trigger-analysis-finding-job!
    :result-metadata   #'task.result-metadata/trigger-result-metadata-job!})
 
 (def ^:private all-jobs
@@ -83,16 +83,16 @@
 
 (def ^:private model-job-columns
   "For each model, the columns whose update makes each job recompute its entity, by job, see [[job-triggers]]."
-  {:model/Action             {:dependencies #{:model_id :type}}
+  {:model/Action             {:dependencies      #{:model_id :type}}
    :model/Card               {:dependencies      #{:type :dataset_query :dimension_mappings :parameters}
                               :analysis-findings #{:dataset_query}
                               :result-metadata   #{:type :dataset_query}}
-   :model/Dashboard          {:dependencies #{:parameters}}
-   :model/Document           {:dependencies #{:content_type :document}}
-   :model/Measure            {:dependencies    #{:definition :table_id}
-                              :result-metadata #{:definition :table_id}}
-   :model/NativeQuerySnippet {:dependencies #{:content :template_tags}}
-   :model/Sandbox            {:dependencies #{:card_id}}
+   :model/Dashboard          {:dependencies      #{:parameters}}
+   :model/Document           {:dependencies      #{:content_type :document}}
+   :model/Measure            {:dependencies      #{:definition :table_id}
+                              :result-metadata   #{:definition :table_id}}
+   :model/NativeQuerySnippet {:dependencies      #{:content :template_tags}}
+   :model/Sandbox            {:dependencies      #{:card_id}}
    :model/Segment            {:dependencies      #{:definition :table_id}
                               :analysis-findings #{:definition :table_id}}
    :model/Transform          {:dependencies      #{:source :target}
@@ -240,21 +240,36 @@
   [model instance]
   (before-delete* model instance))
 
-(defenterprise after-database-sync
-  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, which sync may
-  have found now, and its Tables changed since their dependents were analyzed, for re-deriving the result metadata of
-  the cards depending on them and for re-analyzing their dependents."
-  :feature :dependencies
+(defn- mark-unresolved-table-entities!
+  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, which a sync may
+  have found now."
   [database-id]
   (doseq [[entity-type entity-ids] (dependencies.db/unresolved-table-entity-ids database-id)
           entity-id                entity-ids]
     (mark-changed! entity-type entity-id (cond-> #{:dependencies}
                                            (contains? deps.findings/analyzable-entities entity-type)
-                                           (conj :analysis-findings))))
+                                           (conj :analysis-findings)))))
+
+(defenterprise after-database-sync
+  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, and its Tables
+  changed since their dependents were analyzed, for re-deriving the result metadata of the cards depending on them and
+  for re-analyzing their dependents."
+  :feature :dependencies
+  [database-id]
+  (mark-unresolved-table-entities! database-id)
   (when-let [table-ids (not-empty (dependencies.db/table-ids-with-outdated-findings database-id))]
     (deps.result-metadata-status/mark-stale! {:table table-ids})
     (deps.findings/mark-transitive-dependents-stale! {:table table-ids})
     (trigger-jobs! #{:analysis-findings :result-metadata})))
+
+(defenterprise after-table-sync
+  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, and the Table with
+  `table-id` it synced alone, for re-deriving the result metadata of the cards depending on it and for re-analyzing its
+  dependents."
+  :feature :dependencies
+  [database-id table-id]
+  (mark-unresolved-table-entities! database-id)
+  (mark-table-changed! table-id))
 
 (defenterprise after-transform-run
   "Make the output Table with `table-id` depend on the transform with `transform-id`, mark it for re-deriving the

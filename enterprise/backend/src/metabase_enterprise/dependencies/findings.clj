@@ -145,8 +145,8 @@
 
 (mu/defn mark-entity-and-transitive-dependents-stale!
   "Mark `entity-id` and all of its transitive dependents stale for re-analysis. Use this when an entity changes: it
-  queues the whole affected subtree up front so the entity-check job drains a fixed set of stale entities (see
-  [[metabase-enterprise.dependencies.task.entity-check/check-entities!]]) without re-propagating staleness during the
+  queues the whole affected subtree up front so the analysis finding job drains a fixed set of stale entities (see
+  [[metabase-enterprise.dependencies.task.analysis-finding/check-entities!]]) without re-propagating staleness during the
   drain — which can never terminate when the dependency graph has a cycle."
   [entity-type :- AnalyzableEntityType
    entity-id   :- pos-int?]
@@ -161,7 +161,7 @@
 
   This only *analyzes* (each [[upsert-analysis!]] clears that entity's stale flag); it does NOT propagate staleness to
   dependents. Propagation happens up front when an entity changes (see [[mark-entity-and-transitive-dependents-stale!]] and the
-  backfill job), so the entity-check job drains a fixed set of stale entities that only shrinks — guaranteeing
+  dependency job), so the analysis finding job drains a fixed set of stale entities that only shrinks — guaranteeing
   termination even when the dependency graph has cycles."
   [type :- AnalyzableEntityType
    batch-size :- pos-int?]

@@ -27,7 +27,7 @@
 
 (defn- has-pending-retries?
   "Whether any entity is in retry backoff that this instance can act on, failing open on an indeterminate token
-  status like the backfill job."
+  status like the dependency job."
   []
   (and (not (false? (premium-features/canonically-has-feature? :dependencies)))
        (deps.result-metadata-status/has-pending-retries?)))

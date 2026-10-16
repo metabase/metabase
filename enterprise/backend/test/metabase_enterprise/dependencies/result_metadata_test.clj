@@ -40,7 +40,7 @@
 (defn- run-jobs!
   "Compute the dependency graph, then re-derive the result metadata of the cards depending on stale entities."
   []
-  (deps.test/synchronously-run-backfill!)
+  (deps.test/synchronously-run-dependency-job!)
   (mt/with-premium-features #{:dependencies}
     (deps.result-metadata/update-result-metadata! 1000 60)))
 

@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.hooks :as dependencies.hooks]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
+   [metabase.dependencies.hooks :as oss.dependencies.hooks]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -169,3 +170,21 @@
         (lib-be/with-metadata-provider-cache
           (deps.findings/analyze-batch! :card 100))
         (is (empty? (deps.db/table-ids-with-outdated-findings db-id)))))))
+
+(deftest ^:synchronized table-sync-marks-the-table-test
+  (testing "a sync of one table, like after an upload or a transform run, marks it for re-deriving the cards on it, and
+           a full database sync doesn't run the table sync hook"
+    (with-syncable-db!
+      (fn [{:keys [table-id]}]
+        (let [table-syncs (atom 0)
+              table-sync  (mt/original-fn #'oss.dependencies.hooks/after-table-sync)]
+          (mt/with-dynamic-fn-redefs [oss.dependencies.hooks/after-table-sync (fn [& args]
+                                                                                (swap! table-syncs inc)
+                                                                                (apply table-sync args))]
+            (sync/sync-database! (mt/db))
+            (is (zero? @table-syncs))
+            (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id :stale true)))
+            (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" ADD COLUMN \"new_col\" VARCHAR;"])
+            (sync/sync-table! (t2/select-one :model/Table :id table-id))
+            (is (= 1 @table-syncs))
+            (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id :stale true))))))))

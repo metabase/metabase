@@ -28,6 +28,13 @@
   [_database-id]
   nil)
 
+(defenterprise after-table-sync
+  "Hook for the Table with `table-id` of the Database with `database-id` after a sync of that Table alone, which a full
+  sync of the Database doesn't do. The OSS implementation is a no-op."
+  metabase-enterprise.dependencies.hooks
+  [_database-id _table-id]
+  nil)
+
 (defenterprise after-serdes-load
   "Hook for after a serdes load, during which the hooks mark what the load changes without triggering the jobs. The
   OSS implementation is a no-op."

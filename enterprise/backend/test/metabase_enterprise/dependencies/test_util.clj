@@ -1,7 +1,7 @@
 (ns metabase-enterprise.dependencies.test-util
   (:require
    [medley.core :as m]
-   [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase.app-db.core :as mdb]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -9,13 +9,13 @@
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.test :as mt]))
 
-(defn synchronously-run-backfill!
-  "Run the dependency backfill job synchronously, processing all stale/outdated entities
+(defn synchronously-run-dependency-job!
+  "Run the dependency job synchronously, processing all stale/outdated entities
   until there is nothing left to process. Use this in tests after operations that mark
   entities stale (create/update events) and before asserting on dependency data."
   []
   (mt/with-premium-features #{:dependencies}
-    (while (#'dependencies.backfill/backfill-dependencies!))))
+    (while (#'task.dependency/update-dependencies!))))
 
 (defn do-with-immediate-hook-writes
   "Run `thunk` with the work the dependency hooks defer until commit done at once, since a test's transaction never

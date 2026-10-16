@@ -1,8 +1,8 @@
-(ns metabase-enterprise.dependencies.task.entity-check-test
+(ns metabase-enterprise.dependencies.task.analysis-finding-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [environ.core :as env]
-   [metabase-enterprise.dependencies.task.entity-check :as dependencies.entity-check]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -25,18 +25,18 @@
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "0")]
           (testing "the 1-second event-driven trigger is suppressed"
-            (is (zero? (scheduled-by dependencies.entity-check/trigger-entity-check-job!))))
+            (is (zero? (scheduled-by task.analysis-finding/trigger-analysis-finding-job!))))
           (testing "but task/init! still puts the job on its periodic schedule"
-            (is (= 1 (scheduled-by #(task/init! ::dependencies.entity-check/DependencyEntityCheck)))))
+            (is (= 1 (scheduled-by #(task/init! ::task.analysis-finding/UpdateAnalysisFindings)))))
           (testing "and a run keeps the periodic chain going"
             (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly true)]
-              (is (= 1 (scheduled-by #(#'dependencies.entity-check/reschedule-after-run! nil)))))))
+              (is (= 1 (scheduled-by #(#'task.analysis-finding/reschedule-after-run! nil)))))))
         (testing "a positive batch size schedules from the event trigger too"
           (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "5")]
-            (is (= 1 (scheduled-by dependencies.entity-check/trigger-entity-check-job!)))))))))
+            (is (= 1 (scheduled-by task.analysis-finding/trigger-analysis-finding-job!)))))))))
 
 (deftest ^:synchronized post-run-reschedule-licence-states-test
-  (testing "The entity check job is a periodic checker with no terminal state, so it always queues another run. That
+  (testing "The analysis finding job is a periodic checker with no terminal state, so it always queues another run. That
            is right while licensed, but check-entities! is gated on :dependencies, so without the feature the job
            rescheduled itself every 30-90 minutes forever to do nothing at all.
 
@@ -48,7 +48,7 @@
           scheduled-by (fn [licence]
                          (reset! scheduled [])
                          (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly licence)]
-                           (#'dependencies.entity-check/reschedule-after-run! nil))
+                           (#'task.analysis-finding/reschedule-after-run! nil))
                          (count @scheduled))]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (testing "licensed: keeps itself scheduled"
@@ -58,7 +58,7 @@
         (testing "definitively unlicensed: stops"
           (is (zero? (scheduled-by false))))))))
 
-(def ^:private entity-check-job-name "metabase.dependencies.task.entity-check.job")
+(def ^:private job-key "metabase.dependencies.task.entity-check.job")
 
 (defn- scheduled-job-names
   "Job names from captured [[task/schedule-task!]] calls, since a token update schedules both dependency jobs."
@@ -66,10 +66,10 @@
   (into #{} (map (fn [args] (.getName (.getKey ^JobDetail (nth args 1))))) calls))
 
 (deftest ^:synchronized token-update-restarts-the-job-test
-  (testing "Setting a premium token must restart the entity check job, or enabling the feature on an idle instance
+  (testing "Setting a premium token must restart the analysis finding job, or enabling the feature on an idle instance
            leaves the periodic checker dead until the next process restart."
     (let [scheduled (atom [])]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (mt/with-premium-features #{:dependencies}
           (dependencies.hooks/after-premium-token-update)
-          (is (contains? (scheduled-job-names @scheduled) entity-check-job-name)))))))
+          (is (contains? (scheduled-job-names @scheduled) job-key)))))))

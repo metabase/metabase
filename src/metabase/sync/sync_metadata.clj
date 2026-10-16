@@ -113,9 +113,11 @@
                                      (sync-db-metadata!* database)))
 
 (mu/defn sync-table-metadata!
-  "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
+  "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date -- then run the dependencies
+  hook for a Table synced alone."
   [table :- i/TableInstance]
   (let [database (table/database table)]
     (sync-fields/sync-fields-for-table! database table)
     (sync-fks/sync-fks-for-table! database table)
-    (sync-indexes/maybe-sync-indexes-for-table! database table)))
+    (sync-indexes/maybe-sync-indexes-for-table! database table)
+    (dependencies.hooks/after-table-sync (:id database) (:id table))))
