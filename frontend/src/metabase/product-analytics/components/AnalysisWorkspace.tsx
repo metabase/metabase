@@ -50,10 +50,10 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
 };
 
 /**
- * The event analysis page: the segment palette on the left, then the title,
- * the kind tabs for a new analysis, the toolbar, and the setup panel beside
- * the result. A saved analysis opens on its result, with both side panels
- * collapsed.
+ * The event analysis page: the title, the kind tabs for a new analysis and
+ * the toolbar across the top; below them the segment palette on the far
+ * left, then the setup panel beside the result. A saved analysis opens on
+ * its result, with both side panels collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
@@ -169,17 +169,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         wrap="nowrap"
         bg="background-secondary"
       >
-        {isPaletteOpen && (
-          <SegmentPalette
-            tableId={tableId}
-            table={table}
-            usersTable={usersTable}
-            isTableLoading={isTableLoading}
-            tableError={tableError}
-            onTableChange={onTableChange}
-            onSelectPeopleSegment={handleAddPeopleFilter}
-          />
-        )}
         <Stack flex={1} miw={0} h="100%" gap={0}>
           <Stack
             gap="md"
@@ -215,40 +204,53 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               onChange={handleFiltersChange}
             />
           </Stack>
-          <Group
-            gap="lg"
-            wrap="nowrap"
-            py="lg"
-            pl="xxl"
-            pr="lg"
-            flex={1}
-            align="stretch"
-            mih={0}
-          >
-            {panel && (
-              <SettingsPanel key={kind} panel={panel} widgets={widgets} />
+          <Group gap={0} wrap="nowrap" flex={1} align="stretch" mih={0}>
+            {isPaletteOpen && (
+              <SegmentPalette
+                tableId={tableId}
+                table={table}
+                usersTable={usersTable}
+                isTableLoading={isTableLoading}
+                tableError={tableError}
+                onTableChange={onTableChange}
+                onSelectPeopleSegment={handleAddPeopleFilter}
+              />
             )}
-            <AnalysisResult
-              title={config.question}
-              display={display}
-              vizSettings={vizSettings}
-              dataset={query.dataset}
-              datasetQuery={query.datasetQuery}
-              isLoading={query.isLoading}
-              error={
-                query.error ??
-                (tableId === undefined
-                  ? t`Choose a table to analyze.`
-                  : undefined)
-              }
-              warnings={query.warnings}
-              missing={missing}
-              setupLabel={config.setupLabel}
-              onOpenSetup={
-                panel !== "setup" ? () => setPanel("setup") : undefined
-              }
-              clickActionsMode={drillActions.mode}
-            />
+            <Group
+              gap="lg"
+              wrap="nowrap"
+              py="lg"
+              pl="xxl"
+              pr="lg"
+              flex={1}
+              align="stretch"
+              mih={0}
+            >
+              {panel && (
+                <SettingsPanel key={kind} panel={panel} widgets={widgets} />
+              )}
+              <AnalysisResult
+                title={config.question}
+                display={display}
+                vizSettings={vizSettings}
+                dataset={query.dataset}
+                datasetQuery={query.datasetQuery}
+                isLoading={query.isLoading}
+                error={
+                  query.error ??
+                  (tableId === undefined
+                    ? t`Choose a table to analyze.`
+                    : undefined)
+                }
+                warnings={query.warnings}
+                missing={missing}
+                setupLabel={config.setupLabel}
+                onOpenSetup={
+                  panel !== "setup" ? () => setPanel("setup") : undefined
+                }
+                clickActionsMode={drillActions.mode}
+              />
+            </Group>
           </Group>
         </Stack>
       </Group>
