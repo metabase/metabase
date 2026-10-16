@@ -503,25 +503,18 @@ describe("CLI Calls grid loading", () => {
       getEventsResponse: () =>
         ++requests === 1 ? initial.promise : pending.promise,
     });
-    try {
-      expect(await screen.findByTestId("tree-table-skeleton")).toBeVisible();
-      expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
-      await act(async () => initial.resolve(page("First event")));
-      await screen.findByText("First event");
-      await userEvent.click(screen.getByLabelText("Next page"));
-      await waitFor(() => expect(requests).toBe(2));
-      expect(screen.getByText("First event")).toBeVisible();
-      expect(screen.getByTestId("loading-overlay")).toBeVisible();
-      expect(
-        screen.queryByTestId("tree-table-skeleton"),
-      ).not.toBeInTheDocument();
-      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
-      await act(async () => pending.resolve(page("Next event")));
-      expect(await screen.findByText("Next event")).toBeVisible();
-      expect(screen.queryByText("First event")).not.toBeInTheDocument();
-    } finally {
-      initial.resolve(page("First event"));
-      pending.resolve(page("Next event"));
-    }
+    expect(await screen.findByTestId("tree-table-skeleton")).toBeVisible();
+    expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
+    await act(async () => initial.resolve(page("First event")));
+    await screen.findByText("First event");
+    await userEvent.click(screen.getByLabelText("Next page"));
+    await waitFor(() => expect(requests).toBe(2));
+    expect(screen.getByText("First event")).toBeVisible();
+    expect(screen.getByTestId("loading-overlay")).toBeVisible();
+    expect(screen.queryByTestId("tree-table-skeleton")).not.toBeInTheDocument();
+    expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+    await act(async () => pending.resolve(page("Next event")));
+    expect(await screen.findByText("Next event")).toBeVisible();
+    expect(screen.queryByText("First event")).not.toBeInTheDocument();
   });
 });

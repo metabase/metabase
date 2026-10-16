@@ -189,24 +189,18 @@ describe("StaleContentPage", () => {
           ? pending.promise
           : firstPage,
     });
-    try {
-      expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
-      await screen.findByText("First page finding");
-      await userEvent.click(screen.getByLabelText("Next page"));
-      await waitFor(() =>
-        expect(screen.getByTestId("loading-overlay")).toBeVisible(),
-      );
-      expect(screen.getByText("First page finding")).toBeVisible();
-      expect(
-        screen.queryByTestId("tree-table-skeleton"),
-      ).not.toBeInTheDocument();
-      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
-      await act(async () => pending.resolve(nextPage));
-      expect(await screen.findByText("Next page finding")).toBeVisible();
-      expect(screen.queryByText("First page finding")).not.toBeInTheDocument();
-    } finally {
-      pending.resolve(nextPage);
-    }
+    expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+    await screen.findByText("First page finding");
+    await userEvent.click(screen.getByLabelText("Next page"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loading-overlay")).toBeVisible(),
+    );
+    expect(screen.getByText("First page finding")).toBeVisible();
+    expect(screen.queryByTestId("tree-table-skeleton")).not.toBeInTheDocument();
+    expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+    await act(async () => pending.resolve(nextPage));
+    expect(await screen.findByText("Next page finding")).toBeVisible();
+    expect(screen.queryByText("First page finding")).not.toBeInTheDocument();
   });
 
   it("shows an empty state when there are no findings", async () => {

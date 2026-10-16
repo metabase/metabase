@@ -614,27 +614,23 @@ describe("NotificationsAdminPage", () => {
             ? pending.promise
             : { ...nextPage, data: [notification1], offset: 0 },
       });
-      try {
-        expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
-        await waitForTableToLoad();
-        await userEvent.click(screen.getByLabelText("Next page"));
-        await waitFor(() => expect(getListCalls()).toHaveLength(2));
-        expect(screen.getByTestId("notification-row-1")).toBeVisible();
-        expect(screen.getByTestId("loading-overlay")).toBeVisible();
-        expect(
-          screen.queryByTestId("tree-table-skeleton"),
-        ).not.toBeInTheDocument();
-        expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
-        await act(async () => pending.resolve(nextPage));
-        expect(
-          await screen.findByTestId("notification-row-2"),
-        ).toBeInTheDocument();
-        expect(
-          screen.queryByTestId("notification-row-1"),
-        ).not.toBeInTheDocument();
-      } finally {
-        pending.resolve(nextPage);
-      }
+      expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+      await waitForTableToLoad();
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() => expect(getListCalls()).toHaveLength(2));
+      expect(screen.getByTestId("notification-row-1")).toBeVisible();
+      expect(screen.getByTestId("loading-overlay")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(nextPage));
+      expect(
+        await screen.findByTestId("notification-row-2"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("notification-row-1"),
+      ).not.toBeInTheDocument();
     });
 
     it("pages Ownerless alerts by 25 rows and keeps its filters", async () => {
