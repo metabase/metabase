@@ -29,14 +29,16 @@
    [:card ::test-card-source-spec]])
 
 (mr/def ::test-column-spec
+  "A column of the stage: a field by `:field-id`, or else a column by its `:name`. Every other key is matched exactly:
+  a missing `:join-alias` means the column does not come from a join, a missing `:source-field-id` means it is not
+  implicitly joined."
   [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :column]]
-   [:name string?]
-   [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
-   [:source-name {:optional true} [:maybe string?]]
+   [:name {:optional true} [:maybe string?]]
+   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   [:join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
    [:source-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:display-name {:optional true} [:maybe string?]]
-   [:index {:optional true} [:maybe pos-int?]]])
+   [:source-field-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]])
 
 (mr/def ::test-temporal-bucket-spec
   [:map
@@ -64,8 +66,17 @@
    ::test-temporal-bucket-spec
    ::test-binning-bucket-spec])
 
+(mr/def ::test-breakout-with-name-spec
+  [:map {:closed true}
+   [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :breakout]]
+   [:name string?]
+   [:column [:ref ::test-column-with-binning-spec]]])
+
 (mr/def ::test-breakout-spec
-  [:ref ::test-column-with-binning-spec])
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::test-column-with-binning-spec]]
+   [:breakout [:ref ::test-breakout-with-name-spec]]])
 
 (mr/def ::test-order-by-spec
   [:merge
@@ -86,7 +97,7 @@
   [:map {:closed true}
    [:type [:= {:decode/normalize lib.schema.common/normalize-keyword} :operator]]
    [:operator ::test-operator-spec]
-   [:args {:default []} [:sequential [:ref ::test-expression-spec]]]
+   [:args {:default []} [:sequential [:ref ::test-operator-arg-spec]]]
    ;; For an aggregation: the name of its result column, which a later stage refers to.
    [:name {:optional true} string?]])
 
@@ -96,6 +107,16 @@
    [:column [:ref ::test-column-spec]]
    [:literal [:ref ::test-literal-expression-spec]]
    [:operator [:ref ::test-operator-expression-spec]]])
+
+(mr/def ::test-operator-arg-spec
+  [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
+           :dispatch         (comp keyword :type)}
+   [:column [:ref ::test-column-spec]]
+   [:literal [:ref ::test-literal-expression-spec]]
+   [:operator [:ref ::test-operator-expression-spec]]
+   [:segment [:ref ::test-segment-spec]]
+   [:measure [:ref ::test-measure-spec]]
+   [:metric [:ref ::test-metric-spec]]])
 
 (mr/def ::test-segment-spec
   [:map {:closed true}
@@ -121,6 +142,7 @@
   [:map {:closed true}
    [:source     [:ref ::test-source-spec]]
    [:strategy   ::lib.schema.join/strategy]
+   [:alias      {:optional true} [:maybe ::lib.schema.join/alias]]
    [:conditions {:optional true} [:maybe [:sequential ::test-join-condition-spec]]]])
 
 (mr/def ::test-join-source-spec
@@ -136,10 +158,18 @@
    [:left [:ref ::test-join-source-spec]]
    [:right [:ref ::test-join-source-spec]]])
 
+(mr/def ::test-named-aggregation-spec
+  [:map {:closed true}
+   [:name string?]
+   [:value [:or
+            [:ref ::test-expression-spec]
+            [:ref ::test-measure-spec]
+            [:ref ::test-metric-spec]]]])
+
 (mr/def ::test-aggregation-spec
   [:or
    [:ref ::test-expression-spec]
-   [:ref ::test-named-expression-spec]
+   [:ref ::test-named-aggregation-spec]
    [:ref ::test-measure-spec]
    [:ref ::test-metric-spec]])
 

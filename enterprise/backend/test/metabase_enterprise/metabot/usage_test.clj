@@ -5,6 +5,11 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.metabot.usage :as ee.usage]
    [metabase.api.common :as api]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.test-util :as mut]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -219,6 +224,26 @@
               (is (= 0 (:cache_read_tokens row))))
             (finally
               (t2/delete! :model/AiUsageLog :source "metabot_agent" :model model))))))))
+
+(deftest conversation-title-call-logs-its-own-source-test
+  (ee.usage/clear-limit-cache!)
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+    (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+      (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (mut/mock-llm-response
+                                                                       [{:type :tool-input :id "call-1" :function "json"
+                                                                         :arguments {:title "Orders by month"}}
+                                                                        {:type :usage :id "msg-1"
+                                                                         :usage {:promptTokens     900
+                                                                                 :completionTokens 30}}]))]
+          (try
+            (is (= "Orders by month"
+                   (#'conversation-title/generate! conversation-id "internal" "Show orders by month")))
+            (is (= ["conversation_title"]
+                   (t2/select-fn-vec :source :model/AiUsageLog :conversation_id conversation-id)))
+            (finally
+              (t2/delete! :model/AiUsageLog :conversation_id conversation-id))))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 
@@ -479,8 +504,9 @@
           sources  (disj @#'ee.usage/known-sources "user-intent-classification")
           profiles @#'ee.usage/known-profile-ids]
       (doseq [[view expected] {"ai_usage_log"          sources
-                               ;; v_metabot_conversations maps both the source and the profile id
-                               "metabot_conversations" (into sources profiles)}
+                               ;; v_metabot_conversations maps both the source and the profile id, and never takes
+                               ;; a conversation's source from its title call
+                               "metabot_conversations" (into (disj sources "conversation_title") profiles)}
               :let [dir       (latest-view-version-dir view)
                     sql-files (filter #(str/ends-with? (.getName ^java.io.File %) ".sql")
                                       (.listFiles dir))]]

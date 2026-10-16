@@ -24,6 +24,7 @@
 (def ^:private known-sources
   #{"metabot_agent"
     "contextual_interestingness"
+    "conversation_title"
     "data_sensitivity_classification"
     "document_generate_content"
     "example_question_generation_batch"

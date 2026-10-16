@@ -18,7 +18,7 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import { Button, Flex, Text } from "metabase/ui";
+import { Button, Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useLazyListSessionsQuery } from "metabase-enterprise/api";
 import type { RevokeSessionsRequest, SessionId } from "metabase-types/api";
@@ -216,13 +216,7 @@ export const SessionsPage = () => {
             onChange={(tab) => patchUrlState(getTabChange(urlState, tab))}
           />
 
-          {isEndedTab && (
-            <Text size="sm" c="text-secondary">
-              {t`Ended sessions are kept for 30 days.`}
-            </Text>
-          )}
-
-          <Flex gap="md" align="center">
+          <Group gap="md" align="center">
             <DebouncedSearchInput
               value={urlState.query}
               placeholder={t`Search by name or email…`}
@@ -232,11 +226,11 @@ export const SessionsPage = () => {
             <SessionsFilters state={urlState} onChange={patchUrlState} />
             {!isEndedTab && (
               // not tied to the listed total: revoking all ignores the search and filters
-              <Button disabled={isRevoking} onClick={revokeAll}>
+              <Button disabled={isRevoking} onClick={revokeAll} size="lg">
                 {t`Revoke all active sessions`}
               </Button>
             )}
-          </Flex>
+          </Group>
 
           <SessionsTable
             sessions={sessions}

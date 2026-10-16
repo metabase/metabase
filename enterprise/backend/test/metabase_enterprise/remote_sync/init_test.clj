@@ -287,28 +287,26 @@
 ;;; ------------------------------------------- Data app ledger backfill -------------------------------------------
 
 (defn- do-with-untracked-data-apps!
-  "Runs `f` with `{:published :draft :tracked}` data app ids under `remote-sync-type` `sync-type`, where only
+  "Runs `f` with `{:published :tracked}` data app ids under `remote-sync-type` `sync-type`, where only
   `:tracked` has a DataApp ledger row."
   [sync-type f]
   (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                      :remote-sync-type sync-type
                                      :remote-sync-branch "main"]
     (mt/with-model-cleanup [:model/RemoteSyncObject :model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [insert-app! (fn [slug draft?]
+      (let [insert-app! (fn [slug]
                           (t2/insert-returning-pk! :model/DataApp {:name         slug
                                                                    :display_name slug
                                                                    :bundle_path  "index.js"
-                                                                   :bundle       (.getBytes "BUNDLE" "UTF-8")
-                                                                   :draft        draft?}))
-            published   (insert-app! "published" false)
-            draft       (insert-app! "draft" true)
-            tracked     (insert-app! "tracked" false)]
+                                                                   :bundle       (.getBytes "BUNDLE" "UTF-8")}))
+            published   (insert-app! "published")
+            tracked     (insert-app! "tracked")]
         (t2/delete! :model/RemoteSyncObject :model_type "DataApp")
         (t2/insert! :model/RemoteSyncObject {:model_type "DataApp" :model_id tracked :model_name "tracked"
                                              :status "synced" :status_changed_at (t/offset-date-time)})
         (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
                                     remote-sync.object/dirty? (constantly false)]
-          (f {:published published :draft draft :tracked tracked}))))))
+          (f {:published published :tracked tracked}))))))
 
 (defn- data-app-rso-statuses []
   (t2/select-fn->fn :model_id :status :model/RemoteSyncObject :model_type "DataApp"))

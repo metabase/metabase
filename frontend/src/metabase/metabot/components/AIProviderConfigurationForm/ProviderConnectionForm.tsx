@@ -304,7 +304,7 @@ export function ProviderConnectionForm({
                   disabledFields={connection?.env_fields}
                 />
               </AdvancedSettings>
-              {error && <Text c="error">{error}</Text>}
+              {error && <Text c="feedback-negative">{error}</Text>}
               <Flex justify="end">
                 <Group gap="sm">
                   {match({ isEditing, onCancel })

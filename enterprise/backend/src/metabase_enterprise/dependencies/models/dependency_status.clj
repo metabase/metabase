@@ -16,19 +16,19 @@
   {:entity_type mi/transform-keyword})
 
 (defn mark-stale!
-  "Mark entities of `entity-type` with ids in `entity-ids` as stale for dependency recalculation.
-  Creates entries if they don't exist, or sets stale=true if they do.
-  Resets retry state so previously-failed entities get a fresh chance."
-  [entity-type entity-ids]
-  (doseq [id entity-ids]
+  "Mark the entities in `type->ids`, `{entity-type ids}`, stale for dependency recalculation, creating their statuses
+  if they don't exist and resetting their retry state so previously-failed entities get a fresh chance."
+  [type->ids]
+  (doseq [[entity-type ids] type->ids
+          id                ids]
     (dependencies.db/mark-dependency-status-stale! entity-type id)))
 
 (defn upsert-status!
-  "Upsert a dependency_status entry, setting stale=false, version to current,
-  and clearing any failure state."
-  [entity-type entity-id]
+  "Upsert a dependency_status entry, setting stale=false, version to current, whether the entity names tables that
+  match nothing, and clearing any failure state."
+  [entity-type entity-id unresolved-tables?]
   (dependencies.db/upsert-dependency-status!
-   entity-type entity-id models.dependency/current-dependency-analysis-version))
+   entity-type entity-id models.dependency/current-dependency-analysis-version unresolved-tables?))
 
 (defmulti hydrate-for-deps
   "Hydrate a batch of instances with data needed for dependency calculation.
@@ -40,6 +40,14 @@
 
 (defmethod hydrate-for-deps :dashboard [_ instances]
   (t2/hydrate instances [:dashcards :series]))
+
+(defmethod hydrate-for-deps :action [_ instances]
+  (let [queries (when (seq instances)
+                  (dependencies.db/query-action-queries (mapv :id instances)))]
+    (mapv (fn [{:keys [id] :as action}]
+            (cond-> action
+              (contains? queries id) (assoc :dataset_query (queries id))))
+          instances)))
 
 (defn instances-for-dependency-calculation
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
@@ -60,12 +68,14 @@
 
 (defn has-stale-or-outdated?
   "Returns true if there are any entities needing dependency calculation: no status row yet,
-  stale=true, OR version < current (not terminal, retry delay elapsed). Defined in terms of
-  [[instances-for-dependency-calculation]] so it stays consistent with what the backfill processes."
+  stale=true, OR version < current (not terminal, retry delay elapsed), or deleted entities whose status the backfill
+  has yet to clean up. Defined in terms of [[instances-for-dependency-calculation]] so it stays consistent with what
+  the backfill processes."
   []
   (boolean
    (some (fn [entity-type]
-           (seq (instances-for-dependency-calculation entity-type 1)))
+           (or (seq (instances-for-dependency-calculation entity-type 1))
+               (seq (dependencies.db/deleted-entity-ids entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))
 
 (defn record-failure!

@@ -8,21 +8,18 @@ import type {
 } from "metabase/common/collections/types";
 import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import { type BreakpointName, breakpoints } from "metabase/ui/theme";
+import type { BreakpointName } from "metabase/ui/theme";
 import type { Collection } from "metabase-types/api";
+
+export type ContainerBreakpointName = Extract<
+  BreakpointName,
+  "xs" | "sm" | "md"
+>;
 
 export interface ResponsiveProps {
   /** The element will be hidden when the container's width is below this breakpoint */
-  hideAtContainerBreakpoint?: BreakpointName;
-  containerName?: string;
+  hideAtContainerBreakpoint?: ContainerBreakpointName;
 }
-
-export const getContainerQuery = (props: ResponsiveProps) =>
-  props.hideAtContainerBreakpoint
-    ? `@container ${props.containerName || ""} (max-width: ${
-        breakpoints[props.hideAtContainerBreakpoint]
-      }) { display: none; }`
-    : "";
 
 export const getVisibleColumnsMap = (
   visibleColumns: CollectionContentTableColumn[],

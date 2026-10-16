@@ -213,12 +213,20 @@ export interface AlertUpgradeVersion {
   id?: string;
 }
 
+export interface MajorVersionSupport {
+  major: number;
+  released: string;
+  lts: boolean;
+  eol: string;
+}
+
 export interface VersionInfo {
   nightly?: VersionInfoRecord;
   beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
   alert_upgrade_versions?: AlertUpgradeVersion[];
+  major_version_support?: MajorVersionSupport[];
 }
 
 export type LocaleData = [string, string];
@@ -332,6 +340,7 @@ export const tokenFeatures = [
   "audit_app",
   "cache_granular_controls",
   "cloud_custom_smtp",
+  "content_diagnostics",
   "content_translation",
   "content_verification",
   "custom-viz",
@@ -465,10 +474,10 @@ interface InstanceSettings {
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
-  "enable-embedding-static": boolean;
+  "enable-embedding-modular": boolean;
   "enable-embedding-sdk": boolean;
-  "enable-embedding-simple": boolean;
   "enable-embedding-interactive": boolean;
+  "enable-embedding-sidecar": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
@@ -519,8 +528,7 @@ interface AdminSettings {
   "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
-  "show-sdk-embed-terms": boolean | null;
-  "show-simple-embed-terms": boolean | null;
+  "show-modular-embed-terms": boolean | null;
   "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
@@ -745,7 +753,29 @@ export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 
-export type ColorSettings = Record<string, string>;
+type ColorSettingsAccentIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export type ColorSettingsAccentKey =
+  | `accent${ColorSettingsAccentIndex}`
+  | `accent${ColorSettingsAccentIndex}-light`
+  | `accent${ColorSettingsAccentIndex}-dark`;
+
+/** Keys that the `application-colors` setting stores. */
+export type ColorSettingsKey =
+  | "brand"
+  | "filter"
+  | "summarize"
+  | ColorSettingsAccentKey;
+
+/**
+ * The raw `application-colors` setting. Its keys are not color token names:
+ * translate it with `mapWhitelabelColorsToTokens` before you use it as a `ColorPalette`.
+ */
+export type ColorSettings = Partial<Record<ColorSettingsKey, string>> & {
+  "core-brand"?: never;
+  "core-filter"?: never;
+  "core-summarize"?: never;
+};
 
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };

@@ -88,17 +88,20 @@ describe("scenarios > visualizations > rows", () => {
     });
 
     // Verify hovering bars does not change their size (metabase#43631)
-    cy.findAllByRole("graphics-symbol").eq(0).as("firstBar");
-    cy.get("@firstBar")
-      .invoke("width")
-      .then((prevWidth) => {
-        cy.get("@firstBar")
-          .realHover()
-          .invoke("width")
-          .then((newWidth) => {
-            // eslint-disable-next-line metabase/no-unsafe-element-filtering
-            expect(prevWidth).eq(newWidth);
-          });
+    H.chartPathWithFillColor("#F2A86F")
+      .first()
+      .then(($bar) => {
+        const prevWidth = $bar[0].getBoundingClientRect().width;
+        expect(prevWidth).to.be.greaterThan(0);
+        cy.wrap($bar).realHover();
+        H.assertEChartsTooltip({
+          header: "a",
+          rows: [{ name: "COLUMN_TWO", value: "51" }],
+        });
+        // Re-querying after the hover finds a different bar, so measure the same node.
+        cy.wrap($bar).should(([hoveredBar]) => {
+          expect(hoveredBar.getBoundingClientRect().width).to.equal(prevWidth);
+        });
       });
   });
 
@@ -140,19 +143,28 @@ describe("scenarios > visualizations > rows", () => {
 
     cy.findByTestId("query-visualization-root").within(() => {
       // Check that the visualization renders without errors
-      cy.findAllByRole("graphics-symbol").should("have.length.greaterThan", 0);
+      H.chartPathWithFillColor("#509EE3").should("have.length.greaterThan", 0);
 
-      // Check chart bars section - it should take 50% of width
-      cy.get(".visx-columns")
-        .should("exist")
-        .invoke("width")
-        .should("be.gt", 500);
+      H.echartsContainer().then(([container]) => {
+        const chartWidth = container.getBoundingClientRect().width;
+        const widest = (elements) =>
+          Math.max(
+            ...[...elements].map((el) => el.getBoundingClientRect().width),
+          );
 
-      // Check that axis labels are present
-      cy.get(".visx-axis-left")
-        .should("exist")
-        .invoke("width")
-        .should("be.gt", 500);
+        // The labels don't crowd out the bars
+        H.chartPathWithFillColor("#509EE3").should((bars) => {
+          expect(widest(bars)).to.be.gt(chartWidth / 3);
+        });
+
+        // Long labels are truncated to at most half the chart, not hidden
+        cy.wrap(container)
+          .find("text")
+          .should((labels) => {
+            expect(widest(labels)).to.be.gt(chartWidth / 3);
+            expect(widest(labels)).to.be.at.most(chartWidth / 2);
+          });
+      });
     });
   });
 
@@ -214,5 +226,32 @@ describe("scenarios > visualizations > rows", () => {
     H.main().findByText(
       "This chart type doesn't support more than 100 series of data.",
     );
+  });
+
+  it("should show the goal in a tooltip when hovering the goal marker", () => {
+    H.visitQuestionAdhoc({
+      display: "row",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+      },
+      visualization_settings: {
+        "graph.show_goal": true,
+        "graph.goal_value": 40,
+        "graph.goal_label": "Target",
+      },
+    });
+
+    H.goalLineMarker().should("be.visible").trigger("mousemove");
+
+    H.tooltip().within(() => {
+      cy.findByText("Target:").should("be.visible");
+      cy.findByText("40").should("be.visible");
+    });
   });
 });

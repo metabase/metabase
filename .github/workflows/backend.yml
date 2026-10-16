@@ -46,7 +46,9 @@ jobs:
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: static_viz
         with:
-          token: ${{ github.token }}
+          # An empty token switches paths-filter to git, which is the only way to honor `base`.
+          token: ${{ needs.gate.outputs.diff-base == '' && github.token || '' }}
+          base: ${{ needs.gate.outputs.diff-base }}
           filters: .github/static-viz-sources.yaml
 
   project-checks:
@@ -211,7 +213,7 @@ jobs:
       - name: Compute changed test namespaces
         id: changed
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ needs.gate.outputs.diff-base || github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail

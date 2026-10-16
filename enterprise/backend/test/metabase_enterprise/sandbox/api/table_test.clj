@@ -78,9 +78,10 @@
                                           [:report_card :c] [:= :c.id :s.card_id]]
                                  :where  [:= :pg.id (u/the-id &group)]})
             {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata (:dataset_query card))]
-        (if metadata
-          (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-          (card.metadata/save-metadata-async! metadata-future card)))
+        (mt/with-test-user :crowberto
+          (if metadata
+            (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
+            (card.metadata/save-metadata-async! metadata-future card))))
       (testing "Users with restricted access to the columns of a table via a native query sandbox should only see
                columns included in the sandboxing question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}

@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 import { useListDatabasesQuery } from "metabase/api";
 import {
   canUserCreateNativeQueries,
@@ -24,6 +26,10 @@ export const NewItemMenu = (props: NewItemMenuProps) => {
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDatabaseWithJsonEngine = getHasDatabaseWithJsonEngine(databases);
   const dispatch = useDispatch();
+  const handleCloseNavbar = useCallback(
+    () => dispatch(closeNavbar()),
+    [dispatch],
+  );
 
   return (
     <NewItemMenuView
@@ -31,7 +37,7 @@ export const NewItemMenu = (props: NewItemMenuProps) => {
       hasDataAccess={hasDataAccess}
       hasNativeWrite={hasNativeWrite}
       hasDatabaseWithJsonEngine={hasDatabaseWithJsonEngine}
-      onCloseNavbar={() => dispatch(closeNavbar())}
+      onCloseNavbar={handleCloseNavbar}
     />
   );
 };

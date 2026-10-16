@@ -1,6 +1,11 @@
 import cx from "classnames";
+import { useState } from "react";
 
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import {
+  CollectionRowModal,
+  type CollectionRowModalState,
+} from "metabase/common/collections/components/CollectionRowModal";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Icon } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -16,34 +21,45 @@ export function CollectionRow({
   item: collection,
   setSnippetCollectionId,
 }: CollectionRowProps) {
+  const [collectionModal, setCollectionModal] =
+    useState<CollectionRowModalState>();
   const onSelectCollection = () => {
     setSnippetCollectionId?.(collection.id);
   };
 
   return (
-    <div
-      className={cx(
-        { [cx(CS.bgLightHover, CS.cursorPointer)]: !collection.archived },
-        CS.hoverParent,
-        CS.hoverVisibility,
-        CS.flex,
-        CS.alignCenter,
-        CS.py1,
-        CS.px3,
-        CS.textBrand,
-      )}
-      {...(collection.archived ? undefined : { onClick: onSelectCollection })}
-    >
-      <Icon
-        name="folder"
-        size={ICON_SIZE}
-        style={{ opacity: 0.25 }}
-        className={CS.flexNoShrink}
+    <>
+      <div
+        className={cx(
+          { [cx(CS.bgLightHover, CS.cursorPointer)]: !collection.archived },
+          CS.hoverParent,
+          CS.hoverVisibility,
+          CS.flex,
+          CS.alignCenter,
+          CS.py1,
+          CS.px3,
+          CS.textBrand,
+        )}
+        {...(collection.archived ? undefined : { onClick: onSelectCollection })}
+      >
+        <Icon
+          name="folder"
+          size={ICON_SIZE}
+          style={{ opacity: 0.25 }}
+          className={CS.flexNoShrink}
+        />
+        <Ellipsified className={cx(CS.flexFull, CS.ml1, CS.textBold)} flex={1}>
+          {collection.name}
+        </Ellipsified>
+        <CollectionRowMenu
+          collection={collection}
+          onOpenModal={setCollectionModal}
+        />
+      </div>
+      <CollectionRowModal
+        modal={collectionModal}
+        onClose={() => setCollectionModal(undefined)}
       />
-      <Ellipsified className={cx(CS.flexFull, CS.ml1, CS.textBold)} flex={1}>
-        {collection.name}
-      </Ellipsified>
-      <CollectionRowMenu collection={collection} />
-    </div>
+    </>
   );
 }

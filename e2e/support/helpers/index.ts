@@ -11,6 +11,7 @@ export * from "./e2e-codemirror-helpers";
 export * from "./e2e-collection-helpers";
 export * from "./e2e-command-palette-helpers";
 export * from "./e2e-comment-helpers";
+export * from "./e2e-content-diagnostics-helpers";
 export * from "./e2e-custom-column-helpers";
 export * from "./e2e-custom-viz-helpers";
 export * from "./data-app-test-env";

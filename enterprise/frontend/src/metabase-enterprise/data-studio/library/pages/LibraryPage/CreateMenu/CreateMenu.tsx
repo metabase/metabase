@@ -1,0 +1,109 @@
+import { useDisclosure } from "@mantine/hooks";
+import { t } from "ttag";
+
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
+import { canUserCreateQueries } from "metabase/current-user";
+import { openNewCollectionModal } from "metabase/data-studio/common/utils";
+import { useDispatch, useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
+import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type { CollectionId, CollectionNamespace } from "metabase-types/api";
+
+import { LIBRARY_COLLECTION_PICKER_OPTIONS } from "../../../constants";
+import { PublishTableModal } from "../PublishTableModal";
+
+export const CreateMenu = ({
+  metricCollectionId,
+  canWriteToMetricCollection,
+  dataCollectionId,
+  canWriteToDataCollection,
+}: {
+  metricCollectionId?: CollectionId;
+  canWriteToMetricCollection?: boolean;
+  dataCollectionId?: CollectionId;
+  canWriteToDataCollection?: boolean;
+}) => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [
+    showPublishTableModal,
+    { close: closePublishTableModal, open: openPublishTableModal },
+  ] = useDisclosure(false);
+
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const canCreateMetric =
+    hasDataAccess && metricCollectionId && canWriteToMetricCollection;
+
+  const canCreateLibraryCollection =
+    (dataCollectionId && canWriteToDataCollection) ||
+    (metricCollectionId && canWriteToMetricCollection);
+
+  const collectionNamespaces: CollectionNamespace[] = [null];
+
+  const initialCollectionId =
+    (dataCollectionId && canWriteToDataCollection && dataCollectionId) ||
+    (metricCollectionId && canWriteToMetricCollection && metricCollectionId) ||
+    null;
+
+  const menuItems = [
+    <Menu.Item
+      key="publish-table"
+      leftSection={<FixedSizeIcon name="publish" />}
+      onClick={openPublishTableModal}
+    >
+      {t`Published table`}
+    </Menu.Item>,
+    canCreateMetric && (
+      <Menu.Item
+        key="metric"
+        component={ForwardRefLink}
+        to={Urls.newDataStudioMetric({
+          collectionId: metricCollectionId,
+        })}
+        leftSection={<FixedSizeIcon name="metric" />}
+        onClickCapture={() => trackMetricCreateStarted("data_studio_library")}
+      >
+        {t`Metric`}
+      </Menu.Item>
+    ),
+    canCreateLibraryCollection && (
+      <Menu.Item
+        key="collection"
+        leftSection={<FixedSizeIcon name="folder" />}
+        onClick={() =>
+          dispatch(
+            openNewCollectionModal({
+              initialCollectionId,
+              namespaces: collectionNamespaces,
+              pickerOptions: LIBRARY_COLLECTION_PICKER_OPTIONS,
+            }),
+          )
+        }
+      >
+        {t`Collection`}
+      </Menu.Item>
+    ),
+  ].filter(Boolean);
+
+  if (!menuItems.length) {
+    return null;
+  }
+
+  return (
+    <>
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <Button size="lg" leftSection={<Icon name="add" />}>{t`New`}</Button>
+        </Menu.Target>
+        <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+      </Menu>
+      <PublishTableModal
+        opened={showPublishTableModal}
+        onClose={closePublishTableModal}
+        onPublished={(table) => navigate(Urls.dataStudioTable(table.id))}
+      />
+    </>
+  );
+};

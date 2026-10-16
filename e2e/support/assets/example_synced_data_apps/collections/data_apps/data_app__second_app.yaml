@@ -1,0 +1,7 @@
+name: 'Data App: Second App'
+namespace: data-apps
+entity_id: secondAppCollection00
+serdes/meta:
+- id: secondAppCollection00
+  label: data_app__second_app
+  model: Collection

@@ -103,7 +103,6 @@ result_metadata:
   lib/source: source/aggregations
   lib/source-column-alias: count
 visualization_settings:
-  column_settings: null
   graph.dimensions:
   - CREATED_AT
   - CATEGORY

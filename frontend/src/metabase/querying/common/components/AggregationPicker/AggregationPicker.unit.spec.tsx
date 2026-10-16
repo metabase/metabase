@@ -78,9 +78,7 @@ function createQueryWithInlineExpression() {
             value: {
               type: "operator",
               operator: "avg",
-              args: [
-                { type: "column", name: "QUANTITY", sourceName: "ORDERS" },
-              ],
+              args: [{ type: "column", name: "QUANTITY" }],
             },
           },
         ],
