@@ -1,11 +1,20 @@
 import fetchMock from "fetch-mock";
 
+import type { CollectionItem, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-export const setupLibraryEndpoints = (hasLibrary?: boolean) => {
+interface SetupLibraryEndpointsOpts {
+  hasLibrary?: boolean;
+  library?: Partial<CollectionItem>;
+}
+
+export const setupLibraryEndpoints = ({
+  hasLibrary = false,
+  library,
+}: SetupLibraryEndpointsOpts = {}) => {
   if (hasLibrary) {
     fetchMock.get(
       "path:/api/ee/library",
@@ -17,6 +26,7 @@ export const setupLibraryEndpoints = (hasLibrary?: boolean) => {
         location: "/",
         here: ["collection"],
         below: ["dataset", "metric"],
+        ...library,
       }),
     );
   } else {
@@ -26,6 +36,25 @@ export const setupLibraryEndpoints = (hasLibrary?: boolean) => {
     });
   }
 };
+
+/**
+ * Answers searches scoped to the Library from `setupLibraryEndpoints`, with the
+ * results of the requested models. Set it up before `setupSearchEndpoints`,
+ * which answers every other search.
+ */
+export function setupLibrarySearchEndpoint(searchResults: SearchResult[]) {
+  fetchMock.get({
+    url: "path:/api/search",
+    query: { collection: 6464 },
+    response: (call) => {
+      const models = new URL(call.url).searchParams.getAll("models");
+      const data = searchResults.filter((result) =>
+        models.includes(result.model),
+      );
+      return { data, total: data.length, models };
+    },
+  });
+}
 
 export function setupCreateLibraryEndpoint(
   collection = createMockCollection(),

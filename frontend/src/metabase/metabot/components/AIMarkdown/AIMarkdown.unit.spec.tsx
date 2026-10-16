@@ -40,7 +40,7 @@ const setup = (
     "token-features": createMockTokenFeatures({ library: true }),
   });
 
-  setupLibraryEndpoints(true);
+  setupLibraryEndpoints({ hasLibrary: true });
   setupCardEndpoints(createMockCard({ id: 123, name: "Test Question" }));
   setupCardEndpoints(
     createMockCard({

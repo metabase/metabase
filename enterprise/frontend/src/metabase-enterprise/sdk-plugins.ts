@@ -16,6 +16,8 @@ import "./shared";
 // oxfmt-ignore
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 // oxfmt-ignore
+import { initializePlugin as initializeLibrary } from "./data-studio/library/sdk";
+// oxfmt-ignore
 import { initializePlugin as initializeEmbedding } from "./embedding";
 // oxfmt-ignore
 import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
@@ -42,6 +44,7 @@ export function initializePlugins() {
   initializeWhitelabelPlugin?.();
   initializeWhitelabelOverridePlugin?.();
   initializeContentTranslation?.();
+  initializeLibrary();
   initializeNotifications();
   initializeSharing();
   initializeHandleLinkPlugin();

@@ -31,15 +31,17 @@ import type { SavedEntityType } from "../types";
 
 import { SavedEntityList } from "./SavedEntityList";
 import SavedEntityPickerS from "./SavedEntityPicker.module.css";
-import { CARD_INFO } from "./constants";
+import { CARD_INFO, COLLECTION_TREE_REQUEST } from "./constants";
 import { findCollectionById } from "./utils";
 
 interface SavedEntityPickerProps {
   type: SavedEntityType;
+  /** Limits the tree to this collection and its subcollections, like a Library folder. */
+  scopeCollection?: Collection;
   collectionId?: CollectionId | null;
   tableId?: TableId;
   databaseId?: DatabaseId | null;
-  onSelect: (cardId: string) => void;
+  onSelect: (tableId: TableId) => void;
   onBack: () => void;
 }
 
@@ -62,11 +64,9 @@ const ALL_PERSONAL_COLLECTIONS_ROOT = mergeLazily(
 ) as Collection;
 
 export function SavedEntityPicker(props: SavedEntityPickerProps) {
-  const { data: collections } = useListCollectionsTreeQuery({
-    "exclude-archived": true,
-    "include-library": true,
-    namespaces: ["", "shared-tenant-collection", "tenant-specific"],
-  });
+  const { data: collections } = useListCollectionsTreeQuery(
+    COLLECTION_TREE_REQUEST,
+  );
   const { data: rootCollection } = useGetCollectionQuery({ id: "root" });
   const currentUser = useSelector(getUser);
 
@@ -97,12 +97,17 @@ function InnerSavedEntityPicker({
   databaseId,
   onSelect,
   onBack,
+  scopeCollection,
   collections,
   rootCollection,
   currentUser,
 }: InnerSavedEntityPickerProps) {
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const modelFilter = (model: string) => CARD_INFO[type].model === model;
+
+    if (scopeCollection) {
+      return buildCollectionTree([scopeCollection], { modelFilter });
+    }
 
     const preparedCollections: Collection[] = [];
     const userPersonalCollections = currentUserPersonalCollections(
@@ -137,7 +142,7 @@ function InnerSavedEntityPicker({
         buildCollectionTree(preparedCollections, { modelFilter }),
       ),
     ];
-  }, [collections, rootCollection, currentUser, type]);
+  }, [collections, rootCollection, currentUser, type, scopeCollection]);
 
   const [selectedCollectionId, setSelectedCollectionId] = useState<
     CollectionId | undefined
@@ -169,7 +174,7 @@ function InnerSavedEntityPicker({
           data-testid="saved-entity-back-navigation"
         >
           <Icon name="chevronleft" className={CS.mr1} />
-          {CARD_INFO[type].title}
+          {scopeCollection?.name ?? CARD_INFO[type].title}
         </a>
         <Box m="0.5rem 0" data-testid="saved-entity-collection-tree">
           <Tree

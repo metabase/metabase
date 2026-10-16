@@ -1,11 +1,16 @@
 import { configureStore } from "@reduxjs/toolkit";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupEmbeddingDataPickerDecisionEndpoints,
+  setupLibraryEndpoints,
+  setupLibrarySearchEndpoint,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { createMockSettingsState, createMockState } from "__support__/state";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { embed, setInitialUrlOptions } from "metabase/redux/embed";
 import { reducer as embeddingDataPickerReducer } from "metabase/redux/embedding-data-picker";
@@ -16,8 +21,10 @@ import type {
 import type { Query } from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
+  createMockCollection,
   createMockModelResult,
   createMockSearchResult,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
@@ -34,6 +41,7 @@ interface SetupOpts {
   embeddingType: "full-app" | "modular";
   hasModels?: boolean;
   hasMetrics?: boolean;
+  hasLibrary?: boolean;
   entityTypes?: EmbeddingEntityType[];
   dataPicker?: EmbeddingDataPickerVariant;
   isJoinStep?: boolean;
@@ -48,12 +56,33 @@ export function setup({
   embeddingType,
   hasModels = DEFAULT_OPTS.hasModels,
   hasMetrics = false,
+  hasLibrary = false,
   entityTypes,
   dataPicker = "staged",
   isJoinStep = false,
   hasNestedQueriesEnabled = true,
 }: SetupOpts) {
   const query = createEmptyQuery();
+
+  // `mockSettings` has to run first, as the Library plugin reads the token
+  // features when it initializes.
+  const settings = mockSettings({
+    "enable-nested-queries": hasNestedQueriesEnabled,
+    ...(hasLibrary && {
+      "token-features": createMockTokenFeatures({ library: true }),
+    }),
+  });
+  if (hasLibrary) {
+    setupEnterpriseOnlyPlugin("library");
+  }
+  setupLibraryEndpoints({
+    hasLibrary,
+    library: { below: createLibraryCollection().below },
+  });
+  setupCollectionsEndpoints({
+    collections: hasLibrary ? [createLibraryCollection()] : [],
+  });
+  setupLibrarySearchEndpoint(createLibrarySearchResults());
 
   setupEmbeddingDataPickerDecisionEndpoints(dataPicker);
 
@@ -89,9 +118,7 @@ export function setup({
     ),
     {
       storeInitialState: createMockState({
-        settings: createMockSettingsState({
-          "enable-nested-queries": hasNestedQueriesEnabled,
-        }),
+        settings,
         ...(embeddingType === "full-app" &&
           entityTypes && {
             embeddingDataPicker:
@@ -137,6 +164,45 @@ function createModelSearchResults() {
     createMockModelResult({
       id: 2,
       name: "People model",
+    }),
+  ];
+}
+
+function createLibraryCollection() {
+  return createMockCollection({
+    id: 6464,
+    name: "Library",
+    type: "library",
+    here: ["collection"],
+    below: ["table", "metric"],
+    children: [
+      createMockCollection({
+        id: 6465,
+        name: "Data",
+        type: "library-data",
+        here: ["table"],
+      }),
+      createMockCollection({
+        id: 6466,
+        name: "Metrics",
+        type: "library-metrics",
+        here: ["metric"],
+      }),
+    ],
+  });
+}
+
+function createLibrarySearchResults() {
+  return [
+    createMockSearchResult({
+      id: 4,
+      name: "Published Orders",
+      model: "table",
+    }),
+    createMockSearchResult({
+      id: 5,
+      name: "Published Revenue",
+      model: "metric",
     }),
   ];
 }
