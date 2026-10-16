@@ -10,7 +10,7 @@ import { Center, Flex, Group } from "metabase/ui";
 
 import { TaskPicker } from "../TaskPicker";
 import { TaskStatusPicker } from "../TaskStatusPicker";
-import { TasksTabs } from "../TasksTabs";
+import { TasksPageLayout } from "../TasksPageLayout";
 
 import { TasksTable } from "./TasksTable";
 import { urlStateConfig } from "./utils";
@@ -62,7 +62,7 @@ export const TaskListPage = () => {
   const error = tasksError || databasesError;
 
   return (
-    <TasksTabs>
+    <TasksPageLayout>
       <Group gap="lg" align="center" wrap="nowrap">
         <TaskPicker
           value={task}
@@ -110,6 +110,6 @@ export const TaskListPage = () => {
           />
         </Flex>
       )}
-    </TasksTabs>
+    </TasksPageLayout>
   );
 };

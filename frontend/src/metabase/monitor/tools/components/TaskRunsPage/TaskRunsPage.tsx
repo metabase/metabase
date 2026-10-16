@@ -14,7 +14,7 @@ import { TaskRunTypePicker } from "../RunTypePicker";
 import { TaskRunEntityPicker } from "../TaskRunEntityPicker";
 import { TaskRunDatePicker } from "../TaskRunStartedAtPicker";
 import { TaskRunStatusPicker } from "../TaskRunStatusPicker";
-import { TasksTabs } from "../TasksTabs";
+import { TasksPageLayout } from "../TasksPageLayout";
 
 import { TaskRunsTable } from "./TaskRunsTable";
 import { PAGE_SIZE } from "./constants";
@@ -70,7 +70,7 @@ export const TaskRunsPage = () => {
   const entityValue = entityType && entityId ? { entityType, entityId } : null;
 
   return (
-    <TasksTabs>
+    <TasksPageLayout>
       <Group gap="lg" align="center" wrap="wrap">
         <TaskRunTypePicker
           value={runType}
@@ -155,6 +155,6 @@ export const TaskRunsPage = () => {
           />
         </Flex>
       )}
-    </TasksTabs>
+    </TasksPageLayout>
   );
 };

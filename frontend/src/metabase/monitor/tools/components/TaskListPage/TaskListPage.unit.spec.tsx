@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   setupDatabasesEndpoints,
+  setupTaskCountsEndpoint,
   setupTasksEndpoints,
   setupUniqueTasksEndpoint,
 } from "__support__/server-mocks";
@@ -41,6 +42,7 @@ const setup = ({
   }),
   tasksResponse = createMockTasksResponse(),
 }: SetupOpts = {}) => {
+  setupTaskCountsEndpoint({ tasks: tasksResponse.total, runs: 0 });
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupUniqueTasksEndpoint(["task-a", "task-b"]);
   mockGetBoundingClientRect({ width: 100, height: 100 });

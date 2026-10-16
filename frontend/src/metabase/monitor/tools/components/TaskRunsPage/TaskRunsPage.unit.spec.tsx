@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupTaskRunsEndpoints } from "__support__/server-mocks";
+import {
+  setupTaskCountsEndpoint,
+  setupTaskRunsEndpoints,
+} from "__support__/server-mocks";
 import {
   act,
   mockGetBoundingClientRect,
@@ -31,6 +34,7 @@ const setup = async ({
   }),
   initialRoute = PATHNAME,
 }: SetupOpts = {}) => {
+  setupTaskCountsEndpoint({ tasks: 0, runs: taskRunsResponse.total });
   setupTaskRunsEndpoints(taskRunsResponse);
 
   mockGetBoundingClientRect({ width: 100, height: 100 });
