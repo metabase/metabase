@@ -1310,4 +1310,19 @@ serdes/meta:
                              (generate-python-library-yaml transforms-python/builtin-entity-id "common.py" "")}}]
         (is (=? {:status :success}
                 (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)))
-        (is (false? (settings/remote-sync-transforms)))))))
+        (is (false? (settings/remote-sync-transforms)))
+        (testing "and turning transforms sync on afterwards records no change for it"
+          (settings/remote-sync-transforms! true)
+          (is (nil? (transforms-root-status))))))))
+
+(deftest pull-of-edited-built-in-python-library-turns-on-transforms-sync-test
+  (testing "A pull whose built-in Python library was edited turns on transforms sync"
+    (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                       remote-sync-transforms false]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+            files   {"main" {"python-libraries/common.yaml"
+                             (generate-python-library-yaml transforms-python/builtin-entity-id "common.py"
+                                                           "  def f(): pass")}}]
+        (is (=? {:status :success}
+                (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)))
+        (is (true? (settings/remote-sync-transforms)))))))

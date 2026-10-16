@@ -610,7 +610,7 @@
 
 (mu/defn transforms-content-exists? :- :boolean
   "Whether any transforms content exists to publish: a Transform, TransformTest, transforms Collection, TransformTag
-  that isn't built in, or PythonLibrary other than the built-in one unless it was ever updated."
+  that isn't built in, or PythonLibrary other than the built-in one unless its source was edited."
   []
   (boolean
    (or (t2/exists? :model/Transform)
@@ -619,7 +619,7 @@
        (t2/exists? :model/TransformTag :built_in_type nil)
        (t2/exists? :model/PythonLibrary {:where [:or
                                                  [:not= :entity_id transforms-python/builtin-entity-id]
-                                                 [:not= :updated_at :created_at]]}))))
+                                                 [:not= :source transforms-python/builtin-source]]}))))
 
 (mu/defn delete-transforms-rsos!
   "Delete the RemoteSyncObjects of every Transform, TransformTag, TransformTest, and PythonLibrary."

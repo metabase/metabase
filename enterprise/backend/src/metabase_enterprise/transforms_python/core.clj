@@ -7,4 +7,5 @@
 
 (p/import-vars
  [python-library
-  builtin-entity-id])
+  builtin-entity-id
+  builtin-source])

@@ -35,8 +35,8 @@
 (set! *warn-on-reflection* true)
 
 (defn- snapshot-has-transforms?
-  "Checks if the snapshot contains any Transform, PythonLibrary entities,
-   non-built-in TransformTags, or transforms-namespace collections.
+  "Checks if the snapshot contains any Transform, PythonLibrary entities (the built-in common.py only once its source
+   was edited), non-built-in TransformTags, or transforms-namespace collections.
    Used to auto-enable/disable remote-sync-transforms setting during import.
 
    Uses the ingestable to list all entities and checks their :model metadata,
@@ -46,8 +46,11 @@
   (let [serdes-paths (serialization/ingest-list ingestable)
         models-present (spec/models-in-import serdes-paths)]
     (or (some (disj spec/transform-models "PythonLibrary") models-present)
-        (some #(and (= "PythonLibrary" (:model (last %)))
-                    (not= transforms-python/builtin-entity-id (:id (last %))))
+        (some (fn [path]
+                (when (= "PythonLibrary" (:model (last path)))
+                  (or (not= transforms-python/builtin-entity-id (:id (last path)))
+                      (not= transforms-python/builtin-source
+                            (str/trim (or (:source (serialization/ingest-one ingestable path)) ""))))))
               serdes-paths)
         ;; Check for non-built-in TransformTags
         (when (contains? models-present "TransformTag")
