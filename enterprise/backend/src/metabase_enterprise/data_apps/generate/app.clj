@@ -1,13 +1,11 @@
 (ns metabase-enterprise.data-apps.generate.app
-  "A new data app's files: its `data_app.yaml` and its collection's YAML, each at the path a remote-sync export
-  writes it."
+  "A new data app's file: its `data_app.yaml`, at the path a remote-sync export writes it."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase-enterprise.serialization.core :as serialization]
-   [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -29,15 +27,15 @@
       (str/replace #"^-+|-+$" "")))
 
 (defn- file
-  "The `entity`'s YAML file at the path a remote-sync export writes it, resolving collection paths with `collections`."
-  [entity collections]
-  {:path (serialization/entity-file-path {:collections collections :unique-name-fns (atom {})} entity)
+  "The `entity`'s YAML file at the path a remote-sync export writes it."
+  [entity]
+  {:path (serialization/entity-file-path (serialization/storage-context serialization/kind-layout) entity)
    :yaml (serialization/entity-yaml entity)})
 
 (mu/defn generate :- ::data-apps.schema/app-files
-  "The `data_app.yaml` of an app named `name`, served at `slug` (from the name by default), and its collection's file,
-  with the entity IDs `entity_id` and `collection_id` of an existing app, or new ones, and the YAML an export writes
-  for them once a pull saves them."
+  "The `data_app.yaml` of an app named `name`, served at `slug` (from the name by default), with the entity IDs
+  `entity_id` and `collection_id` of an existing app, or new ones, and the YAML an export writes for it once a pull
+  saves it. The app's collection has no file: the pull creates it from `data_app.yaml`."
   [{app-name :name :keys [slug description entity_id collection_id]} :- ::data-apps.schema/app-request]
   (let [slug          (or slug (name->slug app-name))
         _             (when-not (mr/validate ::data-apps.schema/slug slug)
@@ -45,13 +43,6 @@
         app-id        (or entity_id (u/generate-nano-id))
         collection-id (or collection_id (u/generate-nano-id))
         created-at    (u.date/format (mi/current-timestamp))
-        collection    {:name        (str "Data App: " slug)
-                       :namespace   "data-apps"
-                       :entity_id   collection-id
-                       :slug        (collections/slugify (str "Data App: " slug))
-                       :created_at  created-at
-                       :serdes/meta [{:model "Collection" :id collection-id
-                                      :label (serialization/slugify-name (str "Data App: " slug))}]}
         app           (m/assoc-some {:version     data-app.config/supported-app-version
                                      :name        app-name
                                      :slug        slug
@@ -61,5 +52,4 @@
                                      :created_at  created-at
                                      :serdes/meta [{:model "DataApp" :id app-id :label slug}]}
                                     :description description)]
-    {:files [(file app nil)
-             (file collection {collection-id [{:label (:name collection) :key collection-id}]})]}))
+    {:files [(file app)]}))

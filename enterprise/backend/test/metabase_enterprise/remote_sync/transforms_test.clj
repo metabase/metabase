@@ -711,7 +711,7 @@ serdes/meta:
               (is (= :success (:status result))
                   (str "Export should succeed. Result: " result))
               (let [files-after-export (get @(:files-atom mock-source) "main")]
-                (is (some #(str/includes? % "python_libraries/") (keys files-after-export))
+                (is (some #(str/includes? % "python_library/") (keys files-after-export))
                     "Export should include the PythonLibrary file")))))))))
 
 (deftest import-python-library-from-yaml-test
@@ -1207,11 +1207,11 @@ serdes/meta:
                                     (get @(:files-atom mock) "main")))]
               (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "init"))))
               (let [old-path (test-path)]
-                (is (str/ends-with? old-path "/etl/orders_summary/no_nulls.yaml"))
+                (is (str/ends-with? old-path "/etl/orders_summary.transform/no_nulls.transform_test.yaml"))
                 (t2/update! :model/Transform transform-id {:name "Orders Report"})
                 (events/publish-event! :event/transform-update {:object (t2/select-one :model/Transform transform-id)})
                 (testing "renaming the transform marks its test for update"
                   (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "TransformTest" :model_id test-id)))))
                 (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "rename"))))
-                (is (str/ends-with? (test-path) "/etl/orders_report/no_nulls.yaml"))
+                (is (str/ends-with? (test-path) "/etl/orders_report.transform/no_nulls.transform_test.yaml"))
                 (is (not (contains? (get @(:files-atom mock) "main") old-path)))))))))))

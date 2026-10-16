@@ -248,7 +248,7 @@
             and still reconciles to the same state as the full oracle"
     (do-with-bench!
      (fn [f0]
-       (let [c-path (path-with f0 "bench.yaml")
+       (let [c-path (path-with f0 "bench/collection.yaml")
              f1     (update f0 c-path str/replace "name: Bench" "name: Workbench")]
          (is (= :fallback (run-differential! f0 f1))))))))
 

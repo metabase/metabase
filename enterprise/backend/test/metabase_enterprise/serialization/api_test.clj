@@ -54,10 +54,10 @@
    #"/settings.yaml$"                          :settings
    #"/export.log$"                             :log
    #"/collections/(.*)\.yaml$"                 :collection-entity
-   #"/databases/.*/schemas/(.*)"               :schema
+   #"/databases/[^/]+/([^/]+)/.*\.table\.yaml$" :schema
    #"/databases/(.*)\.yaml"                    :database
-   #"/transforms/(.*)\.yaml"                   :transform
-   #"/python_libraries/(.*)\.yaml"             :python-library])
+   #"/transform_(?:tags|jobs)/(.*)\.yaml"      :transform
+   #"/python_library/(.*)\.yaml"               :python-library])
 
 (defn- file-type
   "Find out entity type by file path"
@@ -331,7 +331,7 @@
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
-                                                                (= (.getName file) "frobinate.yaml")
+                                                                (= (.getName file) "frobinate.model.yaml")
                                                                 (assoc :collection_id "DoesNotExist"))))]
           (let [res (binding [api.serialization/*additive-logging* false]
                       (mt/user-http-request :crowberto :post 500 "ee/serialization/import"
@@ -360,7 +360,7 @@
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
-                                                                (= (.getName file) "frobinate.yaml")
+                                                                (= (.getName file) "frobinate.model.yaml")
                                                                 (assoc :collection_id "DoesNotExist"))))]
           (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
                                           {:request-options {:headers {"content-type" "multipart/form-data"}}}

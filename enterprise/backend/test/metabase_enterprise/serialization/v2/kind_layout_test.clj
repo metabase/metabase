@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.v2.kind-layout-test
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
@@ -341,7 +340,7 @@
 (deftest ai-context-in-its-items-folder-test
   (testing "a serdes export in the kind layout writes AI context in its item's folder; the old flat folder still loads"
     (doseq [[layout expected-file] [[kind-layout/kind-layout ["databases" "shop" "public" "orders.table" "ai_context.yaml"]]
-                                    [storage.util/default-layout ["osi_ai_context"]]]]
+                                    [storage.util/storage-path-layout ["osi_ai_context"]]]]
       (testing (str expected-file)
         (ts/with-random-dump-dir [dump-dir "ai-context-"]
           (ts/with-dbs [source-db dest-db]
@@ -352,7 +351,7 @@
               ;; a serdes export extracts AI context only with its item, in the kind layout; an earlier export wrote
               ;; each one to the flat osi_ai_context/ folder
               (storage/store! (cond-> (extract-all)
-                                (= layout storage.util/default-layout)
+                                (= layout storage.util/storage-path-layout)
                                 (conj (serdes/extract-one "OsiAiContext" {} (t2/select-one :model/OsiAiContext))))
                               (storage.files/file-writer dump-dir layout)))
             (is (.exists ^java.io.File (apply io/file dump-dir expected-file)))
@@ -362,9 +361,16 @@
                      (t2/select-one-fn :ai_context :model/OsiAiContext :entity_type "table"
                                        :entity_local_id (t2/select-one-pk :model/Table :name "orders")))))))))))
 
-(deftest kind-layout-is-not-the-default-test
-  (testing "a storage context without a layout, and plain serdes export, keep today's layout"
-    (is (= storage.util/default-layout (:layout (storage.util/storage-context))))
-    (is (str/starts-with? (storage.util/entity-file-path (serdes/storage-base-context)
-                                                         {:serdes/meta [{:model "Card" :id "A"}] :name "A"})
-                          "collections/main/"))))
+(deftest kind-layout-is-the-default-test
+  (testing "plain serdes export writes the kind layout"
+    (ts/with-random-dump-dir [dump-dir "default-layout-"]
+      (ts/with-dbs [source-db]
+        (ts/with-db source-db
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Shop"}
+                         :model/Card       _             {:name "Orders" :collection_id coll-id}]
+            (storage/store! (extract-all) (storage.files/file-writer dump-dir))))
+        (is (.exists (io/file dump-dir "collections" "main" "shop" "orders.question.yaml"))))))
+  (testing "a storage context names its layout"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"names no layout"
+                          (storage.util/entity-file-path (serdes/storage-base-context)
+                                                         {:serdes/meta [{:model "Card" :id "A"}] :name "A"})))))

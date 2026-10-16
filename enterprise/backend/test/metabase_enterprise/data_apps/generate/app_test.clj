@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.config :as data-apps.config]
    [metabase-enterprise.data-apps.generate.app :as generate.app]
-   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]))
@@ -15,29 +14,21 @@
   [{:keys [files]} path]
   (some-> (first (filter #(= path (:path %)) files)) :yaml yaml/parse-string))
 
-(deftest generates-the-manifest-and-the-collection-file-test
-  (let [result        (generate.app/generate {:name "Sales Ops"})
-        app           (file-yaml result "data_apps/sales-ops/data_app.yaml")
-        collection-id (:entity_id (file-yaml result (data-apps.tu/collection-path "Data App: sales-ops")))]
-    (testing "a manifest and a collection file, each at the path a remote-sync export writes it"
-      (is (= ["data_apps/sales-ops/data_app.yaml" "collections/data_apps/data_app__sales_ops.yaml"]
-             (map :path (:files result)))))
+(deftest generates-the-manifest-test
+  (let [result (generate.app/generate {:name "Sales Ops"})
+        app    (file-yaml result "data_apps/sales-ops/data_app.yaml")]
+    (testing "only the manifest, at the path a remote-sync export writes it: the app's collection has no file"
+      (is (= ["data_apps/sales-ops/data_app.yaml"] (map :path (:files result)))))
     (testing "the manifest names the app, its bundle, its version and the collection it owns"
       (is (=? {:name        "Sales Ops"
                :slug        "sales-ops"
                :path        "dist/index.js"
                :version     data-apps.config/supported-app-version
-               :collection  collection-id
+               :collection  string?
                :entity_id   string?
                :serdes/meta [{:model "DataApp"}]}
               app))
       (is (not (contains? app :description))))
-    (testing "the collection is in the data-apps namespace, named after the app's slug as the instance names it"
-      (is (=? {:name        "Data App: sales-ops"
-               :namespace   "data-apps"
-               :entity_id   string?
-               :serdes/meta [{:model "Collection"}]}
-              (file-yaml result "collections/data_apps/data_app__sales_ops.yaml"))))
     (testing "the entity IDs are new on each call"
       (is (not= (:entity_id app)
                 (:entity_id (file-yaml (generate.app/generate {:name "Sales Ops"})
@@ -46,18 +37,14 @@
 (deftest keeps-the-description-and-an-explicit-slug-test
   (let [result (generate.app/generate {:name "Sales Ops" :slug "ops" :description "Pipeline health"})]
     (is (=? {:slug "ops" :description "Pipeline health"}
-            (file-yaml result "data_apps/ops/data_app.yaml")))
-    (testing "the collection is named after the slug, so apps sharing a display name don't share a collection file"
-      (is (=? {:name "Data App: ops"} (file-yaml result "collections/data_apps/data_app__ops.yaml"))))))
+            (file-yaml result "data_apps/ops/data_app.yaml")))))
 
 (deftest keeps-the-entity-ids-of-an-existing-app-test
   (let [app-id        "existingAppIdxxxxxxxx"
         collection-id "existingCollIdxxxxxxx"
         result        (generate.app/generate {:name "Sales Ops" :entity_id app-id :collection_id collection-id})]
     (is (=? {:entity_id app-id :collection collection-id}
-            (file-yaml result "data_apps/sales-ops/data_app.yaml")))
-    (is (=? {:entity_id collection-id}
-            (file-yaml result "collections/data_apps/data_app__sales_ops.yaml")))))
+            (file-yaml result "data_apps/sales-ops/data_app.yaml")))))
 
 (deftest derives-the-slug-from-the-name-test
   (are [app-name slug] (some? (file-yaml (generate.app/generate {:name app-name})
@@ -77,21 +64,18 @@
 (deftest api-generates-the-files-test
   (mt/with-premium-features #{:data-apps}
     (testing "a superuser gets the files"
-      (is (=? {:files [{:path "data_apps/sales-ops/data_app.yaml" :yaml string?}
-                       {:path "collections/data_apps/data_app__sales_ops.yaml" :yaml string?}]}
+      (is (=? {:files [{:path "data_apps/sales-ops/data_app.yaml" :yaml string?}]}
               (mt/user-http-request :crowberto :post 200 "apps/generate/app" {:name "Sales Ops"}))))
     (testing "an explicit slug is kept"
-      (is (=? {:files [{:path "data_apps/ops/data_app.yaml"} {}]}
+      (is (=? {:files [{:path "data_apps/ops/data_app.yaml"}]}
               (mt/user-http-request :crowberto :post 200 "apps/generate/app" {:name "Sales Ops" :slug "ops"}))))
     (testing "an existing app's entity IDs are kept"
-      (let [{[app collection] :files} (mt/user-http-request :crowberto :post 200 "apps/generate/app"
-                                                            {:name          "Sales Ops"
-                                                             :entity_id     "existingAppIdxxxxxxxx"
-                                                             :collection_id "existingCollIdxxxxxxx"})]
+      (let [{[app] :files} (mt/user-http-request :crowberto :post 200 "apps/generate/app"
+                                                 {:name          "Sales Ops"
+                                                  :entity_id     "existingAppIdxxxxxxxx"
+                                                  :collection_id "existingCollIdxxxxxxx"})]
         (is (=? {:entity_id "existingAppIdxxxxxxxx" :collection "existingCollIdxxxxxxx"}
-                (yaml/parse-string (:yaml app))))
-        (is (=? {:entity_id "existingCollIdxxxxxxx"}
-                (yaml/parse-string (:yaml collection))))))
+                (yaml/parse-string (:yaml app))))))
     (testing "an entity ID that is not a NanoID is refused"
       (mt/user-http-request :crowberto :post 400 "apps/generate/app" {:name "Sales Ops" :entity_id "not-an-id"}))
     (testing "only a superuser writes an app's repository"

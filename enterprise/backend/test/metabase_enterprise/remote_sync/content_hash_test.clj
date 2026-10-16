@@ -428,16 +428,13 @@
   (testing "After a real import, a no-op Glossary update stays synced"
     (mt/with-temporary-setting-values [remote-sync-enabled true]
       (mt/with-model-cleanup [:model/Glossary :model/Collection]
-        ;; The snapshot carries the Library as a read-write instance exports it, so the Library stays synced
-        ;; through the import and the Glossary spec is enabled when the ledger is rebuilt.
+        ;; The Library has no files; the glossary entry is Library content, so the pull syncs the Library and the
+        ;; Glossary spec is enabled when the ledger is rebuilt.
         (t2/delete! :model/Collection :entity_id collection/library-entity-id)
         (let [eid   "test-glossary-xxxxxxx"
-              files {"main" {"collections/library/library.yaml"
-                             (test-helpers/generate-collection-yaml collection/library-entity-id "Library"
-                                                                    :type "library" :is-remote-synced true)
-                             "collections/main/test_coll/test_coll.yaml"
+              files {"main" {"collections/main/test_coll/collection.yaml"
                              (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                             "glossary/arr.yaml"
+                             "glossary/arr.term.yaml"
                              (test-helpers/generate-glossary-yaml eid "ARR" "Annual recurring revenue")}}]
           (is (= "synced"
                  (import-then-noop-status!
@@ -455,9 +452,9 @@
           (mt/db)
           (let [coll-eid "transforms-coll-xxxxx"
                 tr-eid   "test-transform-xxxxxx"
-                files {"main" {"collections/transforms/transforms/transforms.yaml"
+                files {"main" {"transforms/transforms/collection.yaml"
                                (test-helpers/generate-collection-yaml coll-eid "Transforms" :namespace "transforms")
-                               "collections/transforms/transforms/test_transform.yaml"
+                               "transforms/transforms/test_transform.transform.yaml"
                                (test-helpers/generate-transform-yaml tr-eid "Test Transform" :collection-id coll-eid)}}]
             (is (= "synced"
                    (import-then-noop-status!
@@ -471,7 +468,7 @@
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-model-cleanup [:model/TransformTag]
           (let [tag-eid "test-transform-tag-xx"
-                files {"main" {"transforms/transform_tags/test_tag.yaml"
+                files {"main" {"transform_tags/test_tag.transform_tag.yaml"
                                (test-helpers/generate-transform-tag-yaml tag-eid "Test Tag")}}]
             (is (= "synced"
                    (import-then-noop-status!

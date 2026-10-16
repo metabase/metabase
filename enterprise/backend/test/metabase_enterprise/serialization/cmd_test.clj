@@ -89,7 +89,7 @@
                 ;; override that reliably
                 (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
                                                                     (cond-> (ingest-file file)
-                                                                      (= (.getName file) "card.yaml")
+                                                                      (= (.getName file) "card.question.yaml")
                                                                       (assoc :collection_id "DoesNotExist")))]
                   (is (thrown? Exception
                                (cmd/import dump-dir)))

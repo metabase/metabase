@@ -273,6 +273,17 @@
   (let [gen (cached ctx [::names folder kind] lib/non-truncating-unique-name-generator)]
     (gen key (ranked-slug ctx kind key label))))
 
+(defn item-file-name
+  "The file name `<name>.<kind>.yaml` of an item of `kind` (a key of [[kind-words]]) whose name is `stem`, as
+  [[unique-stem]] gives it."
+  [kind stem]
+  (str stem "." (kind-words kind) ".yaml"))
+
+(defn label-slug
+  "The name of an item labelled `label` in its folder before any clash number (see [[ranked-slug]])."
+  [label]
+  (slug label))
+
 (defn- item-file
   "`folder` with the file stem `<name>.<kind>` of the item with dedup key `key` and label `label` appended."
   [ctx folder kind key label]
@@ -374,7 +385,7 @@
   (fn [_ctx entity] (model-of entity)))
 
 (defmethod item-path :default [ctx entity]
-  (storage.util/default-layout ctx entity))
+  (storage.util/storage-path-layout ctx entity))
 
 (defn- serdes-only-path
   "The [[serdes/storage-path]] of `entity`, its file name followed by the word of `kind`."

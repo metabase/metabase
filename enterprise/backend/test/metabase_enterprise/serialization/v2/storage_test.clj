@@ -9,6 +9,7 @@
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase-enterprise.serialization.v2.storage.kind-layout :as kind-layout]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
@@ -24,6 +25,12 @@
                :let               [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
 
+(defn- storage-path-writer
+  "A file writer in the layout of exports before the kind layout, where each Table, Field and settings row is a file of
+  its own. The tests of how that layout names those files use it."
+  [dump-dir]
+  (storage.files/file-writer dump-dir storage.util/storage-path-layout))
+
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
@@ -32,20 +39,20 @@
         (let [export (into [] (extract/extract {:no-transforms true}))]
           (storage/store! export (storage.files/file-writer dump-dir))
           (testing "the right files in the right places"
-            (is (= #{["main" "some_collection.yaml"]
-                     ["main" "some_collection" "child_collection.yaml"]}
+            (is (= #{["main" "some_collection" "collection.yaml"]
+                     ["main" "some_collection" "child_collection" "collection.yaml"]}
                    (file-set (io/file dump-dir "collections")))
-                "collections form a tree, with files as siblings of their content folders")
+                "collections form a tree, each with its own file in its folder")
             (is (contains? (file-set (io/file dump-dir))
                            ["settings.yaml"])
                 "A few top-level files are expected"))
           (testing "the Collections properly exported"
             (let [yaml-parent (-> (yaml/from-file (io/file dump-dir "collections" "main"
-                                                           "some_collection.yaml"))
+                                                           "some_collection" "collection.yaml"))
                                   (dissoc :serdes/meta)
                                   (update :created_at t/offset-date-time))
                   yaml-child  (-> (yaml/from-file (io/file dump-dir "collections" "main"
-                                                           "some_collection" "child_collection.yaml"))
+                                                           "some_collection" "child_collection" "collection.yaml"))
                                   (dissoc :serdes/meta)
                                   (update :created_at t/offset-date-time))]
               (is (= (-> (into {} (t2/select-one :model/Collection :id (:id parent)))
@@ -78,14 +85,14 @@
         (let [export (into [] (extract/extract {:no-transforms true}))]
           (storage/store! export (storage.files/file-writer dump-dir))
           (testing "the right files in the right places"
-            (is (= #{["main" "grandparent_collection.yaml"]
-                     ["main" "grandparent_collection" "parent_collection.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "child_collection.yaml"]
-                     ["main" "root_card.yaml"]
-                     ["main" "grandparent_collection" "grandparent_card.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "parent_card.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "child_collection" "child_card.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "parent_dash.yaml"]}
+            (is (= #{["main" "grandparent_collection" "collection.yaml"]
+                     ["main" "grandparent_collection" "parent_collection" "collection.yaml"]
+                     ["main" "grandparent_collection" "parent_collection" "child_collection" "collection.yaml"]
+                     ["main" "root_card.question.yaml"]
+                     ["main" "grandparent_collection" "grandparent_card.question.yaml"]
+                     ["main" "grandparent_collection" "parent_collection" "parent_card.question.yaml"]
+                     ["main" "grandparent_collection" "parent_collection" "child_collection" "child_card.question.yaml"]
+                     ["main" "grandparent_collection" "parent_collection" "parent_dash.dashboard.yaml"]}
                    (file-set (io/file dump-dir "collections"))))))))))
 
 (deftest snippets-collections-nesting-test
@@ -108,15 +115,15 @@
                                                 :no-data-model true
                                                 :no-transforms true}))]
           (storage/store! export (storage.files/file-writer dump-dir))
-          (testing "all snippet collections and snippets under collections/snippets/"
-            (is (= #{["snippets" "grandparent_collection.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection" "child_collection.yaml"]
-                     ["snippets" "root_snippet.yaml"]
-                     ["snippets" "grandparent_collection" "grandparent_snippet.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection" "parent_snippet.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection" "child_collection" "child_snippet.yaml"]}
-                   (file-set (io/file dump-dir "collections"))))))))))
+          (testing "all snippet collections and snippets under snippets/"
+            (is (= #{["grandparent_collection" "collection.yaml"]
+                     ["grandparent_collection" "parent_collection" "collection.yaml"]
+                     ["grandparent_collection" "parent_collection" "child_collection" "collection.yaml"]
+                     ["root_snippet.snippet.yaml"]
+                     ["grandparent_collection" "grandparent_snippet.snippet.yaml"]
+                     ["grandparent_collection" "parent_collection" "parent_snippet.snippet.yaml"]
+                     ["grandparent_collection" "parent_collection" "child_collection" "child_snippet.snippet.yaml"]}
+                   (file-set (io/file dump-dir "snippets"))))))))))
 
 (deftest embedded-slash-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -127,7 +134,7 @@
                          :model/FieldValues _       {:field_id (:id website)}
                          :model/Table       _       {:name "Orders/Invoices" :db_id (:id db)}]
         (let [export (into [] (extract/extract {:include-field-values true}))]
-          (storage/store! export (storage.files/file-writer dump-dir))
+          (storage/store! export (storage-path-writer dump-dir))
           (testing "the right files in the right places"
             (is (= #{["company__SLASH__organization_website.yaml"]
                      ["company__SLASH__organization_website___fieldvalues.yaml"]}
@@ -155,7 +162,7 @@
                                                          :data_sensitivity :PII}
                          :model/Field             _     {:name "Id" :table_id (:id table)}
                          :model/FieldUserSettings _     {:field_id (:id email) :data_sensitivity :PII}]
-        (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
+        (storage/store! (into [] (extract/extract {})) (storage-path-writer dump-dir))
         (let [fields-dir (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields")
               read-yaml  (fn [file-name] (yaml/from-file (io/file fields-dir file-name)))]
           (testing "the label is written as the bare enum string on the Field and its settings"
@@ -174,7 +181,7 @@
                          :model/TableUserSettings _     {:table_id (:id table) :display_name "Clients"}
                          :model/FieldUserSettings _     {:field_id (:id email) :description "edited"}
                          :model/Dimension         _     {:field_id (:id email) :name "Email" :type :internal}]
-        (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
+        (storage/store! (into [] (extract/extract {})) (storage-path-writer dump-dir))
         (testing "each settings entity is a file beside its Table's or Field's, only where one exists"
           (is (= #{["customers.yaml"]
                    ["customers___tableusersettings.yaml"]
@@ -196,7 +203,7 @@
                              :model/FieldUserSettings _     {:field_id (:id field) :description "edited"}
                              :model/Dimension         _     {:field_id (:id field) :name "Long" :type :internal}
                              :model/FieldValues       _     {:field_id (:id field)}]
-            (storage/store! (into [] (extract/extract {:include-field-values true})) (storage.files/file-writer dump-dir))
+            (storage/store! (into [] (extract/extract {:include-field-values true})) (storage-path-writer dump-dir))
             (is (= #{[(str slug ".yaml")]
                      [(str slug "___fieldusersettings.yaml")]
                      [(str slug "___dimension.yaml")]
@@ -233,30 +240,21 @@
                          :model/DashboardCard      _   {:card_id (:id c2) :dashboard_id (:id d1)}
                          :model/NativeQuerySnippet _   {:name "root snippet" :collection_id nil}]
         (let [export     (extract/extract nil)
-              check-sort (fn [coll order]
-                           (loop [[k :as ks] (keys coll)
-                                  idx        -1]
-                             (let [new-idx (get order k)]
-                               (if (nil? new-idx)
-                                 ;; rest are sorted alphabetically
-                                 (is (= (not-empty (sort ks))
-                                        (not-empty ks)))
-                                 (do
-                                   ;; check every present key is sorted in a monotone increasing order
-                                   (is (< idx (get order k)))
-                                   (recur (rest ks)
-                                          (long new-idx)))))))
+              ;; the keys a path's order names come first, in that order; then the others, alphabetically; then the
+              ;; path's trailing keys
+              check-sort (fn [coll key-order]
+                           (let [ks (keys coll)]
+                             (is (= (seq (sort-by key-order ks)) (seq ks)))))
               descend    (fn descend
                            ([coll]
                             (let [model (-> (:serdes/meta coll) last :model)]
                               (is model)
                               (descend coll [(keyword model)])))
                            ([coll path]
-                            (let [order (or (get @@#'dump/serialization-order path)
-                                            (get @@#'dump/serialization-order (last path)))]
+                            (let [key-order (#'dump/key-order path)]
                               (testing (str "Path = " path)
-                                (is order)
-                                (check-sort coll order))
+                                (is key-order)
+                                (check-sort coll key-order))
                               (doseq [[k v] coll]
                                 (cond
                                   (map? v)               (descend v (conj path k))
@@ -299,7 +297,7 @@
             _f2 (ts/create! :model/Field :name "child" :table_id (:id t) :parent_id (:id f1))]
         (serdes/with-cache
           (-> (extract/extract {:no-settings true})
-              (storage/store! (storage.files/file-writer dump-dir))))
+              (storage/store! (storage-path-writer dump-dir))))
         (testing "we get correct names for nested fields"
           (is (= #{["parent.yaml"]
                    ["parent.child.yaml"]}
@@ -312,9 +310,9 @@
       (ts/with-temp-dpc [:model/PythonLibrary _lib {:path "common" :source "def test(): pass"}]
         (let [export (into [] (extract/extract {:no-settings true :no-data-model true}))]
           (storage/store! export (storage.files/file-writer dump-dir))
-          (testing "python library stored at top-level python_libraries/"
+          (testing "python library stored at top-level python_library/"
             (is (= #{["common.py.yaml"]}
-                   (file-set (io/file dump-dir "python_libraries"))))))))))
+                   (file-set (io/file dump-dir "python_library"))))))))))
 
 (deftest dashcard-ordering-test
   (testing "Test that dashcard ordering in YAML export is stable when the DB returns dashcards
@@ -388,7 +386,7 @@
           ;; we could also test loading here, but file names do not play significant part in how everything's loaded,
           ;; `:serdes/meta` does and that one is not shortened or anything
           (testing "the right files in the right places"
-            (is (= #{["main" (str card-filename ".yaml")]}
+            (is (= #{["main" (str card-filename ".question.yaml")]}
                    (file-set (io/file dump-dir "collections")))
                 "collections form a tree, with same-named files")))))))
 
@@ -425,7 +423,7 @@
                                                      :created_at    #t "2020-01-01T00:00:00Z"
                                                      :entity_id     "zzzzzzzzzzzzzzzzzzzzz"}]
             (is (= ["zzzzzzzzzzzzzzzzzzzzz" "aaaaaaaaaaaaaaaaaaaaa"]
-                   (export-and-read-eids! dump-dir ["dup_name.yaml" "dup_name_2.yaml"]))
+                   (export-and-read-eids! dump-dir ["dup_name.question.yaml" "dup_name_2.question.yaml"]))
                 "older card (earlier created_at) wins the unsuffixed file; newer card gets _2")))))
     (testing "entity_id breaks ties deterministically when created_at is identical"
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -440,7 +438,7 @@
                                                      :created_at    #t "2024-01-01T00:00:00Z"
                                                      :entity_id     "aaaaaaaaaaaaaaaaaaaaa"}]
             (is (= ["aaaaaaaaaaaaaaaaaaaaa" "zzzzzzzzzzzzzzzzzzzzz"]
-                   (export-and-read-eids! dump-dir ["dup_name.yaml" "dup_name_2.yaml"]))
+                   (export-and-read-eids! dump-dir ["dup_name.question.yaml" "dup_name_2.question.yaml"]))
                 "with equal created_at, smaller entity_id wins the unsuffixed file")))))))
 
 (deftest ^:parallel resolve-path-test
@@ -533,7 +531,7 @@
                            :model/Card       _card  {:name "A Question" :collection_id (:id parent)}]
           (let [export   (into [] (extract/extract {:no-settings true :no-data-model true :no-transforms true}))
                 entities (filterv (comp #{"Collection" "Card"} :model last :serdes/meta) export)
-                ctx      (serdes/storage-base-context)]
+                ctx      (storage.util/storage-context kind-layout/kind-layout)]
             (storage/store! export (storage.files/file-writer dump-dir))
             (is (= 3 (count entities)))
             (doseq [entity entities

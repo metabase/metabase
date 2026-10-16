@@ -6,12 +6,14 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.layout :as remote-sync.layout]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase-enterprise.serialization.core :as serialization]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
@@ -2290,77 +2292,88 @@ serdes/meta:
     (u/prog1 (impl/import! (source.p/snapshot mock-source) task-id :force? true)
       (remote-sync.task/complete-sync-task! task-id))))
 
+(defn- in-storage-path-layout!
+  "Calls `f` with remote sync writing the layout of repos before the kind layout, one file per row, with the move
+  rule of that time."
+  [f]
+  (with-redefs [remote-sync.layout/layout    serialization/storage-path-layout
+                remote-sync.layout/move-rule remote-sync.layout/current-move-rule]
+    (f)))
+
 (deftest table-and-field-user-settings-round-trip-test
-  (testing "a full export writes a file per settings row and Dimension of a published Table, and an import makes the
-            instance match them, deleting what has no file"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Database   {db-id :id}    {:name "test-db"}
-                     :model/Collection {coll-id :id}  {:name "RS" :is_remote_synced true :location "/"}
-                     :model/Table      {table-id :id} {:name "Test Table" :db_id db-id
-                                                       :is_published true :collection_id coll-id}
-                     :model/Field      {f1-id :id}    {:name "F1" :table_id table-id :base_type :type/Text}
-                     :model/Field      {f2-id :id}    {:name "F2" :table_id table-id :base_type :type/Text}]
-        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
-        (t2/insert! :model/FieldUserSettings {:field_id f1-id :description "curated"})
-        (t2/insert! :model/Dimension {:field_id f2-id :name "Remapped F2" :type :internal})
-        (let [export-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
-              mock-source    (test-helpers/create-mock-source)
-              table-files    #(into {} (filter (fn [[path _]] (str/includes? path "test_table"))) (get @(:files-atom mock-source) "main"))]
-          (is (= :success (:status (impl/export! (source.p/snapshot mock-source) export-task-id "Test export" :force? true))))
-          (remote-sync.task/complete-sync-task! export-task-id)
-          (testing "each settings row and Dimension is a file of its own, and the Table and Fields are not written"
-            (is (= #{"test_table___tableusersettings.yaml" "f1___fieldusersettings.yaml" "f2___dimension.yaml"}
-                   (set (map #(last (str/split % #"/")) (keys (table-files)))))))
-          (testing "an import restores the files' rows and deletes the ones with no file"
-            (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "stale"})
-            (t2/update! :model/TableUserSettings :table_id table-id {:display_name "Local Edit"})
-            (t2/delete! :model/Dimension :field_id f2-id)
-            (is (= :success (:status (import-snapshot! mock-source))))
-            (is (= "Renamed" (t2/select-one-fn :display_name :model/TableUserSettings :table_id table-id)))
-            (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
-            (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id)))
-            (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
-          (testing "a settings file v64 wrote, carrying its Fields' settings under `fields`, keeps them"
-            (let [files    (table-files)
-                  content  (fn [suffix]
-                             (serdes/restore-path (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files)))))
-                  legacy   (assoc (content "test_table___tableusersettings.yaml")
-                                  :fields [(content "f1___fieldusersettings.yaml")])
-                  [path _] (u/seek #(str/ends-with? (key %) "test_table___tableusersettings.yaml") files)]
-              (swap! (:files-atom mock-source) update "main"
-                     #(-> (into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %)
-                          (assoc (str/replace path "___tableusersettings" "") (yaml/generate-string legacy)))))
-            (is (= :success (:status (import-snapshot! mock-source))))
-            (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
-            (is (not (t2/exists? :model/Dimension :field_id f2-id))))
-          (testing "a settings file v64 wrote for a Table without Field settings carries an empty `fields`"
-            (swap! (:files-atom mock-source) update "main"
-                   (fn [files]
-                     (into {} (map (fn [[file content]]
-                                     [file (cond-> content
-                                             (str/ends-with? file "test_table.yaml")
-                                             (-> yaml/parse-string (assoc :fields []) yaml/generate-string))]))
-                           files)))
-            (is (= :success (:status (import-snapshot! mock-source))))
-            (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id))))
-          (testing "a Field file an older git sync wrote keeps the Dimensions it carries"
-            (swap! (:files-atom mock-source) update "main"
-                   assoc "databases/test-db/tables/test_table/fields/f2.yaml"
-                   (yaml/generate-string {:name        "F2"
-                                          :table_id    ["test-db" nil "Test Table"]
-                                          :base_type   "type/Text"
-                                          :dimensions  [{:name "Remapped F2" :type "internal" :entity_id (u/generate-nano-id)}]
-                                          :serdes/meta [{:model "Database" :id "test-db"}
-                                                        {:model "Table" :id "Test Table"}
-                                                        {:model "Field" :id "F2"}]}))
-            (is (= :success (:status (import-snapshot! mock-source))))
-            (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
-          (testing "deleting the files drops the Table's settings and its Fields'"
-            (swap! (:files-atom mock-source) update "main"
-                   #(into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %))
-            (is (= :success (:status (import-snapshot! mock-source))))
-            (is (not (t2/exists? :model/TableUserSettings :table_id table-id)))
-            (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id)))))))))
+  (testing "in the layout of repos before the kind layout, a full export writes a file per settings row and Dimension
+            of a published Table, and an import makes the instance match them, deleting what has no file"
+    ;; the kind layout's one file per table: remote-sync.layout-test
+    (in-storage-path-layout!
+     (fn []
+       (mt/with-temporary-setting-values [remote-sync-type :read-write]
+         (mt/with-temp [:model/Database   {db-id :id}    {:name "test-db"}
+                        :model/Collection {coll-id :id}  {:name "RS" :is_remote_synced true :location "/"}
+                        :model/Table      {table-id :id} {:name "Test Table" :db_id db-id
+                                                          :is_published true :collection_id coll-id}
+                        :model/Field      {f1-id :id}    {:name "F1" :table_id table-id :base_type :type/Text}
+                        :model/Field      {f2-id :id}    {:name "F2" :table_id table-id :base_type :type/Text}]
+           (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
+           (t2/insert! :model/FieldUserSettings {:field_id f1-id :description "curated"})
+           (t2/insert! :model/Dimension {:field_id f2-id :name "Remapped F2" :type :internal})
+           (let [export-task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+                 mock-source    (test-helpers/create-mock-source)
+                 table-files    #(into {} (filter (fn [[path _]] (str/includes? path "test_table"))) (get @(:files-atom mock-source) "main"))]
+             (is (= :success (:status (impl/export! (source.p/snapshot mock-source) export-task-id "Test export" :force? true))))
+             (remote-sync.task/complete-sync-task! export-task-id)
+             (testing "each settings row and Dimension is a file of its own, and the Table and Fields are not written"
+               (is (= #{"test_table___tableusersettings.yaml" "f1___fieldusersettings.yaml" "f2___dimension.yaml"}
+                      (set (map #(last (str/split % #"/")) (keys (table-files)))))))
+             (testing "an import restores the files' rows and deletes the ones with no file"
+               (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "stale"})
+               (t2/update! :model/TableUserSettings :table_id table-id {:display_name "Local Edit"})
+               (t2/delete! :model/Dimension :field_id f2-id)
+               (is (= :success (:status (import-snapshot! mock-source))))
+               (is (= "Renamed" (t2/select-one-fn :display_name :model/TableUserSettings :table_id table-id)))
+               (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
+               (is (not (t2/exists? :model/FieldUserSettings :field_id f2-id)))
+               (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
+             (testing "a settings file v64 wrote, carrying its Fields' settings under `fields`, keeps them"
+               (let [files    (table-files)
+                     content  (fn [suffix]
+                                (serdes/restore-path (yaml/parse-string (val (u/seek #(str/ends-with? (key %) suffix) files)))))
+                     legacy   (assoc (content "test_table___tableusersettings.yaml")
+                                     :fields [(content "f1___fieldusersettings.yaml")])
+                     [path _] (u/seek #(str/ends-with? (key %) "test_table___tableusersettings.yaml") files)]
+                 (swap! (:files-atom mock-source) update "main"
+                        #(-> (into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %)
+                             (assoc (str/replace path "___tableusersettings" "") (yaml/generate-string legacy)))))
+               (is (= :success (:status (import-snapshot! mock-source))))
+               (is (= "curated" (t2/select-one-fn :description :model/FieldUserSettings :field_id f1-id)))
+               (is (not (t2/exists? :model/Dimension :field_id f2-id))))
+             (testing "a settings file v64 wrote for a Table without Field settings carries an empty `fields`"
+               (swap! (:files-atom mock-source) update "main"
+                      (fn [files]
+                        (into {} (map (fn [[file content]]
+                                        [file (cond-> content
+                                                (str/ends-with? file "test_table.yaml")
+                                                (-> yaml/parse-string (assoc :fields []) yaml/generate-string))]))
+                              files)))
+               (is (= :success (:status (import-snapshot! mock-source))))
+               (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id))))
+             (testing "a Field file an older git sync wrote keeps the Dimensions it carries"
+               (swap! (:files-atom mock-source) update "main"
+                      assoc "databases/test-db/tables/test_table/fields/f2.yaml"
+                      (yaml/generate-string {:name        "F2"
+                                             :table_id    ["test-db" nil "Test Table"]
+                                             :base_type   "type/Text"
+                                             :dimensions  [{:name "Remapped F2" :type "internal" :entity_id (u/generate-nano-id)}]
+                                             :serdes/meta [{:model "Database" :id "test-db"}
+                                                           {:model "Table" :id "Test Table"}
+                                                           {:model "Field" :id "F2"}]}))
+               (is (= :success (:status (import-snapshot! mock-source))))
+               (is (= "Remapped F2" (t2/select-one-fn :name :model/Dimension :field_id f2-id))))
+             (testing "deleting the files drops the Table's settings and its Fields'"
+               (swap! (:files-atom mock-source) update "main"
+                      #(into {} (remove (fn [[file _]] (str/includes? file "test_table"))) %))
+               (is (= :success (:status (import-snapshot! mock-source))))
+               (is (not (t2/exists? :model/TableUserSettings :table_id table-id)))
+               (is (not (t2/exists? :model/FieldUserSettings :field_id f1-id)))))))))))
 
 (deftest user-settings-removal-after-import-test
   (testing "removing a Dimension an import brought is tracked, and pushing the removal leaves nothing pending"

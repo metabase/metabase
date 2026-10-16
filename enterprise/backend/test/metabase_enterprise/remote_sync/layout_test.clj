@@ -11,7 +11,6 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.v2.storage.kind-layout :as kind-layout]
    [metabase.collections.models.collection :as collection]
-   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
@@ -33,10 +32,9 @@
   ["flat" (:entity_id entity)])
 
 (deftest storage-context-layout-test
-  (testing "a storage context without a layout resolves paths with the default layout"
-    (is (= "collections/main/card_a.yaml"
-           (serialization/entity-file-path (serdes/storage-base-context) (test-entity "A" "Card A"))
-           (serialization/entity-file-path (serialization/storage-context) (test-entity "A" "Card A")))))
+  (testing "remote sync writes the kind layout and moves every item"
+    (is (identical? serialization/kind-layout remote-sync.layout/layout))
+    (is (identical? remote-sync.layout/move-every-item remote-sync.layout/move-rule)))
   (testing "a storage context with a layout resolves paths with it"
     (is (= "flat/A.yaml"
            (serialization/entity-file-path (serialization/storage-context flat-layout) (test-entity "A" "Card A"))))))
@@ -81,21 +79,31 @@
               (is (= "apply-changes-version" (t2/select-one-fn :version :model/RemoteSyncTask)))
               (is (str/includes? (get-in @(:files-atom mock) ["main" (str "flat/" card-eid ".yaml")]) "Card A")))))))))
 
-(defn- with-exported-bench!
-  "Exports a remote-synced collection with two cards into a fresh MockSource, then calls `f` with
-  `{:mock :card-a :card-b}`."
+(defn- in-storage-path-layout!
+  "Calls `f` with remote sync writing the layout of repos before the kind layout, one file per row, with the move
+  rule of that time."
   [f]
-  (mt/with-temporary-setting-values [remote-sync-type       :read-write
-                                     remote-sync-transforms false]
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
-                   :model/Card       {card-a :id}  {:name "Card A" :collection_id coll-id}
-                   :model/Card       {card-b :id}  {:name "Card B" :collection_id coll-id}]
-      (t2/delete! :model/RemoteSyncObject)
-      (doseq [[model-type model-id] [["Collection" coll-id] ["Card" card-a] ["Card" card-b]]]
-        (seed-create-row! model-type model-id))
-      (let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
-        (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "init"))))
-        (f {:mock mock :card-a card-a :card-b card-b})))))
+  (with-redefs [remote-sync.layout/layout    serialization/storage-path-layout
+                remote-sync.layout/move-rule remote-sync.layout/current-move-rule]
+    (f)))
+
+(defn- with-exported-bench!
+  "In the layout of repos before the kind layout (see [[in-storage-path-layout!]]), exports a remote-synced
+  collection with two cards into a fresh MockSource, then calls `f` with `{:mock :card-a :card-b}`."
+  [f]
+  (in-storage-path-layout!
+   (fn []
+     (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                        remote-sync-transforms false]
+       (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
+                      :model/Card       {card-a :id}  {:name "Card A" :collection_id coll-id}
+                      :model/Card       {card-b :id}  {:name "Card B" :collection_id coll-id}]
+         (t2/delete! :model/RemoteSyncObject)
+         (doseq [[model-type model-id] [["Collection" coll-id] ["Card" card-a] ["Card" card-b]]]
+           (seed-create-row! model-type model-id))
+         (let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
+           (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "init"))))
+           (f {:mock mock :card-a card-a :card-b card-b})))))))
 
 (defn- written-version []
   (t2/select-one-fn :version :model/RemoteSyncTask))
@@ -174,11 +182,12 @@
           (f))))))
 
 (defn- full-export-files!
-  "The files of a forced full export into an empty MockSource."
+  "The files of a forced full export into an empty MockSource, in the layout of repos before the kind layout."
   []
-  (let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
-    (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
-    (get @(:files-atom mock) "main")))
+  (in-storage-path-layout!
+   #(let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
+      (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
+      (get @(:files-atom mock) "main"))))
 
 (deftest kind-layout-full-and-incremental-exports-agree-on-names-test
   (testing "with the kind layout, full and incremental exports give two items of one name the same files"
@@ -286,7 +295,7 @@
               edit! (fn [card-id]
                       (t2/update! :model/Card card-id {:description (str "edited " (random-uuid))})
                       (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-id} {:status "update"}))]
-          (is (= :success (:status (export-at! src "init"))))
+          (is (= :success (:status (in-storage-path-layout! #(export-at! src "init")))))
           (with-redefs [remote-sync.layout/layout    kind-layout/kind-layout
                         remote-sync.layout/move-rule remote-sync.layout/move-changed-items]
             (testing "incremental: the changed card moves, the others stay"
@@ -446,7 +455,7 @@
 (deftest old-table-files-still-load-test
   (testing "a repo whose table settings are files of their own, as the earlier layout writes them, still loads"
     (with-published-venues!
-      serialization/default-layout
+      serialization/storage-path-layout
       (fn [mock]
         (is (some #(str/includes? % "___fieldusersettings") (keys (get @(:files-atom mock) "main"))))
         (t2/delete! :model/FieldUserSettings :field_id (mt/id :venues :price))

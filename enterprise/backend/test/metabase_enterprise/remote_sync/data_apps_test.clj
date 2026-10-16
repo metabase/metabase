@@ -1,7 +1,6 @@
 (ns metabase-enterprise.remote-sync.data-apps-test
   "Data apps are serdes entities: remote sync imports and exports them like any other, with each app's bundle as a
-   resource file next to its `data_app.yaml`, and its collection under `collections/data_apps/` like any collection
-   of a namespace."
+   resource file next to its `data_app.yaml`, and what its collection holds in its `resources/` folder."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -34,13 +33,14 @@
 (def ^:private sales-eid "w8YkMQBwU4kOD0-pZ1nJk")
 
 (defn- app-tree
-  "Repo files for the data app `slug` with entity id `eid`: its `data_app.yaml`, its bundle at `dist/index.js`, and
-  its collection's file under `collections/data_apps/`."
+  "Repo files for the data app `slug` with entity id `eid`, as a repo before the kind layout holds them: its
+  `data_app.yaml`, its bundle at `dist/index.js`, and its collection's file under `collections/data_apps/`."
   [eid slug bundle]
   (data-apps.tu/app-files slug {:name "Sales" :path "dist/index.js" :bundle bundle :entity_id eid}))
 
 (defn- app-files-in
-  "The files of `repo` that serialization writes for data apps: under `data_apps/` and `collections/data_apps/`."
+  "The files of `repo` that serialization writes for data apps: under `data_apps/`, and under `collections/data_apps/`
+  in a repo before the kind layout."
   [repo]
   (into #{} (filter #(re-find #"^(data_apps|collections/data_apps)/" %)) (keys repo)))
 
@@ -112,13 +112,12 @@
                                                          :display_name "Sales"
                                                          :bundle_path  "dist/index.js"
                                                          :bundle       "BUNDLE"})
-      (testing "a created app is exported as its manifest, its bundle file, and its collection's file"
+      (testing "a created app is exported as its manifest and its bundle file; its collection has no file"
         (is (= :success (:status (export! mock))))
         (is (=? {:slug "sales" :name "Sales" :path "dist/index.js" :collection string?}
                 (yaml/parse-string (get (repo) "data_apps/sales/data_app.yaml"))))
         (is (= "BUNDLE" (get (repo) "data_apps/sales/dist/index.js")))
-        (is (=? {:name "Data App: sales" :namespace "data-apps"}
-                (yaml/parse-string (get (repo) "collections/data_apps/data_app__sales.yaml")))))
+        (is (= #{"data_apps/sales/data_app.yaml" "data_apps/sales/dist/index.js"} (app-files-in (repo)))))
       (testing "an updated bundle is exported"
         (mt/user-http-request :crowberto :put 200 "apps/sales" {:bundle "BUNDLE-V2"})
         (is (= :success (:status (export! mock))))
@@ -130,7 +129,7 @@
                                                            :bundle       "OPS"})
         (mt/user-http-request :crowberto :delete 204 "apps/sales")
         (is (= :success (:status (export! mock))))
-        (is (= #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js" "collections/data_apps/data_app__ops.yaml"}
+        (is (= #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js"}
                (app-files-in (repo))))))))
 
 (deftest export-keeps-files-serialization-does-not-own-test
@@ -155,7 +154,7 @@
         (testing "deleting the app removes only the files serialization owns"
           (mt/user-http-request :crowberto :delete 204 "apps/sales")
           (is (= :success (:status (export! mock))))
-          (is (= (into #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js" "collections/data_apps/data_app__ops.yaml"}
+          (is (= (into #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js"}
                        (keys source))
                  (app-files-in (repo)))))))))
 
@@ -186,12 +185,19 @@
 (def ^:private shop-collection-dir
   (str "collections/data_apps/" (data-apps.tu/collection-dir shop-collection-name) "/"))
 
-(defn- shop-tree
-  "The repo files of the `shop` app with `resources` (see `data-apps.tu/build-resources`), the resources under
-  `collections/data_apps/data_app__shop/`."
+(declare in-kind-layout)
+
+(defn- old-shop-tree
+  "The repo files of the `shop` app with `resources` (see `data-apps.tu/build-resources`), as a repo before the kind
+  layout holds them: the resources under `collections/data_apps/data_app__shop/`, with the collection's file."
   [resources]
   (data-apps.tu/app-files "shop" {:name "Shop" :path "index.js" :bundle "B"
                                   :collection shop-collection-eid :resources resources}))
+
+(defn- shop-tree
+  "The repo files of the `shop` app with `resources`, as an export writes them (see [[in-kind-layout]])."
+  [resources]
+  (in-kind-layout (old-shop-tree resources)))
 
 (defn- shop-collection-id []
   (t2/select-one-fn :resource_collection_id :model/DataApp :name "shop"))
@@ -208,7 +214,8 @@
                             :query {:stages [{:source       {:type "table" :id (mt/id :venues)}
                                               :aggregations [{:type "metric" :id metric-id}]}]}}]
                           [action-id])
-               src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
+               ;; a repo written before the kind layout still loads
+               src       (test-helpers/versioned-source :trees {"v0" (old-shop-tree resources)} :current "v0")
                copy-eid  (fn [kind source-model source-id]
                            (data-apps.tu/copy-entity-id kind shop-collection-eid (t2/select-one-fn :entity_id source-model :id source-id)))]
            (let [result (import-at! src "v0" :force? true)]
@@ -253,7 +260,7 @@
       (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
                                                     [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                                                     [])
-            tree      (in-kind-layout (shop-tree resources))
+            tree      (shop-tree resources)
             src       (test-helpers/versioned-source :trees {"v0" tree} :current "v0")]
         (is (not-any? #(str/starts-with? % "collections/") (keys tree)))
         (is (not (t2/exists? :model/Collection :entity_id shop-collection-eid)))
@@ -312,7 +319,7 @@
             src       (test-helpers/versioned-source :trees {"v0" (shop-tree archived)} :current "v0")
             result    (import-at! src "v0" :force? true)]
         (is (= :error (:status result)))
-        (is (str/includes? (:message result) card-file))
+        (is (str/includes? (:message result) (str "data_apps/shop/resources/" (last (str/split card-file #"/")))))
         (testing "nothing loaded"
           (is (not (t2/exists? :model/DataApp :name "shop")))
           (is (not (t2/exists? :model/Collection :entity_id shop-collection-eid)))
@@ -329,11 +336,11 @@
                       :current "v0")
               result (import-at! src "v0" :force? true)]
           (is (= :error (:status result)))
-          (is (str/includes? (:message result) shop-collection-dir))
+          (is (str/includes? (:message result) "data_apps/shop/resources/"))
           (is (= "Someone else's" (t2/select-one-fn :name :model/Card :id foreign-id))))))))
 
 (deftest export-writes-an-apps-resources-under-its-collection-test
-  (testing "what an app's collection holds is exported under collections/data_apps/, like any namespace's content"
+  (testing "what an app's collection holds is exported to the app's resources/ folder; the collection has no file"
     (with-data-apps-sync
       (let [mock (test-helpers/create-mock-source :initial-files {"main" {}})
             repo #(get @(:files-atom mock) "main")]
@@ -355,9 +362,8 @@
             (is (= :success (:status (export! mock))))
             (is (= #{"data_apps/sales/data_app.yaml"
                      "data_apps/sales/dist/index.js"
-                     "collections/data_apps/data_app__sales.yaml"
-                     "collections/data_apps/data_app__sales/venues_list.yaml"
-                     "collections/data_apps/data_app__sales/rename_venue.yaml"}
+                     "data_apps/sales/resources/venues_list.question.yaml"
+                     "data_apps/sales/resources/rename_venue.action.yaml"}
                    (app-files-in (repo))))
             (is (empty? (filter #(re-find #"^(collections/main|actions)/" %) (keys (repo))))
                 "nothing of the app's lands in the default namespace's directories")))))))
@@ -368,12 +374,22 @@
                                 []))
 
 (defn- resource-files
-  "The files of data apps' collections in `mock`'s repository."
+  "The files of data apps' collections in `mock`'s repository: in each app's `resources/` folder, and under
+  `collections/data_apps/` in a repo before the kind layout."
   [mock]
-  (into #{} (filter #(re-find #"^collections/data_apps/" %)) (keys (get @(:files-atom mock) "main"))))
+  (into #{}
+        (filter #(re-find #"^(collections/data_apps/|data_apps/[^/]+/resources/)" %))
+        (keys (get @(:files-atom mock) "main"))))
+
+(defn- exported-resource-files!
+  "The [[resource-files]] of `mock` after an export, which writes each file at the path an export gives it."
+  [mock]
+  (is (= :success (:status (export! mock))))
+  (resource-files mock))
 
 (defn- file-named
-  "Whether a file of `mock`'s repository under `collections/data_apps/` has a name starting with `stem`."
+  "Whether a file of an app's collection in `mock`'s repository (see [[resource-files]]) has a name starting with
+  `stem`."
   [mock stem]
   (some #(str/starts-with? (last (str/split % #"/")) stem) (resource-files mock)))
 
@@ -835,7 +851,7 @@
     (with-data-apps-sync
       (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
         (is (= :success (:status (import-at! mock "main" :force? true))))
-        (let [before (resource-files mock)]
+        (let [before (exported-resource-files! mock)]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move a data app's collection to the trash"
                                 (t2/update! :model/Collection (shop-collection-id) {:archived true})))
           (is (= :success (:status (export! mock))))
@@ -971,7 +987,7 @@
       (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
         (is (= :success (:status (import-at! mock "main" :force? true))))
         (let [collection-id (shop-collection-id)
-              before        (resource-files mock)]
+              before        (exported-resource-files! mock)]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move a data app's collection to the trash or make it official"
                                 (t2/update! :model/Collection collection-id {:authority_level "official"})))
           (mt/with-temp [:model/Collection other {:name "Other root" :namespace :data-apps}]
@@ -995,7 +1011,7 @@
                mock      (test-helpers/create-mock-source :initial-files {"main" (shop-tree resources)})]
            (is (= :success (:status (import-at! mock "main" :force? true))))
            (let [copy-id (t2/select-one-pk :model/Action :collection_id (shop-collection-id))
-                 before  (resource-files mock)]
+                 before  (exported-resource-files! mock)]
              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't be archived"
                                    (t2/update! :model/Action copy-id {:archived true})))
              (testing "the source can still be archived"
@@ -1105,13 +1121,12 @@
         (is (= [(mt/id :checkins)] (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))
 
 (defn- generated-app-tree
-  "The repo files of the `shop` app as `/api/apps/generate` writes them: its manifest and collection, a question
-  aggregating `metric-id`, the copy of that metric, the copy of `action-id`, and its bundle."
+  "The repo files of the `shop` app as `/api/apps/generate` writes them: its manifest, a question aggregating
+  `metric-id`, the copy of that metric, the copy of `action-id`, and its bundle."
   [metric-id action-id]
   (let [{:keys [files]} (mt/user-http-request :crowberto :post 200 "apps/generate/app" {:name "Shop" :slug "shop"})
-        collection      (first (filter #(str/starts-with? (:path %) "collections/") files))
-        collection-eid  (:entity_id (yaml/parse-string (:yaml collection)))
-        folder          (str (str/replace (:path collection) #"\.yaml$" "") "/")
+        collection-eid  (:collection (yaml/parse-string (:yaml (first files))))
+        folder          "data_apps/shop/resources/"
         resources       (mt/user-http-request :crowberto :post 200 "apps/generate/resources"
                                               {:queries [{:name          "VenueCount"
                                                           :entity_id     (u/generate-nano-id)
@@ -1133,7 +1148,7 @@
          (t2/update! :model/Action action-id {:creator_id (mt/user->id :rasta)})
          (let [tree (generated-app-tree metric-id action-id)
                src  (test-helpers/versioned-source :trees {"v0" tree} :current "v0")]
-           (is (= 6 (count (app-files-in tree))))
+           (is (= 5 (count (app-files-in tree))))
            (let [result (import-at! src "v0" :force? true)]
              (is (= :success (:status result)) (:message result)))
            (let [exported (into {}

@@ -52,16 +52,13 @@
        (map #(.getName ^File %))
        set))
 
-(defn- dir->file-set [^File dir]
-  (dir->contents-set #(.isFile ^File %) dir))
-
 (defn- dir->dir-set [^File dir]
   (dir->contents-set #(.isDirectory ^File %) dir))
 
-(defn- subdirs [^File dir]
-  (->> dir
-       .listFiles
-       (remove #(.isFile ^File %))))
+(defn- files-ending-in
+  "The files under `dir`, at any depth, whose names end in `suffix`."
+  [^File dir suffix]
+  (filter #(and (.isFile ^File %) (str/ends-with? (.getName ^File %) suffix)) (file-seq dir)))
 
 (defn- by-model [entities model-name]
   (filter #(-> % :serdes/meta last :model (= model-name))
@@ -224,31 +221,22 @@
                                        :when (= "Action" (yaml-model-at main-dir f))]
                                    f))))))
             (testing "for Collections"
-              ;; +1 for the Trash collection
-              (let [colls-dir  (io/file dump-dir "collections")
-                    coll-count (count (for [f (file-set colls-dir)
-                                            :when (= "Collection" (yaml-model-at colls-dir f))]
-                                        f))]
+              ;; +1 for the Trash collection; snippet collections are under snippets/
+              (let [coll-count (count (mapcat #(files-ending-in (io/file dump-dir %) "collection.yaml")
+                                              ["collections" "snippets"]))]
                 ;; +1 for Trash collection; exact count may vary by 1 depending on naming collisions
                 (is (<= 109 coll-count 111)
-                    "which all go in collections/, even the snippets ones")))
+                    "each is a collection.yaml in its folder")))
             (testing "for Databases"
               (is (= 10 (count (dir->dir-set (io/file dump-dir "databases"))))))
             (testing "for Tables"
-              (is (= 100
-                     (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
-                                     :let  [tables-dir (io/file dump-dir "databases" db "tables")]
-                                     :when (.exists tables-dir)]
-                                 (count (dir->dir-set tables-dir)))))
-                  "Tables are scattered, so the directories are harder to count"))
+              (is (= 100 (count (files-ending-in (io/file dump-dir "databases") ".table.yaml")))
+                  "each table is one file"))
             (testing "for Fields"
               (is (= 1000
-                     (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
-                                     table (subdirs (io/file dump-dir "databases" db "tables"))
-                                     :let  [fields-dir (io/file table "fields")]
-                                     :when (.exists fields-dir)]
-                                 (count (remove #(str/includes? % "___") (dir->file-set fields-dir))))))
-                  "Fields are scattered, so the directories are harder to count"))
+                     (reduce + (for [f (files-ending-in (io/file dump-dir "databases") ".table.yaml")]
+                                 (count (:columns (yaml/from-file f))))))
+                  "each column is an entry of its table's file"))
             (testing "for cards, dashboards, and timelines"
               ;; In the new storage format, cards/dashboards/timelines are stored directly
               ;; in collection directories (no per-type subfolders).
@@ -260,18 +248,9 @@
                                          :when (not (#{"Collection" "Action"} (yaml-model-at main-dir f)))]
                                      f)) 271))))
             (testing "for segments"
-              (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
-                                        table (dir->dir-set (io/file dump-dir "databases" db "tables"))
-                                        :let [segments-dir (io/file dump-dir "databases" db "tables" table "segments")]
-                                        :when (.exists segments-dir)]
-                                    (count (dir->file-set segments-dir)))))))
+              (is (= 30 (count (files-ending-in (io/file dump-dir) ".segment.yaml")))))
             (testing "for native query snippets"
-              ;; Snippets are now under collections/snippets/ (not a top-level snippets/ dir).
-              ;; Count non-collection yaml files under collections/snippets/.
-              (let [snippets-dir (io/file dump-dir "collections" "snippets")]
-                (is (= 10 (count (for [f (file-set snippets-dir)
-                                       :when (not= "Collection" (yaml-model-at snippets-dir f))]
-                                   f))))))
+              (is (= 10 (count (files-ending-in (io/file dump-dir "snippets") ".snippet.yaml")))))
             (testing "for settings"
               (is (.exists (io/file dump-dir "settings.yaml")))))
           (testing "ingest and load"
@@ -1273,7 +1252,7 @@
               (t2/delete! :model/Database :id (:id db))
               (storage/store! (serdes/with-cache (into [] (extract/extract {})))
                               (storage.files/file-writer dump-dir))))
-          (let [file     (io/file dump-dir "collections" "transforms" "orphan_transform.yaml")
+          (let [file     (io/file dump-dir "transforms" "orphan_transform.transform.yaml")
                 exported (yaml/from-file file)]
             (testing "the exported query carries no metadata provider"
               (is (=? {:database nil, :lib/type "mbql/query"} (get-in exported [:source :query])))
@@ -1324,7 +1303,8 @@
                      :inputs       [{:format "rows" :columns [{:cast_type "INTEGER"}]}]
                      :expectations [{:type "equals" :format "sql"} {:type "empty"}]}
                     (yaml/parse-string
-                     (slurp (io/file dump-dir "collections" "transforms" "etl" "orders_summary" "my_test.yaml"))))))
+                     (slurp (io/file dump-dir "transforms" "etl" "orders_summary.transform"
+                                     "my_test.transform_test.yaml"))))))
           (ts/with-db dest-db
             (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
             (is (=? {:name         "My test"
@@ -1384,7 +1364,8 @@
                     (:entity_id transform)))
                 ;; Pins the storage path: a transform test is stored under its transform's serdes path.
                 exported (yaml/parse-string
-                          (slurp (io/file dump-dir "collections" "transforms" "etl" "revenue_report" "revenue_by_year.yaml")))]
+                          (slurp (io/file dump-dir "transforms" "etl" "revenue_report.transform"
+                                          "revenue_by_year.transform_test.yaml")))]
             (testing "the transform is referenced by entity id, not by primary key"
               (is (= transform-eid (:transform_id exported))))
             (testing "row keys are written as YAML strings -- `2024:` unquoted would read back as a number"

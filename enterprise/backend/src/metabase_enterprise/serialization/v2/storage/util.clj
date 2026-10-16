@@ -48,13 +48,13 @@
 
 (defn resolve-segments
   "Resolves the storage path `segments` (see [[serdes/storage-path]]) to strings with deduplication per folder, as
-  [[default-layout]] does, in storage context `ctx`."
+  [[storage-path-layout]] does, in storage context `ctx`."
   [ctx segments]
   (resolve-path (:unique-name-fns ctx) segments))
 
-(defn default-layout
-  "The layout every export writes unless its context names another: `entity`'s [[serdes/storage-path]] segments in
-  storage context `ctx`, slugified and deduplicated per folder in the order of resolution."
+(defn storage-path-layout
+  "The layout of exports before the kind layout: `entity`'s [[serdes/storage-path]] segments in storage context `ctx`,
+  slugified and deduplicated per folder in the order of resolution."
   [ctx entity]
   (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
 
@@ -64,8 +64,6 @@
   name without its extension), or nil when the entity has no file of its own. `:layout-cache` is an atom a layout may use for
   data it reads once per context. `opts` go into the context: `:table-schema?` (true unless given) says whether a
   file of a table holds the table's schema, and `:extract-opts` are the extraction options of the export."
-  ([]
-   (storage-context default-layout))
   ([layout]
    (storage-context layout {}))
   ([layout opts]
@@ -85,10 +83,12 @@
 
 (defn resolve-storage-path
   "Given ctx and entity, returns a vector of resolved (slugified, deduplicated) path strings, from the ctx's
-  `:layout` ([[default-layout]] when it has none). The last element is the filename (without extension). Nil when the
-  layout gives the entity no file."
+  `:layout`. The last element is the filename (without extension). Nil when the layout gives the entity no file.
+  Throws when `ctx` names no layout."
   [ctx entity]
-  ((or (:layout ctx) default-layout) ctx entity))
+  (let [layout (or (:layout ctx)
+                   (throw (ex-info "The storage context names no layout" {:keys (keys ctx)})))]
+    (layout ctx entity)))
 
 (defn yaml-file-path
   "The `/`-separated path of the YAML file at the `resolved` storage path."

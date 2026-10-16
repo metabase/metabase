@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.measures.test-util :as measures.tu]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
@@ -42,6 +43,12 @@
 
 (defn- self-segment [extracted]
   (last (serdes/path extracted)))
+
+(defn- flat-folder-writer
+  "A file writer in the layout of exports before the kind layout, which writes each OsiAiContext on its own to the flat
+  folder `osi_ai_context/`. The kind layout writes an item's AI context only with the item."
+  [dump-dir]
+  (storage.files/file-writer dump-dir storage.util/storage-path-layout))
 
 (deftest card-backed-entity-round-trip-test
   (testing "every card-backed entity type stores as \"card\", nests under the Card's path, and imports back"
@@ -123,7 +130,7 @@
           (is (=? {:ai_context {:instructions "no schema"}} (restored))))
         (testing "from files, whose path is rebuilt from the entity"
           (ts/with-random-dump-dir [dump-dir "osi-schemaless-"]
-            (storage/store! [extracted] (storage.files/file-writer dump-dir))
+            (storage/store! [extracted] (flat-folder-writer dump-dir))
             (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id table-id)
             (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
             (is (=? {:ai_context {:instructions "no schema"}} (restored)))))))))
@@ -159,7 +166,7 @@
       (let [extracted (serdes/with-cache (extract-for "card" card-id))]
         (ts/with-random-dump-dir [dump-dir "osi-card-"]
           ;; store! exercises storage-path for a Card parent — the regression that used to throw.
-          (storage/store! [extracted] (storage.files/file-writer dump-dir))
+          (storage/store! [extracted] (flat-folder-writer dump-dir))
           (t2/delete! :model/OsiAiContext :entity_type "card" :entity_local_id card-id)
           (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
           (is (=? {:ai_context {:instructions "card guidance"}}

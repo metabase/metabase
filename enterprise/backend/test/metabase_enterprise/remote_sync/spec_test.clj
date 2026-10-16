@@ -753,9 +753,9 @@
             "everything the warning flags would indeed be removed")))))
 
 (deftest git-sync-exports-only-user-settings-test
-  (testing "git sync stores what users changed about a Table and its Fields, never the Table or Fields themselves --
-            those belong to sync, which runs against each instance's own warehouse -- each settings row and Dimension
-            as an entity of its own"
+  (testing "git sync stores what users changed about a Table and its Fields: each settings row and Dimension is
+            tracked as an entity of its own, and the published Table is exported as the file that holds them. A
+            Field is never exported: it belongs to sync, which runs against each instance's own warehouse"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection {coll-id :id}  {:is_remote_synced true :name "RS" :type "library-data"}
                      :model/Database   {db-id :id}    {:name "DB"}
@@ -770,7 +770,7 @@
           (is (= [table-id] (get exportable "TableUserSettings")))
           (is (= [f2] (get exportable "FieldUserSettings")))
           (is (= [dimension-id] (get exportable "Dimension")))
-          (is (not (contains? (set (get exportable "Table")) table-id)))
+          (is (contains? (set (get exportable "Table")) table-id))
           (is (empty? (filter #{f1 f2} (get exportable "Field")))))))))
 
 (deftest git-sync-exports-no-table-user-settings-for-field-only-edit-test

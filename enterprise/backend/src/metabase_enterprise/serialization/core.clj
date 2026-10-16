@@ -54,9 +54,10 @@
  [metabase-enterprise.serialization.v2.storage.kind-folders
   library-content-folders]
  [metabase-enterprise.serialization.v2.storage.kind-layout
-  kind-layout]
+  item-file-name
+  kind-layout
+  label-slug]
  [metabase-enterprise.serialization.v2.storage.util
-  default-layout
   entity-document
   entity-file-path
   entity-yaml
@@ -64,5 +65,6 @@
   resource-files
   slugify-name
   storage-context
+  storage-path-layout
   without-resources
   yaml-file-path])

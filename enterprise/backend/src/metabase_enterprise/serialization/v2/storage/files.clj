@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [metabase-enterprise.serialization.dump :refer [spit-yaml!]]
    [metabase-enterprise.serialization.v2.protocols :as protocols]
+   [metabase-enterprise.serialization.v2.storage.kind-layout :as kind-layout]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log])
@@ -15,10 +16,10 @@
 
 (defn file-writer
   "Create a filesystem storage backend rooted at `root-dir`, writing each entity at the path `layout` gives it (see
-  [[storage.util/storage-context]]), [[storage.util/default-layout]] by default. An entity the layout gives no file is
+  [[storage.util/storage-context]]), [[kind-layout/kind-layout]] by default. An entity the layout gives no file is
   not written."
   ([root-dir]
-   (file-writer root-dir storage.util/default-layout))
+   (file-writer root-dir kind-layout/kind-layout))
   ([root-dir layout]
    (let [ctx (storage.util/storage-context layout)]
      (reify protocols/ExportWriter

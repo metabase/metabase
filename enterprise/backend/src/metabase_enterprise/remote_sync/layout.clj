@@ -12,7 +12,7 @@
 (def layout
   "The layout remote sync writes: a function of a storage context and an extracted entity that returns the entity's
   resolved path (see [[serialization/storage-context]])."
-  serialization/default-layout)
+  serialization/kind-layout)
 
 (def git-sync-extract-opts
   "Serdes extraction opts for git sync."
@@ -90,4 +90,4 @@
   It returns `{:write path :delete [path ...]}` (either key may be absent), nil to touch nothing, or
   `:remote-sync/incremental-not-possible` to make an incremental export a full one. In a full export it must return a
   `:write`."
-  current-move-rule)
+  move-every-item)

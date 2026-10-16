@@ -32,15 +32,13 @@ data_apps/
   sales/
     data_app.yaml          # serdes/meta, entity_id, slug, name, description, version, path, allowed_hosts, collection
     dist/index.js          # the bundle
-collections/
-  data_apps/
-    data_app__sales.yaml   # the app's resource collection (namespace: data-apps)
-    data_app__sales/
+    resources/             # the app's resource collection (namespace: data-apps); it has no file
       *.yaml               # the saved questions, metric copies, and action copies the app runs
 ```
 
-Collections of the `data-apps` namespace are written under `collections/data_apps/`, as the
-`transforms` and `snippets` namespaces have their folders.
+The app's resource collection is the folder `resources/` in the app's folder. It has no file of its
+own: `data_app.yaml` names it, and an import creates it from there. A repository written before
+this layout keeps the collection under `collections/data_apps/`, with its own file; it still loads.
 
 The YAML keeps the keys a hand-written manifest uses: `slug` is the `name` column, `name` the
 `display_name`, `path` the `bundle_path`, and `collection` the entity ID of the app's resource
@@ -54,8 +52,9 @@ instance. `table_ids` are server-managed, and `bundle_hash` is recomputed from t
 A targeted export of an app brings its collection and what it holds along (`serdes/descendants`).
 
 An import matches an app by `entity_id` and reasserts the app's resources; a manifest whose slug an app
-made on the instance holds is refused. A manifest that names a collection the repository lacks, or one
-other than the collection the app already owns, fails to load. It is a no-op without the
+made on the instance holds is refused. A manifest that names a collection other than the one the app
+already owns, or a collection outside the `data-apps` namespace, fails to load. A manifest that names
+a collection the repository has no file for creates that collection. It is a no-op without the
 `:data-apps` feature.
 
 Remote sync treats data apps like any other entity, globally rather than per collection, and their
@@ -67,12 +66,12 @@ export that touches an app, takes the full rather than the incremental path. An 
 also holds its source, which serialization doesn't own, so exports replace only the YAML and
 resource files in `data_apps/`.
 
-An author deletes an app by deleting its directory and its collection's files under
-`collections/data_apps/` in one commit: the pull deletes the app, and the app's `before-delete`
-hook deletes the collection with what it holds. A commit that deletes the directory but keeps the
-collection's files still deletes the app and its collection; the next export removes the files,
-and until then a full pull loads them back as a collection no app owns. That collection is read-only
-like an app's, so only deleting its files from the repository removes it.
+An author deletes an app by deleting its directory: the pull deletes the app, and the app's
+`before-delete` hook deletes the collection with what it holds. In a repository written before this
+layout, the collection's files under `collections/data_apps/` go in the same commit; a commit that
+keeps them still deletes the app and its collection, the next export removes the files, and until
+then a full pull loads them back as a collection no app owns. That collection is read-only like an
+app's, so only deleting its files from the repository removes it.
 
 ## Serving
 
@@ -90,8 +89,7 @@ assets (`metabase.server.routes/static-files-handler`).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
-- `POST /api/apps/generate/app` — an app's `data_app.yaml` and its collection's file, each at its path
-  from the repository root, with new entity IDs, or with the `entity_id` and `collection_id` an existing
+- `POST /api/apps/generate/app` — an app's `data_app.yaml`, at its path from the repository root, with new entity IDs, or with the `entity_id` and `collection_id` an existing
   app passes (`generate/app.clj`; superuser).
 - `GET /api/apps/generate/schemas` — the TypeScript module an app's definitions are written against: the
   root libraries' tables and metrics, and the query actions that belong to no model
@@ -153,7 +151,7 @@ The Data Apps feature is required for all app API endpoints, including group lis
 | `resources.clj`                        | Lifecycle of the app-owned collection and derived collection permissions.                       |
 | `models/data_app.clj`                  | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.           |
 | `generate.clj`                         | The facade over what Metabase generates for an app's author: its files, its schema, its collection's files. |
-| `generate/app.clj`                     | An app's `data_app.yaml` and collection file, each at its path with its YAML.                   |
+| `generate/app.clj`                     | An app's `data_app.yaml`, at its path with its YAML.                                            |
 | `generate/resources.clj`               | The files of an app's collection: built queries, action copies, metric copies, each with its YAML. |
 | `generate/schemas.clj`                 | The TypeScript schema of the root libraries' tables and metrics and the model-less query actions. |
 | `generate/schemas/`                    | The schema's stages: data access (`source`), entities (`table`, `metric`, `action`, `common`), rendering (`render`, `javascript`). |

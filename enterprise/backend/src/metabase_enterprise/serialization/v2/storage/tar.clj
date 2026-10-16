@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :refer [yaml-content]]
    [metabase-enterprise.serialization.v2.protocols :as protocols]
+   [metabase-enterprise.serialization.v2.storage.kind-layout :as kind-layout]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log])
@@ -24,12 +25,12 @@
     (.closeArchiveEntry tar-out)))
 
 (defn tar-writer
-  "Create a streaming tar.gz storage backend writing to `output`."
+  "Create a streaming tar.gz storage backend writing to `output`, each entity at the path the kind layout gives it."
   [^OutputStream output ^String dirname]
   (let [gzip (GzipCompressorOutputStream. output (doto (GzipParameters.)
                                                    (.setModificationTime (System/currentTimeMillis))))
         tar  (TarArchiveOutputStream. gzip 512 "UTF-8")
-        ctx  (serdes/storage-base-context)]
+        ctx  (storage.util/storage-context kind-layout/kind-layout)]
     (.setLongFileMode tar TarArchiveOutputStream/LONGFILE_POSIX)
     (.setBigNumberMode tar TarArchiveOutputStream/BIGNUMBER_POSIX)
     (reify protocols/ExportWriter

@@ -114,15 +114,16 @@
      (let [response (generate! :crowberto 200
                                {:queries [(query-item "Gone" (venues-definition) :collection_id "noSuchCollectionEnt01")]
                                 :actions [{:action_id action-id :collection_id "noSuchCollectionEnt01"}]})]
-       (is (=? {:queries [{:file "gone.yaml"}] :actions [{:file string?}]} response))
+       (is (=? {:queries [{:file "gone.question.yaml"}] :actions [{:file string?}]} response))
        (doseq [file (concat (:queries response) (:actions response))]
          (is (= "noSuchCollectionEnt01" (:collection_id (file-entity file)))))))))
 
 (deftest names-files-after-their-entities-and-deduplicates-them-test
   (data-apps.tu/do-with-sources!
    (fn [{:keys [metric-id]}]
-     (is (=? {:queries [{:file "orders.yaml"} {:file "orders_2.yaml"} {:file "venue_count.yaml"}]
-              :metrics [{:file string?}]}
+     (is (=? {:queries [{:file "orders.question.yaml"} {:file "orders_2.question.yaml"}
+                        {:file "venue_count.question.yaml"}]
+              :metrics [{:file "venue_count.metric.yaml"}]}
              (generate! :crowberto 200
                         {:queries [(query-item "Orders" (venues-definition))
                                    (query-item "Orders" (venues-definition))
@@ -503,7 +504,7 @@
                                                                              :entity_id "savedQuestionEntity01")]})
                                            :queries first)
           entity                       (file-entity item)]
-      (is (= "venues_list.yaml" file))
+      (is (= "venues_list.question.yaml" file))
       (is (string? yaml))
       (is (=? {:serdes/meta            [{:model "Card"}]
                :entity_id              "savedQuestionEntity01"

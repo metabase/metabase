@@ -23,20 +23,32 @@
   "Keys that come before every other key of a map at a path that has no order of its own."
   {[:Table :columns] {:name 0 :parents 1}})
 
+(def ^:private order-of-model
+  "The model whose key order a map at a path takes, for a path whose map is a row of that model: the schema of a
+  table's file and of its columns."
+  {[:Table :metadata]          :Table
+   [:Table :columns :metadata] :Field})
+
+(defn- key-order
+  "How the keys of a map at `path` sort, or nil to sort them alphabetically: a function of a key that returns a value
+  to compare. Keys of the path's order come first, in that order; then the keys it does not name, alphabetically; then
+  the path's trailing keys, in their order."
+  [path]
+  (let [trailing (get trailing-keys path {})
+        order    (or (get leading-keys path)
+                     (get @serialization-order (get order-of-model path path))
+                     (get @serialization-order (last path)))]
+    (when (or order (seq trailing))
+      #(cond
+         (contains? trailing %) [2 (get trailing %)]
+         (contains? order %)    [0 (get order %)]
+         :else                  [1 %]))))
+
 (defn- serialization-sorted-map* [order-key]
-  (let [trailing (get trailing-keys order-key {})
-        order    (or (get leading-keys order-key)
-                     (get @serialization-order order-key)
-                     (get @serialization-order (last order-key)))]
-    (if (or order (seq trailing))
-      ;; known columns are sorted by their order, then unknown are sorted alphabetically, then the trailing ones
-      (let [getter #(cond
-                      (contains? trailing %) [2 (get trailing %)]
-                      (contains? order %)    [0 (get order %)]
-                      :else                  [1 %])]
-        (sorted-map-by (fn [k1 k2]
-                         (compare (getter k1) (getter k2)))))
-      (sorted-map))))
+  (if-let [getter (key-order order-key)]
+    (sorted-map-by (fn [k1 k2]
+                     (compare (getter k1) (getter k2))))
+    (sorted-map)))
 
 (def ^:private serialization-sorted-map (memoize/memo serialization-sorted-map*))
 

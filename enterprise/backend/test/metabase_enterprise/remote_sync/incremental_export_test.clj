@@ -159,12 +159,12 @@
               result (impl/export! (source.p/snapshot mock) task "rename collection")]
           (is (= :success (:status result)))
           (is (= "write-files-version" (written-version task)) "collection rename is a full export")
-          (is (= #{"collections/main/marketing_reports.yaml"
-                   "collections/main/marketing_reports/card_a.yaml"
-                   "collections/main/marketing_reports/card_b.yaml"}
+          (is (= #{"collections/main/marketing_reports/collection.yaml"
+                   "collections/main/marketing_reports/card_a.question.yaml"
+                   "collections/main/marketing_reports/card_b.question.yaml"}
                  (set (keys (files mock)))))
-          (is (= "collections/main/marketing_reports/card_a.yaml" (:file_path (rso "Card" card-a))))
-          (is (= "collections/main/marketing_reports/card_b.yaml" (:file_path (rso "Card" card-b)))))))))
+          (is (= "collections/main/marketing_reports/card_a.question.yaml" (:file_path (rso "Card" card-a))))
+          (is (= "collections/main/marketing_reports/card_b.question.yaml" (:file_path (rso "Card" card-b)))))))))
 
 (deftest rename-uses-incremental-path-test
   (with-exported-collection!
@@ -342,21 +342,22 @@
               "existing files are preserved unchanged")
           (is (not (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))))))))
 
-(deftest create-with-name-collision-falls-back-test
+(deftest create-with-name-collision-stays-incremental-test
   (with-exported-collection!
     (fn [{:keys [mock coll-id]}]
-      ;; A new card whose name collides with an existing card resolves (in isolation) to the existing
-      ;; card's path. The safety check sees a different occupant and falls back to full, which dedups.
+      ;; Clash numbers follow creation order, so a new card named like an existing one takes the next number and
+      ;; leaves the existing card's path alone.
       (mt/with-temp [:model/Card {card-c :id} {:name "Card A" :collection_id coll-id}]
         (seed-synced-row! "Card" card-c)
         (set-status! "Card" card-c "create")
         (let [task   (new-task!)
               result (impl/export! (source.p/snapshot mock) task "collision create")]
           (is (= :success (:status result)))
-          (is (= "write-files-version" (written-version task))
-              "a create whose path collides with a different entity falls back to full")
-          (is (entity-exported? mock (t2/select-one-fn :entity_id :model/Card :id card-c))
-              "the colliding new card is still exported (at a deduped path) by the full export"))))))
+          (is (= "apply-changes-version" (written-version task))
+              "a create named like an existing card is incremental")
+          (is (= "collections/main/bench/card_a_2.question.yaml"
+                 (path-for-eid mock (t2/select-one-fn :entity_id :model/Card :id card-c))
+                 (:file_path (rso "Card" card-c)))))))))
 
 (deftest mixed-batch-with-unhandled-row-falls-back-test
   (with-exported-collection!

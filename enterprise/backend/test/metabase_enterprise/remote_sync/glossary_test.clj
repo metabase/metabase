@@ -232,7 +232,7 @@
           (let [mock (export-entry! entry)
                 path (glossary-file-path mock eid)]
             (testing "the entry is written under glossary/ at a path derived from the term"
-              (is (= "glossary/arr.yaml" path)))
+              (is (= "glossary/arr.term.yaml" path)))
             (testing "the ledger row is synced and records the file path and content hash"
               (is (=? {:status "synced" :file_path path :content_hash string?} (rso entry))))))))))
 
@@ -264,7 +264,7 @@
                   new-path      (glossary-file-path mock eid)]
               (is (= :success (:status result)))
               (is (= "apply-changes-version" (written-version task)) "the rename is exported incrementally")
-              (is (= "glossary/annual_recurring_revenue.yaml" new-path))
+              (is (= "glossary/annual_recurring_revenue.term.yaml" new-path))
               (is (not (contains? (repo-files mock) old-path)) "the file at the old term's path is deleted")
               (is (=? {:status "synced" :file_path new-path} (rso entry))))))))))
 
@@ -454,7 +454,7 @@
       (do-with-synced-library!
        (fn []
          (let [term  "CustomerLifetimeValue"
-               path  (str "glossary/" (u/lower-case-en term) ".yaml")
+               path  (str "glossary/" (u/lower-case-en term) ".term.yaml")
                files (assoc base-tree path (test-helpers/generate-legacy-glossary-yaml term "from the repo"))]
            (testing "a synced local row matched by a 21-character term survives a full import"
              (mt/with-temp [:model/Glossary entry {:term term :definition "local"}]

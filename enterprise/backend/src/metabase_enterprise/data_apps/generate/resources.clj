@@ -224,10 +224,17 @@
                                  [:queries {:optional true} [:maybe [:sequential ::data-apps.schema/query]]]
                                  [:actions {:optional true} [:maybe [:sequential ::data-apps.schema/action]]]]]
   (serdes/with-cache
-    (let [unique-name    (lib/non-truncating-unique-name-generator)
+    (let [;; named as the kind layout names an item of its kind in the app's resources folder: names clash only
+          ;; within a kind, and a later item of a name takes the next number
+          unique-name-of (memoize (fn [_kind] (lib/non-truncating-unique-name-generator)))
           ->file         (fn [entity]
-                           {:file (str (unique-name (:entity_id entity) (serialization/slugify-name (:name entity))) ".yaml")
-                            :yaml (serialization/entity-yaml entity)})
+                           (let [kind (if (= "Action" (-> entity :serdes/meta last :model))
+                                        :action
+                                        (keyword (name (:type entity))))]
+                             {:file (serialization/item-file-name
+                                     kind ((unique-name-of kind) (:entity_id entity)
+                                                                 (serialization/label-slug (:name entity))))
+                              :yaml (serialization/entity-yaml entity)}))
           built          (mapv (fn [{:keys [query] :as item}]
                                  (merge item (with-item-error {:query (:entity_id item)} #(hash-map :built (build-query query)))))
                                queries)

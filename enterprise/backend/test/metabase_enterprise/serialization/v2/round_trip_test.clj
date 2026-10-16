@@ -33,6 +33,7 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
+   [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
@@ -48,6 +49,13 @@
 (set! *warn-on-reflection* true)
 
 (def ^File source-dir (io/as-file (io/resource "serialization_baseline")))
+
+(defn- baseline-writer
+  "A file writer in the layout of the baseline fixture. The fixture keeps the layout of exports before the kind layout,
+  one file per row, because CI validates it with `@metabase/representations`, which has no schema for the kind
+  layout's table file."
+  [dir]
+  (storage.files/file-writer dir storage.util/storage-path-layout))
 
 (def ^File dev-inspect-dir (io/as-file (File. "dev/serialization_deltas")))
 
@@ -110,15 +118,18 @@
        non-empty-diff))
 
 (defn load-extract!
-  "Perform a round-trip of loading an existing serialization, then serializing it again."
-  [input-dir output-dir]
-  (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-    (serdes/with-cache
-      (load/load-metabase! (ingest/ingest-yaml input-dir))))
-  ;; Use a separate cache to make sure there is no cross-contamination.
-  (serdes/with-cache
-    (-> (extract/extract {:include-field-values true :include-metabot true})
-        (storage/store! (storage.files/file-writer output-dir)))))
+  "Perform a round-trip of loading an existing serialization, then serializing it again, in the baseline's layout, or
+  with the writer `writer-fn` of a directory."
+  ([input-dir output-dir]
+   (load-extract! input-dir output-dir baseline-writer))
+  ([input-dir output-dir writer-fn]
+   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+     (serdes/with-cache
+       (load/load-metabase! (ingest/ingest-yaml input-dir))))
+   ;; Use a separate cache to make sure there is no cross-contamination.
+   (serdes/with-cache
+     (-> (extract/extract {:include-field-values true :include-metabot true})
+         (storage/store! (writer-fn output-dir))))))
 
 (defn- delete-dir-contents! [^File dir]
   (when (and dir (.exists dir))
@@ -160,7 +171,7 @@
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."
   []
-  (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) (storage.files/file-writer source-dir)))
+  (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) (baseline-writer source-dir)))
 
 ;; If this test is failing, read the docstring at the top of this namespace for what to do B-)
 (deftest baseline-completeness-test
@@ -173,39 +184,61 @@
     (doseq [b baselined :when (not (internal-model? b))]
       (is (necessary? b) (format "We can remove %s files from %s" b source-dir-path)))))
 
+(defn- compare-with-baseline!
+  "Asserts that `output-dir` holds the files of the baseline, with the same contents."
+  [^File output-dir]
+  (let [wrote-files?  (volatile! false)
+        source-files  (fileset source-dir)
+        output-files  (fileset output-dir)
+        missing-files (set/difference source-files output-files)
+        added-files   (set/difference output-files source-files)]
+    (testing "No files are missing"
+      (is (empty? missing-files)))
+    (testing "No files have been added"
+      (is (empty? added-files)))
+    (testing "File contents\n"
+      (doseq [file source-files
+              :let [ref-file (io/file source-dir file)
+                    out-file (io/file output-dir file)]
+              :when (.exists out-file)
+              :let [delta (compare-files ref-file out-file)]]
+        (is (= nil delta)
+            (str "Content mismatch for file: " (strip-base-path source-dir file)))
+        ;; Leave behind files for developers to inspect
+        (when (and (.exists dev-inspect-dir) delta)
+          (vreset! wrote-files? true)
+          (create-files-to-diff! ref-file out-file))))
+    (when @wrote-files?
+      (log/warn "Mismatching files have been written to /dev/serialization_deltas"))))
+
 (deftest baseline-comparison-test
   (search.tu/with-index-disabled
-    (let [wrote-files? (volatile! false)
-          temp-dir     (temp-dir "serialization_test")
-          output-dir   (.toFile (.resolve temp-dir "serialization_output"))]
+    (let [temp-dir   (temp-dir "serialization_test")
+          output-dir (.toFile (.resolve temp-dir "serialization_output"))]
       (try
         (mt/with-empty-h2-app-db!
           (delete-dir-contents! dev-inspect-dir)
           (load-extract! source-dir output-dir)
-          (let [source-files  (fileset source-dir)
-                output-files  (fileset output-dir)
-                missing-files (set/difference source-files output-files)
-                added-files   (set/difference output-files source-files)]
-            (testing "No files are missing"
-              (is (empty? missing-files)))
-            (testing "No files have been added"
-              (is (empty? added-files)))
-            (testing "File contents\n"
-              (doseq [file source-files
-                      :let [ref-file (io/file source-dir file)
-                            out-file (io/file output-dir file)]
-                      :when (.exists out-file)
-                      :let [delta (compare-files ref-file out-file)]]
-                (is (= nil delta)
-                    (str "Content mismatch for file: " (strip-base-path source-dir file)))
-                ;; Leave behind files for developers to inspect
-                (when (and (.exists dev-inspect-dir) delta)
-                  (vreset! wrote-files? true)
-                  (create-files-to-diff! ref-file out-file))))
-            (when @wrote-files?
-              (log/warn "Mismatching files have been written to /dev/serialization_deltas"))))
+          (compare-with-baseline! output-dir))
         (finally
           (delete-dir-contents! output-dir))))))
+
+(deftest baseline-kind-layout-round-trip-test
+  (testing "the baseline, exported in the kind layout and loaded into a new instance, exports as the baseline again"
+    (search.tu/with-index-disabled
+      (let [temp-dir   (temp-dir "serialization_test")
+            kind-dir   (.toFile (.resolve temp-dir "kind_layout"))
+            output-dir (.toFile (.resolve temp-dir "serialization_output"))]
+        (try
+          (mt/with-empty-h2-app-db!
+            (load-extract! source-dir kind-dir storage.files/file-writer))
+          (mt/with-empty-h2-app-db!
+            (delete-dir-contents! dev-inspect-dir)
+            (load-extract! kind-dir output-dir)
+            (compare-with-baseline! output-dir))
+          (finally
+            (delete-dir-contents! kind-dir)
+            (delete-dir-contents! output-dir)))))))
 
 (defn- update-baseline!
   "Run this if you've examined the output of [[directory-comparison-test]], and are happy to accept the changes."
