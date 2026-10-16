@@ -238,6 +238,79 @@
                 (is (= "apply-changes-version" (written-version)))
                 (is (= (set (keys before)) (set (keys (files)))))))))))))
 
+(deftest full-export-refuses-two-items-at-one-path-test
+  (testing "a full export fails, and writes nothing, when the move rule gives two items one path"
+    (with-exported-bench!
+      (fn [{:keys [mock]}]
+        (let [before (get @(:files-atom mock) "main")]
+          (with-redefs [remote-sync.layout/move-rule (constantly {:write "collections/main/same.yaml"})]
+            (let [result (impl/export! (source.p/snapshot mock) (new-task!) "clash" :force? true)]
+              (is (= :error (:status result)))
+              (is (str/includes? (:message result) "Two items have the path collections/main/same.yaml"))))
+          (is (= before (get @(:files-atom mock) "main"))))))))
+
+(defn- export-at!
+  "Exports to `src` (a versioned source) under a fresh task, completes the task so the next export knows the
+  version, and returns the result. `opts` go to `impl/export!`."
+  [src message & {:as opts}]
+  (let [task   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export"
+                                                               :initiated_by   (mt/user->id :rasta)})
+        result (impl/export! (source.p/snapshot src) task message (assoc opts :source src))]
+    (impl/handle-task-result! result task)
+    result))
+
+(defn- tree [src]
+  (into {} (for [path (source.p/list-files (source.p/snapshot src))]
+             [path (source.p/read-file (source.p/snapshot src) path)])))
+
+(deftest move-changed-items-is-one-swap-test
+  (testing "with the move-changed-items rule, unchanged items stay at their stored paths in every kind of export"
+    (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                       remote-sync-transforms false]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
+                     :model/Card       {card-a :id}  {:name "Card A" :collection_id coll-id}
+                     :model/Card       {card-b :id}  {:name "Card B" :collection_id coll-id}]
+        (t2/delete! :model/RemoteSyncObject)
+        (doseq [[model-type model-id] [["Collection" coll-id] ["Card" card-a] ["Card" card-b]]]
+          (seed-create-row! model-type model-id))
+        (t2/delete! :model/RemoteSyncTask)
+        (let [src   (rs.test/versioned-source :trees {"v0" {}} :current "v0")
+              paths #(set (keys (tree src)))
+              edit! (fn [card-id]
+                      (t2/update! :model/Card card-id {:description (str "edited " (random-uuid))})
+                      (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-id} {:status "update"}))]
+          (is (= :success (:status (export-at! src "init"))))
+          (with-redefs [remote-sync.layout/layout    kind-layout/kind-layout
+                        remote-sync.layout/move-rule remote-sync.layout/move-changed-items]
+            (testing "incremental: the changed card moves, the others stay"
+              (edit! card-a)
+              (is (= :success (:status (export-at! src "edit A"))))
+              (is (= #{"collections/main/bench.yaml"
+                       "collections/main/bench/card_b.yaml"
+                       "collections/bench/card_a.question.yaml"}
+                     (paths))))
+            (testing "full: every item stays where it is"
+              (is (= :success (:status (export-at! src "full" :force? true))))
+              (is (= #{"collections/main/bench.yaml"
+                       "collections/main/bench/card_b.yaml"
+                       "collections/bench/card_a.question.yaml"}
+                     (paths))))
+            (testing "merged: the changed card moves, the others stay"
+              (let [base   (source.p/version (source.p/snapshot src))
+                    commit (source.p/open-commit (source.p/snapshot src))]
+                (source.p/stage-upsert! commit {:path "README.md" :content "remote change\n"})
+                (source.p/finish-commit! commit "remote")
+                (edit! card-b)
+                (let [result (export-at! src "merge" :merge? true
+                                         :base-snapshot (source.p/snapshot-at src base))]
+                  (is (= :success (:status result)) (:message result))
+                  (is (= "merged" (get-in result [:outcome :kind])))))
+              (is (= #{"README.md"
+                       "collections/main/bench.yaml"
+                       "collections/bench/card_b.question.yaml"
+                       "collections/bench/card_a.question.yaml"}
+                     (paths))))))))))
+
 (deftest import-reads-the-kind-layout-test
   (testing "an export rewritten to the kind layout's paths loads to the same app-DB state"
     (with-kind-layout-content!

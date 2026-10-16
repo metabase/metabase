@@ -589,6 +589,40 @@
     (catch Exception e
       (log/warn e "Could not record the tables of the data apps"))))
 
+(defn- full-write-path
+  "The path the move rule gives an item of a full or merged export, whose RemoteSyncObject has `status` and
+  `stored-path` (an untracked item has neither); nil when the item has no file of its own."
+  [opts model-type status stored-path entity]
+  (:write (remote-sync.layout/move-rule {:export        :full
+                                         :model-type    model-type
+                                         :status        (or status "create")
+                                         :stored-path   stored-path
+                                         :computed-path (delay (serialization/entity-file-path opts entity))})))
+
+(defn- rsos-by-entity-id
+  "The RemoteSyncObject rows of the entity-id models, keyed by `[model_type entity_id]`."
+  []
+  (into {}
+        (for [[model-type rows] (group-by :model_type (remote-sync.db/rso-keys))
+              :let  [model-spec (spec/spec-for-model-type model-type)]
+              :when (= :entity-id (:identity model-spec))
+              :let  [eids (into {} (mapcat #(remote-sync.db/entity-ids-by-id (:model-key model-spec) (mapv :model_id %)))
+                                (partition-all app-db-batch-size rows))]
+              row   rows
+              :let  [eid (eids (:model_id row))]
+              :when eid]
+          [[model-type eid] row])))
+
+(defn- merge-path-fn
+  "A function of a storage context and an extracted entity that gives the path the merge serializes the entity at,
+  from the move rule."
+  []
+  (let [rsos (rsos-by-entity-id)]
+    (fn [opts entity]
+      (let [model-type                   (-> entity :serdes/meta last :model)
+            {:keys [status file_path]}   (rsos [model-type (:entity_id entity)])]
+        (full-write-path opts model-type status file_path entity)))))
+
 (defn- import-merged!
   "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
 
@@ -603,7 +637,8 @@
                                              (let [targets (spec/exportable-entities)]
                                                (source/compute-merge (spec/extract-entities-for-export targets)
                                                                      snapshot base-snapshot task-id
-                                                                     :total (spec/exportable-entity-count targets))))]
+                                                                     :total (spec/exportable-entity-count targets)
+                                                                     :path-fn (merge-path-fn))))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
@@ -822,7 +857,8 @@
   Returns a `:success` result with a `:merge-summary`."
   [source snapshot base-snapshot task-id message sync-timestamp models & {:keys [total]}]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
-        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id :total total)]
+        {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id
+                                                                 :total total :path-fn (merge-path-fn))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Export merge conflict on %d entit(ies)" (count labels))
@@ -1239,15 +1275,14 @@
           :let        [{rso-id :id :keys [status file_path]} (when-not (= "Dimension" model) (rso [model id]))]]
       {:model_type model :model_id id :id rso-id :status status :stored-path file_path})))
 
-(defn- full-export-path
-  "The path a full export writes `entity` (of the WriteRow `row`) at, from the move rule; nil when the item has no
-  file of its own."
-  [opts {:keys [model_type status stored-path]} entity]
-  (:write (remote-sync.layout/move-rule {:export        :full
-                                         :model-type    model_type
-                                         :status        (or status "create")
-                                         :stored-path   stored-path
-                                         :computed-path (delay (serialization/entity-file-path opts entity))})))
+(defn- full-export-path-fn
+  "A function of a WriteRow and its entity that gives the path a full export writes the entity at, from the move rule.
+  It throws when two items get one path."
+  [opts]
+  (let [claim! (source/path-claims)]
+    (fn [{:keys [model_type model_id status stored-path]} entity]
+      (u/prog1 (full-write-path opts model_type status stored-path entity)
+        (claim! <> [model_type model_id])))))
 
 (def ^:private user-settings-model-types
   "The model types tracked by the user-settings event handlers rather than a remote-sync spec."
@@ -1291,7 +1326,7 @@
             [synced version] (commit-staged! snapshot message
                                              (fn [commit]
                                                (source/replace-managed-files! commit snapshot) ; replace the managed files wholesale
-                                               (let [synced (stage-writes commit (partial full-export-path opts) export-rows
+                                               (let [synced (stage-writes commit (full-export-path-fn opts) export-rows
                                                                           (fn [staged]
                                                                             (report (+ export-progress-plan-done
                                                                                        (* span (/ staged total))))))]

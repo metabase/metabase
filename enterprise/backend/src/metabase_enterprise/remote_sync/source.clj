@@ -121,18 +121,37 @@
   [row]
   (:content-hash (row->file-info row)))
 
+(defn path-claims
+  "A function `(claim! path item)` that throws when a second, different `item` claims a `path` an earlier one claimed,
+  so that an export never writes two items to one file. A nil `path` claims nothing."
+  []
+  (let [claims (atom {})]
+    (fn [path item]
+      (when path
+        (let [owner (get (swap! claims update path #(or % item)) path)]
+          (when (not= owner item)
+            (throw (ex-info (format "Two items have the path %s: %s and %s" path (pr-str owner) (pr-str item))
+                            {:path path :items [owner item]}))))))))
+
+(defn- entity-label
+  "The serdes path of `entity`, which names it in an error."
+  [entity]
+  (mapv #(select-keys % [:model :id]) (:serdes/meta entity)))
+
 (defn serialize-specs
   "Serializes a stream of entities into an eager vector of `{:path :content}` file specs. Reports progress
   via `task-id` as specs are produced; pass nil for `task-id` to serialize without progress reporting
-  (e.g. for a dry-run merge preview).
+  (e.g. for a dry-run merge preview). `:path-fn`, a function of a storage context and an entity, gives each entity's
+  path ([[serialization/entity-file-path]] by default).
 
   `stream` is traversed exactly once. Progress needs a denominator: pass `:total` (see
   [[metabase-enterprise.remote-sync.spec/exportable-entity-count]]) to keep an uncounted stream such as the
   extraction eduction streaming; without it an uncounted stream is realized first.
 
-  Throws Exception if any entity in the stream is an Exception instance."
-  [stream task-id & {:keys [total]}]
-  (let [opts   (remote-sync.layout/storage-context)
+  Throws Exception if any entity in the stream is an Exception instance, or if two entities get one path."
+  [stream task-id & {:keys [total path-fn] :or {path-fn serialization/entity-file-path}}]
+  (let [claim! (path-claims)
+        opts   (remote-sync.layout/storage-context)
         stream (if (or (nil? task-id) total (counted? stream)) stream (vec stream))
         total  (or total (when task-id (count stream)))
         report (if (and task-id (pos? total))
@@ -143,7 +162,9 @@
           (comp (map-indexed (fn [idx entity]
                                (when (instance? Exception entity)
                                  (throw entity))
-                               (let [spec (entity->file-spec opts entity)]
+                               (let [path (path-fn opts entity)
+                                     spec (entity->file-spec-at path entity)]
+                                 (claim! path (entity-label entity))
                                  (report (inc idx))
                                  (file-specs spec))))
                 cat)
@@ -223,10 +244,10 @@
   - `snapshot`      - the current remote tip (theirs)
 
   `:merged` is the full reconciled set of `{:path :content}` specs. The export path writes it to the
-  remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]. `:total` is passed
-  through to [[serialize-specs]]."
-  [stream snapshot base-snapshot task-id & {:keys [total]}]
-  (let [ours   (serialize-specs stream task-id :total total)
+  remote; the local-only pull merge loads it into the app DB via [[specs->snapshot]]. `:total` and `:path-fn` are
+  passed through to [[serialize-specs]]."
+  [stream snapshot base-snapshot task-id & {:keys [total path-fn]}]
+  (let [ours   (serialize-specs stream task-id :total total :path-fn (or path-fn serialization/entity-file-path))
         base   (snapshot->specs base-snapshot)
         theirs (snapshot->specs snapshot)]
     (remote-sync.merge/merge-with-casualties base ours theirs)))

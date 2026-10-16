@@ -45,9 +45,18 @@
     :remote-sync/incremental-not-possible
     (current-move-rule item)))
 
+(defn move-changed-items
+  "Moves only the changed items. Every export leaves an unchanged item at its stored path, the merged export included;
+  a changed item moves to its computed path as with [[current-move-rule]]."
+  [{:keys [export status stored-path] :as item}]
+  (if (and (= :full export) (= "synced" status) (not (str/blank? stored-path)))
+    {:write stored-path}
+    (current-move-rule item)))
+
 (def move-rule
   "The move rule remote sync exports with. It is called once per item, with:
-  - `:export`        `:full` (every managed file is deleted first) or `:incremental` (only the files named are touched)
+  - `:export`        `:full` (every managed file is deleted first: a full export, and the merged export when the
+                     remote moved ahead) or `:incremental` (only the files named are touched)
   - `:model-type`    the item's serdes model name
   - `:status`        its RemoteSyncObject status: `\"synced\"`, `\"create\"` or `\"update\"` (`\"create\"` for an item
                      no RemoteSyncObject tracks)
