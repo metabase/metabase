@@ -456,12 +456,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       });
 
       const newEnabledColumns = newColumns.filter((col) => col.enabled);
-      const savedWidths = settings["table.column_widths"];
-      const newWidths =
-        Array.isArray(savedWidths) &&
-        savedWidths.length === newEnabledColumns.length
-          ? newEnabledColumns.map((c) => columnSizingMap[c.name])
-          : undefined;
+      // Resizing one column saves a widths array shorter than the column count, so widths are remapped by
+      // name rather than by comparing lengths
+      const newWidths = Array.isArray(settings["table.column_widths"])
+        ? newEnabledColumns.map((c) => columnSizingMap[c.name])
+        : undefined;
 
       const settingsUpdate = {
         "table.columns": newColumns,
