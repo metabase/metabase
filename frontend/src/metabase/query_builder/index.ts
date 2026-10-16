@@ -3,6 +3,10 @@
 // The directory is in rspack's SIDE_EFFECT_FREE_PATHS, so importing one name here links only to that file
 // and the pages stay in the chunk the routes' import() creates.
 
+export {
+  PLUGIN_QUERY_BUILDER,
+  type QueryBuilderMetricsExplorerProps,
+} from "./plugins";
 export { queryBuilderReducer } from "./store/reducer";
 export type { QueryBuilderStoreState } from "./store/state";
 export { navigateBackToDashboard } from "./store/actions";

@@ -47,7 +47,7 @@ export function SummaryPivotPreview({
   return (
     <>
       {summaryQuery == null && (
-        <Text c="text-secondary" mb="md">
+        <Text c="text-secondary" p="md">
           {t`Some fields in this summary are no longer available. Remove them to continue.`}
         </Text>
       )}

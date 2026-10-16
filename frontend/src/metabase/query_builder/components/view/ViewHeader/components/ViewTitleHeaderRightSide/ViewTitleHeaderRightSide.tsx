@@ -25,6 +25,7 @@ import { canExploreResults } from "../../utils";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
+import { QuestionCompareButton } from "../QuestionCompareButton";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
 import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
@@ -69,6 +70,9 @@ interface ViewTitleHeaderRightSideProps {
   onCloseQuestionInfo: () => void;
   isShowingQuestionInfoSidebar: boolean;
   isObjectDetail: boolean;
+  isShowingCompare: boolean;
+  /** When set, the Compare button takes the Editor button's place. */
+  onToggleCompare?: (origin: DOMRect) => void;
 }
 
 export function ViewTitleHeaderRightSide({
@@ -99,6 +103,8 @@ export function ViewTitleHeaderRightSide({
   onCloseQuestionInfo,
   isShowingQuestionInfoSidebar,
   isObjectDetail,
+  isShowingCompare,
+  onToggleCompare,
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
@@ -189,15 +195,23 @@ export function ViewTitleHeaderRightSide({
           onCloseSummary={onCloseSummary}
         />
       )}
-      {QuestionNotebookButton.shouldRender({
-        question,
-        isActionListVisible,
-        isBrandNew,
-      }) && (
-        <QuestionNotebookButton
-          isShowingNotebook={isShowingNotebook}
-          setQueryBuilderMode={setQueryBuilderMode}
+      {onToggleCompare ? (
+        <QuestionCompareButton
+          question={question}
+          isShowingCompare={isShowingCompare}
+          onToggleCompare={onToggleCompare}
         />
+      ) : (
+        QuestionNotebookButton.shouldRender({
+          question,
+          isActionListVisible,
+          isBrandNew,
+        }) && (
+          <QuestionNotebookButton
+            isShowingNotebook={isShowingNotebook}
+            setQueryBuilderMode={setQueryBuilderMode}
+          />
+        )
       )}
       <Box className={ViewTitleHeaderS.Divider} />
       {ToggleNativeQueryPreview.shouldRender({

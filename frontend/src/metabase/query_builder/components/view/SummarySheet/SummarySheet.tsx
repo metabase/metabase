@@ -10,7 +10,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { Box } from "metabase/ui";
+import { Box, Card } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { SummaryFieldList } from "./SummaryFieldList";
@@ -49,7 +49,7 @@ function getDropWellId(data: unknown): SummaryWellId | null {
 }
 
 /**
- * The "Summary" tab: a pivot table of the data tab's table, built by dragging
+ * The summary sheet: a pivot table of the data tab's table, built by dragging
  * columns and metrics into Rows, Columns, and Values. One summary per table.
  */
 export function SummarySheet({ question }: SummarySheetProps) {
@@ -108,7 +108,7 @@ export function SummarySheet({ question }: SummarySheetProps) {
       onDragEnd={handleDragEnd}
       onDragCancel={() => setDraggedItem(null)}
     >
-      <Box className={S.root} data-testid="summary-sheet">
+      <Card className={S.root} withBorder p={0} data-testid="summary-sheet">
         <Box className={S.main}>
           <SummaryPivotPreview
             question={question}
@@ -129,7 +129,7 @@ export function SummarySheet({ question }: SummarySheetProps) {
             onChange={handleChange}
           />
         </Box>
-      </Box>
+      </Card>
       {createPortal(
         <DragOverlay dropAnimation={null}>
           {draggedItem && (

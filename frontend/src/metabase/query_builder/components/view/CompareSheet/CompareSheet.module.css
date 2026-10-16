@@ -1,0 +1,31 @@
+.root {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* the Compare button's color, stretched with the sheet as it grows, then faded out */
+.morph {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  background-color: var(--mb-color-core-brand);
+}
+
+.notice {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin: 1rem 1.5rem 0;
+  color: var(--mb-color-text-secondary);
+}
+
+.explorer {
+  flex: 1;
+  min-height: 0;
+}

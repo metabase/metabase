@@ -89,8 +89,8 @@ interface ViewMainContainerProps {
   showRightSidebar: boolean;
   isLiveResizable: boolean;
   /**
-   * The data tab of the sheet layout: the result sits in an inset card under a
-   * search/formula bar, and the footer content moves to the sheet tab bar.
+   * The data sheet of the sheet layout: the result sits in a card under a
+   * search/formula bar, on the sheets' gray background.
    */
   isDataSheet?: boolean;
   parameters: UiParameter[];
@@ -149,13 +149,13 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         />
       )}
       {isDataSheet && (
-        <DataSheetBar question={question} updateQuestion={updateQuestion} />
+        <Box className={ViewMainContainerS.DataSheetToolbar}>
+          <DataSheetBar question={question} updateQuestion={updateQuestion} />
+        </Box>
       )}
 
       <DebouncedFrame
-        className={cx(ViewMainContainerS.StyledDebouncedFrame, {
-          [ViewMainContainerS.DataSheetCard]: isDataSheet,
-        })}
+        className={ViewMainContainerS.StyledDebouncedFrame}
         enabled={!isLiveResizable}
         resetKey={props.isRunning}
       >
@@ -176,7 +176,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       <ObjectDetailSidesheet />
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
-        {!isDataSheet && <ViewFooter className={CS.flexNoShrink} />}
+        <ViewFooter className={CS.flexNoShrink} />
       </Box>
     </Box>
   );

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ComponentProps, forwardRef } from "react";
+import { type ComponentProps, forwardRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -37,8 +37,10 @@ import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
-import { QuerySheetTabs, SummarySheet } from "../../SummarySheet";
+import { CompareSheet } from "../../CompareSheet";
+import { SummarySheet } from "../../SummarySheet";
 import { ViewSidebar } from "../../ViewSidebar";
+import type { QuerySheet } from "../../query-sheet";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
 import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
@@ -95,6 +97,8 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
   function ViewInnerImpl(propsIn, ref) {
     const dispatch = useDispatch();
     const setCollection = useSetCollection();
+    // set while the compare sheet is open on top of the data or summary sheet: where it grew out of
+    const [compareOrigin, setCompareOrigin] = useState<DOMRect | null>(null);
     const props: ViewProps = {
       ...propsIn,
       onMove: async (question, newCollection) => {
@@ -245,16 +249,34 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       isNewQuestion || queryBuilderMode === "notebook";
 
     const { isEditable } = Lib.queryDisplayInfo(query);
-    const hasSheetTabs =
+    const hasSheets =
       !isNative && isEditable && !isNewQuestion && queryBuilderMode === "view";
-    // the summarize button opens the "Summary" sheet tab instead of a sidebar
-    const isShowingSummarySheet = hasSheetTabs && isShowingSummarySidebar;
+    // the summarize button opens the summary sheet instead of a sidebar
+    const activeSheet: QuerySheet = !hasSheets
+      ? "data"
+      : compareOrigin != null
+        ? "compare"
+        : isShowingSummarySidebar
+          ? "summary"
+          : "data";
+    const isShowingDataSheet = activeSheet === "data";
+
+    const handleShowData = () => {
+      setCompareOrigin(null);
+      onCloseSummary();
+    };
+    const handleShowSummary = () => {
+      setCompareOrigin(null);
+      editSummary();
+    };
+    const handleToggleCompare = (origin: DOMRect) =>
+      setCompareOrigin((currentOrigin) => (currentOrigin ? null : origin));
 
     const showLeftSidebar =
-      !isShowingSummarySheet &&
+      isShowingDataSheet &&
       (isShowingChartSettingsSidebar || isShowingChartTypeSidebar);
     const showRightSidebar =
-      !isShowingSummarySheet &&
+      isShowingDataSheet &&
       (isShowingTimelineSidebar ||
         isShowingQuestionInfoSidebar ||
         isShowingQuestionSettingsSidebar ||
@@ -278,9 +300,25 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
           className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
           data-testid="query-builder-root"
         >
-          {isHeaderVisible && <ViewHeaderContainer {...props} />}
+          {isHeaderVisible &&
+            (hasSheets ? (
+              <ViewHeaderContainer
+                {...props}
+                activeSheet={activeSheet}
+                isShowingSummarySidebar={activeSheet === "summary"}
+                editSummary={handleShowSummary}
+                onCloseSummary={handleShowData}
+                onToggleCompare={handleToggleCompare}
+              />
+            ) : (
+              <ViewHeaderContainer {...props} />
+            ))}
 
-          <Flex className={S.QueryBuilderContentContainer}>
+          <Flex
+            className={cx(S.QueryBuilderContentContainer, {
+              [S.isSheetLayout]: hasSheets,
+            })}
+          >
             {!isNative && (
               <NotebookContainer
                 isOpen={isNotebookContainerOpen}
@@ -296,7 +334,9 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
                 setQueryBuilderMode={setQueryBuilderMode}
               />
             )}
-            {isShowingSummarySheet ? (
+            {activeSheet === "compare" && compareOrigin ? (
+              <CompareSheet question={question} origin={compareOrigin} />
+            ) : activeSheet === "summary" ? (
               <SummarySheet question={question} />
             ) : (
               <>
@@ -314,7 +354,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
                   {...props}
                   showLeftSidebar={showLeftSidebar}
                   showRightSidebar={showRightSidebar}
-                  isDataSheet={hasSheetTabs}
+                  isDataSheet={hasSheets}
                 />
                 <ViewSidebar
                   side="right"
@@ -326,14 +366,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               </>
             )}
           </Flex>
-          {hasSheetTabs && (
-            <QuerySheetTabs
-              question={question}
-              isShowingSummary={isShowingSummarySheet}
-              onShowData={onCloseSummary}
-              onShowSummary={editSummary}
-            />
-          )}
         </Flex>
 
         {isShowingNewbModal && (
