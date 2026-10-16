@@ -239,6 +239,33 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
+(deftest app-db-not-ready-is-not-negative-cached-test
+  (testing "a check before the app DB is set up is not cached: config-file settings applied right after setup see the token's features"
+    (let [token      (tu/random-token)
+          call-count (atom 0)
+          good       {:valid true :status "fake" :features ["whitelabel"] :canonical? true}
+          ;; every layer, as in production
+          checker    (token-check/make-checker {:base            (reify token-check/TokenChecker
+                                                                   (-check-token [_ _]
+                                                                     (swap! call-count inc)
+                                                                     good)
+                                                                   (-clear-cache! [_]))
+                                                :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
+                                                                  :delay-ms                          5000
+                                                                  :success-threshold                 1}
+                                                :timeout-ms      1000
+                                                :local-ttl       (t/seconds 10)
+                                                :soft-ttl        (t/minutes 1)
+                                                :hard-ttl        (t/minutes 2)})]
+      (try
+        (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly false)]
+          (is (=? {:valid false :error-details "Metabase DB is not yet set up"}
+                  (token-check/check-token checker token))))
+        (is (= good (token-check/check-token checker token)))
+        (is (= 1 @call-count))
+        (finally
+          (token-check/-clear-cache! checker))))))
+
 (deftest bare-rejection-is-transient-test
   (doseq [http-status [403 404]]
     (testing (format "a bare %d (no body) carries no verdict from the store: a proxy may have stripped it, so it is transient, not cached"
@@ -408,7 +435,6 @@
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token))))
       (testing "When the db-is-set-up? we are not blocked by the circuit breaker"
-        (Thread/sleep 60) ;; outlast the 50ms local-ttl — the not-set-up failure map is negative-cached
         (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly true)]
           (is (= good-response (token-check/-check-token checker token))))))))
 
