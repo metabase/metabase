@@ -6,6 +6,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.api.response :as api.response]
    [metabase.api.settings :as api.settings]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -21,16 +22,35 @@
      (fn [prefix]
        (open-api/open-api-spec handler prefix)))))
 
+;; Public and embedded endpoints replace error text with something generic, unless the exception puts
+;; `:message-for-viewer` in its `ex-data`.
+(defn message-for-viewer
+  "The first `:message-for-viewer` found in `maps`, in their `:ex-data`, or in their `:via` entries' `:ex-data`; nil
+  when there is none."
+  [maps]
+  (some (fn [m]
+          (when (map? m)
+            (or (:message-for-viewer m)
+                (some :message-for-viewer (cons (:ex-data m) (map :ex-data (:via m)))))))
+        maps))
+
+(defn- exception-ex-datas
+  "The `ex-data` of `e` and of each of its causes, outermost first, for [[message-for-viewer]]."
+  [^Throwable e]
+  (map ex-data (u/full-exception-chain e)))
+
 (defn- public-exceptions
   "Catch any exceptions other than 404 thrown in the request handler body and rethrow a generic 400 exception instead.
-  This minimizes information available to bad actors when exceptions occur on public endpoints."
+  This minimizes information available to bad actors when exceptions occur on public endpoints. An exception that
+  wrote a message for this viewer ([[message-for-viewer]]) keeps it."
   [handler]
   (fn [request respond _raise]
     (let [raise (fn [e]
                   (log/warnf "Exception in API call: %s" (ex-message e))
                   (if (= 404 (:status-code (ex-data e)))
                     (respond {:status 404, :body (deferred-tru "Not found.")})
-                    (respond {:status 400, :body (deferred-tru "An error occurred.")})))]
+                    (respond {:status 400, :body (or (message-for-viewer (exception-ex-datas e))
+                                                     (deferred-tru "An error occurred."))})))]
       (try
         (handler request respond raise)
         (catch Throwable e
@@ -39,12 +59,14 @@
 (defn message-only-exceptions
   "Catch any exceptions thrown in the request handler body and rethrow a 400 exception that only has the message from
   the original instead (i.e., don't rethrow the original stacktrace). This reduces the information available to bad
-  actors but still provides some information that will prove useful in debugging errors."
+  actors but still provides some information that will prove useful in debugging errors. An exception that wrote a
+  message for this viewer ([[message-for-viewer]]) returns that message instead."
   [handler]
   (fn [request respond _raise]
     (let [raise (fn [^Throwable e]
                   (log/errorf "Exception in API call: %s" (ex-message e))
-                  (respond {:status 400, :body (ex-message e)}))]
+                  (respond {:status 400, :body (or (message-for-viewer (exception-ex-datas e))
+                                                   (ex-message e))}))]
       (try
         (handler request respond raise)
         (catch Throwable e

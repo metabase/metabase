@@ -3,8 +3,11 @@
    [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.api.common :as api]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.request.core :as request]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.warehouses.models.database :as database]))
 
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
@@ -13,6 +16,44 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *database-routing-on* :unset)
+
+;; Who is visiting, for the sake of a refusal's wording. Bound together with `*database-routing-on*` by
+;; `with-database-routing-off-if-granted-fn` below, and only there, because by the time a refusal is thrown the
+;; current user is gone: the public dashcard path deliberately runs its query with no current user -- a public page
+;; must not pick up a signed-in visitor's locked parameters -- and the shared execution helpers then run it as an
+;; admin. The seam below is the last point at which the real viewer is still known.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic ^:private *viewer-user-id* nil)
+
+(defn- viewer-can-manage-database?
+  "Whether the viewer `*viewer-user-id*` records may manage the Database with `db-id`."
+  [db-id]
+  (boolean
+   (when-let [user-id *viewer-user-id*]
+     (try
+       (request/with-current-user user-id
+         (database/current-user-can-write-db? db-id))
+       (catch Throwable e
+         (log/warnf e "Could not determine whether user %d may manage database %d" user-id db-id)
+         false)))))
+
+(defn- refuse-anonymous-access!
+  "Throws an error explaining that anonymous database access is disabled. Provides more details if the viewer is a
+  superuser or database manager."
+  [db-id]
+  (let [database-name (database-routing.db/database-name db-id)]
+    (log/warnf (str "Refusing an anonymous query: database %d (%s) has database routing enabled and"
+                    " anonymous_access_granted is false.")
+               db-id database-name)
+    (throw (ex-info (tru "This database does not allow anonymous access.")
+                    (cond-> {:status-code                  400
+                             :anonymous-access-not-granted true
+                             :router-database-id           db-id}
+                      (and database-name (viewer-can-manage-database? db-id))
+                      (assoc :message-for-viewer
+                             (tru (str "{0} has database routing enabled and does not allow anonymous access, so a"
+                                       " public link or guest embed on it returns no data.")
+                                  database-name)))))))
 
 (defn- router-db-or-id->destination-db-id*
   [is-anonymous-user? user-attributes is-superuser? db-or-id]
@@ -25,10 +66,7 @@
 
         (= :router-if-granted *database-routing-on*)
         (when-not (database-routing.db/router-anonymous-access-granted? (u/the-id db-or-id))
-          (throw (ex-info (tru "This database does not allow anonymous access.")
-                          {:status-code                  400
-                           :anonymous-access-not-granted true
-                           :router-database-id           (u/the-id db-or-id)})))
+          (refuse-anonymous-access! (u/the-id db-or-id)))
 
         is-anonymous-user?
         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400
@@ -121,10 +159,11 @@
 
 (defenterprise with-database-routing-off-if-granted-fn
   "Enterprise version. Calls the function with Database Routing prohibited, and a router database reachable only if an
-  admin has granted it anonymous access."
+  admin has granted it anonymous access, and the viewer recorded for the sake of a refusal's wording."
   :feature :database-routing
   [f]
-  (binding [*database-routing-on* :router-if-granted]
+  (binding [*database-routing-on* :router-if-granted
+            *viewer-user-id*      api/*current-user-id*]
     (f)))
 
 (defn- is-disallowed-destination-db-access?

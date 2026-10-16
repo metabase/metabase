@@ -2050,6 +2050,7 @@
            metabase.public-sharing.reach
            metabase.public-sharing.validation}
    :uses #{api
+           database-routing
            embedding
            lib.schema
            settings
@@ -2057,6 +2058,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Dashboard
+                    :model/Database
                     :model/Document}}
 
   public-sharing.rest
@@ -3871,6 +3873,7 @@
            models
            premium-features
            query-processor
+           request
            settings
            util
            warehouses

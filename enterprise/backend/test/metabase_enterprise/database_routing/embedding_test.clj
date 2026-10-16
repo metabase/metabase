@@ -1,26 +1,19 @@
 (ns ^:mb/driver-tests metabase-enterprise.database-routing.embedding-test
   "Guest embeds and embed previews on a database with routing enabled answer from the router database when an admin has
-  granted that database anonymous access, and refuse when they have not. Guest embedding and public sharing are the two
-  anonymous surfaces, and the same grant gates both -- see
-  [[metabase-enterprise.database-routing.public-sharing-test]], whose shape this namespace follows.
-
-  See [[metabase-enterprise.database-routing.common]] for where that decision is made and why."
+  granted that database anonymous access, and refuse when they have not."
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase.test :as mt]
-   [metabase.test.http-client :as client]))
-
-(def ^:private refusal-message
-  "The message [[metabase-enterprise.database-routing.common/router-db-or-id->destination-db-id]] throws with when the
-  grant is missing."
-  "This database does not allow anonymous access.")
+   [metabase.test.http-client :as client]
+   [metabase.util :as u]))
 
 (defn- body-mentions?
   "True when an /api/embed response body contains `message`, whatever prefix the layer that caught the refusal added."
   [body message]
   (str/includes? (str body) message))
+
 (defn- message-paths
   "The refused `/api/embed` paths that raise instead of failing as a query, as `[endpoint & request-args]`."
   [urls]
@@ -34,7 +27,7 @@
    [:dash-tile         (:dash-tile urls) :latField (:lat-field urls) :lonField (:lon-field urls)]])
 
 (def ^:private query-failure-keys
-  [:status :error :error_type])
+  [:status :error :error_type :error_is_curated])
 
 ;;; --------------------------------------------- Grant in place ----------------------------------------------------
 
@@ -148,8 +141,14 @@
        (testing "the remapping and map-tile endpoints refuse with a 400, carrying the refusal's own message"
          (doseq [[endpoint url & args] (message-paths urls)]
            (testing endpoint
-             (let [body (apply client/client :get 400 url args)]
-               (is (body-mentions? body refusal-message) (pr-str body))))))
+             (doseq [[requester request] [[:anonymous           (fn [& args] (apply client/client args))]
+                                          [:signed-in-non-admin (fn [& args] (apply mt/user-http-request :rasta args))]]]
+               (testing requester
+                 (let [body (apply request :get 400 url args)]
+                   (is (body-mentions? body routing.tu/plain-refusal-message) (pr-str body))
+                   (doseq [disclosure (routing.tu/configuration-disclosures (:db-name urls))]
+                     (is (not (body-mentions? body disclosure))
+                         (str (pr-str disclosure) " leaked in " (pr-str body))))))))))
        ;; `metabase.parameters.field/search-values-from-field-id` logs and returns `[]` when the fetch throws, so these
        ;; come back empty instead of raising.
        (testing "the card parameter-value endpoints return no values"
@@ -162,17 +161,58 @@
                 (-> (mt/user-http-request :rasta :get (:card-query urls))
                     (select-keys query-failure-keys)))))))))
 
+(deftest guest-embed-refusal-explains-itself-to-a-database-manager-test
+  (testing "a viewer holding manage-database permission on the routed database is told which database and which
+           setting, on both of /api/embed's refusal contracts"
+    (routing.tu/do-with-embed-routing-setup!
+     false
+     (fn [{:keys [db-id db-name] :as urls}]
+       (routing.tu/do-as-database-manager!
+        db-id
+        (fn []
+          (testing "GET /api/embed/card/:token/query"
+            (is (= (routing.tu/query-failure-for-manager db-name)
+                   (-> (mt/user-http-request :rasta :get (:card-query urls))
+                       (select-keys query-failure-keys)))))
+          (doseq [[endpoint url & args] (message-paths urls)]
+            (testing endpoint
+              (let [body (apply mt/user-http-request :rasta :get 400 url args)]
+                (is (body-mentions? body (routing.tu/manager-refusal-message db-name)) (pr-str body)))))))))))
+
 (deftest preview-embed-refused-without-the-grant-test
   (testing "an embed preview refuses too, so an admin previewing an ungranted routed database sees what the published
            embed will do rather than a preview that works and an embed that does not"
     (routing.tu/do-with-embed-routing-setup!
      false
      (fn [urls]
-       ;; the preview endpoints share the public-sharing execution helpers, which replace the text of any error type
-       ;; not marked safe for embeds, so the refusal arrives as a plain query failure here too.
+       ;; Only a superuser can reach a preview, so the refusal names the database and the setting instead of the generic
+       ;; embed failure.
        (doseq [[endpoint url] [[:preview-card-query (:preview-card-query urls)]
                                [:preview-dash-query (:preview-dash-query urls)]]]
          (testing endpoint
-           (is (= routing.tu/generic-query-failure
+           (is (= (routing.tu/query-failure-for-manager (:db-name urls))
                   (-> (mt/user-http-request :crowberto :get url)
                       (select-keys query-failure-keys))))))))))
+
+;;; ------------------------------------------ Publishing is not refused --------------------------------------------
+
+(deftest publishing-a-guest-embed-is-not-refused-test
+  (testing "publishing a guest embed on an ungranted routed database is deliberately allowed: unlike public-link
+           creation, embed publishing is not validated against the grant, because the card and dashboard update path
+           is heavily trafficked and the embed setup flow already warns about database routing"
+    (mt/with-premium-features #{:database-routing}
+      (mt/with-temp [:model/DatabaseRouter _ {:database_id              (mt/id)
+                                              :user_attribute           "db_name"
+                                              :anonymous_access_granted false}
+                     :model/Card card {:database_id      (mt/id)
+                                       :enable_embedding false}
+                     :model/Dashboard dashboard {:enable_embedding false}]
+        (mt/with-temporary-setting-values [enable-embedding-modular true]
+          (testing "PUT /api/card/:id"
+            (is (true? (:enable_embedding
+                        (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                              {:enable_embedding true})))))
+          (testing "PUT /api/dashboard/:id"
+            (is (true? (:enable_embedding
+                        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
+                                              {:enable_embedding true}))))))))))

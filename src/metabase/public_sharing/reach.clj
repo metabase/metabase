@@ -1,14 +1,6 @@
 (ns metabase.public-sharing.reach
-  "Anonymous reach: the relation between a warehouse database and the public links and published guest embeds through
-  which anonymous traffic can get data from it.
-
-  Reach is what the anonymous-access grant governs. Everything in the relation would stop returning data if the
-  database refused anonymous access, and anything that would stop returning data is in the relation. It reads the
-  grant nowhere: what it answers is the counterfactual, so it reads the same before and after an admin decides and is
-  well defined on a database that is no router at all.
-
-  [[anonymously-reaching]] is the whole of it from outside. [[rendered-card-ids]] is the step each content module
-  implements."
+  "Anonymous reach: which public links and published guest embeds let anonymous traffic get data from a warehouse
+  database."
   (:require
    [metabase.embedding.settings :as embedding.settings]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -189,3 +181,19 @@
                                    (get-in published [model id]))]
            :when (seq surfaces)]
        {:model model, :id id, :surfaces surfaces, :indirect? (not shows-one?)}))))
+
+(mr/def ::public-link-model
+  "A content kind that can carry a public link and stands in this relation. An Action can carry one too and is
+  deliberately not here; the exclusion is explained where the relation's starting set is built."
+  [:enum :model/Card :model/Dashboard :model/Document])
+
+(mu/defn databases-reached-by-public-link :- [:set ::lib.schema.id/database]
+  "The ids of the Databases a public link on the entity `id` of `model` would let anonymous traffic get data from."
+  [model :- ::public-link-model
+   id    :- ms/PositiveInt]
+  ;; A public link serves value lists too, so every edge counts.
+  (into #{}
+        (comp (mapcat (comp vals public-sharing.db/unarchived-card-database-ids))
+              (remove nil?))
+        (partition-all id-chunk-size
+                       (card-ids-of (get (rendered-card-ids model {id #{:public-link}}) id)))))
