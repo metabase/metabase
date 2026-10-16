@@ -42,6 +42,13 @@ const getColumnDataFields = (datasetColumn: DatasetColumn) => {
   return _.pick(datasetColumn, DATA_COLUMN_KEYS);
 };
 
+// Reordering columns reorders `data.cols` too, and saved widths follow the new order, so order is not a data change
+const getComparableColumns = (cols: DatasetColumn[]) => {
+  return cols
+    .map(getColumnDataFields)
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
 /**
  * Reset table column widths when the dataset columns change
  * unless it is due to the question <-> model conversion
@@ -61,8 +68,8 @@ export function useResetWidthsOnColumnsChange(
       prevData.current &&
       data &&
       !_.isEqual(
-        prevData.current.cols.map(getColumnDataFields),
-        data.cols.map(getColumnDataFields),
+        getComparableColumns(prevData.current.cols),
+        getComparableColumns(data.cols),
       );
 
     if (isDataChange) {
