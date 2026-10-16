@@ -8,51 +8,34 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import {
-  Box,
-  Combobox,
-  Flex,
-  Icon,
-  SegmentedControl,
-  Text,
-  Tooltip,
-  UnstyledButton,
-  useCombobox,
-} from "metabase/ui";
+import { Box, Combobox, Flex, Icon, Text, useCombobox } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { PinButton } from "../ExplorePins";
 
+import { CutStrip } from "./CutStrip";
 import S from "./ExploreBar.module.css";
 import { ExplorePill, type ExplorePillItem } from "./ExplorePill";
 import {
   type ExploreSuggestion,
   type ExploreSuggestionContext,
-  getBreakdownSuggestions,
-  getCompareSuggestions,
   getExploreSuggestions,
 } from "./suggestions";
 import { useColumnValues } from "./use-column-values";
+import { useExploreHistory } from "./use-explore-history";
 import { useExploreUpdate } from "./use-explore-update";
-import {
-  type ExploreView,
-  STAGE_INDEX,
-  canShowAsChart,
-  getExploreView,
-  isSummarized,
-  switchExploreView,
-  withExploreQuery,
-} from "./utils";
+import { STAGE_INDEX, withExploreQuery } from "./utils";
 
 type ExploreBarProps = {
   question: Question;
 };
 
 /**
- * The one bar that drives the query builder: type to search, filter ("gadget", "last 30 days",
- * "price over 50"), calculate ("sum of total"), or group ("by state"). Every pick becomes a pill
- * that is a real clause of the question, and the result below picks a fitting shape by itself.
+ * The one bar that drives the query builder. The bar holds the slice: what you're looking at,
+ * narrowed by typing ("gadget", "last 30 days", "price over 50") or by clicking the result.
+ * Below it, the cut strip moves the same slice between rows, a total, and groupings, and
+ * between views, without touching the slice. Typing a calculation or "by state" works too.
  */
 export function ExploreBar({ question }: ExploreBarProps) {
   const query = question.query();
@@ -63,7 +46,10 @@ export function ExploreBar({ question }: ExploreBarProps) {
     () => ({ query, stageIndex: STAGE_INDEX, columnValues }),
     [query, columnValues],
   );
-  const pills = useMemo(() => getPills(query), [query]);
+  const pills = useMemo(() => getFilterPills(query), [query]);
+  const history = useExploreHistory(question, (restoredQuestion) =>
+    updateExploreQuestion(question, restoredQuestion),
+  );
 
   const handleQueryChange = (nextQuery: Lib.Query) => {
     updateExploreQuestion(question, withExploreQuery(question, nextQuery));
@@ -76,22 +62,17 @@ export function ExploreBar({ question }: ExploreBarProps) {
     }
   };
 
-  const handleViewChange = (view: ExploreView) => {
-    updateExploreQuestion(question, switchExploreView(question, view));
-  };
-
-  const hasSummary = isSummarized(query);
-  const view = getExploreView(question);
-
   return (
     <Box className={S.root} data-testid="explore-bar">
       <Flex className={S.bar} align="center" gap="xs" wrap="wrap">
         <Icon name="search" className={S.leadingIcon} />
-        {pills.map((pill, index) => (
-          <PillWithJoiner
+        {pills.length === 0 && (
+          <Text className={S.sliceLabel}>{t`All rows`}</Text>
+        )}
+        {pills.map((pill) => (
+          <ExplorePill
             key={pill.key}
             pill={pill}
-            previousPill={pills[index - 1]}
             query={query}
             onQueryChange={handleQueryChange}
           />
@@ -105,26 +86,24 @@ export function ExploreBar({ question }: ExploreBarProps) {
           }
           onRemoveLastPill={handleRemoveLastPill}
         />
-        <Flex ml="auto" align="center" gap="sm">
-          {hasSummary && (
-            <ExploreViewSwitcher
-              query={query}
-              view={view}
-              onChange={handleViewChange}
-            />
-          )}
+        <Box ml="auto">
           <PinButton question={question} />
-        </Flex>
+        </Box>
       </Flex>
-      {hasSummary && view === "chart" && (
-        <ChartCompanions context={context} onApply={handleQueryChange} />
-      )}
+      <CutStrip
+        question={question}
+        history={history}
+        onQueryChange={handleQueryChange}
+        onQuestionChange={(nextQuestion) =>
+          updateExploreQuestion(question, nextQuestion)
+        }
+      />
     </Box>
   );
 }
 
-function getPills(query: Lib.Query): ExplorePillItem[] {
-  const filters = Lib.filters(query, STAGE_INDEX).map(
+function getFilterPills(query: Lib.Query): ExplorePillItem[] {
+  return Lib.filters(query, STAGE_INDEX).map(
     (clause, index): ExplorePillItem => ({
       key: `filter:${index}`,
       kind: "filter",
@@ -132,54 +111,6 @@ function getPills(query: Lib.Query): ExplorePillItem[] {
       index,
       label: Lib.displayInfo(query, STAGE_INDEX, clause).displayName,
     }),
-  );
-  const aggregations = Lib.aggregations(query, STAGE_INDEX).map(
-    (clause, index): ExplorePillItem => ({
-      key: `aggregation:${index}`,
-      kind: "aggregation",
-      clause,
-      index,
-      label: Lib.displayInfo(query, STAGE_INDEX, clause).displayName,
-    }),
-  );
-  const breakouts = Lib.breakouts(query, STAGE_INDEX).map(
-    (clause, index): ExplorePillItem => ({
-      key: `breakout:${index}`,
-      kind: "breakout",
-      clause,
-      index,
-      label: Lib.displayInfo(query, STAGE_INDEX, clause).displayName,
-    }),
-  );
-  return [...filters, ...aggregations, ...breakouts];
-}
-
-type PillWithJoinerProps = {
-  pill: ExplorePillItem;
-  previousPill: ExplorePillItem | undefined;
-  query: Lib.Query;
-  onQueryChange: (query: Lib.Query) => void;
-};
-
-/** Pills read like a sentence: "Category is Gadget · Sum of Total by Created At: Month". */
-function PillWithJoiner({
-  pill,
-  previousPill,
-  query,
-  onQueryChange,
-}: PillWithJoinerProps) {
-  const isFirstOfKind = previousPill?.kind !== pill.kind;
-  const joiner =
-    pill.kind === "breakout" ? (isFirstOfKind ? t`by` : null) : null;
-  const hasDivider =
-    isFirstOfKind && previousPill != null && pill.kind === "aggregation";
-
-  return (
-    <>
-      {hasDivider && <Box className={S.divider} />}
-      {joiner && <Text className={S.joiner}>{joiner}</Text>}
-      <ExplorePill pill={pill} query={query} onQueryChange={onQueryChange} />
-    </>
   );
 }
 
@@ -237,7 +168,7 @@ function ExploreInput({
   };
 
   const placeholder = hasPills
-    ? t`Add a search, filter, or calculation…`
+    ? t`Narrow it down, or type a calculation…`
     : t`Search, filter, or summarize. Try “gadget”, “last 30 days”, “sum of total by month”, or “= [Price] * 2”`;
 
   return (
@@ -309,109 +240,5 @@ function SuggestionItem({ suggestion }: { suggestion: ExploreSuggestion }) {
         </Text>
       )}
     </Flex>
-  );
-}
-
-type ExploreViewSwitcherProps = {
-  query: Lib.Query;
-  view: ExploreView;
-  onChange: (view: ExploreView) => void;
-};
-
-function ExploreViewSwitcher({
-  query,
-  view,
-  onChange,
-}: ExploreViewSwitcherProps) {
-  const hasBreakouts = Lib.breakouts(query, STAGE_INDEX).length > 0;
-  const canChart = canShowAsChart(query);
-  const data = [
-    {
-      value: "chart",
-      label: hasBreakouts ? t`Chart` : t`Number`,
-      disabled: !canChart,
-    },
-    ...(hasBreakouts ? [{ value: "pivot", label: t`Pivot` }] : []),
-    { value: "table", label: t`Table` },
-  ];
-
-  return (
-    <Tooltip label={t`Charts show up to two groupings`} disabled={canChart}>
-      <Box>
-        <SegmentedControl
-          value={view}
-          data={data}
-          onChange={(value) => {
-            if (value === "chart" || value === "pivot" || value === "table") {
-              onChange(value);
-            }
-          }}
-        />
-      </Box>
-    </Tooltip>
-  );
-}
-
-type ChartCompanionsProps = {
-  context: ExploreSuggestionContext;
-  onApply: (query: Lib.Query) => void;
-};
-
-/** Like the metrics explorer: bring more calculations onto the chart, or split it another way. */
-function ChartCompanions({ context, onApply }: ChartCompanionsProps) {
-  const compare = useMemo(() => getCompareSuggestions(context), [context]);
-  const breakdown = useMemo(() => getBreakdownSuggestions(context), [context]);
-
-  if (compare.length === 0 && breakdown.length === 0) {
-    return null;
-  }
-
-  const apply = (suggestion: ExploreSuggestion) =>
-    suggestion.apply && onApply(suggestion.apply(context.query));
-
-  return (
-    <Flex className={S.companions} align="center" gap="sm" wrap="wrap">
-      {compare.length > 0 && (
-        <>
-          <Text className={S.companionLabel}>{t`Compare with`}</Text>
-          {compare.map((suggestion) => (
-            <CompanionChip
-              key={suggestion.id}
-              suggestion={suggestion}
-              onClick={() => apply(suggestion)}
-            />
-          ))}
-        </>
-      )}
-      {breakdown.length > 0 && (
-        <>
-          <Text className={S.companionLabel} ml={compare.length > 0 ? "md" : 0}>
-            {t`Break down by`}
-          </Text>
-          {breakdown.map((suggestion) => (
-            <CompanionChip
-              key={suggestion.id}
-              suggestion={suggestion}
-              onClick={() => apply(suggestion)}
-            />
-          ))}
-        </>
-      )}
-    </Flex>
-  );
-}
-
-function CompanionChip({
-  suggestion,
-  onClick,
-}: {
-  suggestion: ExploreSuggestion;
-  onClick: () => void;
-}) {
-  return (
-    <UnstyledButton className={S.companionChip} onClick={onClick}>
-      <Icon name="add" size={10} />
-      <span>{suggestion.label}</span>
-    </UnstyledButton>
   );
 }

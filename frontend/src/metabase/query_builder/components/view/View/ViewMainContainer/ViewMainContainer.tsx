@@ -26,7 +26,11 @@ import type {
 
 import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
-import { ExploreBar, isExploreModeQuestion } from "../../ExploreBar";
+import {
+  ExploreBar,
+  exploreClickMode,
+  isExploreModeQuestion,
+} from "../../ExploreBar";
 import { PinTray } from "../../ExplorePins";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
@@ -118,6 +122,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   }
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
+  const isExploreMode = isExploreModeQuestion(question, queryBuilderMode);
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
   const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;
@@ -131,9 +136,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       data-testid="query-builder-main"
       ref={mainRef}
     >
-      {isExploreModeQuestion(question, queryBuilderMode) && (
-        <ExploreBar question={question} />
-      )}
+      {isExploreMode && <ExploreBar question={question} />}
       {isNative ? (
         <ViewNativeQueryEditor {...props} availableHeight={availableHeight} />
       ) : (
@@ -156,7 +159,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           {...visualizationResultProps}
           noHeader
           className={CS.spread}
-          mode={clickActionMode}
+          mode={isExploreMode ? exploreClickMode : clickActionMode}
           hasColumnReordering
           noResultsAction={
             !isDirty && <HasResultsAlertPrompt question={question} />
@@ -167,9 +170,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       </DebouncedFrame>
       <ObjectDetailSidesheet />
       <Box ref={footerRef} className={ViewMainContainerS.Footer}>
-        {isExploreModeQuestion(question, queryBuilderMode) && (
-          <PinTray question={question} />
-        )}
+        {isExploreMode && <PinTray question={question} />}
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
         <ViewFooter className={CS.flexNoShrink} />
       </Box>

@@ -41,19 +41,6 @@
   color: var(--mb-color-text-tertiary);
 }
 
-.joiner {
-  color: var(--mb-color-text-secondary);
-  font-size: 0.8125rem;
-  font-weight: 700;
-}
-
-.divider {
-  width: 1px;
-  height: 1.25rem;
-  margin: 0 0.125rem;
-  background-color: var(--mb-color-border);
-}
-
 .pill {
   display: inline-flex;
   align-items: center;
@@ -159,30 +146,101 @@
   min-width: 0;
 }
 
-.companions {
-  padding: 0.5rem 0.25rem 0;
-}
-
-.companionLabel {
+.sliceLabel {
   color: var(--mb-color-text-secondary);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 700;
+  padding: 0 0.25rem;
 }
 
-.companionChip {
+.cutStrip {
+  min-height: 2.5rem;
+  padding: 0.5rem 0 0;
+  overflow-x: auto;
+}
+
+.cutTabs {
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+
+.cutTab {
+  position: relative;
+  height: 2rem;
+  padding: 0 0.25rem;
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cutTab:hover {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background-hover);
+}
+
+.cutTabActive,
+.cutTabActive:hover {
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-brand);
+}
+
+.cutTabButton {
+  height: 100%;
+  padding: 0 0.375rem;
+  color: inherit;
+  font: inherit;
+}
+
+.cutTabUnit {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   height: 1.5rem;
-  padding: 0 0.5rem;
-  border: 1px dashed var(--mb-color-border);
-  border-radius: 999px;
+  padding: 0 0.375rem;
+  border-radius: 0.375rem;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+
+.cutTabUnit:hover {
+  background-color: var(--mb-color-background-primary);
+}
+
+.cutTabIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.cutTabIcon:hover {
+  opacity: 1;
+  background-color: var(--mb-color-background-primary);
+}
+
+.cutTabSplit {
+  opacity: 0;
+}
+
+.cutTab:hover .cutTabSplit {
+  opacity: 0.7;
+}
+
+.calculations {
+  flex-shrink: 0;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--mb-color-border);
+}
+
+.stripLabel {
   color: var(--mb-color-text-secondary);
   font-size: 0.75rem;
   font-weight: 700;
-}
-
-.companionChip:hover {
-  border-color: var(--mb-color-brand);
-  color: var(--mb-color-brand);
 }
