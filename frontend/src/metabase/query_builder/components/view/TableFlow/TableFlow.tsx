@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { ReactNode } from "react";
 
 import { Skeleton } from "metabase/ui";
@@ -64,14 +63,16 @@ export function TableFlow({
     isSelectedChartLoading,
   } = useSelectedXrayChart(tableId, isGalleryOpen);
 
-  // The main card fills the visible area so the page scrolls only once the gallery or a chart is added above it.
-  const mainCardHeight = `max(20rem, calc(${viewportHeight}px - var(--mantine-spacing-xxs) - var(--mantine-spacing-md)))`;
   // a summary always gets its chart: several ungrouped values default to a table display
   const isChart =
     isSummarized(question) || !TABULAR_DISPLAYS.includes(question.display());
 
   return (
-    <div className={S.root}>
+    // fills the visible area, so the chart and table split the screen instead of scrolling
+    <div
+      className={S.root}
+      style={{ height: `max(30rem, ${viewportHeight}px)` }}
+    >
       {isGalleryOpen && tableId != null && (
         <XrayGallery
           charts={charts}
@@ -86,11 +87,10 @@ export function TableFlow({
           key={selectedChart.id}
           chart={selectedChart}
           card={selectedCard}
-          tableHeight={mainCardHeight}
           onCardChange={onSelectedCardChange}
         />
       ) : isSelectedChartLoading ? (
-        <Skeleton className={cx(S.card, S.detailChartCard)} />
+        <Skeleton className={S.card} h={400} />
       ) : (
         // one element for both shapes, so the side panel stays open when a summary turns the table into a chart
         <ChartDetail
@@ -120,7 +120,6 @@ export function TableFlow({
               ? { text: searchText, onChange: onSearchTextChange }
               : undefined
           }
-          tableHeight={mainCardHeight}
           isMetadataReady
           onQuestionChange={onQuestionChange}
         />

@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, useMemo, useState } from "react";
 import { match } from "ts-pattern";
@@ -32,6 +33,7 @@ import { ChartMetricBar } from "./ChartMetricBar";
 import S from "./TableFlow.module.css";
 import { XrayFilterPills } from "./XrayFilterPills";
 import { XrayFilterSidebar } from "./XrayFilterSidebar";
+import { ResizableChartPanel, ResizableSidePanel } from "./ResizablePanels";
 import { TableSearch } from "./TableSearch";
 import {
   VisualizationPicker,
@@ -49,14 +51,15 @@ type ChartDetailProps = {
   table: ReactNode;
   /** Searches the table's rows; omit to hide the search. */
   search?: { text: string; onChange: (text: string) => void };
-  /** CSS height of the data table card and the side panel. */
-  tableHeight: string;
   /** `false` while the columns and metrics the editors offer are still loading. */
   isMetadataReady: boolean;
   onQuestionChange: (question: Question) => void;
 };
 
 type SidePanel = "filter" | "summarize";
+
+/** The vertical gap between the chart and table cards, `--mantine-spacing-md` in `.detailMain`. */
+const PANEL_GAP = 12;
 
 /**
  * A question's data table, under its chart when it has one. The metric bar, the Summarize
@@ -69,7 +72,6 @@ export function ChartDetail({
   result,
   table,
   search,
-  tableHeight,
   isMetadataReady,
   onQuestionChange,
 }: ChartDetailProps) {
@@ -80,6 +82,13 @@ export function ChartDetail({
     () => getFilterItems(question.query()).length > 0,
     [question],
   );
+  const { ref: layoutRef, width: layoutWidth } = useElementSize();
+  const { ref: mainRef, height: mainHeight } = useElementSize();
+  const { ref: tableHeaderRef, height: tableHeaderHeight } = useElementSize();
+  // the chart may grow until the table below shows only its header
+  const maxChartHeight =
+    mainHeight > 0 ? mainHeight - tableHeaderHeight - PANEL_GAP : Infinity;
+  const maxSidePanelWidth = layoutWidth > 0 ? layoutWidth / 2 : Infinity;
 
   const togglePanel = (panel: SidePanel) =>
     setSidePanel(sidePanel === panel ? null : panel);
@@ -99,11 +108,13 @@ export function ChartDetail({
   );
 
   return (
-    <div className={S.detailLayout}>
+    <div ref={layoutRef} className={S.detailLayout}>
       {chart != null && isVizSettingsOpen && (
-        <aside
+        <ResizableSidePanel
+          side="left"
+          maxWidth={maxSidePanelWidth}
           className={cx(S.card, S.sidePanel)}
-          style={{ height: tableHeight }}
+          onCollapse={() => setIsVizSettingsOpen(false)}
         >
           <VisualizationSettingsPanel
             question={question}
@@ -111,11 +122,24 @@ export function ChartDetail({
             onQuestionChange={onQuestionChange}
             onClose={() => setIsVizSettingsOpen(false)}
           />
-        </aside>
+        </ResizableSidePanel>
       )}
-      <div className={S.detailMain}>
+      <div ref={mainRef} className={S.detailMain}>
         {chart != null && (
-          <div className={cx(S.card, S.detailChartCard)}>
+          <ResizableChartPanel
+            maxHeight={maxChartHeight}
+            className={cx(S.card, S.detailChartCard)}
+            renderCollapsed={(expand) => (
+              <Button
+                variant="subtle"
+                size="sm"
+                leftSection={<Icon name="chevrondown" />}
+                onClick={expand}
+              >
+                {t`Show chart`}
+              </Button>
+            )}
+          >
             <Flex align="flex-start" gap="sm">
               <Box flex={1} miw={0}>
                 {isMetricBarOpen && isMetadataReady && (
@@ -144,13 +168,15 @@ export function ChartDetail({
               onQuestionChange={onQuestionChange}
               onOpenSettings={() => setIsVizSettingsOpen(true)}
             />
-          </div>
+          </ResizableChartPanel>
         )}
-        <div
-          className={cx(S.card, S.tableCard)}
-          style={{ height: tableHeight }}
-        >
-          <Flex className={S.tableHeader} gap="sm" align="center">
+        <div className={cx(S.card, S.tableCard)}>
+          <Flex
+            ref={tableHeaderRef}
+            className={S.tableHeader}
+            gap="sm"
+            align="center"
+          >
             {search && (
               <TableSearch
                 searchText={search.text}
@@ -189,9 +215,11 @@ export function ChartDetail({
         </div>
       </div>
       {sidePanel != null && (
-        <aside
+        <ResizableSidePanel
+          side="right"
+          maxWidth={maxSidePanelWidth}
           className={cx(S.card, S.sidePanel)}
-          style={{ height: tableHeight }}
+          onCollapse={() => setSidePanel(null)}
         >
           {!isMetadataReady ? (
             <Flex h="100%" align="center" justify="center">
@@ -216,7 +244,7 @@ export function ChartDetail({
               ))
               .exhaustive()
           )}
-        </aside>
+        </ResizableSidePanel>
       )}
     </div>
   );

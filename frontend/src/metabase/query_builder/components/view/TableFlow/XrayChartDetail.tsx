@@ -16,8 +16,6 @@ type XrayChartDetailProps = {
   chart: XrayChart;
   /** The chart's card including any edits. */
   card: Card;
-  /** CSS height of the data table card and the side panel. */
-  tableHeight: string;
   onCardChange: (card: Card) => void;
 };
 
@@ -25,7 +23,6 @@ type XrayChartDetailProps = {
 export function XrayChartDetail({
   chart,
   card,
-  tableHeight,
   onCardChange,
 }: XrayChartDetailProps) {
   // loads the columns and metrics of every table the chart touches, so the editors can offer them
@@ -42,7 +39,6 @@ export function XrayChartDetail({
     <ChartDetail
       question={question}
       result={dataset}
-      tableHeight={tableHeight}
       isMetadataReady={!isMetadataFetching}
       onQuestionChange={handleQuestionChange}
       chart={

@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -8,6 +9,7 @@ import type {
   ConcreteTableId,
   DashCardId,
   Dashboard,
+  DatasetQuery,
   RowValues,
   SeriesCard,
 } from "metabase-types/api";
@@ -98,6 +100,47 @@ export function parseXraySearchParam(
   }
   const position = Number(match[2]);
   return position >= 1 ? position : null;
+}
+
+/** Search param holding the selected x-ray chart's edits, as a URL-serialized card. */
+export const XRAY_CARD_SEARCH_PARAM = "xray-card";
+
+/**
+ * The edits in `value`, or `null` when absent or unreadable. Only the card fields the URL
+ * serializes are present, so callers lay them over the x-ray's own card.
+ */
+export function parseXrayCardSearchParam(
+  value: string | null,
+): Partial<Card> | null {
+  if (value == null) {
+    return null;
+  }
+  try {
+    return deserializeCardFromUrl(value);
+  } catch {
+    return null;
+  }
+}
+
+function withoutClauseIds(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(withoutClauseIds);
+  }
+  if (typeof value === "object" && value != null) {
+    return _.mapObject(_.omit(value, "lib/uuid"), withoutClauseIds);
+  }
+  return value;
+}
+
+/**
+ * Whether two dataset queries ask the same thing. X-rays are regenerated on every load
+ * with fresh clause ids (`lib/uuid`), so those are ignored.
+ */
+export function isSameDatasetQuery(
+  a: DatasetQuery | undefined,
+  b: DatasetQuery | undefined,
+): boolean {
+  return _.isEqual(withoutClauseIds(a), withoutClauseIds(b));
 }
 
 /**

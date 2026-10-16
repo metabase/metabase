@@ -98,7 +98,10 @@ interface ViewMainContainerProps {
   isLiveResizable: boolean;
   parameters: UiParameter[];
 
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts?: { run?: boolean; shouldUpdateUrl?: boolean },
+  ) => void;
 }
 
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
@@ -215,6 +218,9 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
                 nextQuestion.datasetQuery(),
                 question.datasetQuery(),
               ),
+              // a rerun writes the URL when it finishes; edits that don't rerun must write it now
+              shouldUpdateUrl: Lib.queryDisplayInfo(nextQuestion.query())
+                .isEditable,
             })
           }
           tableId={galleryTableId}

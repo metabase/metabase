@@ -5,6 +5,7 @@
   /* the header already pads below its title, so only a sliver more evens the gap with the sides */
   padding: var(--mantine-spacing-xxs) var(--mantine-spacing-lg)
     var(--mantine-spacing-md);
+  box-sizing: border-box;
 }
 
 .card {
@@ -52,9 +53,12 @@
   background-color: transparent;
 }
 
+/* Takes whatever height the chart leaves, down to just its header. */
 .tableCard {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -254,16 +258,22 @@
 }
 
 .detailChartCard {
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: 25rem;
   padding: var(--mantine-spacing-md);
   gap: var(--mantine-spacing-sm);
 }
 
+.chartPanelCollapsed {
+  justify-content: center;
+  padding-block: 0;
+}
+
 .detailLayout {
   display: flex;
-  align-items: flex-start;
+  flex: 1;
+  min-height: 0;
   gap: var(--mantine-spacing-md);
 }
 
@@ -273,15 +283,70 @@
   gap: var(--mantine-spacing-md);
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
-/* Floats beside the chart and its data, staying in view while the page scrolls. */
+/* Floats beside the chart and its data. Not clipped, so its resize handle can sit in the gap. */
 .sidePanel {
-  position: sticky;
-  top: var(--mantine-spacing-md);
+  position: relative;
   display: flex;
   flex-direction: column;
-  flex: 0 0 25rem;
-  overflow: hidden;
+  flex-shrink: 0;
   box-shadow: var(--mantine-shadow-md);
+}
+
+/* Fills the gap beside a panel; the grip shows on hover and while dragging. */
+.resizeHandle {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &[data-axis="s"] {
+    left: 0;
+    right: 0;
+    bottom: calc(-1 * var(--mantine-spacing-md));
+    height: var(--mantine-spacing-md);
+    cursor: row-resize;
+  }
+
+  &[data-axis="e"],
+  &[data-axis="w"] {
+    top: 0;
+    bottom: 0;
+    width: var(--mantine-spacing-md);
+    cursor: col-resize;
+  }
+
+  &[data-axis="e"] {
+    right: calc(-1 * var(--mantine-spacing-md));
+  }
+
+  &[data-axis="w"] {
+    left: calc(-1 * var(--mantine-spacing-md));
+  }
+
+  &:hover .resizeGrip,
+  &:active .resizeGrip {
+    opacity: 1;
+  }
+}
+
+.resizeGrip {
+  border-radius: 999px;
+  background-color: var(--mb-color-border-strong);
+  opacity: 0;
+  transition: opacity 150ms ease;
+
+  [data-axis="s"] > & {
+    width: 3rem;
+    height: 4px;
+  }
+
+  [data-axis="e"] > &,
+  [data-axis="w"] > & {
+    width: 4px;
+    height: 3rem;
+  }
 }

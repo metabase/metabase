@@ -42,8 +42,9 @@ export function useSyncUrlParameters({
   }, [enabled, queryParams]);
 }
 
-// `xray` is the query builder gallery's selected chart (see `XRAY_SEARCH_PARAM`)
-const QUERY_PARAMS_ALLOW_LIST = ["objectId", "xray"];
+// `xray` and `xray-card` are the query builder gallery's selected chart and its edits
+// (see `XRAY_SEARCH_PARAM` and `XRAY_CARD_SEARCH_PARAM`)
+const QUERY_PARAMS_ALLOW_LIST = ["objectId", "xray", "xray-card"];
 
 function buildSearchString(object: Record<string, any>) {
   const currentSearchParams = querystring.parse(
