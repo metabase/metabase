@@ -223,8 +223,21 @@ const PaletteSection = ({
   return (
     <Stack className={S.section} gap="xs" px="md" py="xs" {...eventDropProps}>
       <Group justify="space-between" wrap="nowrap" mb="xs">
-        <Text fw="bold">{title}</Text>
-        {isLoading && <Loader size="xs" />}
+        <Group gap="xs" wrap="nowrap">
+          <Text fw="bold">{title}</Text>
+          {isLoading && <Loader size="xs" />}
+        </Group>
+        <Tooltip label={disabledHint} disabled={disabledHint === undefined}>
+          <Button
+            size="compact-md"
+            variant="subtle"
+            leftSection={<Icon name="add" />}
+            disabled={!canEdit || isDrafting}
+            onClick={() => setIsDrafting(true)}
+          >
+            {t`Draft`}
+          </Button>
+        </Tooltip>
       </Group>
       {takesEvents && eventDrop.isActive && (
         <Text c="text-brand" fw="bold">
@@ -293,19 +306,6 @@ const PaletteSection = ({
           }}
         />
       )}
-      <Box mt="xs">
-        <Tooltip label={disabledHint} disabled={disabledHint === undefined}>
-          <Button
-            size="compact-md"
-            variant="subtle"
-            leftSection={<Icon name="add" />}
-            disabled={!canEdit || isDrafting}
-            onClick={() => setIsDrafting(true)}
-          >
-            {t`Draft a segment`}
-          </Button>
-        </Tooltip>
-      </Box>
       {modal !== null && table !== undefined && tableQuery !== undefined && (
         <NewSegmentModal
           table={table}
