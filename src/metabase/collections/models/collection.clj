@@ -1412,6 +1412,9 @@
       ;; Actions without a model are synced with the Library rather than their collection
       :model/Action
       (collections.db/instances-with-columns [model-key :id :collection_id :model_id] ids)
+      ;; The Document spec's `:conditions` read `:exploration_id`; a row without the key never matches
+      :model/Document
+      (collections.db/instances-with-columns [model-key :id :collection_id :exploration_id] ids)
       ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
       (:model/DashboardCard :model/DashboardCardSeries)
       nil
