@@ -2,6 +2,12 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
+## 2.1.0
+
+### Bug Fixes
+
+- The scaffolded dev server no longer crashes when an asset file disappears before it's copied, which happened with editors that save through atomic writes.
+
 ## 2.0.0
 
 ### ⚠ BREAKING CHANGES
