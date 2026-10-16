@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
@@ -424,11 +425,75 @@ width: fixed
   (mt/with-temporary-setting-values [remote-sync-transforms false]
     (f)))
 
+(defn set-library-remote-synced!
+  "Sets `is_remote_synced` on the Library's collections, the Library itself first so each one agrees with its parent."
+  [synced?]
+  (doseq [id (t2/select-pks-vec :model/Collection
+                                :type [:in (vec collection/library-collection-types)]
+                                {:order-by [[:location :asc]]})]
+    (t2/update! :model/Collection id {:is_remote_synced synced?})))
+
+(defn library-system-collection
+  "The Library's system collection of `collection-type`: the Library itself, or its Data, Metrics, or Dashboards."
+  [collection-type]
+  (t2/select-one :model/Collection :type collection-type :entity_id [:in (vec collection/library-root-entity-ids)]))
+
+(defn do-with-library-content
+  "Runs `f` with a Dashboard in the Library's Dashboards collection, so the Library has content."
+  [f]
+  (mt/with-temp [:model/Dashboard _ {:name          "Library Dashboard"
+                                     :collection_id (:id (library-system-collection
+                                                          collection/library-dashboards-collection-type))}]
+    (f)))
+
+(defmacro with-library-content
+  "Runs `body` with a Dashboard in the Library's Dashboards collection, so the Library has content."
+  [& body]
+  `(do-with-library-content (fn [] ~@body)))
+
+(defn library-yaml
+  "YAML for the Library collection as exports made before the Library's system collections were left out wrote it."
+  []
+  (generate-collection-yaml collection/library-entity-id "Library" :type "library" :is-remote-synced true))
+
+(defn do-with-library-remote-synced
+  "Runs `f` with the Library's collections' `is_remote_synced` set to `synced?`, then restores the Library's state."
+  [synced? f]
+  (let [was-synced? (boolean (:is_remote_synced (collection/library-collection)))]
+    (set-library-remote-synced! synced?)
+    (try
+      (f)
+      (finally
+        (set-library-remote-synced! was-synced?)))))
+
+(defmacro with-library-synced
+  "Runs `body` with the Library remote-synced."
+  [& body]
+  `(do-with-library-remote-synced true (fn [] ~@body)))
+
+(defmacro with-library-not-synced
+  "Runs `body` with the Library not remote-synced."
+  [& body]
+  `(do-with-library-remote-synced false (fn [] ~@body)))
+
+(defn ensure-library
+  "Test fixture that makes sure the Library exists, as it does on every instance with the library feature, and leaves
+  it unsynced after the test."
+  [f]
+  (collection/ensure-library-collection!)
+  (try
+    (f)
+    (finally
+      (set-library-remote-synced! false))))
+
 (def clean-remote-sync-state
-  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, optional feature model tables (Transform,
-  TransformTag, PythonLibrary), and the remote-sync-transforms setting are clean."
-  (t/compose-fixtures (t/compose-fixtures reset-transforms-setting clean-object)
-                      (t/compose-fixtures clean-task-table clean-optional-feature-models)))
+  "Composed test fixture that ensures the Library exists and RemoteSyncObject, RemoteSyncTask, optional feature model
+  tables (Transform, TransformTag, PythonLibrary), and the remote-sync-transforms setting are clean."
+  (t/join-fixtures [ensure-library
+                    reset-transforms-setting
+                    clean-object
+                    clean-task-table
+                    clean-optional-feature-models]))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a

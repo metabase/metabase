@@ -19,7 +19,6 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :refer [with-library-synced]]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -27,6 +26,8 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(use-fixtures :each test-helpers/ensure-library)
 
 (defn- noop-update-status!
   "Seeds a synced RemoteSyncObject for [model-type model-id] whose `content_hash` matches the entity's
@@ -76,14 +77,14 @@
 
 (deftest snippet-noop-update-stays-synced-test
   (testing "A no-op NativeQuerySnippet update keeps it synced when the Library is synced (GHY-3933)"
-    (with-library-synced
+    (test-helpers/with-library-synced
       (mt/with-temp [:model/Collection sc {:name "Snippets" :namespace "snippets"}
                      :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id sc)}]
         (is (= "synced" (noop-update-status! "NativeQuerySnippet" (:id snip) :event/snippet-update snip)))))))
 
 (deftest glossary-noop-update-stays-synced-test
   (testing "A no-op Glossary update keeps it synced when the Library is synced"
-    (with-library-synced
+    (test-helpers/with-library-synced
       (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
         (is (= "synced" (noop-update-status! "Glossary" (:id entry) :event/glossary-update entry)))))))
 
@@ -209,33 +210,33 @@
   (testing "a full export writes a content_hash matching per-row row->content-hash for every identity flavor —
             including the extract-query overrides (Collection, NativeQuerySnippet), hybrids (Measure), and path
             models (TableUserSettings, keyed by table_id) that have no entity_id (GHY-3933)"
-    (with-library-synced
-      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-        (mt/with-temp [:model/Database db {:name "DB"}
-                       :model/Collection rs {:is_remote_synced true :name "RS" :location "/"}
-                       :model/Collection data {:is_remote_synced true :type collection/library-data-collection-type :name "Data"}
-                       :model/Collection snips {:name "Snippets" :namespace "snippets"}
-                       :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id rs)}
-                       :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id snips)}
-                       :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
-                       :model/Field _field {:name "F" :table_id (:id table) :base_type :type/Integer}
-                       :model/TableUserSettings _ {:table_id (:id table) :display_name "curated"}
-                       :model/Measure measure {:name "M" :table_id (:id table)}]
-          (mt/with-model-cleanup [:model/RemoteSyncTask]
-            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
-                  rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
-                                [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
-                                 ["TableUserSettings" (:id table)] ["Measure" (:id measure)]])]
-              (t2/delete! :model/RemoteSyncObject)
-              (doseq [row rows]
-                (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
-                                                                :status_changed_at (t/offset-date-time)})))
-              ;; force? routes through full-export!, which computes + records the content_hash for every flavor
-              (impl/export! (source.p/snapshot (test-helpers/create-mock-source)) task-id "Full export" :force? true)
-              (doseq [{:keys [model_type model_id] :as row} rows]
-                (is (= (source/row->content-hash row)
-                       (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
-                    (str "written hash should match per-row hash for " model_type))))))))))
+    (test-helpers/with-library-synced
+      (let [data (test-helpers/library-system-collection collection/library-data-collection-type)]
+        (mt/with-temporary-setting-values [remote-sync-type :read-write]
+          (mt/with-temp [:model/Database db {:name "DB"}
+                         :model/Collection rs {:is_remote_synced true :name "RS" :location "/"}
+                         :model/Collection snips {:name "Snippets" :namespace "snippets"}
+                         :model/Card card {:name "Card" :dataset_query (mt/mbql-query venues) :collection_id (:id rs)}
+                         :model/NativeQuerySnippet snip {:name "Snip" :content "SELECT 1" :collection_id (:id snips)}
+                         :model/Table table {:name "T" :schema "PUBLIC" :db_id (:id db) :is_published true :collection_id (:id data)}
+                         :model/Field _field {:name "F" :table_id (:id table) :base_type :type/Integer}
+                         :model/TableUserSettings _ {:table_id (:id table) :display_name "curated"}
+                         :model/Measure measure {:name "M" :table_id (:id table)}]
+            (mt/with-model-cleanup [:model/RemoteSyncTask]
+              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+                    rows    (mapv (fn [[mt id]] {:model_type mt :model_id id})
+                                  [["Card" (:id card)] ["Collection" (:id rs)] ["NativeQuerySnippet" (:id snip)]
+                                   ["TableUserSettings" (:id table)] ["Measure" (:id measure)]])]
+                (t2/delete! :model/RemoteSyncObject)
+                (doseq [row rows]
+                  (t2/insert! :model/RemoteSyncObject (merge row {:model_name "x" :status "synced"
+                                                                  :status_changed_at (t/offset-date-time)})))
+                ;; force? routes through full-export!, which computes + records the content_hash for every flavor
+                (impl/export! (source.p/snapshot (test-helpers/create-mock-source)) task-id "Full export" :force? true)
+                (doseq [{:keys [model_type model_id] :as row} rows]
+                  (is (= (source/row->content-hash row)
+                         (t2/select-one-fn :content_hash :model/RemoteSyncObject :model_type model_type :model_id model_id))
+                      (str "written hash should match per-row hash for " model_type)))))))))))
 
 (deftest mark-rows-synced!-chunks-rows-test
   (testing "mark-rows-synced! writes every synced row even when they span multiple batches (GHY-3933)"
@@ -428,22 +429,17 @@
   (testing "After a real import, a no-op Glossary update stays synced"
     (mt/with-temporary-setting-values [remote-sync-enabled true]
       (mt/with-model-cleanup [:model/Glossary :model/Collection]
-        ;; The snapshot carries the Library as a read-write instance exports it, so the Library stays synced
-        ;; through the import and the Glossary spec is enabled when the ledger is rebuilt.
-        (t2/delete! :model/Collection :entity_id collection/library-entity-id)
-        (let [eid   "test-glossary-xxxxxxx"
-              files {"main" {"collections/library/library.yaml"
-                             (test-helpers/generate-collection-yaml collection/library-entity-id "Library"
-                                                                    :type "library" :is-remote-synced true)
-                             "collections/main/test_coll/test_coll.yaml"
-                             (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                             "glossary/arr.yaml"
-                             (test-helpers/generate-glossary-yaml eid "ARR" "Annual recurring revenue")}}]
-          (is (= "synced"
-                 (import-then-noop-status!
-                  files "Glossary"
-                  #(t2/select-one :model/Glossary :entity_id eid)
-                  :event/glossary-update))))))))
+        (test-helpers/with-library-synced
+          (let [eid   "test-glossary-xxxxxxx"
+                files {"main" {"collections/main/test_coll/test_coll.yaml"
+                               (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                               "glossary/arr.yaml"
+                               (test-helpers/generate-glossary-yaml eid "ARR" "Annual recurring revenue")}}]
+            (is (= "synced"
+                   (import-then-noop-status!
+                    files "Glossary"
+                    #(t2/select-one :model/Glossary :entity_id eid)
+                    :event/glossary-update)))))))))
 
 (deftest transform-import-then-noop-stays-synced-test
   (testing "After a real import, a no-op Transform update stays synced (GHY-3933)"

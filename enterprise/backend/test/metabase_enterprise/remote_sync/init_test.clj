@@ -8,7 +8,6 @@
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-utils :as collections.tu]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -182,7 +181,7 @@
 
 (deftest remote-sync-init-backfills-glossary-tracking-test
   (testing "Read-write with a synced Library tracks every untracked glossary entry as 'create', once"
-    (collections.tu/with-library-synced
+    (th/with-library-synced
       (do-with-untracked-glossary-entry!
        :read-write
        (fn [entry]
@@ -196,7 +195,7 @@
 
 (deftest remote-sync-init-glossary-backfill-tracks-only-untracked-entries-test
   (testing "A partially tracked glossary gets ledger rows for the untracked entries only; tracked rows are left alone"
-    (collections.tu/with-library-synced
+    (th/with-library-synced
       (do-with-untracked-glossary-entry!
        :read-write
        (fn [entry]
@@ -212,7 +211,7 @@
 
 (deftest backfill-glossary-tracking-returns-inserted-count-test
   (testing "the backfill returns how many ledger rows it inserted, and zero once every entry is tracked"
-    (collections.tu/with-library-synced
+    (th/with-library-synced
       (do-with-untracked-glossary-entry!
        :read-write
        (fn [_entry]
@@ -222,7 +221,7 @@
 
 (deftest remote-sync-init-glossary-backfill-skips-read-only-test
   (testing "A read-only instance is not backfilled"
-    (collections.tu/with-library-synced
+    (th/with-library-synced
       (do-with-untracked-glossary-entry!
        :read-only
        (fn [_entry]
@@ -277,7 +276,7 @@
 
 (deftest remote-sync-init-glossary-backfill-skips-unsynced-library-test
   (testing "Glossary entries are only tracked when the Library is synced"
-    (collections.tu/with-library-not-synced
+    (th/with-library-not-synced
       (do-with-untracked-glossary-entry!
        :read-write
        (fn [_entry]

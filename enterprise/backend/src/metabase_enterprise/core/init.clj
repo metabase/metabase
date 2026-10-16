@@ -19,6 +19,7 @@
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.dependencies.init]
    [metabase-enterprise.gsheets.init]
+   [metabase-enterprise.library.init]
    [metabase-enterprise.mcp.init]
    [metabase-enterprise.memoize-monitor.init]
    [metabase-enterprise.metabot.init]

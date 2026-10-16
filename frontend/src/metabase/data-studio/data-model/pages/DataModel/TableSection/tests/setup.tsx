@@ -87,7 +87,6 @@ export function setup({
         <TableSection
           table={tableWithSegments}
           activeTab={activeTab}
-          hasLibrary
           canPublish
           onUpdate={jest.fn()}
         />

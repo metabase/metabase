@@ -5,13 +5,18 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase-enterprise.transforms-python.core :as transforms-python]
-   [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
+
+(use-fixtures :each test-helpers/ensure-library)
 
 ;;; ------------------------------------------------ Spec Validation Tests ---------------------------------------------
 
@@ -177,7 +182,7 @@
         (is (contains? excluded "NativeQuerySnippet"))
         (is (contains? excluded "Glossary")))))
   (testing "excluded-model-types when Library is remote-synced"
-    (collections.tu/with-library-synced
+    (test-helpers/with-library-synced
       (let [excluded (spec/excluded-model-types)]
         (is (not (contains? excluded "NativeQuerySnippet")))
         (is (not (contains? excluded "Glossary")))))))
@@ -205,11 +210,11 @@
         (is (contains? enabled :model/Transform))
         (is (contains? enabled :model/TransformTag)))))
   (testing "enabled-specs includes Library content only when the Library is remote-synced"
-    (collections.tu/with-library-not-synced
+    (test-helpers/with-library-not-synced
       (let [enabled (spec/enabled-specs)]
         (is (not (contains? enabled :model/NativeQuerySnippet)))
         (is (not (contains? enabled :model/Glossary)))))
-    (collections.tu/with-library-synced
+    (test-helpers/with-library-synced
       (let [enabled (spec/enabled-specs)]
         (is (contains? enabled :model/NativeQuerySnippet))
         (is (contains? enabled :model/Glossary))))))
@@ -386,12 +391,12 @@
      (fn [{:keys [root-action folder-action app-action]}]
        (let [action-spec (spec/spec-for-model-key :model/Action)
              eligible?   #(spec/check-eligibility action-spec (t2/select-one :model/Action :id %))]
-         (collections.tu/with-library-synced
+         (test-helpers/with-library-synced
            (is (true? (eligible? root-action)))
            (is (true? (eligible? folder-action)))
            ;; an app's copy is synced with the app, whatever the Library does
            (is (true? (eligible? app-action))))
-         (collections.tu/with-library-not-synced
+         (test-helpers/with-library-not-synced
            (is (false? (eligible? root-action)))
            (is (false? (eligible? folder-action)))))))))
 
@@ -399,7 +404,7 @@
   (testing "with the Library synced, root data actions are export roots and absent ones are removed on pull"
     (do-with-data-actions!
      (fn [{:keys [folder root-action app-action]}]
-       (collections.tu/with-library-synced
+       (test-helpers/with-library-synced
          (let [action-spec (spec/spec-for-model-key :model/Action)]
            (is (contains? (set (spec/query-export-roots action-spec)) ["Action" root-action]))
            (is (contains? (set (spec/query-export-roots (spec/spec-for-model-key :model/Collection)))
@@ -414,7 +419,7 @@
   (testing "data actions synced with the Library cannot be changed while remote sync is read-only"
     (do-with-data-actions!
      (fn [{:keys [root-action app-action]}]
-       (collections.tu/with-library-synced
+       (test-helpers/with-library-synced
          (mt/with-current-user (mt/user->id :crowberto)
            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
              (is (false? (mi/can-write? (t2/select-one :model/Action :id root-action))))
@@ -446,7 +451,7 @@
   (testing "model-editable? returns true in read-write mode regardless of eligibility"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       ;; With library synced, snippet would normally not be editable in read-only mode
-      (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
+      (test-helpers/with-library-synced
         (is (true? (spec/model-editable? :model/NativeQuerySnippet {}))
             "Snippets should be editable in read-write mode even when library is synced")))))
 
@@ -454,12 +459,12 @@
   (testing "model-editable? with :library-synced eligibility (NativeQuerySnippet)"
     (testing "returns false when library is synced and mode is read-only"
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-        (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
+        (test-helpers/with-library-synced
           (is (false? (spec/model-editable? :model/NativeQuerySnippet {}))
               "Snippets should NOT be editable when library is synced and mode is read-only"))))
     (testing "returns true when library is NOT synced even in read-only mode"
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-        (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
+        (test-helpers/with-library-not-synced
           (is (true? (spec/model-editable? :model/NativeQuerySnippet {}))
               "Snippets should be editable when library is NOT synced"))))))
 
@@ -496,7 +501,7 @@
       (is (false? (spec/model-editable? :model/Transform nil))
           "Transforms with nil instance should check setting-based eligibility"))
     (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-      (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
+      (test-helpers/with-library-synced
         (is (false? (spec/model-editable? :model/NativeQuerySnippet nil))
             "Snippets with nil instance should check library-synced eligibility")))))
 
@@ -507,11 +512,11 @@
     (let [spec (spec/spec-for-model-key :model/NativeQuerySnippet)
           instances [{:id 1} {:id 2} {:id 3}]]
       (testing "returns true for all when library is synced"
-        (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
+        (test-helpers/with-library-synced
           (let [result (spec/batch-check-eligibility spec instances)]
             (is (= {1 true, 2 true, 3 true} result)))))
       (testing "returns false for all when library is not synced"
-        (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
+        (test-helpers/with-library-not-synced
           (let [result (spec/batch-check-eligibility spec instances)]
             (is (= {1 false, 2 false, 3 false} result))))))))
 
@@ -540,7 +545,7 @@
 (deftest batch-model-editable?-read-write-mode-test
   (testing "batch-model-editable? returns true for all in read-write mode"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
+      (test-helpers/with-library-synced
         (let [instances [{:id 1} {:id 2} {:id 3}]
               result (spec/batch-model-editable? :model/NativeQuerySnippet instances)]
           (is (= {1 true, 2 true, 3 true} result)))))))
@@ -549,13 +554,13 @@
   (testing "batch-model-editable? with :library-synced eligibility"
     (testing "returns false for all when library is synced and mode is read-only"
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-        (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced true :location "/"}]
+        (test-helpers/with-library-synced
           (let [instances [{:id 1} {:id 2} {:id 3}]
                 result (spec/batch-model-editable? :model/NativeQuerySnippet instances)]
             (is (= {1 false, 2 false, 3 false} result))))))
     (testing "returns true for all when library is not synced"
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
-        (mt/with-temp [:model/Collection _ {:name "Library" :type "library" :is_remote_synced false :location "/"}]
+        (test-helpers/with-library-not-synced
           (let [instances [{:id 1} {:id 2} {:id 3}]
                 result (spec/batch-model-editable? :model/NativeQuerySnippet instances)]
             (is (= {1 true, 2 true, 3 true} result))))))))
@@ -708,16 +713,16 @@
   (testing "GHY-4019: unsynced NativeQuerySnippets are flagged too (not just collection content)"
     ;; Snippets sync when the Library collection is remote-synced; they are entity-id content with no
     ;; collection scope, so they'd previously fall through both deletion-conflict checks.
-    (mt/with-temp [:model/Collection _lib {:name "Library" :type "library" :is_remote_synced true :location "/"}
-                   :model/NativeQuerySnippet _unsynced {:name "Local Snippet"}
-                   :model/NativeQuerySnippet synced {:name "Synced Snippet"}
-                   :model/RemoteSyncObject _ {:model_type "NativeQuerySnippet" :model_id (:id synced)
-                                              :status "synced" :status_changed_at (t/instant)
-                                              :model_name "Synced Snippet"}]
-      (let [conflict (first (filter #(= "NativeQuerySnippet" (:model %))
-                                    (spec/check-content-deletion-conflicts {:by-entity-id {}})))]
-        (is (= 1 (:count conflict)) "the unsynced snippet is flagged; the synced one is excluded")
-        (is (= ["Local Snippet"] (:names conflict)))))))
+    (test-helpers/with-library-synced
+      (mt/with-temp [:model/NativeQuerySnippet _unsynced {:name "Local Snippet"}
+                     :model/NativeQuerySnippet synced {:name "Synced Snippet"}
+                     :model/RemoteSyncObject _ {:model_type "NativeQuerySnippet" :model_id (:id synced)
+                                                :status "synced" :status_changed_at (t/instant)
+                                                :model_name "Synced Snippet"}]
+        (let [conflict (first (filter #(= "NativeQuerySnippet" (:model %))
+                                      (spec/check-content-deletion-conflicts {:by-entity-id {}})))]
+          (is (= 1 (:count conflict)) "the unsynced snippet is flagged; the synced one is excluded")
+          (is (= ["Local Snippet"] (:names conflict))))))))
 
 (deftest removal-exprs-parity-test
   (testing "GHY-4019: the deletion-conflict warning is exactly the unsynced subset of what an import removes"

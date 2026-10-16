@@ -322,7 +322,7 @@ describe("documents", () => {
 
   it("should default the save modal to a selectable collection when Library is enabled (#73538)", () => {
     H.activateToken("pro-self-hosted");
-    H.createLibrary();
+    H.getLibrary();
     cy.intercept("POST", "/api/document").as("createDocument");
 
     cy.visit("/");

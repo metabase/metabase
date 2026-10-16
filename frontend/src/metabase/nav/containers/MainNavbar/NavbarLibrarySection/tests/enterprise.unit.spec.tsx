@@ -64,6 +64,64 @@ describe("NavbarLibrarySection", () => {
     });
   });
 
+  describe("empty library", () => {
+    it("should hide an empty subcollection", async () => {
+      const libraryCollection = createLibraryCollection({
+        children: [
+          createChildCollection({ id: 10, name: "Metrics" }),
+          createChildCollection({
+            id: 11,
+            name: "Data",
+            type: "library-data",
+            here: [],
+            below: [],
+          }),
+        ],
+      });
+      setup({ collections: [libraryCollection] });
+
+      expect(await screen.findByText("Metrics")).toBeInTheDocument();
+      expect(screen.queryByText("Data")).not.toBeInTheDocument();
+    });
+
+    it("should hide the whole library when it only contains collections", () => {
+      const libraryCollection = createLibraryCollection({
+        here: ["collection"],
+        below: ["collection"],
+        children: [
+          createChildCollection({
+            id: 10,
+            name: "Metrics",
+            here: ["collection"],
+            below: ["collection"],
+          }),
+        ],
+      });
+      setup({ collections: [libraryCollection] });
+
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      expect(screen.queryByText("Metrics")).not.toBeInTheDocument();
+    });
+
+    it("should hide the whole library when nothing is beneath it", () => {
+      const libraryCollection = createLibraryCollection({
+        here: [],
+        below: [],
+        children: [
+          createChildCollection({
+            id: 10,
+            name: "Metrics",
+            here: [],
+            below: [],
+          }),
+        ],
+      });
+      setup({ collections: [libraryCollection] });
+
+      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+  });
+
   describe("dirty state badges", () => {
     it("should not show badge when git sync is not visible", async () => {
       const libraryCollection = createLibraryCollection({

@@ -7,7 +7,7 @@ describe("scenarios > data studio > snippets", () => {
     H.activateToken("pro-self-hosted");
 
     // TODO: We likely shouldn't need to do this to access the data studio library page
-    H.createLibrary();
+    H.getLibrary();
 
     cy.intercept("POST", "/api/native-query-snippet").as("createSnippet");
     cy.intercept("PUT", "/api/native-query-snippet/*").as("updateSnippet");

@@ -156,7 +156,6 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
 
       cy.log("publish the tables and verify they are published");
       cy.findByRole("button", { name: /Publish/ }).click();
-      H.modal().findByText("Create my semantic layer").click();
       H.modal().findByText("Publish these tables").click();
       cy.wait("@publishTables");
       H.undoToastListContainer().within(() => {
@@ -193,7 +192,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       beforeEach(() => {
         H.restore("postgres-writable");
         signInWithToken();
-        H.createLibrary();
+        H.getLibrary();
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         H.DataModel.visitDataStudio();
@@ -267,7 +266,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
     H.restore("postgres-12");
     signInWithToken();
-    H.createLibrary();
+    H.getLibrary();
     H.DataModel.visitDataStudio();
 
     cy.log(

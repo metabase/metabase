@@ -3327,20 +3327,20 @@
                                                                             non-archived-dash
                                                                             non-archived-card]))))))))
 
-(deftest ensure-library-dashboards-collection-test
+(deftest ensure-library-collection-test
   (mt/with-empty-h2-app-db!
-    (testing "Without a Library there is nothing to restore"
-      (is (nil? (collection/ensure-library-dashboards-collection!))))
-    (let [library (collection/create-library-collection!)]
-      (testing "An existing Dashboards collection is kept"
-        (is (nil? (collection/ensure-library-dashboards-collection!))))
-      (testing "A missing Dashboards collection is recreated with the Library's permissions"
+    (let [library (collection/ensure-library-collection!)]
+      (testing "Creates the Library with its Data, Metrics, and Dashboards collections"
+        (is (= "Library" (:name library)))
+        (is (= ["Dashboards" "Data" "Metrics"] (sort (map :name (collection/descendants library))))))
+      (testing "Returns the existing Library without creating anything when called again"
+        (is (= (:id library) (:id (collection/ensure-library-collection!))))
+        (is (= 3 (count (collection/descendants library)))))
+      (testing "Recreates a missing system collection with the Library's permissions"
         (t2/delete! :model/Collection :type collection/library-dashboards-collection-type)
-        (let [dashboards (collection/ensure-library-dashboards-collection!)]
-          (is (=? {:name     "Dashboards"
-                   :type     collection/library-dashboards-collection-type
-                   :location (str "/" (:id library) "/")}
-                  dashboards))
+        (collection/ensure-library-collection!)
+        (let [dashboards (t2/select-one :model/Collection :type collection/library-dashboards-collection-type)]
+          (is (=? {:name "Dashboards" :location (str "/" (:id library) "/")} dashboards))
           (binding [api/*current-user*                 (mt/user->id :rasta)
                     api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
             (is (true? (mi/can-read? dashboards)))
@@ -3356,7 +3356,7 @@
 (deftest create-library
   (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
-      (let [library (collection/create-library-collection!)]
+      (let [library (collection/ensure-library-collection!)]
         (is (= "Library" (:name library)))
         (is (= ["Dashboards" "Data" "Metrics"] (sort (map :name (collection/descendants library)))))
         (testing "Only admins can write to the library, all users can read"
@@ -3367,8 +3367,6 @@
             (doseq [sub (collection/descendants library)]
               (is (true? (mi/can-read? sub)))
               (is (false? (mi/can-write? sub))))))))
-    (testing "Creating a Layer when one already exists throws an exception"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic layer already exists" (collection/create-library-collection!))))
     ;;cleanup created libraries
     (t2/delete! :model/Collection :type [:in [collection/library-collection-type
                                               collection/library-data-collection-type

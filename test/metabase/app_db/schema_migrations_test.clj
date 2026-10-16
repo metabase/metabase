@@ -3970,3 +3970,23 @@
         (migrate!)
         (is (true? (t2/select-one-fn :is_default :python_library :id unedited)))
         (is (false? (t2/select-one-fn :is_default :python_library :id edited)))))))
+
+(deftest delete-library-root-remote-sync-objects-test
+  (testing "v65.lbrt4q: the RemoteSyncObject rows of the Library's system collections are deleted, other rows stay"
+    (impl/test-migrations ["v65.lbrt4q"] [migrate!]
+      (let [insert-collection! (fn [entity-id]
+                                 (t2/insert-returning-pk! :collection {:name      entity-id
+                                                                       :slug      entity-id
+                                                                       :entity_id entity-id
+                                                                       :location  "/"}))
+            insert-rso!        (fn [model-id]
+                                 (t2/insert-returning-pk! :remote_sync_object {:model_type        "Collection"
+                                                                               :model_id          model-id
+                                                                               :model_name        "Collection"
+                                                                               :status            "synced"
+                                                                               :status_changed_at :%now}))
+            kept               (insert-rso! (insert-collection! (u/generate-nano-id)))]
+        (doseq [entity-id ["librarylibrarylibrary" "librarylibrarydatadat" "librarylibrarymetrics" "librarylibrarydashbrd"]]
+          (insert-rso! (insert-collection! entity-id)))
+        (migrate!)
+        (is (= #{kept} (t2/select-pks-set :remote_sync_object)))))))

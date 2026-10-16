@@ -48,7 +48,6 @@ const REVENUE_DASHBOARD = createMockCollectionItem({
 const DASHBOARDS_COLLECTION_ID = 2;
 
 type SetupOpts = {
-  hasLibrary?: boolean;
   canRead?: boolean;
   canWrite?: boolean;
   isRemoteSyncReadOnly?: boolean;
@@ -58,7 +57,6 @@ type SetupOpts = {
 };
 
 function setup({
-  hasLibrary = true,
   canRead = true,
   canWrite = true,
   isRemoteSyncReadOnly = false,
@@ -90,7 +88,7 @@ function setup({
     type: "library",
     children: canRead ? [dashboardsCollection] : [],
   });
-  setupCollectionTreeEndpoint(hasLibrary ? [libraryCollection] : []);
+  setupCollectionTreeEndpoint([libraryCollection]);
   if (hasItemsError) {
     setupUnauthorizedCollectionEndpoints(dashboardsCollection);
   } else {
@@ -313,13 +311,5 @@ describe("DashboardsPage", () => {
     ).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("Search...")).not.toBeInTheDocument();
     expect(screen.queryByText("No dashboards yet")).not.toBeInTheDocument();
-  });
-
-  it("offers to create the semantic layer when there is no library", async () => {
-    setup({ hasLibrary: false });
-
-    expect(
-      await screen.findByText("Create my semantic layer"),
-    ).toBeInTheDocument();
   });
 });

@@ -18,39 +18,32 @@
   [user-or-id]
   (u/the-id (personal-collection user-or-id)))
 
-(defmacro without-library
-  "Macro that clears existing library collections, executes body, then cleans up any created library collections.
+(defn do-without-library
+  "Calls `f` with the existing Library collections set aside, then deletes the ones `f` created and restores them."
+  [f]
+  (mt/initialize-if-needed! :db)
+  (let [library-types (vec collection/library-collection-types)
+        existing      (t2/select [(t2/table-name :model/Collection) :id :type :entity_id] :type [:in library-types])]
+    (doseq [{:keys [id]} existing]
+      (t2/update! (t2/table-name :model/Collection) id {:type nil :entity_id (u/generate-nano-id)}))
+    (try
+      (f)
+      (finally
+        (t2/delete! :model/Collection :type [:in library-types])
+        (doseq [{:keys [id] :as row} existing]
+          (t2/update! (t2/table-name :model/Collection) id (select-keys row [:type :entity_id])))))))
 
-   This is useful for tests that need to work with library collections in isolation without
-   interference from any existing library collections in the test database.
+(defmacro without-library
+  "Runs `body` with the existing Library collections set aside, then deletes the ones `body` created and restores them.
 
    Example:
    ```clojure
    (without-library
-     (let [lib (collection/create-library-collection!)]
+     (let [lib (collection/ensure-library-collection!)]
        ...))
    ```"
   [& body]
-  `(do
-     (mt/initialize-if-needed! :db)
-     ;; Clear existing library collections
-     (t2/update! (t2/table-name :model/Collection)
-                 :type collection/library-collection-type
-                 {:type nil})
-     (t2/update! (t2/table-name :model/Collection)
-                 :type collection/library-data-collection-type
-                 {:type nil})
-     (t2/update! (t2/table-name :model/Collection)
-                 :type collection/library-metrics-collection-type
-                 {:type nil})
-     (try
-       ~@body
-       (finally
-         ;; Clean up any created library collections
-         (t2/delete! :model/Collection
-                     :type [:in [collection/library-collection-type
-                                 collection/library-data-collection-type
-                                 collection/library-metrics-collection-type]])))))
+  `(do-without-library (fn [] ~@body)))
 
 (defn do-with-library-synced
   "Implementation for with-library-synced macro.

@@ -1,20 +1,10 @@
-import type {
-  Collection,
-  GetLibraryCollectionResponse,
-} from "metabase-types/api";
+import type { GetLibraryCollectionResponse } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { idTag, listTag, tag } from "./tags";
+import { idTag, tag } from "./tags";
 
 export const libraryApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    createLibrary: builder.mutation<Collection, void>({
-      query: () => ({
-        method: "POST",
-        url: "/api/ee/library",
-      }),
-      invalidatesTags: [listTag("collection"), tag("library-collection")],
-    }),
     getLibraryCollection: builder.query<GetLibraryCollectionResponse, void>({
       query: () => ({
         url: `/api/ee/library`,
@@ -31,5 +21,4 @@ export const libraryApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useCreateLibraryMutation, useGetLibraryCollectionQuery } =
-  libraryApi;
+export const { useGetLibraryCollectionQuery } = libraryApi;

@@ -85,7 +85,6 @@ export {
 export {
   PLUGIN_LIBRARY,
   type CollectionPermissionsModalProps,
-  type CreateLibraryModalProps,
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
 } from "./oss/library";

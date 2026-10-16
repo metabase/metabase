@@ -25,10 +25,9 @@ describe("scenarios > data studio > library", () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("should create library via UI and verify collections", () => {
+  it("should open the library from the profile menu and show its collections", () => {
     H.resetSnowplow();
-    cy.intercept("POST", "/api/ee/library").as("createLibrary");
-    cy.intercept("GET", "/api/collection/tree*").as("getCollectionTree");
+    H.getLibrary();
 
     cy.log("Navigate to Data Studio Library");
     /**
@@ -52,19 +51,9 @@ describe("scenarios > data studio > library", () => {
     });
     H.DataStudio.nav().findByLabelText("Semantic layer").click();
 
-    cy.log("Create library via inline empty state");
-    H.DataStudio.Library.libraryPage().within(() => {
-      cy.findByText("A source of truth for analytics").should("be.visible");
-      cy.findByText("Create my semantic layer").click();
-    });
-
-    cy.wait("@createLibrary");
-    cy.wait("@getCollectionTree");
-
-    cy.log("Verify tracking event is triggered");
-    H.expectUnstructuredSnowplowEvent({
-      event: "data_studio_library_created",
-    });
+    H.DataStudio.Library.libraryPage()
+      .findByText("A source of truth for analytics")
+      .should("not.exist");
 
     cy.log("Verify library collections appear in the library table");
     H.DataStudio.Library.collectionItem("Data").should("be.visible");
@@ -73,7 +62,7 @@ describe("scenarios > data studio > library", () => {
 
   it("should let you move metrics into the library, even when empty", () => {
     cy.intercept("POST", "/api/card").as("createCard");
-    H.createLibrary();
+    H.getLibrary();
     H.createQuestion(TRUSTED_ORDERS_METRIC, { visitQuestion: true });
     H.DataStudio.Metrics.moreMenu().click();
     H.popover().findByText("Duplicate").click();
@@ -145,7 +134,7 @@ describe("scenarios > data studio > library", () => {
 
   describe("Library collection management", () => {
     it("should create, edit, move, and archive library collections and move a published table", () => {
-      H.createLibrary();
+      H.getLibrary();
       H.createCollection({ name: "Outside Library" });
       getLibraryRootCollections().then(({ dataCollection }) => {
         createLibraryCollection({
@@ -294,7 +283,7 @@ describe("scenarios > data studio > library", () => {
 
   describe("empty state", () => {
     it("should show empty states, publish a table from the New menu, and keep empty sections expanded", () => {
-      H.createLibrary();
+      H.getLibrary();
       H.DataStudio.Library.visit();
 
       H.DataStudio.Library.collectionItem("Data").should("be.visible");
@@ -393,7 +382,7 @@ describe("scenarios > data studio > library", () => {
     });
 
     it("should show empty states on the SQL snippets and Data actions tabs", () => {
-      H.createLibrary();
+      H.getLibrary();
       H.DataStudio.Library.visit();
 
       cy.log("Verify the semantic layer has no snippets or actions sections");
@@ -426,7 +415,7 @@ describe("scenarios > data studio > library", () => {
       beforeEach(() => {
         H.setupGitSync();
         H.configureGitAndPullChanges("read-only");
-        H.createLibrary();
+        H.getLibrary();
       });
 
       it("should hide +New button and empty state actions in read-only mode", () => {
@@ -467,7 +456,7 @@ describe("scenarios > data studio > library", () => {
 
   describe("bulk actions", () => {
     it("selects, moves, and unpublishes library items in bulk", () => {
-      H.createLibrary();
+      H.getLibrary();
       getLibraryRootCollections().then(
         ({ dataCollection, metricCollection }) => {
           H.publishTables({
@@ -608,7 +597,7 @@ describe("scenarios > data studio > library", () => {
     });
 
     it("subsumes a collection's descendants so moving the parent preserves nesting", () => {
-      H.createLibrary();
+      H.getLibrary();
       getLibraryRootCollections().then(({ dataCollection }) => {
         createLibraryCollection({
           name: "Parent Folder",
@@ -680,7 +669,7 @@ describe("scenarios > data studio > library", () => {
     });
 
     it("offers no bulk selection on remote-sync read-only instances", () => {
-      H.createLibrary();
+      H.getLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
 
       cy.log("A writable instance shows a checkbox on the table row");

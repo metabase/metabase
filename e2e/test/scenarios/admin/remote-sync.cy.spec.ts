@@ -685,7 +685,7 @@ describe("Remote Sync", () => {
         });
       });
 
-      it("leaves a snippet dependency with nothing to act on when no Library exists", () => {
+      it("offers the Library for a snippet dependency", () => {
         createSnippetDependencyFixture().then(({ blocked }) => {
           cy.visit("/admin/settings/remote-sync");
 
@@ -701,21 +701,14 @@ describe("Remote Sync", () => {
             expect(required.blocks.map((collection) => collection.id)).to.eql([
               blocked.id,
             ]);
-            // With no Library there is no collection to name, so the remedy carries only its type.
-            expect(required.remedy).to.deep.equal({ type: "library" });
-            expect(required.syncable).to.be.false;
-            expect(required.dependencies).to.have.length(1);
+            expect(required.remedy.type).to.eq("collection");
+            expect(required.syncable).to.be.true;
             expect(required.dependencies[0].model).to.eq("snippet");
             expect(required.dependencies[0].name).to.eq(SNIPPET_NAME);
           });
 
           H.modal().within(() => {
-            cy.findByText("Couldn’t sync selected collection").should(
-              "be.visible",
-            );
-            cy.findByText(/sync with the Library/).should("be.visible");
-            cy.findByRole("switch").should("not.exist");
-
+            cy.findByRole("switch", { name: "Sync Library" }).should("exist");
             cy.button("Back").click();
           });
 
@@ -1189,7 +1182,7 @@ describe("Remote Sync", () => {
 
       it("flags a new term on the Glossary tab and pushes it to the repository", () => {
         // Glossary entries ride with the Library, so sync the Library rather than a plain collection.
-        H.createLibrary().then(({ body: library }) => {
+        H.getLibrary().then(({ body: library }) => {
           H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
         });
 
@@ -1235,9 +1228,9 @@ describe("Remote Sync", () => {
     describe("read-only mode", () => {
       beforeEach(() => {
         setup();
-        // The fixture carries the Library (matching the ids createLibrary assigns) with is_remote_synced set,
+        // The fixture carries the Library (matching the ids the Library is created with) with is_remote_synced set,
         // so the pull both loads the term and locks the glossary.
-        H.createLibrary();
+        H.getLibrary();
         H.copySyncedLibraryFixture();
         H.commitToRepo();
         H.configureGitAndPullChanges("read-only");

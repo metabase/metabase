@@ -193,7 +193,7 @@
   library for the call when the instance has none."
   [f]
   (let [existing (collections/library-collection)
-        library  (or existing (collections/create-library-collection!))
+        library  (or existing (collections/ensure-library-collection!))
         children (t2/select :model/Collection :location (str "/" (:id library) "/"))
         id-of    (fn [collection-type] (:id (first (filter #(= collection-type (:type %)) children))))]
     (try

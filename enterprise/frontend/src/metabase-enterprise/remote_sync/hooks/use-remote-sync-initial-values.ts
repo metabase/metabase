@@ -14,7 +14,6 @@ import {
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
-  SYNC_LIBRARY_PENDING_KEY,
   TOKEN_KEY,
   TRANSFORMS_KEY,
 } from "../constants";
@@ -88,7 +87,6 @@ export const useRemoteSyncInitialValues = (
         shouldDefaultToChecked && PLUGIN_TRANSFORMS.isEnabled
           ? true
           : values[TRANSFORMS_KEY],
-      [SYNC_LIBRARY_PENDING_KEY]: shouldDefaultToChecked && !libraryCollection,
     };
   }, [
     settingValues,
@@ -100,5 +98,5 @@ export const useRemoteSyncInitialValues = (
     isRemoteSyncEnabled,
   ]);
 
-  return { initialValues, libraryCollection };
+  return { initialValues };
 };

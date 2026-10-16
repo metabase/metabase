@@ -1360,6 +1360,11 @@
    :api #{metabase.types.core metabase.types.init}
    :uses #{util}}
 
+  library
+  {:team "UX West"
+   :api  #{metabase.library.hooks}
+   :uses #{premium-features}}
+
   logger
   {:team "DevEx"
    :api  #{metabase.logger.api
@@ -2021,6 +2026,7 @@
            analytics.internal-stats
            app-db
            dependencies
+           library
            settings
            startup
            task
@@ -4001,11 +4007,13 @@
 
   enterprise/library
   {:team "UX West"
-   :api  #{metabase-enterprise.library.api}
+   :api  #{metabase-enterprise.library.api metabase-enterprise.library.init}
    :uses #{api
            collections
            lib.schema
+           library
            premium-features
+           startup
            util
            warehouse-schema-overlay}
    :model-imports #{:model/Card

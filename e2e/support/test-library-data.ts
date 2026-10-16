@@ -24,7 +24,7 @@ export const TRUSTED_ORDERS_METRIC: StructuredQuestionDetailsWithName = {
 };
 
 export function createLibraryWithItems() {
-  H.createLibrary().then((response: Cypress.Response<LibraryResponse>) => {
+  H.getLibrary().then((response: Cypress.Response<LibraryResponse>) => {
     const body = response.body;
     const metricsCollection = body.effective_children?.find(
       (child) => child.name === "Metrics",
@@ -46,6 +46,6 @@ export function createLibraryWithItems() {
 }
 
 export function createLibraryWithTable() {
-  H.createLibrary();
+  H.getLibrary();
   H.publishTables({ table_ids: [ORDERS_ID] });
 }
