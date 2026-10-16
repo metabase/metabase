@@ -250,22 +250,22 @@
 
 (defn- rank-index
   "For the kind `kind`: `:key-of`, each instance's `[group slug]` by identity, and `:order`, the identities of the
-  instances with each `[group slug]` in creation order (`created_at`, then identity)."
+  instances with each `[group slug]` in ascending order of identity (byte-wise for an entity_id)."
   [ctx kind]
   (let [{:keys [rows group id label] :or {id :entity_id label :name}} (rank-specs kind)]
     ;; the card kinds (question, model, metric) share one spec, and so one index
     (cached ctx [::ranks (if (#{:question :model :metric} kind) :card kind)]
+            ;; not creation order: `created_at` is local to each instance, so instances would number items differently
             #(let [keyed (for [row (rows ctx)]
-                           {:id         (id row)
-                            :key        [(group row) (slug (get row label))]
-                            :created-at (:created_at row)})]
+                           {:id  (id row)
+                            :key [(group row) (slug (get row label))]})]
                {:key-of (into {} (map (juxt :id :key)) keyed)
                 :order  (update-vals (group-by :key keyed)
-                                     (fn [items] (mapv :id (sort-by (juxt :created-at (comp str :id)) items))))}))))
+                                     (fn [items] (mapv :id (sort-by (comp str :id) items))))}))))
 
 (defn- ranked-slug
   "The slug of `label` for the item of `kind` with identity `id`, with `_2`, `_3` when it is the second, third item of
-  its kind with that slug in its folder, in creation order. The app DB says which items share the folder, so every
+  its kind with that slug in its folder, in entity_id order. The app DB says which items share the folder, so every
   export numbers an item the same way whatever it exports and in what order. An item the app DB does not list (such
   as an archived one) gets no number."
   [ctx kind id label]

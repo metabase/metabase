@@ -200,7 +200,7 @@
       (with-redefs [remote-sync.layout/layout kind-layout/kind-layout]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
                        :model/Card       {older :id}   {:name "Orders" :collection_id coll-id
-                                                        :created_at #t "2026-01-01T00:00:00Z"}]
+                                                        :entity_id "aaaaaaaaaaaaaaaaaaaaa"}]
           (t2/delete! :model/RemoteSyncObject)
           (seed-create-row! "Collection" coll-id)
           (seed-create-row! "Card" older)
@@ -209,7 +209,7 @@
             (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "first"))))
             (is (= #{"collections/main/bench/collection.yaml" "collections/main/bench/orders.question.yaml"} (files)))
             (mt/with-temp [:model/Card {newer :id} {:name "Orders" :collection_id coll-id
-                                                    :created_at #t "2026-02-01T00:00:00Z"}]
+                                                    :entity_id "bbbbbbbbbbbbbbbbbbbbb"}]
               (seed-create-row! "Card" newer)
               (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "incremental"))))
               (is (= "apply-changes-version" (written-version)))
@@ -595,9 +595,9 @@
       (fn []
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
                        :model/Card       {x :id}       {:name "Orders" :collection_id coll-id
-                                                        :created_at #t "2026-01-01T00:00:00Z"}
+                                                        :entity_id "aaaaaaaaaaaaaaaaaaaaa"}
                        :model/Card       {y :id}       {:name "Orders" :collection_id coll-id
-                                                        :created_at #t "2026-01-02T00:00:00Z"}]
+                                                        :entity_id "bbbbbbbbbbbbbbbbbbbbb"}]
           (doseq [[model-type model-id] [["Collection" coll-id] ["Card" x] ["Card" y]]]
             (seed-create-row! model-type model-id))
           (let [src (rs.test/versioned-source :trees {"v0" {}} :current "v0")]
@@ -609,7 +609,7 @@
             (is (= "collections/main/bench/orders_2.question.yaml" (card-path y))
                 "the rule keeps the unchanged card where it is")
             (mt/with-temp [:model/Card {z :id} {:name "Orders" :collection_id coll-id
-                                                :created_at #t "2026-01-03T00:00:00Z"}]
+                                                :entity_id "ccccccccccccccccccccc"}]
               (seed-create-row! "Card" z)
               (let [result (export-at! src "new Orders")]
                 (is (= :success (:status result)) (:message result)))
@@ -650,9 +650,9 @@
       (fn []
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
                        :model/Card       {x :id}       {:name "Orders" :collection_id coll-id
-                                                        :created_at #t "2026-01-01T00:00:00Z"}
+                                                        :entity_id "aaaaaaaaaaaaaaaaaaaaa"}
                        :model/Card       {y :id}       {:name "Orders" :collection_id coll-id
-                                                        :created_at #t "2026-01-02T00:00:00Z"}]
+                                                        :entity_id "bbbbbbbbbbbbbbbbbbbbb"}]
           (doseq [[model-type model-id] [["Collection" coll-id] ["Card" x] ["Card" y]]]
             (seed-create-row! model-type model-id))
           (let [src           (rs.test/versioned-source :trees {"v0" {}} :current "v0")
@@ -665,7 +665,7 @@
             (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id x} {:status "delete"})
             (is (= :success (:status (export-at! src "archive X"))))
             (mt/with-temp [:model/Card {z :id} {:name "Orders" :collection_id coll-id
-                                                :created_at #t "2026-01-03T00:00:00Z"}]
+                                                :entity_id "ccccccccccccccccccccc"}]
               (seed-create-row! "Card" z)
               (testing "pull merge"
                 (let [base   (source.p/version (source.p/snapshot src))

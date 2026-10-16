@@ -345,9 +345,10 @@
 (deftest create-with-name-collision-stays-incremental-test
   (with-exported-collection!
     (fn [{:keys [mock coll-id]}]
-      ;; Clash numbers follow creation order, so a new card named like an existing one takes the next number and
-      ;; leaves the existing card's path alone.
-      (mt/with-temp [:model/Card {card-c :id} {:name "Card A" :collection_id coll-id}]
+      ;; Clash numbers follow entity_id order, so a new card named like an existing one, with a larger entity_id,
+      ;; takes the next number and leaves the existing card's path alone.
+      (mt/with-temp [:model/Card {card-c :id} {:name "Card A" :collection_id coll-id
+                                               :entity_id "zzzzzzzzzzzzzzzzzzzzz"}]
         (seed-synced-row! "Card" card-c)
         (set-status! "Card" card-c "create")
         (let [task   (new-task!)

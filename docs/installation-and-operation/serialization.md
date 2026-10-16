@@ -243,7 +243,7 @@ accounts_model.model.yaml
 converted_customers.metric.yaml
 ```
 
-If two items of the same kind in the same folder share the same name after simplification, Metabase appends a numeric suffix to the newer one, so the older item keeps its file name:
+If two items of the same kind in the same folder share the same name after simplification, Metabase appends a numeric suffix to all but one of them, in order of their Entity IDs. The item with the smallest Entity ID keeps the name without a suffix, so every Metabase names the files the same way:
 
 ```
 products_by_week.question.yaml

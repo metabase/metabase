@@ -406,13 +406,11 @@
   (testing "two same-named entities in a folder get deterministic filename de-dup suffixes (`foo.yaml` vs
            `foo_2.yaml`) across exports — otherwise re-exports swap which card lands in which file, producing huge
            phantom git-sync diffs (GHY-3754)"
-    (testing "the older entity (earlier created_at) keeps the unsuffixed file, so adding a new same-named entity
-             appends `_2` rather than displacing the existing file. created_at decides even when entity_id order and
-             insertion order both disagree"
+    (testing "the entity with the smaller entity_id keeps the unsuffixed file, whatever their created_at (local to
+             each instance) and insertion order"
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (mt/with-empty-h2-app-db!
-          ;; The OLD card has the *larger* entity_id and is inserted *second*, so created_at is the only thing that
-          ;; can put it in the unsuffixed file — proving created_at takes precedence over entity_id and row order.
+          ;; the card with the smaller entity_id is the newer one and is inserted first
           (ts/with-temp-dpc [:model/Collection coll {:name "My Collection"}
                              :model/Card       _new {:name          "Dup Name"
                                                      :collection_id (:id coll)
@@ -422,10 +420,10 @@
                                                      :collection_id (:id coll)
                                                      :created_at    #t "2020-01-01T00:00:00Z"
                                                      :entity_id     "zzzzzzzzzzzzzzzzzzzzz"}]
-            (is (= ["zzzzzzzzzzzzzzzzzzzzz" "aaaaaaaaaaaaaaaaaaaaa"]
+            (is (= ["aaaaaaaaaaaaaaaaaaaaa" "zzzzzzzzzzzzzzzzzzzzz"]
                    (export-and-read-eids! dump-dir ["dup_name.question.yaml" "dup_name_2.question.yaml"]))
-                "older card (earlier created_at) wins the unsuffixed file; newer card gets _2")))))
-    (testing "entity_id breaks ties deterministically when created_at is identical"
+                "the smaller entity_id wins the unsuffixed file; the other gets _2")))))
+    (testing "with equal created_at, the smaller entity_id wins too"
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (mt/with-empty-h2-app-db!
           (ts/with-temp-dpc [:model/Collection coll {:name "My Collection"}

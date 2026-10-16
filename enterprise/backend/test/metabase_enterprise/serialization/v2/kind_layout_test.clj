@@ -194,31 +194,42 @@
   [ctx card-id]
   (storage.util/entity-file-path ctx (serdes/extract-one "Card" {} (t2/select-one :model/Card :id card-id))))
 
-(deftest name-clashes-number-items-in-creation-order-test
+(deftest name-clashes-number-items-by-entity-id-test
   (mt/with-empty-h2-app-db!
     (let [ops    (ts/create! :model/Collection :name "Ops" :location "/")
-          card!  (fn [card-name created-at]
-                   (:id (ts/create! :model/Card :name card-name :collection_id (:id ops) :created_at created-at)))
-          ;; the newer card is created first
-          newer  (card! "Orders" #t "2026-02-01T00:00:00Z")
-          older  (card! "Orders" #t "2026-01-01T00:00:00Z")
+          card!  (fn [card-name eid created-at]
+                   (:id (ts/create! :model/Card :name card-name :collection_id (:id ops) :entity_id eid
+                                    :created_at created-at)))
+          ;; the card with the larger entity_id is the older one, so creation order would number them the other way
+          larger  (card! "Orders" "bbbbbbbbbbbbbbbbbbbbb" #t "2026-01-01T00:00:00Z")
+          smaller  (card! "Orders" "aaaaaaaaaaaaaaaaaaaaa" #t "2026-02-01T00:00:00Z")
           model  (:id (ts/create! :model/Card :name "Orders" :type :model :collection_id (:id ops)
-                                  :created_at #t "2026-03-01T00:00:00Z"))
-          expect {older "collections/main/ops/orders.question.yaml"
-                  newer "collections/main/ops/orders_2.question.yaml"
+                                  :entity_id "0000000000000000000mm" :created_at #t "2026-03-01T00:00:00Z"))
+          expect {smaller "collections/main/ops/orders.question.yaml"
+                  larger "collections/main/ops/orders_2.question.yaml"
                   model "collections/main/ops/orders.model.yaml"}
           ctx!   #(storage.util/storage-context kind-layout/kind-layout)]
-      (testing "the older card keeps the name; the newer one gets _2; another kind does not count"
+      (testing "the card with the smaller entity_id keeps the name; the other gets _2; another kind does not count"
         (let [ctx (ctx!)]
-          (is (= expect (into {} (map (juxt identity (partial path-of ctx))) [older newer model])))))
+          (is (= expect (into {} (map (juxt identity (partial path-of ctx))) [smaller larger model])))))
       (testing "the order in which an export resolves the paths does not change them"
         (let [ctx (ctx!)]
-          (is (= expect (into {} (map (juxt identity (partial path-of ctx))) [model newer older])))))
+          (is (= expect (into {} (map (juxt identity (partial path-of ctx))) [model larger smaller])))))
       (testing "one item at a time, as an incremental export resolves it, gives the same names"
-        (is (= expect (into {} (map (juxt identity #(path-of (ctx!) %))) [newer older model]))))
+        (is (= expect (into {} (map (juxt identity #(path-of (ctx!) %))) [larger smaller model]))))
+      (testing "entity_ids compare byte-wise: an upper-case letter sorts before a lower-case one"
+        (let [upper (card! "Orders" "Zzzzzzzzzzzzzzzzzzzzz" #t "2026-04-01T00:00:00Z")]
+          (is (= "collections/main/ops/orders.question.yaml" (path-of (ctx!) upper)))
+          (is (= "collections/main/ops/orders_2.question.yaml" (path-of (ctx!) smaller)))
+          (t2/delete! :model/Card upper)))
+      (testing "deleting the first lets the second lose its suffix"
+        (t2/delete! :model/Card smaller)
+        (is (= "collections/main/ops/orders.question.yaml" (path-of (ctx!) larger))))
       (testing "an archived card does not count"
-        (t2/update! :model/Card older {:archived true})
-        (is (= "collections/main/ops/orders.question.yaml" (path-of (ctx!) newer)))))))
+        (let [again (card! "Orders" "aaaaaaaaaaaaaaaaaaaab" #t "2026-05-01T00:00:00Z")]
+          (is (= "collections/main/ops/orders_2.question.yaml" (path-of (ctx!) larger)))
+          (t2/update! :model/Card again {:archived true})
+          (is (= "collections/main/ops/orders.question.yaml" (path-of (ctx!) larger))))))))
 
 (deftest dots-in-names-become-underscores-test
   (testing "a name cannot end in .<kind>, so a collection named like a contained-items folder does not clash with it"
