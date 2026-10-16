@@ -28,9 +28,9 @@
 
 (t2/define-before-update :model/PythonLibrary
   [library]
-  (if (:path library)
-    (update library :path normalize-path)
-    library))
+  (cond-> library
+    (seq (dissoc (t2/changes library) :updated_at :is_default)) (assoc :is_default false)
+    (:path library)                          (update :path normalize-path)))
 
 (doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
   (derive :model/PythonLibrary trait))
@@ -85,7 +85,8 @@
 
 (defmethod serdes/make-spec "PythonLibrary"
   [_model-name _opts]
-  {:copy      [:path :source :entity_id]})
+  {:copy      [:path :source :entity_id]
+   :skip [:is_default]})
 
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
   [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])

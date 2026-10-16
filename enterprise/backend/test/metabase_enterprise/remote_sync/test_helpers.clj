@@ -383,7 +383,7 @@ width: fixed
 
 (def ^:private builtin-python-library
   "The built-in PythonLibrary created by migration. Recreated by fixture after cleanup."
-  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id})
+  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id :is_default true})
 
 (defn- ensure-builtin-python-library!
   "Ensures the built-in common.py PythonLibrary exists, creating it if missing."

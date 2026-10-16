@@ -14,7 +14,7 @@
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :entity_id :collection_id :model_id :archived :archived_at])
+  [:enum :exploration_id :built_in_type :is_default :entity_id :collection_id :model_id :archived :archived_at])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
@@ -689,6 +689,31 @@
   "Delete the RemoteSyncObjects with `rso-ids`."
   [rso-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/RemoteSyncObject :id [:in rso-ids]))
+
+(def ^:private transforms-model-types
+  "The model types that sync as transforms, other than transforms Collections."
+  ["Transform" "TransformTag" "TransformTest" "PythonLibrary"])
+
+(mu/defn transforms-tracked? :- :boolean
+  "Whether any Transform, TransformTag, TransformTest, or PythonLibrary has a RemoteSyncObject."
+  []
+  (t2/exists? :model/RemoteSyncObject :model_type [:in transforms-model-types]))
+
+(mu/defn transforms-content-exists? :- :boolean
+  "Whether any transforms content exists to publish: a Transform, TransformTest, transforms Collection, TransformTag
+  that isn't built in, or PythonLibrary that isn't the default one."
+  []
+  (boolean
+   (or (t2/exists? :model/Transform)
+       (t2/exists? :model/TransformTest)
+       (t2/exists? :model/Collection :namespace "transforms")
+       (t2/exists? :model/TransformTag :built_in_type nil)
+       (t2/exists? :model/PythonLibrary :is_default false))))
+
+(mu/defn delete-transforms-rsos!
+  "Delete the RemoteSyncObjects of every Transform, TransformTag, TransformTest, and PythonLibrary."
+  []
+  (t2/delete! :model/RemoteSyncObject :model_type [:in transforms-model-types]))
 
 (mu/defn delete-rso-of!
   "Delete the RemoteSyncObject of the entity `model-type` `model-id`."

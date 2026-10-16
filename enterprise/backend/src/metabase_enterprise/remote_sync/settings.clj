@@ -114,9 +114,10 @@
                                :status_changed_at (t/offset-date-time)}))
 
 (defn sync-transform-tracking!
-  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when newly enabled, 'delete'
-  when disabled after being tracked, left alone when already in that state (the settings cache also calls this on
-  every load), and absent on a read-only instance, which has nothing to publish."
+  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when enabled with untracked
+  transforms content to publish or a pending deletion to undo, dropped along with the transforms' own RSOs when
+  disabled before it was pushed, 'delete' (replacing the transforms' own RSOs) when disabled after transforms were
+  tracked, left alone when already in that state, and absent on a read-only instance, which has nothing to publish."
   [enabled?]
   (let [status (:status (remote-sync.db/rso "Collection" transforms-root-id))]
     (cond
@@ -125,20 +126,33 @@
         (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
 
       enabled?
-      (when-not (#{"create" "synced"} status)
+      (when (or (= "delete" status)
+                (and (nil? status)
+                     (not (remote-sync.db/transforms-tracked?))
+                     (remote-sync.db/transforms-content-exists?)))
         (replace-transforms-root-rso! "create"))
 
-      (and status (not= "delete" status))
-      (replace-transforms-root-rso! "delete"))))
+      (= "create" status)
+      (do
+        (remote-sync.db/delete-transforms-rsos!)
+        (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
+
+      (and (or status (remote-sync.db/transforms-tracked?))
+           (not= "delete" status))
+      (do
+        (remote-sync.db/delete-transforms-rsos!)
+        (replace-transforms-root-rso! "delete")))))
 
 (defn- sync-transform-tracking-on-change
-  "Called when remote-sync-transforms setting changes."
-  [_old-value new-value]
+  "Called when remote-sync-transforms setting changes, and with no old value when the settings cache loads, which only
+  ever enables tracking."
+  [old-value new-value]
   ;; new-value may be a string "true"/"false" or a boolean, so we need to parse it
   (let [enabled? (if (string? new-value)
                    (parse-boolean new-value)
                    (boolean new-value))]
-    (sync-transform-tracking! enabled?)))
+    (when (or enabled? (some? old-value))
+      (sync-transform-tracking! enabled?))))
 
 (defsetting remote-sync-transforms
   (deferred-tru "Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).")
