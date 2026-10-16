@@ -195,22 +195,40 @@ export const MetabotPromptInput = forwardRef<
       ],
     );
 
-    useImperativeHandle(ref, () => {
+    useImperativeHandle<
+      MetabotPromptInputRef | null,
+      MetabotPromptInputRef | null
+    >(ref, () => {
       if (!editor) {
         return null;
       }
 
-      return Object.assign(editor, {
+      // The handle is the editor itself, widened with the public methods, so
+      // callers (and specs) can still reach `editor.view` / `editor.state`.
+      Object.assign(editor, {
         focus: () => editor.commands.focus("end"),
         clear: () => editor.commands.clearContent(),
         getValue: () => serializeTiptapToMetabotMessage(editor.getJSON()),
-        get scrollHeight() {
-          return editor.view.dom.scrollHeight;
+      });
+
+      // Install the size accessors with `defineProperties` rather than through
+      // `Object.assign`, which would evaluate the getters eagerly. Under React
+      // 19 the editor view mounts after this handle runs, so reading
+      // `editor.view` now throws; keep it lazy until a caller reads the size.
+      Object.defineProperties(editor, {
+        scrollHeight: {
+          configurable: true,
+          get: () => editor.view.dom.scrollHeight,
         },
-        get scrollTop() {
-          return editor.view.dom.scrollTop;
+        scrollTop: {
+          configurable: true,
+          get: () => editor.view.dom.scrollTop,
         },
       });
+
+      // The runtime handle is the editor widened with the members above; the
+      // public ref type only narrows it to what consumers may touch.
+      return editor as unknown as MetabotPromptInputRef;
     }, [editor]);
 
     // Sync external value changes to editor

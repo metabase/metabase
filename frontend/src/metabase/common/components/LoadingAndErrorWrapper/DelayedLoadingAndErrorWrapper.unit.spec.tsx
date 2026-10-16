@@ -21,7 +21,7 @@ describe("DelayedLoadingAndErrorWrapper", () => {
       );
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-      await screen.findByTestId("loader", undefined, { timeout: 150 });
+      await screen.findByTestId("loader");
     });
 
     it("should display a given child if loading is false", () => {
