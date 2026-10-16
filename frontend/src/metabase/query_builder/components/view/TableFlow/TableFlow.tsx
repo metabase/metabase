@@ -53,7 +53,7 @@ export function TableFlow({
   } = useSelectedXrayChart(tableId, isGalleryOpen);
 
   // The main card fills the visible area so the page scrolls only once the gallery or a chart is added above it.
-  const mainCardHeight = `max(20rem, calc(${viewportHeight}px - 2 * var(--mantine-spacing-md)))`;
+  const mainCardHeight = `max(20rem, calc(${viewportHeight}px - var(--mantine-spacing-xxs) - var(--mantine-spacing-md)))`;
 
   return (
     <div className={S.root}>

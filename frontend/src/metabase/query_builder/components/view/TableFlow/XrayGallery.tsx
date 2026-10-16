@@ -1,5 +1,12 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import {
@@ -90,31 +97,146 @@ export function XrayGallery({
     [rawSeries],
   );
 
+  const stripRef = useRef<HTMLDivElement>(null);
+  const itemCount = 1 + (charts?.length ?? 0);
+  const { pageCount, activePage, scrollToPage, handleScroll } = useStripPages(
+    stripRef,
+    itemCount,
+  );
+
   return (
-    <div className={S.galleryStrip} data-testid="xray-gallery">
-      <GalleryThumbnail
-        title={t`Raw records`}
-        rawSeries={rawRecordsSeries}
-        error={null}
-        isSelected={selectedPosition == null}
-        onSelect={() => onSelectPosition(null)}
-      />
-      {hasError ? (
-        <Text c="text-secondary">{t`Couldn't load x-rays for this table.`}</Text>
-      ) : charts ? (
-        charts.map((chart, index) => (
-          <XrayThumbnail
-            key={chart.id}
-            chart={chart}
-            isSelected={index + 1 === selectedPosition}
-            onSelect={() => onSelectPosition(index + 1)}
-          />
-        ))
-      ) : (
-        <Repeat times={6}>
-          <Skeleton className={cx(S.card, S.galleryCard)} />
-        </Repeat>
+    <div className={S.gallery} data-testid="xray-gallery">
+      <div ref={stripRef} className={S.galleryStrip} onScroll={handleScroll}>
+        <GalleryThumbnail
+          title={t`Raw records`}
+          rawSeries={rawRecordsSeries}
+          error={null}
+          isSelected={selectedPosition == null}
+          onSelect={() => onSelectPosition(null)}
+        />
+        {hasError ? (
+          <Text c="text-secondary">{t`Couldn't load x-rays for this table.`}</Text>
+        ) : charts ? (
+          charts.map((chart, index) => (
+            <XrayThumbnail
+              key={chart.id}
+              chart={chart}
+              isSelected={index + 1 === selectedPosition}
+              onSelect={() => onSelectPosition(index + 1)}
+            />
+          ))
+        ) : (
+          <Repeat times={6}>
+            <div className={S.galleryItem}>
+              <Skeleton className={cx(S.card, S.galleryCard)} />
+              <Skeleton h="1rem" w="60%" />
+            </div>
+          </Repeat>
+        )}
+      </div>
+      {pageCount > 1 && (
+        <GalleryStepper
+          count={pageCount}
+          active={activePage}
+          onStepClick={scrollToPage}
+        />
       )}
+    </div>
+  );
+}
+
+type StripPages = {
+  pageCount: number;
+  activePage: number;
+  scrollToPage: (page: number) => void;
+  handleScroll: () => void;
+};
+
+/** Splits a horizontally scrolling strip into viewport-wide pages and tracks the one in view. */
+function useStripPages(
+  stripRef: RefObject<HTMLDivElement>,
+  itemCount: number,
+): StripPages {
+  const [pages, setPages] = useState({ pageCount: 1, activePage: 0 });
+
+  const handleScroll = useCallback(() => {
+    const strip = stripRef.current;
+    if (strip == null || strip.clientWidth === 0) {
+      return;
+    }
+    const { scrollLeft, clientWidth } = strip;
+    const pageCount = getPageCount(strip);
+    const isAtEnd = scrollLeft >= getMaxScrollLeft(strip) - 1;
+    const activePage = isAtEnd
+      ? pageCount - 1
+      : Math.min(pageCount - 1, Math.round(scrollLeft / clientWidth));
+    setPages((current) =>
+      current.pageCount === pageCount && current.activePage === activePage
+        ? current
+        : { pageCount, activePage },
+    );
+  }, [stripRef]);
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (strip == null) {
+      return;
+    }
+    handleScroll();
+    const observer = new ResizeObserver(handleScroll);
+    observer.observe(strip);
+    return () => observer.disconnect();
+  }, [stripRef, handleScroll, itemCount]);
+
+  const scrollToPage = (page: number) => {
+    const strip = stripRef.current;
+    if (strip == null) {
+      return;
+    }
+    // the last page ends flush with the strip's end rather than a full page further
+    const isLastPage = page === getPageCount(strip) - 1;
+    strip.scrollTo({
+      left: isLastPage ? getMaxScrollLeft(strip) : page * strip.clientWidth,
+    });
+  };
+
+  return { ...pages, scrollToPage, handleScroll };
+}
+
+function getMaxScrollLeft(strip: HTMLElement) {
+  return strip.scrollWidth - strip.clientWidth;
+}
+
+/**
+ * One page per viewport width of overflow. A remainder under a quarter of a page is folded
+ * into the previous page, so the last dot never moves the strip by a sliver.
+ */
+function getPageCount(strip: HTMLElement) {
+  const overflowPages = getMaxScrollLeft(strip) / strip.clientWidth;
+  return Math.max(1, Math.ceil(overflowPages - 0.25) + 1);
+}
+
+type GalleryStepperProps = {
+  count: number;
+  active: number;
+  onStepClick: (index: number) => void;
+};
+
+function GalleryStepper({ count, active, onStepClick }: GalleryStepperProps) {
+  return (
+    <div className={S.stepper} role="tablist" aria-label={t`Gallery pages`}>
+      {Array.from({ length: count }, (_, index) => (
+        <button
+          key={index}
+          type="button"
+          role="tab"
+          aria-selected={index === active}
+          aria-label={t`Page ${index + 1}`}
+          tabIndex={index === active ? 0 : -1}
+          className={cx(S.step, { [S.stepActive]: index === active })}
+          onClick={() => onStepClick(index)}
+        />
+      ))}
     </div>
   );
 }
@@ -159,9 +281,7 @@ function GalleryThumbnail({
       role="button"
       tabIndex={0}
       aria-pressed={isSelected}
-      className={cx(S.card, S.galleryCard, {
-        [S.galleryCardSelected]: isSelected,
-      })}
+      className={S.galleryItem}
       onClick={onSelect}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -170,27 +290,39 @@ function GalleryThumbnail({
         }
       }}
     >
-      <Text fw="bold" size="sm" truncate="end">
+      <div
+        className={cx(S.card, S.galleryCard, {
+          [S.galleryCardSelected]: isSelected,
+        })}
+      >
+        <Box className={S.chartArea}>
+          {rawSeries ? (
+            <Visualization
+              className={S.thumbnailChart}
+              rawSeries={rawSeries}
+              isDashboard
+              isQueryBuilder={false}
+              showTitle={false}
+              hideLegend
+            />
+          ) : error ? (
+            <Text size="sm" c="text-secondary">
+              {error}
+            </Text>
+          ) : (
+            <Skeleton h="100%" />
+          )}
+        </Box>
+      </div>
+      <Text
+        className={S.galleryTitle}
+        fw="bold"
+        size="sm"
+        c={isSelected ? "brand" : "text-primary"}
+        truncate="end"
+      >
         {title}
       </Text>
-      <Box className={S.chartArea}>
-        {rawSeries ? (
-          <Visualization
-            className={S.thumbnailChart}
-            rawSeries={rawSeries}
-            isDashboard
-            isQueryBuilder={false}
-            showTitle={false}
-            hideLegend
-          />
-        ) : error ? (
-          <Text size="sm" c="text-secondary">
-            {error}
-          </Text>
-        ) : (
-          <Skeleton h="100%" />
-        )}
-      </Box>
     </div>
   );
 }

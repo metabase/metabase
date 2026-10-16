@@ -2,7 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--mantine-spacing-md);
-  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+  /* the header already pads below its title, so only a sliver more evens the gap with the sides */
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-lg)
+    var(--mantine-spacing-md);
 }
 
 .card {
@@ -41,41 +43,134 @@
   border-bottom: 1px solid var(--mb-color-border-neutral);
 }
 
+.gallery {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--mantine-spacing-sm);
+}
+
+/* Paged by the stepper below it, so the native scrollbar is hidden; trackpads still scroll. */
 .galleryStrip {
   display: flex;
-  flex-shrink: 0;
   gap: var(--mantine-spacing-md);
   overflow-x: auto;
-  padding-bottom: var(--mantine-spacing-xs);
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--mantine-spacing-xxs);
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  /* room for the hover shadow and selection ring, which overflow would clip */
+  padding: var(--mantine-spacing-xxs);
+  margin: calc(-1 * var(--mantine-spacing-xxs));
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    scroll-behavior: auto;
+  }
+}
+
+.galleryItem {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 15rem;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+  cursor: pointer;
+  scroll-snap-align: start;
+
+  &:hover .galleryCard {
+    box-shadow: var(--mantine-shadow-sm);
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:focus-visible .galleryCard {
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 2px;
+  }
 }
 
 .galleryCard {
   position: relative;
   display: flex;
   flex-direction: column;
-  flex: 0 0 15rem;
-  height: 11rem;
+  height: 9.5rem;
   padding: var(--mantine-spacing-sm);
-  gap: var(--mantine-spacing-xs);
-  cursor: pointer;
   overflow: hidden;
   transition:
     border-color 150ms ease,
     box-shadow 150ms ease;
-
-  &:hover {
-    box-shadow: var(--mantine-shadow-sm);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--mb-color-core-brand);
-    outline-offset: 2px;
-  }
 }
 
 .galleryCardSelected {
   border-color: var(--mb-color-core-brand);
   box-shadow: 0 0 0 1px var(--mb-color-core-brand);
+}
+
+.galleryTitle {
+  padding-inline: var(--mantine-spacing-xxs);
+  text-align: center;
+}
+
+/* Pill-and-dots pager after Pasito (joshpuckett.me/pasito). */
+.stepper {
+  --step-dot-size: 8px;
+  --step-active-width: 24px;
+  --step-transition: 500ms cubic-bezier(0.215, 0.61, 0.355, 1);
+
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary) 4%,
+    transparent
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--mb-color-text-primary) 6%, transparent);
+}
+
+.step {
+  width: var(--step-dot-size);
+  height: var(--step-dot-size);
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary) 12%,
+    transparent
+  );
+  cursor: pointer;
+  transition:
+    width var(--step-transition),
+    background-color var(--step-transition);
+
+  &:focus-visible {
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.stepActive {
+  width: var(--step-active-width);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-text-primary) 80%,
+    transparent
+  );
 }
 
 .chartArea {
