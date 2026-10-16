@@ -21,11 +21,10 @@ describe("scenarios > data apps > repo sync", () => {
     H.setupGitSync();
   });
 
-  it("materializes each app per its config/bundle, isolating the broken ones", () => {
+  it("materializes each app per its config/bundle, isolating the broken ones, then prunes an app whose directory is removed from the repo on the next sync", () => {
     H.copySyncedCollectionFixture();
     H.copySyncedDataAppsFixture();
     H.commitToRepo("Add data apps with mixed config/bundle states");
-
     H.configureGitAndPullChanges("read-write");
 
     cy.visit("/admin/settings/apps");
@@ -94,21 +93,6 @@ describe("scenarios > data apps > repo sync", () => {
     H.main()
       .findByText(/isn.t ready yet/i, { timeout: 30000 })
       .should("be.visible");
-  });
-
-  it("prunes an app whose directory is removed from the repo on the next sync", () => {
-    H.copySyncedCollectionFixture();
-    H.copySyncedDataAppsFixture();
-    H.commitToRepo("Add data apps");
-    H.configureGitAndPullChanges("read-write");
-
-    // Both apps are materialized from the first pull.
-    cy.request("GET", "/api/apps").then(({ body: apps }) => {
-      expect(apps.map((app: { name: string }) => app.name).sort()).to.deep.eq([
-        "broken-bundle",
-        "good",
-      ]);
-    });
 
     // Delete the good app's directory from the repo and sync again. The connected
     // repo is the source of truth, so the app must be pruned — not left serving.
