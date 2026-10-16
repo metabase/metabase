@@ -24,12 +24,13 @@
      (reify protocols/ExportWriter
        (store-entity! [_ entity]
          (when-let [resolved (storage.util/resolve-storage-path ctx entity)]
-           (let [^File f (io/file root-dir (storage.util/yaml-file-path resolved))]
+           (let [^File f  (io/file root-dir (storage.util/yaml-file-path resolved))
+                 document (storage.util/entity-document ctx entity)]
              (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
                                   :file (str (.relativize (Path/of (str root-dir) (make-array String 0))
                                                           (.toPath f)))})
-             (spit-yaml! f (storage.util/without-resources (storage.util/entity-document ctx entity)))
-             (doseq [[segments content] (storage.util/resource-files resolved entity)
+             (spit-yaml! f (storage.util/without-resources document))
+             (doseq [[segments content] (storage.util/resource-files resolved document)
                      :let [resource (apply io/file root-dir segments)]]
                (io/make-parents resource)
                (spit resource content))))

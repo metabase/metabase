@@ -50,7 +50,8 @@
 ;; analytics collections — would pull ai_context rows whose referenced Card/Table/Measure/Segment is absent,
 ;; leaking curator text and creating dangling deps that fail import. It stays out until reverse-dependency
 ;; export lands (its row should travel *with* its entity), tracked in
-;; https://linear.app/metabase/issue/BOT-1759; see the metabase.osi.models.osi-ai-context serdes TODO.
+;; https://linear.app/metabase/issue/BOT-1759; see the metabase.osi.models.osi-ai-context serdes TODO. In the kind
+;; layout, the file of a card, table, measure or segment carries the item's AI context, so it travels with its item.
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"

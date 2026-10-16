@@ -338,6 +338,30 @@
                 (is (=? {:type :external :human_readable_field_id (field-id "products" "TITLE")}
                         (t2/select-one :model/Dimension :field_id (field-id "orders" "PRODUCT_ID"))))))))))))
 
+(deftest ai-context-in-its-items-folder-test
+  (testing "a serdes export in the kind layout writes AI context in its item's folder; the old flat folder still loads"
+    (doseq [[layout expected-file] [[kind-layout/kind-layout ["databases" "shop" "public" "orders.table" "ai_context.yaml"]]
+                                    [storage.util/default-layout ["osi_ai_context"]]]]
+      (testing (str expected-file)
+        (ts/with-random-dump-dir [dump-dir "ai-context-"]
+          (ts/with-dbs [source-db dest-db]
+            (ts/with-db source-db
+              (let [{:keys [orders]} (table-world!)]
+                (t2/insert! :model/OsiAiContext {:entity_type "table" :entity_local_id orders
+                                                 :ai_context {:instructions "One row per order"}}))
+              ;; a serdes export extracts AI context only with its item, in the kind layout; an earlier export wrote
+              ;; each one to the flat osi_ai_context/ folder
+              (storage/store! (cond-> (extract-all)
+                                (= layout storage.util/default-layout)
+                                (conj (serdes/extract-one "OsiAiContext" {} (t2/select-one :model/OsiAiContext))))
+                              (storage.files/file-writer dump-dir layout)))
+            (is (.exists ^java.io.File (apply io/file dump-dir expected-file)))
+            (ts/with-db dest-db
+              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (is (= {:instructions "One row per order"}
+                     (t2/select-one-fn :ai_context :model/OsiAiContext :entity_type "table"
+                                       :entity_local_id (t2/select-one-pk :model/Table :name "orders")))))))))))
+
 (deftest kind-layout-is-not-the-default-test
   (testing "a storage context without a layout, and plain serdes export, keep today's layout"
     (is (= storage.util/default-layout (:layout (storage.util/storage-context))))

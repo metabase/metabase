@@ -17,7 +17,7 @@
   every namespace without a folder of its own, are under `collections/`."
   #{"data" "metrics" "dashboards" "documents" "glossary" "snippets" "data_actions" "transforms" "transform_tags"
     "python_library" "data_apps" "collections" "databases" "transform_jobs" "metabots" "channels" "embedding_themes"
-    "custom_viz_plugins" "osi_ai_context"})
+    "custom_viz_plugins"})
 
 (def library-content-folders
   "The top-level folders whose content syncs with the Library: its sections, and the snippets, glossary and data

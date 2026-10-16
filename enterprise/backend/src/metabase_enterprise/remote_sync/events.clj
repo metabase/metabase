@@ -19,6 +19,7 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.layout :as remote-sync.layout]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
@@ -328,6 +329,26 @@
      parent-kw
      (fn [topic event]
        (handle-model-event-from-spec model-spec topic event)))))
+
+;;; ----------------------------------------------- AI context ---------------------------------------------------------
+
+(defn- handle-ai-context-change!
+  "An item's AI context is a file in the item's folder, so a change to it is a change to the item: mark the item
+  changed when it syncs."
+  [{{:keys [entity_type entity_local_id]} :object}]
+  (when (remote-sync.layout/kind-layout?)
+    (when-let [model-spec (some-> (spec/ai-context-parent-models entity_type) spec/spec-for-model-key)]
+      (let [item (remote-sync.db/instance (:model-key model-spec) entity_local_id)]
+        (when (and (spec/ai-context-item-synced? entity_type item)
+                   (spec/model-editable? (:model-key model-spec) item))
+          (create-or-update-sync-object-from-spec! model-spec entity_local_id "update"))))))
+
+(events/derive! ::ai-context-event :metabase/event)
+(events/derive! :event/osi-ai-context-change ::ai-context-event)
+
+(methodical/defmethod events/publish-event! ::ai-context-event
+  [_topic event]
+  (handle-ai-context-change! event))
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
 

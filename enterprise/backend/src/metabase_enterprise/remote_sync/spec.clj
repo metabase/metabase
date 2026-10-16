@@ -860,6 +860,24 @@
         (not (in-excluded-collection? spec object))
         (check-eligibility-by-type spec object))))
 
+(def ai-context-parent-models
+  "The model of the item each OsiAiContext `entity_type` describes."
+  {"card"     :model/Card
+   "question" :model/Card
+   "model"    :model/Card
+   "metric"   :model/Card
+   "table"    :model/Table
+   "measure"  :model/Measure
+   "segment"  :model/Segment})
+
+(defn ai-context-item-synced?
+  "Whether the item an OsiAiContext of `entity-type` describes, `item` (nil when it is gone), syncs: an item's AI
+  context syncs exactly when the item does."
+  [entity-type item]
+  (boolean
+   (when-let [model-spec (some-> (ai-context-parent-models entity-type) spec-for-model-key)]
+     (and item (check-eligibility model-spec item)))))
+
 (defn library-synced-object?
   "Whether `object` matches the spec's `:library-synced-conditions`, which make it Library content."
   [spec object]

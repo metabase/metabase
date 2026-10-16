@@ -347,6 +347,24 @@
         (remote-sync.db/delete-dimensions! (vec batch)))
       table-ids)))
 
+(defn- remove-unsynced-ai-contexts!
+  "Deletes the AI context of each synced item that `seen-paths` did not import, and of each item that is gone: an
+  item's AI context syncs exactly when the item does."
+  [seen-paths]
+  (let [seen (into #{}
+                   (comp (filter #(= "OsiAiContext" (:model (last %))))
+                         (map serialization/strip-labels))
+                   seen-paths)]
+    (doseq [{:keys [entity_type entity_local_id] :as row} (remote-sync.db/ai-contexts)
+            :let  [model-key (spec/ai-context-parent-models entity_type)
+                   item      (some-> model-key (remote-sync.db/instance entity_local_id))]
+            :when (and model-key
+                       (or (nil? item)
+                           (and (spec/ai-context-item-synced? entity_type item)
+                                (not (contains? seen (serialization/strip-labels
+                                                      (serdes/generate-path "OsiAiContext" row)))))))]
+      (remote-sync.db/delete-ai-context! entity_type entity_local_id))))
+
 (defn- track-user-settings!
   "Inserts a synced RemoteSyncObject for each TableUserSettings, FieldUserSettings, and Dimension of the Tables with
   `table-ids` as of `timestamp`."
@@ -435,7 +453,9 @@
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
             _                     (remove-unsynced! synced-collection-ids (keep-library-dashboards imported-data))
-            settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
+            settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)
+            _                     (when (remote-sync.layout/kind-layout?)
+                                    (remove-unsynced-ai-contexts! seen-paths))]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
         ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
         ;; insert. Chunked so insert/IN params and memory stay bounded.
@@ -1093,6 +1113,12 @@
     (cond
       (not= :entity-id ;; only entity-id models can be synced incrementally
             (:identity (spec/spec-for-model-type model_type)))
+      :remote-sync/incremental-not-possible
+
+      ;; a card's AI context is a file in the card's folder, which moves and goes with the card
+      (and (= "Card" model_type)
+           (remote-sync.layout/kind-layout?)
+           (remote-sync.db/ai-context-exists? "card" model_id))
       :remote-sync/incremental-not-possible
 
       (:resources? (spec/spec-for-model-type model_type))

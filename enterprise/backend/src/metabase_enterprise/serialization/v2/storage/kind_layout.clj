@@ -45,7 +45,6 @@
    :channel           "channel"
    :embedding-theme   "embedding_theme"
    :custom-viz-plugin "custom_viz_plugin"
-   :osi-ai-context    "osi_ai_context"
    :field-values      "field_values"})
 
 (defn- python-library-file
@@ -387,8 +386,7 @@
 (doseq [[model kind] {"Metabot"         :metabot
                       "Channel"         :channel
                       "EmbeddingTheme"  :embedding-theme
-                      "CustomVizPlugin" :custom-viz-plugin
-                      "OsiAiContext"    :osi-ai-context}]
+                      "CustomVizPlugin" :custom-viz-plugin}]
   (defmethod item-path model [ctx entity]
     (serdes-only-path ctx entity kind)))
 
@@ -476,14 +474,54 @@
 (defmethod item-path "Measure" [ctx entity]
   (item-file ctx (definition-table-path ctx (:definition entity)) :measure (:entity_id entity) (:name entity)))
 
+;; An item's AI context is the file `ai_context.yaml` in the item's folder `<name>.<kind>/` (see [[document]]), so it
+;; has no file of its own here.
+(defmethod item-path "OsiAiContext" [_ctx _entity]
+  nil)
+
+(def ^:private ai-context-file
+  "The name of the file, in an item's folder, of the item's AI context."
+  "ai_context.yaml")
+
+(defn- ai-contexts
+  "Every extracted OsiAiContext, by `[entity_type portable-id]` of the item it describes."
+  [{:keys [extract-opts] :as ctx}]
+  (cached ctx ::ai-contexts
+          #(let [opts (or extract-opts {})]
+             (into {}
+                   (map (fn [row]
+                          (let [entity (serdes/extract-one "OsiAiContext" opts row)]
+                            [[(:entity_type entity) (:entity_local_id entity)] entity])))
+                   (serdes/extract-query "OsiAiContext" opts)))))
+
+(defn- ai-context-key
+  "The `[entity_type portable-id]` of the AI context of the extracted `entity`, or nil for a kind that has none."
+  [entity]
+  (case (model-of entity)
+    "Card"    ["card" (:entity_id entity)]
+    "Measure" ["measure" (:entity_id entity)]
+    "Segment" ["segment" (:entity_id entity)]
+    "Table"   ["table" (table-ref (serdes/path entity))]
+    nil))
+
+(defn- with-ai-context
+  "`document`, the file of the extracted `entity`, with the entity's AI context as the file `ai_context.yaml` in the
+  entity's folder, beside its file, when it has one."
+  [ctx entity document]
+  (if-let [ai-context (some->> (ai-context-key entity) (get (ai-contexts ctx)))]
+    (assoc document :serdes/resources {(str (peek (item-path ctx entity)) "/" ai-context-file)
+                                       (storage.util/entity-yaml ai-context)})
+    document))
+
 (defn- document
   "What the file of the extracted `entity` holds in storage context `ctx`: for a table, its table document (see
   [[table-document/assemble]]), with the schema when the context's `:table-schema?` says so; for anything else, the
-  entity."
-  [{:keys [table-schema? extract-opts]} entity]
-  (if (= "Table" (model-of entity))
-    (table-document/assemble entity {:schema? table-schema? :extract-opts extract-opts})
-    entity))
+  entity. An item with AI context carries it as a resource file in its folder."
+  [{:keys [table-schema? extract-opts] :as ctx} entity]
+  (with-ai-context ctx entity
+    (if (= "Table" (model-of entity))
+      (table-document/assemble entity {:schema? table-schema? :extract-opts extract-opts})
+      entity)))
 
 (def kind-layout
   "The kind layout: a function of a storage context `ctx` (which needs a `:layout-cache`) and an extracted entity,

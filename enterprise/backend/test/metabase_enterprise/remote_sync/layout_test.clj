@@ -457,6 +457,57 @@
         (is (= "Cost" (t2/select-one-fn :description :model/FieldUserSettings :field_id (mt/id :venues :price))))
         (is (t2/exists? :model/Dimension :field_id (mt/id :venues :category_id)))))))
 
+(defn- ai-context [entity-type entity-id]
+  (t2/select-one-fn :ai_context :model/OsiAiContext :entity_type entity-type :entity_local_id entity-id))
+
+(deftest ai-context-syncs-with-its-item-test
+  (mt/with-model-cleanup [:model/OsiAiContext]
+    (with-published-venues!
+      kind-layout/kind-layout
+      (fn [_]
+        (let [metrics-id (t2/select-one-pk :model/Collection :entity_id "librarylibrarymetrics")]
+          (mt/with-temp [:model/Card {card-id :id} {:name "MRR" :type :metric :collection_id metrics-id
+                                                    :dataset_query {:database (mt/id) :type :query
+                                                                    :query    {:source-table (mt/id :venues)
+                                                                               :aggregation  [[:count]]}}}]
+            (t2/insert! :model/OsiAiContext {:entity_type "card" :entity_local_id card-id
+                                             :ai_context {:instructions "Monthly recurring revenue"}})
+            (t2/insert! :model/OsiAiContext {:entity_type "table" :entity_local_id (mt/id :venues)
+                                             :ai_context {:synonyms ["places"]}})
+            (with-redefs [remote-sync.layout/layout kind-layout/kind-layout]
+              (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
+                    files #(get @(:files-atom mock) "main")]
+                (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
+                (testing "each item's AI context is in the item's folder"
+                  (is (=? {:ai_context {:instructions "Monthly recurring revenue"}}
+                          (yaml/parse-string (get (files) "metrics/mrr.metric/ai_context.yaml"))))
+                  (is (=? {:ai_context {:synonyms ["places"]}}
+                          (yaml/parse-string (get (files) "data/venues.table/ai_context.yaml"))))
+                  (is (not-any? #(str/starts-with? % "osi_ai_context/") (keys (files)))))
+                (testing "a pull loads it back"
+                  (t2/delete! :model/OsiAiContext)
+                  (let [result (impl/import! (source.p/snapshot mock) (new-task!) :force? true)]
+                    (is (= :success (:status result)) (:message result)))
+                  (is (= {:instructions "Monthly recurring revenue"} (ai-context "card" card-id)))
+                  (is (= {:synonyms ["places"]} (ai-context "table" (mt/id :venues)))))
+                (testing "a change to it marks its item changed, and the next push writes it"
+                  (t2/update! :model/OsiAiContext {:entity_type "card" :entity_local_id card-id}
+                              {:ai_context {:instructions "MRR, net of refunds"}})
+                  (is (t2/exists? :model/RemoteSyncObject :model_type "Card" :model_id card-id :status "update"))
+                  (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "edit"))))
+                  (is (=? {:ai_context {:instructions "MRR, net of refunds"}}
+                          (yaml/parse-string (get (files) "metrics/mrr.metric/ai_context.yaml")))))
+                (testing "a pull removes AI context the repo no longer holds for a synced item"
+                  (swap! (:files-atom mock) update "main" dissoc "data/venues.table/ai_context.yaml")
+                  (is (= :success (:status (impl/import! (source.p/snapshot mock) (new-task!) :force? true))))
+                  (is (nil? (ai-context "table" (mt/id :venues))))
+                  (is (some? (ai-context "card" card-id))))
+                (testing "a deleted item's AI context leaves the repo at the next push"
+                  (t2/update! :model/Card card-id {:archived true})
+                  (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id card-id} {:status "delete"})
+                  (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "delete"))))
+                  (is (not-any? #(str/starts-with? % "metrics/mrr.metric") (keys (files)))))))))))))
+
 (defn- with-move-changed-items!
   "Calls `f` with the kind layout and the move-changed-items rule swapped in, and remote sync on."
   [f]

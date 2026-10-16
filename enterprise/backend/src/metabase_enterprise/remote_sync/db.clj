@@ -434,6 +434,23 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
 
+(mu/defn ai-contexts
+  "The `:entity_type` and `:entity_local_id` of every OsiAiContext."
+  []
+  (t2/select [:model/OsiAiContext :entity_type :entity_local_id]))
+
+(mu/defn ai-context-exists? :- :boolean
+  "Whether the item of `entity-type` with `entity-local-id` has an OsiAiContext."
+  [entity-type     :- :string
+   entity-local-id :- pos-int?]
+  (t2/exists? :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
+
+(mu/defn delete-ai-context!
+  "Delete the OsiAiContext of the item of `entity-type` with `entity-local-id`."
+  [entity-type     :- :string
+   entity-local-id :- pos-int?]
+  (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
+
 (mu/defn collection-ids-of-types :- [:set ::lib.schema.id/collection]
   "The IDs of the Collections whose type is one of `collection-types`."
   [collection-types :- [:sequential :string]]

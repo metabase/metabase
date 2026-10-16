@@ -1895,6 +1895,7 @@
    :api  #{metabase.osi.ai-context.api}
    :uses #{api
            app-db
+           events
            models
            request
            search.entity-retrieval
@@ -4304,6 +4305,7 @@
                     :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/OsiAiContext
                     :model/PythonLibrary
                     :model/Segment
                     :model/Table

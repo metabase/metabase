@@ -14,6 +14,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.osi.db :as osi.db]
@@ -67,10 +68,12 @@
 ;;; lingering until the periodic full reconcile. Outside a transaction the write has already committed, so
 ;;; [[app-db/do-after-commit]] runs the nudge immediately.
 (defn- nudge-entity-sync!
-  "After the surrounding transaction commits, nudge a targeted reconcile of `row`'s entity slice. Returns `row`."
+  "After the surrounding transaction commits, nudge a targeted reconcile of `row`'s entity slice, and publish
+  `:event/osi-ai-context-change` for it. Returns `row`."
   [{:keys [entity_type entity_local_id] :as row}]
   (u/prog1 row
-    (app-db/do-after-commit #(mirror/request-entity-sync! entity_type entity_local_id))))
+    (app-db/do-after-commit #(mirror/request-entity-sync! entity_type entity_local_id))
+    (events/publish-event! :event/osi-ai-context-change {:object (select-keys row [:entity_type :entity_local_id])})))
 
 (t2/define-after-insert :model/OsiAiContext [row] (nudge-entity-sync! row))
 (t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))
