@@ -354,9 +354,8 @@
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
   {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
-   :skip      []
-   :transform {:created_at             (serdes/date)
-               :dashboard_id           (serdes/parent-ref)
+   :skip [:created_at :updated_at]
+   :transform {:dashboard_id           (serdes/parent-ref)
                :card_id                (serdes/fk :model/Card)
                :action_id              (serdes/fk :model/Action)
                :dashboard_tab_id       (serdes/fk :model/DashboardTab)

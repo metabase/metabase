@@ -129,8 +129,8 @@
    :defaults  {:description_set        false
                :semantic_type_set      false
                :fk_target_field_id_set false}
-   :transform {:created_at   (serdes/date)
-               :fk_target_field_id (serdes/fk :model/Field)
+   :skip [:created_at :updated_at]
+   :transform {:fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true
                               :export     #(serdes/*export-field-fk* %)
                               :import-with-context (fn [current _ _]

@@ -412,10 +412,8 @@
                ;; this is deprecated
                :cache_ttl
                ;; always re-derived from public_uuid on import
-               :public_uuid_prefix]
-   :transform {:created_at             (serdes/date)
-               :initially_published_at (serdes/date)
-               :collection_id          (serdes/fk :model/Collection)
+               :public_uuid_prefix :created_at :initially_published_at :updated_at]
+   :transform {:collection_id          (serdes/fk :model/Collection)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}

@@ -73,10 +73,9 @@
    :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
                :status :error_message
                ;; dev-only plugins are never served from another instance
-               :dev_bundle_url]
+               :dev_bundle_url :created_at :updated_at]
    :defaults  {:enabled true}
-   :transform {:created_at (serdes/date)
-               :bundle     {:export bundle->b64
+   :transform {:bundle     {:export bundle->b64
                             :import b64->bundle}}})
 
 (defn- bundle-columns

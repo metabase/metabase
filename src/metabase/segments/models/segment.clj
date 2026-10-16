@@ -250,9 +250,8 @@
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
    :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
-               :table_id]
-   :transform {:created_at (serdes/date)
-               :creator_id (serdes/fk :model/User)
+               :table_id :created_at :updated_at]
+   :transform {:creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}
    :defaults {:archived false :show_in_getting_started false}})
 

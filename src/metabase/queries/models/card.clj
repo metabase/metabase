@@ -1700,10 +1700,9 @@
           ;; instance-specific Metabot origin (which conversation/chart the card was saved from)
           :metabot_conversation_id :metabot_chart_id
           ;; always re-derived from public_uuid on import
-          :public_uuid_prefix]
+          :public_uuid_prefix :created_at :updated_at]
    :transform
-   {:created_at             (serdes/date)
-    ;; database_id is usually derivable from dataset_query, but must be kept when the query
+   {;; database_id is usually derivable from dataset_query, but must be kept when the query
     ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
     :database_id            (let [{:keys [import]} (serdes/fk :model/Database)]
                               {::serdes/fk true

@@ -442,20 +442,14 @@
             reducible))
 
 (def stable-storage-order
-  "A deterministic `:order-by` for serdes export queries, so that entities sharing a name within a folder get
-  reproducible filename de-dup suffixes (`foo.yaml` vs `foo_2.yaml`) across exports — otherwise re-exports swap which
-  entity lands in which file and produce large phantom git-sync diffs (GHY-3754).
-
-  Orders by `created_at` first so the *oldest* sibling keeps the unsuffixed file: adding a new same-named entity
-  appends a `_2` rather than displacing the existing file. `entity_id` (random NanoID) would not have this property —
-  a newcomer with a smaller id would steal the base file. `entity_id` is then a deterministic tiebreaker for entities
-  created in the same instant. Assumes the model serializes both columns; use [[stable-storage-order-by]] to gate on a
-  spec."
-  [[:created_at :asc] [:entity_id :asc]])
+  "A deterministic `:order-by` for serdes export queries, so that entities sharing a name within a folder get the same
+  filename de-dup suffixes (`foo.yaml` vs `foo_2.yaml`) on every export and on every instance, by `entity_id` alone
+  since `created_at` is local to each instance."
+  [[:entity_id :asc]])
 
 (defn stable-storage-order-by
-  "[[stable-storage-order]] restricted to the columns `spec` actually serializes (via `:copy` or `:transform`).
-  Returns nil when the model serializes neither column."
+  "[[stable-storage-order]] restricted to the columns `spec` actually serializes (via `:copy` or `:transform`), or nil
+  when it serializes none of them."
   [spec]
   (let [serialized? (into (set (:copy spec)) (keys (:transform spec)))]
     (not-empty (filterv (comp serialized? first) stable-storage-order))))
