@@ -36,16 +36,13 @@
 
 (defn create-measure!
   "Insert a new Measure whose table is derived from its `definition`; publishes `:event/measure-create` and returns
-  the hydrated Measure. The shared domain create path, so every caller goes through the same
-  [[metabase.measures.commands/CreateMeasure]] — the permission check, the name rule and the definition rules are
-  the command's, not this function's, and a second caller cannot arrive with them half-applied.
-
-  Event publishing stays above the door on purpose: calling [[metabase.measures.commands/mutate!]] directly would
-  write the row and silently skip the revision."
+  the hydrated Measure. The shared domain create path, used by the REST endpoint below and by MCP's
+  `measure_write`. Throws what [[metabase.measures.commands/mutate!]] throws when the command is refused."
   [{:keys [name description definition]}]
   (let [measure (api/check-500
                  (measures.commands/mutate! (measures.commands/request-context ::measures.commands/creating)
                                             (measures.commands/create-measure name description definition)))]
+    ;; above the door, not inside it: the revision is this path's, and a second writer should have to add it
     (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
     (t2/hydrate measure :creator)))
 
@@ -100,16 +97,14 @@
 
 (defn write-check-and-update-measure!
   "Update the Measure with `id` from `body`. Publishes `:event/measure-update` and returns the updated, hydrated
-  Measure. The shared domain update path, so every caller goes through the same
-  [[metabase.measures.commands/UpdateMeasure]] — including the write check, the non-blank revision message, and
-  the re-check of a definition that moves the Measure to another table.
+  Measure. The shared domain update path, used by the REST endpoint below and by MCP's `measure_write`. Throws
+  what [[metabase.measures.commands/mutate!]] throws when the command is refused.
 
-  Turning `body` into the command's `:changes` is the only thing left here: which keys of a request body count as a
-  change, and that `:description` present-and-nil means clear it while a nil `:name` means leave it alone, are
-  facts about the wire shape rather than rules about a Measure.
-
-  Event publishing stays above the door for the reason [[create-measure!]] gives."
+  A present-and-nil `:description` in `body` clears the description; a nil `:name`, `:archived` or `:definition`
+  leaves that column alone."
   [id {:keys [revision_message], :as body}]
+  ;; which keys of a request body count as a change is a fact about the wire shape, so it is selected here and
+  ;; handed to the command as its `:changes`
   (let [changes (u/select-keys-when body
                                     :present #{:description}
                                     :non-nil #{:archived :definition :name})]

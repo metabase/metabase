@@ -2,11 +2,10 @@
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
 
-  `insert-measure!` and `update-measure!` are reached only from the `apply!` of a
+  `insert-measure!` and `update-measure!` are `:discouraged-var`s, callable only from the `apply!` of a
   [[metabase.measures.commands]] command, so every editorial write to a Measure has had that command's checks run
-  over it. Two writers here are not behind that door yet -- `set-measure-dimensions!`, and the enterprise
-  replacement path's own update -- because neither has an actor to check against; a later pass gives them a purpose
-  of their own."
+  over it. `set-measure-dimensions!` is not behind that door, and neither is the enterprise replacement path's own
+  update: neither has an actor to check against."
   (:require
    [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]

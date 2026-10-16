@@ -115,6 +115,14 @@
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))
 
+(deftest update-a-measure-that-is-not-there-test
+  (testing "PUT /api/measure/:id"
+    (testing "a measure that is not there is still a 404, now from the command's own ::measure-exists check --
+              note the body is the command's uniform rejection, not api/write-check's \"Not found.\""
+      (is (=? {:message "Invalid UpdateMeasure"}
+              (mt/user-http-request :crowberto :put 404 (format "measure/%d" Integer/MAX_VALUE)
+                                    {:name "Updated Measure" :revision_message "renamed it"}))))))
+
 (deftest update-definition-table-test
   (testing "PUT /api/measure/:id"
     (testing "an updated definition must still be a valid MBQL query with a source table"

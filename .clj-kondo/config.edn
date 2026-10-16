@@ -362,6 +362,9 @@
    metabase.lib.core/->legacy-MBQL                    {:message "Conversion to legacy MBQL is discouraged, please use Lib to manipulate MBQL queries"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
    metabase.measures.commands/request-context         {:message "A measures command context is built at the request boundary, by metabase.measures.api, because the actor it carries is the whole authorization story. Pass the context you were given instead of building one"}
+   metabase.measures.commands/apply!                  {:message "Use metabase.measures.commands/mutate!, which checks the command first. Calling apply! writes without its checks having run"}
+   metabase.measures.db/insert-measure!               {:message "Insert a Measure through metabase.measures.commands/mutate! with a CreateMeasure, so its checks run over the write"}
+   metabase.measures.db/update-measure!               {:message "Update a Measure through metabase.measures.commands/mutate! with an UpdateMeasure, so its checks run over the write"}
    metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
@@ -986,6 +989,12 @@
   ;; the request boundary the measures command context is built at
   metabase.measures.api
   {:linters {:discouraged-var {metabase.measures.commands/request-context {:level :off}}}}
+
+  ;; the door itself: `mutate!` is what calls `apply!`, and an `apply!` is what calls the two writers
+  metabase.measures.commands
+  {:linters {:discouraged-var {metabase.measures.commands/apply!    {:level :off}
+                               metabase.measures.db/insert-measure! {:level :off}
+                               metabase.measures.db/update-measure! {:level :off}}}}
 
   app-db-namespaces
   {:linters {:metabase/t2-query-namespace {:level :off}}}

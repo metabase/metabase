@@ -154,15 +154,16 @@
     (let [creating (measures.commands/request-context ::measures.commands/creating)
           updating (measures.commands/request-context ::measures.commands/updating)]
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"not a creating context"
+           clojure.lang.ExceptionInfo #"Not a context for creating"
            (measures.commands/mutate! updating (measures.commands/create-measure "m" nil {}))))
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"not a updating context"
+           clojure.lang.ExceptionInfo #"Not a context for updating"
            (measures.commands/mutate! creating (measures.commands/update-measure 1 {:name "m"} "why"))))
       (testing "and neither does a context naming no purpose at all"
         (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"not a creating context"
-             (measures.commands/mutate! {} (measures.commands/create-measure "m" nil {}))))))))
+             clojure.lang.ExceptionInfo #"Not a context for creating"
+             (measures.commands/mutate! (assoc creating :purpose nil)
+                                        (measures.commands/create-measure "m" nil {}))))))))
 
 ;;; ------------------------------------------------ permission checks ----------------------------------------------
 
