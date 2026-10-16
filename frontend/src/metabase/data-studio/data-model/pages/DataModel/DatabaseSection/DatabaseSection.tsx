@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type ReactNode, useId, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -10,6 +10,7 @@ import {
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { getErrorMessage } from "metabase/api/utils";
+import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
@@ -17,7 +18,7 @@ import { dayjs } from "metabase/dayjs";
 import { NameDescriptionInput } from "metabase/metadata/components";
 import { PLUGIN_METADATA_GENERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import { Button, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import type {
   Database,
@@ -26,6 +27,8 @@ import type {
   ScheduleSettings,
   Table,
 } from "metabase-types/api";
+
+import { TableSectionGroup } from "../TableSection/TableSectionGroup";
 
 const NAME_MAX_LENGTH = 254;
 const WEEK_DAYS: ScheduleDayType[] = [
@@ -112,7 +115,7 @@ function DatabaseSectionContent({ database }: DatabaseSectionContentProps) {
   };
 
   return (
-    <Stack gap="xl" pb="xxl" data-testid="database-section">
+    <Stack gap="lg" pb="xxl" data-testid="database-section">
       <NameDescriptionInput
         description={database.description ?? ""}
         descriptionPlaceholder={t`Give this database a description`}
@@ -135,58 +138,70 @@ function DatabaseSectionContent({ database }: DatabaseSectionContentProps) {
         <PLUGIN_METADATA_GENERATION.DatabaseButton databaseId={database.id} />
       </Group>
 
-      <Stack gap="md" data-testid="database-syncing-section">
-        <Group justify="space-between" wrap="nowrap">
-          <Title order={4} fw="normal">{t`Syncing`}</Title>
+      <TableSectionGroup
+        title={t`Syncing`}
+        actions={
           <Button
-            size="sm"
+            size="compact-md"
             leftSection={<Icon name="sync" />}
             loading={isSyncing}
             onClick={handleSync}
           >
             {t`Sync now`}
           </Button>
-        </Group>
-        <DetailRow
-          label={t`Last synced`}
-          value={getLastSyncedLabel(database, lastSyncedAt)}
-        />
-        <DetailRow
-          label={t`Schedule`}
-          value={getScheduleLabel(database.schedules?.metadata_sync)}
-        />
-      </Stack>
+        }
+      >
+        <Stack gap="lg" data-testid="database-syncing-section">
+          <MetadataRow
+            label={t`Last synced`}
+            value={getLastSyncedValue(database, lastSyncedAt)}
+          />
+          <MetadataRow
+            label={t`Schedule`}
+            value={getScheduleLabel(database.schedules?.metadata_sync)}
+          />
+        </Stack>
+      </TableSectionGroup>
 
-      <Stack gap="md" data-testid="database-stats-section">
-        <Title order={4} fw="normal">{t`Stats`}</Title>
-        <DetailRow label={t`Schemas`} value={formatNumber(stats.schemas)} />
-        <DetailRow label={t`Tables`} value={formatNumber(stats.tables)} />
-        <DetailRow label={t`Fields`} value={formatNumber(stats.fields)} />
-        <DetailRow
-          label={t`Rows`}
-          value={
-            stats.rows != null
-              ? formatNumber(stats.rows, { compact: true })
-              : t`Unknown`
-          }
-        />
-      </Stack>
+      <TableSectionGroup title={t`Stats`}>
+        <Stack gap="lg" data-testid="database-stats-section">
+          <MetadataRow label={t`Schemas`} value={formatNumber(stats.schemas)} />
+          <MetadataRow label={t`Tables`} value={formatNumber(stats.tables)} />
+          <MetadataRow label={t`Fields`} value={formatNumber(stats.fields)} />
+          <MetadataRow
+            label={t`Rows`}
+            value={
+              stats.rows != null
+                ? formatNumber(stats.rows, { compact: true })
+                : t`Unknown`
+            }
+          />
+        </Stack>
+      </TableSectionGroup>
     </Stack>
   );
 }
 
-type DetailRowProps = {
+type MetadataRowProps = {
   label: string;
-  value: string;
+  value: ReactNode;
 };
 
-function DetailRow({ label, value }: DetailRowProps) {
+function MetadataRow({ label, value }: MetadataRowProps) {
+  const id = useId();
   return (
-    <Group justify="space-between" wrap="nowrap" gap="md">
-      <Text fw="bold">{label}</Text>
-      <Text fw="bold" ta="right">
-        {value}
+    <Group justify="space-between" gap="xl" wrap="nowrap">
+      <Text size="md" c="text-primary" id={id} flex="1 0 auto">
+        {label}
       </Text>
+      <Ellipsified
+        size="md"
+        c="text-primary"
+        aria-labelledby={id}
+        tooltipProps={{ maw: "unset" }}
+      >
+        {value}
+      </Ellipsified>
     </Group>
   );
 }
@@ -230,17 +245,17 @@ function getLastSyncedAt(tables: Table[]): string | null {
   }, null);
 }
 
-function getLastSyncedLabel(
+function getLastSyncedValue(
   database: Database,
   lastSyncedAt: string | null,
-): string {
+): ReactNode {
   if (isSyncInProgress(database)) {
     return t`Syncing…`;
   }
   if (lastSyncedAt == null) {
     return t`Never`;
   }
-  return dayjs(lastSyncedAt).format("MMM D, h:mm A");
+  return <DateTime value={lastSyncedAt} />;
 }
 
 function getScheduleLabel(schedule: ScheduleSettings | null | undefined) {
