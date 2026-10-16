@@ -347,6 +347,17 @@
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
 
+(deftest sandbox-on-sensitive-field-test
+  (testing "a sandbox can filter on a :sensitive column even though the sandboxed user can't reference it"
+    (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :sensitive}
+      (met/with-gtaps! {:gtaps {:venues (venues-price-mbql-gtap-def)}, :attributes {"price" 1}}
+        (is (= [[22]]
+               (run-venues-count-query)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"not available for querying"
+             (qp/process-query (mt/mbql-query venues {:fields [$price]}))))))))
+
 (deftest e2e-test-3
   (mt/test-drivers (e2e-test-drivers)
     (testing (str "When processing a query that requires a user attribute and that user attribute isn't there, throw an "
