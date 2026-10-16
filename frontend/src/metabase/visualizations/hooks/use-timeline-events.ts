@@ -33,6 +33,8 @@ interface UseTimelineEventsProps {
   isDashboard?: boolean;
   width?: number;
   height?: number;
+  // Neither fetch nor return events, even ones passed in.
+  skip?: boolean;
 }
 
 interface UseTimelineEventsResult {
@@ -60,8 +62,9 @@ export function useTimelineEvents({
   isDashboard = false,
   width = 0,
   height = 0,
+  skip = false,
 }: UseTimelineEventsProps): UseTimelineEventsResult {
-  const isEnabled = isTimelineEventsEnabled(settings);
+  const isEnabled = !skip && isTimelineEventsEnabled(settings);
   const visibility = isEnabled
     ? (timelineEventsVisibility ??
       getRecordedTimelineEventsVisibility(settings))

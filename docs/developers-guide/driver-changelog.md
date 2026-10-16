@@ -10,6 +10,13 @@ title: Driver interface changelog
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
   in the docstring of this method.
 
+- `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
+  delete their `defmethod`, which no longer compiles.
+
+- `driver/native-query-deps` can now return `{:unresolved-table {:schema ... :table ...}}` for a table the query names
+  that matches no synced table or transform target. Dependency tracking recomputes such a query once sync finds the
+  table. Drivers built on `:sql` get this from `metabase.sql-tools.core/referenced-tables`.
+
 ## Metabase 0.64.0
 
 - Date and time functions that depended on the `start-of-week` setting now take a `time-config` map as their first

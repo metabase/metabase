@@ -2,7 +2,9 @@
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as resources]
+   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.api.common :as api]
+   [metabase.graph.core :as graph]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
@@ -68,10 +70,28 @@
        (sort-by (juxt :database_name :schema :name))
        vec))
 
+(defn- resource-table-ids
+  "The IDs of the tables the cards and actions in the resource collection with `collection-id` read, directly or
+  through the cards, measures, segments and snippets they use, with a transform they name standing for its output."
+  [collection-id]
+  (let [nodes (models.dependency/entities->nodes {:card   (data-apps.db/collection-card-ids collection-id)
+                                                  :action (data-apps.db/collection-action-ids collection-id)})
+        graph (models.dependency/filtered-graph-dependencies nil {:types #{:action :card :measure :segment :snippet}})
+        {:keys [table transform]} (models.dependency/group-nodes (graph/transitive graph (vec nodes)))
+        outputs (->> (models.dependency/entities->nodes {:transform transform})
+                     models.dependency/direct-dependents
+                     vals
+                     (apply concat)
+                     models.dependency/group-nodes
+                     :table)]
+    (vec (into (set table) outputs))))
+
 (defn permission-warnings
   "Missing table access for assigned groups, including access inherited from All Users."
-  [{app-id :id table-ids :table_ids}]
-  (let [assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))]
+  [{app-id :id collection-id :resource_collection_id}]
+  (let [assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))
+        table-ids    (when (and (seq assigned-ids) collection-id)
+                       (resource-table-ids collection-id))]
     (if (and (seq assigned-ids) (seq table-ids))
       (let [tables       (table-details table-ids)
             all-users-id (:id (perms/all-users-group))

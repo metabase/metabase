@@ -2297,6 +2297,7 @@
               metabase.query-processor.reducible
               metabase.query-processor.result-serialization
               metabase.query-processor.schema
+              metabase.query-processor.sensitive-fields
               metabase.query-processor.setup
               metabase.query-processor.store
               metabase.query-processor.streaming
@@ -3823,11 +3824,9 @@
            api-scope
            audit-app
            collections
-           driver
            events
            lib
            lib.be
-           lib.metadata
            lib.schema
            lib.types
            metabot
@@ -3842,7 +3841,9 @@
            system
            users
            util
+           util.graph
            warehouse-schema-overlay
+           enterprise/dependencies
            enterprise/serialization}
    :model-imports #{:model/Action
                     :model/Card
@@ -3852,7 +3853,6 @@
                     :model/Field
                     :model/Measure
                     :model/Permissions
-                    :model/QueryAction
                     :model/Table}
    :model-exports #{:model/DataApp}}
 

@@ -219,9 +219,13 @@
   (before-delete* model instance))
 
 (defenterprise after-database-sync
-  "Mark the dependents of the Tables of the Database with `database-id` that changed since they were analyzed."
+  "Mark the dependents of the Tables of the Database with `database-id` that changed since they were analyzed, and the
+  entities reading from it that name tables that matched nothing, which sync may have found now."
   :feature :dependencies
   [database-id]
+  (doseq [[entity-type entity-ids] (dependencies.db/unresolved-table-entity-ids database-id)
+          entity-id                entity-ids]
+    (mark-changed! entity-type entity-id))
   (when (deps.findings/mark-transitive-dependents-stale!
          {:table (dependencies.db/table-ids-with-outdated-findings database-id)})
     (trigger-jobs!)))

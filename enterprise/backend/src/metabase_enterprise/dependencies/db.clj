@@ -737,6 +737,30 @@
 
 ;;; ------------------------------------------------ Dependency status ------------------------------------------------
 
+(def ^:private entity-database-queries
+  "For each entity type that can hold a native query, a query of the IDs of its entities reading from `db-id`."
+  {:card      (fn [db-id] ^:allow-subquery {:select [:id]
+                                            :from   [(t2/table-name :model/Card)]
+                                            :where  [:= :database_id db-id]})
+   :transform (fn [db-id] ^:allow-subquery {:select [:id]
+                                            :from   [(t2/table-name :model/Transform)]
+                                            :where  [:= :source_database_id db-id]})
+   :action    (fn [db-id] ^:allow-subquery {:select [:action_id]
+                                            :from   [(t2/table-name :model/QueryAction)]
+                                            :where  [:= :database_id db-id]})})
+
+(mu/defn unresolved-table-entity-ids :- [:map-of ::deps.dependency-types/dependency-types [:set ms/PositiveInt]]
+  "The IDs, by entity type, of the entities reading from the Database with `db-id` that name tables matching nothing."
+  [db-id :- ::lib.schema.id/database]
+  (into {}
+        (keep (fn [[entity-type entity-ids-query]]
+                (when-let [ids (not-empty (t2/select-fn-set :entity_id :model/DependencyStatus
+                                                            :entity_type       entity-type
+                                                            :unresolved_tables true
+                                                            :entity_id         [:in (entity-ids-query db-id)]))]
+                  [entity-type ids])))
+        entity-database-queries))
+
 (mu/defn dependency-status
   "The DependencyStatus of the entity `entity-type` `entity-id`, or nil."
   [entity-type :- EntityType
@@ -778,10 +802,11 @@
 
 (mu/defn upsert-dependency-status!
   "Upsert the DependencyStatus of `entity-type` `entity-id`, setting stale=false, `dependency_analysis_version` to
-  `current-version`, and clearing any failure state."
-  [entity-type     :- EntityType
-   entity-id       :- ms/PositiveInt
-   current-version :- ms/PositiveInt]
+  `current-version`, `unresolved_tables` to `unresolved-tables?`, and clearing any failure state."
+  [entity-type        :- EntityType
+   entity-id          :- ms/PositiveInt
+   current-version    :- ms/PositiveInt
+   unresolved-tables? :- :boolean]
   (mdb/update-or-insert!
    :model/DependencyStatus
    {:entity_type entity-type :entity_id entity-id}
@@ -789,7 +814,8 @@
      {:dependency_analysis_version current-version
       :stale false
       :fail_count 0
-      :next_retry_at nil})))
+      :next_retry_at nil
+      :unresolved_tables unresolved-tables?})))
 
 (mu/defn record-dependency-status-failure!
   "Upsert the DependencyStatus of `entity-type` `entity-id`, creating it if needed. `update-fn` receives the
