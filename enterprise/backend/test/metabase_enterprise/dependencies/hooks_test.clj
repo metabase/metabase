@@ -53,6 +53,36 @@
             (t2/update! :model/Card card-id {:dataset_query (table-query :orders)})
             (is (finding-stale?))))))))
 
+(deftest card-update-marks-only-the-jobs-its-columns-matter-to-test
+  (testing "a card update marks and triggers only the jobs that read the columns it changes"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/DependencyStatus :model/AnalysisFinding :model/ResultMetadataStatus]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
+          (deps.analysis-finding/upsert-analysis! :card card-id true [])
+          (let [submitted (atom [])
+                update!   (fn [changes]
+                            (reset! submitted [])
+                            (t2/delete! :model/DependencyStatus :entity_type "card" :entity_id card-id)
+                            (t2/delete! :model/ResultMetadataStatus :entity_type "card" :entity_id card-id)
+                            (deps.analysis-finding/upsert-analysis! :card card-id true [])
+                            (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
+                              (deps.test/do-with-immediate-hook-writes #(t2/update! :model/Card card-id changes)))
+                            {:jobs              (into #{} (mapcat :jobs) @submitted)
+                             :dependencies      (stale? :card card-id)
+                             :analysis-findings (t2/select-one-fn :stale :model/AnalysisFinding
+                                                                  :analyzed_entity_type :card :analyzed_entity_id card-id)
+                             :result-metadata   (t2/exists? :model/ResultMetadataStatus
+                                                            :entity_type :card :entity_id card-id :stale true)})]
+            (testing "parameters"
+              (is (= {:jobs #{:dependencies} :dependencies true :analysis-findings false :result-metadata false}
+                     (update! {:parameters [{:id "p" :type :category :slug "p" :name "P"}]}))))
+            (testing "query"
+              (is (= {:jobs              #{:dependencies :analysis-findings :result-metadata}
+                      :dependencies      true
+                      :analysis-findings true
+                      :result-metadata   true}
+                     (update! {:dataset_query (table-query :orders)}))))))))))
+
 (deftest card-update-without-feature-test
   (testing "without the dependencies feature the hooks do nothing"
     (mt/with-premium-features #{}
