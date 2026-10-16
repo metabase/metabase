@@ -170,6 +170,7 @@
      indexed-entities
      core.initialization-status
      interestingness
+     library
      analytics.internal-stats
      metabot.llm
      session.login-history
