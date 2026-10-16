@@ -571,31 +571,24 @@ describe("NotificationsAdminPage", () => {
         response: () => countsRefetch.promise,
       });
 
-      try {
-        await userEvent.click(
-          screen.getByRole("checkbox", { name: "Select all" }),
-        );
-        await userEvent.click(
-          within(screen.getByTestId("toast-card")).getByRole("button", {
-            name: "Delete",
-          }),
-        );
-        await userEvent.click(
-          within(await screen.findByTestId("confirm-modal")).getByRole(
-            "button",
-            {
-              name: "Delete",
-            },
-          ),
-        );
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: "Select all" }),
+      );
+      await userEvent.click(
+        within(screen.getByTestId("toast-card")).getByRole("button", {
+          name: "Delete",
+        }),
+      );
+      await userEvent.click(
+        within(await screen.findByTestId("confirm-modal")).getByRole("button", {
+          name: "Delete",
+        }),
+      );
 
-        await waitFor(() => expect(getCountCalls()).toHaveLength(2));
-        expect(within(allTab).getByText("1")).toBeInTheDocument();
-        act(() => countsRefetch.resolve({ all: 0, failing: 0, ownerless: 0 }));
-        expect(await within(allTab).findByText("0")).toBeInTheDocument();
-      } finally {
-        countsRefetch.resolve({ all: 0, failing: 0, ownerless: 0 });
-      }
+      await waitFor(() => expect(getCountCalls()).toHaveLength(2));
+      expect(within(allTab).getByText("1")).toBeInTheDocument();
+      act(() => countsRefetch.resolve({ all: 0, failing: 0, ownerless: 0 }));
+      expect(await within(allTab).findByText("0")).toBeInTheDocument();
     });
   });
 
