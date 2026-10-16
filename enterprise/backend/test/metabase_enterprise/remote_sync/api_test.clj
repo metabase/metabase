@@ -2475,3 +2475,24 @@
             (is (true? (settings/remote-sync-transforms)))
             (finally
               (test-helpers/set-library-remote-synced! false))))))))
+
+(deftest settings-setup-with-empty-library-and-transforms-has-nothing-to-push-test
+  (testing "Setting up read-write remote sync with an empty Library, no transforms, and the built-in Python library
+            unchanged syncs the Library and transforms and leaves nothing to push"
+    (mt/with-temporary-setting-values [remote-sync-url        nil
+                                       remote-sync-token      nil
+                                       remote-sync-branch     nil
+                                       remote-sync-type       :read-only
+                                       remote-sync-transforms false]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  impl/finish-remote-config!   (constantly nil)]
+        (try
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                {:remote-sync-url    "https://github.com/test/repo.git"
+                                 :remote-sync-type   :read-write
+                                 :remote-sync-branch "main"})
+          (is (=? {:is_remote_synced true} (t2/select-one :model/Collection :type "library")))
+          (is (true? (settings/remote-sync-transforms)))
+          (is (not (remote-sync.object/dirty?)))
+          (finally
+            (test-helpers/set-library-remote-synced! false)))))))
