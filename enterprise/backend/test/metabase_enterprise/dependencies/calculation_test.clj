@@ -704,7 +704,7 @@
                                                                                   :display-name "Venues"
                                                                                   :card-id      card-id}}))}]
       (is (= {:card  #{card-id}
-              :table #{(mt/id :checkins) (mt/id :venues)}}
+              :table #{(mt/id :checkins)}}
              (calculation/calculate-deps :action (actions/select-action :id action-id)))))))
 
 (deftest upstream-deps-implicit-action-test
