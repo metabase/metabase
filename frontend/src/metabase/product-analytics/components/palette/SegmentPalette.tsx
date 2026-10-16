@@ -134,7 +134,7 @@ type PaletteSectionProps = {
   onSelect?: (segment: PaletteSegment) => void;
 };
 
-type ModalState = { draft?: SegmentDraft } | null;
+type ModalState = { draft: SegmentDraft } | null;
 
 const PaletteSection = ({
   title,
@@ -176,9 +176,12 @@ const PaletteSection = ({
           onSelect={
             onSelect !== undefined ? () => onSelect(segment) : undefined
           }
-          onSaveDraft={() =>
-            setModal({ draft: drafts.find((d) => d.id === segment.key) })
-          }
+          onSaveDraft={() => {
+            const draft = drafts.find((d) => d.id === segment.key);
+            if (draft !== undefined) {
+              setModal({ draft });
+            }
+          }}
           onDiscardDraft={() => removeDraft(segment.key)}
         />
       ))}
@@ -199,35 +202,19 @@ const PaletteSection = ({
           }}
         />
       )}
-      <Group gap="xs" mt="xs">
+      <Box mt="xs">
         <Tooltip label={disabledHint} disabled={disabledHint === undefined}>
           <Button
             size="compact-sm"
             variant="subtle"
             leftSection={<Icon name="add" />}
-            disabled={!canEdit}
-            onClick={() => setModal({})}
-          >
-            {t`New segment`}
-          </Button>
-        </Tooltip>
-        <Tooltip
-          label={
-            disabledHint ??
-            t`Set up conditions to use now, without saving a segment.`
-          }
-        >
-          <Button
-            size="compact-sm"
-            variant="subtle"
-            leftSection={<Icon name="pencil" />}
             disabled={!canEdit || isDrafting}
             onClick={() => setIsDrafting(true)}
           >
-            {t`Draft one`}
+            {t`Draft a segment`}
           </Button>
         </Tooltip>
-      </Group>
+      </Box>
       {modal !== null && table !== undefined && tableQuery !== undefined && (
         <NewSegmentModal
           table={table}
@@ -235,9 +222,7 @@ const PaletteSection = ({
           draft={modal.draft}
           onClose={() => setModal(null)}
           onCreated={(segment) => {
-            if (modal.draft !== undefined) {
-              removeDraft(modal.draft.id);
-            }
+            removeDraft(modal.draft.id);
             setModal(null);
             sendToast({ message: t`Created the segment “${segment.name}”` });
           }}

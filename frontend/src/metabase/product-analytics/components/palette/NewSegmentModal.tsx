@@ -26,13 +26,13 @@ const STAGE_INDEX = -1;
 type NewSegmentModalProps = {
   table: Table;
   tableQuery: Lib.Query;
-  /** Starts from a draft's name and conditions. */
-  draft?: SegmentDraft;
+  /** The draft being saved as a segment. */
+  draft: SegmentDraft;
   onClose: () => void;
   onCreated: (segment: Segment) => void;
 };
 
-/** Creates a segment on the table from a name, a description and conditions. */
+/** Saves a draft as a segment on the table, with a name and a description. */
 export const NewSegmentModal = ({
   table,
   tableQuery,
@@ -74,7 +74,7 @@ export const NewSegmentModal = ({
     <Modal
       opened
       size="lg"
-      title={t`New segment on ${table.display_name}`}
+      title={t`Save as a segment on ${table.display_name}`}
       onClose={onClose}
     >
       <Stack gap="lg" pt="sm">
@@ -108,7 +108,7 @@ export const NewSegmentModal = ({
             loading={isLoading}
             onClick={handleSubmit}
           >
-            {t`Create segment`}
+            {t`Save segment`}
           </Button>
         </Group>
       </Stack>
