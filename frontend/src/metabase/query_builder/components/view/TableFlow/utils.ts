@@ -1,6 +1,9 @@
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  ConcreteTableId,
   DashCardId,
   Dashboard,
   RowValues,
@@ -10,6 +13,19 @@ export type XrayChart = {
   id: DashCardId;
   card: Card;
 };
+
+/**
+ * The table the gallery x-rays: the source table of a GUI question, or `null`
+ * for native questions and questions built on other questions.
+ */
+export function getGalleryTableId(question: Question): ConcreteTableId | null {
+  const query = question.query();
+  if (Lib.queryDisplayInfo(query).isNative) {
+    return null;
+  }
+  const sourceId = Lib.sourceTableOrCardId(query);
+  return typeof sourceId === "number" ? sourceId : null;
+}
 
 /**
  * Returns the chart-backed cards of an x-ray dashboard in layout order,

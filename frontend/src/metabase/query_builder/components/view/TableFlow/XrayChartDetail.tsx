@@ -19,10 +19,16 @@ import type { XrayChart } from "./utils";
 
 type XrayChartDetailProps = {
   chart: XrayChart;
+  /** CSS height of the data table card. */
+  tableHeight: string;
   onClose: () => void;
 };
 
-export function XrayChartDetail({ chart, onClose }: XrayChartDetailProps) {
+export function XrayChartDetail({
+  chart,
+  tableHeight,
+  onClose,
+}: XrayChartDetailProps) {
   const { rawSeries, error } = useXrayChartSeries(chart);
   const tableSeries: RawSeries | null =
     rawSeries?.map(({ card, data }) => ({
@@ -55,8 +61,10 @@ export function XrayChartDetail({ chart, onClose }: XrayChartDetailProps) {
           <SeriesVisualization rawSeries={rawSeries} error={error} />
         </Box>
       </div>
-      <div className={cx(S.card, S.tableCard)}>
-        <SeriesVisualization rawSeries={tableSeries} error={error} />
+      <div className={cx(S.card, S.tableCard)} style={{ height: tableHeight }}>
+        <div className={S.tableArea}>
+          <SeriesVisualization rawSeries={tableSeries} error={error} />
+        </div>
       </div>
     </>
   );

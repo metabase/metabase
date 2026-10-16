@@ -14,7 +14,6 @@ import {
   type QueryVisualizationProps,
 } from "metabase/querying/components/QueryVisualization";
 import type { SelectionRange } from "metabase/querying/editor/types";
-import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -30,9 +29,8 @@ import type {
 
 import { useVisualizationResultQBProps } from "../../../../hooks";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
-import { ViewFooter } from "../../ViewFooter";
 import { TableFlow } from "../../TableFlow/TableFlow";
-import { searchRows } from "../../TableFlow/utils";
+import { getGalleryTableId, searchRows } from "../../TableFlow/utils";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
@@ -45,6 +43,9 @@ interface ViewMainContainerProps {
   question: Question;
   result?: QueryVisualizationProps["result"];
   rawSeries?: QueryVisualizationProps["rawSeries"];
+  isGalleryOpen: boolean;
+  /** Height of the scrollable area below the header. */
+  viewportHeight: number;
   query: NativeQuery;
 
   nativeEditorSelectedText?: string;
@@ -113,14 +114,18 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     updateQuestion,
     result,
     rawSeries,
+    isGalleryOpen,
+    viewportHeight,
   } = props;
+
+  const isTableDisplay = question.display() === "table";
 
   const { onZoomRow, ...visualizationResultProps } =
     useVisualizationResultQBProps();
   const [searchText, setSearchText] = useState("");
   const searchedResultProps = useMemo(() => {
     const rowSearch = result?.data
-      ? searchRows(result.data.rows, searchText)
+      ? searchRows(result.data.rows, isTableDisplay ? searchText : "")
       : null;
     if (!rowSearch) {
       return { result, rawSeries, onZoomRow };
@@ -138,10 +143,9 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       onZoomRow: (rowIndex: number) =>
         onZoomRow(rowSearch.sourceIndexes[rowIndex] ?? rowIndex),
     };
-  }, [result, rawSeries, onZoomRow, searchText]);
+  }, [result, rawSeries, onZoomRow, searchText, isTableDisplay]);
 
   const { ref: mainRef, height: mainHeight } = useElementSize();
-  const { ref: footerRef, height: footerHeight } = useElementSize();
 
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
@@ -152,8 +156,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { isNative } = Lib.queryDisplayInfo(query);
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
-  const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;
-  const sourceId = isNative ? null : Lib.sourceTableOrCardId(query);
+  const galleryTableId = getGalleryTableId(question);
 
   const visualization = (
     <QueryVisualization
@@ -182,7 +185,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       ref={mainRef}
     >
       {isNative ? (
-        <ViewNativeQueryEditor {...props} availableHeight={availableHeight} />
+        <ViewNativeQueryEditor {...props} availableHeight={mainHeight} />
       ) : (
         <SyncedParametersList
           className={ViewMainContainerS.StyledSyncedParametersList}
@@ -203,8 +206,12 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         </DebouncedFrame>
       ) : (
         <TableFlow
-          tableId={typeof sourceId === "number" ? sourceId : null}
-          searchText={searchText}
+          key={galleryTableId}
+          tableId={galleryTableId}
+          isGalleryOpen={isGalleryOpen}
+          viewportHeight={viewportHeight}
+          rawSeries={rawSeries ?? null}
+          searchText={isTableDisplay ? searchText : null}
           onSearchTextChange={setSearchText}
         >
           <DebouncedFrame
@@ -217,10 +224,6 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         </TableFlow>
       )}
       <ObjectDetailSidesheet />
-      <Box ref={footerRef} className={ViewMainContainerS.Footer}>
-        <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
-        <ViewFooter className={CS.flexNoShrink} />
-      </Box>
     </Box>
   );
 };

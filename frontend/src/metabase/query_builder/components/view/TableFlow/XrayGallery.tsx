@@ -46,12 +46,16 @@ export function useXrayChartSeries({ card }: XrayChart): XrayChartSeries {
 
 type XrayGalleryProps = {
   tableId: ConcreteTableId;
+  /** The question's results, shown as the leading raw records card. */
+  rawSeries: RawSeries | null;
+  /** `null` selects the raw records card. */
   selectedChartId: DashCardId | null;
-  onSelectChart: (chart: XrayChart) => void;
+  onSelectChart: (chart: XrayChart | null) => void;
 };
 
 export function XrayGallery({
   tableId,
+  rawSeries,
   selectedChartId,
   onSelectChart,
 }: XrayGalleryProps) {
@@ -59,22 +63,33 @@ export function XrayGallery({
     subPath: `table/${tableId}`,
   });
   const charts = useMemo(() => getXrayCharts(dashboard), [dashboard]);
-
-  if (error) {
-    return (
-      <Text c="text-secondary">{t`Couldn't load the gallery for this table.`}</Text>
-    );
-  }
+  const rawRecordsSeries = useMemo<RawSeries | null>(
+    () =>
+      rawSeries?.map(({ card, data }) => ({
+        card: { ...card, display: "table" },
+        data,
+      })) ?? null,
+    [rawSeries],
+  );
 
   return (
     <div className={S.galleryStrip} data-testid="xray-gallery">
-      {dashboard ? (
+      <GalleryThumbnail
+        title={t`Raw records`}
+        rawSeries={rawRecordsSeries}
+        error={null}
+        isSelected={selectedChartId == null}
+        onSelect={() => onSelectChart(null)}
+      />
+      {error ? (
+        <Text c="text-secondary">{t`Couldn't load x-rays for this table.`}</Text>
+      ) : dashboard ? (
         charts.map((chart) => (
           <XrayThumbnail
             key={chart.id}
             chart={chart}
             isSelected={chart.id === selectedChartId}
-            onSelect={onSelectChart}
+            onSelect={() => onSelectChart(chart)}
           />
         ))
       ) : (
@@ -89,12 +104,38 @@ export function XrayGallery({
 type XrayThumbnailProps = {
   chart: XrayChart;
   isSelected: boolean;
-  onSelect: (chart: XrayChart) => void;
+  onSelect: () => void;
 };
 
 function XrayThumbnail({ chart, isSelected, onSelect }: XrayThumbnailProps) {
   const { rawSeries, error } = useXrayChartSeries(chart);
 
+  return (
+    <GalleryThumbnail
+      title={chart.card.name}
+      rawSeries={rawSeries}
+      error={error}
+      isSelected={isSelected}
+      onSelect={onSelect}
+    />
+  );
+}
+
+type GalleryThumbnailProps = {
+  title: string;
+  rawSeries: RawSeries | null;
+  error: string | null;
+  isSelected: boolean;
+  onSelect: () => void;
+};
+
+function GalleryThumbnail({
+  title,
+  rawSeries,
+  error,
+  isSelected,
+  onSelect,
+}: GalleryThumbnailProps) {
   return (
     <div
       role="button"
@@ -103,16 +144,16 @@ function XrayThumbnail({ chart, isSelected, onSelect }: XrayThumbnailProps) {
       className={cx(S.card, S.galleryCard, {
         [S.galleryCardSelected]: isSelected,
       })}
-      onClick={() => onSelect(chart)}
+      onClick={onSelect}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          onSelect(chart);
+          onSelect();
         }
       }}
     >
       <Text fw="bold" size="sm" truncate="end">
-        {chart.card.name}
+        {title}
       </Text>
       <Box className={S.chartArea}>
         {rawSeries ? (

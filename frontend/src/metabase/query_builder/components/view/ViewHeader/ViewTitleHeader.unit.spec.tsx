@@ -197,7 +197,6 @@ function setup({
     isSaved: false,
     isModelOrMetric: false,
     isNativeEditorOpen: false,
-    isShowingSummarySidebar: false,
     isResultDirty: false,
     isShowingQuestionInfoSidebar: false,
     areFiltersExpanded: false,

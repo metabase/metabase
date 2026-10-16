@@ -46,7 +46,6 @@ interface ViewTitleHeaderProps {
   isRunnable: boolean;
   isRunning: boolean;
   isNativeEditorOpen: boolean;
-  isShowingSummarySidebar: boolean;
   isDirty: boolean;
   isResultDirty: boolean;
   isActionListVisible: boolean;
@@ -57,8 +56,6 @@ interface ViewTitleHeaderProps {
   }) => void;
   cancelQuery: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
-  editSummary: () => void;
-  onCloseSummary: () => void;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
     opts?: {
@@ -71,6 +68,8 @@ interface ViewTitleHeaderProps {
   onCollapseFilters: () => void;
   isShowingQuestionInfoSidebar: boolean;
   onCloseQuestionInfo: () => void;
+  isGalleryOpen?: boolean;
+  onToggleGallery?: () => void;
 
   updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
 
@@ -95,24 +94,22 @@ export function ViewTitleHeader({
   isRunnable,
   isRunning,
   isNativeEditorOpen,
-  isShowingSummarySidebar,
   isDirty,
   isResultDirty,
   isActionListVisible,
   runQuestionQuery,
   cancelQuery,
-  editSummary,
-  onCloseSummary,
   setQueryBuilderMode,
   isShowingQuestionInfoSidebar,
   onCloseQuestionInfo,
+  isGalleryOpen,
+  onToggleGallery,
   className,
   style,
 }: ViewTitleHeaderProps): React.JSX.Element {
-  const [
-    areFiltersExpanded,
-    { turnOn: expandFilters, turnOff: collapseFilters },
-  ] = useToggle(!question?.isSaved());
+  const [areFiltersExpanded, { turnOn: expandFilters }] = useToggle(
+    !question?.isSaved(),
+  );
 
   const previousQuestion = usePrevious(question);
 
@@ -187,26 +184,21 @@ export function ViewTitleHeader({
           isRunnable={isRunnable}
           isRunning={isRunning}
           isNativeEditorOpen={isNativeEditorOpen}
-          isShowingSummarySidebar={isShowingSummarySidebar}
+          isGalleryOpen={isGalleryOpen}
+          onToggleGallery={onToggleGallery}
           isDirty={isDirty}
           isResultDirty={isResultDirty}
           isActionListVisible={isActionListVisible}
           runQuestionQuery={runQuestionQuery}
           cancelQuery={cancelQuery}
           onOpenModal={onOpenModal}
-          editSummary={editSummary}
-          onCloseSummary={onCloseSummary}
           setQueryBuilderMode={setQueryBuilderMode}
           toggleBookmark={toggleBookmark}
           onOpenQuestionInfo={onOpenQuestionInfo}
           onCloseQuestionInfo={onCloseQuestionInfo}
           isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          isObjectDetail={isObjectDetail}
           isSaved={isSaved}
           isModelOrMetric={isModelOrMetric}
-          areFiltersExpanded={areFiltersExpanded}
-          onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
         />
       </ViewSection>
 

@@ -1,5 +1,6 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import { type ComponentProps, forwardRef } from "react";
+import { type ComponentProps, forwardRef, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -94,6 +95,9 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
   function ViewInnerImpl(propsIn, ref) {
     const dispatch = useDispatch();
     const setCollection = useSetCollection();
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const { ref: rootRef, height: rootHeight } = useElementSize();
+    const { ref: headerRef, height: headerHeight } = useElementSize();
     const props: ViewProps = {
       ...propsIn,
       onMove: async (question, newCollection) => {
@@ -274,8 +278,17 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
         <Flex
           className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
           data-testid="query-builder-root"
+          ref={rootRef}
         >
-          {isHeaderVisible && <ViewHeaderContainer {...props} />}
+          {isHeaderVisible && (
+            <div ref={headerRef}>
+              <ViewHeaderContainer
+                {...props}
+                isGalleryOpen={isGalleryOpen}
+                onToggleGallery={() => setIsGalleryOpen(!isGalleryOpen)}
+              />
+            </div>
+          )}
 
           <Flex className={S.QueryBuilderContentContainer}>
             {!isNative && (
@@ -305,6 +318,8 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               {...props}
               showLeftSidebar={showLeftSidebar}
               showRightSidebar={showRightSidebar}
+              isGalleryOpen={isGalleryOpen}
+              viewportHeight={rootHeight - (isHeaderVisible ? headerHeight : 0)}
             />
             <ViewSidebar
               side="right"
