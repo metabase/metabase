@@ -110,13 +110,13 @@
    :data       nil
    :metrics    nil
    :dashboards nil
-   :sales      "data/sales/_collection.yaml"
+   :sales      "data/sales/collection.yaml"
    :segment    "data/sales/orders.table/big_orders.segment.yaml"
    :mrr        "metrics/mrr.metric.yaml"
    :kpis       "dashboards/kpis.dashboard.yaml"
    :daily      "collections/ops/daily.dashboard.yaml"
    :weekly     "collections/ops/daily.dashboard/weekly_actives.question.yaml"
-   :ops        "collections/ops/_collection.yaml"
+   :ops        "collections/ops/collection.yaml"
    :model      "collections/ops/orders_model.model.yaml"
    :refund     "collections/ops/refund.action.yaml"
    :launches   "collections/ops/launches.timeline.yaml"
@@ -124,7 +124,7 @@
    :notes      "collections/ops/q3_notes.document.yaml"
    :top        "collections/ops/q3_notes.document/top_customers.question.yaml"
    :active     "snippets/active_users.snippet.yaml"
-   :shared     "snippets/shared/_collection.yaml"
+   :shared     "snippets/shared/collection.yaml"
    :spenders   "snippets/shared/big_spenders.snippet.yaml"
    :restart    "data_actions/restart_job.action.yaml"
    :transform  "transforms/dedupe_users.transform.yaml"
@@ -229,7 +229,7 @@
                                                    :entity_id     (:entity_id daily)
                                                    :name          "Daily"
                                                    :collection_id (:entity_id ops)})))
-        (is (= "collections/ops/daily_dashboard/_collection.yaml" (path-of "Collection" clash)))
+        (is (= "collections/ops/daily_dashboard/collection.yaml" (path-of "Collection" clash)))
         (is (= "collections/ops/v1_2_totals_question.question.yaml" (path-of "Card" dotted)))))))
 
 (deftest data-app-resources-are-in-the-apps-folder-test
@@ -243,7 +243,7 @@
               app-path   (storage.util/entity-file-path ctx (serdes/extract-one "DataApp" {} app))
               coll-path  (storage.util/entity-file-path ctx (serdes/extract-one "Collection" {} collection))]
           (is (= "data_apps/sales-app/data_app.yaml" app-path))
-          (is (= "data_apps/sales-app/resources/_collection.yaml" coll-path)))))))
+          (is (= "data_apps/sales-app/resources/collection.yaml" coll-path)))))))
 
 (deftest collections-without-folders-do-not-take-numbers-test
   (testing "the Trash and the Library have no folder in collections/, so a collection of the same name is not _2"
@@ -253,8 +253,8 @@
             library (ts/create! :model/Collection :name "Library" :location "/")
             ctx     (storage.util/storage-context kind-layout/kind-layout)
             path-of #(storage.util/entity-file-path ctx (serdes/extract-one "Collection" {} %))]
-        (is (= "collections/trash/_collection.yaml" (path-of trash)))
-        (is (= "collections/library/_collection.yaml" (path-of library)))))))
+        (is (= "collections/trash/collection.yaml" (path-of trash)))
+        (is (= "collections/library/collection.yaml" (path-of library)))))))
 
 (deftest kind-layout-is-not-the-default-test
   (testing "a storage context without a layout, and plain serdes export, keep today's layout"

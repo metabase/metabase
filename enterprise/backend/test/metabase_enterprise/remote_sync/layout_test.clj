@@ -141,12 +141,12 @@
 
 (def ^:private kind-layout-paths
   "Where the kind layout puts each file a full export of [[with-kind-layout-content!]] writes today."
-  {"collections/main/bench.yaml"                "collections/bench/_collection.yaml"
+  {"collections/main/bench.yaml"                "collections/bench/collection.yaml"
    "collections/main/bench/card_a.yaml"         "collections/bench/card_a.question.yaml"
    "collections/main/bench/dash.yaml"           "collections/bench/dash.dashboard.yaml"
    "collections/main/bench/dash/dq.yaml"        "collections/bench/dash.dashboard/dq.question.yaml"
-   "collections/main/bench/sub.yaml"            "collections/bench/sub/_collection.yaml"
-   "collections/transforms/staging.yaml"        "transforms/staging/_collection.yaml"
+   "collections/main/bench/sub.yaml"            "collections/bench/sub/collection.yaml"
+   "collections/transforms/staging.yaml"        "transforms/staging/collection.yaml"
    "collections/transforms/staging/dedupe.yaml" "transforms/staging/dedupe.transform.yaml"
    "transforms/transform_tags/nightly.yaml"     "transform_tags/nightly.transform_tag.yaml"
    "python_libraries/common.py.yaml"            "python_library/common.py.yaml"})
@@ -193,14 +193,14 @@
           (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
                 files #(set (keys (get @(:files-atom mock) "main")))]
             (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "first"))))
-            (is (= #{"collections/bench/_collection.yaml" "collections/bench/orders.question.yaml"} (files)))
+            (is (= #{"collections/bench/collection.yaml" "collections/bench/orders.question.yaml"} (files)))
             (mt/with-temp [:model/Card {newer :id} {:name "Orders" :collection_id coll-id
                                                     :created_at #t "2026-02-01T00:00:00Z"}]
               (seed-create-row! "Card" newer)
               (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "incremental"))))
               (is (= "apply-changes-version" (written-version)))
               (let [incremental (files)]
-                (is (= #{"collections/bench/_collection.yaml"
+                (is (= #{"collections/bench/collection.yaml"
                          "collections/bench/orders.question.yaml"
                          "collections/bench/orders_2.question.yaml"}
                        incremental))
@@ -221,7 +221,7 @@
             (testing "a push with no local change moves every file"
               (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "switch"))))
               (is (= "write-files-version" (written-version)))
-              (is (= #{"collections/bench/_collection.yaml"
+              (is (= #{"collections/bench/collection.yaml"
                        "collections/bench/card_a.question.yaml"
                        "collections/bench/card_b.question.yaml"}
                      (set (keys (files)))))

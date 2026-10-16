@@ -232,12 +232,12 @@
 
 (defn- in-kind-layout
   "`tree` with the files of the `shop` app's collection moved to where the kind layout writes them: the collection's
-  file to `data_apps/shop/resources/_collection.yaml`, and what it holds to `data_apps/shop/resources/`."
+  file to `data_apps/shop/resources/collection.yaml`, and what it holds to `data_apps/shop/resources/`."
   [tree]
   (update-keys tree (fn [path]
                       (cond
                         (= path (data-apps.tu/collection-path shop-collection-name))
-                        "data_apps/shop/resources/_collection.yaml"
+                        "data_apps/shop/resources/collection.yaml"
 
                         (str/starts-with? path shop-collection-dir)
                         (str "data_apps/shop/resources/" (subs path (count shop-collection-dir)))

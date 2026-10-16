@@ -1,6 +1,6 @@
 (ns metabase-enterprise.serialization.v2.storage.kind-layout
   "The kind layout of an export: each item is a file `<name>.<kind>.yaml`, each
-  collection a folder `<name>/` with its own `_collection.yaml`, and the items an item contains are in the folder
+  collection a folder `<name>/` with its own `collection.yaml`, and the items an item contains are in the folder
   `<name>.<kind>/` beside it. [[kind-layout]] is the layout function (see [[storage.util/storage-context]]); it needs a
   storage context with a `:layout-cache`, where it keeps what it reads from the app DB."
   (:require
@@ -60,7 +60,7 @@
   (storage.util/slugify-name path))
 
 (def ^:private resource-collection-has-file?
-  "Whether a data app's resource collection has its own file, `data_apps/<slug>/resources/_collection.yaml`."
+  "Whether a data app's resource collection has its own file, `data_apps/<slug>/resources/collection.yaml`."
   ;; Open item 3: yes. The app's manifest names the collection by entity_id, and the import needs the collection's
   ;; file to create it before the app.
   true)
@@ -327,7 +327,7 @@
                   (and (not resource-collection-has-file?)
                        (= collections/data-apps-ns (some-> (:namespace coll) keyword))
                        (nil? (parent-id (:location coll)))))
-      (conj (collection-folder ctx eid) "_collection"))))
+      (conj (collection-folder ctx eid) "collection"))))
 
 (defn- item-folder
   "The folder of an item in the collection with entity_id `coll-eid`, or `root-folder` when it has none."
