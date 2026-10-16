@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 
 import { Badge, Skeleton } from "metabase/ui";
+import { formatNumber } from "metabase/utils/formatting";
 
 export type TabCountState =
   | { status: "loading" }
@@ -25,7 +26,7 @@ export function TabCountBadge({ count, id }: TabCountBadgeProps) {
     ))
     .with({ status: "loaded" }, ({ value }) => (
       <Badge id={id} variant="light" size="xs" color="neutral" flex="none">
-        {value}
+        {formatNumber(value)}
       </Badge>
     ))
     .with({ status: "error" }, () => null)

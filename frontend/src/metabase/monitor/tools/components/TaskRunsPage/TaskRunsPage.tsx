@@ -6,6 +6,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { useLocation } from "metabase/router";
 import { Center, Flex, Group } from "metabase/ui";
 
@@ -17,7 +18,6 @@ import { TaskRunStatusPicker } from "../TaskRunStatusPicker";
 import { TasksPageLayout } from "../TasksPageLayout";
 
 import { TaskRunsTable } from "./TaskRunsTable";
-import { PAGE_SIZE } from "./constants";
 import { urlStateConfig } from "./utils";
 
 export const TaskRunsPage = () => {

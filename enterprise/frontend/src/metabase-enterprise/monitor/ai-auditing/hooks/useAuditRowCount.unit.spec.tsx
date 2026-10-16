@@ -167,6 +167,7 @@ interface SetupOpts {
   metadataError?: boolean;
   initialRoute?: string;
   tableTotal?: number;
+  getEventsResponse?: () => Dataset | Promise<Dataset>;
 }
 
 function setup({
@@ -176,6 +177,7 @@ function setup({
   metadataError = false,
   initialRoute = `${section.eventsPath}${FILTERED_ROUTE_SEARCH}`,
   tableTotal = 3,
+  getEventsResponse,
 }: SetupOpts = {}) {
   setupEnterprisePlugins();
   mockGetBoundingClientRect({ width: 100, height: 100 });
@@ -238,18 +240,26 @@ function setup({
     name: "audit-row-count",
     matcherFunction: isCounterQuery,
   });
-  setupAdhocQueryEndpoint(
-    createMockDataset({
-      database_id: AUDIT_DB_ID,
-      row_count: 1,
-      data: createMockDatasetData({
-        rows: [[tableTotal, "Visible event"]],
-        cols: [
-          createMockColumn({ name: "count", source: "aggregation" }),
-          createMockColumn({ name: section.displayColumn, source: "fields" }),
-        ],
-      }),
+  const filteredDataset = createMockDataset({
+    database_id: AUDIT_DB_ID,
+    row_count: 1,
+    data: createMockDatasetData({
+      rows: [[tableTotal, "Visible event"]],
+      cols: [
+        createMockColumn({ name: "count", source: "aggregation" }),
+        createMockColumn({ name: section.displayColumn, source: "fields" }),
+      ],
     }),
+  });
+  setupAdhocQueryEndpoint(
+    (call) => {
+      const stage = requestStage(call);
+      const isRowPage =
+        stage !== null && typeof stage === "object" && "page" in stage;
+      return getEventsResponse && isRowPage
+        ? getEventsResponse()
+        : filteredDataset;
+    },
     { name: "filtered-dataset" },
   );
 
@@ -471,4 +481,40 @@ describe("audit tab count freshness and failures", () => {
       expect(countCalls()).toHaveLength(0);
     },
   );
+});
+
+// Audit tables load rows through ad-hoc dataset queries rather than an RTK list
+// endpoint, so the CLI Calls grid covers that loading path for all three.
+describe("CLI Calls grid loading", () => {
+  it("shows a skeleton only initially and keeps rows under the loader while paging", async () => {
+    const initial = defer<Dataset>();
+    const pending = defer<Dataset>();
+    const page = (name: string) =>
+      createMockDataset({
+        data: createMockDatasetData({
+          rows: [[name]],
+          cols: [createMockColumn({ name: CLI_SECTION.displayColumn })],
+        }),
+      });
+    let requests = 0;
+    setup({
+      initialRoute: CLI_SECTION.eventsPath,
+      tableTotal: 26,
+      getEventsResponse: () =>
+        ++requests === 1 ? initial.promise : pending.promise,
+    });
+    expect(await screen.findByTestId("tree-table-skeleton")).toBeVisible();
+    expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
+    await act(async () => initial.resolve(page("First event")));
+    await screen.findByText("First event");
+    await userEvent.click(screen.getByLabelText("Next page"));
+    await waitFor(() => expect(requests).toBe(2));
+    expect(screen.getByText("First event")).toBeVisible();
+    expect(screen.getByTestId("loading-overlay")).toBeVisible();
+    expect(screen.queryByTestId("tree-table-skeleton")).not.toBeInTheDocument();
+    expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+    await act(async () => pending.resolve(page("Next event")));
+    expect(await screen.findByText("Next event")).toBeVisible();
+    expect(screen.queryByText("First event")).not.toBeInTheDocument();
+  });
 });

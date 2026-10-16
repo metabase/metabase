@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 
 import { type PillTab, PillTabNavigation } from "./PillTabNavigation";
@@ -40,6 +40,71 @@ describe("PillTabNavigation", () => {
     expect(onClick).toHaveBeenCalledTimes(2);
   });
 
+  it("moves focus between tabs with the arrow, Home and End keys", async () => {
+    setup({
+      tabs: [
+        { label: "Usage", to: "/monitor/example/usage" },
+        { label: "Events", to: "/monitor/example/events" },
+        { label: "Failing", onClick: jest.fn<void, []>() },
+      ],
+    });
+    const usage = screen.getByRole("link", { name: "Usage" });
+    const events = screen.getByRole("link", { name: "Events" });
+    const failing = screen.getByRole("button", { name: "Failing" });
+
+    await userEvent.tab();
+    expect(usage).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(events).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(failing).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(usage).toHaveFocus();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(failing).toHaveFocus();
+    await userEvent.keyboard("{Home}");
+    expect(usage).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    expect(failing).toHaveFocus();
+  });
+
+  it.each([
+    { modifier: "altKey" },
+    { modifier: "ctrlKey" },
+    { modifier: "metaKey" },
+    { modifier: "shiftKey" },
+  ])("leaves $modifier + arrow keys to the browser", ({ modifier }) => {
+    setup();
+    const usage = screen.getByRole("link", { name: "Usage" });
+    usage.focus();
+
+    const isNotPrevented = fireEvent.keyDown(usage, {
+      key: "ArrowRight",
+      [modifier]: true,
+    });
+
+    expect(isNotPrevented).toBe(true);
+    expect(usage).toHaveFocus();
+  });
+
+  it("leaves arrow keys to the browser when there is only one tab", () => {
+    setup({ tabs: [{ label: "Usage", to: "/monitor/example/usage" }] });
+    const usage = screen.getByRole("link", { name: "Usage" });
+    usage.focus();
+
+    expect(fireEvent.keyDown(usage, { key: "ArrowRight" })).toBe(true);
+    expect(usage).toHaveFocus();
+  });
+
+  it("keeps every tab reachable with the Tab key", async () => {
+    setup({ initialRoute: "/monitor/example/events" });
+
+    await userEvent.tab();
+    expect(screen.getByRole("link", { name: "Usage" })).toHaveFocus();
+    await userEvent.tab();
+    expect(screen.getByRole("link", { name: "Events" })).toHaveFocus();
+  });
+
   it("shows a resolved zero count without hiding the tab", () => {
     setup({
       tabs: [
@@ -74,6 +139,22 @@ describe("PillTabNavigation", () => {
     expect(
       screen.getByRole("link", { name: "Events" }),
     ).not.toHaveAccessibleDescription();
+  });
+
+  it("formats large counts with digit grouping", () => {
+    setup({
+      tabs: [
+        {
+          label: "Events",
+          to: "/monitor/example/events",
+          count: { status: "loaded", value: 37918 },
+        },
+      ],
+    });
+
+    expect(
+      within(screen.getByRole("link", { name: "Events" })).getByText("37,918"),
+    ).toBeInTheDocument();
   });
 
   it("shows a placeholder while the count loads without blocking navigation", () => {
