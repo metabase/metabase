@@ -43,6 +43,11 @@ function getFocusTargetIndex(key: string, index: number, count: number) {
 }
 
 function handleTabKeyDown(event: KeyboardEvent<HTMLElement>) {
+  const hasModifier =
+    event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
+  if (hasModifier) {
+    return;
+  }
   const tabs = Array.from(
     event.currentTarget
       .closest("[data-pill-tab-navigation]")
@@ -50,7 +55,7 @@ function handleTabKeyDown(event: KeyboardEvent<HTMLElement>) {
   );
   const index = tabs.indexOf(event.currentTarget);
   const targetIndex = getFocusTargetIndex(event.key, index, tabs.length);
-  if (index === -1 || targetIndex === null) {
+  if (tabs.length < 2 || index === -1 || targetIndex === null) {
     return;
   }
   event.preventDefault();

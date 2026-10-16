@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 
 import { type PillTab, PillTabNavigation } from "./PillTabNavigation";
@@ -66,6 +66,34 @@ describe("PillTabNavigation", () => {
     expect(usage).toHaveFocus();
     await userEvent.keyboard("{End}");
     expect(failing).toHaveFocus();
+  });
+
+  it.each([
+    { modifier: "altKey" },
+    { modifier: "ctrlKey" },
+    { modifier: "metaKey" },
+    { modifier: "shiftKey" },
+  ])("leaves $modifier + arrow keys to the browser", ({ modifier }) => {
+    setup();
+    const usage = screen.getByRole("link", { name: "Usage" });
+    usage.focus();
+
+    const isNotPrevented = fireEvent.keyDown(usage, {
+      key: "ArrowRight",
+      [modifier]: true,
+    });
+
+    expect(isNotPrevented).toBe(true);
+    expect(usage).toHaveFocus();
+  });
+
+  it("leaves arrow keys to the browser when there is only one tab", () => {
+    setup({ tabs: [{ label: "Usage", to: "/monitor/example/usage" }] });
+    const usage = screen.getByRole("link", { name: "Usage" });
+    usage.focus();
+
+    expect(fireEvent.keyDown(usage, { key: "ArrowRight" })).toBe(true);
+    expect(usage).toHaveFocus();
   });
 
   it("keeps every tab reachable with the Tab key", async () => {
