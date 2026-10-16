@@ -68,7 +68,11 @@ export const Visualization = (
       </div>
       <div>Value: {value}</div>
       <div data-testid="demo-viz-formatted-value">
-        Formatted: {formatValue(value, settings.column?.(cols[0]))}
+        Formatted:{" "}
+        {formatValue(value, {
+          ...settings.column?.(cols[0]),
+          column: cols[0],
+        })}
       </div>
       <div data-testid="demo-viz-locale">Locale: {locale}</div>
       <div data-testid="demo-viz-measured-width">

@@ -199,8 +199,8 @@ settings: {
 > **Note:** The setting ids `column_settings` and `column` are reserved by Metabase
 > (they power the built-in column formatting popover). TypeScript rejects them in your
 > `Settings` type, and Metabase ignores setting definitions that use them. To apply
-> the formatting people pick in the popover, pass the result of `settings.column?.(col)`
-> to `formatValue`.
+> the formatting people pick in the popover, spread the result of `settings.column?.(col)`
+> into the `formatValue` options along with `column`.
 >
 > Metabase stores your settings under `custom:<plugin name>:<setting id>` keys.
 > You never see the prefix: `settings`, `onChangeSettings`, and the dependency lists

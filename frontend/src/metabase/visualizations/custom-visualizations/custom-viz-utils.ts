@@ -1,5 +1,4 @@
 import { getSubpathSafeUrl } from "metabase/urls";
-import { formatNumber } from "metabase/utils/formatting";
 import { formatValue as internalFormatValue } from "metabase/value-formatting";
 import type {
   ColumnSettings,
@@ -8,30 +7,7 @@ import type {
   CustomVizPluginRuntime,
 } from "metabase-types/api";
 
-const NUMBER_OPTION_KEYS = [
-  "number_style",
-  "decimals",
-  "currency",
-  "currency_style",
-  "compact",
-  "scale",
-  "number_separators",
-  "negativeInParentheses",
-] as const;
-
-const hasNumberOptions = (options: ColumnSettings) =>
-  NUMBER_OPTION_KEYS.some((key) => options[key] !== undefined);
-
 export function formatValue(value: unknown, options?: ColumnSettings): string {
-  if (
-    options &&
-    !options.column &&
-    (typeof value === "number" || typeof value === "bigint") &&
-    hasNumberOptions(options)
-  ) {
-    const { prefix = "", suffix = "" } = options;
-    return `${prefix}${formatNumber(value, options)}${suffix}`;
-  }
   const result = internalFormatValue(value, {
     ...options,
     jsx: false,
