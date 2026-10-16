@@ -69,8 +69,8 @@
        {:error_type error-type})
      (when is-curated
        {:error_is_curated is-curated})
-     ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
      (when-let [response-data (response-ex-data data)]
+       ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
        {:ex-data response-data}))))
 
 (defmethod format-exception SQLException

@@ -188,8 +188,8 @@
   (testing "the ex-data keys listed under `:log/keys` go to the error log line's context, from anywhere in the chain, and not to the response"
     (let [contexts (atom [])]
       (mt/with-dynamic-fn-redefs [log/with-thread-context-fn (fn [context-map f]
-                                                                (swap! contexts conj context-map)
-                                                                (f))]
+                                                               (swap! contexts conj context-map)
+                                                               (f))]
         (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
           (let [result (catch-exceptions
                         (fn [] (throw (ex-info "outer" {:card-id 2, :secret "hunter2", :log/keys #{:card-id}}
