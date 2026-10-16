@@ -12,6 +12,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -96,7 +97,9 @@ describe("row chart dynamic goal", () => {
 
     const goalLine = await findGoalLine();
 
-    expect(goalLine).toHaveTextContent(GOAL_LABEL);
+    expect(
+      within(goalLine).getByTestId("goal-line-marker"),
+    ).toBeInTheDocument();
     expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
       getExpectedRowChartGoalX(document.body, GOAL, MAX_COUNT),
       0,
@@ -113,7 +116,9 @@ describe("row chart dynamic goal", () => {
 
     const goalLine = await findGoalLine();
 
-    expect(goalLine).toHaveTextContent(GOAL_LABEL);
+    expect(
+      within(goalLine).getByTestId("goal-line-marker"),
+    ).toBeInTheDocument();
     expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
       getExpectedRowChartGoalX(document.body, GOAL, MAX_COUNT),
       0,

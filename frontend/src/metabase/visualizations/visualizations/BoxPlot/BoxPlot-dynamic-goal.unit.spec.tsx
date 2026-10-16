@@ -1,7 +1,8 @@
 import fetchMock from "fetch-mock";
 
+import { queryEChartsGoalLine } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -59,7 +60,7 @@ describe("box plot dynamic goal", () => {
   it("draws the goal line at the value answered by the dataset", async () => {
     await setup(createSeries(ANSWERED));
 
-    expect(screen.getByText(GOAL_LABEL)).toBeInTheDocument();
+    expect(queryEChartsGoalLine()).toBeInTheDocument();
     // the goal is far above every data point, so it stretches the y-axis up to it
     expect(screen.getByText("250")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
@@ -80,9 +81,9 @@ describe("box plot dynamic goal", () => {
     await setup(createSeries());
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-    expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
+    expect(queryEChartsGoalLine()).not.toBeInTheDocument();
 
-    expect(await screen.findByText(GOAL_LABEL)).toBeInTheDocument();
+    await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
     expect(screen.getByText("250")).toBeInTheDocument();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
@@ -97,14 +98,14 @@ describe("box plot dynamic goal", () => {
 
     await setup(createSeries());
 
-    expect(await screen.findByText(GOAL_LABEL)).toBeInTheDocument();
+    await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
     expect(screen.getByText("Gadget")).toBeInTheDocument();
   });
 
   it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
     await setup(createSeries(FAILED));
 
-    expect(screen.getByText(GOAL_LABEL)).toBeInTheDocument();
+    expect(queryEChartsGoalLine()).toBeInTheDocument();
     expect(screen.getByText("Gadget")).toBeInTheDocument();
     expect(screen.queryByText("250")).not.toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);

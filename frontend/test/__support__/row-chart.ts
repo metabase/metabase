@@ -21,7 +21,9 @@ function getWidth(element: HTMLElement) {
 }
 
 export function getRowChartGoalLineX(goalLine: HTMLElement) {
-  return Number(goalLine.querySelector("line")?.getAttribute("x1"));
+  // the goal line is drawn over its shadow, so it is the last line
+  const line = Array.from(goalLine.querySelectorAll("line")).at(-1);
+  return Number(line?.getAttribute("x1"));
 }
 
 export function getRowChartSymbols(
