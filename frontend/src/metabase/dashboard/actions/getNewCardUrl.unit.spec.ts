@@ -1,5 +1,3 @@
-import type { CardQuestionBuilder } from "metabase/metadata-store";
-import { PRODUCT_ANALYTICS_SETTINGS_KEY } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -8,44 +6,9 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  getNewCardUrl,
   getParametersMappedToCard,
   remapParameterValuesToTemplateTags,
 } from "./getNewCardUrl";
-
-describe("getNewCardUrl", () => {
-  it("opens a card saved from the event analysis builder in the builder", () => {
-    const card = createMockCard({
-      id: 7,
-      visualization_settings: {
-        [PRODUCT_ANALYTICS_SETTINGS_KEY]: {
-          version: 1,
-          kind: "funnel",
-          table_id: 1,
-          settings: {},
-        },
-      },
-    });
-    const buildQuestion = jest.fn<
-      ReturnType<CardQuestionBuilder>,
-      Parameters<CardQuestionBuilder>
-    >(() => {
-      throw new Error("an analysis card should not build a question");
-    });
-
-    const url = getNewCardUrl({
-      buildQuestion,
-      dashboard: createMockDashboard(),
-      parameterValues: {},
-      nextCard: card,
-      previousCard: card,
-      dashcard: createMockDashboardCard({ card }),
-    });
-
-    expect(url).toBe("/event-analysis/7");
-    expect(buildQuestion).not.toHaveBeenCalled();
-  });
-});
 
 describe("getParametersMappedToDashcard", () => {
   const dashboard = createMockDashboard({

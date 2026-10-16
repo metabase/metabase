@@ -18,10 +18,7 @@ import {
 import type { ProductAnalyticsNodeDefinition } from "metabase-types/api";
 import { getProductAnalyticsNodeDefinition } from "metabase-types/guards";
 
-import {
-  AnalysisResultBody,
-  getResultState,
-} from "../components/AnalysisResult";
+import { AnalysisResult, getResultState } from "../components/AnalysisResult";
 
 import { AnalysisCardToolbar } from "./AnalysisCardToolbar";
 import { useAnalysisDocument } from "./AnalysisDocumentContext";
@@ -161,7 +158,7 @@ const AnalysisCard = ({ nodeId, definition }: AnalysisCardProps) => {
           </Group>
         )}
         <Box className={S.chart} h={CHART_HEIGHT} data-analysis-chart>
-          <AnalysisResultBody
+          <AnalysisResult
             {...resultProps}
             setupLabel={config.setupLabel}
             onOpenSetup={

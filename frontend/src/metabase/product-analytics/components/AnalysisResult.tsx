@@ -1,19 +1,7 @@
-import { useState } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { Warnings } from "metabase/common/components/Warnings";
-import {
-  Alert,
-  Box,
-  Button,
-  Group,
-  Loader,
-  Paper,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Alert, Box, Button, Loader, Stack, Text, Title } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { ClickActionsMode } from "metabase/visualizations/types";
 import type {
@@ -25,11 +13,10 @@ import type {
 } from "metabase-types/api";
 
 import type { MissingSetting } from "../analyses/types";
-import { PRODUCT_ANALYTICS_CLICK_ACTIONS_MODE } from "../click-actions-mode";
 
 const SYNTHETIC_CARD_ID = -1;
 
-type AnalysisResultBodyProps = {
+type AnalysisResultProps = {
   title: string;
   display: CardDisplayType;
   vizSettings: VisualizationSettings;
@@ -44,13 +31,6 @@ type AnalysisResultBodyProps = {
   onOpenSetup?: () => void;
   mode?: ClickActionsMode;
   onUpdateWarnings: (warnings: string[]) => void;
-};
-
-type AnalysisResultProps = Omit<
-  AnalysisResultBodyProps,
-  "mode" | "onUpdateWarnings"
-> & {
-  warnings: string[];
 };
 
 type ResultState = {
@@ -70,7 +50,7 @@ export const getResultState = ({
   error,
   missing,
 }: Pick<
-  AnalysisResultBodyProps,
+  AnalysisResultProps,
   | "title"
   | "display"
   | "vizSettings"
@@ -105,32 +85,8 @@ export const getResultState = ({
   };
 };
 
-export const AnalysisResult = ({ warnings, ...props }: AnalysisResultProps) => {
-  const [vizWarnings, setVizWarnings] = useState<string[]>([]);
-  const { isShowingVisualization } = getResultState(props);
-  const allWarnings = isShowingVisualization
-    ? [...warnings, ...vizWarnings]
-    : warnings;
-
-  return (
-    <Paper withBorder p="lg" style={{ flex: 1, minWidth: 0 }}>
-      <Stack h="100%">
-        <Group justify="space-between" wrap="nowrap">
-          <Title order={4}>{props.title}</Title>
-          <Warnings warnings={allWarnings} size={18} />
-        </Group>
-        <AnalysisResultBody
-          {...props}
-          mode={PRODUCT_ANALYTICS_CLICK_ACTIONS_MODE}
-          onUpdateWarnings={setVizWarnings}
-        />
-      </Stack>
-    </Paper>
-  );
-};
-
-/** The result without its frame or title: setup, an error, loading, or the chart. */
-export const AnalysisResultBody = (props: AnalysisResultBodyProps) => {
+/** The analysis result: setup, an error, loading, or the chart. */
+export const AnalysisResult = (props: AnalysisResultProps) => {
   const { missing, setupLabel, onOpenSetup, isLoading, error, mode } = props;
   const { rawSeries, isIncomplete, isShowingVisualization } =
     getResultState(props);

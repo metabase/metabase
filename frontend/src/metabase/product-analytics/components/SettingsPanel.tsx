@@ -1,11 +1,9 @@
-import cx from "classnames";
-
-import CS from "metabase/css/core/index.css";
-import { Divider, Paper } from "metabase/ui";
+import { Divider } from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
-import type { SettingWidget } from "../settings/types";
-import type { AnalysisPanel } from "../use-analysis-state";
+import type { SettingSection, SettingWidget } from "../settings/types";
+
+type PanelSection = Exclude<SettingSection, "toolbar">;
 
 // ChartSettingsWidget insets itself for the chart settings sidebar; the
 // surrounding panel already provides padding here.
@@ -15,7 +13,7 @@ const WIDGET_STYLE = { marginInline: 0 };
 // aren't editable here.
 const getPanelWidgets = (
   widgets: SettingWidget[],
-  panel: AnalysisPanel,
+  panel: PanelSection,
 ): SettingWidget[] =>
   widgets.filter(
     (widget) =>
@@ -25,29 +23,16 @@ const getPanelWidgets = (
 /** Whether the panel would show anything. */
 export const hasPanelSettings = (
   widgets: SettingWidget[],
-  panel: AnalysisPanel,
+  panel: PanelSection,
 ): boolean => getPanelWidgets(widgets, panel).length > 0;
 
-type SettingsPanelProps = {
-  panel: AnalysisPanel;
+type SettingsListProps = {
+  panel: PanelSection;
   widgets: SettingWidget[];
 };
 
-export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => (
-  <Paper
-    withBorder
-    pt="xl"
-    px="xl"
-    w="25rem"
-    mah="100%"
-    className={cx(CS.alignSelfStart, CS.overflowYAuto)}
-  >
-    <SettingsList panel={panel} widgets={widgets} />
-  </Paper>
-);
-
-/** The panel's settings without its frame. */
-export const SettingsList = ({ panel, widgets }: SettingsPanelProps) => {
+/** The settings in one section of the side panel. */
+export const SettingsList = ({ panel, widgets }: SettingsListProps) => {
   const visible = getPanelWidgets(widgets, panel);
   const primary = visible.filter((widget) => !widget.secondary);
   const secondary = visible.filter((widget) => widget.secondary);

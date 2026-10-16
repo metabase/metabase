@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { Grain, Measure } from "../../spec/types";
+import type { Grain } from "../../spec/types";
 
 export const compileGrain = (grain: Grain): string => {
   switch (grain) {
@@ -26,18 +26,4 @@ export const grainTitle = (grain: Grain): string => {
     case "event":
       return t`Events`;
   }
-};
-
-export const compileMeasure = (measure: Measure, grain: Grain): string => {
-  if (measure.agg === "count") {
-    return "count()";
-  }
-  if (measure.field === undefined) {
-    return `uniqExact(${compileGrain(grain)})`;
-  }
-  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(measure.field)) {
-    throw new Error(`Invalid measure field: ${measure.field}`);
-  }
-  const fn = measure.agg === "uniq" ? "uniqExact" : measure.agg;
-  return `${fn}(${measure.field})`;
 };

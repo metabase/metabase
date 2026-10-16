@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { useMetadataProvider } from "metabase/metadata-store";
-import type { ConcreteTableId, Dataset, UnsavedCard } from "metabase-types/api";
+import type { ConcreteTableId, Dataset } from "metabase-types/api";
 
 import type { AnalysisContext } from "../analyses/types";
 import type { BaseQueryInput } from "../base-query";
@@ -22,7 +22,6 @@ import { useStableValue } from "../use-stable-value";
 
 import { getInsightAttributes } from "./candidates";
 import { indexCounts } from "./counts";
-import { getExploreCard, getExploreSegmentLabel } from "./explore";
 import { DEFAULT_INSIGHT_OPTIONS } from "./options";
 import { planPairs } from "./plan-pairs";
 import { parseCountRows } from "./rows";
@@ -200,22 +199,6 @@ export const useFunnelInsights = ({
     [singleRows, pairRows, attributeIds, pairValues],
   );
 
-  const getExploreCardFor = (insight: Insight): UnsavedCard | undefined => {
-    const insightAttributes = insight.conditions.flatMap(
-      ({ attributeId }) =>
-        attributes.find(({ id }) => id === attributeId) ?? [],
-    );
-    const datasetQuery = toQuery({
-      kind: "explore",
-      transition: insight.transition,
-      attributes: insightAttributes.map(({ id }) => id),
-      segmentLabel: getExploreSegmentLabel(insightAttributes),
-    });
-    return datasetQuery !== undefined
-      ? getExploreCard(datasetQuery, insightAttributes)
-      : undefined;
-  };
-
   const state = ((): FunnelInsightsState => {
     if (!isFunnel || spec === undefined) {
       return { status: "idle" };
@@ -250,5 +233,5 @@ export const useFunnelInsights = ({
     };
   })();
 
-  return { state, getExploreCard: getExploreCardFor };
+  return { state };
 };

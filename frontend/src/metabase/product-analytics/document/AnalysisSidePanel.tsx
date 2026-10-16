@@ -4,10 +4,7 @@ import { ActionIcon, Box, Group, Icon, Stack, Tabs } from "metabase/ui";
 import type { ProductAnalyticsNodeDefinition } from "metabase-types/api";
 
 import { isOneOf } from "../analyses/setting-helpers";
-import {
-  type InsightAction,
-  InsightsPanelBody,
-} from "../components/InsightsPanel";
+import { type InsightAction, InsightsPanel } from "../components/InsightsPanel";
 import { SettingsList, hasPanelSettings } from "../components/SettingsPanel";
 import { getInsightBreakdownSettings } from "../insights/breakdown-settings";
 import { useFunnelInsights } from "../insights/use-funnel-insights";
@@ -105,7 +102,7 @@ export const AnalysisSidePanel = ({
         style={{ overflowY: "auto" }}
       >
         {tab === "insights" ? (
-          <InsightsPanelBody state={insights.state} action={insightAction} />
+          <InsightsPanel state={insights.state} action={insightAction} />
         ) : (
           <SettingsList panel={tab} widgets={analysis.widgets} />
         )}

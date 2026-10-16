@@ -1,7 +1,6 @@
 import _ from "underscore";
 
 import { getStructuredQuestionUrlWithParameters } from "metabase/dashboard/click-behavior/question-url";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { CardQuestionBuilder } from "metabase/metadata-store";
 import type { StoreDashboard } from "metabase/redux/store";
 import * as Urls from "metabase/urls";
@@ -21,7 +20,6 @@ import type {
   TemplateTag,
   VirtualCard,
 } from "metabase-types/api";
-import { isProductAnalyticsCard } from "metabase-types/guards";
 
 /**
  * All navigation URLs from dashboards to cards (e.x. clicking a title, drill through)
@@ -49,16 +47,6 @@ export const getNewCardUrl = ({
   objectId?: number | string;
 }): string | undefined => {
   const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
-
-  // A title click keeps the card's id; a drill-through produces an unsaved card.
-  // The SDK has no event analysis builder, so its cards open as questions.
-  if (
-    !isEmbeddingSdk() &&
-    cardAfterClick.id != null &&
-    isProductAnalyticsCard(cardAfterClick)
-  ) {
-    return Urls.savedEventAnalysis(cardAfterClick.id);
-  }
 
   const previousQuestion = buildQuestion(previousCard);
   const { isEditable } = Lib.queryDisplayInfo(previousQuestion.query());

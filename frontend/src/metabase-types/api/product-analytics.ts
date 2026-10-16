@@ -1,12 +1,5 @@
 import type { ConcreteTableId } from "./table";
 
-/**
- * The `visualization_settings` key that marks a card as a product analytics
- * analysis. The card's query is compiled from this definition, which is what
- * the event analysis builder edits.
- */
-export const PRODUCT_ANALYTICS_SETTINGS_KEY = "product_analytics.analysis";
-
 export const PRODUCT_ANALYTICS_KINDS = [
   "funnel",
   "paths",
@@ -16,14 +9,6 @@ export const PRODUCT_ANALYTICS_KINDS = [
 ] as const;
 
 export type ProductAnalyticsKind = (typeof PRODUCT_ANALYTICS_KINDS)[number];
-
-export type ProductAnalyticsDefinition = {
-  version: 1;
-  kind: ProductAnalyticsKind;
-  table_id: ConcreteTableId;
-  /** The settings the user changed. Untrusted: the builder validates them. */
-  settings: Record<string, unknown>;
-};
 
 /**
  * The doc node attribute that marks a document as an analysis document. It
@@ -42,7 +27,9 @@ export type ProductAnalyticsDocumentContext = {
  * The analysis held by a `productAnalysis` document node. Its table and date
  * range come from the document.
  */
-export type ProductAnalyticsNodeDefinition = Omit<
-  ProductAnalyticsDefinition,
-  "table_id"
->;
+export type ProductAnalyticsNodeDefinition = {
+  version: 1;
+  kind: ProductAnalyticsKind;
+  /** The settings the user changed. Untrusted: the builder validates them. */
+  settings: Record<string, unknown>;
+};

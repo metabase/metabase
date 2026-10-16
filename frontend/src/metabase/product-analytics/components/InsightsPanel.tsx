@@ -2,7 +2,6 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import {
-  ActionIcon,
   Alert,
   Box,
   Button,
@@ -12,7 +11,6 @@ import {
   Paper,
   Stack,
   Text,
-  Title,
 } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import type { IconName } from "metabase-types/api";
@@ -24,7 +22,6 @@ import type {
 } from "../insights/use-funnel-insights";
 import { NOT_SET_VALUE } from "../sql/analyses/funnel-insights";
 
-const PANEL_WIDTH = 320;
 const INSIGHTS_SHOWN = 5;
 
 /** What each insight's button does. */
@@ -37,44 +34,10 @@ export type InsightAction = {
 type InsightsPanelProps = {
   state: FunnelInsightsState;
   action: InsightAction;
-  onClose: () => void;
 };
 
-export const InsightsPanel = ({
-  state,
-  action,
-  onClose,
-}: InsightsPanelProps) => (
-  <Paper
-    withBorder
-    p="lg"
-    w={PANEL_WIDTH}
-    style={{ flexShrink: 0, overflowY: "auto" }}
-    aria-label={t`Insights`}
-  >
-    <Stack gap="md">
-      <Group justify="space-between" wrap="nowrap">
-        <Title order={4}>{t`Insights`}</Title>
-        <ActionIcon
-          variant="subtle"
-          aria-label={t`Close insights`}
-          onClick={onClose}
-        >
-          <Icon name="close" />
-        </ActionIcon>
-      </Group>
-      <InsightsPanelBody state={state} action={action} />
-    </Stack>
-  </Paper>
-);
-
-type InsightsPanelBodyProps = Omit<InsightsPanelProps, "onClose">;
-
-/** The insights without the panel's frame and title. */
-export const InsightsPanelBody = ({
-  state,
-  action,
-}: InsightsPanelBodyProps) => {
+/** The insights for each funnel transition, or why there are none yet. */
+export const InsightsPanel = ({ state, action }: InsightsPanelProps) => {
   switch (state.status) {
     case "idle":
       return (

@@ -250,10 +250,11 @@ What the first build does differently from the plan above, or adds to it:
 - **Overflow menu.** The card toolbar puts Filter (still "coming soon") and View the SQL in a "…" menu. Expect the toolbar layout to keep changing.
 - **Keyboard access to edit mode.** The card header's hover prompt is a real "Edit analysis" button. It's focusable and shows on focus.
 - **Inserting never replaces a selected node.** With an analysis selected, a new one goes after it.
-- **Drill-through.** Clicking a step in a funnel's step chart offers "Where people went after <step>". This inserts a Paths analysis that starts from that step's event. It's the only real drill so far. The old "hello world" action still exists for the old pages.
+- **Drill-through.** Clicking a step in a funnel's step chart offers "Where people went after <step>". This inserts a Paths analysis that starts from that step's event. It's the only real drill so far.
 - **Copy and paste duplicates an analysis.** The definition is rendered into the node's HTML, and duplicate node ids are re-minted.
 - **Readers** see the table and date range pickers, but changing them does nothing without write access.
 - **The document context is written** once the document has content, so a saved analysis document always carries the marker.
+- **The old pages are gone.** `AnalysisPage`, `SavedAnalysisPage`, `AnalysisWorkspace`, `AnalysisToolbar`, the card save flow and the old `new/:kind` and `:cardId` routes have been removed. Cards saved from the old builder no longer redirect to it, so they open in the query builder as native questions.
 
 ## Later
 
@@ -267,4 +268,3 @@ What the first build does differently from the plan above, or adds to it:
 - **Real extension points in `documents`** for node types, slash commands and doc-level attrs, so `product-analytics` (and `explorations`) stop importing documents internals.
 - **Saving analyses as cards**, for dashboards, search and subscriptions.
 - **Metabot** in analysis documents.
-- **Removing** `NewAnalysisPage`, `AnalysisPage`, `SavedAnalysisPage`, `AnalysisWorkspace` and the save flow once this replaces them.

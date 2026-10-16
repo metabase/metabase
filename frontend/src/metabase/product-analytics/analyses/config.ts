@@ -1,5 +1,4 @@
 import { PRODUCT_ANALYTICS_KINDS } from "metabase-types/api";
-import { isProductAnalyticsKind } from "metabase-types/guards";
 
 import type { AnalysisKind } from "../spec/types";
 
@@ -11,8 +10,6 @@ import { PATHS_CONFIG } from "./paths";
 import type { AnalysisConfig } from "./types";
 
 export const ANALYSIS_KINDS = PRODUCT_ANALYTICS_KINDS;
-
-export const isAnalysisKind = isProductAnalyticsKind;
 
 const ANALYSIS_CONFIG: { [K in AnalysisKind]: AnalysisConfig<K> } = {
   funnel: FUNNEL_CONFIG,
