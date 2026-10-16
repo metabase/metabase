@@ -292,19 +292,13 @@
   (let [manifest-problems    (identity-problems (assoc manifest :model "DataApp"))
         collection-entity-id (-> manifest :entity :collection)
         app-entity-id        (-> manifest :entity :entity_id)
-        resources            (app-resources collection-entity-id files)
-        collection-files     (filter (comp #{"Collection"} :model) resources)]
+        resources            (app-resources collection-entity-id files)]
     (cond
       (seq manifest-problems)
       manifest-problems
 
       (nil? collection-entity-id)
       [(problem (:path manifest) (tru "{0} must name the app''s resource collection as `collection`." (:path manifest)))]
-
-      (empty? collection-files)
-      [(problem (:path manifest)
-                (tru "The collection {0} that {1} names is not in the repository. Write it under collections/data_apps/ and commit it."
-                     collection-entity-id (:path manifest)))]
 
       :else
       (let [cards           (filter (comp #{"Card"} :model) resources)

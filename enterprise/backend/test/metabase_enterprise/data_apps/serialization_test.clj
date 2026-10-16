@@ -121,15 +121,19 @@
             (is (= (:resource_collection_id app)
                    (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))))))))))
 
-(deftest import-refuses-a-manifest-naming-a-collection-the-repository-lacks-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (ts/with-random-dump-dir [dump-dir "data-app-no-collection-"]
-        (write-app-files! dump-dir "x" (app-yaml "pZrj7PDuz3vSWYYi0QFhd" "x" :collection "nosuchcollection00001")
-                          {"dist/index.js" "B"})
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Collection 'nosuchcollection00001' was not found"
-                              (import! dump-dir)))
-        (is (not (t2/exists? :model/DataApp :entity_id "pZrj7PDuz3vSWYYi0QFhd")))))))
+(deftest import-creates-the-collection-a-manifest-names-test
+  (testing "an app's collection needs no file: the import creates the collection that data_app.yaml names"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (ts/with-random-dump-dir [dump-dir "data-app-no-collection-"]
+          (write-app-files! dump-dir "x" (app-yaml "pZrj7PDuz3vSWYYi0QFhd" "x" :collection "nosuchcollection00001")
+                            {"dist/index.js" "B"})
+          (import! dump-dir)
+          (let [collection-id (t2/select-one-pk :model/Collection :entity_id "nosuchcollection00001")]
+            (is (some? collection-id))
+            (is (=? {:namespace :data-apps} (t2/select-one :model/Collection :id collection-id)))
+            (is (= collection-id (t2/select-one-fn :resource_collection_id :model/DataApp
+                                                   :entity_id "pZrj7PDuz3vSWYYi0QFhd")))))))))
 
 (deftest import-updates-in-place-and-keeps-local-state-test
   (mt/with-premium-features #{:data-apps}

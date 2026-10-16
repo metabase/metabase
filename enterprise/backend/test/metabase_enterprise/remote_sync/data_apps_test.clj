@@ -231,22 +231,24 @@
                (is (= [(mt/id :venues)] (t2/select-one-fn :table_ids :model/DataApp :name "shop")))))))))))
 
 (defn- in-kind-layout
-  "`tree` with the files of the `shop` app's collection moved to where the kind layout writes them: the collection's
-  file to `data_apps/shop/resources/collection.yaml`, and what it holds to `data_apps/shop/resources/`."
+  "`tree` as the kind layout writes it: no file for the `shop` app's collection, which `data_app.yaml` names, and what
+  the collection holds in `data_apps/shop/resources/`."
   [tree]
-  (update-keys tree (fn [path]
-                      (cond
-                        (= path (data-apps.tu/collection-path shop-collection-name))
-                        "data_apps/shop/resources/collection.yaml"
+  (into {}
+        (keep (fn [[path content]]
+                (cond
+                  (= path (data-apps.tu/collection-path shop-collection-name))
+                  nil
 
-                        (str/starts-with? path shop-collection-dir)
-                        (str "data_apps/shop/resources/" (subs path (count shop-collection-dir)))
+                  (str/starts-with? path shop-collection-dir)
+                  [(str "data_apps/shop/resources/" (subs path (count shop-collection-dir))) content]
 
-                        :else
-                        path))))
+                  :else
+                  [path content])))
+        tree))
 
 (deftest pull-loads-an-apps-resources-in-the-kind-layout-test
-  (testing "a pull loads an app's collection and resources from the app's own resources/ folder"
+  (testing "a pull of a new app creates its collection from data_app.yaml, and loads the resources into it"
     (with-data-apps-sync
       (let [resources (data-apps.tu/build-resources shop-collection-name shop-collection-eid
                                                     [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
@@ -254,12 +256,27 @@
             tree      (in-kind-layout (shop-tree resources))
             src       (test-helpers/versioned-source :trees {"v0" tree} :current "v0")]
         (is (not-any? #(str/starts-with? % "collections/") (keys tree)))
+        (is (not (t2/exists? :model/Collection :entity_id shop-collection-eid)))
         (let [result (import-at! src "v0" :force? true)]
           (is (= :success (:status result)) (:message result)))
         (let [collection-id (shop-collection-id)]
           (is (= collection-id (t2/select-one-pk :model/Collection :entity_id shop-collection-eid)))
+          (is (=? {:name shop-collection-name :namespace :data-apps}
+                  (t2/select-one :model/Collection :id collection-id)))
           (is (=? {:type :question :name "VenuesList" :collection_id collection-id}
                   (t2/select-one :model/Card :entity_id question-eid))))))))
+
+(deftest pull-refuses-an-app-without-a-collection-file-that-takes-another-collection-test
+  (testing "with no file for the app's collection, the manifest still can't name a collection outside the app"
+    (with-data-apps-sync
+      (mt/with-temp [:model/Collection {collection-id :id collection-eid :entity_id} {:name "Finance"}]
+        (let [tree   (data-apps.tu/app-files "shop" {:name "Shop" :path "index.js" :bundle "B"
+                                                     :collection collection-eid :resources nil})
+              src    (test-helpers/versioned-source :trees {"v0" tree} :current "v0")
+              result (import-at! src "v0" :force? true)]
+          (is (= :error (:status result)))
+          (is (str/includes? (str (:message result)) "outside the data-apps namespace"))
+          (is (nil? (t2/select-one-fn :namespace :model/Collection :id collection-id))))))))
 
 (deftest pull-updates-and-removes-resources-with-their-files-test
   (with-data-apps-sync

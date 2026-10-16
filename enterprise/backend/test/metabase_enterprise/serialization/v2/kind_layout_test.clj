@@ -240,7 +240,7 @@
         (is (= "collections/main/ops/v1_2_totals_question.question.yaml" (path-of "Card" dotted)))))))
 
 (deftest data-app-resources-are-in-the-apps-folder-test
-  (testing "a data app's resources are in the app's own folder, also when its slug has a -"
+  (testing "a data app's resources are in the app's own folder, also when its slug has a -, and its collection has no file"
     (mt/with-premium-features #{:data-apps}
       (mt/with-empty-h2-app-db!
         (let [app        (ts/create! :model/DataApp :name "sales-app" :display_name "Sales" :bundle_path "index.js"
@@ -250,7 +250,7 @@
               app-path   (storage.util/entity-file-path ctx (serdes/extract-one "DataApp" {} app))
               coll-path  (storage.util/entity-file-path ctx (serdes/extract-one "Collection" {} collection))]
           (is (= "data_apps/sales-app/data_app.yaml" app-path))
-          (is (= "data_apps/sales-app/resources/collection.yaml" coll-path)))))))
+          (is (nil? coll-path) "the app's collection has no file: data_app.yaml names it"))))))
 
 (deftest collections-without-folders-do-not-take-numbers-test
   (testing "the Trash and the Library have no folder in collections/main/, so a collection of the same name is not _2"

@@ -275,7 +275,9 @@
       ;; failure on one entity doesn't abort the entire import. See #74412.
       ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared
       ;; dependencies guide the import, and make sure all containers are imported before contents, etc.
-      (let [contents      (serdes.ingest/ingest-list ingestion)
+      (let [;; an app's resource collection may have no file: its data_app.yaml names it
+            ingestion     (serdes.ingest/with-data-app-collections ingestion)
+            contents      (serdes.ingest/ingest-list ingestion)
             ingest-errors (serdes.ingest/ingest-errors ingestion)
             ctx           (cond-> (new-context ingestion)
                             (seq ingest-errors) (update :errors into ingest-errors))]

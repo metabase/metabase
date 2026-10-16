@@ -57,9 +57,9 @@
 
 (def ^:private resource-collection-has-file?
   "Whether a data app's resource collection has its own file, `data_apps/<slug>/resources/collection.yaml`."
-  ;; Open item 3: yes. The app's manifest names the collection by entity_id, and the import needs the collection's
-  ;; file to create it before the app.
-  true)
+  ;; Open item 3, decided: no. The collection is hidden from users; `data_app.yaml` names it, and the import creates it
+  ;; from there (see [[metabase-enterprise.serialization.v2.ingest/with-data-app-collections]]).
+  false)
 
 ;; Open item 4 (the folder of another namespace): `collections/<namespace folder>/`, by
 ;; [[kind-folders/namespace-folder]] (see [[namespace-root-folder]]).

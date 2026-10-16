@@ -87,9 +87,6 @@
 (deftest refuses-what-a-resource-may-not-hold-test
   (let [refused (fn [tree message]
                   (is (some #(str/includes? % message) (messages tree)) message))]
-    (testing "a manifest naming a collection whose file isn't in the repository"
-      (refused (shop (question-resources) :collection (data-apps.tu/collection-entity-id "other"))
-               "is not in the repository"))
     (testing "a card that isn't a question or metric: a model has no place, now that no action hangs off one"
       (doseq [card-type ["dashboard" "model"]]
         (refused (edit-file (shop (question-resources)) question-path #(assoc % :type card-type))
@@ -119,9 +116,14 @@
     (testing "a manifest naming no collection"
       (refused (shop (question-resources) :collection nil) "must name the app's resource collection")
       (refused (shop nil :collection nil) "must name the app's resource collection"))
-    (testing "a manifest naming a collection the repository doesn't hold"
-      (refused (shop (dissoc (question-resources) collection-path)) "is not in the repository")
-      (refused (shop nil) "is not in the repository"))))
+    (testing "a manifest naming a collection outside the data-apps namespace, with no file for it"
+      (mt/with-temp [:model/Collection {finance-eid :entity_id} {:name "Finance"}]
+        (refused (shop nil :collection finance-eid) "outside the data-apps namespace")))))
+
+(deftest a-collection-needs-no-file-test
+  (testing "the app's collection needs no file: the manifest names it, and the import creates it"
+    (is (= [] (messages (shop (dissoc (question-resources) collection-path)))))
+    (is (= [] (messages (shop nil))))))
 
 (deftest refuses-an-action-the-app-cannot-run-test
   (data-apps.tu/do-with-sources!

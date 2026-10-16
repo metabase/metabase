@@ -281,6 +281,52 @@
   (ingest-errors [_]
     (or @errors-atom [])))
 
+(defn- data-app-collection
+  "The resource collection of the data app `app` (an ingested DataApp), as a file of it would hold it."
+  [{:keys [collection slug]}]
+  {:serdes/meta [{:model "Collection" :id collection :label slug}]
+   :entity_id   collection
+   :name        (str "Data App: " slug)
+   :namespace   "data-apps"
+   :parent_id   nil
+   :archived    false})
+
+(defn- data-app-collections
+  "For each data app in `ingestable` whose resource collection has no file of its own, its collection (see
+  [[data-app-collection]]), by serdes path. An app's collection that exists here outside the `data-apps` namespace
+  is left alone, so that the load does not move it."
+  [ingestable]
+  (let [paths       (ingest-list ingestable)
+        collections (into #{} (comp (filter #(= "Collection" (:model (last %)))) (map (comp :id last))) paths)]
+    (into {}
+          (for [path  paths
+                :when (= "DataApp" (:model (last path)))
+                :let  [app            (ingest-one ingestable path)
+                       collection-eid (:collection app)]
+                :when (and collection-eid
+                           (not (contains? collections collection-eid))
+                           (let [local (serdes/load-find-local [{:model "Collection" :id collection-eid}])]
+                             (or (nil? local) (= "data-apps" (some-> (:namespace local) name)))))]
+            [[{:model "Collection" :id collection-eid}] (data-app-collection app)]))))
+
+(p/defrecord+ DataAppCollections [ingestable collections]
+  Ingestable
+  (ingest-list [_]
+    (concat (ingest-list ingestable) (keys @collections)))
+
+  (ingest-one [_ path]
+    (or (get @collections (strip-labels path))
+        (ingest-one ingestable path)))
+
+  (ingest-errors [_]
+    (ingest-errors ingestable)))
+
+(defn with-data-app-collections
+  "`ingestable` with the resource collection of each data app whose collection has no file of its own (as in the
+  kind layout, where `data_app.yaml` names it), so that the collection loads before the app and its resources."
+  [ingestable]
+  (->DataAppCollections ingestable (delay (data-app-collections ingestable))))
+
 (defn ingest-yaml
   "Creates a new Ingestable on a directory of YAML files, as created by
   [[metabase-enterprise.serialization.v2.storage.yaml]]."
