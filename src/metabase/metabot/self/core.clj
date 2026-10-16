@@ -1017,8 +1017,10 @@
                          (fn [chunk]
                            (cond-> chunk
                              (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-              outcome  (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)]
-                         (when-let [raw (::raw-arguments arguments)]
+              outcome  (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                             raw                 (::raw-arguments arguments)]
+                         ;; Valid JSON can set `::raw-arguments` too, to a value that isn't a string.
+                         (when (string? raw)
                            (log/warn "Failed to parse tool arguments as JSON"
                                      {:tool-name    safe-name
                                       :tool-call-id tool-call-id

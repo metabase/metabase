@@ -811,6 +811,16 @@
                                     ", :tool-call-id call-j, :raw-len " (count raw) "}")}]
                     (messages)))))))))
 
+(deftest ^:parallel tool-sentinel-key-arguments-test
+  (testing "valid JSON that sets the raw-arguments sentinel key gets a validation outcome"
+    (doseq [[tool-name code] [["get-time" :invalid-json] ["analyze_chart" :unknown-tool]]]
+      (testing tool-name
+        (let [chunks (test-util/parts->aisdk-chunks
+                      [{:type :tool-input :id "call-k" :function tool-name
+                        :arguments {::self.core/raw-arguments 1}}])]
+          (is (= {:class :validation :code code}
+                 (-> (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks) last :result :error))))))))
+
 (deftest ^:parallel tool-non-object-arguments-test
   (let [received (atom ::not-called)
         tools    {"open" {:fn     (fn [args] (reset! received args) {:output "ok"})
