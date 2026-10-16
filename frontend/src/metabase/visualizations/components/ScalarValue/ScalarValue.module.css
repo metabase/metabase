@@ -1,5 +1,14 @@
 .value {
-  display: inline;
+  /* shrinks to the text so the parent can center it, and once the text is
+     wider than the card it fills the width and truncates from the end */
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+  text-align: start;
+  /* clip only horizontally so deep descenders still render (metabase#72443) */
+  overflow-x: clip;
+  overflow-y: visible;
+  text-overflow: ellipsis;
   color: var(--scalar-value-color, inherit);
 }
 
