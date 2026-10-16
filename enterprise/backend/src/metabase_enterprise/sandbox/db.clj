@@ -203,7 +203,7 @@
   (t2/select :model/Card
              {:select [:c.id :c.dataset_query :c.database_id :c.card_schema
                        ;; required alongside :card_schema for the Card schema upgrade
-                       :c.type :c.result_metadata :c.dimensions :c.dimension_mappings]
+                       :c.type :c.entity_id :c.result_metadata :c.dimensions :c.dimension_mappings]
               :from   [[(t2/table-name :model/Card) :c]]
               :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
                                                  :from   [[(t2/table-name :model/Sandbox) :s]]

@@ -158,9 +158,11 @@
     (conversation-title/title-status id (:title conversation))))
 
 (defn- with-context-window
-  "Attach the window each message's `contextTokens` should be read against. It comes
-  from the model currently serving requests rather than the one that served the
-  turn, because the client uses it to judge whether the *next* message will fit."
+  "Attach the window each message's `contextTokens` should be read against.
+
+  It comes from the model currently serving requests rather than the one that served the turn,
+  because the client uses it to judge whether the *next* message will fit. Whether a past turn
+  filled its own window is stored on that turn's row instead, so this window does not change it."
   [detail]
   (let [window (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))]
     (cond-> detail

@@ -107,7 +107,7 @@
                    :model/Field    foo   {:table_id (:id table) :name "foo" :base_type :type/Text}]
       (sync.data-sensitivity/scan-fields-for-db! db nil)
       (is (= :PUBLIC (label foo)))
-      (with-redefs [analyze/infer-data-sensitivity (constantly :PHI)]
+      (mt/with-dynamic-fn-redefs [analyze/infer-data-sensitivity (constantly :PHI)]
         (testing "a scheduled scan does not revisit PUBLIC fields even when the rules would now match"
           (is (= {:fields-scanned 0 :fields-labeled 0 :fields-failed 0}
                  (sync.data-sensitivity/scan-fields-for-db! db nil)))
@@ -189,7 +189,7 @@
     (field-user-settings/upsert-user-settings notes {:data_sensitivity :PHI})
     (sync.data-sensitivity/scan-data-sensitivity! db)
     (is (= :PII (sync-label ssn)))
-    (with-redefs [analyze/infer-data-sensitivity (constantly :SEC_KEY)]
+    (mt/with-dynamic-fn-redefs [analyze/infer-data-sensitivity (constantly :SEC_KEY)]
       (testing "a forced scan leaves a categorized field on its old label"
         (sync.data-sensitivity/scan-data-sensitivity! db :force? true)
         (is (= :PII (sync-label ssn))))
@@ -207,7 +207,7 @@
                  :model/Table    table {:db_id (:id db) :name "app_users"}
                  :model/Field    ssn   {:table_id (:id table) :name "ssn" :base_type :type/Text}]
     (let [calls (atom 0)]
-      (with-redefs [analyze/infer-data-sensitivity (fn [& _] (swap! calls inc) (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [analyze/infer-data-sensitivity (fn [& _] (swap! calls inc) (throw (ex-info "boom" {})))]
         (testing "a throwing rule counts as scanned and failed and leaves the field unscanned"
           (is (= {:fields-scanned 1 :fields-labeled 0 :fields-failed 1}
                  (sync.data-sensitivity/scan-data-sensitivity! db)))

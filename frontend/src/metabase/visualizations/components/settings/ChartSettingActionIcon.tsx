@@ -15,6 +15,7 @@ export const ChartSettingActionIcon = ({
   "data-testid": dataTestId,
 }: ChartSettingActionIconProps) => (
   <ActionIcon
+    variant="subtle"
     data-testid={dataTestId}
     onClick={(e) => {
       e.stopPropagation();

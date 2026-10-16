@@ -263,7 +263,6 @@
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *search-request-results-database-id*
   "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`
   Database. Other results are filtered out so these tests can be ran from the REPL without the presence of other
@@ -963,10 +962,12 @@
               (is (= #{}
                      (into #{} (comp relevant-2 (map (juxt :name normalize)))
                            (search! "rom" :rasta))))))
-          (testing "Sandboxed users do not see indexed entities in search"
+          (testing "Sandboxed, impersonated and routed users do not see indexed entities in search"
             (mt/with-dynamic-fn-redefs [perms-util/impersonated-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
             (mt/with-dynamic-fn-redefs [perms-util/sandboxed-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
+            (mt/with-dynamic-fn-redefs [perms-util/routed-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]
@@ -1449,6 +1450,19 @@
       (testing "error if invalids created_at string"
         (is (= "Failed to parse datetime value: today~"
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_at "today~" :creator_id (mt/user->id :rasta))))))))
+
+(deftest action-without-model-not-searchable-test
+  (testing "search returns an Action with a model but not one without a model"
+    (let [search-term "action-without-model-search"]
+      (mt/with-temp [:model/Card   {model-id :id}  {:name (str search-term " model") :type :model}
+                     :model/Action {action-id :id} {:name (str search-term " with model") :model_id model-id :type :query}
+                     :model/Action _               {:name (str search-term " without model") :model_id nil :type :query}]
+        (search.tu/with-appdb-search-and-legacy-search
+          (is (= #{action-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "action")
+                      :data
+                      (map :id)
+                      set))))))))
 
 (deftest filter-by-last-edited-at-test
   (let [search-term "last-edited-at-filtering"]

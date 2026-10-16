@@ -238,12 +238,9 @@ result_metadata:
   lib/original-name: total_revenue
   lib/source: source/aggregations
   lib/source-column-alias: total_revenue
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
-- id: h5F2EjHsRd73Dqqh8sAtd
-  label: basic_aggregations
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

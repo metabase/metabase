@@ -1,6 +1,10 @@
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import cx from "classnames";
 
-import { SidebarRoot } from "./PermissionsSidebar.styled";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import CS from "metabase/css/core/index.css";
+import { Flex } from "metabase/ui";
+
+import S from "./PermissionsSidebar.module.css";
 import type { PermissionsSidebarContentProps } from "./PermissionsSidebarContent";
 import { PermissionsSidebarContent } from "./PermissionsSidebarContent";
 
@@ -15,10 +19,16 @@ export const PermissionsSidebar = ({
   ...contentProps
 }: PermissionsSidebarProps) => {
   return (
-    <SidebarRoot>
+    <Flex
+      component="aside"
+      className={cx(S.borderRight, CS.overflowHidden)}
+      direction="column"
+      flex="0 0 auto"
+      w="18.75rem"
+    >
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
         <PermissionsSidebarContent {...contentProps} />
       </LoadingAndErrorWrapper>
-    </SidebarRoot>
+    </Flex>
   );
 };

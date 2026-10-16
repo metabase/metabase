@@ -8,11 +8,6 @@ active: true
 field_order: database
 initial_sync_status: complete
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: ORDERS
-  model: Table
+- model: Table
 data_authority: unconfigured
 data_layer: internal

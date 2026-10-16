@@ -6,19 +6,22 @@ describe("metabase > scenarios > navbar > new menu", () => {
     cy.signInAsAdmin();
 
     cy.visit("/");
+    H.navigationSidebar().should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
   });
 
-  it("should open the question notebook and SQL query editors", () => {
+  it("should open the question notebook and SQL query editors and close the navbar", () => {
     H.popover().within(() => {
       cy.findByText("Question").click();
     });
 
     cy.location("pathname").should("eq", "/question/notebook");
     H.miniPicker().should("be.visible");
+    H.navigationSidebar().should("not.be.visible");
 
     cy.visit("/");
+    H.navigationSidebar().should("be.visible");
     H.newButton().click();
     H.popover().within(() => {
       cy.findByText("SQL query").click();
@@ -26,6 +29,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
 
     cy.location("pathname").should("eq", "/question");
     H.NativeEditor.get().should("be.visible");
+    H.navigationSidebar().should("not.be.visible");
   });
 });
 

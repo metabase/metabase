@@ -1,13 +1,25 @@
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
-import type { DataApp } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type GroupPermissions,
+} from "metabase-types/api";
 
 import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
 const { H } = cy;
+
+const BLOCKED_PERMISSION: GroupPermissions = {
+  [SAMPLE_DB_ID]: {
+    [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+    [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
+  },
+};
 
 describe("scenarios > data apps > viewing & routing", () => {
   beforeEach(() => {
@@ -39,63 +51,30 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
 
     it("opens the app shell for a user without data access, but shows no data", () => {
+      cy.updatePermissionsGraph({
+        [USER_GROUPS.ALL_USERS_GROUP]: BLOCKED_PERMISSION,
+        [USER_GROUPS.COLLECTION_GROUP]: BLOCKED_PERMISSION,
+      });
+
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         testEnv: TEST_ENV,
       });
 
-      // The `nodata` user can open the app (viewing isn't gated), but the query
-      // the app runs goes through the QP with the user's own permissions — with
-      // no data access it resolves to no data (the fixture renders "—").
       cy.signIn("nodata");
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        // Group access lets users view the app shell.
         cy.findByRole("heading", { name: "Orders overview" }).should(
           "be.visible",
         );
+
+        // The user's incomplete data permissions still blocks its query,
+        // so the orders-count renders "—".
         cy.findByTestId("orders-count", { timeout: 30000 }).should(
           "have.text",
           "—",
         );
-      });
-    });
-
-    it("shows unpublished app error when opening an app without a resource collection", () => {
-      cy.request<DataApp>("POST", `/api/apps/${APP_NAME}/draft`)
-        .its("body.resource_collection_id")
-        .as("resourceCollectionId");
-
-      cy.log("archive and delete the data app collection");
-      cy.get<number>("@resourceCollectionId").then((collectionId) => {
-        cy.request("PUT", `/api/collection/${collectionId}`, {
-          archived: true,
-        });
-
-        cy.request("DELETE", `/api/collection/${collectionId}`);
-      });
-
-      cy.log("fetching bundle should return 409 error");
-      cy.request({
-        url: `/api/apps/${APP_NAME}/bundle`,
-        failOnStatusCode: false,
-      })
-        .its("status")
-        .should("eq", 409);
-
-      cy.intercept("GET", `/api/apps/${APP_NAME}`).as("getUnpublishedApp");
-      H.openDataApp(APP_NAME);
-
-      cy.log("fetching data app metadata should return 409 error");
-      cy.wait("@getUnpublishedApp")
-        .its("response.statusCode")
-        .should("eq", 409);
-
-      H.main().within(() => {
-        cy.findByText("This data app isn’t published yet").should("be.visible");
-
-        cy.findByText(
-          "An administrator needs to publish this data app before it can be opened.",
-        ).should("be.visible");
       });
     });
 

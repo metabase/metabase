@@ -22,7 +22,7 @@
 
 (defn- insert-message!
   [{:keys [conversation-id created-at role profile-id total-tokens data data-version
-           deleted-at external-id finished]
+           deleted-at external-id finished finish-reason context-window-full]
     :as   options
     :or   {data-version 2}}]
   (first (t2/insert-returning-pks!
@@ -34,8 +34,10 @@
                    :data            data
                    :data_version    data-version
                    :external_id     (or external-id (str (random-uuid)))}
-            created-at       (assoc :created_at created-at)
-            deleted-at       (assoc :deleted_at deleted-at)
+            created-at          (assoc :created_at created-at)
+            deleted-at          (assoc :deleted_at deleted-at)
+            finish-reason       (assoc :finish_reason finish-reason)
+            context-window-full (assoc :context_window_full context-window-full)
             (contains? options :finished) (assoc :finished finished)))))
 
 (defn- insert-usage!
@@ -602,6 +604,27 @@
           (is (= {:type "in_progress"} (:status (second messages))))
           (is (= [] (:parts (second messages))))
           (is (= 2 message_count)))))))
+
+(deftest get-conversation-detail-incomplete-status-test
+  (testing "a reply the provider cut off surfaces as an incomplete message"
+    (with-detail-conversation!
+      (fn [{:keys [insert! day fetch]}]
+        (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 3
+                  :data [{:type "text" :text "a long question"}]})
+        (insert! {:created-at (day 2) :role "assistant" :profile-id "internal" :total-tokens 9 :finished true
+                  :finish-reason "length" :data [{:type "text" :text "cut o"}]})
+        (insert! {:created-at (day 3) :role "user" :profile-id "p" :total-tokens 3
+                  :data [{:type "text" :text "go on"}]})
+        (insert! {:created-at (day 4) :role "assistant" :profile-id "internal" :total-tokens 9 :finished true
+                  :finish-reason "length" :context-window-full true
+                  :data [{:type "text" :text "cut again"}]})
+        (let [messages (:messages (fetch))]
+          (testing "a row with no full-window verdict is a plain length stop"
+            (is (= {:type "incomplete" :finishReason "length"}
+                   (:status (message-by-text messages "cut o")))))
+          (testing "a row saved as full reads as full here too, the same as on chat reload"
+            (is (= {:type "incomplete" :finishReason "length" :contextWindowFull true}
+                   (:status (message-by-text messages "cut again"))))))))))
 
 (deftest get-conversation-detail-feedback-on-discarded-attempt-test
   (testing "feedback on a regenerated-away attempt still resolves to that attempt's message"

@@ -9,7 +9,7 @@ import type {
 
 import EventForm from "../../containers/EventForm";
 import ModalBody from "../ModalBody";
-import ModalHeader from "../ModalHeader";
+import { ModalHeader } from "../ModalHeader";
 
 export interface EditEventModalProps {
   event: TimelineEvent;

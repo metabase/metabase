@@ -14,5 +14,4 @@ settings:
   database-source-dataset-name: test-data
 initial_sync_status: complete
 serdes/meta:
-- id: Sample Database
-  model: Database
+- model: Database

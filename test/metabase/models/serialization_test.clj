@@ -262,6 +262,52 @@
                            :id        "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                            :dimension ["dimension" [:field 54 {:source-field 53}]]}}}}}}})))))
 
+(deftest ^:parallel import-old-timeline-events-settings-test
+  (testing "source-instance numeric IDs cannot select unrelated destination timelines or hide their events"
+    (let [settings {:graph.show_values                    true
+                    :timeline.selected_timeline_ids       [7]
+                    :timeline.excluded_timeline_event_ids [42]}]
+      (is (= {:graph.show_values                    true
+              :timeline.selected_timeline_ids       []
+              :timeline.excluded_timeline_event_ids []}
+             (select-keys (serdes/import-visualization-settings settings) (keys settings)))))))
+
+(deftest ^:parallel export-malformed-timeline-events-settings-test
+  (testing "values that are not numeric IDs are dropped on export instead of failing it"
+    (let [settings {:timeline.selected_timeline_ids       [1 "abc" nil]
+                    :timeline.excluded_timeline_event_ids [2 -1 "xyz"]}]
+      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+        (is (= {:timeline.selected_timeline_ids       ["Timeline___1"]
+                :timeline.excluded_timeline_event_ids ["TimelineEvent___2"]}
+               (select-keys (serdes/export-visualization-settings settings) (keys settings)))))
+      (is (= #{[{:model "Timeline" :id 1}]}
+             (serdes/visualization-settings-deps true (update settings :timeline.excluded_timeline_event_ids
+                                                              (partial remove pos-int?))))))))
+
+(deftest ^:parallel scalar-timeline-events-settings-test
+  (testing "a setting holding a scalar instead of a list counts as no ids rather than failing export or deps"
+    (let [settings {:timeline.selected_timeline_ids       7
+                    :timeline.excluded_timeline_event_ids true}]
+      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+        (is (= {:timeline.selected_timeline_ids       []
+                :timeline.excluded_timeline_event_ids []}
+               (select-keys (serdes/export-visualization-settings settings) (keys settings)))))
+      (is (= #{} (serdes/visualization-settings-deps true settings)))
+      (is (= {:timeline.selected_timeline_ids       []
+              :timeline.excluded_timeline_event_ids []}
+             (select-keys (serdes/import-visualization-settings settings) (keys settings)))))))
+
+(deftest ^:parallel excluded-timeline-events-deps-without-selection-test
+  (testing "excluded events pull in their Timeline even when the card selects no timelines, so the Timeline loads
+            first and the exclusions survive the import instead of un-hiding the events"
+    (let [eid (fn [c] (apply str (repeat 21 c)))]
+      (is (= #{[{:model "Timeline" :id (eid \a)}]
+               [{:model "Timeline" :id (eid \c)}]}
+             (serdes/visualization-settings-deps
+              false
+              {:timeline.excluded_timeline_event_ids [[(eid \a) (eid \b)]
+                                                      [(eid \c) (eid \d)]]}))))))
+
 (deftest ^:parallel import-viz-settings-test
   (binding [serdes/*import-field-fk* (constantly 3)]
     (is (= {:column_settings
@@ -307,23 +353,23 @@
                (get-in (#'serdes/import-mbql* exported) ["table" :table-id])))))))
 
 (deftest ^:parallel template-tag-table-id-deps-test
-  (testing "template tag :table-id contributes only its Database dependency — the referenced Table itself is not a
-            dependency (it's synthesized on import if missing)"
-    (is (= #{[{:model "Database" :id "DB"}]}
+  (testing "template tag :table-id is not a dependency — the referenced Database and Table are synthesized on import if
+            missing"
+    (is (= #{}
            (#'serdes/mbql-deps-map false {:table-id ["DB" "SCHEMA" "TABLE"]})))))
 
 (deftest ^:parallel mbql-deps-format-parity-test
   (testing "mbql-deps finds each reference on both the serialized (portable) and the raw (numeric) form of a query.
             serialization-dependencies runs on raw entities and existence-checks the referenced Table/Field;
-            deserialization-dependencies runs on the serialized form, where Table/Field are synthesized on import, so
-            it reports only their Database. Every other ref type resolves to the same model in both forms. This is the
-            parity guard for the two dependency codepaths sharing mbql-deps."
+            deserialization-dependencies runs on the serialized form, where Database/Table/Field are synthesized on
+            import, so it reports none of them. Every other ref type resolves to the same model in both forms. This is
+            the parity guard for the two dependency codepaths sharing mbql-deps."
     (let [models (fn [deps] (into #{} (map (comp :model last)) deps))
           eid    (fn [c] (apply str (repeat 21 c)))]
       (testing "MBQL ref clauses"
         (doseq [[label serialized raw ser-models raw-models]
-                [["field (MBQL 5)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{"Database"} #{"Field"}]
-                 ["field (legacy)" [:field ["DB" "S" "T" "F"] {}] [:field 53 {}]  #{"Database"} #{"Field"}]
+                [["field (MBQL 5)"  [:field {} ["DB" "S" "T" "F"]] [:field {} 53]  #{}           #{"Field"}]
+                 ["field (legacy)" [:field ["DB" "S" "T" "F"] {}] [:field 53 {}]  #{}           #{"Field"}]
                  ["metric"         [:metric {} (eid \a)]          [:metric {} 99] #{"Card"}     #{"Card"}]
                  ["segment"        [:segment {} (eid \b)]         [:segment {} 5]  #{"Segment"}  #{"Segment"}]
                  ["measure"        [:measure {} (eid \c)]         [:measure {} 3]  #{"Measure"}  #{"Measure"}]]]
@@ -333,7 +379,7 @@
                 "raw (numeric) form"))))
       (testing "MBQL map keys"
         (doseq [[label serialized raw ser-models raw-models]
-                [["source-table" {:source-table ["DB" "S" "T"]} {:source-table 9} #{"Database"}           #{"Table"}]
+                [["source-table" {:source-table ["DB" "S" "T"]} {:source-table 9} #{}                     #{"Table"}]
                  ["source-card"  {:source-card (eid \d)}         {:source-card 7}  #{"Card"}               #{"Card"}]
                  ["snippet-id"   {:snippet-id (eid \e)}          {:snippet-id 2}   #{"NativeQuerySnippet"} #{"NativeQuerySnippet"}]]]
           (testing label
@@ -395,3 +441,16 @@
            clojure.lang.ExceptionInfo
            #"Invalid input.*:template-tags"
            (serdes/import-mbql query-with-unknown-tag-type))))))
+
+(deftest ^:parallel field-path->field-ref-test
+  (testing "a Field path turns into the reference `*import-field-fk*` takes, with or without a schema"
+    (is (= ["db" "PUBLIC" "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Schema" :id "PUBLIC"}
+                                          {:model "Table" :id "orders"} {:model "Field" :id "id"}])))
+    (is (= ["db" nil "orders" "id"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "id"}]))))
+  (testing "a nested Field of a Table without a schema keeps the Table and every parent Field in place"
+    (is (= ["db" nil "orders" "customer" "tier"]
+           (serdes/field-path->field-ref [{:model "Database" :id "db"} {:model "Table" :id "orders"}
+                                          {:model "Field" :id "customer"} {:model "Field" :id "tier"}])))))

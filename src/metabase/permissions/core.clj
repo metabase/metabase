@@ -2,6 +2,7 @@
   "`permissions` module API namespace."
   (:require
    [metabase.permissions.data-access-token]
+   [metabase.permissions.db]
    [metabase.permissions.models.application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision]
    [metabase.permissions.models.collection.graph]
@@ -37,12 +38,15 @@
   metabase.permissions.validation/keep-me)
 
 (p/import-vars
+ [metabase.permissions.db
+  group-tenant-flags
+  groups-by-ids]
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
   batch-delete-permissions!
   batch-insert-permissions!
-  data-app-group-ids
-  data-app-view-data-permission-level
+  data-app-collection-ids
+  data-app-collection?
   disable-perms-cache
   download-perms-level
   full-database-permission-for-user
@@ -107,6 +111,7 @@
   set-has-full-permissions-for-set?
   set-has-full-permissions?]
  [metabase.permissions.models.permissions-group
+  group-display-name
   non-magic-groups
   all-users-magic-group-type]
  [metabase.permissions.models.permissions-group-membership
@@ -138,6 +143,7 @@
   impersonated-user?
   impersonation-enforced-for-db?
   log-permissions-changes
+  routed-user?
   sandboxed-or-impersonated-user?
   sandboxed-user?
   sandboxed-user-for-db?
@@ -163,7 +169,8 @@
  [metabase.permissions.data-access-token
   data-access-token
   data-access-compatible?
-  data-access-token-transform])
+  data-access-token-transform
+  routing-token-for-db])
 
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)

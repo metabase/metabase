@@ -1095,7 +1095,8 @@
                                                [:semantic-version {:optional true} [:maybe [:or
                                                                                             [:sequential :int]
                                                                                             [:map {:closed true} [:major :int] [:minor :int]]]]]
-                                               [:cloud            {:optional true} [:maybe :boolean]]]]]
+                                               [:cloud            {:optional true} [:maybe :boolean]]
+                                               [:single-node      {:optional true} [:maybe :boolean]]]]]
    [:details         {:optional true} ::lib.schema.common/database-details]
    [:engine          {:optional true} [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
    [:features        {:optional true} [:set [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]]

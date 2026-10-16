@@ -31,7 +31,7 @@ export function MoveSnippetModal({ snippet, onClose }: MoveSnippetModalProps) {
     } catch (error) {
       sendToast({
         message: getErrorMessage(error, t`Failed to move snippet`),
-        icon: "warning",
+        variant: "negative",
       });
     } finally {
       setIsMoving(false);

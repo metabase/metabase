@@ -4,5 +4,4 @@ definition: It's foobar2000 actually
 entity_id: fooBar2000gLossary001
 term: foobar
 serdes/meta:
-- id: fooBar2000gLossary001
-  model: Glossary
+- model: Glossary

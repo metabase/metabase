@@ -117,13 +117,7 @@
   they don't have to be declared in `serdes/deserialization-dependencies`. Everything else MUST be declared
   — otherwise `*import-fk*` throws \"Could not find foreign key target\" and aborts the
   whole import (see GDGT-2444 for an example)."
-  #{:model/User :model/Table :model/Field})
-
-(def ^:private fk-completeness-known-exceptions
-  "`[model field]` pairs that look like FK-completeness violations but are intentionally
-  exempt. The map value is a human reason kept for grep-ability."
-  {["Database" :router_database_id]
-   "router_database_id rows are filtered out of `extract-query` (router DBs aren't serialized), so this FK never reaches the load path."})
+  #{:model/User :model/Database :model/Table :model/Field})
 
 (defn- inlined-via-nested?
   "True if `model-name` is loaded only as a nested child of some parent, never as a root.
@@ -161,10 +155,7 @@
               ;; nil `generate-path` (the convention for nested-only models like
               ;; QueryAction / ImplicitAction).
               :when (not (or (inlined? m) (inlined-via-nested? m)))
-              :let [fks (->> (:transform (serdes/make-spec m nil))
-                             direct-fks
-                             (remove (fn [[field _]]
-                                       (contains? fk-completeness-known-exceptions [m field]))))]
+              :let [fks (direct-fks (:transform (serdes/make-spec m nil)))]
               :when (seq fks)]
         (testing (format "%s\n" m)
           (let [entity     (into {:serdes/meta [{:model m :id "self"}]}

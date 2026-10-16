@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { setupSaml } from "./sso/shared/helpers.js";
+import { setupSaml } from "./sso/shared/helpers";
 
 describe("scenarios > admin > settings > user provisioning", () => {
   beforeEach(() => {

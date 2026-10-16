@@ -289,6 +289,7 @@
              include-saved-questions-tables?
              include-editable-data-model?
              include-analytics?
+             include-stubs?
              exclude-uneditable-details?
              include-only-uploadable?
              router-database-id
@@ -302,7 +303,7 @@
                                         filter-on-router-database-id))
         dbs (warehouses-rest.db/databases-where api/*current-user-id* (mi/superuser?) api/*is-data-analyst?*
                                                 filter-by-data-access? filter-on-router-database-id
-                                                include-analytics?)
+                                                include-analytics? include-stubs?)
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
@@ -346,6 +347,8 @@
 
   * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
 
+  * `include_stubs` includes stub DBs, which serialization creates for missing databases. Default: `false`.
+
   * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.
 
   * `can-write-metadata` will only include DBs for which the current user has data model editing permissions
@@ -358,12 +361,13 @@
   {:scope api-scope/data-app}
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
-           router_database_id can-query can-write-metadata]}
+           include_stubs router_database_id can-query can-write-metadata]}
    :- [:map {:closed true}
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:enum "tables" "schemas"]]
                                                        (deferred-tru "include must be either empty, ''tables'', or ''schemas''"))]
        [:include_analytics           {:default false} [:maybe :boolean]]
+       [:include_stubs               {:default false} [:maybe :boolean]]
        [:saved                       {:default false} [:maybe :boolean]]
        [:include_editable_data_model {:default false} [:maybe :boolean]]
        [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
@@ -387,6 +391,7 @@
                                                                :include-editable-data-model?    include_editable_data_model
                                                                :exclude-uneditable-details?     only-editable?
                                                                :include-analytics?              include_analytics
+                                                               :include-stubs?                  include_stubs
                                                                :include-only-uploadable?        include_only_uploadable
                                                                :router-database-id              router_database_id
                                                                :can-query?                      can-query
@@ -1041,16 +1046,18 @@
                                  :refingerprint      refingerprint
                                  :is_full_sync       full-sync?
                                  :is_on_demand       on-demand?
-                                 :is_stub            (when (and (or details-changed? engine-changed?)
-                                                                (nil? main-conn-error))
-                                                       false)
                                  :description        description
                                  :caveats            caveats
                                  :points_of_interest points_of_interest
                                  :auto_run_queries   auto_run_queries
                                  :settings           (when (seq settings) pending-settings)}
-                                :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand :is_stub
+                                :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
                                            :description :caveats :points_of_interest :auto_run_queries :settings})
+                               (when (and (:is_stub existing-database)
+                                          (or details-changed? engine-changed?))
+                                 {:is_stub             false
+                                  :initial_sync_status "incomplete"
+                                  :initial_sync_error  nil})
                                ;; these fields can be nil
                                (when (contains? body :provider_name)
                                  {:provider_name provider_name})
@@ -1422,12 +1429,15 @@
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
-    ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
-    (binding [driver.settings/*allow-testing-h2-connections* true
-              driver.settings/*allow-testing-sqlite-connections* true]
-      (if-let [err-map (warehouses/test-database-connection engine connection-details)]
-        (merge err-map {:status "error"})
-        {:status "ok"}))))
+    (if (:is_stub database)
+      {:status  "error"
+       :message (tru "This database has placeholder connection details. Replace that with actual connection details to make this connection Active.")}
+      ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
+      (binding [driver.settings/*allow-testing-h2-connections* true
+                driver.settings/*allow-testing-sqlite-connections* true]
+        (if-let [err-map (warehouses/test-database-connection engine connection-details)]
+          (merge err-map {:status "error"})
+          {:status "ok"})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

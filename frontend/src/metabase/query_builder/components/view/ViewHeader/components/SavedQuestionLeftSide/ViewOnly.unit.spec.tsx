@@ -101,8 +101,8 @@ const ORDERS_JOIN_PRODUCTS_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
           conditions: [
             {
               operator: "=",
-              left: { type: "column", name: "ID", sourceName: "ORDERS" },
-              right: { type: "column", name: "ID", sourceName: "PRODUCTS" },
+              left: { type: "column", name: "ID" },
+              right: { type: "column", name: "ID" },
             },
           ],
         },

@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { type ReactElement, forwardRef } from "react";
 
 import type { IconName } from "metabase/embedding-sdk/types/icon";
@@ -9,8 +8,6 @@ import {
   type PolymorphicComponentProps,
   Tooltip,
 } from "metabase/ui";
-
-import S from "./SdkActionIcon.module.css";
 
 type OwnSdkActionIconProps = {
   icon: IconName;
@@ -38,7 +35,6 @@ export const SdkActionIcon = forwardRef<
     tooltip,
     tooltipAriaLabel,
     active,
-    className,
     ...actionIconProps
   },
   ref,
@@ -53,9 +49,8 @@ export const SdkActionIcon = forwardRef<
           tooltipAriaLabel ??
           (typeof tooltip === "string" ? tooltip : undefined)
         }
-        size="lg"
-        className={cx(S.sdkActionIcon, className)}
-        variant="default"
+        size="md"
+        mod={{ hovered: active }}
         {...actionIconProps}
       >
         <Icon name={icon} />

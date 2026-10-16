@@ -3,11 +3,13 @@
    rather than reaching into internal namespaces like [[metabase.mcp.settings]]."
   (:require
    [clojure.string :as str]
-   [metabase.api.macros :as api.macros]
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
-   [metabase.mcp.ui-surface :as mcp.ui-surface]))
+   [metabase.mcp.ui-surface :as mcp.ui-surface]
+   [metabase.mcp.usage :as mcp.usage]
+   [metabase.mcp.v2.message :as message]
+   [metabase.mcp.v2.registry :as registry]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,6 +49,20 @@
   [method uri claims]
   (mcp.ui-surface/scope-satisfied? method uri claims))
 
+(defn inline-ui-enabled-for-client?
+  "Whether the admin allows the client named `client-info-name` (from the `initialize` handshake) to render
+   MCP Apps UI. See [[metabase.mcp.settings/inline-ui-enabled-for-client?]]."
+  [client-info-name]
+  (mcp.settings/inline-ui-enabled-for-client? (mcp.usage/detect-client client-info-name)))
+
+(defn check-execute-sql-allowed!
+  "Throw a 403 unless the current user's groups allow the `execute_sql` tool, for raw SQL reaching the REST API other
+   than through that tool."
+  []
+  (when-let [denial (registry/tool-denial "execute_sql" (message/raw "Running a native (SQL) query"))]
+    ;; Not a teaching error: the message record in its ex-data would turn this REST 403 into a stack trace.
+    (throw (ex-info (message/render denial) {:status-code 403}))))
+
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."
   []
@@ -61,31 +77,13 @@
       "vscode-webview://" (vscode-webview-enabled?)
       false)))
 
-(defn all-scopes
-  "All supported OAuth scopes, as a sorted set: those declared on agent-api endpoints via defendpoint metadata, plus
-   every scope the v2 MCP surface accepts ([[v2-scopes]])."
-  []
-  (-> (sorted-set)
-      ;; agent-api scopes from defendpoint metadata
-      (into (comp (keep #(get-in % [:form :metadata :scope]))
-                  (filter string?))
-            (vals (api.macros/ns-routes 'metabase.agent-api.api)))
-      ;; The v2 surface's scopes, read from the require-free leaf rather than the registry (see [[v2-scopes]]).
-      (into mcp.paths/v2-surface-scopes)))
-
 (defn v2-scopes
-  "The scopes the v2 MCP surface itself gates on. Excludes the agent-API endpoint scopes
-   [[all-scopes]] also gathers — those belong to a different resource, and advertising them for v2 is
-   what puts per-entity scopes the v2 tools don't use on a v2 client's consent screen.
-
-   Read from the require-free literal in [[metabase.mcp.paths/v2-surface-scopes]], not the registries.
-   The registries report only the tools whose namespaces happen to be loaded.
-   Reaching them from here would also pull `metabot.scope` in wherever this namespace loads (see [[metabase.mcp.paths]]).
-   `v2-surface-scopes-match-metabot-scope-test` keeps the literal in step with what the tools gate on."
+  "The scopes the v2 MCP surface itself gates on."
   []
   mcp.paths/v2-surface-scopes)
 
 (defn v2-baseline-scopes
-  "The subset of [[v2-scopes]] a client is told to request when it first connects."
+  "The subset of [[v2-scopes]] that the consent page locks: when a client requests one of these, the user cannot untick
+  it."
   []
   mcp.paths/v2-baseline-scopes)

@@ -42,6 +42,8 @@ If you already have a Slack integration from before this feature existed, your S
 
 To chat with Metabot, people will need to link their Slack account to their Metabase account. The first time you message Metabot, it kicks off an OAuth flow that connects the two accounts. This connection lets Metabot use your Metabase permissions, so Metabot will only see data you're allowed to see.
 
+To disconnect your Slack account, go to the **Authentication** tab in your [account settings](../people-and-groups/account-settings.md) and click **Disconnect**.
+
 ## Chatting with Metabot in Slack
 
 - **Message Metabot directly** for private conversations with your data. No @mention needed.

@@ -11,22 +11,8 @@ interface MetadataResponse {
 describe("Table editing", () => {
   beforeEach(() => {
     H.resetSnowplow();
-    H.restore();
     cy.signInAsAdmin();
-    H.activateToken("pro-self-hosted");
-    cy.intercept("GET", "/api/database?*").as("databases");
-    cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
-    cy.intercept("GET", "/api/database/*/schema/*").as("schema");
-    cy.intercept("POST", "/api/dataset*").as("dataset");
-    cy.intercept("GET", "/api/field/*/values").as("fieldValues");
-    cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
-      "updateField",
-    );
-    cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
-    cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
-    cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
-    cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
     cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
       "publishTables",
@@ -36,33 +22,8 @@ describe("Table editing", () => {
     );
   });
 
-  it("should display metadata information", { tags: ["@external"] }, () => {
-    H.restore("mysql-8");
-    H.activateToken("pro-self-hosted");
-    H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("QA MySQL8").click();
-    TablePicker.getTable("Orders").click();
-
-    cy.wait<MetadataResponse>("@metadata").then(({ response }) => {
-      const viewCount = response?.body.view_count ?? 0;
-
-      cy.findByLabelText("Name in the database").should("have.text", "ORDERS");
-      cy.findByLabelText("Last updated at").should("exist"); // Testing the actual value is done in TableMetadata.unit.spec.tsx
-      cy.findByLabelText("View count").should("have.text", viewCount);
-      cy.findByLabelText("Est. row count").should("not.exist");
-      cy.findByLabelText("Dependencies").should("have.text", "0");
-      cy.findByLabelText("Dependents").should("have.text", "0");
-
-      H.DataModel.TableSection.get()
-        .findByRole("link", { name: "Dependency graph" })
-        .click();
-
-      H.DataStudio.Dependencies.graph().should("be.visible");
-    });
-  });
-
   it(
-    "should publish a single table to a collection and unpublish",
+    "should display metadata information and publish and unpublish a single table",
     { tags: ["@external"] },
     () => {
       H.restore("mysql-8");
@@ -70,6 +31,29 @@ describe("Table editing", () => {
       H.DataModel.visitDataStudio();
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
+
+      cy.log("display metadata information");
+      cy.wait<MetadataResponse>("@metadata").then(({ response }) => {
+        const viewCount = response?.body.view_count ?? 0;
+
+        cy.findByLabelText("Name in the database").should(
+          "have.text",
+          "ORDERS",
+        );
+        cy.findByLabelText("Last updated at").should("exist"); // Testing the actual value is done in TableMetadata.unit.spec.tsx
+        cy.findByLabelText("View count").should("have.text", viewCount);
+        cy.findByLabelText("Est. row count").should("not.exist");
+        cy.findByLabelText("Dependencies").should("have.text", "0");
+        cy.findByLabelText("Dependents").should("have.text", "0");
+
+        H.DataModel.TableSection.get()
+          .findByRole("link", { name: "Dependency graph" })
+          .click();
+
+        H.DataStudio.Dependencies.graph().should("be.visible");
+      });
+      cy.go("back");
+      H.DataModel.TableSection.getNameInput().should("have.value", "Orders");
 
       cy.log("publish the table and verify it's published");
       TablePicker.getTable("Orders")
@@ -100,6 +84,9 @@ describe("Table editing", () => {
         .findByTestId("table-published")
         .should("not.exist");
       H.DataStudio.nav().findByLabelText("Semantic layer").click();
+      H.DataStudio.Library.emptyStateRow(
+        "Cleaned, pre-transformed data sources ready for exploring",
+      ).should("be.visible");
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
   );

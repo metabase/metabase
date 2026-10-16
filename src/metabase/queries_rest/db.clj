@@ -164,17 +164,11 @@
   [card-ids :- [:set ::lib.schema.id/card]
    new-collection-id-or-nil :- [:maybe ms/PositiveInt]]
   (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type
-              :result_metadata :dimensions :dimension_mappings]
+              :entity_id :result_metadata :dimensions :dimension_mappings]
              {:where [:and [:in :id card-ids]
                       [:or [:not= :collection_id new-collection-id-or-nil]
                        (when new-collection-id-or-nil
                          [:= :collection_id nil])]]}))
-
-(mu/defn set-cards-collection-raw!
-  "Move the Cards with `card-ids` to the Collection with `collection-id` without running model hooks."
-  [card-ids :- [:set ::lib.schema.id/card]
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! (t2/table-name :model/Card) {:id [:in card-ids]} {:collection_id collection-id}))
 
 (mu/defn stored-result
   "The StoredResult with `id`, or nil."

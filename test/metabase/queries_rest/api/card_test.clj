@@ -31,7 +31,6 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.util :as perms.u]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.card :as queries.card]
    [metabase.queries.models.card.metadata :as card.metadata]
@@ -645,7 +644,7 @@
       [:model/Card {card-id :id} {:name    "Card"
                                   :display "table"}]
       (is (= "Card with type table is not compatible to have series"
-             (:message (mt/user-http-request :crowberto :get 400 (format "card/%d/series" card-id)))))))
+             (mt/user-http-request :crowberto :get 400 (format "card/%d/series" card-id))))))
   (testing "404 if the card does not exsits"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get 404 (format "card/%d/series" Integer/MAX_VALUE))))))
@@ -1091,7 +1090,7 @@
     (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `enable-embedding` Setting.
       (doseq [enable-embedding? [true false]]
-        (mt/with-temporary-setting-values [enable-embedding-static enable-embedding?]
+        (mt/with-temporary-setting-values [enable-embedding-modular enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:enable_embedding false}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1105,7 +1104,7 @@
     (testing "Ignore values of `embedding_type` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
       ;; should be ignored regardless of the value of the `embedding-type` Setting.
       (doseq [embedding-type [true false]]
-        (mt/with-temporary-setting-values [enable-embedding-static embedding-type]
+        (mt/with-temporary-setting-values [enable-embedding-modular embedding-type]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:embedding_type nil}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1584,19 +1583,24 @@
           (testing "admin should be able to save a Card if All Users doesn't have ad-hoc data perms"
             (is (some? (create-card! :crowberto 200))))
           (testing "non-admin should get an error"
-            (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-              (is (malli= [:map
-                           [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                           [:query          [:map
-                                             [:lib/type [:= "mbql/query"]]
-                                             [:stages [:sequential
-                                                       {:min 1, :max 1}
-                                                       [:map
-                                                        [:source-table [:= (mt/id :venues)]]]]]]]
-                           [:required-perms :map]
-                           [:actual-perms   [:sequential perms.u/PathSchema]]
-                           [:trace          [:sequential :any]]]
-                          (create-card! :rasta 403))))))))))
+            (testing "Permissions errors keep their meaningful message (#14931)"
+              (testing "but not the ex-data: the (preprocessed) query inlines source Cards the user may not read (SEC-1173)"
+                (is (= "You cannot save this Question because you do not have permissions to run its query."
+                       (create-card! :rasta 403)))))))))))
+
+(deftest create-card-nested-unreadable-card-403-does-not-leak-definition-test
+  (testing "POST /api/card"
+    (testing "the 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"
+      (mt/with-temp [:model/Card {secret-id :id} {:collection_id (u/the-id (collection/user->personal-collection
+                                                                            (mt/user->id :crowberto)))
+                                                  :dataset_query (mt/native-query {:query "SELECT 1 AS sec_1173_marker"})}]
+        (let [body (mt/with-model-cleanup [:model/Card]
+                     (mt/user-http-request :rasta :post 403 "card"
+                                           (merge (mt/with-temp-defaults :model/Card)
+                                                  {:dataset_query (mt/mbql-query nil {:source-table (str "card__" secret-id)})
+                                                   :collection_id (-> :rasta mt/user->id collection/user->personal-collection u/the-id)})))]
+          (is (= "You cannot save this Question because you do not have permissions to run its query."
+                 body)))))))
 
 (deftest create-card-parameter-permissions-generic-error-test
   (testing "POST /api/card"
@@ -1971,11 +1975,11 @@
   (testing "PUT /api/card/:id"
     (mt/with-temp [:model/Card card]
       (testing "If embedding is disabled, even an admin should not be allowed to update embedding params"
-        (mt/with-temporary-setting-values [enable-embedding-static false]
+        (mt/with-temporary-setting-values [enable-embedding-modular false]
           (is (= "Embedding is not enabled."
                  (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}})))))
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (testing "Non-admin should not be allowed to update Card's embedding parms"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
@@ -1989,7 +1993,7 @@
 (deftest update-embedding-type-to-nil-test
   (testing "PUT /api/card/:id"
     (testing "Admin should be able to set embedding_type to nil to clear it"
-      (mt/with-temporary-setting-values [enable-embedding-static true]
+      (mt/with-temporary-setting-values [enable-embedding-modular true]
         (mt/with-temp [:model/Card card {:enable_embedding true
                                          :embedding_type "static-legacy"}]
           (testing "Verify initial state has embedding_type set"
@@ -2310,18 +2314,10 @@
                          :name "Updated name"}
                         (update-card! :rasta 200 {:name "Updated name"}))))
               (testing "should *not* be allowed to update query"
-                (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
-                  (is (malli= [:map
-                               [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                               [:query          [:map
-                                                 [:stages [:sequential
-                                                           {:min 1, :max 1}
-                                                           [:map
-                                                            [:source-table [:= (mt/id :users)]]]]]]]
-                               [:required-perms :map]
-                               [:actual-perms   [:sequential perms.u/PathSchema]]
-                               [:trace          [:sequential :any]]]
-                              (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
+                (testing "Permissions errors keep their meaningful message (#14931)"
+                  (testing "but not the ex-data: the (preprocessed) query inlines source Cards the user may not read (SEC-1173)"
+                    (is (= "You cannot save this Question because you do not have permissions to run its query."
+                           (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)})))))
                 (testing "make sure query hasn't changed in the DB"
                   (is (=? {:lib/type :mbql/query
                            :stages   [{:source-table (mt/id :checkins)}]}
@@ -2546,6 +2542,16 @@
                   "8"]
                  (cond-> response
                    (string? response) (-> u/strip-bom str/split-lines)))))))))
+
+(deftest csv-download-pivot-results-on-non-pivot-card-test
+  (testing "pivot_results is ignored on non-pivot cards (#81323)"
+    (with-temp-native-card [_ card]
+      (let [response (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" (u/the-id card))
+                                           {:pivot_results true})]
+        (is (= ["COUNT(*)"
+                "75"]
+               (cond-> response
+                 (string? response) (-> u/strip-bom str/split-lines))))))))
 
 (deftest json-download-test
   (testing "no parameters"
@@ -3026,6 +3032,179 @@
                (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                                      {:name "Number of Blueberries Consumed Per Month"})))))))
 
+(deftest update-card-timeline-selection-permissions-test
+  (testing "PUT /api/card/:id requires read perms for the timelines selected in visualization settings"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Card card {}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (str "card/" (:id card))
+                                   {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}})))
+      (is (not (contains? (t2/select-one-fn :visualization_settings :model/Card (:id card))
+                          :timeline.selected_timeline_ids))))))
+
+(deftest card-timeline-moved-to-private-collection-test
+  (testing "PUT /api/card/:id after one of the card's timelines moved into a collection the editor cannot read"
+    (mt/with-temp [:model/Collection restricted {}
+                   :model/Timeline moved {}
+                   :model/Timeline readable {}
+                   :model/TimelineEvent readable-event {:timeline_id (:id readable)}
+                   :model/Card card {:display                :line
+                                     :dataset_query          (mt/mbql-query venues)
+                                     :visualization_settings {:timeline.selected_timeline_ids       [(:id readable) (:id moved)]
+                                                              :timeline.excluded_timeline_event_ids []}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+      (t2/update! :model/Timeline (:id moved) {:collection_id (:id restricted)})
+      (testing "an event of the timeline the editor can still read can be hidden"
+        (let [settings {:timeline.selected_timeline_ids       [(:id readable) (:id moved)]
+                        :timeline.excluded_timeline_event_ids [(:id readable-event)]}]
+          (is (= [(:id readable-event)]
+                 (get-in (mt/user-http-request :rasta :put 200 (str "card/" (:id card))
+                                               {:visualization_settings settings})
+                         [:visualization_settings :timeline.excluded_timeline_event_ids]))))))))
+
+(deftest copy-card-keeps-inaccessible-timeline-selection-test
+  (testing "POST /api/card/:id/copy keeps a timeline selection the user cannot read"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Card card {:dataset_query          (mt/mbql-query venues)
+                                     :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (mt/with-model-cleanup [:model/Card]
+        (is (= [(:id timeline)]
+               (get-in (mt/user-http-request :rasta :post 200 (format "card/%d/copy" (:id card)))
+                       [:visualization_settings :timeline.selected_timeline_ids])))))))
+
+(deftest create-card-with-source-card-id-preserves-timeline-selection-test
+  (testing "POST /api/card with source_card_id treats the new card as a copy for timeline permission purposes"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Timeline timeline {:collection_id (:id collection)}
+                   :model/Timeline timeline-2 {:collection_id (:id collection)}
+                   :model/TimelineEvent hidden-event {:timeline_id (:id timeline)}
+                   :model/TimelineEvent other-event {:timeline_id (:id timeline)}
+                   :model/Card source-card {:dataset_query          (mt/mbql-query venues)
+                                            :display                :line
+                                            :visualization_settings {:timeline.selected_timeline_ids       [(:id timeline)]
+                                                                     :timeline.excluded_timeline_event_ids [(:id hidden-event)]}}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (mt/with-model-cleanup [:model/Card]
+        (testing "an identical selection is preserved without a fresh read check"
+          (let [card (mt/user-http-request :rasta :post 200 "card"
+                                           (assoc (card-with-name-and-query)
+                                                  :source_card_id (:id source-card)
+                                                  :visualization_settings (:visualization_settings source-card)))]
+            (is (= [(:id timeline)]
+                   (get-in card [:visualization_settings :timeline.selected_timeline_ids])))))
+        (testing "a selection that differs from the source card is still permission-checked"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :source_card_id (:id source-card)
+                                              :visualization_settings {:timeline.selected_timeline_ids
+                                                                       [(:id timeline) (:id timeline-2)]})))))
+        (testing "un-hiding an event of the inaccessible timeline is still permission-checked"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :display "line"
+                                              :source_card_id (:id source-card)
+                                              :visualization_settings
+                                              (assoc (:visualization_settings source-card)
+                                                     :timeline.excluded_timeline_event_ids []))))))
+        (testing "hiding one more event keeps the inherited selection"
+          (is (= [(:id hidden-event) (:id other-event)]
+                 (get-in (mt/user-http-request :rasta :post 200 "card"
+                                               (assoc (card-with-name-and-query)
+                                                      :display "line"
+                                                      :source_card_id (:id source-card)
+                                                      :visualization_settings
+                                                      (assoc (:visualization_settings source-card)
+                                                             :timeline.excluded_timeline_event_ids
+                                                             [(:id hidden-event) (:id other-event)])))
+                         [:visualization_settings :timeline.excluded_timeline_event_ids]))))
+        (testing "source_card_id must itself be readable"
+          (mt/with-temp [:model/Collection unreadable-collection {}
+                         :model/Card unreadable-card {:collection_id (:id unreadable-collection)}]
+            (perms/revoke-collection-permissions! (perms-group/all-users) unreadable-collection)
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "card"
+                                         (assoc (card-with-name-and-query)
+                                                :source_card_id (:id unreadable-card)))))))))))
+
+(deftest card-with-restricted-timeline-on-public-dashboard-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp [:model/Collection restricted {}
+                   :model/Timeline timeline {:collection_id (:id restricted)}
+                   :model/Card source-card {:dataset_query          (mt/mbql-query venues)
+                                            :display                :line
+                                            :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                   :model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+      (mt/with-model-cleanup [:model/Card]
+        (testing "POST /api/card cannot copy the card into a public dashboard"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "card"
+                                       (assoc (card-with-name-and-query)
+                                              :display                "line"
+                                              :source_card_id         (:id source-card)
+                                              :dashboard_id           (:id dashboard)
+                                              :visualization_settings (:visualization_settings source-card))))))
+        (testing "PUT /api/card/:id cannot move the card into a public dashboard"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 (str "card/" (:id source-card))
+                                       {:dashboard_id (:id dashboard)})))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card (:id source-card)))))
+        (testing "a user who can read the timeline can move the card into the public dashboard"
+          (is (= (:id dashboard)
+                 (:dashboard_id (mt/user-http-request :crowberto :put 200 (str "card/" (:id source-card))
+                                                      {:dashboard_id (:id dashboard)})))))))))
+
+(deftest archived-card-with-restricted-timeline-on-public-dashboard-test
+  (testing "PUT /api/card/:id moving an archived card onto a public dashboard unarchives and autoplaces it, so it still needs timeline read access"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card {card-id :id} {:dataset_query          (mt/mbql-query venues)
+                                                :display                :line
+                                                :archived               true
+                                                :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard {dash-id :id} {:public_uuid (str (random-uuid))}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id})))
+        (is (=? {:archived true, :dashboard_id nil}
+                (t2/select-one :model/Card card-id)))
+        (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
+        (testing "a user who can read the timeline can still move it"
+          (is (=? {:archived false, :dashboard_id dash-id}
+                  (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id dash-id})))
+          (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
+
+(deftest copy-card-onto-public-dashboard-timeline-permissions-test
+  (testing "POST /api/card/:id/copy autoplaces the copy on the source's dashboard, so it needs timeline read access"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Dashboard {dash-id :id} {:public_uuid (str (random-uuid))}
+                     :model/Card {card-id :id} {:dataset_query          (mt/mbql-query venues)
+                                                :display                :line
+                                                :dashboard_id           dash-id
+                                                :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     ;; the source is shown by a visualizer dashcard, which never emits its card's events
+                     :model/DashboardCard _ {:dashboard_id           dash-id
+                                             :card_id                card-id
+                                             :visualization_settings {:visualization {}}}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (mt/with-model-cleanup [:model/Card]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 (format "card/%d/copy" card-id))))
+          (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))
+          (testing "a user who can read the timeline can copy it"
+            (let [copy-id (:id (mt/user-http-request :crowberto :post 200 (format "card/%d/copy" card-id)))]
+              (is (= #{card-id copy-id}
+                     (set (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id))))))))))))
+
 (deftest change-collection-permissions-test
   (testing "PUT /api/card/:id"
     (testing "\nChange the `collection_id` of a Card"
@@ -3408,11 +3587,17 @@
 
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
-    (mt/with-temporary-setting-values [enable-embedding-static true]
+    (mt/with-temporary-setting-values [enable-embedding-modular true]
       (mt/with-temp [:model/Card _ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
-                 (m/map-vals boolean (select-keys card [:name :id])))))))))
+                 (m/map-vals boolean (select-keys card [:name :id])))))))
+    (testing "and that we can still see them once guest embeds are turned off"
+      (mt/with-temporary-setting-values [enable-embedding-modular false]
+        (mt/with-temp [:model/Card _ {:enable_embedding true}]
+          (is (= [{:name true, :id true}]
+                 (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]
+                   (m/map-vals boolean (select-keys card [:name :id]))))))))))
 
 (deftest ^:parallel pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
@@ -4126,8 +4311,8 @@
   [request]
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-discard-model-updates! [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
-      (mt/with-temp [:model/Database   {db-id :id}         {:engine driver/*driver*}
-                     :model/Database   {other-db-id :id}   {:engine driver/*driver* :uploads_enabled true}
+      (mt/with-temp [:model/Database   {db-id :id}         {:engine driver/*driver* :dbms_version (:dbms_version (mt/db))}
+                     :model/Database   {other-db-id :id}   {:engine driver/*driver* :dbms_version (:dbms_version (mt/db)) :uploads_enabled true}
                      :model/Table      {table-id :id}      {:db_id db-id, :is_upload true}
                      :model/Collection {collection-id :id} {}]
         (let [card-defaults {:collection_id collection-id
@@ -4231,7 +4416,7 @@
                                :name                   "Bad Card"
                                :display                "table"
                                :visualization_settings {}}]
-        (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""}
+        (is (=? #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\".*"
                 (mt/user-http-request :crowberto :post 400 "card" card-data)))))))
 
 (deftest ^:parallel format-export-middleware-test

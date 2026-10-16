@@ -27,10 +27,11 @@
 (defn- entity-identity
   "Returns a stable, rename-independent identity key for a serialized entity's YAML `content`, or nil if the
   content can't be parsed or has no serdes path. The key is a vector of `[model id]` pairs (the serdes path
-  with labels dropped)."
+  restored by [[serdes/restore-path]], with labels dropped)."
   [content]
   (try
     (some->> (yaml/parse-string content)
+             serdes/restore-path
              serdes/path
              seq
              (mapv (fn [seg] [(str (:model seg)) (str (:id seg))])))

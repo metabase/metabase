@@ -2,7 +2,7 @@
 title: Data isolation methods
 summary: Compare the ways Metabase can restrict data access for internal analytics or multi-tenant setups, including row and column security, impersonation, database routing, and locked parameters.
 ---
- 
+
 # Data isolation methods
 
 > Row and column security, impersonation, and database routing are only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -66,7 +66,7 @@ Don't use database routing when:
 
 ## Locked parameters
 
-[Locked parameters](../embedding/guest-embedding.md#locked-parameters) filter an embedded dashboard or question before Metabase displays it. Your app passes the filter value in a signed JWT. The filter is invisible to the person viewing the embed, and they can't change it.
+[Locked parameters](../embedding/parameters.md#restrict-data-on-guest-embeds) filter an embedded dashboard or question before Metabase displays it. Your app passes the filter value in a signed JWT. The filter is invisible to the person viewing the embed, and they can't change it.
 
 ![Locked parameters](../embedding/images/locked-parameters.png)
 
@@ -87,4 +87,4 @@ Don't use locked parameters when:
 - [Row and column security](./row-and-column-security.md)
 - [Impersonation](./impersonation.md)
 - [Database routing](./database-routing.md)
-- [Locked parameters for guest embeds](../embedding/guest-embedding.md#locked-parameters)
+- [Locked parameters for guest embeds](../embedding/parameters.md#restrict-data-on-guest-embeds)

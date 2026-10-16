@@ -78,9 +78,9 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
         {
           source: { type: "table", id: PRODUCTS_ID },
           fields: [
-            { type: "column", name: "ID", sourceName: "PRODUCTS" },
-            { type: "column", name: "TITLE", sourceName: "PRODUCTS" },
-            { type: "column", name: "PRICE", sourceName: "PRODUCTS" },
+            { type: "column", name: "ID" },
+            { type: "column", name: "TITLE" },
+            { type: "column", name: "PRICE" },
           ],
           limit: 10,
         },
@@ -130,9 +130,9 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
         {
           source: { type: "table", id: PRODUCTS_ID },
           fields: [
-            { type: "column", name: "ID", sourceName: "PRODUCTS" },
-            { type: "column", name: "TITLE", sourceName: "PRODUCTS" },
-            { type: "column", name: "CATEGORY", sourceName: "PRODUCTS" },
+            { type: "column", name: "ID" },
+            { type: "column", name: "TITLE" },
+            { type: "column", name: "CATEGORY" },
           ],
           limit: 10,
         },

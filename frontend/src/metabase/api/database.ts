@@ -7,6 +7,7 @@ import type {
   Database,
   DatabaseId,
   DatabaseUsageInfo,
+  Engine,
   Field,
   GetDatabaseHealthRequest,
   GetDatabaseHealthResponse,
@@ -48,6 +49,14 @@ export const shouldSchemaBePassedAsQueryParam = (schema: SchemaName) =>
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    listEngines: builder.query<Record<string, Engine>, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/setting/engines",
+      }),
+      // Driver metadata only changes when the instance is upgraded.
+      keepUnusedDataFor: Infinity,
+    }),
     listDatabases: builder.query<
       ListDatabasesResponse,
       ListDatabasesRequest | void
@@ -317,6 +326,7 @@ export const databaseApi = Api.injectEndpoints({
 
 export const {
   useListDatabasesQuery,
+  useListEnginesQuery,
   useLazyListDatabasesQuery,
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,

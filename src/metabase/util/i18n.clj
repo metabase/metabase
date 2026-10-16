@@ -21,6 +21,7 @@
  [i18n.common
   join-strings-with-conjunction]
  [i18n.impl
+  available-locale-names
   available-locale?
   fallback-locale
   locale

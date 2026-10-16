@@ -30,9 +30,10 @@ import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
-  Card,
+  CardId,
   CollectionId,
   Document,
+  DocumentCardToCreate,
   DocumentId,
   RegularCollectionId,
 } from "metabase-types/api";
@@ -44,7 +45,12 @@ import {
   setHasUnsavedChanges,
   setSidebarEmbedIndex,
 } from "../documents.slice";
-import { getDraftCards, getHasUnsavedChanges } from "../selectors";
+import {
+  getDraftCardOriginalIds,
+  getDraftCards,
+  getHasUnsavedChanges,
+} from "../selectors";
+import { getDocumentCardToCreate } from "../utils/draftCardUtils";
 
 import { useDocumentState } from "./use-document-state";
 import { useRegisterDocumentMetabotContext } from "./use-register-document-metabot-context";
@@ -101,6 +107,7 @@ export function useDocumentEditor({
   const [sendToast] = useToast();
 
   const draftCards = useSelector(getDraftCards);
+  const draftCardOriginalIds = useSelector(getDraftCardOriginalIds);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
 
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
@@ -310,7 +317,7 @@ export function useDocumentEditor({
       }
 
       try {
-        const cardsToSave: Record<number, Card> = {};
+        const cardsToSave: Record<number, DocumentCardToCreate> = {};
         const processedCardIds = new Set<number>();
 
         editorInstance.state.doc.descendants((node: ProseMirrorNode) => {
@@ -320,7 +327,12 @@ export function useDocumentEditor({
               processedCardIds.add(cardId);
 
               if (cardId < 0 && draftCards[cardId]) {
-                cardsToSave[cardId] = draftCards[cardId];
+                const originalId: CardId | undefined =
+                  draftCardOriginalIds[cardId];
+                cardsToSave[cardId] = getDocumentCardToCreate(
+                  draftCards[cardId],
+                  originalId,
+                );
               }
             }
           }
@@ -374,7 +386,7 @@ export function useDocumentEditor({
         }
       } catch (error) {
         console.error("Failed to save document:", error);
-        sendToast({ message: t`Error saving document`, icon: "warning" });
+        sendToast({ message: t`Error saving document`, variant: "negative" });
         return {
           error: error,
         };
@@ -385,6 +397,7 @@ export function useDocumentEditor({
       isSaving,
       documentTitle,
       draftCards,
+      draftCardOriginalIds,
       documentData?.id,
       onDocumentCreated,
       onDocumentUpdated,

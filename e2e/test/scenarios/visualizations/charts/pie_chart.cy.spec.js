@@ -76,7 +76,7 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should render a pie chart (metabase#12506) (#35244)", () => {
+  it("should render a pie chart and mute legend items on hover (metabase#12506) (metabase#29224) (#35244)", () => {
     H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pie",
@@ -100,24 +100,7 @@ describe("scenarios > visualizations > pie chart", () => {
       });
     });
 
-    cy.log("#35244");
-    cy.findByLabelText("Switch to data").click();
-    H.tableHeaderClick("Count");
-    H.popover().within(() => {
-      cy.findByRole("img", { name: /filter/ }).should("exist");
-      cy.findByRole("img", { name: /gear/ }).should("not.exist");
-      cy.findByRole("img", { name: /eye_crossed_out/ }).should("not.exist");
-    });
-  });
-
-  it("should mute items in legend when hovering (metabase#29224)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "pie",
-    });
-
-    // flakiness prevention
-    cy.findByTestId("chart-container").findByText("Total").should("be.visible");
+    cy.log("metabase#29224");
     cy.findByTestId("view-footer")
       .findByText("Showing 4 rows")
       .should("be.visible");
@@ -132,9 +115,18 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Gizmo", "false"],
       ["Widget", "false"],
     ].map((args) => checkLegendItemAriaCurrent(args[0], args[1]));
+
+    cy.log("#35244");
+    cy.findByLabelText("Switch to data").click();
+    H.tableHeaderClick("Count");
+    H.popover().within(() => {
+      cy.findByRole("img", { name: /filter/ }).should("exist");
+      cy.findByRole("img", { name: /gear/ }).should("not.exist");
+      cy.findByRole("img", { name: /eye_crossed_out/ }).should("not.exist");
+    });
   });
 
-  it("should not truncate legend titles when enabling percentages (metabase#48207)", () => {
+  it("should not truncate legend titles when enabling percentages and should instantly toggle the total (metabase#48207)", () => {
     H.visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "pie",
@@ -150,24 +142,21 @@ describe("scenarios > visualizations > pie chart", () => {
       cy.findByText("In legend").click();
     });
 
-    cy.findByTestId("chart-legend").within(() => {
-      cy.findByText("Widget").then(([element]) => {
+    cy.findByTestId("chart-legend")
+      .findByTestId("legend-item-Widget")
+      .should("contain", "%");
+    cy.findByTestId("chart-legend")
+      .findByText("Widget")
+      .should(([element]) => {
         // When text is truncated, offsetWidth will be less than scrollWidth
         expect(element.offsetWidth).to.eq(element.scrollWidth);
       });
-    });
-  });
 
-  it("should instantly toggle the total after changing the setting", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "pie",
-    });
-
-    H.openVizSettingsSidebar();
+    cy.findByTestId("query-visualization-root")
+      .findByText("Total")
+      .should("be.visible");
 
     H.leftSidebar().within(() => {
-      cy.findByText("Display").click();
       cy.findByText("Show total").click();
     });
 
@@ -184,7 +173,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
   });
 
-  it("should add new slices to the chart if they appear in the query result", () => {
+  it("should add new slices to the chart and preserve a slice's settings if its row is removed then reappears in the query result", () => {
     H.visitQuestionAdhoc({
       dataset_query: getLimitedQuery(testQuery, 2),
       display: "pie",
@@ -193,15 +182,6 @@ describe("scenarios > visualizations > pie chart", () => {
     ensurePieChartRendered(["Gadget", "Doohickey"]);
 
     changeRowLimit(2, 4);
-
-    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
-  });
-
-  it("should preserve a slice's settings if its row is removed then reappears in the query result", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: getLimitedQuery(testQuery, 4),
-      display: "pie",
-    });
 
     ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
 
@@ -259,26 +239,6 @@ describe("scenarios > visualizations > pie chart", () => {
       cy.get("li").eq(1).contains("Katget");
       cy.get("li").eq(3).contains("Woooget");
     });
-  });
-
-  it("should automatically map dimension columns in query to rings", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: twoRingQuery,
-      display: "pie",
-    });
-
-    ensurePieChartRendered(
-      [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ],
-      ["Doohickey", "Gadget", "Gizmo", "Widget"],
-    );
   });
 
   it("should allow the user to edit rings", () => {
@@ -347,9 +307,6 @@ describe("scenarios > visualizations > pie chart", () => {
       H.visitQuestionAdhoc({
         dataset_query: twoRingQuery,
         display: "pie",
-        visualization_settings: {
-          "pie.slice_threshold": 0,
-        },
       });
 
       ensurePieChartRendered(
@@ -363,6 +320,9 @@ describe("scenarios > visualizations > pie chart", () => {
           "Saturday",
         ],
         ["Doohickey", "Gadget", "Gizmo", "Widget"],
+      );
+      cy.findByTestId("development-watermark").should(
+        devMode ? "exist" : "not.exist",
       );
 
       H.echartsContainer().within(() => {
@@ -521,27 +481,51 @@ describe("scenarios > visualizations > pie chart", () => {
     H.assertQueryBuilderRowCount(835);
   });
 
-  it("should handle click behavior correctly", () => {
+  it("should handle card and dashcard click behavior correctly (metabase#15250)", () => {
+    const urlClickBehavior = {
+      type: "link",
+      linkType: "url",
+      linkTemplate: "question/{{count}}",
+    };
+
     H.createQuestionAndDashboard({
       questionDetails: {
         query: threeRingQuery.query,
         display: "pie",
         visualization_settings: {
-          click_behavior: {
-            type: "link",
-            linkType: "url",
-            linkTemplate: "question/{{count}}",
-          },
+          click_behavior: urlClickBehavior,
         },
       },
-      cardDetails: {
-        size_x: 30,
-        size_y: 15,
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      H.createQuestion({
+        name: "15250",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field-id", PRODUCTS.CATEGORY]],
+        },
+        display: "pie",
+      }).then(({ body: { id: categoryCardId } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            { card_id, row: 0, col: 0, size_x: 30, size_y: 15 },
+            {
+              card_id: categoryCardId,
+              row: 15,
+              col: 0,
+              size_x: 21,
+              size_y: 10,
+              visualization_settings: { click_behavior: urlClickBehavior },
+            },
+          ],
+        });
+
+        H.visitDashboard(dashboard_id);
+      });
     });
 
+    cy.log("card click behavior on a three-ring pie");
     confirmSliceClickBehavior("2028", 6578);
     confirmSliceClickBehavior("Affiliate", 1270, 0);
     confirmSliceClickBehavior("Doohickey", 282, 0);
@@ -549,6 +533,27 @@ describe("scenarios > visualizations > pie chart", () => {
     confirmSliceClickBehavior("2027", 5834);
     confirmSliceClickBehavior("Organic", 1180, 1);
     confirmSliceClickBehavior("Gizmo", 354, 8);
+
+    cy.log("dashcard click behavior on the first pie row (metabase#15250)");
+    H.getDashboardCard(1).within(() => {
+      H.pieSliceWithColor("#88BF4D")
+        .first()
+        .as("doohickeySlice")
+        .trigger("mousemove");
+    });
+
+    H.assertEChartsTooltip({
+      header: "Category",
+      rows: [
+        { color: "#88BF4D", name: "Doohickey", value: "42" },
+        { color: "#F9D45C", name: "Gadget", value: "53" },
+        { color: "#A989C5", name: "Gizmo", value: "51" },
+        { color: "#F2A86F", name: "Widget", value: "54" },
+      ],
+    });
+
+    cy.get("@doohickeySlice").click();
+    cy.location("pathname").should("eq", "/question/42");
   });
 
   it("should handle min percentage setting correctly", () => {
@@ -667,6 +672,104 @@ describe("scenarios > visualizations > pie chart", () => {
       },
     });
   });
+
+  it("should format pie chart settings (metabase#21504)", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    H.openVizSettingsSidebar();
+
+    H.leftSidebar().within(() => {
+      cy.findByText("January 2028").should("be.visible");
+    });
+  });
+
+  it("pie chart should have a placeholder", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    cy.log("Shows an empty state that can open the summarize sidebar");
+    cy.findByAltText("pie chart example illustration").should("be.visible");
+    cy.findByLabelText("Open summarize sidebar").click();
+
+    cy.findByLabelText("Rating").click();
+    H.echartsContainer().findByText("200").should("be.visible");
+    H.echartsContainer().findByText("Total").should("be.visible");
+  });
+
+  it("pie chart should work when instance colors have overrides", () => {
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("application-colors", { "accent0-light": "#98b4ce" });
+
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    H.echartsContainer().findByText("200").should("be.visible");
+
+    H.openVizSettingsSidebar();
+
+    H.leftSidebar().findByText("Gizmo");
+  });
+
+  it("should show tooltips with reasonable width for pie charts with long text labels (metabase#63026)", () => {
+    const query = `select '${"a".repeat(1000)}' as category, 45 as count
+union all select 'Short name', 25 as count
+union all select 'Medium length category', 30 as count`;
+
+    H.visitQuestionAdhoc({
+      display: "pie",
+      dataset_query: {
+        type: "native",
+        native: {
+          query,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "pie.show_labels": true,
+      },
+    });
+
+    H.chartPathWithFillColor("#88BF4D").trigger("mousemove");
+
+    cy.get("[data-testid='echarts-tooltip']")
+      .should("be.visible")
+      .then(($tooltip) => {
+        const width = $tooltip.width();
+        expect(width).to.be.lte(550);
+      });
+  });
 });
 
 function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {
@@ -725,14 +828,16 @@ function changeRowLimit(from, to) {
 }
 
 function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
-  H.echartsContainer().within(() => {
-    if (elementIndex == null) {
-      cy.findByText(sliceLabel).click({ force: true });
-    } else {
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
-    }
-  });
+  H.getDashboardCard(0)
+    .findByTestId("chart-container")
+    .within(() => {
+      if (elementIndex == null) {
+        cy.findByText(sliceLabel).click({ force: true });
+      } else {
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
+        cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
+      }
+    });
 
   cy.location("pathname").should("eq", `/question/${value}`);
   H.main().within(() => {

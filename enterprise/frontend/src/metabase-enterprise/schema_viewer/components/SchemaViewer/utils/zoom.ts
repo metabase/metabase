@@ -7,7 +7,7 @@ import { getGraphBounds } from "./viewport-window";
 
 export type CanvasSize = { width: number; height: number };
 
-// (if this value changes, update the same constant in e2e/test/scenarios/schema-viewer/schema-viewer.cy.spec.ts)
+// (if this value changes, update the same constant in e2e/test/scenarios/data-studio/schema-viewer.cy.spec.ts)
 const MIN_ZOOM_FOR_TARGET = 0.5;
 // How far below the viewport's top edge the header of the topmost target
 // node should land.

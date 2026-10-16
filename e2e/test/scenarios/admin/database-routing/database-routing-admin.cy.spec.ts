@@ -39,8 +39,8 @@ describe("admin > database > database routing", () => {
     it("should be able to configure db routing and manage destination databases", () => {
       // setup
       visitDatabaseAdminPage(WRITABLE_DB_ID);
-      cy.log("disable model actions");
-      cy.findByLabelText("Model actions").click({ force: true });
+      cy.log("disable data actions");
+      cy.findByLabelText("Data actions").click({ force: true });
 
       // enabling
       cy.log("should be able to turn the feature on");
@@ -211,8 +211,8 @@ describe("admin > database > database routing", () => {
     it("should not leak destinations databases in the application", () => {
       cy.log("setup db routing via API");
       cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-      cy.log("disable model actions");
-      cy.findByLabelText("Model actions").click({ force: true });
+      cy.log("disable data actions");
+      cy.findByLabelText("Data actions").click({ force: true });
       configureDbRoutingViaAPI({
         router_database_id: WRITABLE_DB_ID,
         user_attribute: "role",
@@ -289,13 +289,13 @@ describe("admin > database > database routing", () => {
       setupModelPersistence();
       visitDatabaseAdminPage(WRITABLE_DB_ID);
 
-      cy.log("should be disabled if model actions is enabled");
-      cy.findByLabelText("Model actions").should("be.checked");
+      cy.log("should be disabled if data actions is enabled");
+      cy.findByLabelText("Data actions").should("be.checked");
       assertDbRoutingDisabled(
-        "Database routing can't be enabled if model actions are enabled.",
+        "Database routing can't be enabled if data actions are enabled.",
       );
 
-      cy.findByLabelText("Model actions").parent("label").click();
+      cy.findByLabelText("Data actions").parent("label").click();
 
       assertDbRoutingNotDisabled();
 
@@ -308,7 +308,7 @@ describe("admin > database > database routing", () => {
       assertDbRoutingDisabled(
         "Database routing can't be enabled if model persistence is enabled.",
       );
-      cy.findAllByTestId("database-model-features-section")
+      cy.findAllByTestId("database-model-persistence-section")
         .findByLabelText("Model persistence")
         .should("be.checked")
         .parent("label")
@@ -317,7 +317,7 @@ describe("admin > database > database routing", () => {
 
       cy.log("should be disabled if table editing is enabled");
       // Table editing must be the only active conflict here: the routing
-      // section shows a single message, and model actions, model persistence,
+      // section shows a single message, and data actions, model persistence,
       // and uploads all take precedence over table editing.
       tableEditingSection()
         .findByLabelText("Editable tables")
@@ -450,11 +450,11 @@ describe("admin > database > database routing", () => {
 
     describe("feature compatibility", () => {
       beforeEach(() => {
-        // disable model actions since it is enabled by default for this db
+        // disable data actions since it is enabled by default for this db
         disableModelActionsViaApi(WRITABLE_DB_ID);
       });
 
-      it("should not be possible to enable model persistence, model actions, table editing, or uploads when database routing is enabled", () => {
+      it("should not be possible to enable model persistence, data actions, table editing, or uploads when database routing is enabled", () => {
         cy.log("setup");
         enableGlobalModelPersistence();
         configureDbRoutingViaAPI({
@@ -467,7 +467,7 @@ describe("admin > database > database routing", () => {
         cy.log(
           "should not be possible to enable model persistence when database routing is enabled",
         );
-        modelsSection().within(() => {
+        modelPersistenceSection().within(() => {
           cy.findByLabelText("Model persistence").should("be.disabled");
           cy.findByText(
             "Model persistence can't be enabled when database routing is enabled.",
@@ -477,12 +477,12 @@ describe("admin > database > database routing", () => {
         });
 
         cy.log(
-          "should not be possible to enable model actions when database routing is enabled",
+          "should not be possible to enable data actions when database routing is enabled",
         );
-        modelsSection().within(() => {
-          cy.findByLabelText("Model actions").should("be.disabled");
+        dataActionsSection().within(() => {
+          cy.findByLabelText("Data actions").should("be.disabled");
           cy.findByText(
-            "Model actions can't be enabled when database routing is enabled.",
+            "Data actions can't be enabled when database routing is enabled.",
           )
             .scrollIntoView()
             .should("be.visible");
@@ -575,8 +575,12 @@ function visitDatabaseAdminPage(databaseId: DatabaseId) {
   cy.visit(`/admin/databases/${databaseId}`);
 }
 
-function modelsSection() {
-  return cy.findByTestId("database-model-features-section");
+function modelPersistenceSection() {
+  return cy.findByTestId("database-model-persistence-section");
+}
+
+function dataActionsSection() {
+  return cy.findByTestId("database-data-actions-section");
 }
 
 function disableModelActionsViaApi(databaseId: DatabaseId) {

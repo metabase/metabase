@@ -514,6 +514,7 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
+      (sql.helpers/where [:not= :action.model_id nil])
       (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "card"
@@ -564,7 +565,7 @@
 (defmethod search-query-for-model "database"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/where [:= :router_database_id nil])))
+      (sql.helpers/where [:= :router_database_id nil] [:= :is_stub false])))
 
 (defmethod search-query-for-model "transform"
   [model search-ctx]
