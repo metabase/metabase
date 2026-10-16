@@ -50,9 +50,9 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
 };
 
 /**
- * The event analysis page: the kind tabs for a new analysis, the title and
- * the toolbar across the top; below them the segment palette on the far
- * left, then the setup panel beside the result. A saved analysis opens on
+ * The event analysis page: the kind tabs for a new analysis across the top;
+ * below them the segment palette on the far left, running the full height,
+ * then the title and toolbar above the setup panel and the result. A saved analysis opens on
  * its result, with both side panels collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
@@ -163,61 +163,59 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
       onPeopleSegment={handleAddPeopleFilter}
     >
       {/* Keeps the app-wide react-dnd backend out of the palette's native drags. */}
-      <Group
+      <Stack
         className={DND_IGNORE_CLASS_NAME}
         flex={1}
         h="100%"
         gap={0}
-        align="stretch"
-        wrap="nowrap"
         bg="background-secondary"
       >
-        <Stack flex={1} miw={0} h="100%" gap={0}>
-          {onKindChange !== undefined && (
-            <AnalysisTabs kind={kind} onChange={onKindChange} />
-          )}
-          <Stack
-            gap="md"
-            pl="xxl"
-            pr="lg"
-            pt="lg"
-            pb="md"
-            bg="background-primary"
-            style={{ borderBottom: "1px solid var(--mb-color-border)" }}
-          >
-            <Title order={3} fw="normal">
-              {title}
-            </Title>
-            <AnalysisToolbar
-              widgets={widgets}
-              panel={panel}
-              setupLabel={config.setupLabel}
-              sql={query.sql}
-              canSave={canSave}
-              isSaveDisabled={isSaveDisabled}
-              isPaletteOpen={isPaletteOpen}
-              onTogglePalette={() => setIsPaletteOpen((isOpen) => !isOpen)}
-              onPanelChange={setPanel}
-              onSave={handleSave}
-            />
-            <FilterPills
-              value={computed.filters}
+        {onKindChange !== undefined && (
+          <AnalysisTabs kind={kind} onChange={onKindChange} />
+        )}
+        <Group flex={1} gap={0} align="stretch" wrap="nowrap" mih={0}>
+          {isPaletteOpen && (
+            <SegmentPalette
+              tableId={tableId}
               table={table}
-              onChange={handleFiltersChange}
+              usersTable={usersTable}
+              isTableLoading={isTableLoading}
+              tableError={tableError}
+              onTableChange={onTableChange}
+              onSelectPeopleSegment={handleAddPeopleFilter}
             />
-          </Stack>
-          <Group gap={0} wrap="nowrap" flex={1} align="stretch" mih={0}>
-            {isPaletteOpen && (
-              <SegmentPalette
-                tableId={tableId}
-                table={table}
-                usersTable={usersTable}
-                isTableLoading={isTableLoading}
-                tableError={tableError}
-                onTableChange={onTableChange}
-                onSelectPeopleSegment={handleAddPeopleFilter}
+          )}
+          <Stack flex={1} miw={0} gap={0}>
+            <Stack
+              gap="md"
+              pl="xxl"
+              pr="lg"
+              pt="lg"
+              pb="md"
+              bg="background-primary"
+              style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+            >
+              <Title order={3} fw="normal">
+                {title}
+              </Title>
+              <AnalysisToolbar
+                widgets={widgets}
+                panel={panel}
+                setupLabel={config.setupLabel}
+                sql={query.sql}
+                canSave={canSave}
+                isSaveDisabled={isSaveDisabled}
+                isPaletteOpen={isPaletteOpen}
+                onTogglePalette={() => setIsPaletteOpen((isOpen) => !isOpen)}
+                onPanelChange={setPanel}
+                onSave={handleSave}
               />
-            )}
+              <FilterPills
+                value={computed.filters}
+                table={table}
+                onChange={handleFiltersChange}
+              />
+            </Stack>
             <Group
               gap="lg"
               wrap="nowrap"
@@ -253,9 +251,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                 clickActionsMode={drillActions.mode}
               />
             </Group>
-          </Group>
-        </Stack>
-      </Group>
+          </Stack>
+        </Group>
+      </Stack>
       {questionToCreate !== undefined && (
         <SaveQuestionModal
           opened
