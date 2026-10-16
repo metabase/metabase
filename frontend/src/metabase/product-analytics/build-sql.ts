@@ -1,3 +1,4 @@
+import { BREAKDOWN_SEGMENT_COLUMN } from "./analyses/breakdown";
 import {
   COLUMN_ROLES,
   type ColumnRoles,
@@ -7,6 +8,7 @@ import {
 import type { AnalysisSpec } from "./spec/types";
 import { planCohorts } from "./sql/analyses/cohorts";
 import { planFunnel } from "./sql/analyses/funnel";
+import { planFunnelInsights } from "./sql/analyses/funnel-insights";
 import { planHabit } from "./sql/analyses/habit";
 import { planLifecycle } from "./sql/analyses/lifecycle";
 import { planPaths } from "./sql/analyses/paths";
@@ -30,7 +32,14 @@ export type BaseColumns = {
 const planAnalysis = (spec: AnalysisSpec): QueryPlan => {
   switch (spec.kind) {
     case "funnel":
-      return planFunnel(spec);
+      return spec.funnel?.breakdown !== undefined
+        ? planFunnelInsights(spec, {
+            kind: "explore",
+            transition: spec.funnel.breakdown.transition,
+            attributes: spec.funnel.breakdown.attributes,
+            segmentLabel: BREAKDOWN_SEGMENT_COLUMN,
+          })
+        : planFunnel(spec);
     case "habit":
       return planHabit(spec);
     case "lifecycle":

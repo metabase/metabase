@@ -11,6 +11,7 @@ export type MetabotCommandConfig = {
 export const getAllCommandSections = (
   metabotCommand: MetabotCommandConfig | null | undefined,
   capabilities: EditorCapabilities,
+  extraSections: CommandSection[] = [],
 ): CommandSection[] => {
   return [
     {
@@ -44,6 +45,7 @@ export const getAllCommandSections = (
         },
       ],
     },
+    ...extraSections,
     {
       title: t`Formatting`,
       items: [

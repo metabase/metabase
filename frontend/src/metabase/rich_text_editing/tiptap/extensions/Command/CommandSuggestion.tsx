@@ -130,10 +130,12 @@ export const CommandSuggestion = forwardRef<
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const { capabilities } = host;
+  const extraCommandSections = host.useExtraCommandSections();
 
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(metabotCommand, capabilities),
-    [metabotCommand, capabilities],
+    () =>
+      getAllCommandSections(metabotCommand, capabilities, extraCommandSections),
+    [metabotCommand, capabilities, extraCommandSections],
   );
 
   const allCommandOptions = useMemo(
@@ -232,7 +234,12 @@ export const CommandSuggestion = forwardRef<
     handlers: entityHandlers,
   } = entitySuggestions;
 
-  const executeCommand = (commandName: string) => {
+  const executeCommand = ({ command: commandName, run }: CommandOption) => {
+    if (run) {
+      command({ run });
+      return;
+    }
+
     if (commandName === "linkTo") {
       command({
         clearQuery: true,
@@ -310,7 +317,7 @@ export const CommandSuggestion = forwardRef<
         } else {
           const commandIndex = index - searchMenuItems.length;
           if (commandIndex < commandOptions.length) {
-            executeCommand(commandOptions[commandIndex].command);
+            executeCommand(commandOptions[commandIndex]);
           }
         }
       } else if (
@@ -332,7 +339,7 @@ export const CommandSuggestion = forwardRef<
         onTriggerCreateNewQuestion();
       } else {
         if (index < commandOptions.length) {
-          executeCommand(commandOptions[index].command);
+          executeCommand(commandOptions[index]);
         }
       }
     }

@@ -21,6 +21,8 @@ import type {
   PathsSpec,
 } from "../spec/types";
 
+import type { BreakdownColumn } from "./breakdown";
+
 /** The table the person column links to, with its metadata loaded. */
 export type UsersTable = {
   link: UsersTableLink;
@@ -52,6 +54,10 @@ export type FunnelSettings = CommonSettings & {
   "funnel.ordering": FunnelSpec["ordering"];
   "funnel.anchor": FunnelSpec["anchor"];
   "funnel.allow_retry": boolean;
+  /** Only applies to the step-by-step view. */
+  "funnel.breakdown": BreakdownColumn[];
+  /** The transition the breakdown is for: step k → step k+1, numbered from 1. */
+  "funnel.breakdown_step": number;
 };
 
 export type PathsSettings = CommonSettings & {
@@ -136,5 +142,6 @@ export type AnalysisConfig<K extends AnalysisKind> = {
   getDisplay: (settings: AnalysisSettingsByKind[K]) => CardDisplayType;
   getVizSettings: (
     settings: AnalysisSettingsByKind[K],
+    context: AnalysisContext,
   ) => VisualizationSettings;
 };

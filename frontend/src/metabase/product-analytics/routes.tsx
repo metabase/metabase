@@ -1,8 +1,8 @@
 import { Route } from "metabase/router";
 
-const newAnalysisPage = () =>
-  import("./pages/NewAnalysisPage").then(({ NewAnalysisPage }) => ({
-    Component: NewAnalysisPage,
+const analysisDocumentPage = () =>
+  import("./pages/AnalysisDocumentPage").then(({ AnalysisDocumentPage }) => ({
+    Component: AnalysisDocumentPage,
   }));
 
 const analysisPage = () =>
@@ -17,7 +17,8 @@ const savedAnalysisPage = () =>
 
 export const getRoutes = () => (
   <Route path="event-analysis">
-    <Route path="new" lazy={newAnalysisPage} />
+    <Route path="new" lazy={analysisDocumentPage} />
+    <Route path="document/:id" lazy={analysisDocumentPage} />
     <Route path="new/:kind" lazy={analysisPage} />
     <Route path=":cardId" lazy={savedAnalysisPage} />
   </Route>

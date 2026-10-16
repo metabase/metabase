@@ -176,7 +176,11 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         {hasInsights && isInsightsOpen && (
           <InsightsPanel
             state={insights.state}
-            onExplore={handleExplore}
+            action={{
+              label: t`Explore`,
+              icon: "external",
+              onClick: handleExplore,
+            }}
             onClose={() => setIsInsightsOpen(false)}
           />
         )}

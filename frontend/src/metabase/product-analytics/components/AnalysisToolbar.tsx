@@ -8,6 +8,7 @@ import type { CommonSettings } from "../analyses/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
 import type { AnalysisPanel } from "../use-analysis-state";
 
+import { hasPanelSettings } from "./SettingsPanel";
 import { SqlModal } from "./SqlModal";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
@@ -52,12 +53,7 @@ export const AnalysisToolbar = ({
   const togglePanel = (target: AnalysisPanel) =>
     onPanelChange(panel === target ? null : target);
   // Column role settings aren't shown, so some analyses have nothing here.
-  const hasAdvancedSettings = widgets.some(
-    (widget) =>
-      widget.section === "advanced" &&
-      !widget.hidden &&
-      widget.group === undefined,
-  );
+  const hasAdvancedSettings = hasPanelSettings(widgets, "advanced");
 
   return (
     <>

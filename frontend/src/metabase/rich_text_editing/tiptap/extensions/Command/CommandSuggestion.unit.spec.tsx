@@ -12,6 +12,10 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  DEFAULT_EDITOR_HOST,
+  EditorHostProvider,
+} from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Input } from "metabase/ui";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 import {
@@ -25,7 +29,7 @@ import {
   CommandSuggestion,
   type CommandSuggestionProps,
 } from "./CommandSuggestion";
-import type { NewQuestionOption } from "./types";
+import type { CommandSection, NewQuestionOption } from "./types";
 import type { MetabotCommandConfig } from "./utils";
 
 const SEARCH_ITEMS = [
@@ -106,6 +110,7 @@ type SetupProps = {
   query?: string;
   metabotCommand?: MetabotCommandConfig | null;
   newQuestionOptions?: NewQuestionOption[];
+  extraCommandSections?: CommandSection[];
 };
 
 const TEST_NEW_QUESTION_MODALS = {
@@ -117,8 +122,13 @@ const setup = ({
   query = "",
   metabotCommand = null,
   newQuestionOptions = [],
+  extraCommandSections = [],
 }: SetupProps = {}) => {
   const command = jest.fn();
+  const host = {
+    ...DEFAULT_EDITOR_HOST,
+    useExtraCommandSections: () => extraCommandSections,
+  };
 
   const editor = {
     commands: {
@@ -133,17 +143,19 @@ const setup = ({
   setupDatabasesEndpoints([MOCK_DATABASE]);
 
   renderWithProviders(
-    <TestWrapper
-      command={command}
-      // Unjustified type cast. FIXME
-      editor={editor as unknown as Editor}
-      query={query}
-      items={[]}
-      range={{ from: 0, to: 0 }}
-      metabotCommand={metabotCommand}
-      newQuestionOptions={newQuestionOptions}
-      newQuestionModals={TEST_NEW_QUESTION_MODALS}
-    />,
+    <EditorHostProvider value={host}>
+      <TestWrapper
+        command={command}
+        // Unjustified type cast. FIXME
+        editor={editor as unknown as Editor}
+        query={query}
+        items={[]}
+        range={{ from: 0, to: 0 }}
+        metabotCommand={metabotCommand}
+        newQuestionOptions={newQuestionOptions}
+        newQuestionModals={TEST_NEW_QUESTION_MODALS}
+      />
+    </EditorHostProvider>,
     { storeInitialState: createMockState({ settings: mockSettings({}) }) },
   );
 
@@ -157,6 +169,24 @@ describe("CommandSuggestion", () => {
     setup();
 
     await expectStandardCommandsToBePresent();
+  });
+
+  it("runs commands the host adds", async () => {
+    const run = jest.fn<void, [Editor]>();
+    const { command } = setup({
+      extraCommandSections: [
+        {
+          title: "Analyses",
+          items: [{ icon: "funnel", label: "Funnel", command: "funnel", run }],
+        },
+      ],
+    });
+
+    expect(await screen.findByText("Analyses")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("option", { name: "Funnel" }));
+
+    expect(command).toHaveBeenCalledTimes(1);
+    expect(command).toHaveBeenCalledWith({ run });
   });
 
   it("searches for possible card embeds by default", async () => {

@@ -14,6 +14,12 @@
     box-shadow 120ms ease;
 }
 
+.compact {
+  height: auto;
+  gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-md);
+}
+
 .card:hover:not(:disabled) {
   border-color: var(--mb-color-border-brand);
   box-shadow: 0 2px 8px var(--mb-color-shadow-default);

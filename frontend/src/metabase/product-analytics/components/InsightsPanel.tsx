@@ -15,6 +15,7 @@ import {
   Title,
 } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
+import type { IconName } from "metabase-types/api";
 
 import type { Insight, InsightAttribute } from "../insights/types";
 import type {
@@ -26,15 +27,22 @@ import { NOT_SET_VALUE } from "../sql/analyses/funnel-insights";
 const PANEL_WIDTH = 320;
 const INSIGHTS_SHOWN = 5;
 
+/** What each insight's button does. */
+export type InsightAction = {
+  label: string;
+  icon: IconName;
+  onClick: (insight: Insight) => void;
+};
+
 type InsightsPanelProps = {
   state: FunnelInsightsState;
-  onExplore: (insight: Insight) => void;
+  action: InsightAction;
   onClose: () => void;
 };
 
 export const InsightsPanel = ({
   state,
-  onExplore,
+  action,
   onClose,
 }: InsightsPanelProps) => (
   <Paper
@@ -55,14 +63,18 @@ export const InsightsPanel = ({
           <Icon name="close" />
         </ActionIcon>
       </Group>
-      <InsightsPanelBody state={state} onExplore={onExplore} />
+      <InsightsPanelBody state={state} action={action} />
     </Stack>
   </Paper>
 );
 
 type InsightsPanelBodyProps = Omit<InsightsPanelProps, "onClose">;
 
-const InsightsPanelBody = ({ state, onExplore }: InsightsPanelBodyProps) => {
+/** The insights without the panel's frame and title. */
+export const InsightsPanelBody = ({
+  state,
+  action,
+}: InsightsPanelBodyProps) => {
   switch (state.status) {
     case "idle":
       return (
@@ -78,16 +90,16 @@ const InsightsPanelBody = ({ state, onExplore }: InsightsPanelBodyProps) => {
     case "error":
       return <Alert color="error">{state.error}</Alert>;
     case "done":
-      return <InsightsList state={state} onExplore={onExplore} />;
+      return <InsightsList state={state} action={action} />;
   }
 };
 
 type InsightsListProps = {
   state: Extract<FunnelInsightsState, { status: "done" }>;
-  onExplore: (insight: Insight) => void;
+  action: InsightAction;
 };
 
-const InsightsList = ({ state, onExplore }: InsightsListProps) => {
+const InsightsList = ({ state, action }: InsightsListProps) => {
   const { insights, attributes, transitions, isFindingPairs, pairsError } =
     state;
   if (attributes.length === 0) {
@@ -106,7 +118,7 @@ const InsightsList = ({ state, onExplore }: InsightsListProps) => {
             (insight) => insight.transition === transition.transition,
           )}
           attributes={attributes}
-          onExplore={onExplore}
+          action={action}
         />
       ))}
       {isFindingPairs && (
@@ -135,14 +147,14 @@ type TransitionInsightsProps = {
   transition: FunnelTransition;
   insights: Insight[];
   attributes: InsightAttribute[];
-  onExplore: (insight: Insight) => void;
+  action: InsightAction;
 };
 
 const TransitionInsights = ({
   transition,
   insights,
   attributes,
-  onExplore,
+  action,
 }: TransitionInsightsProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const shown = isExpanded ? insights : insights.slice(0, INSIGHTS_SHOWN);
@@ -161,7 +173,7 @@ const TransitionInsights = ({
           key={JSON.stringify(insight.conditions)}
           insight={insight}
           attributes={attributes}
-          onExplore={onExplore}
+          action={action}
         />
       ))}
       {hiddenCount > 0 && (
@@ -194,10 +206,10 @@ const describeCondition = (
 type InsightCardProps = {
   insight: Insight;
   attributes: InsightAttribute[];
-  onExplore: (insight: Insight) => void;
+  action: InsightAction;
 };
 
-const InsightCard = ({ insight, attributes, onExplore }: InsightCardProps) => {
+const InsightCard = ({ insight, attributes, action }: InsightCardProps) => {
   const isHigher = insight.rate > insight.restRate;
   const title = insight.conditions
     .map(({ attributeId, value }) =>
@@ -231,10 +243,10 @@ const InsightCard = ({ insight, attributes, onExplore }: InsightCardProps) => {
             <Button
               variant="subtle"
               size="compact-sm"
-              leftSection={<Icon name="external" />}
-              onClick={() => onExplore(insight)}
+              leftSection={<Icon name={action.icon} />}
+              onClick={() => action.onClick(insight)}
             >
-              {t`Explore`}
+              {action.label}
             </Button>
           </Box>
         </Stack>

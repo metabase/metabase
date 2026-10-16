@@ -1,3 +1,4 @@
+import type { Extensions } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
@@ -103,7 +104,11 @@ export interface EditorProps {
   editorContainerRef?: React.RefObject<HTMLDivElement>;
   hostOverride?: Partial<DocumentEditorHost>;
   placeholder?: string;
+  /** Appended to the editor's extensions. Must keep its identity. Their nodes never show the formatting bubble menu. */
+  extraExtensions?: Extensions;
 }
+
+const NO_EXTRA_EXTENSIONS: Extensions = [];
 
 export const Editor: React.FC<EditorProps> = React.memo(
   ({
@@ -117,6 +122,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
     editorContainerRef,
     hostOverride,
     placeholder,
+    extraExtensions = NO_EXTRA_EXTENSIONS,
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const { getState } = useStore();
@@ -180,8 +186,19 @@ export const Editor: React.FC<EditorProps> = React.memo(
         ResizeNode,
         HandleEditorDrop,
         createChartPasteExtension(dispatch),
+        ...extraExtensions,
       ],
-      [siteUrl, getState, dispatch, placeholder],
+      [siteUrl, getState, dispatch, placeholder, extraExtensions],
+    );
+
+    const bubbleMenuDisallowedNodes = useMemo(
+      () => [
+        ...BUBBLE_MENU_DISALLOWED_NODES,
+        ...extraExtensions
+          .filter((extension) => extension.type === "node")
+          .map((extension) => extension.name),
+      ],
+      [extraExtensions],
     );
 
     const editor = useEditor(
@@ -292,7 +309,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
             {editable && (
               <EditorBubbleMenu
                 editor={editor}
-                disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+                disallowedNodes={bubbleMenuDisallowedNodes}
                 disallowedFullySelectedNodes={
                   BUBBLE_MENU_DISALLOWED_FULLY_SELECTED_NODES
                 }

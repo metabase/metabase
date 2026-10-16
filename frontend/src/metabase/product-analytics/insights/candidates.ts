@@ -17,11 +17,14 @@ const MAX_DISTINCT_VALUES = 200;
 const MAX_ATTRIBUTES = 20;
 
 /**
+ * Whether people can be split by the column's values: an active string or
+ * boolean column with few distinct values, that isn't a key.
+ *
  * Not filtered on how often the column is empty: event data is sparse by
  * design, and the search's minimum group size handles columns too sparse to
  * matter, per person rather than per event.
  */
-const isCandidateField = (field: Field): boolean => {
+export const isCandidateField = (field: Field): boolean => {
   const distinctCount = field.fingerprint?.global?.["distinct-count"];
   return (
     field.active &&

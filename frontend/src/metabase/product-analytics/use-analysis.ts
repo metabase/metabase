@@ -110,7 +110,7 @@ export const useAnalysis = <K extends AnalysisKind>({
     spec,
     missing,
     display: config.getDisplay(computed),
-    vizSettings: config.getVizSettings(computed),
+    vizSettings: config.getVizSettings(computed, context),
     query,
   };
 };

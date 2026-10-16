@@ -82,6 +82,15 @@ export interface FunnelSpec {
   anchor: "first" | "each";
   ordering: "strict" | "loose" | "any";
   allowRetry: boolean;
+  /** Replaces the step counts with people and conversion at one transition, by each combination of values. */
+  breakdown?: FunnelBreakdown;
+}
+
+export interface FunnelBreakdown {
+  /** Step k → step k+1, numbered from 1. */
+  transition: number;
+  /** Columns on events_base. */
+  attributes: string[];
 }
 
 export interface PathsSpec {

@@ -22,6 +22,7 @@ export interface CommandProps {
   label?: string;
   href?: string;
   document?: Document | null;
+  run?: (editor: Editor) => void;
 }
 
 export const CommandPluginKey = new PluginKey("command");
@@ -45,6 +46,11 @@ export const CommandExtension = Extension.create<CommandOptions>({
           range: Range;
           props: CommandProps;
         }) => {
+          if (props.run) {
+            editor.chain().focus().deleteRange(range).run();
+            props.run(editor);
+            return;
+          }
           if (
             props.clearQuery &&
             (props.switchToLinkMode || props.switchToEmbedMode)

@@ -30,6 +30,7 @@ import { Outlet, useLocation, useNavigate, useParams } from "metabase/router";
 import { Box } from "metabase/ui";
 import { extractEntityId } from "metabase/urls";
 import * as Urls from "metabase/urls";
+import { getProductAnalyticsDocumentContext } from "metabase-types/guards";
 
 import {
   trackDocumentBookmark,
@@ -165,6 +166,15 @@ export const DocumentPage = () => {
     }
   }, [dispatch, error]);
 
+  // This editor doesn't know analysis nodes and would drop them on save.
+  const isAnalysisDocument =
+    getProductAnalyticsDocumentContext(documentData?.document) !== undefined;
+  useEffect(() => {
+    if (documentData && isAnalysisDocument) {
+      navigate(Urls.analysisDocument(documentData), { replace: true });
+    }
+  }, [documentData, isAnalysisDocument, navigate]);
+
   // Reset state when we navigate back to /new
   const resetDocument = useCallback(() => {
     setDocumentTitle("");
@@ -238,6 +248,10 @@ export const DocumentPage = () => {
       trackDocumentUnsavedChangesWarningDisplayed(documentData);
     }
   }, [isLeaveConfirmModalOpen, documentData]);
+
+  if (isAnalysisDocument) {
+    return null;
+  }
 
   return (
     <PrefetchQueueProvider>

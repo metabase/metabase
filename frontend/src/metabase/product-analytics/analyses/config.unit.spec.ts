@@ -1,5 +1,5 @@
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Table } from "metabase-types/api";
+import type { Field, Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
 import { buildSql } from "../build-sql";
@@ -524,6 +524,129 @@ describe("analysis settings", () => {
 
       expect(spec.paths?.end).toBeNull();
       expect(built.sql).toContain("0 AS is_end");
+    });
+  });
+
+  describe("funnel breakdown", () => {
+    const asCandidate = (
+      field: Field,
+      displayName: string,
+      distinctCount: number,
+    ) => ({
+      ...field,
+      display_name: displayName,
+      fingerprint: { global: { "distinct-count": distinctCount } },
+    });
+    const BREAKDOWN_EVENT_TABLE = createMockTable({
+      ...EVENT_TABLE,
+      fields: (EVENT_TABLE.fields ?? []).map((field) =>
+        field.name === "plan" ? asCandidate(field, "Plan", 3) : field,
+      ),
+    });
+    const BREAKDOWN_USERS_TABLE: UsersTable = {
+      ...USERS_TABLE_CONTEXT,
+      table: createMockTable({
+        ...USERS_TABLE,
+        fields: (USERS_TABLE.fields ?? []).map((field) =>
+          field.name === "country" ? asCandidate(field, "Country", 40) : field,
+        ),
+      }),
+    };
+    const PLAN = { column: "plan", from: "events" };
+    const COUNTRY = { column: "country", from: "users" };
+    const FUNNEL_CONFIG = getAnalysisConfig("funnel");
+
+    const setupBreakdown = (stored: StoredSettings) =>
+      setup({
+        kind: "funnel",
+        table: BREAKDOWN_EVENT_TABLE,
+        usersTable: BREAKDOWN_USERS_TABLE,
+        stored: { ...REQUIRED_EVENTS.funnel, ...stored },
+      });
+
+    it("offers low-cardinality columns from both tables", () => {
+      const { getProps } = setupBreakdown({});
+
+      expect(getProps("funnel.breakdown")).toEqual({
+        options: [
+          expect.objectContaining({ label: "Plan", breakdown: PLAN }),
+          expect.objectContaining({ label: "Country", breakdown: COUNTRY }),
+        ],
+      });
+    });
+
+    it("drops stored columns the tables don't have", () => {
+      expect(
+        setupBreakdown({ "funnel.breakdown": [PLAN, COUNTRY] }).computed[
+          "funnel.breakdown"
+        ],
+      ).toEqual([PLAN, COUNTRY]);
+      expect(
+        setupBreakdown({
+          "funnel.breakdown": [PLAN, { column: "missing", from: "events" }],
+        }).computed["funnel.breakdown"],
+      ).toEqual([]);
+    });
+
+    it("drops a stored step past the last transition", () => {
+      const { computed } = setupBreakdown({
+        "funnel.breakdown": [PLAN],
+        "funnel.breakdown_step": 2,
+      });
+
+      expect(computed["funnel.breakdown_step"]).toBe(1);
+    });
+
+    it("breaks down the step-by-step view", () => {
+      const { computed, specResult, extraColumns, isHidden } = setupBreakdown({
+        "funnel.breakdown": [PLAN, COUNTRY],
+      });
+      const context = {
+        table: BREAKDOWN_EVENT_TABLE,
+        usersTable: BREAKDOWN_USERS_TABLE,
+      };
+
+      expect(getReadySpec(specResult).funnel?.breakdown).toEqual({
+        transition: 1,
+        attributes: ["breakdown_1", "breakdown_2"],
+      });
+      expect(extraColumns).toEqual([
+        { as: "breakdown_1", ...PLAN },
+        { as: "breakdown_2", ...COUNTRY },
+      ]);
+      expect(isHidden("funnel.breakdown_step")).toBe(false);
+      expect(FUNNEL_CONFIG.getDisplay(computed)).toBe("combo");
+      expect(FUNNEL_CONFIG.getVizSettings(computed, context)).toMatchObject({
+        "graph.dimensions": ["segment"],
+        "graph.x_axis.title_text": "Plan · Country",
+      });
+    });
+
+    it("ignores the breakdown in other views", () => {
+      const { computed, specResult, extraColumns, isHidden } = setupBreakdown({
+        "funnel.breakdown": [PLAN],
+        "funnel.view": "overTime",
+      });
+
+      expect(getReadySpec(specResult).funnel?.breakdown).toBeUndefined();
+      expect(extraColumns).toEqual([]);
+      expect(isHidden("funnel.breakdown")).toBe(true);
+      expect(FUNNEL_CONFIG.getDisplay(computed)).toBe("line");
+    });
+
+    it("compiles to people and conversion by segment at the transition", () => {
+      const { specResult, allocation, extraColumns } = setupBreakdown({
+        "funnel.breakdown": [PLAN],
+      });
+      const built = buildSql(getReadySpec(specResult), "SELECT 1", {
+        columns: PLANNER_COLUMNS,
+        flags: allocation.events.map(({ flag }) => flag),
+        extraColumns: extraColumns.map(({ as }) => ({ as, alias: as })),
+      });
+
+      expect(built.sql).toContain("funnel_transitions");
+      expect(built.sql).toContain("breakdown_1 AS `segment`");
+      expect(built.sql).toContain("WHERE k = 1");
     });
   });
 });

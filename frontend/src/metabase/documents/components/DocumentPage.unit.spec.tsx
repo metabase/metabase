@@ -8,6 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
+import { PRODUCT_ANALYTICS_DOCUMENT_ATTR } from "metabase-types/api";
 import { createMockDocument } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";
@@ -48,6 +49,43 @@ const setupNewDocument = () => {
   );
 };
 
+const setupAnalysisDocument = () => {
+  setupBookmarksEndpoints([]);
+  setupDocumentEndpoints(
+    createMockDocument({
+      id: 1,
+      can_write: true,
+      document: {
+        type: "doc",
+        attrs: {
+          [PRODUCT_ANALYTICS_DOCUMENT_ATTR]: {
+            version: 1,
+            table_id: 42,
+            date_range: "past30days",
+          },
+        },
+        content: [{ type: "productAnalysis", attrs: { _id: "a" } }],
+      },
+    }),
+  );
+  setupCommentEndpoints([], { target_type: "document", target_id: 1 });
+  setupTimelinesEndpoints([]);
+
+  renderWithProviders(
+    <>
+      <Route path="/document/:entityId" element={<DocumentPage />} />
+      <Route
+        path="/event-analysis/document/:id"
+        element={<div>Analysis document</div>}
+      />
+    </>,
+    {
+      withRouter: true,
+      initialRoute: "/document/1",
+    },
+  );
+};
+
 const getDocumentTitle = async () =>
   await screen.findByRole("textbox", { name: /document title/i });
 
@@ -77,6 +115,12 @@ describe("Document Page", () => {
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("sends analysis documents to the page that can edit them", async () => {
+    setupAnalysisDocument();
+
+    expect(await screen.findByText("Analysis document")).toBeInTheDocument();
   });
 
   it("warns about unsaved changes only once a navigation lands back on /document/new", async () => {

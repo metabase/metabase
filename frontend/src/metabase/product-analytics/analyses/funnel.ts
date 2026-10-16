@@ -1,14 +1,24 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { BreakdownWidget } from "../components/settings/BreakdownWidget";
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
+import { getSegmentConversionVizSettings } from "../insights/explore";
 import { withWidgetProps } from "../settings/with-widget-props";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 
+import {
+  BREAKDOWN_SEGMENT_COLUMN,
+  getBreakdownAttribute,
+  getBreakdownExtraColumns,
+  getBreakdownLabel,
+  getBreakdownOptions,
+  isBreakdownColumnList,
+} from "./breakdown";
 import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
@@ -18,6 +28,7 @@ import {
   isEventDefinitionList,
   isOneOf,
   isPositiveDuration,
+  isPositiveInteger,
   ready,
 } from "./setting-helpers";
 import type {
@@ -40,6 +51,10 @@ const ORDERINGS: readonly FunnelSettings["funnel.ordering"][] = [
 const ANCHORS: readonly FunnelSettings["funnel.anchor"][] = ["first", "each"];
 
 const SERIES_COLOR_NAME = "accent0";
+
+const isBreakdownShown = (settings: FunnelSettings): boolean =>
+  settings["funnel.view"] === "steps" &&
+  settings["funnel.breakdown"].length > 0;
 
 // Every view shares one color. The color name keeps it following the active palette.
 const getSeriesSettings = (
@@ -133,6 +148,37 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
     getDefault: () => false,
     isValid: (value) => isBoolean(value),
   },
+  "funnel.breakdown": withWidgetProps({
+    getTitle: () => t`Break down by`,
+    getHint: () =>
+      t`Shows how many people reached a step, and how many of them went on to the next, for each value.`,
+    getSection: () => "setup",
+    secondary: true,
+    widget: BreakdownWidget,
+    getDefault: () => [],
+    isValid: (value, context) => isBreakdownColumnList(value, context),
+    getHidden: (_context, settings) => settings["funnel.view"] !== "steps",
+    getProps: (context) => ({ options: getBreakdownOptions(context) }),
+  }),
+  "funnel.breakdown_step": {
+    getTitle: () => t`At which step`,
+    getSection: () => "setup",
+    secondary: true,
+    widget: "select",
+    getDefault: () => 1,
+    isValid: (value, _context, settings) =>
+      isPositiveInteger(value) &&
+      value < (settings["funnel.steps"]?.length ?? 0),
+    getHidden: (_context, settings) => !isBreakdownShown(settings),
+    getProps: (_context, settings) => ({
+      options: settings["funnel.steps"].slice(0, -1).map((step, index) => ({
+        name: c("{0} and {1} are funnel step names")
+          .t`${step.name} → ${settings["funnel.steps"][index + 1].name}`,
+        value: index + 1,
+      })),
+    }),
+    readDependencies: ["funnel.steps"],
+  },
 };
 
 export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
@@ -170,11 +216,26 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         anchor: settings["funnel.anchor"],
         ordering: settings["funnel.ordering"],
         allowRetry: settings["funnel.allow_retry"],
+        breakdown: isBreakdownShown(settings)
+          ? {
+              transition: settings["funnel.breakdown_step"],
+              attributes: settings["funnel.breakdown"].map((_, index) =>
+                getBreakdownAttribute(index),
+              ),
+            }
+          : undefined,
       },
       output: { funnelView: settings["funnel.view"] },
     });
   },
+  getExtraColumns: (settings) =>
+    isBreakdownShown(settings)
+      ? getBreakdownExtraColumns(settings["funnel.breakdown"])
+      : [],
   getDisplay: (settings) => {
+    if (isBreakdownShown(settings)) {
+      return "combo";
+    }
     switch (settings["funnel.view"]) {
       case "steps":
         return "bar";
@@ -184,7 +245,16 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         return "bar";
     }
   },
-  getVizSettings: (settings) => {
+  getVizSettings: (settings, context) => {
+    if (isBreakdownShown(settings)) {
+      return {
+        ...getSegmentConversionVizSettings(BREAKDOWN_SEGMENT_COLUMN),
+        "graph.x_axis.title_text": getBreakdownLabel(
+          settings["funnel.breakdown"],
+          context,
+        ),
+      };
+    }
     const people = grainLabel(settings.counting);
     const peopleTitle = grainTitle(settings.counting);
     switch (settings["funnel.view"]) {

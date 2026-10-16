@@ -9,6 +9,8 @@ export interface CommandOption {
   label: string;
   command: string;
   isAllowedAtPosition?: (editor: Editor) => boolean;
+  /** Runs in place of the built-in handling of `command`, once the typed query is removed. */
+  run?: (editor: Editor) => void;
 }
 
 export interface CommandSection {

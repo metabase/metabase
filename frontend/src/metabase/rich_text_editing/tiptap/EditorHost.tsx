@@ -13,6 +13,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import type { CommandSection } from "./extensions/Command/types";
+
 /**
  * Result returned by the card-data hooks the host provides to the CardEmbed
  * extension. Declared by the editor primitive so extensions can depend on the
@@ -195,6 +197,11 @@ export interface EditorAnalyticsHost {
   };
 }
 
+/** Slash-menu sections a host adds between the built-in commands and formatting. */
+export interface EditorCommandsHost {
+  useExtraCommandSections: () => CommandSection[];
+}
+
 /**
  * The capabilities the editor extensions need, injected by the host so `rich_text_editing` stays an agnostic editor primitive.
  * Consumers that do not configure a host (e.g. the comments editor) get
@@ -205,11 +212,14 @@ export type EditorHost = EditorDocumentHost &
   EditorCommentsHost &
   EditorViewportHost &
   EditorMentionsHost &
-  EditorAnalyticsHost & {
+  EditorAnalyticsHost &
+  EditorCommandsHost & {
     capabilities: EditorCapabilities;
   };
 
 const noop = () => undefined;
+
+export const NO_EXTRA_COMMAND_SECTIONS: CommandSection[] = [];
 
 /**
  * Inert host used when no provider is configured (e.g. the comments and metabot
@@ -259,6 +269,7 @@ export const DEFAULT_EDITOR_HOST: EditorHost = {
   useReportPrefetchLoading: () => undefined,
   useDraftCardOperations: () => ({ ensureDraftCard: () => -1 }),
   useCardEmbedSlots: () => EMPTY_CARD_EMBED_SLOTS,
+  useExtraCommandSections: () => NO_EXTRA_COMMAND_SECTIONS,
 };
 
 const EditorHostContext = createContext<EditorHost>(DEFAULT_EDITOR_HOST);

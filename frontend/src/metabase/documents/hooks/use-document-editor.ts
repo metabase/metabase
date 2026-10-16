@@ -59,6 +59,8 @@ interface UseDocumentEditorParams {
   documentId: DocumentId | "new" | undefined;
   onDocumentCreated?: (document: Document) => void;
   onDocumentUpdated?: (document: Document) => void;
+  /** Where to go once a new document is created. Defaults to the document page. */
+  getDocumentUrl?: (document: Document) => string;
 }
 
 interface UseDocumentEditorResult {
@@ -100,6 +102,7 @@ export function useDocumentEditor({
   documentId,
   onDocumentCreated,
   onDocumentUpdated,
+  getDocumentUrl = Urls.document,
 }: UseDocumentEditorParams): UseDocumentEditorResult {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -365,7 +368,7 @@ export function useDocumentEditor({
                 const _document = response.data;
                 onDocumentCreated?.(_document);
                 scheduleNavigation(() => {
-                  navigate(Urls.document(_document));
+                  navigate(getDocumentUrl(_document));
                 });
               }
               return response;
@@ -400,6 +403,7 @@ export function useDocumentEditor({
       documentData?.id,
       onDocumentCreated,
       onDocumentUpdated,
+      getDocumentUrl,
       updateDocument,
       createDocument,
       scheduleNavigation,
