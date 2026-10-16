@@ -238,16 +238,22 @@
                 (is (= "apply-changes-version" (written-version)))
                 (is (= (set (keys before)) (set (keys (files)))))))))))))
 
-(deftest full-export-refuses-two-items-at-one-path-test
-  (testing "a full export fails, and writes nothing, when the move rule gives two items one path"
-    (with-exported-bench!
-      (fn [{:keys [mock]}]
-        (let [before (get @(:files-atom mock) "main")]
-          (with-redefs [remote-sync.layout/move-rule (constantly {:write "collections/main/same.yaml"})]
+(deftest full-export-never-writes-two-items-at-one-path-test
+  (with-exported-bench!
+    (fn [{:keys [mock]}]
+      (let [before (get @(:files-atom mock) "main")
+            clash  (constantly {:write "collections/main/same.yaml"})]
+        (testing "when the move rule gives two items one path, the export moves every item to its computed path"
+          (with-redefs [remote-sync.layout/move-rule clash]
+            (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "clash" :force? true)))))
+          (is (= (set (keys before)) (set (keys (get @(:files-atom mock) "main"))))))
+        (testing "when that clashes too, the export fails and writes nothing"
+          (with-redefs [remote-sync.layout/move-rule       clash
+                        remote-sync.layout/move-every-item clash]
             (let [result (impl/export! (source.p/snapshot mock) (new-task!) "clash" :force? true)]
               (is (= :error (:status result)))
-              (is (str/includes? (:message result) "Two items have the path collections/main/same.yaml"))))
-          (is (= before (get @(:files-atom mock) "main"))))))))
+              (is (str/includes? (str (:message result)) "Two items have the path collections/main/same.yaml"))))
+          (is (= (set (keys before)) (set (keys (get @(:files-atom mock) "main"))))))))))
 
 (defn- export-at!
   "Exports to `src` (a versioned source) under a fresh task, completes the task so the next export knows the
@@ -324,3 +330,116 @@
           (is (= :success (:status result)) (:message result))
           (is (= before (full-export-files!))
               "a new export of the loaded content writes the same files"))))))
+
+(defn- with-move-changed-items!
+  "Calls `f` with the kind layout and the move-changed-items rule swapped in, and remote sync on."
+  [f]
+  (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                     remote-sync-transforms false]
+    (with-redefs [remote-sync.layout/layout    kind-layout/kind-layout
+                  remote-sync.layout/move-rule remote-sync.layout/move-changed-items]
+      (t2/delete! :model/RemoteSyncObject)
+      (t2/delete! :model/RemoteSyncTask)
+      (f))))
+
+(defn- card-path [card-id]
+  (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Card" :model_id card-id))
+
+(deftest move-changed-items-falls-back-on-duplicate-names-test
+  (testing "when kept paths and computed paths clash, the push moves every item instead of failing"
+    (with-move-changed-items!
+      (fn []
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
+                       :model/Card       {x :id}       {:name "Orders" :collection_id coll-id
+                                                        :created_at #t "2026-01-01T00:00:00Z"}
+                       :model/Card       {y :id}       {:name "Orders" :collection_id coll-id
+                                                        :created_at #t "2026-01-02T00:00:00Z"}]
+          (doseq [[model-type model-id] [["Collection" coll-id] ["Card" x] ["Card" y]]]
+            (seed-create-row! model-type model-id))
+          (let [src (rs.test/versioned-source :trees {"v0" {}} :current "v0")]
+            (is (= :success (:status (export-at! src "first"))))
+            (is (= "collections/main/bench/orders_2.question.yaml" (card-path y)))
+            (t2/update! :model/Card x {:archived true})
+            (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id x} {:status "delete"})
+            (is (= :success (:status (export-at! src "archive X"))))
+            (is (= "collections/main/bench/orders_2.question.yaml" (card-path y))
+                "the rule keeps the unchanged card where it is")
+            (mt/with-temp [:model/Card {z :id} {:name "Orders" :collection_id coll-id
+                                                :created_at #t "2026-01-03T00:00:00Z"}]
+              (seed-create-row! "Card" z)
+              (let [result (export-at! src "new Orders")]
+                (is (= :success (:status result)) (:message result)))
+              (is (= "collections/main/bench/orders.question.yaml" (card-path y)))
+              (is (= "collections/main/bench/orders_2.question.yaml" (card-path z)))
+              (is (= #{"collections/main/bench/collection.yaml"
+                       "collections/main/bench/orders.question.yaml"
+                       "collections/main/bench/orders_2.question.yaml"}
+                     (set (keys (tree src))))))))))))
+
+(deftest move-changed-items-falls-back-after-a-folder-rename-test
+  (testing "an unchanged item in a renamed folder, and a new item that computes its path: the push moves every item"
+    (with-move-changed-items!
+      (fn []
+        (mt/with-temp [:model/Collection {a :id} {:name "Sales" :is_remote_synced true :location "/"}
+                       :model/Card       {k :id} {:name "K" :collection_id a}]
+          (seed-create-row! "Collection" a)
+          (seed-create-row! "Card" k)
+          (let [src (rs.test/versioned-source :trees {"v0" {}} :current "v0")]
+            (is (= :success (:status (export-at! src "first"))))
+            (t2/update! :model/Collection a {:name "Ops"})
+            (t2/update! :model/RemoteSyncObject {:model_type "Collection" :model_id a} {:status "update"})
+            (is (= :success (:status (export-at! src "rename"))))
+            (is (= "collections/main/sales/k.question.yaml" (card-path k)) "the rule keeps the unchanged card")
+            (mt/with-temp [:model/Collection {b :id} {:name "Sales" :is_remote_synced true :location "/"}
+                           :model/Card       {k2 :id} {:name "K" :collection_id b}]
+              (seed-create-row! "Collection" b)
+              (seed-create-row! "Card" k2)
+              (testing "forced push"
+                (let [result (export-at! src "new Sales" :force? true)]
+                  (is (= :success (:status result)) (:message result))))
+              (is (= "collections/main/ops/k.question.yaml" (card-path k)))
+              (is (= "collections/main/sales/k.question.yaml" (card-path k2))))))))))
+
+(deftest move-changed-items-falls-back-in-a-merge-test
+  (testing "the pull merge and the merged export also move every item when the rule's paths clash"
+    (with-move-changed-items!
+      (fn []
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
+                       :model/Card       {x :id}       {:name "Orders" :collection_id coll-id
+                                                        :created_at #t "2026-01-01T00:00:00Z"}
+                       :model/Card       {y :id}       {:name "Orders" :collection_id coll-id
+                                                        :created_at #t "2026-01-02T00:00:00Z"}]
+          (doseq [[model-type model-id] [["Collection" coll-id] ["Card" x] ["Card" y]]]
+            (seed-create-row! model-type model-id))
+          (let [src           (rs.test/versioned-source :trees {"v0" {}} :current "v0")
+                remote-ahead! (fn [content]
+                                (let [commit (source.p/open-commit (source.p/snapshot src))]
+                                  (source.p/stage-upsert! commit {:path "README.md" :content content})
+                                  (source.p/finish-commit! commit "remote")))]
+            (is (= :success (:status (export-at! src "first"))))
+            (t2/update! :model/Card x {:archived true})
+            (t2/update! :model/RemoteSyncObject {:model_type "Card" :model_id x} {:status "delete"})
+            (is (= :success (:status (export-at! src "archive X"))))
+            (mt/with-temp [:model/Card {z :id} {:name "Orders" :collection_id coll-id
+                                                :created_at #t "2026-01-03T00:00:00Z"}]
+              (seed-create-row! "Card" z)
+              (testing "pull merge"
+                (let [base   (source.p/version (source.p/snapshot src))
+                      _      (remote-ahead! "one\n")
+                      task   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
+                                                                             :initiated_by   (mt/user->id :rasta)})
+                      result (impl/import! (source.p/snapshot src) task :merge? true
+                                           :base-snapshot (source.p/snapshot-at src base))]
+                  (impl/handle-task-result! result task)
+                  (is (= :success (:status result)) (:message result))))
+              (testing "merged export"
+                (let [base   (source.p/version (source.p/snapshot src))
+                      _      (remote-ahead! "two\n")
+                      result (export-at! src "merge" :merge? true :base-snapshot (source.p/snapshot-at src base))]
+                  (is (= :success (:status result)) (:message result))
+                  (is (= "merged" (get-in result [:outcome :kind])))))
+              (is (= #{"README.md"
+                       "collections/main/bench/collection.yaml"
+                       "collections/main/bench/orders.question.yaml"
+                       "collections/main/bench/orders_2.question.yaml"}
+                     (set (keys (tree src))))))))))))

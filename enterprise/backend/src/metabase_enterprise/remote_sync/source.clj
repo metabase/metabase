@@ -122,8 +122,9 @@
   (:content-hash (row->file-info row)))
 
 (defn path-claims
-  "A function `(claim! path item)` that throws when a second, different `item` claims a `path` an earlier one claimed,
-  so that an export never writes two items to one file. A nil `path` claims nothing."
+  "A function `(claim! path item)` that throws, with `:error ::two-items-at-one-path`, when a second, different `item`
+  claims a `path` an earlier one claimed, so that an export never writes two items to one file. A nil `path` claims
+  nothing."
   []
   (let [claims (atom {})]
     (fn [path item]
@@ -131,7 +132,7 @@
         (let [owner (get (swap! claims update path #(or % item)) path)]
           (when (not= owner item)
             (throw (ex-info (format "Two items have the path %s: %s and %s" path (pr-str owner) (pr-str item))
-                            {:path path :items [owner item]}))))))))
+                            {:error ::two-items-at-one-path :path path :items [owner item]}))))))))
 
 (defn- entity-label
   "The serdes path of `entity`, which names it in an error."

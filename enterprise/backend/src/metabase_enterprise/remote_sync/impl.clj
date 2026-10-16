@@ -589,15 +589,32 @@
     (catch Exception e
       (log/warn e "Could not record the tables of the data apps"))))
 
+(defn- with-move-rule-fallback
+  "Calls `(f rule)` with the move rule [[remote-sync.layout/move-rule]]; `f` is an export or a merge. When the paths
+  the rule chooses put two items at one path, which is detected before anything is written, calls `(f rule)` again
+  with [[remote-sync.layout/move-every-item]] for every item: it writes each item at its computed path, and computed
+  paths never clash."
+  [f]
+  (let [rule remote-sync.layout/move-rule]
+    (try
+      (f rule)
+      (catch clojure.lang.ExceptionInfo e
+        (if (and (= ::source/two-items-at-one-path (:error (ex-data e)))
+                 (not (identical? remote-sync.layout/move-every-item rule)))
+          (do
+            (log/infof "The move rule put two items at %s; moving every item to its computed path" (:path (ex-data e)))
+            (f remote-sync.layout/move-every-item))
+          (throw e))))))
+
 (defn- full-write-path
-  "The path the move rule gives an item of a full or merged export, whose RemoteSyncObject has `status` and
+  "The path the move rule `rule` gives an item of a full or merged export, whose RemoteSyncObject has `status` and
   `stored-path` (an untracked item has neither); nil when the item has no file of its own."
-  [opts model-type status stored-path entity]
-  (:write (remote-sync.layout/move-rule {:export        :full
-                                         :model-type    model-type
-                                         :status        (or status "create")
-                                         :stored-path   stored-path
-                                         :computed-path (delay (serialization/entity-file-path opts entity))})))
+  [rule opts model-type status stored-path entity]
+  (:write (rule {:export        :full
+                 :model-type    model-type
+                 :status        (or status "create")
+                 :stored-path   stored-path
+                 :computed-path (delay (serialization/entity-file-path opts entity))})))
 
 (defn- rsos-by-entity-id
   "The RemoteSyncObject rows of the entity-id models, keyed by `[model_type entity_id]`."
@@ -615,13 +632,13 @@
 
 (defn- merge-path-fn
   "A function of a storage context and an extracted entity that gives the path the merge serializes the entity at,
-  from the move rule."
-  []
+  from the move rule `rule`."
+  [rule]
   (let [rsos (rsos-by-entity-id)]
     (fn [opts entity]
       (let [model-type                   (-> entity :serdes/meta last :model)
             {:keys [status file_path]}   (rsos [model-type (:entity_id entity)])]
-        (full-write-path opts model-type status file_path entity)))))
+        (full-write-path rule opts model-type status file_path entity)))))
 
 (defn- import-merged!
   "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
@@ -632,13 +649,13 @@
     - Marks remote changes synced
     - Local changes stay dirty
     - Sets version to remote tip"
-  [snapshot base-snapshot task-id report sync-timestamp finalize!]
+  [rule snapshot base-snapshot task-id report sync-timestamp finalize!]
   (let [{:keys [conflicts merged summary]} (serdes/with-cache
                                              (let [targets (spec/exportable-entities)]
                                                (source/compute-merge (spec/extract-entities-for-export targets)
                                                                      snapshot base-snapshot task-id
                                                                      :total (spec/exportable-entity-count targets)
-                                                                     :path-fn (merge-path-fn))))]
+                                                                     :path-fn (merge-path-fn rule))))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Pull merge conflict on %d entit(ies)" (count labels))
@@ -737,7 +754,8 @@
                    :outcome       {:kind "pull-skipped"}})
 
                 :else
-                (import-merged! snapshot base-snapshot task-id report sync-timestamp finalize!))
+                (with-move-rule-fallback
+                  #(import-merged! % snapshot base-snapshot task-id report sync-timestamp finalize!)))
 
               ;; --- Forced reload: bypasses the no-op/incremental guards. Deletion conflicts (when
               ;; force-deletion? is false) still block; otherwise a full reload. ---
@@ -855,10 +873,10 @@
     changes.
 
   Returns a `:success` result with a `:merge-summary`."
-  [source snapshot base-snapshot task-id message sync-timestamp models & {:keys [total]}]
+  [rule source snapshot base-snapshot task-id message sync-timestamp models & {:keys [total]}]
   (let [pushed-count (count (remote-sync.object/dirty-rows))
         {:keys [merged conflicts summary]} (source/compute-merge models snapshot base-snapshot task-id
-                                                                 :total total :path-fn (merge-path-fn))]
+                                                                 :total total :path-fn (merge-path-fn rule))]
     (if (seq conflicts)
       (let [labels (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Export merge conflict on %d entit(ies)" (count labels))
@@ -1049,7 +1067,7 @@
   Return:
     - `:remote-sync/incremental-not-possible` OR
     - {:writes :delete-paths :removed-ids :pull}"
-  [{:keys [id model_type model_id status file_path]} file-info]
+  [rule {:keys [id model_type model_id status file_path]} file-info]
   (try
     (cond
       (not= :entity-id ;; only entity-id models can be synced incrementally
@@ -1075,11 +1093,11 @@
       :remote-sync/incremental-not-possible
 
       :else
-      (let [move (remote-sync.layout/move-rule {:export        :incremental
-                                                :model-type    model_type
-                                                :status        status
-                                                :stored-path   file_path
-                                                :computed-path (delay (:new-path file-info))})]
+      (let [move (rule {:export        :incremental
+                        :model-type    model_type
+                        :status        status
+                        :stored-path   file_path
+                        :computed-path (delay (:new-path file-info))})]
         (cond
           (= :remote-sync/incremental-not-possible move)
           move
@@ -1105,13 +1123,13 @@
   Returns:
    - :remote-sync/incremental-not-possible when the chunk can't be synced
    - {:writes :delete-paths :removed-ids :pull}"
-  [snapshot opts chunk]
+  [rule snapshot opts chunk]
   (let [found (extract-chunk chunk)]
     (if (< (count found) (count (:rows chunk)))
       :remote-sync/incremental-not-possible ; extract-chunk omits gone entities; some row is unsyncable
       (->> found
            (map (fn [[row entity]]
-                  (row->incremental-export-plan row (entity-path-info snapshot (serialization/entity-file-path opts entity) (:entity_id entity)))))
+                  (row->incremental-export-plan rule row (entity-path-info snapshot (serialization/entity-file-path opts entity) (:entity_id entity)))))
            (reduce merge-incremental-export-plans-reducer {})))))
 
 (defn- clean-rows
@@ -1145,13 +1163,13 @@
   "Plan fragment for the synced `row`, from the move rule: nothing, a rewrite at its stored path, deletions, or
   `:remote-sync/incremental-not-possible`. An unchanged item is only rewritten where it is; a move needs a full
   export."
-  [{:keys [id model_type model_id file_path]} computed-path]
+  [rule {:keys [id model_type model_id file_path]} computed-path]
   (try
-    (let [move (remote-sync.layout/move-rule {:export        :incremental
-                                              :model-type    model_type
-                                              :status        "synced"
-                                              :stored-path   file_path
-                                              :computed-path computed-path})]
+    (let [move (rule {:export        :incremental
+                      :model-type    model_type
+                      :status        "synced"
+                      :stored-path   file_path
+                      :computed-path computed-path})]
       (cond
         (= :remote-sync/incremental-not-possible move)
         move
@@ -1173,7 +1191,7 @@
   Returns:
    - {:writes [{:id :model_type :model_id :file_path}] :delete-paths [path] :removed-ids [id]}, or
    - :remote-sync/incremental-not-possible when any row can't go incrementally"
-  [snapshot rows]
+  [rule snapshot rows]
   (let [opts          (remote-sync.layout/storage-context)
         ;; create/update rows on entity-id models need an entity (extracted per chunk); everything else
         ;; (removed/delete, non-entity-id, bad status) is decided with no entity
@@ -1182,15 +1200,15 @@
                                                   rows)
         ;; the no-extraction rows first (cheap)
         plan          (->> other-rows
-                           (map #(row->incremental-export-plan % nil))
+                           (map #(row->incremental-export-plan rule % nil))
                            (reduce merge-incremental-export-plans-reducer {:writes [] :delete-paths [] :removed-ids [] :pull #{}}))
         plan          (->> cu-rows
                            (->sized-chunks)
-                           (map #(chunk->incremental-export-plan snapshot opts %))
+                           (map #(chunk->incremental-export-plan rule snapshot opts %))
                            (reduce merge-incremental-export-plans-reducer plan))
         plan          (->> (clean-rows)
                            (lazy-computed-paths opts)
-                           (map (fn [[row computed-path]] (clean-row->incremental-export-plan row computed-path)))
+                           (map (fn [[row computed-path]] (clean-row->incremental-export-plan rule row computed-path)))
                            (reduce merge-incremental-export-plans-reducer plan))
         plan          (->> (:pull plan) ;; nil when plan is already :incremental-not-possible
                            (dependencies->incremental-export-plan snapshot opts)
@@ -1278,10 +1296,10 @@
 (defn- full-export-path-fn
   "A function of a WriteRow and its entity that gives the path a full export writes the entity at, from the move rule.
   It throws when two items get one path."
-  [opts]
+  [rule opts]
   (let [claim! (source/path-claims)]
     (fn [{:keys [model_type model_id status stored-path]} entity]
-      (u/prog1 (full-write-path opts model_type status stored-path entity)
+      (u/prog1 (full-write-path rule opts model_type status stored-path entity)
         (claim! <> [model_type model_id])))))
 
 (def ^:private user-settings-model-types
@@ -1314,37 +1332,39 @@
   Returns:
    - {:status :success}
    or throws"
-  [snapshot task-id message sync-timestamp]
-  (let [export-rows (vec (exportable-write-rows))]
-    (when (empty? export-rows)
-      (throw (ex-info "No remote-syncable content available." {})))
-    (let [report (remote-sync.task/make-progress-reporter task-id)
-          total  (count export-rows)
-          span   (- export-progress-serialize export-progress-plan-done)]
-      (report export-progress-plan-done {:force? true})
-      (let [opts             (remote-sync.layout/storage-context)
-            [synced version] (commit-staged! snapshot message
-                                             (fn [commit]
-                                               (source/replace-managed-files! commit snapshot) ; replace the managed files wholesale
-                                               (let [synced (stage-writes commit (full-export-path-fn opts) export-rows
-                                                                          (fn [staged]
-                                                                            (report (+ export-progress-plan-done
-                                                                                       (* span (/ staged total))))))]
-                                                 (report export-progress-serialize {:force? true})
-                                                 synced))
-                                             report)]
-        (t2/with-transaction [_]
-          (when-not (= version :remote-sync/empty-commit)
-            (remote-sync.task/set-version! task-id version))
-          (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
-            (remote-sync.db/delete-rsos! removed-ids))
-          (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp))
-        (if (= version :remote-sync/empty-commit)
-          (do
-            (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
-            {:status :success :outcome {:kind "push-skipped"}})
-          {:status :success
-           :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}})))))
+  ([snapshot task-id message sync-timestamp]
+   (full-export! remote-sync.layout/move-rule snapshot task-id message sync-timestamp))
+  ([rule snapshot task-id message sync-timestamp]
+   (let [export-rows (vec (exportable-write-rows))]
+     (when (empty? export-rows)
+       (throw (ex-info "No remote-syncable content available." {})))
+     (let [report (remote-sync.task/make-progress-reporter task-id)
+           total  (count export-rows)
+           span   (- export-progress-serialize export-progress-plan-done)]
+       (report export-progress-plan-done {:force? true})
+       (let [opts             (remote-sync.layout/storage-context)
+             [synced version] (commit-staged! snapshot message
+                                              (fn [commit]
+                                                (source/replace-managed-files! commit snapshot) ; replace the managed files wholesale
+                                                (let [synced (stage-writes commit (full-export-path-fn rule opts) export-rows
+                                                                           (fn [staged]
+                                                                             (report (+ export-progress-plan-done
+                                                                                        (* span (/ staged total))))))]
+                                                  (report export-progress-serialize {:force? true})
+                                                  synced))
+                                              report)]
+         (t2/with-transaction [_]
+           (when-not (= version :remote-sync/empty-commit)
+             (remote-sync.task/set-version! task-id version))
+           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
+             (remote-sync.db/delete-rsos! removed-ids))
+           (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp))
+         (if (= version :remote-sync/empty-commit)
+           (do
+             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
+             {:status :success :outcome {:kind "push-skipped"}})
+           {:status :success
+            :outcome {:kind "pushed" :count (count synced) :branch (settings/remote-sync-branch)}}))))))
 
 (defn- incremental-export!
   [plan disabled-files task-id snapshot message sync-timestamp]
@@ -1398,63 +1418,65 @@
   (let [sync-timestamp (t/instant)]
     (try
       (analytics/inc! :metabase-remote-sync/exports)
-      (serdes/with-cache
-        (let [base-version   (remote-sync.task/last-version)
-              remote-version (source.p/version snapshot)
-              diverged?      (and (some? base-version)
-                                  (not= base-version remote-version))
-              disabled-files (delay (disabled-files snapshot))
-              dirty-rows     (delay (remote-sync.object/dirty-rows))
-              ;; computed with no dirty rows too: the move rule may move unchanged items
-              plan           (delay (incremental-export-plan snapshot @dirty-rows))]
-          (cond
-            ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
-            force?
-            (do
-              (log/info "Remote sync full export: forced overwrite")
-              (full-export! snapshot task-id message sync-timestamp))
+      (with-move-rule-fallback
+        (fn [rule]
+          (serdes/with-cache
+            (let [base-version   (remote-sync.task/last-version)
+                  remote-version (source.p/version snapshot)
+                  diverged?      (and (some? base-version)
+                                      (not= base-version remote-version))
+                  disabled-files (delay (disabled-files snapshot))
+                  dirty-rows     (delay (remote-sync.object/dirty-rows))
+                  ;; computed with no dirty rows too: the move rule may move unchanged items
+                  plan           (delay (incremental-export-plan rule snapshot @dirty-rows))]
+              (cond
+                ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
+                force?
+                (do
+                  (log/info "Remote sync full export: forced overwrite")
+                  (full-export! rule snapshot task-id message sync-timestamp))
 
-            (and diverged? merge?)
-            (cond
-              (nil? base-snapshot)
-              {:status    :conflict
-               :version   remote-version
-               :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
-               :outcome   {:kind "history-rewritten"}
-               :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
+                (and diverged? merge?)
+                (cond
+                  (nil? base-snapshot)
+                  {:status    :conflict
+                   :version   remote-version
+                   :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+                   :outcome   {:kind "history-rewritten"}
+                   :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
 
-              :else
-              (let [targets (spec/exportable-entities)]
-                (export-merged! src snapshot base-snapshot task-id message sync-timestamp
-                                (spec/extract-entities-for-export targets)
-                                :total (spec/exportable-entity-count targets))))
+                  :else
+                  (let [targets (spec/exportable-entities)]
+                    (export-merged! rule src snapshot base-snapshot task-id message sync-timestamp
+                                    (spec/extract-entities-for-export targets)
+                                    :total (spec/exportable-entity-count targets))))
 
-            diverged? ;; and not merge? option
-            {:status    :conflict
-             :version   remote-version
-             ;; Nothing collided: the divergence itself is why it stopped, so the cause rides in `:outcome`.
-             :conflicts []
-             :outcome   {:kind "remote-changed"}
-             :message   "The remote branch has changed since your last sync. Choose how to proceed."}
+                diverged? ;; and not merge? option
+                {:status    :conflict
+                 :version   remote-version
+                 ;; Nothing collided: the divergence itself is why it stopped, so the cause rides in `:outcome`.
+                 :conflicts []
+                 :outcome   {:kind "remote-changed"}
+                 :message   "The remote branch has changed since your last sync. Choose how to proceed."}
 
-            ;; There's nothing to export: no dirty rows, no stale files, and nothing the move rule moves.
-            (and (empty? @dirty-rows)
-                 (empty? @disabled-files)
-                 (not= :remote-sync/incremental-not-possible @plan)
-                 (empty? (:writes @plan))
-                 (empty? (:delete-paths @plan)))
-            (do
-              (log/info "Remote sync export: no changes to export")
-              {:status :success
-               :outcome {:kind "push-skipped"}})
+                ;; There's nothing to export: no dirty rows, no stale files, and nothing the move rule moves.
+                (and (empty? @dirty-rows)
+                     (empty? @disabled-files)
+                     (not= :remote-sync/incremental-not-possible @plan)
+                     (empty? (:writes @plan))
+                     (empty? (:delete-paths @plan)))
+                (do
+                  (log/info "Remote sync export: no changes to export")
+                  {:status :success
+                   :outcome {:kind "push-skipped"}})
 
-            (not= @plan :remote-sync/incremental-not-possible)
-            (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp)
+                (not= @plan :remote-sync/incremental-not-possible)
+                (incremental-export! @plan @disabled-files task-id snapshot message sync-timestamp)
 
-            :else ;; fall back to full
-            (do
-              (log/info "Remote sync full export: a pending change can't be applied incrementally")
-              (full-export! snapshot task-id message sync-timestamp)))))
+                :else ;; fall back to full
+                (do
+                  (log/info "Remote sync full export: a pending change can't be applied incrementally")
+                  (full-export! rule snapshot task-id message sync-timestamp)))))))
       (catch Exception e
         ;; handle-task-result! records the failure on this result, and skips entirely when the task
         ;; was already cancelled (ended_at set) — so cancellation needs no special case here.
