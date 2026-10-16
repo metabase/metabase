@@ -9,7 +9,8 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -61,13 +62,19 @@
   decode the unit on `absolute-datetime` / `during` back from a string, so `clean` silently deleted
   such a filter and the question answered something else (BOT-1972).
 
-  A query with `:stages` but no `:lib/type` (round-tripped through the frontend's viewing context,
-  `:lib/uuid`s gone with it) still goes to legacy: normalizing it mints fresh uuids that its
-  aggregation refs no longer match. Anything else passes through [[->legacy-mbql]] unchanged."
+  A query with `:stages` but no `:lib/type` (its `:lib/*` keys stripped, `:lib/uuid`s with them) stays MBQL 5 too
+  when it normalizes to a valid query. One that doesn't, because normalizing minted fresh uuids its aggregation refs
+  no longer match, goes to [[->legacy-mbql]], as does anything that isn't MBQL 5 at all."
   [query]
-  (if (and (map? query) (:lib/type query))
-    (lib/prepare-for-serialization (lib/normalize :metabase.lib.schema/query query))
-    (->legacy-mbql query)))
+  (or (when (and (map? query) (or (:lib/type query) (:stages query)))
+        (try
+          (let [normalized (lib/normalize :metabase.lib.schema/query query)]
+            (when (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized))
+              (lib/prepare-for-serialization normalized)))
+          (catch Exception e
+            (log/warn e "Failed to normalize MBQL 5 query for the frontend")
+            nil)))
+      (->legacy-mbql query)))
 
 (defn- query->url-hash
   "Convert an MBQL query to a base64-encoded URL hash for /question# URLs."
