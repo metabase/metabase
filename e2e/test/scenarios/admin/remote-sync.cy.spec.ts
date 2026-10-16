@@ -480,6 +480,58 @@ describe("Remote Sync", () => {
     });
   });
 
+  describe("without custom collections", () => {
+    beforeEach(() => {
+      setup();
+    });
+
+    it("hides the collections to sync and creates the Library on setup", () => {
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByLabelText(/repository url/i)
+        .should("be.visible")
+        .clear()
+        .type(LOCAL_GIT_URL);
+      cy.findByTestId("admin-layout-content").findByText("Read-write").click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Collections to sync")
+        .should("not.exist");
+      cy.button("Set up remote sync").click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Success")
+        .should("exist");
+
+      cy.log("open the Library, which setup created");
+      cy.visit("/data-studio/library");
+      H.DataStudio.Library.collectionItem("Data").should("be.visible");
+    });
+
+    it("syncs the Library and transforms once the last custom collection stops syncing", () => {
+      H.configureGitWithNewSyncedCollection("read-write", "Custom Collection");
+      cy.request("/api/session/properties").its("body").should("include", {
+        "remote-sync-custom-collections-synced": true,
+        "remote-sync-transforms": false,
+      });
+
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByTestId("admin-layout-content").within(() => {
+        cy.findByText("Collections to sync").should("exist");
+        cy.findByRole("switch", { name: "Sync Custom Collection" }).click({
+          force: true,
+        });
+        cy.button("Save changes").click();
+        cy.findByText("Collections to sync").should("not.exist");
+      });
+
+      cy.request("/api/session/properties").its("body").should("include", {
+        "remote-sync-custom-collections-synced": false,
+        "remote-sync-transforms": true,
+      });
+      cy.request("/api/ee/library")
+        .its("body")
+        .should("include", { is_remote_synced: true });
+    });
+  });
+
   describe("remote sync admin settings page", () => {
     beforeEach(() => {
       setup();
@@ -595,7 +647,7 @@ describe("Remote Sync", () => {
 
     describe("unsynced dependency modal", () => {
       beforeEach(() => {
-        H.configureGit("read-write");
+        H.configureGitWithNewSyncedCollection("read-write");
         cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
       });
 
@@ -685,8 +737,13 @@ describe("Remote Sync", () => {
         });
       });
 
-      it("leaves a snippet dependency with nothing to act on when no Library exists", () => {
+      it("offers the unsynced Library for a snippet dependency", () => {
         createSnippetDependencyFixture().then(({ blocked }) => {
+          cy.request("/api/ee/library").then(({ body: library }) => {
+            cy.request("PUT", "/api/ee/remote-sync/settings", {
+              collections: { [library.id]: false },
+            });
+          });
           cy.visit("/admin/settings/remote-sync");
 
           cy.findByLabelText(`Sync ${BLOCKED_COLLECTION_NAME}`).click({
@@ -701,21 +758,14 @@ describe("Remote Sync", () => {
             expect(required.blocks.map((collection) => collection.id)).to.eql([
               blocked.id,
             ]);
-            // With no Library there is no collection to name, so the remedy carries only its type.
-            expect(required.remedy).to.deep.equal({ type: "library" });
-            expect(required.syncable).to.be.false;
-            expect(required.dependencies).to.have.length(1);
+            expect(required.remedy.type).to.eq("collection");
+            expect(required.syncable).to.be.true;
             expect(required.dependencies[0].model).to.eq("snippet");
             expect(required.dependencies[0].name).to.eq(SNIPPET_NAME);
           });
 
           H.modal().within(() => {
-            cy.findByText("Couldn’t sync selected collection").should(
-              "be.visible",
-            );
-            cy.findByText(/sync with the Library/).should("be.visible");
-            cy.findByRole("switch").should("not.exist");
-
+            cy.findByRole("switch", { name: "Sync Library" }).should("exist");
             cy.button("Back").click();
           });
 
@@ -910,7 +960,7 @@ describe("Remote Sync", () => {
           cy.findByText("Collections to sync").should("not.exist");
         });
 
-        H.configureGitAndPullChanges("read-write");
+        H.configureGitWithNewSyncedCollection("read-write");
         cy.visit("/admin/settings/remote-sync");
 
         cy.findByTestId("admin-layout-content").within(() => {
@@ -982,7 +1032,7 @@ describe("Remote Sync", () => {
 
     describe("syncing tenant collections", () => {
       it("lists shared tenant collections in settings and can push changes from a synced one", () => {
-        H.configureGitAndPullChanges("read-write");
+        H.configureGitWithNewSyncedCollection("read-write");
 
         // A second, unsynced tenant collection so the settings list shows more than one row
         H.createSharedTenantCollection("Second Tenant Collection");
@@ -1083,6 +1133,8 @@ describe("Remote Sync", () => {
 
       // Set up in read-write mode without marking anything as synced and pull changes
       H.configureGit("read-write");
+      // Saving the settings without custom collections turns on transforms sync, which would track the local transform.
+      H.updateSetting("remote-sync-transforms", false);
     });
 
     it("shows conflict modal with available options when remote would override local", () => {

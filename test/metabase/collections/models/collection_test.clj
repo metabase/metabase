@@ -3327,24 +3327,23 @@
                                                                             non-archived-dash
                                                                             non-archived-card]))))))))
 
-(deftest ensure-library-dashboards-collection-test
+(deftest ensure-library-collection-test
   (mt/with-empty-h2-app-db!
-    (testing "Without a Library there is nothing to restore"
-      (is (nil? (collection/ensure-library-dashboards-collection!))))
-    (let [library (collection/create-library-collection!)]
-      (testing "An existing Dashboards collection is kept"
-        (is (nil? (collection/ensure-library-dashboards-collection!))))
-      (testing "A missing Dashboards collection is recreated with the Library's permissions"
-        (t2/delete! :model/Collection :type collection/library-dashboards-collection-type)
-        (let [dashboards (collection/ensure-library-dashboards-collection!)]
-          (is (=? {:name     "Dashboards"
-                   :type     collection/library-dashboards-collection-type
-                   :location (str "/" (:id library) "/")}
-                  dashboards))
-          (binding [api/*current-user*                 (mt/user->id :rasta)
-                    api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
-            (is (true? (mi/can-read? dashboards)))
-            (is (false? (mi/can-write? dashboards)))))))))
+    (testing "Without a Library it creates one with its system collections"
+      (let [library (collection/ensure-library-collection!)]
+        (is (= #{"Data" "Metrics" "Dashboards"}
+               (t2/select-fn-set :name :model/Collection :location (str "/" (:id library) "/"))))
+        (testing "and with one it keeps it, recreating a missing system collection with the Library's permissions"
+          (t2/delete! :model/Collection :type collection/library-dashboards-collection-type)
+          (is (= (:id library) (:id (collection/ensure-library-collection!))))
+          (let [dashboards (t2/select-one :model/Collection :type collection/library-dashboards-collection-type)]
+            (is (=? {:name     "Dashboards"
+                     :location (str "/" (:id library) "/")}
+                    dashboards))
+            (binding [api/*current-user*                 (mt/user->id :rasta)
+                      api/*current-user-permissions-set* (-> :rasta mt/user->id perms/user-permissions-set atom)]
+              (is (true? (mi/can-read? dashboards)))
+              (is (false? (mi/can-write? dashboards))))))))))
 
 (deftest data-apps-collection-is-read-only-test
   (testing "Nobody writes a collection of the data apps namespace, administrators included"

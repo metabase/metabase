@@ -410,6 +410,9 @@
                (spec/library-collection? object))
       (handle-library-sync-status-change! is-remote-synced?))
     (cond
+      (collections/library-root-collection? object)
+      nil
+
       should-sync?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)

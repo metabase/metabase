@@ -184,7 +184,7 @@
                 "Transforms root should have name 'Transforms'")))))))
 
 (deftest disable-transform-sync-removes-all-tracking-test
-  (testing "Disabling transform sync creates a Transforms RSO with status 'delete'"
+  (testing "Disabling transform sync after the Transforms root was pushed marks it 'delete'"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true
@@ -198,6 +198,8 @@
                             :model_id settings/transforms-root-id
                             :status "create")
                 "Should have Transforms root RSO with 'create' status")
+            (t2/update! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id}
+                        {:status "synced"})
             (settings/sync-transform-tracking! false)
             (is (t2/exists? :model/RemoteSyncObject
                             :model_type "Collection"
@@ -211,18 +213,55 @@
   (t2/select-one-fn :status :model/RemoteSyncObject :model_type "Collection" :model_id settings/transforms-root-id))
 
 (deftest transform-tracking-keeps-tracked-root-test
-  (testing "Re-applying an enabled transforms setting, as every settings cache load does, keeps a synced root synced"
+  (testing "Enabling transforms sync without transforms content to publish records no root"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (settings/sync-transform-tracking! true)
-      (t2/update! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id}
-                  {:status "synced"})
-      (settings/sync-transform-tracking! true)
-      (is (= "synced" (transforms-root-status)))
-      (testing "and disabling then re-enabling marks it again"
-        (settings/sync-transform-tracking! false)
-        (is (= "delete" (transforms-root-status)))
+      (is (nil? (transforms-root-status)))))
+  (testing "Disabling transforms sync before the root was pushed drops it"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Transform _ {:name "T"}]
         (settings/sync-transform-tracking! true)
-        (is (= "create" (transforms-root-status)))))))
+        (is (= "create" (transforms-root-status)))
+        (settings/sync-transform-tracking! false)
+        (is (nil? (transforms-root-status))))))
+  (testing "Re-applying an enabled transforms setting, as every settings cache load does, keeps a synced root synced"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Transform _ {:name "T"}]
+        (settings/sync-transform-tracking! true)
+        (t2/update! :model/RemoteSyncObject {:model_type "Collection" :model_id settings/transforms-root-id}
+                    {:status "synced"})
+        (settings/sync-transform-tracking! true)
+        (is (= "synced" (transforms-root-status)))
+        (testing "and disabling then re-enabling marks it again"
+          (settings/sync-transform-tracking! false)
+          (is (= "delete" (transforms-root-status)))
+          (settings/sync-transform-tracking! true)
+          (is (= "create" (transforms-root-status))))))))
+
+(defn- insert-rso!
+  [model-type model-id status]
+  (t2/insert! :model/RemoteSyncObject {:model_type model-type :model_id model-id :model_name "T"
+                                       :status status :status_changed_at (t/offset-date-time)}))
+
+(deftest transform-tracking-toggle-test
+  (mt/with-temporary-setting-values [remote-sync-type :read-write]
+    (testing "Re-enabling transforms sync undoes a pending deletion"
+      (insert-rso! "Collection" settings/transforms-root-id "delete")
+      (settings/sync-transform-tracking! true)
+      (is (= "create" (transforms-root-status))))
+    (testing "Disabling it before the root was pushed also drops the transforms tracked since"
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "T"}]
+        (insert-rso! "Transform" transform-id "create")
+        (settings/sync-transform-tracking! false)
+        (is (nil? (transforms-root-status)))
+        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Transform")))))
+    (testing "Loading the settings cache with transforms sync off records no deletion"
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "T"}]
+        (insert-rso! "Transform" transform-id "synced")
+        (#'settings/sync-transform-tracking-on-change nil "false")
+        (is (nil? (transforms-root-status)))
+        (is (t2/exists? :model/RemoteSyncObject :model_type "Transform" :model_id transform-id))
+        (t2/delete! :model/RemoteSyncObject :model_type "Transform")))))
 
 (deftest transform-tracking-read-only-test
   (testing "A read-only instance never tracks the Transforms root, so it never reports it as unsaved"
@@ -1215,3 +1254,75 @@ serdes/meta:
                 (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "rename"))))
                 (is (str/ends-with? (test-path) "/etl/orders_report/no_nulls.yaml"))
                 (is (not (contains? (get @(:files-atom mock) "main") old-path)))))))))))
+
+(deftest first-import-into-empty-library-and-transforms-has-no-conflicts-test
+  (testing "A first pull of the Library and transforms into an empty, unsynced Library and no
+            transforms has no conflicts, while a Library with content still conflicts"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (let [library (collection/ensure-library-collection!)]
+          (test-helpers/set-library-remote-synced! false)
+          (let [coll-eid     (u/generate-nano-id)
+                files        {"main" {"collections/library/library.yaml"
+                                      (test-helpers/generate-collection-yaml collection/library-entity-id "Library"
+                                                                             :type "library" :is-remote-synced true)
+                                      "collections/transforms/remote_transforms/remote_transforms.yaml"
+                                      (generate-transforms-namespace-collection-yaml coll-eid "Remote Transforms")
+                                      "collections/transforms/remote_transforms/remote_transform.yaml"
+                                      (test-helpers/generate-transform-yaml (u/generate-nano-id) "Remote Transform"
+                                                                            :collection-id coll-eid)}}
+                import!      (fn []
+                               (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask
+                                                                      {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+                                 (u/prog1 (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files))
+                                                        task-id)
+                                   (t2/update! :model/RemoteSyncTask task-id {:ended_at :%now}))))]
+            (testing "with content in the Library"
+              (mt/with-temp [:model/Card _ {:name "Local metric" :collection_id (:id library)}]
+                (is (=? {:status :conflict :conflicts #{"Library"}} (import!)))))
+            (testing "with an empty Library"
+              (is (=? {:status :success} (import!)))
+              (is (not (t2/exists? :model/RemoteSyncObject
+                                   :model_type "Collection"
+                                   :model_id [:in (t2/select-pks-vec :model/Collection
+                                                                     :entity_id [:in (vec collection/library-root-entity-ids)])]))
+                  "and the Library's system collections stay untracked"))))))))
+
+(deftest transforms-root-ignores-tracked-and-replaces-tracking-on-disable-test
+  (testing "Enabling transforms sync doesn't record the Transforms root for transforms that are already tracked, and
+            disabling it replaces their tracking with the root's deletion"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "T"}]
+        (t2/insert! :model/RemoteSyncObject {:model_type "Transform" :model_id transform-id :model_name "T"
+                                             :status "synced" :status_changed_at (t/offset-date-time)})
+        (settings/sync-transform-tracking! true)
+        (is (nil? (transforms-root-status)))
+        (settings/sync-transform-tracking! false)
+        (is (= "delete" (transforms-root-status)))
+        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Transform")))))))
+
+(deftest pull-of-built-in-python-library-keeps-transforms-sync-off-test
+  (testing "A pull whose only transforms content is the built-in Python library doesn't turn on transforms sync"
+    (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                       remote-sync-transforms false]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+            files   {"main" {"python-libraries/common.yaml"
+                             (generate-python-library-yaml transforms-python/builtin-entity-id "common.py" "")}}]
+        (is (=? {:status :success}
+                (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)))
+        (is (false? (settings/remote-sync-transforms)))
+        (testing "and turning transforms sync on afterwards records no change for it"
+          (settings/remote-sync-transforms! true)
+          (is (nil? (transforms-root-status))))))))
+
+(deftest pull-of-edited-built-in-python-library-turns-on-transforms-sync-test
+  (testing "A pull whose built-in Python library was edited turns on transforms sync"
+    (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                       remote-sync-transforms false]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+            files   {"main" {"python-libraries/common.yaml"
+                             (generate-python-library-yaml transforms-python/builtin-entity-id "common.py"
+                                                           "  def f(): pass")}}]
+        (is (=? {:status :success}
+                (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)))
+        (is (true? (settings/remote-sync-transforms)))))))

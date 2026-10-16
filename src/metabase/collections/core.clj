@@ -25,12 +25,15 @@
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
   create-library-collection!
-  ensure-library-dashboards-collection!
+  ensure-library-collection!
   descendant-ids
   ineligible-dependencies
   instance-analytics-collection-type
   library-collection
   library-collection-type
+  library-collection-types
+  library-root-collection?
+  library-root-entity-ids
   library-dashboards-collection-type
   library-dashboards-collection?
   library-data-collection-type
@@ -46,6 +49,7 @@
   shared-tenant-collection?
   slugify
   transforms-ns
+  snippets-ns
   data-apps-ns
   data-actions-ns
   default-allowed-namespaces]

@@ -56,6 +56,10 @@
    Used to protect it from deletion during remote-sync import."
   "cWWH9qJPvHNB3rP2vLZrK")
 
+(def builtin-source
+  "The source the migration gives the built-in common.py PythonLibrary, so it counts as edited once it differs."
+  "")
+
 (defn- validate-path!
   "Validates that the given path is allowed. Throws an exception if not."
   [path]

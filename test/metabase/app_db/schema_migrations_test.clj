@@ -3954,3 +3954,24 @@
         (is (t2/exists? :data_app :id app-id))
         (is (t2/exists? :permissions_group :id ordinary-group))
         (is (empty? (t2/select :data_app_group_assignment)))))))
+
+(deftest delete-library-root-remote-sync-objects-test
+  (testing "v65.2026-10-15T00:00:00: the RemoteSyncObject rows of the Library's system collections are deleted, other
+            rows stay"
+    (impl/test-migrations ["v65.2026-10-15T00:00:00"] [migrate!]
+      (let [insert-collection! (fn [entity-id]
+                                 (t2/insert-returning-pk! :collection {:name      entity-id
+                                                                       :slug      entity-id
+                                                                       :entity_id entity-id
+                                                                       :location  "/"}))
+            insert-rso!        (fn [model-id]
+                                 (t2/insert-returning-pk! :remote_sync_object {:model_type        "Collection"
+                                                                               :model_id          model-id
+                                                                               :model_name        "Collection"
+                                                                               :status            "synced"
+                                                                               :status_changed_at :%now}))
+            kept               (insert-rso! (insert-collection! (u/generate-nano-id)))]
+        (doseq [entity-id ["librarylibrarylibrary" "librarylibrarydatadat" "librarylibrarymetrics" "librarylibrarydashbrd"]]
+          (insert-rso! (insert-collection! entity-id)))
+        (migrate!)
+        (is (= #{kept} (t2/select-pks-set :remote_sync_object)))))))

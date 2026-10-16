@@ -168,6 +168,20 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
+    it("should not show 'Content to sync' section when no custom collection is synced", async () => {
+      setup({
+        remoteSyncType: "read-write",
+        variant: "settings-modal",
+        remoteSyncCustomCollectionsSynced: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.queryByText("Content to sync")).not.toBeInTheDocument();
+    });
+
     it("should not show 'Content to sync' section when read-only mode is selected", async () => {
       const libraryCollection = createMockLibraryCollection({ id: 999 });
 
@@ -866,6 +880,21 @@ describe("RemoteSyncSettingsForm", () => {
       });
 
       expect(screen.getByText("Collections to sync")).toBeInTheDocument();
+    });
+
+    it("should not display collections section when no custom collection is synced", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncCustomCollectionsSynced: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      expect(screen.queryByText("Collections to sync")).not.toBeInTheDocument();
     });
 
     it("should not display collections section in modal variant when read-write mode is selected", async () => {

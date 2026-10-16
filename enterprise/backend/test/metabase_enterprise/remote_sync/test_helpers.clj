@@ -7,6 +7,8 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.collections.models.collection :as collection]
+   [metabase.test.util :as tu]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -422,10 +424,38 @@ width: fixed
         (when (seq old-ns-colls) (t2/insert! :model/Collection old-ns-colls))
         (ensure-builtin-python-library!)))))
 
+(defn set-library-remote-synced!
+  "Sets `is_remote_synced` on the Library's collections, the Library itself first so each one agrees with its parent."
+  [synced?]
+  (doseq [id (t2/select-pks-vec :model/Collection
+                                :type [:in (vec collection/library-collection-types)]
+                                {:order-by [[:location :asc]]})]
+    (t2/update! :model/Collection id {:is_remote_synced synced?})))
+
+(defn- restore-transforms-setting
+  "Test fixture that restores `remote-sync-transforms`, which an import enables and never disables."
+  [f]
+  (tu/with-temporary-setting-values [remote-sync-transforms false]
+    (f)))
+
+(defn- clean-created-library
+  "Test fixture that deletes the Library when the test created it, as enabling remote sync or pulling does."
+  [f]
+  (let [existed? (some? (collection/library-collection))]
+    (try
+      (f)
+      (finally
+        (when-not existed?
+          (t2/delete! :model/Collection :type [:in (vec collection/library-collection-types)]))))))
+
 (def clean-remote-sync-state
-  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
-  model tables (Transform, TransformTag, PythonLibrary) are clean."
-  (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
+  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, optional feature model tables (Transform,
+  TransformTag, PythonLibrary), and a Library the test created are clean, and transforms sync is restored."
+  (t/join-fixtures [restore-transforms-setting
+                    clean-created-library
+                    clean-object
+                    clean-task-table
+                    clean-optional-feature-models]))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a

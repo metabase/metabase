@@ -3,6 +3,8 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -391,6 +393,23 @@
   []
   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
 
+(mu/defn snippets-exist? :- :boolean
+  "Whether a NativeQuerySnippet or snippet Collection exists."
+  []
+  (boolean (or (t2/exists? :model/NativeQuerySnippet)
+               (t2/exists? :model/Collection :namespace (name collections/snippets-ns)))))
+
+(mu/defn glossary-entries-exist? :- :boolean
+  "Whether a Glossary entry exists."
+  []
+  (t2/exists? :model/Glossary))
+
+(mu/defn data-actions-exist? :- :boolean
+  "Whether an Action without a model or a data actions Collection exists."
+  []
+  (boolean (or (t2/exists? :model/Action :model_id nil)
+               (t2/exists? :model/Collection :namespace (name collections/data-actions-ns)))))
+
 (mu/defn glossary-entries
   "The `:id` and `:term` of every Glossary entry."
   []
@@ -433,6 +452,11 @@
   "The `:name` and `:collection_id` (its own ID) of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
+
+(mu/defn collection-ids-with-entity-ids :- [:set ::lib.schema.id/collection]
+  "The IDs of the Collections with `entity-ids`."
+  [entity-ids :- [:sequential :string]]
+  (set (t2/select-pks-set :model/Collection :entity_id [:in entity-ids])))
 
 (mu/defn library-collection
   "The Library Collection of `library-type`, or nil."
@@ -509,6 +533,19 @@
                              [:= :location "/"]
                              [:not :archived]]}))
 
+(mu/defn collection-content-exists? :- :boolean
+  "Whether a Card, Dashboard, Document, Timeline, or Action is in the Collections with `collection-ids`, or a Table is
+  published to one."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (boolean
+   (or (t2/exists? :model/Card :collection_id [:in collection-ids])
+       (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
+       (t2/exists? :model/Document :collection_id [:in collection-ids])
+       (t2/exists? :model/Timeline :collection_id [:in collection-ids])
+       (t2/exists? :model/Action :collection_id [:in collection-ids])
+       (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
+
 (mu/defn subtree-collection-ids
   "The IDs of `collections` and all of their descendants."
   [collections :- [:sequential ::collections.schema/collection]]
@@ -570,6 +607,41 @@
   "The RemoteSyncObject at `file-path`, or nil."
   [file-path :- :string]
   (t2/select-one :model/RemoteSyncObject :file_path file-path))
+
+(mu/defn transforms-content-exists? :- :boolean
+  "Whether any transforms content exists to publish: a Transform, TransformTest, transforms Collection, TransformTag
+  that isn't built in, or PythonLibrary other than the built-in one unless its source was edited."
+  []
+  (boolean
+   (or (t2/exists? :model/Transform)
+       (t2/exists? :model/TransformTest)
+       (t2/exists? :model/Collection :namespace "transforms")
+       (t2/exists? :model/TransformTag :built_in_type nil)
+       (t2/exists? :model/PythonLibrary {:where [:or
+                                                 [:not= :entity_id transforms-python/builtin-entity-id]
+                                                 [:not= :source transforms-python/builtin-source]]}))))
+
+(mu/defn delete-transforms-rsos!
+  "Delete the RemoteSyncObjects of every Transform, TransformTag, TransformTest, and PythonLibrary."
+  []
+  (t2/delete! :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag" "TransformTest" "PythonLibrary"]]))
+
+(mu/defn transforms-tracked? :- :boolean
+  "Whether any Transform, TransformTag, TransformTest, or PythonLibrary has a RemoteSyncObject."
+  []
+  (t2/exists? :model/RemoteSyncObject :model_type [:in ["Transform" "TransformTag" "TransformTest" "PythonLibrary"]]))
+
+(mu/defn other-remote-synced-collection-exists?
+  "Whether an unarchived remote-synced Collection exists whose type isn't one of `excluded-types` and whose namespace
+  isn't one of `excluded-namespaces`."
+  [excluded-types      :- [:sequential :string]
+   excluded-namespaces :- [:sequential :string]]
+  (t2/exists? :model/Collection
+              {:where [:and
+                       [:= :is_remote_synced true]
+                       [:= :archived false]
+                       [:or [:= :type nil] [:not-in :type excluded-types]]
+                       [:or [:= :namespace nil] [:not-in :namespace excluded-namespaces]]]}))
 
 (mu/defn rso-exists?
   "Whether the entity `model-type` `model-id` has a RemoteSyncObject."

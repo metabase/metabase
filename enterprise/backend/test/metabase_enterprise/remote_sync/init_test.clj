@@ -6,7 +6,9 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.test-helpers :as th]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.startup.core :as startup]
@@ -330,3 +332,66 @@
      (fn [{:keys [tracked]}]
        (#'init/remote-sync-init)
        (is (= {tracked "synced"} (data-app-rso-statuses)))))))
+
+(defn- do-with-unsynced-library!
+  "Runs `thunk` with an unsynced Library, leaving the Library unsynced afterward."
+  [thunk]
+  (collections.tu/with-library [_]
+    (try
+      (th/set-library-remote-synced! false)
+      (thunk)
+      (finally
+        (th/set-library-remote-synced! false)))))
+
+(deftest custom-collections-synced-test
+  (testing "No custom collection is synced when only the Library and snippet, data actions, data apps, and transforms
+            collections are"
+    (do-with-unsynced-library!
+     (fn []
+       (th/set-library-remote-synced! true)
+       (mt/with-temp [:model/Collection _ {:name "Snippets" :namespace "snippets" :is_remote_synced true}
+                      :model/Collection _ {:name "Transforms" :namespace collection/transforms-ns :is_remote_synced true}]
+         (is (false? (settings/remote-sync-custom-collections-synced)))
+         (testing "until another collection is synced"
+           (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+             (is (true? (settings/remote-sync-custom-collections-synced)))))
+         (testing "while one in the trash doesn't count"
+           (mt/with-temp [:model/Collection _ {:name "Trashed" :is_remote_synced true :archived true}]
+             (is (false? (settings/remote-sync-custom-collections-synced))))))))))
+
+(deftest finish-remote-config-creates-library-test
+  (doseq [remote-sync-type [:read-write :read-only]]
+    (testing (str "Saving " (name remote-sync-type) " remote sync settings creates the Library and syncs it while it's "
+                  "empty")
+      (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                         :remote-sync-type remote-sync-type
+                                         :remote-sync-branch "main"]
+        (let [[_calls capture] (capture-async-import!)]
+          (mt/with-dynamic-fn-redefs [impl/async-import! capture]
+            (is (nil? (collection/library-collection)))
+            (impl/finish-remote-config!)
+            (is (=? {:is_remote_synced true} (t2/select-one :model/Collection :type "library")))
+            (t2/delete! :model/Collection :type [:in (vec collection/library-collection-types)]))))))
+  (testing "but leaves it unsynced while snippets or glossary entries, which sync with it, exist"
+    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                       :remote-sync-type :read-write
+                                       :remote-sync-branch "main"]
+      (mt/with-temp [:model/NativeQuerySnippet _ {:name "snippet" :content "1"}]
+        (impl/finish-remote-config!)
+        (is (=? {:is_remote_synced false} (t2/select-one :model/Collection :type "library")))))))
+
+(deftest builtin-python-library-transforms-tracking-test
+  (testing "Turning on transforms sync leaves nothing to push for an unchanged built-in Python library"
+    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                       :remote-sync-type :read-write
+                                       :remote-sync-branch "main"]
+      (mt/with-temp [:model/PythonLibrary {library-id :id} {:path      "common.py"
+                                                            :source    ""
+                                                            :entity_id transforms-python/builtin-entity-id}]
+        (settings/remote-sync-transforms! true)
+        (is (not (remote-sync.object/dirty?)))
+        (testing "while a changed one is tracked"
+          (t2/update! :model/PythonLibrary library-id {:source "def f(): pass"})
+          (settings/remote-sync-transforms! false)
+          (settings/remote-sync-transforms! true)
+          (is (remote-sync.object/dirty?)))))))

@@ -217,6 +217,7 @@
                                       :model_collection_id :id}}  ; collection_id is self
     :removal        {:statuses  #{"removed" "delete"}  ; delete is set when collection is archived
                      :scope-key :id}  ; collections are scoped by their own id
+    :removal-conditions {:entity_id [:not-in (vec collection/library-root-entity-ids)]}
     :export-scope   :root-collections  ; query for root-level remote-synced + transforms-namespace collections
     :enabled?       true}
 

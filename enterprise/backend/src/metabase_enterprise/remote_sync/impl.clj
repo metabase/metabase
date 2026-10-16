@@ -15,6 +15,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -34,8 +35,8 @@
 (set! *warn-on-reflection* true)
 
 (defn- snapshot-has-transforms?
-  "Checks if the snapshot contains any Transform, PythonLibrary entities,
-   non-built-in TransformTags, or transforms-namespace collections.
+  "Checks if the snapshot contains any Transform, PythonLibrary entities (the built-in common.py only once its source
+   was edited), non-built-in TransformTags, or transforms-namespace collections.
    Used to auto-enable/disable remote-sync-transforms setting during import.
 
    Uses the ingestable to list all entities and checks their :model metadata,
@@ -44,7 +45,13 @@
   [ingestable]
   (let [serdes-paths (serialization/ingest-list ingestable)
         models-present (spec/models-in-import serdes-paths)]
-    (or (some spec/transform-models models-present)
+    (or (some (disj spec/transform-models "PythonLibrary") models-present)
+        (some (fn [path]
+                (when (= "PythonLibrary" (:model (last path)))
+                  (or (not= transforms-python/builtin-entity-id (:id (last path)))
+                      (not= transforms-python/builtin-source
+                            (str/trim (or (:source (serialization/ingest-one ingestable path)) ""))))))
+              serdes-paths)
         ;; Check for non-built-in TransformTags
         (when (contains? models-present "TransformTag")
           (some (fn [path]
@@ -57,13 +64,6 @@
                   (let [entity (serialization/ingest-one ingestable path)]
                     (spec/transforms-namespace-collection? entity))))
               serdes-paths))))
-
-(defn- keep-library-dashboards
-  "Adds the Library's Dashboards collection to `imported-data` when it has the Library, since repos may predate it."
-  [imported-data]
-  (cond-> imported-data
-    (contains? (get-in imported-data [:by-entity-id "Collection"]) collection/library-entity-id)
-    (update-in [:by-entity-id "Collection"] conj collection/library-dashboards-entity-id)))
 
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
@@ -184,6 +184,25 @@
       :else
       (format "Failed to reload from git repository: %s" (or (ex-message e) (.getName (class e)))))))
 
+(defn- library-has-content?
+  "Whether `library` holds anything beyond its system collections."
+  [library]
+  (let [collection-ids (vec (remote-sync.db/subtree-collection-ids [library]))]
+    (or (some (complement collection/library-root-collection?) (remote-sync.db/collections collection-ids))
+        (remote-sync.db/collection-content-exists? collection-ids))))
+
+(defn- ensure-library-sync!
+  "Creates the Library when it's missing and marks it remote-synced when it holds no content, counting the snippets,
+  glossary entries, and data actions that sync with it; saving the remote sync settings and every pull run it."
+  []
+  (let [library (collection/ensure-library-collection!)]
+    (when (and (not (:is_remote_synced library))
+               (not (library-has-content? library))
+               (not (remote-sync.db/snippets-exist?))
+               (not (remote-sync.db/glossary-entries-exist?))
+               (not (remote-sync.db/data-actions-exist?)))
+      (remote-sync.db/mark-subtree-remote-synced! [library]))))
+
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
    - :first-import-conflicts - feature/namespace/library conflicts that only block on the very first import
@@ -191,7 +210,7 @@
                                would wholesale-delete; these block on EVERY import, not just the first
 
    Conflict types detected:
-   - :library-conflict - First import only, local Library exists, import has Library
+   - :library-conflict - First import only, a local Library with content, import has Library
    - :transforms-conflict / :snippets-conflict - import has matching content but local has unsynced entities
    - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
   [ingestable first-import?]
@@ -221,7 +240,7 @@
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
                                                  collection/library-entity-id)
-                                      (not (remote-sync.db/rso-exists? "Collection" (:id local-library))))
+                                      (library-has-content? local-library))
                              {:type :library-conflict
                               :category "Library"
                               :message "Import contains Library but local instance has an unsynced Library collection"}))
@@ -381,6 +400,16 @@
                   (t2/with-connection [_conn (mdb/app-db)]
                     (remote-sync.task/update-progress! task-id fraction))))}))
 
+(defn- library-root-ids
+  "The IDs of the Library's system collections, which remote sync writes but never tracks."
+  []
+  (remote-sync.db/collection-ids-with-entity-ids (vec collection/library-root-entity-ids)))
+
+(defn- library-root-row?
+  "Whether `row` (`{:model_type :model_id}`) is one of the Library's system collections, given their `root-ids`."
+  [root-ids {:keys [model_type model_id]}]
+  (and (= "Collection" model_type) (contains? root-ids model_id)))
+
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
   runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
@@ -399,6 +428,7 @@
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
         has-transforms?     (snapshot-has-transforms? base-ingestable)
+        _                   (ensure-library-sync!)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
         load-result         (serdes/with-cache
                               (serialization/load-metabase! ingestable-snapshot :reindex? false))
@@ -414,22 +444,18 @@
     (report 0.75 {:force? true})
     (t2/with-transaction [_conn]
       (let [synced-collection-ids (spec/all-syncable-collection-ids)
-            _                     (remove-unsynced! synced-collection-ids (keep-library-dashboards imported-data))
+            _                     (remove-unsynced! synced-collection-ids imported-data)
             settings-table-ids    (remove-unsynced-user-settings! synced-collection-ids base-ingestable seen-paths)]
         ;; Replace the RemoteSyncObject table, folding each entity's repo file_path (so later renames/deletes
         ;; resolve the real file) and serialized-content hash (so a post-pull no-op edit stays synced) into the
         ;; insert. Chunked so insert/IN params and memory stay bounded.
         (remote-sync.db/delete-all-rsos!)
-        (insert-with-metadata! (spec/sync-all-entities! sync-timestamp imported-data)
+        (insert-with-metadata! (remove (partial library-root-row? (library-root-ids))
+                                       (spec/sync-all-entities! sync-timestamp imported-data))
                                (source.ingestable/cached-file-paths base-ingestable))
         (track-user-settings! settings-table-ids sync-timestamp)
-        (collection/ensure-library-dashboards-collection!)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
-    (when (and (not has-transforms?)
-               (settings/remote-sync-transforms))
-      (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
-      (settings/remote-sync-transforms! false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
     (try
@@ -515,6 +541,7 @@
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
   [{:keys [ingestable deleted-rsos] :as _plan} snapshot-version report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
+  (ensure-library-sync!)
   (let [load-result   (when ingestable
                         (serdes/with-cache
                           (serialization/load-metabase!
@@ -1771,6 +1798,16 @@
     (source.p/create-branch source new-branch (settings/remote-sync-branch))
     (async-export! new-branch false message :on-success on-success)))
 
+(defn- ensure-transforms-sync!
+  "Turns on transforms sync on a read-write instance with no custom collection synced, unless an environment variable
+  sets it; turning it on records the Transforms root only when there is transforms content to publish."
+  []
+  (when (and (= :read-write (settings/remote-sync-type))
+             (not (settings/remote-sync-custom-collections-synced))
+             (not (settings/remote-sync-transforms))
+             (not (settings/transforms-set-by-env?)))
+    (settings/remote-sync-transforms! true)))
+
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
 
@@ -1782,6 +1819,8 @@
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
+      (ensure-library-sync!)
+      (ensure-transforms-sync!)
       (when (= :read-only (settings/remote-sync-type))
         ;; force? true bypasses the version/dirty guards for setup, but force-deletion? false keeps unsynced
         ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).

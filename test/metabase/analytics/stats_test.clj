@@ -615,7 +615,8 @@
                      [:samesite :string]
                      [:site_locale :string]
                      [:report_timezone :string]
-                     [:start_of_week :string]]
+                     [:start_of_week :string]
+                     [:remote_sync_custom_collections_synced [:maybe :boolean]]]
                     (zipmap (map (comp keyword :key) snowplow-settings) (map :value snowplow-settings)))))
       (testing "is_embedding_app_origin_sdk_set"
         (is (= false (get-in snowplow-settings [0 :value]))))

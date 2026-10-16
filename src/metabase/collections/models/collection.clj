@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.db :as collections.db]
@@ -267,8 +268,8 @@
   "The entity_id for the Library's Dashboards collection."
   "librarylibrarydashbrd")
 
-(def ^:private library-entity-id?
-  "Returns true if the given entity ID is one of the hard-coded Library keys."
+(def library-root-entity-ids
+  "The entity_ids of the system-created Library collections (root, data, metrics, and dashboards)."
   #{library-entity-id
     library-data-entity-id
     library-metrics-entity-id
@@ -281,44 +282,44 @@
   (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
   (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
 
-(defn- insert-library-dashboards-collection!
-  "Inserts the Dashboards collection under `library` and returns it."
-  [library]
-  (u/prog1 (collections.db/insert-collection! {:name             "Dashboards"
-                                               :type             library-dashboards-collection-type
-                                               :location         (str "/" (:id library) "/")
-                                               :entity_id        library-dashboards-entity-id
-                                               :is_remote_synced (boolean (:is_remote_synced library))})
-    (grant-library-collection-permissions! <>)))
+(def ^:private library-children
+  "The name, type, and entity_id of each of the Library's system child collections."
+  [["Data" library-data-collection-type library-data-entity-id]
+   ["Metrics" library-metrics-collection-type library-metrics-entity-id]
+   ["Dashboards" library-dashboards-collection-type library-dashboards-entity-id]])
 
-(defn ensure-library-dashboards-collection!
-  "Creates the Library's Dashboards collection when the Library exists without one, returning the created collection."
-  []
-  (when-let [library (collections.db/collection-with-entity-id library-entity-id)]
-    (when-not (collections.db/collection-with-entity-id library-dashboards-entity-id)
-      (insert-library-dashboards-collection! library))))
+(defn- ensure-library-children!
+  "Creates the system child collections of `library` that are missing."
+  [library]
+  (doseq [[collection-name collection-type entity-id] library-children
+          :when (not (collections.db/collection-with-entity-id entity-id))]
+    (grant-library-collection-permissions!
+     (collections.db/insert-collection! {:name             collection-name
+                                         :type             collection-type
+                                         :location         (str "/" (:id library) "/")
+                                         :entity_id        entity-id
+                                         :is_remote_synced (boolean (:is_remote_synced library))}))))
 
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
   (when-not (nil? (library-collection))
     (throw (ex-info "Semantic layer already exists" {})))
-  (let [library       (collections.db/insert-collection! {:name      "Library"
-                                                          :type      library-collection-type
-                                                          :location  "/"
-                                                          :entity_id library-entity-id})
-        base-location (str "/" (:id library) "/")
-        data          (collections.db/insert-collection! {:name      "Data"
-                                                          :type      library-data-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-data-entity-id})
-        metrics       (collections.db/insert-collection! {:name      "Metrics"
-                                                          :type      library-metrics-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-metrics-entity-id})]
-    (run! grant-library-collection-permissions! [library data metrics])
-    (insert-library-dashboards-collection! library)
-    library))
+  (u/prog1 (collections.db/insert-collection! {:name      "Library"
+                                               :type      library-collection-type
+                                               :location  "/"
+                                               :entity_id library-entity-id})
+    (grant-library-collection-permissions! <>)
+    (ensure-library-children! <>)))
+
+(defn ensure-library-collection!
+  "The Library collection, created along with any of its system collections that don't exist yet."
+  []
+  (cluster-lock/with-cluster-lock ::ensure-library-collection
+    (if-let [library (library-collection)]
+      (u/prog1 library
+        (ensure-library-children! library))
+      (create-library-collection!))))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -334,7 +335,7 @@
   "Is this one of the immutable system-created Library collections (root, data, metrics, or dashboards)?
   Returns false for user-created subcollections that inherit a library type."
   [collection]
-  (library-entity-id? (:entity_id collection)))
+  (contains? library-root-entity-ids (:entity_id collection)))
 
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, Metrics, or Dashboards), translate the `name`.
@@ -735,7 +736,7 @@
   not to all of them."
   [{:keys [entity_id] :as collection}]
   (cond-> collection
-    (library-entity-id? entity_id) (assoc :is_library_root true)))
+    (contains? library-root-entity-ids entity_id) (assoc :is_library_root true)))
 
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale

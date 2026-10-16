@@ -830,9 +830,10 @@
                  (>= minor-version required-minor))))
         engines)))))
 
-(defn- ee-snowplow-features-data'
+(defn- default-ee-snowplow-features-data
   []
-  (let [features [:sso-jwt :sso-saml :scim :multi-factor-auth :sandboxes :email-allow-list :semantic-search]]
+  (let [features [:sso-jwt :sso-saml :scim :multi-factor-auth :sandboxes :email-allow-list :semantic-search
+                  :remote-sync]]
     (map
      (fn [feature]
        {:name      feature
@@ -844,7 +845,7 @@
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
   metabase-enterprise.analytics.stats
   []
-  (ee-snowplow-features-data'))
+  (default-ee-snowplow-features-data))
 
 (defn- snowplow-features-data
   []
@@ -947,9 +948,6 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (analytics.db/preemptive-cache-config-exists?)}
-   {:name      :remote-sync
-    :available (premium-features/enable-remote-sync?)
-    :enabled   (premium-features/enable-remote-sync?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
@@ -1042,11 +1040,24 @@
     :value (fn [_] (str (lib-be/start-of-week)))
     :tags ["locale"]}])
 
+(defn- default-ee-snowplow-settings-data
+  []
+  [{:key   "remote_sync_custom_collections_synced"
+    :value nil
+    :tags  ["remote-sync"]}])
+
+(defenterprise ee-snowplow-settings-data
+  "OSS values to use for settings which require calling EE code to read."
+  metabase-enterprise.analytics.stats
+  []
+  (default-ee-snowplow-settings-data))
+
 (defn- snowplow-settings
   [stats]
   (letfn [(update-setting-value [setting-value-getter]
             (setting-value-getter stats))]
-    (mapv #(update % :value update-setting-value) snowplow-settings-metric-defs)))
+    (into (mapv #(update % :value update-setting-value) snowplow-settings-metric-defs)
+          (ee-snowplow-settings-data))))
 
 (defn- snowplow-anonymous-usage-stats
   "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."

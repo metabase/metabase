@@ -12,6 +12,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
@@ -728,3 +729,22 @@
             (is (re-find #"local edit"
                          (get (files mock) (path-for-eid mock a-eid)))
                 "the local edit survives the overwrite")))))))
+
+(deftest library-content-push-skips-library-system-collections-test
+  (testing "A push of Library content writes the content but never the Library's system collections, which every
+            instance creates itself"
+    (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                       remote-sync-transforms false]
+      (collection/ensure-library-collection!)
+      (rs.test/set-library-remote-synced! true)
+      (let [metrics-id (t2/select-one-pk :model/Collection :entity_id "librarylibrarymetrics")]
+        (mt/with-temp [:model/Card {card-id :id} {:name "Metric" :collection_id metrics-id}]
+          (t2/delete! :model/RemoteSyncObject)
+          (seed-create-row! "Card" card-id)
+          (let [mock (rs.test/create-mock-source :initial-files {"main" {}})
+                task (new-task!)]
+            (is (= :success (:status (impl/export! (source.p/snapshot mock) task "add metric"))))
+            (is (= "apply-changes-version" (written-version task)) "the push is incremental")
+            (is (entity-exported? mock (t2/select-one-fn :entity_id :model/Card :id card-id)))
+            (is (not-any? #(entity-exported? mock %) collection/library-root-entity-ids))
+            (is (not (t2/exists? :model/RemoteSyncObject :model_type "Collection")))))))))
