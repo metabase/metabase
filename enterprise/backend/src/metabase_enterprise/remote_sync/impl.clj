@@ -1168,12 +1168,23 @@
     (if i (subs path 0 i) path)))
 
 (defn- disabled-content-dirs
-  "Top-level repo directories whose content is disabled by the current settings."
+  "Top-level repo directories whose content is disabled by the current settings. In those of
+  [[serialization/content-checked-path?]] only entity files are content (see [[disabled-files]])."
   []
   (cond-> #{}
     (not (settings/remote-sync-transforms))    (into ["transforms" "transform_tags" "python-libraries" "python_libraries"
                                                       "python_library"])
     (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
+
+(defn- disabled-files
+  "The files of `snapshot` whose content the current settings disable: every file of a disabled directory, except in a
+  directory of [[serialization/content-checked-path?]], where only the entity files are, and a user's other files
+  stay."
+  [snapshot]
+  (let [{checked true whole false} (group-by (comp boolean serialization/content-checked-path?)
+                                             (filter (comp (disabled-content-dirs) path-top-level-dir)
+                                                     (source.p/list-files snapshot)))]
+    (into (vec whole) (source/owned-paths snapshot checked))))
 
 (defn- stage-write
   "Stage `entity` at the path `(path-fn row entity)`, or nothing when that is nil (the item has no file of its own);
@@ -1357,8 +1368,7 @@
               remote-version (source.p/version snapshot)
               diverged?      (and (some? base-version)
                                   (not= base-version remote-version))
-              disabled-files (delay (filterv (comp (disabled-content-dirs) path-top-level-dir)
-                                             (source.p/list-files snapshot)))
+              disabled-files (delay (disabled-files snapshot))
               dirty-rows     (delay (remote-sync.object/dirty-rows))
               ;; computed with no dirty rows too: the move rule may move unchanged items
               plan           (delay (incremental-export-plan snapshot @dirty-rows))]

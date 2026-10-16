@@ -74,3 +74,23 @@
         (swap! (:files-atom mock) update "main" merge user-files)
         (let [result (impl/import! (source.p/snapshot mock) (new-task! "import") :force? true)]
           (is (= :success (:status result)) (:message result)))))))
+
+(deftest transforms-off-keeps-user-files-test
+  (testing "with transforms off, a push leaves the user's files in transform_tags/ and python_library/"
+    (with-bench! {}
+      (fn [mock]
+        (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task! "export") "init"))))
+        (let [kept {"python_library/README.md"  "# shared code\n"
+                    "transform_tags/x.txt"      "x\n"
+                    "transform_tags/notes.yaml" "notes: true\n"}]
+          (swap! (:files-atom mock) update "main" merge kept)
+          (testing "a push with no local change is skipped"
+            (is (=? {:status :success :outcome {:kind "push-skipped"}}
+                    (impl/export! (source.p/snapshot mock) (new-task! "export") "nothing"))))
+          (is (= kept (select-keys (repo mock) (keys kept))))
+          (testing "an entity file of the disabled feature is deleted"
+            (swap! (:files-atom mock) update "main" assoc "transform_tags/nightly.transform_tag.yaml"
+                   "serdes/meta:\n- model: TransformTag\n  id: tagtagtagtagtagtagtag\n  label: nightly\nentity_id: tagtagtagtagtagtagtag\nname: Nightly\n")
+            (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task! "export") "cleanup"))))
+            (is (not (contains? (repo mock) "transform_tags/nightly.transform_tag.yaml")))
+            (is (= kept (select-keys (repo mock) (keys kept))))))))))
