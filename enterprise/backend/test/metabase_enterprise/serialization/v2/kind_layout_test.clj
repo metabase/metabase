@@ -271,6 +271,17 @@
       (is (not-any? kind-folders/top-level-folders ["analytics" "shared_tenant_collection" "tenant_specific"]))
       (is (not-any? ingest/legal-top-level-paths ["analytics" "shared_tenant_collection" "tenant_specific"])))))
 
+(deftest field-values-are-one-file-per-column-test
+  (testing "a column's field values are the file <column>.field_values.yaml in its table's folder"
+    (mt/with-empty-h2-app-db!
+      (let [db     (ts/create! :model/Database :name "My DB" :engine :postgres)
+            table  (ts/create! :model/Table :name "customers" :schema "PUBLIC" :db_id (:id db))
+            field  (ts/create! :model/Field :name "STATUS" :table_id (:id table) :base_type :type/Text)
+            values (ts/create! :model/FieldValues :field_id (:id field) :type :full :values ["a" "b"])
+            ctx    (storage.util/storage-context kind-layout/kind-layout)]
+        (is (= "databases/my_db/public/customers.table/status.field_values.yaml"
+               (storage.util/entity-file-path ctx (serdes/extract-one "FieldValues" {} values))))))))
+
 (deftest kind-layout-is-not-the-default-test
   (testing "a storage context without a layout, and plain serdes export, keep today's layout"
     (is (= storage.util/default-layout (:layout (storage.util/storage-context))))

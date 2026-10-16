@@ -74,8 +74,8 @@
   [schema]
   (if (str/blank? schema) [] [schema]))
 
-;; Open item 6 (field values in a serdes export): until one file holds a table, a field's values are the file
-;; `<field>.field_values.yaml` beside the field's own file, in the table's `fields/` folder.
+;; Open item 6 (field values in a serdes export), decided: one file per column, `<column>.field_values.yaml`, in the
+;; table's folder `<table>.table/`.
 
 (def ^:private library-section-folders
   "The top-level folder of each of the Library's section collections, which have no file of their own, by type."
@@ -479,7 +479,10 @@
   (field-file ctx (serdes/path entity) :dimension))
 
 (defmethod item-path "FieldValues" [ctx entity]
-  (field-file ctx (serdes/path entity) :field-values))
+  ;; one file per column, in the table's folder; a nested column is named by its path of names
+  (let [path  (serdes/path entity)
+        names (field-names path)]
+    (item-file ctx (table-path ctx (table-ref path)) :field-values names (str/join "." names))))
 
 (defn- definition-table-path
   "The resolved path of the file of the table the `definition` of a segment or measure reads."
