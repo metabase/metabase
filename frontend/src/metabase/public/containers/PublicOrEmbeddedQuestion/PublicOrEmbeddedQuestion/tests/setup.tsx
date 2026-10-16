@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -7,16 +6,16 @@ import {
   setupPublicQuestionEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import type { TokenFeatures } from "metabase-types/api";
+import type { PublicCard, TokenFeatures } from "metabase-types/api";
 import {
   createMockEmbedDataset,
   createMockPublicCard,
@@ -26,8 +25,6 @@ import {
 import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
 
 registerStaticVisualizations();
-
-const RoutedPublicOrEmbeddedQuestion = withRouteProps(PublicOrEmbeddedQuestion);
 
 function VisualizationMock({
   onUpdateVisualizationSettings,
@@ -66,6 +63,8 @@ jest.mock(
 
 export type SetupOpts = {
   hash?: Record<string, string>;
+  search?: Record<string, string>;
+  card?: Partial<PublicCard>;
   tokenFeatures?: TokenFeatures;
   questionName: string;
   uuid: string;
@@ -75,6 +74,8 @@ export type SetupOpts = {
 export async function setup(
   {
     hash = {},
+    search = {},
+    card,
     tokenFeatures = createMockTokenFeatures(),
     questionName,
     uuid,
@@ -91,7 +92,7 @@ export async function setup(
 
   setupPublicQuestionEndpoints(
     uuid,
-    createMockPublicCard({ name: questionName }),
+    createMockPublicCard({ ...card, name: questionName }),
   );
   setupPublicCardQueryEndpoints(
     uuid,
@@ -100,27 +101,15 @@ export async function setup(
     }),
   );
 
-  if (hash.locale) {
-    fetchMock.get(`path:/app/locales/${hash.locale}.json`, {
-      headers: {
-        language: "ko",
-        "plural-forms": "nplurals=1; plural=0;",
-      },
-      translations: {
-        "": {},
-      },
-    });
-  }
-
   renderWithProviders(
     <Route
       path="public/question/:uuid"
-      element={<RoutedPublicOrEmbeddedQuestion />}
+      element={<PublicOrEmbeddedQuestion />}
     />,
     {
       storeInitialState: createMockState({ settings }),
       withRouter: true,
-      initialRoute: `public/question/${uuid}${_.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`}`,
+      initialRoute: `public/question/${uuid}${_.isEmpty(search) ? "" : `?${new URLSearchParams(search)}`}${_.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`}`,
     },
   );
   expect(await screen.findByText(questionName)).toBeInTheDocument();

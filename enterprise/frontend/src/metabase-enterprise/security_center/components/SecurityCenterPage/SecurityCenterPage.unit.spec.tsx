@@ -1,12 +1,20 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
+import {
+  setupRecentViewsAndSelectionsEndpoints,
+  setupSettingEndpoint,
+} from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
-import type { Location } from "metabase/router";
-import type { Advisory } from "metabase-types/api";
-import { createMockVersion } from "metabase-types/api/mocks";
+import { getEolReachedMessage } from "metabase/admin/settings/components/widgets/VersionUpdateNotice/utils";
+import { Route } from "metabase/router";
+import type { Advisory, VersionInfo } from "metabase-types/api";
+import {
+  createMockMajorVersionSupport,
+  createMockVersion,
+  createMockVersionInfo,
+} from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
 import * as notificationHook from "../../hooks/use-notification-config";
@@ -23,16 +31,20 @@ jest.mock("metabase/admin/components/AdminLayout/AdminSettingsLayout", () => ({
 const mockAcknowledge = jest.fn();
 const mockAcknowledgeAll = jest.fn();
 
+const PAST_EOL = "2000-06-01";
+
 function setup(
   advisories: Advisory[] = [],
   {
     lastCheckedAt = null,
-    location,
+    initialRoute = "/",
     isError = false,
+    versionInfo,
   }: {
     lastCheckedAt?: string | null;
-    location?: Location<{ open?: string }>;
+    initialRoute?: string;
     isError?: boolean;
+    versionInfo?: VersionInfo;
   } = {},
 ) {
   jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
@@ -45,6 +57,10 @@ function setup(
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: versionInfo ?? createMockVersionInfo(),
+  });
   jest.spyOn(notificationHook, "useNotificationConfigState").mockReturnValue({
     config: {
       email: {
@@ -66,7 +82,9 @@ function setup(
     resetConfig: jest.fn(),
   });
 
-  renderWithProviders(<SecurityCenterPage location={location} />, {
+  renderWithProviders(<Route path="*" element={<SecurityCenterPage />} />, {
+    withRouter: true,
+    initialRoute,
     storeInitialState: {
       settings: createMockSettingsState({
         version: createMockVersion({ tag: "v0.59.3" }),
@@ -426,14 +444,42 @@ describe("SecurityCenterPage", () => {
     });
   });
 
+  describe("eol notice", () => {
+    const pastEolVersionInfo = createMockVersionInfo({
+      major_version_support: [
+        createMockMajorVersionSupport({ major: 59, eol: PAST_EOL }),
+      ],
+    });
+
+    it("shows the eol notice when the version is past eol and there is no upgrade target", async () => {
+      setup([], { versionInfo: pastEolVersionInfo });
+
+      const banner = await screen.findByTestId("upgrade-banner");
+      expect(banner).toHaveTextContent(getEolReachedMessage());
+    });
+
+    it("does not show the eol notice when an upgrade target is available", () => {
+      setup(
+        [
+          createAdvisory({
+            advisory_id: "1",
+            match_status: "active",
+            affected_versions: [{ min: "0.58.0", fixed: "0.59.4" }],
+          }),
+        ],
+        { versionInfo: pastEolVersionInfo },
+      );
+
+      expect(screen.getByTestId("upgrade-banner")).toBeInTheDocument();
+      expect(
+        screen.queryByText(getEolReachedMessage()),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("notification settings modal", () => {
     it("opens the modal when the 'open=notifications' query param is set", async () => {
-      setup([], {
-        // Unjustified type cast. FIXME
-        location: {
-          query: { open: "notifications" },
-        } as Location<{ open?: string }>,
-      });
+      setup([], { initialRoute: "/?open=notifications" });
 
       expect(
         await screen.findByRole("dialog", { name: "Notification settings" }),

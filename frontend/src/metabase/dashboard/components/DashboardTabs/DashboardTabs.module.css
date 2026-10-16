@@ -9,6 +9,19 @@
     bottom: 0;
     width: 100%;
   }
+
+  /* The border stands in for the dashboard header's own border here, so keep it
+     inside the header (where the sticky filter bar can't cover it) and let an
+     ancestor with overflow-x: clip trim it to the header's edges. */
+  &.fullBleedBorder {
+    margin-bottom: 0;
+
+    &:before {
+      left: -100vw;
+      right: -100vw;
+      width: auto;
+    }
+  }
 }
 
 .createTabButton {

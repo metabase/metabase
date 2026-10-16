@@ -7,12 +7,15 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
+import { getTenantsBasePath } from "metabase/common/tenants";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { push, replace } from "metabase/router";
-import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
+import { useNavigate } from "metabase/router";
+import { isSsoEnabled } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword } from "../people";
@@ -36,12 +39,11 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
     getSetting(state, "enable-password-login"),
   );
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const handleClose = () => {
-    dispatch(
-      isExternalUser
-        ? push("/admin/people/tenants/people")
-        : push("/admin/people"),
+    navigate(
+      isExternalUser ? `${getTenantsBasePath()}/people` : "/admin/people",
     );
   };
 
@@ -53,9 +55,9 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   useEffect(() => {
     if (isExternalUser && !temporaryPassword) {
-      dispatch(replace("/admin/people/tenants/people"));
+      navigate(`${getTenantsBasePath()}/people`, { replace: true });
     }
-  }, [isExternalUser, temporaryPassword, dispatch]);
+  }, [isExternalUser, temporaryPassword, navigate]);
 
   if (!user || isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -65,11 +67,10 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
     <ConfirmModal
       opened
       title={t`${user.common_name} has been added`}
-      padding="xl"
       onClose={handleClose}
       onConfirm={handleClose}
       closeButtonText={null}
-      confirmButtonProps={{ color: "core-brand" }}
+      confirmButtonProps={{ color: "brand" }}
       confirmButtonText={t`Done`}
       message={
         temporaryPassword ? (
@@ -99,7 +100,7 @@ const EmailSuccess = ({
       )} with instructions to log in. If this user is unable to authenticate then you can ${(
         <Link
           key="link"
-          to={`/admin/people/${user.id}/reset`}
+          to={Urls.resetPassword(user)}
           className={CS.link}
         >{t`reset their password.`}</Link>
       )}`}</div>

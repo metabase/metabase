@@ -8,7 +8,7 @@ import {
   setupListTransformTagsEndpoint,
 } from "__support__/server-mocks/transform";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 import {
@@ -17,8 +17,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { JobPage } from "./JobPage";
-
-const RoutedJobPage = withRouteProps(JobPage);
 
 const TRANSFORMS_DELAY = 1000;
 
@@ -41,10 +39,7 @@ const setup = ({
 
   const path = Urls.transformJob(job.id);
   renderWithProviders(
-    <Route
-      path="/data-studio/transforms/jobs/:jobId"
-      element={<RoutedJobPage />}
-    />,
+    <Route path="/data-studio/transforms/jobs/:jobId" element={<JobPage />} />,
     { withRouter: true, initialRoute: path },
   );
 };

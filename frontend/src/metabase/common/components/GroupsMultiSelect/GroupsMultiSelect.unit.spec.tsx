@@ -3,14 +3,15 @@ import { useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { GroupId, GroupInfo } from "metabase-types/api";
+import type { GroupId, GroupInfo, TokenFeatures } from "metabase-types/api";
 import {
   createMockGroup,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
-import { GroupsMultiSelect } from "./GroupsMultiSelect";
+import { type GroupSection, GroupsMultiSelect } from "./GroupsMultiSelect";
 
 const ALL_USERS = createMockGroup({
   id: 1,
@@ -32,6 +33,11 @@ const SALES = createMockGroup({
   name: "Sales",
   magic_group_type: null,
 });
+const DATA_ANALYSTS = createMockGroup({
+  id: 5,
+  name: "Data Analysts",
+  magic_group_type: "data-analyst",
+});
 const GROUPS = [ALL_USERS, ADMINISTRATORS, MARKETING, SALES];
 
 const ALL_TENANT_USERS = createMockGroup({
@@ -50,7 +56,14 @@ function setup(
   {
     managerGroupIds = [],
     groups = GROUPS,
-  }: { managerGroupIds?: GroupId[]; groups?: GroupInfo[] } = {},
+    sections,
+    tokenFeatures = {},
+  }: {
+    managerGroupIds?: GroupId[];
+    groups?: GroupInfo[];
+    sections?: GroupSection[];
+    tokenFeatures?: Partial<TokenFeatures>;
+  } = {},
 ) {
   const onChange = jest.fn<void, [GroupId[]]>();
   const onToggleManager = jest.fn<void, [GroupId]>();
@@ -75,11 +88,18 @@ function setup(
               : [...prev, id],
           );
         }}
+        sections={sections}
       />
     );
   }
 
-  renderWithProviders(<Wrapper />);
+  renderWithProviders(<Wrapper />, {
+    storeInitialState: createMockState({
+      settings: mockSettings({
+        "token-features": createMockTokenFeatures(tokenFeatures),
+      }),
+    }),
+  });
   return { onChange, onToggleManager };
 }
 
@@ -104,6 +124,10 @@ const expectSingleDividerBetween = (before: string, after: string) => {
     isBefore(separators[0], screen.getByRole("option", { name: after })),
   ).toBe(true);
 };
+
+// The labeled sections carry role="group", so their contents can be scoped.
+const getSection = (name: string) =>
+  within(screen.getByRole("group", { name }));
 
 describe("GroupsMultiSelect", () => {
   it("renders the selected groups as pills", () => {
@@ -193,8 +217,226 @@ describe("GroupsMultiSelect", () => {
     ).not.toBeInTheDocument();
   });
 
+  describe("the Data Analysts group", () => {
+    const ADD_DISABLED_MESSAGE =
+      "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed.";
+    const GROUPS_WITH_ANALYSTS = [...GROUPS, DATA_ANALYSTS];
+
+    const openDropdown = () =>
+      userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+
+    describe("without the advanced-permissions feature", () => {
+      it("cannot be selected, and explains why", async () => {
+        const { onChange } = setup([ALL_USERS.id], {
+          groups: GROUPS_WITH_ANALYSTS,
+        });
+
+        await openDropdown();
+        const option = await screen.findByRole("option", {
+          name: "Data Analysts",
+        });
+        await userEvent.click(option);
+        expect(onChange).not.toHaveBeenCalled();
+
+        await userEvent.hover(option);
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          ADD_DISABLED_MESSAGE,
+        );
+      });
+
+      it("can still be deselected when the person is already a member", async () => {
+        const { onChange } = setup([ALL_USERS.id, DATA_ANALYSTS.id], {
+          groups: GROUPS_WITH_ANALYSTS,
+        });
+
+        await openDropdown();
+        await userEvent.click(
+          await screen.findByRole("option", { name: "Data Analysts" }),
+        );
+
+        expect(onChange).toHaveBeenLastCalledWith([ALL_USERS.id]);
+      });
+
+      it("can still be removed via its pill", async () => {
+        const { onChange } = setup([ALL_USERS.id, DATA_ANALYSTS.id], {
+          groups: GROUPS_WITH_ANALYSTS,
+        });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Remove Data Analysts" }),
+        );
+
+        expect(onChange).toHaveBeenLastCalledWith([ALL_USERS.id]);
+      });
+
+      it("keeps its pinned position above the custom groups", async () => {
+        setup([ALL_USERS.id], { groups: GROUPS_WITH_ANALYSTS });
+
+        await openDropdown();
+        await screen.findByRole("option", { name: "Marketing" });
+
+        expectSingleDividerBetween("Data Analysts", "Marketing");
+      });
+
+      it("leaves the other groups selectable", async () => {
+        const { onChange } = setup([ALL_USERS.id], {
+          groups: GROUPS_WITH_ANALYSTS,
+        });
+
+        await openDropdown();
+        await userEvent.click(
+          await screen.findByRole("option", { name: "Marketing" }),
+        );
+
+        expect(onChange).toHaveBeenLastCalledWith([ALL_USERS.id, MARKETING.id]);
+      });
+    });
+
+    describe("with the advanced-permissions feature", () => {
+      it("can be selected", async () => {
+        const { onChange } = setup([ALL_USERS.id], {
+          groups: GROUPS_WITH_ANALYSTS,
+          tokenFeatures: { advanced_permissions: true },
+        });
+
+        await openDropdown();
+        await userEvent.click(
+          await screen.findByRole("option", { name: "Data Analysts" }),
+        );
+
+        expect(onChange).toHaveBeenLastCalledWith([
+          ALL_USERS.id,
+          DATA_ANALYSTS.id,
+        ]);
+      });
+
+      it("keeps its pinned position above the custom groups", async () => {
+        setup([ALL_USERS.id], {
+          groups: GROUPS_WITH_ANALYSTS,
+          tokenFeatures: { advanced_permissions: true },
+        });
+
+        await openDropdown();
+        await screen.findByRole("option", { name: "Marketing" });
+
+        expectSingleDividerBetween("Data Analysts", "Marketing");
+      });
+    });
+  });
+
+  describe("with sections", () => {
+    const SECTIONS = [
+      {
+        label: "Can view this dashboard",
+        groupIds: [ADMINISTRATORS.id, MARKETING.id],
+      },
+    ];
+
+    it("splits the dropdown into the given and other sections instead of the pinned divider", async () => {
+      setup([ALL_USERS.id], { sections: SECTIONS });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      // Administrators and Marketing sit in the listed section...
+      const accessSection = "Can view this dashboard";
+      expect(
+        getSection(accessSection).getByRole("option", {
+          name: "Administrators",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        getSection(accessSection).getByRole("option", { name: "Marketing" }),
+      ).toBeInTheDocument();
+
+      // ...while All Users and Sales fall under "Other groups".
+      expect(
+        getSection("Other groups").getByRole("option", { name: "All Users" }),
+      ).toBeInTheDocument();
+      expect(
+        getSection("Other groups").getByRole("option", { name: "Sales" }),
+      ).toBeInTheDocument();
+
+      // The sections replace the flat layout's pinned divider.
+      expect(screen.queryByRole("separator")).not.toBeInTheDocument();
+    });
+
+    it("omits a section none of whose groups are visible", async () => {
+      setup([ALL_USERS.id], {
+        groups: [ALL_USERS, MARKETING],
+        sections: [{ label: "Can view this dashboard", groupIds: [SALES.id] }],
+      });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      expect(
+        screen.queryByRole("group", { name: "Can view this dashboard" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("group", { name: "Other groups" }),
+      ).toBeInTheDocument();
+    });
+
+    it("omits the other-groups section when every group is claimed", async () => {
+      setup([ALL_USERS.id], {
+        sections: [
+          {
+            label: "Can view this dashboard",
+            groupIds: GROUPS.map((group) => group.id),
+          },
+        ],
+      });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      expect(
+        screen.getByRole("group", { name: "Can view this dashboard" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("group", { name: "Other groups" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders multiple sections in order, each group counting toward the first that lists it", async () => {
+      setup([ALL_USERS.id], {
+        sections: [
+          { label: "First", groupIds: [MARKETING.id] },
+          // Marketing is already claimed by "First", so only Sales lands here.
+          { label: "Second", groupIds: [MARKETING.id, SALES.id] },
+        ],
+      });
+
+      await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
+      await screen.findByRole("option", { name: "Marketing" });
+
+      // getAllByRole returns DOM order, pinning the section sequence.
+      expect(
+        screen
+          .getAllByRole("group")
+          .map((section) => section.getAttribute("aria-label")),
+      ).toEqual(["First", "Second", "Other groups"]);
+
+      // Marketing renders once, in "First"; "Second" only gets Sales.
+      expect(screen.getAllByRole("option", { name: "Marketing" })).toHaveLength(
+        1,
+      );
+      expect(
+        getSection("First").getByRole("option", { name: "Marketing" }),
+      ).toBeInTheDocument();
+      expect(
+        getSection("Second").getByRole("option", { name: "Sales" }),
+      ).toBeInTheDocument();
+      expect(
+        getSection("Other groups").getByRole("option", { name: "All Users" }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("with the group-managers feature (EE)", () => {
     beforeEach(() => {
+      // The plugin reads the token features as it initializes, before any render.
       mockSettings({
         "token-features": createMockTokenFeatures({
           advanced_permissions: true,
@@ -204,7 +446,9 @@ describe("GroupsMultiSelect", () => {
     });
 
     it("calls onToggleManager when the dropdown toggle is clicked", async () => {
-      const { onToggleManager } = setup([ALL_USERS.id, MARKETING.id]);
+      const { onToggleManager } = setup([ALL_USERS.id, MARKETING.id], {
+        tokenFeatures: { advanced_permissions: true },
+      });
 
       await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));
 
@@ -219,6 +463,7 @@ describe("GroupsMultiSelect", () => {
     it("un-tags a manager's pill when demoted via the dropdown toggle", async () => {
       const { onToggleManager } = setup([ALL_USERS.id, MARKETING.id], {
         managerGroupIds: [MARKETING.id],
+        tokenFeatures: { advanced_permissions: true },
       });
 
       // The pill starts tagged as a manager.
@@ -250,6 +495,7 @@ describe("GroupsMultiSelect", () => {
       // Input order puts the custom group first to prove the pinned default floats up.
       setup([ALL_TENANT_USERS.id], {
         groups: [CONTRACTORS, ALL_TENANT_USERS],
+        tokenFeatures: { tenants: true },
       });
 
       await userEvent.click(screen.getByRole("combobox", { name: "Groups" }));

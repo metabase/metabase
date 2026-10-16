@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/databases/utils/engine";
-import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytics";
-import { getUiControls } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import { trackNotebookNativePreviewShown } from "../../../../../analytics";
+import { getUiControls } from "../../../../../store/selectors";
 import { canShowNativePreview } from "../../utils";
 
 const BUTTON_TEXT = {
@@ -58,10 +58,9 @@ export const ToggleNativeQueryPreview = ({
   return (
     <Tooltip label={buttonText} position="top">
       <ActionIcon
+        variant="subtle"
         aria-label={buttonText}
-        size={32}
         role="switch"
-        variant="viewHeader"
         onClick={handleClick}
       >
         <Icon name="sql" />

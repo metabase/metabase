@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Badge, Flex, type FlexProps, Text, Tooltip } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
 

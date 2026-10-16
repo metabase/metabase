@@ -42,6 +42,16 @@
 
 (driver/register! :databricks, :parent :hive-like)
 
+(defmethod driver/host-carrying-parameters :databricks
+  [_driver]
+  ["ProxyHost" "CFProxyHost" "OAuth2ConnAuthAuthorizeEndpoint" "OAuth2ConnAuthTokenEndpoint"
+   "OAuth2AuthorizationEndPoint" "OAuth2TokenEndpoint" "OAuthDiscoveryURL" "OIDCDiscoveryEndpoint"])
+
+(defmethod driver/non-host-parameters :databricks
+  [_driver]
+  ["ProxyPort" "CFProxyPort" "UseProxy" "UseCFProxy" "UseSystemProxy" "ProxyIgnoreList" "OAuth2RedirectUrlPort"
+   "EnableOIDCDiscovery" "OAuthDiscoveryMode"])
+
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :database-routing                true
@@ -67,8 +77,10 @@
 
 (defmethod driver/validate-db-details! :databricks
   [_driver details]
+  (sql-jdbc/reject-dangerous-additional-options! details)
   (when-let [opts (not-empty (:additional-options details))]
-    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths" opts)
+    ;; `StagingAllowedLocalPaths` is the older spelling of the same setting, and the client still honors it
+    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths|StagingAllowedLocalPaths" opts)
       (throw (Exception. "Potentially dangerous keys in connection details")))))
 
 (defn- catalog-present?
@@ -102,6 +114,10 @@
 (defn- split-catalog+schema
   [schema]
   (str/split schema #"\."))
+
+(defmethod sql.qp/use-ctes-for-stages? :databricks
+  [_driver]
+  true)
 
 (defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
   [_driver [tag identifier-type components :as _identifier]]
@@ -153,11 +169,12 @@
 (defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
   (when schema-names
     (if multi-level-schema
-      [:in [:composite catalog-column schema-column]
-       (map (comp (fn [catalog+schema]
-                    (into [:composite] catalog+schema))
-                  split-catalog+schema)
-            schema-names)]
+      ;; Use OR / AND because they are faster than IN for tuples on Databricks
+      (into [:or]
+            (map (fn [schema-name]
+                   (let [[catalog schema] (split-catalog+schema schema-name)]
+                     [:and [:= catalog-column catalog] [:= schema-column schema]])))
+            schema-names)
       [:in schema-column schema-names])))
 
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
@@ -501,7 +518,7 @@
 
 (defmethod sql.qp/->honeysql [:databricks ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "string")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "string"]))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]

@@ -1,3 +1,4 @@
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
@@ -6,13 +7,15 @@ import {
   setupUserMetabotPermissionsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
   TableIndexEntry,
@@ -24,24 +27,27 @@ import {
   createMockDatabase,
   createMockTableIndexEntry,
   createMockTableIndexRequest,
+  createMockTokenFeatures,
   createMockTransform,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
 
 import { TransformIndexesPage } from "./TransformIndexesPage";
 
-const RoutedTransformIndexesPage = withRouteProps(TransformIndexesPage);
-
 type SetupOpts = {
   transform?: Transform;
   indexes?: TableIndexEntry[];
   users?: UserListResult[];
+  remoteSyncReadOnly?: boolean;
+  warehouseError?: string | null;
 };
 
 function setup({
   transform = createMockTransform({ id: 1, name: "Test Transform" }),
   indexes = [],
   users = [],
+  remoteSyncReadOnly = false,
+  warehouseError = null,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 600 });
   setupDatabasesEndpoints([
@@ -54,16 +60,30 @@ function setup({
   setupUsersEndpoints(users);
 
   setupGetTransformEndpoint(transform);
-  setupListTableIndexesEndpoint(transform.id, indexes);
+  setupListTableIndexesEndpoint(transform.id, indexes, warehouseError);
+
+  const storeInitialState = createMockState({
+    settings: mockSettings({
+      "remote-sync-type": remoteSyncReadOnly ? "read-only" : undefined,
+      "remote-sync-enabled": remoteSyncReadOnly,
+      "token-features": createMockTokenFeatures({
+        remote_sync: remoteSyncReadOnly,
+      }),
+    }),
+  });
+  if (remoteSyncReadOnly) {
+    setupEnterpriseOnlyPlugin("remote_sync");
+  }
 
   const initialRoute = Urls.transformIndexes(transform.id);
   const path = initialRoute.replace(`/${transform.id}/`, "/:transformId/");
 
   renderWithProviders(
-    <Route path={path} element={<RoutedTransformIndexesPage />} />,
+    <Route path={path} element={<TransformIndexesPage />} />,
     {
       withRouter: true,
       initialRoute,
+      storeInitialState,
     },
   );
 
@@ -153,6 +173,69 @@ describe("TransformIndexesPage", () => {
     await waitForLoaderToBeRemoved();
 
     expect(screen.getByText("Never")).toBeInTheDocument();
+  });
+
+  it("shows the create index button", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.getByRole("button", { name: "Create index" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the create index button when remote sync is read-only", async () => {
+    setup({ remoteSyncReadOnly: true });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.queryByRole("button", { name: "Create index" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("warns with the warehouse's own error when the indexes could not be read", async () => {
+    const warehouseError =
+      "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED)";
+    setup({
+      indexes: [createMockTableIndexEntry({ name: "idx_orders_id" })],
+      warehouseError,
+    });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.getByText(
+        `Metabase couldn't read the indexes on this table, so statuses may be out of date. The database said: ${warehouseError}`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("idx_orders_id")).toBeInTheDocument();
+  });
+
+  it("does not claim the table has no indexes when the warehouse could not be read", async () => {
+    setup({
+      indexes: [],
+      warehouseError:
+        "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED)",
+    });
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByTestId("warehouse-error-banner")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Index the key columns of your transforms to make them faster and more efficient.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create index" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not warn when the warehouse read succeeded", async () => {
+    setup({ indexes: [createMockTableIndexEntry({ name: "idx_orders_id" })] });
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      screen.queryByTestId("warehouse-error-banner"),
+    ).not.toBeInTheDocument();
   });
 
   it("falls back to the index kind when the index has no name", async () => {

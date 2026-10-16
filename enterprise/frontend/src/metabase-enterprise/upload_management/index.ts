@@ -1,5 +1,8 @@
+import { PLUGIN_STORAGE_SETUP } from "metabase/common/components/upsells/StoragePurchaseModal";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
+import { PLUGIN_FILE_UPLOAD_STATUS } from "metabase/status";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { StorageSetupProvider } from "metabase-enterprise/storage/StorageSetupProvider";
 
 import {
   FileUploadErrorModal,
@@ -23,10 +26,13 @@ export function initializePlugin() {
     // The reason we're showing this panel even to instances without the dwh
     // is because we want to show them the storage upsell.
     PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel = GdriveAddDataPanel;
+    // The real storage-setup provider owns the cloud-add-ons purchase
+    // endpoints, so it only activates on hosted instances.
+    PLUGIN_STORAGE_SETUP.StorageSetupProvider = StorageSetupProvider;
   }
 
   if (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) {
-    PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal = FileUploadErrorModal;
+    PLUGIN_FILE_UPLOAD_STATUS.FileUploadErrorModal = FileUploadErrorModal;
     PLUGIN_UPLOAD_MANAGEMENT.GdriveConnectionModal = GdriveConnectionModal;
     PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus = GdriveSyncStatus;
     PLUGIN_UPLOAD_MANAGEMENT.GdriveDbMenu = GdriveDbMenu;

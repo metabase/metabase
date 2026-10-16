@@ -8,11 +8,12 @@
   along on the next flush as an [[dropped-metric]] :inc event so dashboards can tell 'quiet
   system' apart from 'we dropped half your events'."
   (:require
-   [metabase.analytics-interface.core :as analytics.interface]))
+   [metabase.analytics-interface.core :as analytics.interface]
+   [metabase.util.performance :refer [dropv]]))
 
 (def ^:private flush-interval-ms 5000)
 
-(def ^:private buffer-capacity 1000)
+(def ^:private buffer-capacity analytics.interface/frontend-buffer-capacity)
 
 (def ^:private dropped-metric :metabase-frontend/analytics-events-dropped)
 
@@ -23,7 +24,7 @@
   [{:keys [events dropped]} event capacity]
   (let [events'  (conj events event)
         overflow (max 0 (- (count events') capacity))]
-    {:events  (if (pos? overflow) (vec (drop overflow events')) events')
+    {:events  (if (pos? overflow) (dropv overflow events') events')
      :dropped (+ dropped overflow)}))
 
 (defn- take-pending
@@ -56,6 +57,13 @@
   [event]
   (swap! state enqueue event buffer-capacity))
 
+;; The backend only accepts counter increments from the browser, so fail loudly rather than buffer events it would
+;; silently ignore.
+(defn- unsupported-op
+  [op metric]
+  (ex-info (str "The frontend analytics reporter only supports inc!, not " (name op))
+           {:op op :metric metric}))
+
 (analytics.interface/set-reporter!
  (reify analytics.interface/Reporter
    (-inc! [_ metric labels amount]
@@ -63,21 +71,11 @@
                      :metric metric
                      :labels labels
                      :amount amount}))
-   (-dec-gauge! [_ metric labels amount]
-     (buffer-event! {:op     :dec
-                     :metric metric
-                     :labels labels
-                     :amount amount}))
-   (-set-gauge! [_ metric labels amount]
-     (buffer-event! {:op     :set
-                     :metric metric
-                     :labels labels
-                     :amount amount}))
-   (-observe! [_ metric labels amount]
-     (buffer-event! {:op     :observe
-                     :metric metric
-                     :labels labels
-                     :amount amount}))
+   (-dec-gauge! [_ metric _labels _amount]
+     (throw (unsupported-op :dec-gauge! metric)))
+   (-set-gauge! [_ metric _labels _amount]
+     (throw (unsupported-op :set-gauge! metric)))
+   (-observe! [_ metric _labels _amount]
+     (throw (unsupported-op :observe! metric)))
    (-clear! [_ metric]
-     (buffer-event! {:op     :clear
-                     :metric metric}))))
+     (throw (unsupported-op :clear! metric)))))

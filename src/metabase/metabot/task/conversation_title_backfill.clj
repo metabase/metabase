@@ -8,18 +8,18 @@
    [metabase.events.core :as events]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [methodical.core :as methodical])
   (:import
    (java.time Instant)
    (java.util Date)
    (java.util.concurrent Future TimeoutException TimeUnit)
-   (org.quartz DisallowConcurrentExecution JobExecutionContext)))
+   (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
@@ -66,15 +66,11 @@
 
 (defn- titleless-conversation-ids
   [after-id]
-  (t2/select-fn-vec :id :model/MetabotConversation
-                    {:where    (cond-> [:and [:= :title nil]]
-                                 after-id (conj [:> :id after-id]))
-                     :order-by [[:id :asc]]
-                     :limit    conversation-page-size}))
+  (metabot.db/titleless-conversation-ids after-id conversation-page-size))
 
 (defn- title-source
   [conversation-id]
-  (metabot.persistence/first-valid-user-message
+  (metabot.persistence/first-non-forked-user-message
    (metabot.persistence/opening-messages conversation-id)))
 
 (defn- generate-title!
@@ -95,8 +91,8 @@
       (.interrupt (Thread/currentThread))
       :failed)
     (catch Throwable e
-      (log/warn e "Failed to backfill Metabot conversation title"
-                {:conversation-id conversation-id})
+      (log/warn "Failed to backfill Metabot conversation title"
+                {:conversation-id conversation-id :error (ex-message e)})
       :failed)))
 
 (defn- finish-result
@@ -153,9 +149,11 @@
     :paused (when-not (event-driven-pause? reason) paused-retry-delay-seconds)
     nil))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Backfill missing Metabot conversation titles."}
-  ConversationTitleBackfill [ctx]
+(task/defjob ConversationTitleBackfill
+  "Backfill missing Metabot conversation titles."
+  {:saved-class "metabase.metabot.task.conversation_title_backfill.ConversationTitleBackfill"
+   :concurrent? false}
+  [ctx]
   (let [ctx      ^JobExecutionContext ctx
         after-id (get (qc/from-job-data ctx) "after-id")
         result   (run-backfill-page! after-id)]
@@ -198,7 +196,7 @@
       (do (log-pause current-readiness)
           (schedule-run! (task/scheduler) nil paused-retry-delay-seconds)))))
 
-(derive :event/setting-update ::setting-update)
+(events/derive! :event/setting-update ::setting-update)
 
 (defn- handle-setting-update!
   [event]

@@ -1,17 +1,19 @@
-import type { HTMLAttributes } from "react";
+import cx from "classnames";
+import type { HTMLAttributes, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Icon, Portal } from "metabase/ui";
+import type { UndoVariant } from "metabase/redux/store/undo";
+import { Button, Group, Icon, Notification, Portal, Text } from "metabase/ui";
 
-import {
-  ToasterButton,
-  ToasterContainer,
-  ToasterDismiss,
-  ToasterMessage,
-} from "./Toaster.styled";
+import S from "./Toaster.module.css";
 
-export interface ToastProps extends HTMLAttributes<HTMLDivElement> {
+// `color` is omitted because the native HTML attribute's `string` type
+// conflicts with Mantine's `NotificationProps["color"]` union.
+export interface ToastProps extends Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "color"
+> {
   message: string;
   confirmText?: string;
   confirmAriaLabel?: string;
@@ -21,7 +23,10 @@ export interface ToastProps extends HTMLAttributes<HTMLDivElement> {
   canClose?: boolean;
   secondaryText?: string;
   secondaryAriaLabel?: string;
-  onConfirm: () => void;
+  leftSection?: ReactNode;
+  rightSection?: ReactNode;
+  variant?: UndoVariant;
+  onConfirm?: () => void;
   onDismiss?: () => void;
   onSecondary?: () => void;
   "data-testid"?: string;
@@ -37,53 +42,104 @@ export const Toast = ({
   canClose = true,
   secondaryText,
   secondaryAriaLabel = t`Cancel`,
+  leftSection,
+  rightSection,
+  variant = "neutral",
   onConfirm,
   onDismiss,
   onSecondary,
   className,
   "data-testid": dataTestId = "toast",
   ...divProps
-}: ToastProps): JSX.Element => (
-  <ToasterContainer
-    data-testid={dataTestId}
-    show={show}
-    fixed={fixed}
-    className={className}
-    {...divProps}
-  >
-    <ToasterMessage>{message}</ToasterMessage>
-    {secondaryText && onSecondary && (
-      <ToasterButton onClick={onSecondary} aria-label={secondaryAriaLabel}>
-        {secondaryText}
-      </ToasterButton>
-    )}
-    <ToasterButton onClick={onConfirm} aria-label={confirmAriaLabel}>
-      {confirmText}
-    </ToasterButton>
-    {canClose && (
-      <ToasterDismiss onClick={onDismiss} aria-label={closeAriaLabel}>
-        <Icon name="close" />
-      </ToasterDismiss>
-    )}
-  </ToasterContainer>
-);
+}: ToastProps): JSX.Element => {
+  const hasActions = Boolean(
+    onConfirm || (secondaryText && onSecondary) || rightSection,
+  );
+  const isColored = variant !== "neutral";
+
+  return (
+    <Notification
+      className={cx(S.toast, className)}
+      classNames={{
+        icon: S.icon,
+        body: S.body,
+        closeButton: S.dismiss,
+      }}
+      data-testid={dataTestId}
+      data-variant={variant}
+      data-show={show ? true : undefined}
+      data-fixed={fixed ? true : undefined}
+      data-has-actions={hasActions ? true : undefined}
+      icon={leftSection}
+      withBorder={false}
+      withCloseButton={canClose}
+      onClose={onDismiss}
+      closeButtonProps={{
+        "aria-label": closeAriaLabel,
+        icon: <Icon name="close" size={12} />,
+      }}
+      {...divProps}
+    >
+      <Group gap="xl" align="center" wrap="nowrap">
+        <Text
+          className={S.message}
+          flex={1}
+          c={isColored ? "text-primary" : "tooltip-text"}
+          fz="md"
+        >
+          {message}
+        </Text>
+        {hasActions && (
+          <Group gap="sm" align="center" wrap="nowrap">
+            {secondaryText && onSecondary && (
+              <Button
+                variant={isColored ? "default" : "on-dark-secondary"}
+                size="sm"
+                onClick={onSecondary}
+                aria-label={secondaryAriaLabel}
+              >
+                {secondaryText}
+              </Button>
+            )}
+            {onConfirm && (
+              <Button
+                variant={isColored ? "filled" : "on-dark-primary"}
+                color={isColored ? variant : undefined}
+                size="sm"
+                onClick={onConfirm}
+                aria-label={confirmAriaLabel}
+              >
+                {confirmText}
+              </Button>
+            )}
+            {rightSection}
+          </Group>
+        )}
+      </Group>
+    </Notification>
+  );
+};
 
 export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
   message: string;
   confirmText?: string;
   isShown: boolean;
   fixed?: boolean;
+  leftSection?: ReactNode;
+  rightSection?: ReactNode;
+  variant?: UndoVariant;
   onConfirm: () => void;
   onDismiss: () => void;
 }
 
-// TODO: Port to Mantine Notifications or consolidate with Undo-style toasts or
-// BulkActionsToast
 export const Toaster = ({
   message,
   confirmText = t`Turn on`,
   isShown,
   fixed,
+  leftSection,
+  rightSection,
+  variant,
   onConfirm,
   onDismiss,
   className,
@@ -113,6 +169,9 @@ export const Toaster = ({
         confirmText={confirmText}
         show={open}
         fixed={fixed}
+        leftSection={leftSection}
+        rightSection={rightSection}
+        variant={variant}
         onConfirm={onConfirm}
         onDismiss={onDismiss}
         className={className}

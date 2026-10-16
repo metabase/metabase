@@ -15,6 +15,7 @@ import {
   listTag,
   provideUserListTags,
   provideUserTags,
+  tag,
 } from "./tags";
 
 export const userApi = Api.injectEndpoints({
@@ -43,13 +44,6 @@ export const userApi = Api.injectEndpoints({
       }),
       providesTags: (user) => (user ? provideUserTags(user) : []),
     }),
-    getCurrentUser: builder.query<User, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/user/current",
-      }),
-      providesTags: (user) => (user ? provideUserTags(user) : []),
-    }),
     createUser: builder.mutation<User, CreateUserRequest>({
       query: (body) => ({
         method: "POST",
@@ -61,6 +55,7 @@ export const userApi = Api.injectEndpoints({
           listTag("user"),
           listTag("tenant"),
           listTag("permissions-group"),
+          tag("session-properties"),
         ]),
     }),
     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
@@ -72,6 +67,14 @@ export const userApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
+    disconnectSlack: builder.mutation<void, UserId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/user/${id}/slack`,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("current-user")]),
+    }),
     deactivateUser: builder.mutation<void, UserId>({
       query: (id) => ({
         method: "DELETE",
@@ -82,6 +85,7 @@ export const userApi = Api.injectEndpoints({
           listTag("user"),
           idTag("user", id),
           listTag("permissions-group"),
+          tag("session-properties"),
         ]),
     }),
     reactivateUser: builder.mutation<User, UserId>({
@@ -94,6 +98,7 @@ export const userApi = Api.injectEndpoints({
           listTag("user"),
           idTag("user", id),
           listTag("permissions-group"),
+          tag("session-properties"),
         ]),
     }),
     updateUser: builder.mutation<User, UpdateUserRequest>({
@@ -103,7 +108,11 @@ export const userApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("user"), idTag("user", id)]),
+        invalidateTags(error, [
+          listTag("user"),
+          idTag("user", id),
+          idTag("current-user", id),
+        ]),
     }),
     getPasswordResetUrl: builder.mutation<
       { password_reset_url: string },
@@ -118,14 +127,6 @@ export const userApi = Api.injectEndpoints({
       query: () => "/api/mt/user/attributes",
       providesTags: (response) => (response ? [listTag("user")] : []),
     }),
-    updateUserModalQbnewb: builder.mutation<void, UserId>({
-      query: (id) => ({
-        method: "PUT",
-        url: `/api/user/${id}/modal/qbnewb`,
-      }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [idTag("user", id)]),
-    }),
   }),
 });
 
@@ -133,13 +134,12 @@ export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
   useGetUserQuery,
-  useGetCurrentUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
+  useDisconnectSlackMutation,
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,
   useGetPasswordResetUrlMutation,
   useListUserAttributesQuery,
-  useUpdateUserModalQbnewbMutation,
 } = userApi;

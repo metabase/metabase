@@ -119,7 +119,8 @@
   (testing "migrate alert with multiple channels 1 slack, 1 email with 1 external recipient and one user, 1 disabled email, one http"
     (with-test-setup!
       (mt/with-temp [:model/Card {card-id :id} {}
-                     :model/Channel {channel-id :id} {:type "channel/http"}]
+                     :model/Channel {channel-id :id} {:type    "channel/http"
+                                                      :details {:url "https://example.com/hook", :auth-method "none"}}]
         (let [alert-id (create-alert! {} card-id [{:channel_type "email"
                                                    :enabled      true
                                                    :details      (json/encode {:emails ["ngoc@metabase.com"]})

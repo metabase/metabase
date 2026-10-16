@@ -19,7 +19,7 @@ import {
   PLUGIN_REDUCERS,
   type PermissionOption,
 } from "metabase/plugins";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   GroupId,
@@ -35,11 +35,12 @@ import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Row and column security`,
+  get label() {
+    return t`Row and column security`;
+  },
   value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",
-  iconColor: "brand",
+  iconColor: "core-brand",
 } satisfies PermissionOption;
 
 const getDatabaseViewSandboxModalUrl = (
@@ -79,7 +80,7 @@ const getEditSegmentedAccessPostAction = (
   entityId: PermissionEntityId,
   groupId: GroupId,
   view: "database" | "group",
-) => push(getEditSegementedAccessUrl(entityId, groupId, view));
+) => navigate(getEditSegementedAccessUrl(entityId, groupId, view));
 
 /**
  * Initialize sandboxes plugin features that depend on hasPremiumFeature.
@@ -96,11 +97,13 @@ export function initializePlugin() {
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
-      label: t`Edit row and column security`,
-      iconColor: "brand",
+      get label() {
+        return t`Edit row and column security`;
+      },
+      iconColor: "core-brand",
       icon: "pencil",
-      actionCreator: (entityId, groupId, view) =>
-        push(getEditSegementedAccessUrl(entityId, groupId, view)),
+      onSelect: (entityId, groupId, view) =>
+        navigate(getEditSegementedAccessUrl(entityId, groupId, view)),
     });
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.push(
       (permissions, groupId, entityId, newValue) =>

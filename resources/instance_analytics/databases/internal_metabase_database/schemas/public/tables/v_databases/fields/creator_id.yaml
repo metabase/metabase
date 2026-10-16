@@ -17,7 +17,6 @@ dimensions:
   serdes/meta:
   - {id: JWvkJb39WwSrgKTtJ9JWM, label: creator_id, model: Dimension}
 position: 13
-custom_position: 0
 database_position: 13
 has_field_values: auto-list
 serdes/meta:

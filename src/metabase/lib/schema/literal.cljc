@@ -150,7 +150,14 @@
                                             (not (:effective-type m)))
                                  (assoc :effective-type (:base-type m))))))}
     [:effective-type ::common/base-type]
-    [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]]])
+    [:unit {:optional true} [:maybe ::temporal-bucketing/unit]]
+    [:coercion-strategy {:optional true} [:maybe ::common/coercion-strategy]]]])
+
+(mr/def ::value.value
+  "The value slot of a `:value` clause: a single literal that is not a Clojure collection."
+  [:fn
+   {:error/message "value must be a literal, not a Clojure collection"}
+   (complement coll?)])
 
 ;;; [:value <opts> <value>] clauses are mostly used internally by the query processor to add type information to
 ;;; literals, to make it easier for drivers to process queries; see
@@ -166,12 +173,20 @@
    {:error/message "Value :value clause"}
    #_tag   [:= {:decode/normalize common/normalize-keyword} :value]
    #_opts  [:ref ::value.options]
-   #_value any?])
+   #_value [:ref ::value.value]])
+
+(mr/def ::param-value
+  "A value bound to a native query parameter: a literal or, once the query processor has substituted parameters, a
+  UUID or a `java.time` object."
+  [:or
+   [:ref ::literal]
+   :uuid
+   #?@(:clj [(common/instance-of-class java.time.temporal.Temporal)])])
 
 (mr/def ::literal
   [:or
    :nil
-   :boolean
+   [:boolean {:decode/string identity}] ;; avoid coercing "true"/"false" strings to booleans (#80004)
    :string
    ::integer
    ::non-integer-real

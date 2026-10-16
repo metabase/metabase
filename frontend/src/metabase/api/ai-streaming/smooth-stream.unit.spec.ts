@@ -1,4 +1,4 @@
-import { smoothTextEvents } from "./smooth-stream";
+import { smoothStreamEvents } from "./smooth-stream";
 import type { SSEEvent } from "./sse-types";
 
 async function* asAsyncIterable(events: SSEEvent[]) {
@@ -9,7 +9,7 @@ async function* asAsyncIterable(events: SSEEvent[]) {
 
 const smooth = async (events: SSEEvent[]) => {
   const out: SSEEvent[] = [];
-  for await (const event of smoothTextEvents(asAsyncIterable(events), {
+  for await (const event of smoothStreamEvents(asAsyncIterable(events), {
     delayInMs: 0,
   })) {
     out.push(event);
@@ -17,10 +17,14 @@ const smooth = async (events: SSEEvent[]) => {
   return out;
 };
 
-const textDeltas = (events: SSEEvent[]) =>
-  events.flatMap((event) => (event.type === "text-delta" ? [event.delta] : []));
+const deltasOfType = (events: SSEEvent[], type: string) =>
+  events.flatMap((event) =>
+    event.type === type && "delta" in event ? [event.delta] : [],
+  );
 
-describe("smoothTextEvents", () => {
+const textDeltas = (events: SSEEvent[]) => deltasOfType(events, "text-delta");
+
+describe("smoothStreamEvents", () => {
   it("emits buffered text one word at a time", async () => {
     const out = await smooth([
       { type: "text-start", id: "t1" },
@@ -54,5 +58,31 @@ describe("smoothTextEvents", () => {
       { type: "text-delta", id: "t2", delta: "second " },
       { type: "text-end", id: "t2" },
     ]);
+  });
+
+  it("word-paces reasoning deltas too, preserving their type and id", async () => {
+    const out = await smooth([
+      { type: "reasoning-start", id: "r1" },
+      { type: "reasoning-delta", id: "r1", delta: "thinking it over" },
+      { type: "reasoning-end", id: "r1" },
+    ]);
+
+    expect(deltasOfType(out, "reasoning-delta")).toEqual([
+      "thinking ",
+      "it ",
+      "over",
+    ]);
+    expect(out.every((e) => e.type !== "text-delta")).toBe(true);
+  });
+
+  it("flushes the reasoning buffer before switching to text", async () => {
+    const out = await smooth([
+      { type: "reasoning-delta", id: "r1", delta: "reasoned" },
+      { type: "text-delta", id: "t1", delta: "answer " },
+      { type: "text-end", id: "t1" },
+    ]);
+
+    expect(deltasOfType(out, "reasoning-delta")).toEqual(["reasoned"]);
+    expect(textDeltas(out)).toEqual(["answer "]);
   });
 });

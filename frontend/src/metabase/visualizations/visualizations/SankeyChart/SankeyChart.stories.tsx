@@ -4,8 +4,9 @@ import {
   IsomorphicVisualizationStory,
   SdkVisualizationStory,
 } from "__support__/storybook";
-import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { RawSeries } from "metabase-types/api";
 
 import * as data from "./stories-data";
 
@@ -16,7 +17,12 @@ export default {
   component: IsomorphicVisualizationStory,
 };
 
-const Template: StoryFn<StaticChartProps> = (args) => {
+type SankeyStoryProps = {
+  rawSeries: RawSeries;
+  theme?: MetabaseTheme;
+};
+
+const Template: StoryFn<SankeyStoryProps> = (args) => {
   return <IsomorphicVisualizationStory {...args} />;
 };
 
@@ -91,7 +97,7 @@ export const SankeyEdgeLabelsFull = {
 };
 
 export const SankeyEdgeLabelsFullDarkBackground = {
-  render: (args: StaticChartProps) => <SdkVisualizationStory {...args} />,
+  render: (args: SankeyStoryProps) => <SdkVisualizationStory {...args} />,
   args: {
     rawSeries: data.sankeyEdgeLabelsFull,
     theme: { colors: { background: "#2d2d3d", "text-primary": "#fff" } },

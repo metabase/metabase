@@ -2,6 +2,7 @@ import type React from "react";
 
 import { Box, type MantineStyleProps } from "metabase/ui";
 
+import { SIDESHEET_HORIZONTAL_PADDING } from "./Sidesheet";
 import Styles from "./sidesheet.module.css";
 
 /** pass the removeBodyPadding prop to the Sidesheet component and wrap
@@ -10,7 +11,12 @@ import Styles from "./sidesheet.module.css";
 export const SidesheetTabPanelContainer = (
   props: MantineStyleProps & { children: React.ReactNode },
 ) => (
-  <Box className={Styles.OverflowAuto} px="xl" py="lg" {...props}>
+  <Box
+    className={Styles.OverflowAuto}
+    px={SIDESHEET_HORIZONTAL_PADDING}
+    py="xl"
+    {...props}
+  >
     <div>{props.children}</div>
   </Box>
 );

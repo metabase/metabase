@@ -29,13 +29,13 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.quartz :as app-db.quartz]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.quartz-affinity :as quartz-affinity]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.concurrency :as q.concurrency]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.registry :as q.registry]
-   [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
@@ -48,12 +48,10 @@
   "This backend's identifier, registered with `metabase.mq.init`; its `name` labels metrics."
   :queue.backend/quartz)
 
-;; Install the queue node-affinity DriverDelegate when Quartz's JDBC properties are set. Registered at
-;; load time, and here rather than in `metabase.mq.init`, because it is a property of *this* backend —
-;; init has no business knowing that one backend swaps out a Quartz internal. (`mq` depends on `task`,
-;; not the reverse, so `task.bootstrap` calls back into this rather than referencing `mq`.)
-;; install-delegate! falls back to the plain per-DB delegate if the affinity subclass can't be loaded.
-(task.bootstrap/register-jdbc-property-setter! quartz-affinity/install-delegate!)
+;; Install the queue node-affinity `DriverDelegate` when Quartz's JDBC properties are set.
+;; This registers here rather than in `metabase.mq.init` because the delegate belongs to this backend alone.
+;; If the affinity subclass can't be loaded, `install-delegate!` falls back to the plain per-database delegate.
+(app-db.quartz/register-jdbc-property-setter! quartz-affinity/install-delegate!)
 
 (def ^:private job-group
   "Quartz group every queue job/trigger lives in, so they're easy to isolate from the rest of the
@@ -131,9 +129,9 @@
 
 ;;; ------------------------------------ Waking the acquire loop ------------------------------------
 
-(task/defjob ^{:doc "Never fires. Exists only to give [[wake-scheduler!]] a durable job key to call
-                     `resumeJob` on."}
-  QueueSlotNudgeJob
+(task/defjob QueueSlotNudgeJob
+  "Never fires. Exists only to give [[wake-scheduler!]] a durable job key to call `resumeJob` on."
+  {:saved-class "metabase.mq.queue.quartz.QueueSlotNudgeJob"}
   [_ctx])
 
 (def ^:private nudge-job-key (jobs/key "queue-slot-nudge" job-group))
@@ -172,7 +170,7 @@
       (ensure-nudge-job! scheduler)
       (.resumeJob scheduler nudge-job-key)
       (catch Throwable t
-        (log/debugf t "Could not wake the Quartz acquire loop after freeing a slot on %s" queue)))))
+        (log/debugf "Could not wake the Quartz acquire loop after freeing a slot on %s: %s" queue (ex-message t))))))
 
 (defn- deliver-batch!
   "Shared job body. Reads the merged job+trigger data and dispatches on the delivery result:
@@ -230,14 +228,16 @@
         (backoff-before-refire!)
         (throw (doto (JobExecutionException. t) (.setRefireImmediately true)))))))
 
-(task/defjob ^{:doc "Delivers a queue batch (non-exclusive queues; runs concurrently)."}
-  QueueMessageJob
+(task/defjob QueueMessageJob
+  "Delivers a queue batch (non-exclusive queues; runs concurrently)."
+  {:saved-class "metabase.mq.queue.quartz.QueueMessageJob"}
   [ctx]
   (deliver-batch! ctx))
 
-(task/defjob ^{org.quartz.DisallowConcurrentExecution true
-               :doc "Delivers a batch for an :exclusive queue — at most one execution per queue cluster-wide."}
-  ExclusiveQueueMessageJob
+(task/defjob ExclusiveQueueMessageJob
+  "Delivers a batch for an :exclusive queue — at most one execution per queue cluster-wide."
+  {:saved-class "metabase.mq.queue.quartz.ExclusiveQueueMessageJob"
+   :concurrent? false}
   [ctx]
   (deliver-batch! ctx))
 
@@ -301,11 +301,15 @@
   (backend-id [_this] backend-id)
 
   (publish! [_this queue payload]
-    ;; A nil scheduler (e.g. MB_DISABLE_SCHEDULER, or during shutdown) must be a hard failure, not a
-    ;; silent no-op: the transactional outbox relies on a thrown exception to keep its row for the
-    ;; recovery sweep, and the publish buffer relies on it to retry / loudly drop. Returning nil
-    ;; here would silently lose the message.
-    (if-let [scheduler (task/scheduler)]
+    ;; A scheduler that is nil (during shutdown) or disabled (MB_DISABLE_SCHEDULER) must be a hard
+    ;; failure, not a silent no-op: the transactional outbox relies on a thrown exception to keep its
+    ;; row for the recovery sweep, and the publish buffer relies on it to retry / loudly drop.
+    ;; The disabled check matters because a disabled scheduler is still *initialized* (standby, so its
+    ;; job store accepts writes) — without it the trigger would be durably written and never fire.
+    ;; Merely being in standby is NOT a failure: during the startup window (init-scheduler! →
+    ;; start-scheduler!) publishes land in the store and fire once the scheduler starts.
+    (if-let [scheduler (when-not (task/scheduler-disabled?)
+                         (task/scheduler))]
       (try
         (ensure-queue-job! scheduler queue (q.registry/exclusive? queue))
         (schedule-message-trigger! scheduler queue payload 0 (Date.))

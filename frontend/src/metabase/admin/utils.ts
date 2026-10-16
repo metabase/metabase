@@ -1,56 +1,36 @@
 import { useLayoutEffect } from "react";
 
 import { shouldShowTenantsUpsell } from "metabase/admin/people/selectors";
-import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
-import type { AdminPath } from "metabase/redux/store/admin";
-import { push, replace } from "metabase/router";
-import { createRedirectGuard } from "metabase/router/guards";
-import { getAdminPaths } from "metabase/selectors/admin";
-import { getSetting } from "metabase/selectors/settings";
+import { useSelector } from "metabase/redux";
+import type { AdminPathKey } from "metabase/redux/store";
+import { createRedirectGuard } from "metabase/route-guards";
+import { useNavigate } from "metabase/router";
+import { getAdminPaths, getHasAdminPath } from "metabase/selectors/admin";
+import { getSetting } from "metabase/settings";
 
-export const createAdminRouteGuard = (routeKey: string) =>
+export const createAdminRouteGuard = (routeKey: AdminPathKey) =>
   createRedirectGuard(
-    (state) =>
-      getAdminPaths(state)?.find((path) => path.key === routeKey) != null,
+    (state) => getHasAdminPath(state, routeKey),
     "/unauthorized",
   );
 
-const mapStateToProps = (state: State, props: { location: Location }) => ({
-  adminItems: getAdminPaths(state),
-  path: props.location.pathname,
-});
+export const RedirectToAllowedSettings = () => {
+  const adminItems = useSelector(getAdminPaths);
+  const navigate = useNavigate();
 
-const mapDispatchToProps = {
-  push,
-  replace,
-};
-
-interface RedirectToAllowedSettingsInnerProps {
-  adminItems: AdminPath[];
-  replace: (path: string) => void;
-}
-
-const RedirectToAllowedSettingsInner = ({
-  adminItems,
-  replace,
-}: RedirectToAllowedSettingsInnerProps) => {
   useLayoutEffect(() => {
-    replace(adminItems.length === 0 ? "/unauthorized" : adminItems[0].path);
-  }, [adminItems, replace]);
+    navigate(adminItems.length === 0 ? "/unauthorized" : adminItems[0].path, {
+      replace: true,
+    });
+  }, [adminItems, navigate]);
 
   return null;
 };
 
-export const RedirectToAllowedSettings = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(RedirectToAllowedSettingsInner);
-
 export const createTenantsRouteGuard = () =>
   createRedirectGuard(
     (state) =>
-      getAdminPaths(state)?.find((path) => path.key === "people") != null &&
+      getHasAdminPath(state, "people") &&
       (getSetting(state, "use-tenants") || shouldShowTenantsUpsell(state)),
     "/admin/people",
   );

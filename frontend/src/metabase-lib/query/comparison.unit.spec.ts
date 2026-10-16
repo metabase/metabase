@@ -17,13 +17,11 @@ describe("findColumnIndexesFromLegacyRefs", () => {
           breakouts: [
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "year",
             },
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "CREATED_AT",
               unit: "month",
             },
@@ -52,15 +50,13 @@ describe("findColumnIndexesFromLegacyRefs", () => {
           breakouts: [
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "TOTAL",
-              bins: 10,
+              binning: { strategy: "num-bins", numBins: 10 },
             },
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "TOTAL",
-              bins: 50,
+              binning: { strategy: "num-bins", numBins: 50 },
             },
           ],
         },

@@ -1,17 +1,33 @@
-import type { AstPath } from "prettier";
-
 import * as Lib from "metabase-lib";
 
 import * as literal from "../literal";
 
+/**
+ * The stack of nodes from the root of the expression down to the node that is
+ * currently being printed. Only the top of the stack is typed, because the
+ * matchers below narrow it one node at a time.
+ */
+export class Path<T> {
+  readonly stack: unknown[];
+
+  constructor(root: T) {
+    this.stack = [root];
+  }
+
+  get node(): T {
+    // The type parameter tracks what the matchers have narrowed the top of the
+    // stack to, which the unknown[] element type cannot express.
+    return this.stack[this.stack.length - 1] as T;
+  }
+}
+
 type Assertion<T> = T extends ((expr: any) => expr is infer U) ? U : never;
 type Lifted<T> = {
-  [K in keyof T]: (path: AstPath<unknown>) => path is AstPath<Assertion<T[K]>>;
+  [K in keyof T]: (path: Path<unknown>) => path is Path<Assertion<T[K]>>;
 };
 
 /**
- * Lift all matchers to work on Prettier's AstPath instead of on
- * single Expression nodes.
+ * Lift all matchers to work on a Path instead of on single Expression nodes.
  */
 function lift<T>(matchers: T): Lifted<T> {
   // @ts-expect-error: map is empty
@@ -26,21 +42,20 @@ function lift<T>(matchers: T): Lifted<T> {
 }
 
 /**
- * Lift a single matcher to work on Prettier's AstPath instead of on
- * a single Expression node.
+ * Lift a single matcher to work on a Path instead of on a single Expression
+ * node.
  */
 function liftMatcher<T>(
   matcher: (expr: unknown) => expr is T,
-): (path: AstPath<unknown>) => path is AstPath<T> {
-  return (path: AstPath<unknown>): path is AstPath<T> => matcher(path.node);
+): (path: Path<unknown>) => path is Path<T> {
+  return (path: Path<unknown>): path is Path<T> => matcher(path.node);
 }
 
 /**
- * Lift all matchers to work on Prettier's AstPath instead of on
- * single Expression nodes.
+ * Lift all matchers to work on a Path instead of on single Expression nodes.
  *
  * For example, this will verify that path.node is a string literal and
- * asserts that path is AstPath<string>.
+ * asserts that path is Path<string>.
  * @example
  *   pathMatchers.isStringLiteral(path)
  */

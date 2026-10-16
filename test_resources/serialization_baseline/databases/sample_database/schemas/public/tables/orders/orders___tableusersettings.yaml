@@ -1,0 +1,9 @@
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+created_at: '2025-06-13T12:52:06.383265Z'
+description: Every order placed, as the team describes it
+display_name: Customer Orders
+serdes/meta:
+- model: TableUserSettings

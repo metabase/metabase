@@ -43,7 +43,7 @@ export function ValuesSourceSettings({
           onChangeQueryType(newValue as ValuesQueryType)
         }
       >
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <RadioContainer
             ownValue="list"
             selectedValue={queryType}
@@ -117,10 +117,8 @@ function RadioContainer({
             <Button
               onClick={onEditClick}
               disabled={disableEdit}
-              variant="subtle"
-              p={0}
+              variant="transparent"
               size="compact-md"
-              h="100%"
             >
               <Box
                 component="span"

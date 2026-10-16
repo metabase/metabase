@@ -1,9 +1,9 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
-import { useDataModelMeasurePage } from "../../hooks";
+import { useDataModelMeasurePage } from "../../hooks/use-data-model-measure-page";
 import { MeasureDetailPage } from "../MeasureDetailPage";
 
 type DataModelMeasureDetailPageParams = {
@@ -13,15 +13,8 @@ type DataModelMeasureDetailPageParams = {
   measureId: string;
 };
 
-type DataModelMeasureDetailPageProps = {
-  params: DataModelMeasureDetailPageParams;
-  route: Route;
-};
-
-export function DataModelMeasureDetailPage({
-  params,
-  route,
-}: DataModelMeasureDetailPageProps) {
+export function DataModelMeasureDetailPage() {
+  const params = useParams<DataModelMeasureDetailPageParams>();
   const { isLoading, error, measure, table, tabUrls, onRemove } =
     useDataModelMeasurePage(params);
 
@@ -35,8 +28,8 @@ export function DataModelMeasureDetailPage({
 
   return (
     <MeasureDetailPage
-      route={route}
       measure={measure}
+      table={table}
       tabUrls={tabUrls}
       breadcrumbs={
         <DataModelMeasureBreadcrumbs table={table} measure={measure} />

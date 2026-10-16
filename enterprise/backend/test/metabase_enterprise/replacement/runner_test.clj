@@ -3,7 +3,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.replacement.runner-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
@@ -19,9 +19,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(comment
-  metabase-enterprise.dependencies.events/keep-me)
 
 (deftest bulk-load-metadata-for-entities-test
   (testing "bulk-load-metadata-for-entities! fetches all entity types in bulk"
@@ -266,7 +263,7 @@
                                             [:stages 0 :source-card]))))))))))))))
 
 (deftest copy-model-metadata-overrides!-test
-  (testing "copies user-edited metadata from model result_metadata to Field and FieldUserSettings"
+  (testing "copies user-edited metadata from model result_metadata to FieldUserSettings only"
     (mt/with-temp [:model/Table {table-id :id} {:name   "transform_output"
                                                 :db_id  (mt/id)
                                                 :active true}
@@ -299,14 +296,14 @@
                                              :base_type     "type/DateTimeWithLocalTZ"}])}
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
-      (testing "Field records are updated with overrides from model metadata"
+      (testing "Field records are untouched; they stay sync-owned"
         (let [field-1 (t2/select-one :model/Field :id field-1-id)
               field-2 (t2/select-one :model/Field :id field-2-id)]
-          (is (= "Order Total" (:display_name field-1)))
-          (is (= "The total amount" (:description field-1)))
-          (is (= :type/Currency (:semantic_type field-1)))
-          (is (= "Order Date" (:display_name field-2)))
-          (is (= :type/CreationTimestamp (:semantic_type field-2)))))
+          (is (= "Total" (:display_name field-1)))
+          (is (nil? (:description field-1)))
+          (is (nil? (:semantic_type field-1)))
+          (is (= "Created At" (:display_name field-2)))
+          (is (nil? (:semantic_type field-2)))))
       (testing "FieldUserSettings are created so overrides survive sync"
         (let [fus-1 (t2/select-one :model/FieldUserSettings :field_id field-1-id)
               fus-2 (t2/select-one :model/FieldUserSettings :field_id field-2-id)]
@@ -344,8 +341,8 @@
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
       (let [field (t2/select-one :model/Field :id field-id)]
-        (is (= "Product ID" (:display_name field)))
-        (is (= "The product identifier" (:description field))))
+        (is (= "Products  ID" (:display_name field)))
+        (is (nil? (:description field))))
       (let [fus (t2/select-one :model/FieldUserSettings :field_id field-id)]
         (is (some? fus))
         (is (= "Product ID" (:display_name fus)))

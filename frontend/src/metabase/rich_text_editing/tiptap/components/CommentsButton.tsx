@@ -5,22 +5,27 @@ import { Button, type ButtonProps, Icon } from "metabase/ui";
 
 type Props<C extends ElementType = "button"> = ButtonProps & {
   unresolvedCommentsCount: number;
+  active?: boolean;
   component?: C;
 } & Omit<ComponentPropsWithoutRef<C>, keyof ButtonProps | "component">;
 
 export const CommentsButton = <C extends ElementType = "button">({
   unresolvedCommentsCount,
+  active,
   ...props
 }: Props<C>) => {
   return (
     <Button
       aria-label={t`Comments`}
-      bd={0}
+      variant={active ? "filled" : "subtle"}
+      color={active ? undefined : "neutral"}
+      size="sm"
       leftSection={
-        <Icon name={unresolvedCommentsCount > 0 ? "comment" : "add_comment"} />
+        <Icon
+          name={unresolvedCommentsCount > 0 ? "comment" : "add_comment"}
+          c={active ? undefined : "icon-primary"}
+        />
       }
-      px="sm"
-      size="xs"
       // Unjustified type cast. FIXME
       {...(props as ButtonProps)}
     >

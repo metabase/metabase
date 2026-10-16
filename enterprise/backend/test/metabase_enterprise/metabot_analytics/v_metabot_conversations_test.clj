@@ -210,6 +210,38 @@
                  :assistant_message_count 2}
                 (first (query-view [convo-id]))))))))
 
+(deftest forked-messages-counted-but-split-out-test
+  (testing "a fork's copied messages count toward message_count but not new_message_count"
+    (let [origin-id (str (random-uuid))
+          fork-id   (str (random-uuid))]
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/MetabotConversation _      {:id origin-id :user_id user-id}
+                     :model/MetabotMessage      {u1 :id} {:conversation_id origin-id :role "user"      :profile_id "nlq" :total_tokens 0 :data []}
+                     :model/MetabotMessage      {a1 :id} {:conversation_id origin-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data []}
+                     :model/MetabotConversation _      {:id fork-id :user_id user-id :forked_from_conversation_id origin-id}
+                     :model/MetabotMessage      _      {:conversation_id fork-id :role "user"      :profile_id "nlq" :total_tokens 0 :data [] :forked_from_message_id u1}
+                     :model/MetabotMessage      _      {:conversation_id fork-id :role "assistant" :profile_id "nlq" :total_tokens 0 :data [] :forked_from_message_id a1}
+                     :model/MetabotMessage      _      {:conversation_id fork-id :role "user"      :profile_id "nlq" :total_tokens 0 :data []}]
+        (let [rows (query-view [origin-id fork-id])]
+          (testing "nothing was copied into the origin, so both counts agree"
+            (is (=? {:message_count           2
+                     :new_message_count       2
+                     :user_message_count      1
+                     :assistant_message_count 1}
+                    (find-row rows origin-id))))
+          (testing "the fork reports its whole thread, and separately what it added"
+            (is (=? {:message_count           3
+                     :new_message_count       1
+                     :user_message_count      2
+                     :assistant_message_count 1}
+                    (find-row rows fork-id))))
+          (testing "new_message_count is the column that reconciles with v_metabot_messages"
+            (let [message-rows (:cnt (t2/query-one {:select [[[:count :*] :cnt]]
+                                                    :from   [:v_metabot_messages]
+                                                    :where  [:in :conversation_id [origin-id fork-id]]}))]
+              (is (= (reduce + (map :new_message_count rows)) message-rows))
+              (is (< message-rows (reduce + (map :message_count rows)))))))))))
+
 (deftest user-display-name-test
   (testing "user_display_name shows 'first last' when available, falls back to email"
     (let [convo-named   (str (random-uuid))
@@ -250,6 +282,32 @@
                                                    :completion_tokens 5
                                                    :total_tokens 15}]
         (is (=? {:model "anthropic/claude-haiku-4-5-20251001"} (first (query-view [convo-id]))))))))
+
+(deftest title-call-sets-neither-source-nor-model-test
+  (testing "a title call logged before the agent's first call counts toward the tokens, not the source or model"
+    (let [convo-id (str (random-uuid))
+          now      (t/offset-date-time)]
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/MetabotConversation _ {:id convo-id :user_id user-id}
+                     :model/AiUsageLog          _ {:source "conversation_title"
+                                                   :model "anthropic/claude-haiku-4-5"
+                                                   :conversation_id convo-id
+                                                   :prompt_tokens 900
+                                                   :completion_tokens 30
+                                                   :total_tokens 930
+                                                   :created_at (t/minus now (t/seconds 5))}
+                     :model/AiUsageLog          _ {:source "metabot_agent"
+                                                   :model default-model
+                                                   :conversation_id convo-id
+                                                   :prompt_tokens 9000
+                                                   :completion_tokens 300
+                                                   :total_tokens 9300
+                                                   :created_at now}]
+        (is (=? {:source       "metabot_agent"
+                 :source_name  "Metabot"
+                 :model        default-model
+                 :total_tokens 10230}
+                (first (query-view [convo-id]))))))))
 
 (deftest ip-address-test
   (testing "ip_address is surfaced from the conversation row"

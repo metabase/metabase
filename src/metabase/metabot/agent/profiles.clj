@@ -9,23 +9,31 @@
   (:require
    [malli.error :as me]
    [metabase.api-scope.core :as api-scope]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.skills :as skills]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.explorations :as tools.explorations]
+   [metabase.metabot.tools.legacy :as tools.legacy]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (def ^:private tool-var-schema
-  "Schema for a tool var: must be a var with :tool-name and :schema in metadata."
-  [:fn {:error/message "Expected a var with :tool-name and :schema metadata"}
+  "Schema for one of a profile's tools.
+
+  Either kind: a var whose value implements `metabase.metabot.tools.core/Tool`, or — until it is
+  converted — a var with `:tool-name` and `:schema` in its metadata. A profile names both as vars,
+  so converting a tool does not touch any profile."
+  [:fn {:error/message (str "Expected a var holding a metabase.metabot.tools.core/Tool, "
+                            "or a var with :tool-name and :schema metadata")}
    (fn [v]
      (and (var? v)
-          (string? (:tool-name (meta v)))
-          (some? (:schema (meta v)))))])
+          (or (tools.legacy/legacy-tool? v)
+              (satisfies? tools.core/Tool (deref v)))))])
 
 (def ^:private *profiles
   "Map of profile-id to profile configuration"
@@ -53,29 +61,42 @@
   - :name - Keyword identifier for the profile (e.g. :internal)
   - :prompt-template - Selmer template name from resources/metabot/prompts/system/
   - :max-iterations - Maximum agent loop iterations
-  - :temperature - LLM temperature setting
   - :tools - Vector of tool vars (e.g. #'tools/search-tool)
   - :always-on-skills - Optional vector of skill ids (keywords) whose bodies are inlined into this
     profile's system prompt instead of being loaded on demand via `load_skill`. Always-on is a
     per-profile decision: the same skill can be inlined here and on-demand elsewhere.
+  - :skills? - Optional boolean (default true). When false, the profile opts out of the skills
+    system entirely: no skill catalog, no always-on inlining, and `load_skill` is not injected —
+    even if the profile's tools would otherwise match skills (e.g. `read_resource`). Use for
+    specialized profiles that carry their own tool guidance and must not invite `load_skill` calls.
   - :terminal-tools - Optional set of tool-name strings whose **successful** call ends the agent
     turn for this profile. Lets a `:required-tool-call?` profile stop as soon as it produces its
     answer (e.g. `:sql` after `edit_sql_query`) instead of being forced to keep calling tools.
     Terminality is per-profile: the same tool is non-terminal in profiles that don't list it.
+  - :system-prompt-context - Optional fn of the request context returning a map of extra,
+    feature-specific system-prompt template vars (e.g. the explorations profile's formatted draft
+    Research plan). Keeps feature context out of the generic agent — only the profiles that need it
+    opt in.
 
   Tool vars are validated at registration time to ensure they have required metadata; any
   `:always-on-skills` are validated to refer to registered skills, and any `:terminal-tools` to
   refer to tools the profile actually exposes."
-  [profile :- [:map
+  [profile :- [:map {:closed true}
                [:name :keyword]
                [:prompt-template :string]
                [:max-iterations :int]
-               [:temperature :float]
-               [:tools [:vector :any]]
+               [:temperature {:optional true} [:maybe number?]]
+               [:tools [:vector tool-var-schema]]
                [:always-on-skills {:optional true} [:vector :keyword]]
-               [:terminal-tools {:optional true} [:set :string]]]]
+               [:skills? {:optional true} :boolean]
+               [:required-tool-call? {:optional true} :boolean]
+               [:terminal-tools {:optional true} [:set :string]]
+               [:system-prompt-context {:optional true} [:fn ifn?]]]]
   (let [tool-vars     (:tools profile)
-        tool-name-seq (map #(:tool-name (meta %)) tool-vars)
+        ;; The declaration, not the var's metadata: a converted tool is a record held by a var and
+        ;; carries no `:tool-name` meta, so reading meta made every converted tool in a profile
+        ;; report `nil` and the second one look like a duplicate of the first.
+        tool-name-seq (map #(:name (tools.legacy/declaration-of %)) tool-vars)
         tool-names    (set tool-name-seq)]
     (doseq [tool-var tool-vars]
       (validate-tool-var! tool-var))
@@ -83,6 +104,9 @@
       (let [dups (->> (frequencies tool-name-seq)
                       (filter (fn [[_ cnt]] (< 1 cnt))))]
         (throw (ex-info "Duplicate tool names in profile" {:tool-names (map first dups)}))))
+    (when (and (false? (:skills? profile)) (seq (:always-on-skills profile)))
+      (throw (ex-info "Profile disables skills but lists :always-on-skills"
+                      {:profile (:name profile) :always-on-skills (:always-on-skills profile)})))
     (when-let [unknown (seq (remove skills/get-skill (:always-on-skills profile)))]
       (throw (ex-info "Profile references unknown always-on skill ids"
                       {:profile (:name profile) :unknown-skill-ids unknown})))
@@ -91,11 +115,14 @@
                       {:profile (:name profile) :unknown-terminal-tools unknown}))))
   (swap! *profiles assoc (:name profile) profile))
 
+;; TODO (Chris 2026-10-14) -- Offer run_query here once embedded Metabot has its own query execution setting.
+;; Queries run as the signed-in user, so sandboxing and impersonation apply,
+;; but the rows are the embedding customer's end users' data, and they go to the LLM provider.
+;; An admin should be able to show results to their own staff without showing them in every embed.
 (register-profile!
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
-  :max-iterations  10
-  :temperature     0.3
+  :max-iterations  15
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
@@ -103,40 +130,41 @@
                     #'tools/edit-chart-tool
                     #'tools/save-entity-tool]})
 
+(def ^:private internal-tools
+  [#'tools/search-tool
+   #'tools/construct-notebook-query-tool
+   #'tools/run-query-tool
+   #'tools/read-resource-tool
+   #'tools/create-sql-query-tool
+   #'tools/edit-sql-query-tool
+   #'tools/replace-sql-query-tool
+   #'tools/edit-chart-tool
+   #'tools/create-chart-tool
+   #'tools/create-autogenerated-dashboard-tool
+   #'tools/create-dashboard-subscription-tool
+   #'tools/analyze-chart-tool
+   #'tools/save-entity-tool])
+
 (register-profile!
  {:name            :internal
   :prompt-template "internal.selmer"
-  :max-iterations  10
-  :temperature     0.3
-  :tools           [#'tools/search-tool
-                    #'tools/construct-notebook-query-tool
-                    #'tools/read-resource-tool
-                    #'tools/create-sql-query-tool
-                    #'tools/edit-sql-query-tool
-                    #'tools/replace-sql-query-tool
-                    #'tools/edit-chart-tool
-                    #'tools/create-chart-tool
-                    #'tools/create-autogenerated-dashboard-tool
-                    #'tools/create-dashboard-subscription-tool
-                    #'tools/analyze-chart-tool
-                    #'tools/save-entity-tool]})
+  :max-iterations  15
+  :tools           internal-tools})
 
+;; :internal without the notebook query builder: the model writes a query with create_sql_query and reads it with
+;; run_query. It measures how well the model answers in SQL. Values can still reach the model without SQL through
+;; analyze_chart, for a chart the user is viewing, and through the field values read_resource returns.
+;; The SQL tools keep their own checks, the write_sql_queries capability and the SQL execution setting.
+;; Its run_query runs SQL only, and needs the scope Metabot's SQL permission grants, not the NLQ one, so a user with
+;; only the SQL permission can read what they run. That is the one thing the profile grants that :internal doesn't.
 (register-profile!
- {:name            :transforms_codegen
-  :prompt-template "transform-codegen.selmer"
-  :max-iterations  30
-  :temperature     0.3
-  :tools           [#'tools/transform-search-tool
-                    #'tools/get-transform-details-tool
-                    #'tools/get-transform-python-library-details-tool
-                    #'tools/write-transform-sql-tool
-                    #'tools/write-transform-python-tool
-                    #'tools/list-snippets-tool
-                    #'tools/get-snippet-details-tool
-                    #'tools/list-available-fields-tool
-                    #'tools/get-field-values-tool
-                    #'tools/todo-write-tool
-                    #'tools/todo-read-tool]})
+ {:name            :internal-sql
+  :prompt-template "internal.selmer"
+  :max-iterations  15
+  :tools           (into []
+                         (comp (remove #{#'tools/construct-notebook-query-tool})
+                               (replace {#'tools/run-query-tool #'tools/run-sql-query-tool}))
+                         internal-tools)})
 
 ;; SQL responses are rendered from tool results in the native port, so this
 ;; profile must always end with a tool call rather than free-form assistant text.
@@ -144,7 +172,6 @@
  {:name                :sql
   :prompt-template     "sql-querying-only.selmer"
   :max-iterations      20
-  :temperature         0.3
   :required-tool-call? true
   ;; The SQL editor is a focused, tool-heavy flow: this guidance is relevant on essentially every
   ;; turn, so inline it rather than make the model spend iterations loading it. Other profiles that
@@ -174,11 +201,11 @@
 (register-profile!
  {:name            :nlq
   :prompt-template "natural-language-querying-only.selmer"
-  :max-iterations  10
-  :temperature     0.3
+  :max-iterations  15
   :tools           [#'tools/retrieve-library-entities-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/run-query-tool
                     #'tools/create-chart-tool
                     #'tools/edit-chart-tool
                     #'tools/save-entity-tool]})
@@ -186,11 +213,11 @@
 (register-profile!
  {:name            :nlq-fallback
   :prompt-template "natural-language-querying-fallback.selmer"
-  :max-iterations  10
-  :temperature     0.3
+  :max-iterations  15
   :tools           [#'tools/nlq-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
+                    #'tools/run-query-tool
                     #'tools/create-chart-tool
                     #'tools/edit-chart-tool
                     #'tools/save-entity-tool]})
@@ -198,8 +225,7 @@
 (register-profile!
  {:name            :document-generate-content
   :prompt-template "document-generate-content.selmer"
-  :max-iterations  10
-  :temperature     0.3
+  :max-iterations  15
   :required-tool-call? true
   ;; Producing a chart draft is the answer; a successful construct ends the turn (schema collection
   ;; is a non-terminal preparatory step). Failed constructs don't terminate, so the model retries.
@@ -214,8 +240,7 @@
 (register-profile!
  {:name            :slackbot
   :prompt-template "slackbot.selmer"
-  :max-iterations  10
-  :temperature     0.3
+  :max-iterations  15
   :tools           [#'tools/search-tool
                     #'tools/slackbot-construct-notebook-query-tool
                     #'tools/list-available-fields-tool
@@ -224,33 +249,55 @@
                     #'tools/create-alert-tool
                     #'tools/slackbot-create-dashboard-subscription-tool]})
 
+(register-profile!
+ {:name            :explorations
+  :prompt-template "explorations.selmer"
+  :max-iterations  15
+  :temperature     0.3
+  :system-prompt-context #'tools.explorations/research-plan-system-context
+  :skills?         false
+  :tools           [#'tools/search-tool
+                    #'tools/read-resource-tool
+                    #'tools/list-research-metrics-tool
+                    #'tools/get-research-candidates-tool
+                    #'tools/add-research-groups-tool
+                    #'tools/remove-from-research-plan-tool
+                    #'tools/set-exploration-name-tool
+                    #'tools/list-timelines-tool
+                    #'tools/get-timeline-details-tool
+                    #'tools/select-exploration-timelines-tool]})
+
 (defn- filter-by-capabilities
-  "Filter tool vars by user capabilities.
+  "Filter tools by user capabilities.
   Removes tools that require capabilities the user doesn't have.
   Capabilities from the API arrive as strings (e.g. \"permission:write_sql_queries\")
   while tool metadata uses keywords (e.g. :permission-write-sql-queries), so we
   normalize to keywords before comparing."
-  [tool-vars capabilities]
+  [tools capabilities]
   (let [capabilities-set (capabilities/capability-set capabilities)]
-    (filter (fn [tool-var]
-              (every? capabilities-set (:capabilities (meta tool-var))))
-            tool-vars)))
+    (filter (fn [tool]
+              (every? capabilities-set
+                      (:metabot/capabilities (tools.legacy/declaration-of tool))))
+            tools)))
 
 (defn- filter-by-scope
-  "Filter tool vars by the current user's scope set.
-  Removes tools whose `:scope` metadata is not satisfied by `*current-user-scope*`.
-  Tools without `:scope` metadata pass through."
-  [tool-vars]
-  (filter (fn [tool-var]
-            (let [required-scope (:scope (meta tool-var))]
+  "Filter tools by the current user's scope set.
+  Removes tools whose declared `:scope` is not satisfied by `*current-user-scope*`.
+  Tools that declare no scope pass through."
+  [tools]
+  (filter (fn [tool]
+            (let [required-scope (:scope (tools.legacy/declaration-of tool))]
               (or (nil? required-scope)
                   (api-scope/scope-matches? scope/*current-user-scope* required-scope))))
-          tool-vars))
+          tools))
 
 (defn- tool-map
-  "Create a map of tool-name -> tool-var from a sequence of tool vars."
-  [tool-vars]
-  (into {} (map (juxt #(:tool-name (meta %)) identity) tool-vars)))
+  "Create a map of model-facing tool name -> tool from a sequence of tools.
+
+  A tool is a converted record or a var that is still the old shape; its declaration answers either
+  way, which is why this no longer reads var metadata."
+  [tools]
+  (into {} (map (juxt #(:name (tools.legacy/declaration-of %)) identity) tools)))
 
 ;;; API
 
@@ -261,6 +308,24 @@
   [profile-id]
   (and (= profile-id :nlq)
        (not (entity-retrieval/entity-retrieval-available?))))
+
+(defn profile-registered?
+  "Whether a profile with `profile-id` is registered."
+  [profile-id]
+  (contains? @*profiles profile-id))
+
+(def ^:private eval-profile-ids
+  "Profiles that exist only for evals.
+  `:internal-sql` lets a user run SQL with only the SQL generation permission, which no other profile allows."
+  #{:internal-sql})
+
+(defn profile-available?
+  "Whether `profile-id` is registered and may run on this instance.
+  An eval-only profile may run only where `metabot-eval-profiles-enabled?` is set."
+  [profile-id]
+  (and (profile-registered? profile-id)
+       (or (not (contains? eval-profile-ids profile-id))
+           (metabot.settings/metabot-eval-profiles-enabled?))))
 
 (defn get-profile
   "Get profile configuration by profile-id keyword.
@@ -289,7 +354,8 @@
   Returns a map of tool-name -> tool-var.
   Takes the resolved profile (not an id) so callers that also need the profile's prompt resolve it once via
   [[get-profile]] — its nlq availability redirect must be probed a single time, or the prompt and tools
-  could disagree. When the profile exposes any skills, `load_skill` is injected for on-demand loading."
+  could disagree. When the profile exposes any skills, `load_skill` is injected for on-demand loading.
+  Profiles with `:skills? false` never get `load_skill` (see [[metabase.metabot.skills/build-skill-manifest]])."
   [profile capabilities]
   (when profile
     (let [base     (-> profile

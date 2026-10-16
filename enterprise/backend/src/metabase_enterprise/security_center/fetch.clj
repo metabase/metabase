@@ -5,10 +5,10 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [java-time.api :as t]
-   [metabase-enterprise.security-center.schema :as security-center.schema]
-   [metabase.app-db.core :as mdb]
+   [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.security-center.schema :as security-center.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -60,11 +60,7 @@
 (defn- latest-updated-at
   "Return the maximum `updated_at` across all advisories as an ISO-8601 string, or nil if none exist."
   []
-  (some-> (mdb/query {:select [[[:max :updated_at]]]
-                      :from   [:security_advisory]})
-          first
-          vals
-          first
+  (some-> (security-center.db/max-advisory-updated-at)
           t/instant
           t/format))
 
@@ -132,12 +128,7 @@
    On insert, match_status starts as :unknown until the matching engine evaluates it.
    On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
   [advisory]
-  (mdb/update-or-insert! :model/SecurityAdvisory
-                         {:advisory_id (:advisory_id advisory)}
-                         (fn [existing]
-                           (if existing
-                             advisory
-                             (assoc advisory :match_status :unknown)))))
+  (security-center.db/upsert-advisory! advisory))
 
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."
@@ -145,7 +136,7 @@
   (let [advisories (try
                      (fetch-advisories-from-store)
                      (catch Exception e
-                       (log/warn e "Error fetching advisories from MetaStore")))]
+                       (log/warnf "Error fetching advisories from MetaStore: %s" (ex-message e))))]
     (if (seq advisories)
       (let [total    (count advisories)
             failures (reduce (fn [n advisory]
@@ -153,7 +144,7 @@
                                  (upsert-advisory! advisory)
                                  n
                                  (catch Exception e
-                                   (log/warnf e "Error upserting advisory %s" (:advisory_id advisory))
+                                   (log/warnf "Error upserting advisory %s: %s" (:advisory_id advisory) (ex-message e))
                                    (inc n))))
                              0
                              advisories)

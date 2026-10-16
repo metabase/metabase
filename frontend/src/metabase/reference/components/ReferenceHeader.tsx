@@ -1,11 +1,8 @@
 import cx from "classnames";
 import { memo } from "react";
-import { t } from "ttag";
 
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import L from "metabase/reference/components/List/List.module.css";
-import { Link } from "metabase/router";
 import { Ellipsified, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -13,17 +10,10 @@ import S from "./ReferenceHeader.module.css";
 
 interface ReferenceHeaderProps {
   name: string;
-  type?: string;
   headerIcon?: IconName;
-  headerLink?: string;
 }
 
-const ReferenceHeader = ({
-  name,
-  type,
-  headerIcon,
-  headerLink,
-}: ReferenceHeaderProps) => (
+const ReferenceHeader = ({ name, headerIcon }: ReferenceHeaderProps) => (
   <div className={CS.wrapper}>
     <div className={cx(CS.relative, L.header)}>
       {headerIcon && (
@@ -32,29 +22,9 @@ const ReferenceHeader = ({
         </div>
       )}
       <div className={S.headerBody}>
-        <Ellipsified
-          key="1"
-          className={!headerLink ? CS.flexFull : undefined}
-          tooltipProps={{ w: "auto" }}
-        >
+        <Ellipsified className={CS.flexFull} tooltipProps={{ w: "auto" }}>
           {name}
         </Ellipsified>
-
-        {headerLink && (
-          <div key="2" className={cx(CS.flexFull)}>
-            <Link
-              to={headerLink}
-              className={cx(ButtonsS.Button, ButtonsS.ButtonBorderless, CS.ml3)}
-            >
-              <div className={cx(CS.flex, CS.alignCenter, CS.relative)}>
-                <span
-                  className={cx(CS.mr1, CS.flexNoShrink)}
-                >{t`See this ${type}`}</span>
-                <Icon name="chevronright" size={16} />
-              </div>
-            </Link>
-          </div>
-        )}
       </div>
     </div>
   </div>

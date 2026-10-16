@@ -1,16 +1,14 @@
 import {
   InteractiveQuestion,
   StaticQuestion,
-  useAction,
 } from "@metabase/embedding-sdk-react";
 import {
-  aggregations,
-  breakout,
   copy,
   DataAppLink,
   DataAppRouter,
-  filter,
-  orderBy,
+  defineAction,
+  defineQuery,
+  useAction,
   useDataAppLocation,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -28,9 +26,9 @@ const PROBE_COLOR = "rgb(0, 128, 0)";
 
 function Overview() {
   const { scalarQuery, questionQuery } = getTestEnv();
-  const ordersCount = useMetabaseQuery(scalarQuery);
+  const ordersCount = useMetabaseQuery(defineQuery(scalarQuery));
   const totalOrders = ordersCount.data?.rawRows?.[0]?.[0];
-  const ordersQuery = useMetabaseQueryObject(questionQuery);
+  const ordersQuery = useMetabaseQueryObject(defineQuery(questionQuery));
 
   return (
     <div data-testid="data-app-content" style={{ padding: 24 }}>
@@ -66,7 +64,10 @@ function Overview() {
       <h2 style={{ margin: "0 0 8px" }}>All orders</h2>
       <div style={{ height: 400 }}>
         {ordersQuery.query ? (
-          <InteractiveQuestion card={{ query: ordersQuery.query }} />
+          <InteractiveQuestion
+            card={{ query: ordersQuery.query }}
+            withDownloads
+          />
         ) : (
           <div>…</div>
         )}
@@ -86,8 +87,8 @@ function Details() {
 
 function QueryStates() {
   const { scalarQuery, errorQuery } = getTestEnv();
-  const broken = useMetabaseQuery(errorQuery!);
-  const working = useMetabaseQuery(scalarQuery);
+  const broken = useMetabaseQuery(defineQuery(errorQuery!));
+  const working = useMetabaseQuery(defineQuery(scalarQuery));
   const count = working.data?.rawRows?.[0]?.[0];
 
   return (
@@ -113,9 +114,46 @@ function QueryStates() {
   );
 }
 
+function DownloadQuestionPage() {
+  const { downloadQuestionId } = getTestEnv();
+
+  return (
+    <div data-testid="data-app-download-question" style={{ padding: 24 }}>
+      <h1>Download question</h1>
+      <div style={{ height: 360 }}>
+        {downloadQuestionId != null ? (
+          <StaticQuestion questionId={downloadQuestionId} withDownloads />
+        ) : (
+          <div data-testid="download-question-loading">…</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// An InteractiveQuestion on a single-column (count) query, so a spec can switch it
+// to a custom viz — the example `demo-viz` requires exactly one result column.
+function CustomVizPage() {
+  const { scalarQuery } = getTestEnv();
+  const q = useMetabaseQueryObject(defineQuery(scalarQuery));
+
+  return (
+    <div data-testid="data-app-custom-viz" style={{ padding: 24 }}>
+      <h1>Custom viz</h1>
+      <div style={{ height: 360 }}>
+        {q.query ? (
+          <InteractiveQuestion card={{ query: q.query }} />
+        ) : (
+          <div data-testid="custom-viz-loading">…</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StaticQuestionPage() {
   const { questionQuery } = getTestEnv();
-  const q = useMetabaseQueryObject(questionQuery);
+  const q = useMetabaseQueryObject(defineQuery(questionQuery));
 
   return (
     <div data-testid="data-app-static-question" style={{ padding: 24 }}>
@@ -131,37 +169,46 @@ function StaticQuestionPage() {
   );
 }
 
-function Combinators() {
-  const combinators = getTestEnv().combinators!;
-  const countAgg = aggregations.count();
+// Data apps may not run native SQL: the backend rejects native queries from the
+// `data-app` client. The `card` prop takes a raw query with no native/structured
+// check, so this page hand-builds a native query to prove the backend refuses it.
+function NativeQueryPage() {
+  const { nativeQuery } = getTestEnv();
 
-  const q = useMetabaseQuery({
-    source: combinators.source,
-    filters: [filter(combinators.filterField, ">", combinators.filterValue)],
-    aggregations: [countAgg],
-    breakouts: [breakout(combinators.breakoutField)],
-    orderBys: [orderBy(countAgg, "desc")],
-  });
+  if (!nativeQuery) {
+    return <div data-testid="data-app-native-query">no-native-query-env</div>;
+  }
 
   return (
-    <div data-testid="data-app-combinators" style={{ padding: 24 }}>
-      <h1>Combinators</h1>
-      <div data-testid="combinators-loading">
-        {q.isLoading ? "loading" : "done"}
-      </div>
-      <div data-testid="combinators-error">
-        {q.error ? "error" : "no-error"}
-      </div>
-      <div data-testid="combinators-rowcount">
-        {String(q.data?.rows?.length ?? 0)}
+    <div data-testid="data-app-native-query" style={{ padding: 24 }}>
+      <h1>Native query</h1>
+      <div style={{ height: 360 }}>
+        <StaticQuestion
+          card={{
+            query: {
+              type: "native",
+              database: nativeQuery.database,
+              native: { query: nativeQuery.query },
+            },
+          }}
+        />
       </div>
     </div>
   );
 }
 
 function Actions() {
-  const { actionId, actionParams } = getTestEnv();
-  const action = useAction(actionId ?? null);
+  const { actionId, actionEntityId, actionParams } = getTestEnv();
+  // A data app names its actions by definition. This fixture has no
+  // collection files, so the copy the definition points at is the authored action.
+  const action = useAction(
+    actionId
+      ? defineAction({
+          action: { id: actionId, parameters: [] },
+          copiedActionEntityId: actionEntityId,
+        })
+      : null,
+  );
   const [output, setOutput] = useState("idle");
 
   const onExecute = async () => {
@@ -383,7 +430,9 @@ const ROUTES: Record<string, ComponentType> = {
   "/isolation": Isolation,
   "/query-states": QueryStates,
   "/static-question": StaticQuestionPage,
-  "/combinators": Combinators,
+  "/native-query": NativeQueryPage,
+  "/download-question": DownloadQuestionPage,
+  "/custom-viz": CustomVizPage,
   "/actions": Actions,
   "/clipboard": Clipboard,
   "/missing-question": MissingQuestion,

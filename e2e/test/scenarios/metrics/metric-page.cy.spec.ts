@@ -1,13 +1,12 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   TRUSTED_ORDERS_METRIC,
   createLibraryWithItems,
 } from "e2e/support/test-library-data";
-import type { Card } from "metabase-types/api";
+import type { Card, ListMetricDimensionsResponse } from "metabase-types/api";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const ORDERS_SCALAR_METRIC = {
   name: "Orders count",
@@ -20,23 +19,60 @@ const ORDERS_SCALAR_METRIC = {
   display: "scalar" as const,
 };
 
+// Renders as a time series through its curated default dimension, which
+// H.setMetricDefaultDimension sets to Created At; metric queries carry no breakout.
 const ORDERS_TIMESERIES_METRIC = {
   name: "Orders over time",
-  description: "Count of orders broken down by month",
+  description: "Count of orders over time",
   type: "metric" as const,
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month" },
-      ],
-    ],
   },
   display: "line" as const,
 };
+
+const OVERVIEW_DIMENSIONS_TO_ADD = [
+  ["Product", "Category"],
+  ["Product", "Price"],
+  ["Product", "Rating"],
+  ["Product", "Title"],
+  ["Product", "Vendor"],
+  ["User", "City"],
+  ["User", "Source"],
+  ["User", "State"],
+] as const;
+
+function addOverviewDimensions(metricId: number) {
+  return cy
+    .request("GET", `/api/metric/${metricId}`)
+    .then(() =>
+      cy.request<ListMetricDimensionsResponse>(
+        "GET",
+        `/api/metric/${metricId}/dimension?with-addable=true`,
+      ),
+    )
+    .then(({ body }) => {
+      const dimensions = OVERVIEW_DIMENSIONS_TO_ADD.flatMap(
+        ([groupName, dimensionName]) => {
+          const group = body.addable.find(
+            (candidate) => candidate.group.display_name === groupName,
+          );
+          const dimension = group?.dimensions.find(
+            (candidate) => candidate.display_name === dimensionName,
+          );
+
+          expect(dimension, `${groupName} - ${dimensionName}`).to.exist;
+          return dimension ? [dimension] : [];
+        },
+      );
+
+      expect(dimensions).to.have.length(OVERVIEW_DIMENSIONS_TO_ADD.length);
+      cy.request("POST", `/api/metric/${metricId}/dimension/add`, {
+        dimensions,
+      });
+    });
+}
 
 describe("scenarios > metrics > metric page", () => {
   beforeEach(() => {
@@ -50,7 +86,7 @@ describe("scenarios > metrics > metric page", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should display scalar metric, edit name and description, explore link, and more menu actions", () => {
+  it("should display a scalar metric, edit its name and description, link to explore, navigate tabs, bookmark, and duplicate it", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("POST", "/api/card").as("createCard");
 
@@ -60,6 +96,18 @@ describe("scenarios > metrics > metric page", () => {
 
     cy.log("about page with description sidebar");
     H.MetricPage.aboutPage().should("be.visible");
+
+    cy.log("a metric without a default dimension previews a scalar");
+    H.MetricPage.aboutPage().within(() => {
+      cy.findByTestId("visualization-root")
+        .should("be.visible")
+        .and("have.attr", "data-viz-ui-name", "Number");
+      cy.findByTestId("scalar-value").should("have.text", "18,760");
+      cy.findByRole("button", { name: /^Select dimension/ }).should(
+        "not.exist",
+      );
+    });
+
     H.MetricPage.aboutPageDescriptionSidebar().within(() => {
       cy.findByText("Total number of orders").should("be.visible");
       cy.findByText("Source").should("be.visible");
@@ -92,6 +140,27 @@ describe("scenarios > metrics > metric page", () => {
       .findByDisplayValue("Renamed metric")
       .should("be.visible");
 
+    cy.log("navigate between tabs");
+    H.MetricPage.aboutTab().should("be.visible");
+    H.MetricPage.overviewTab().should("be.visible");
+    H.MetricPage.definitionTab().should("be.visible");
+    H.MetricPage.historyTab().should("be.visible");
+
+    H.MetricPage.definitionTab().click();
+    H.MetricPage.queryEditor().should("be.visible");
+    H.getNotebookStep("data").findByText("Orders").should("be.visible");
+
+    H.MetricPage.historyTab().click();
+    cy.findAllByTestId("revision-history-event").should("have.length.gte", 3);
+
+    H.MetricPage.aboutTab().click();
+    H.MetricPage.aboutPage().should("be.visible");
+
+    cy.log("bookmark via more menu");
+    H.MetricPage.moreMenu().click();
+    H.popover().findByTextEnsureVisible("Bookmark").click();
+    H.navigationSidebar().findByText("Renamed metric").should("be.visible");
+
     cy.log("duplicate via more menu");
     H.MetricPage.moreMenu().click();
     H.popover().findByText("Duplicate").click();
@@ -102,36 +171,12 @@ describe("scenarios > metrics > metric page", () => {
         .type("Renamed metric copy");
       cy.button("Duplicate").click();
     });
-    cy.wait("@createCard");
-    H.MetricPage.aboutPage().should("be.visible");
-  });
-
-  it("should open alert channel setup modal from more menu when no channels configured", () => {
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
-      H.visitMetric(metric.id);
+    cy.wait("@createCard").then(({ response }) => {
+      cy.location("pathname").should("eq", `/metric/${response?.body.id}`);
     });
-
-    H.MetricPage.moreMenu().click();
-    H.popover().findByText("Create an alert").click();
-
-    H.modal().within(() => {
-      cy.findByText(
-        "To get notified when something happens, or to send this chart on a schedule, first set up email, Slack, or a webhook.",
-      ).should("be.visible");
-
-      cy.findByText("Set up email")
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/settings/email");
-      cy.findByText("Set up Slack")
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/settings/slack");
-      cy.findByText("Add a webhook")
-        .should("be.visible")
-        .closest("a")
-        .should("have.attr", "href", "/admin/settings/webhooks");
-    });
+    H.MetricPage.aboutPage()
+      .findByDisplayValue("Renamed metric copy")
+      .should("be.visible");
   });
 
   it(
@@ -159,6 +204,7 @@ describe("scenarios > metrics > metric page", () => {
 
       H.addNotificationHandlerChannel("Bar Hook");
 
+      H.selectScheduleTime();
       cy.findByRole("button", { name: "Done" }).click();
 
       cy.wait("@createAlert").then(({ response }) => {
@@ -172,32 +218,9 @@ describe("scenarios > metrics > metric page", () => {
     },
   );
 
-  it("should display timeseries metric and navigate between tabs", () => {
+  it("should render curated dimension charts in order and load more", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
-      H.visitMetric(metric.id);
-    });
-
-    H.MetricPage.aboutPage().should("be.visible");
-    H.echartsContainer().should("be.visible");
-
-    H.MetricPage.aboutTab().should("be.visible");
-    H.MetricPage.overviewTab().should("be.visible");
-    H.MetricPage.definitionTab().should("be.visible");
-    H.MetricPage.historyTab().should("be.visible");
-
-    H.MetricPage.definitionTab().click();
-    H.MetricPage.queryEditor().should("be.visible");
-    H.getNotebookStep("data").findByText("Orders").should("be.visible");
-
-    H.MetricPage.historyTab().click();
-    cy.findAllByTestId("revision-history-event").should("have.length.gte", 1);
-
-    H.MetricPage.aboutTab().click();
-    H.MetricPage.aboutPage().should("be.visible");
-  });
-
-  it("should render dimension charts on the overview tab and show more", () => {
-    H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
+      addOverviewDimensions(metric.id);
       H.visitMetric(metric.id);
     });
 
@@ -205,36 +228,82 @@ describe("scenarios > metrics > metric page", () => {
     H.MetricPage.overviewPage().should("be.visible");
 
     H.MetricPage.overviewPage().within(() => {
-      cy.findByText("By Created At").should("exist");
-      cy.findByText("By State").should("exist");
-      cy.findByText("By Category").should("exist");
-      cy.findByText("By City").should("exist");
       cy.findAllByText(/^By /).should("have.length", 4);
+      cy.findAllByText(/^By /).then(($cards) => {
+        expect($cards.map((_, card) => card.textContent).get()).to.deep.equal([
+          "By Subtotal",
+          "By Tax",
+          "By Total",
+          "By Discount",
+        ]);
+      });
+    });
+
+    H.MetricPage.overviewPage().realMouseWheel({ deltaY: 100 });
+
+    H.MetricPage.overviewPage().within(() => {
+      cy.findAllByText(/^By /).should("have.length", 10);
+
+      cy.findAllByText(/^By /).then(($cards) => {
+        expect($cards.map((_, card) => card.textContent).get()).to.deep.equal([
+          "By Subtotal",
+          "By Tax",
+          "By Total",
+          "By Discount",
+          "By Created At",
+          "By Quantity",
+          "By Category",
+          "By Price",
+          "By Rating",
+          "By Title",
+        ]);
+      });
 
       cy.findByText("Show more").scrollIntoView().click();
+      cy.findAllByText(/^By /).should("have.length", 14);
     });
 
     H.expectUnstructuredSnowplowEvent({
       event: "metric_page_show_more_clicked",
     });
-
-    H.MetricPage.overviewPage().within(() => {
-      cy.findByText("By Name").should("exist");
-      cy.findByText("By Source").should("exist");
-      cy.findByText("By Title").should("exist");
-      cy.findByText("By Vendor").should("exist");
-      cy.findAllByText(/^By /).should("have.length", 8);
-    });
   });
 
-  it("should edit, save, and cancel metric definition changes", () => {
+  it("should discard unsaved changes on leaving (metabase#32037), cancel and save metric definition changes, surface a failed revert (UXW-310), offer alert channel setup when no channels are configured, and move the metric to trash", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
-      cy.visit(`/metric/${metric.id}/query`);
+    H.createQuestion(ORDERS_SCALAR_METRIC, {
+      wrapId: true,
+      idAlias: "metricId",
+    });
+    cy.get<number>("@metricId").then((metricId) => {
+      cy.visit(`/metric/${metricId}/query`);
     });
 
     H.MetricPage.queryEditor().should("be.visible");
+    H.MetricPage.saveButton().should("not.exist");
+
+    cy.log("leaving with unsaved changes asks to discard them");
+    H.getNotebookStep("summarize").button("Count").click();
+    H.popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("Total").click();
+    });
+    H.MetricPage.saveButton().should("be.visible");
+
+    H.MetricPage.aboutTab().click();
+    H.modal().within(() => {
+      cy.findByText("Discard your changes?").should("be.visible");
+      cy.findByText("Discard changes").click();
+    });
+
+    H.MetricPage.aboutPage().should("be.visible");
+    cy.get<number>("@metricId").then((metricId) => {
+      cy.location("pathname").should("eq", `/metric/${metricId}`);
+    });
+
+    H.MetricPage.definitionTab().click();
+    H.MetricPage.queryEditor().should("be.visible");
+    H.getNotebookStep("summarize").findByText("Count").should("be.visible");
 
     cy.log("cancel reverts changes");
     H.getNotebookStep("summarize").button("Count").click();
@@ -274,39 +343,35 @@ describe("scenarios > metrics > metric page", () => {
     cy.wait("@failedRevert");
 
     H.undoToast().should("contain.text", "Cannot revert: missing metric");
-  });
 
-  it("should add metric to dashboard and move to trash via more menu", () => {
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-
-    H.createQuestion(ORDERS_SCALAR_METRIC, {
-      wrapId: true,
-      idAlias: "metricId",
-    });
-
-    cy.get<number>("@metricId").then((metricId) => {
-      H.visitMetric(metricId);
-    });
-
-    cy.log("add to dashboard");
+    cy.log("create an alert without channels offers channel setup");
+    H.MetricPage.aboutTab().click();
+    H.MetricPage.aboutPage().should("be.visible");
     H.MetricPage.moreMenu().click();
-    H.popover().findByText("Add to a dashboard").click();
-    H.modal().within(() => {
-      cy.findByRole("heading", {
-        name: "Add this metric to a dashboard",
-      }).should("be.visible");
-      cy.findByText("Orders in a dashboard").click();
-      cy.button("Select").click();
-    });
-    cy.location("pathname").should(
-      "eq",
-      `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
-    );
+    H.popover().findByText("Create an alert").click();
 
-    cy.log("move to trash");
-    cy.get<number>("@metricId").then((metricId) => {
-      H.visitMetric(metricId);
+    H.modal().within(() => {
+      cy.findByText(
+        "To get notified when something happens, or to send this chart on a schedule, first set up email, Slack, or a webhook.",
+      ).should("be.visible");
+
+      cy.findByText("Set up email")
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/settings/email");
+      cy.findByText("Set up Slack")
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/settings/slack");
+      cy.findByText("Add a webhook")
+        .should("be.visible")
+        .closest("a")
+        .should("have.attr", "href", "/admin/settings/webhooks");
     });
+    cy.realPress("Escape");
+    H.modal().should("not.exist");
+
+    cy.log("move to trash via more menu");
     H.MetricPage.moreMenu().click();
     H.popover().findByText("Move to trash").click();
     H.modal().button("Move to trash").click();
@@ -314,14 +379,14 @@ describe("scenarios > metrics > metric page", () => {
     H.main().findByText("This metric is in the trash.");
   });
 
-  it("should restrict editing controls and definition tab for read-only users", () => {
-    cy.signInAsAdmin();
+  it("should hide editing controls and the overview and definition tabs from read-only users", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
       cy.signIn("readonly");
       H.visitMetric(metric.id);
 
       cy.log("about page hides editing controls");
       H.MetricPage.aboutPage().should("be.visible");
+      H.MetricPage.header().findByText("Orders count").should("be.visible");
       cy.findByDisplayValue("Orders count").should("not.exist");
       H.MetricPage.moreMenu().click();
       H.popover().within(() => {
@@ -334,6 +399,7 @@ describe("scenarios > metrics > metric page", () => {
 
       cy.log("overview and definition tabs are hidden for read-only users");
       cy.realPress("Escape");
+      H.MetricPage.historyTab().should("be.visible");
       H.MetricPage.overviewTab().should("not.exist");
       H.MetricPage.definitionTab().should("not.exist");
     });
@@ -363,14 +429,32 @@ describe("scenarios > metrics > metric page", () => {
         cy.visit(`/data-studio/library/metrics/${metric.id}`);
         H.MetricPage.aboutPage().should("be.visible");
         H.MetricPage.moreMenu().click();
+        H.popover().findByText("Bookmark").should("be.visible");
         H.popover().findByText("Open in Data Studio").should("not.exist");
       });
     });
 
-    it("should navigate to usage analytics dashboard from more menu", () => {
+    it("should show the Dependencies tab with dependency graph and navigate to usage analytics from more menu", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+        H.waitForBackfillComplete();
         H.visitMetric(metric.id);
 
+        H.MetricPage.aboutPageDescriptionSidebar().within(() => {
+          cy.findByText("Relationships").should("be.visible");
+          cy.findByText("No dependencies").should("be.visible");
+          cy.findByText("No charts use this metric").should("be.visible");
+        });
+
+        H.MetricPage.dependenciesTab().click();
+        H.DependencyGraph.graph().within(() => {
+          cy.findByText("Table");
+          cy.findByText("Orders").should("be.visible");
+          cy.findByText("Orders count").should("be.visible");
+        });
+
+        cy.log("usage analytics from more menu");
+        H.MetricPage.aboutTab().click();
+        H.MetricPage.aboutPage().should("be.visible");
         H.MetricPage.moreMenu().click();
         H.popover()
           .findByText("Metric usage analytics")
@@ -386,26 +470,6 @@ describe("scenarios > metrics > metric page", () => {
 
         cy.location("search").should("include", `question_id=${metric.id}`);
         H.main().findByText("Question overview").should("be.visible");
-      });
-    });
-
-    it("should show the Dependencies tab with dependency graph in EE", () => {
-      H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
-        H.waitForBackfillComplete();
-        H.visitMetric(metric.id);
-      });
-
-      H.MetricPage.aboutPageDescriptionSidebar().within(() => {
-        cy.findByText("Relationships").should("be.visible");
-        cy.findByText("No dependencies").should("be.visible");
-        cy.findByText("No charts use this metric").should("be.visible");
-      });
-
-      H.MetricPage.dependenciesTab().click();
-      H.DependencyGraph.graph().within(() => {
-        cy.findByText("Table");
-        cy.findByText("Orders").should("be.visible");
-        cy.findByText("Orders count").should("be.visible");
       });
     });
   });

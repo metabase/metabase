@@ -4,14 +4,13 @@ import {
   setupBookmarksEndpoints,
   setupCommentEndpoints,
   setupDocumentEndpoints,
+  setupTimelinesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
 import { createMockDocument } from "metabase-types/api/mocks";
 
 import { DocumentPage } from "./DocumentPage";
-
-const RoutedDocumentPage = withRouteProps(DocumentPage);
 
 const setup = () => {
   setupBookmarksEndpoints([]);
@@ -23,17 +22,28 @@ const setup = () => {
     }),
   );
   setupCommentEndpoints([], { target_type: "document", target_id: 1 });
+  setupTimelinesEndpoints([]);
 
   renderWithProviders(
     <>
-      <Route
-        path="/document/:entityId"
-        element={<RoutedDocumentPage />}
-      ></Route>
+      <Route path="/document/:entityId" element={<DocumentPage />}></Route>
     </>,
     {
       withRouter: true,
       initialRoute: "/document/1",
+    },
+  );
+};
+
+const setupNewDocument = () => {
+  setupBookmarksEndpoints([]);
+  setupTimelinesEndpoints([]);
+
+  return renderWithProviders(
+    <Route path="/document/:entityId" element={<DocumentPage />} />,
+    {
+      withRouter: true,
+      initialRoute: "/document/new",
     },
   );
 };
@@ -67,5 +77,20 @@ describe("Document Page", () => {
         screen.queryByRole("button", { name: "Save" }),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("warns about unsaved changes only once a navigation lands back on /document/new", async () => {
+    const { router } = setupNewDocument();
+
+    await userEvent.type(await getDocumentTitle(), "Draft");
+
+    expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();
+
+    // The "New document" menu item links to the URL we are already on, which v7
+    // resolves as a replace. The page stays mounted, so the fresh location is
+    // what tells it the user asked to start over.
+    act(() => router?.navigate("/document/new", { replace: true }));
+
+    expect(await screen.findByTestId("leave-confirmation")).toBeInTheDocument();
   });
 });

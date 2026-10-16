@@ -24,12 +24,13 @@ beforeEach(() => {
 });
 
 describe("createAppBundle", () => {
-  it("exposes the built chunk", async () => {
+  it("exposes the built chunk and when it was built", async () => {
     const bundle = setup();
 
     expect(await bundle.rebuild()).toBe(true);
 
     expect(bundle.code).toBe("built");
+    expect(bundle.lastRebuildAt).toEqual(expect.any(Number));
   });
 
   it("reports a build failure instead of throwing at the dev server", async () => {
@@ -42,6 +43,7 @@ describe("createAppBundle", () => {
     expect(onError).toHaveBeenCalledWith(
       expect.stringContaining("syntax error in App.tsx"),
     );
+    expect(bundle.lastRebuildAt).toBeNull();
   });
 
   it("keeps the last good bundle when a later build fails", async () => {
@@ -100,5 +102,30 @@ describe("createAppBundle", () => {
 
   it("holds no code until something is built", () => {
     expect(setup().code).toBe("");
+  });
+
+  it("numbers each successful build, so entries can be tied to one", () => {
+    const bundle = setup();
+
+    // 0 is "nothing built yet", which the page treats as no build at all.
+    expect(bundle.buildId).toBe(0);
+  });
+
+  it("advances the number only when a build succeeds", async () => {
+    const bundle = setup();
+
+    await bundle.rebuild();
+    expect(bundle.buildId).toBe(1);
+
+    mockedBuild.mockRejectedValue(new Error("nope"));
+    await bundle.rebuild();
+
+    // A failed build changes nothing the preview runs — it keeps evaluating
+    // the last good bundle, so its entries stay current.
+    expect(bundle.buildId).toBe(1);
+
+    mockedBuild.mockResolvedValue(rollupOutput("built again"));
+    await bundle.rebuild();
+    expect(bundle.buildId).toBe(2);
   });
 });

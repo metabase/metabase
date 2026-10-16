@@ -16,20 +16,20 @@ const setup = (initialRoute: string) =>
 
 describe("QuestionHashRedirect", () => {
   it("redirects /q to /question, preserving the hash", async () => {
-    const { history } = setup("/q#foo=bar");
+    const { router } = setup("/q#foo=bar");
 
     await waitFor(() => {
-      const location = history?.getCurrentLocation();
+      const location = router?.location;
       expect(location?.pathname).toBe("/question");
       expect(location?.hash).toBe("#foo=bar");
     });
   });
 
   it("redirects /card/:slug to /question/:slug, preserving the hash", async () => {
-    const { history } = setup("/card/123-foo#bar=baz");
+    const { router } = setup("/card/123-foo#bar=baz");
 
     await waitFor(() => {
-      const location = history?.getCurrentLocation();
+      const location = router?.location;
       expect(location?.pathname).toBe("/question/123-foo");
       expect(location?.hash).toBe("#bar=baz");
     });

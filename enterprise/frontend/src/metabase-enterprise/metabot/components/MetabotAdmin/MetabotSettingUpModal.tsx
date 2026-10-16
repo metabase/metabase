@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils/use-token-refresh";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
+import {
+  WAITING_REFRESH_INTERVAL,
+  useTokenRefreshUntil,
+} from "metabase/settings";
 import {
   Box,
   Button,
@@ -28,7 +31,7 @@ export function MetabotSettingUpModal({
     isSavingConfiguration || !hasPremiumFeature(METABASE_MANAGED_AI_FEATURE);
 
   useTokenRefreshUntil(METABASE_MANAGED_AI_FEATURE, {
-    intervalMs: 1000,
+    intervalMs: WAITING_REFRESH_INTERVAL,
     skip: !opened || !isSettingUp,
   });
 
@@ -43,7 +46,7 @@ export function MetabotSettingUpModal({
       padding="2.5rem"
       mah="80%"
     >
-      <Stack align="center" gap="lg" my="4.5rem">
+      <Stack align="center" gap="xl" my="4.5rem">
         <Box h={96} pos="relative" w={96}>
           <MetabotLogo variant="cloud" alt={t`Metabot Cloud`} />
 
@@ -91,7 +94,7 @@ export function MetabotSettingUpModal({
               </Text>
             </Box>
 
-            <Button variant="filled" size="md" onClick={onClose}>
+            <Button variant="filled" onClick={onClose}>
               {t`Done`}
             </Button>
           </>

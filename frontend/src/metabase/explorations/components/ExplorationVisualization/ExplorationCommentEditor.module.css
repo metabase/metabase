@@ -1,0 +1,10 @@
+/*
+disable comment editor styles - we apply styles on the popover dropdown instead
+selecting the same class twice is a specificity hack to ensure the override takes effect
+*/
+.commentEditor.commentEditor {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  width: 20rem;
+}

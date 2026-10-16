@@ -1,0 +1,23 @@
+## A native query can name a table that sync hasn't found yet. The backfill flags such entities, so that the next sync
+## of their database recomputes them and records the table once it exists.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-16T00:00:00
+      author: ranquild
+      comment: Add dependency_status.unresolved_tables, flagging entities that name tables matching nothing
+      changes:
+        - addColumn:
+            tableName: dependency_status
+            columns:
+              - column:
+                  name: unresolved_tables
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity names tables that match no synced table, recomputed after each sync
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: unresolved_tables

@@ -1,9 +1,9 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Outlet } from "metabase/router";
+import { Outlet, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
-import { useDataModelMeasurePage } from "../../hooks";
+import { useDataModelMeasurePage } from "../../hooks/use-data-model-measure-page";
 import { MeasureDependenciesPage } from "../MeasureDependenciesPage";
 
 type DataModelMeasureDependenciesPageParams = {
@@ -13,13 +13,8 @@ type DataModelMeasureDependenciesPageParams = {
   measureId: string;
 };
 
-type DataModelMeasureDependenciesPageProps = {
-  params: DataModelMeasureDependenciesPageParams;
-};
-
-export function DataModelMeasureDependenciesPage({
-  params,
-}: DataModelMeasureDependenciesPageProps) {
+export function DataModelMeasureDependenciesPage() {
+  const params = useParams<DataModelMeasureDependenciesPageParams>();
   const { isLoading, error, measure, table, tabUrls, onRemove } =
     useDataModelMeasurePage(params);
 

@@ -12,6 +12,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.tu]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -411,7 +412,7 @@
 
 (deftest ^:parallel pivot-with-remapped-breakout
   (testing "remapped columns should be accounted for in the result rows (#46919)"
-    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables) :h2)
+    (mt/test-drivers (conj (mt/normal-drivers-with-feature :native-pivot-tables :left-join) :h2)
       (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
                                                                            (mt/id :products :title)))

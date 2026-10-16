@@ -11,13 +11,17 @@ import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
+import {
+  MetabotNode,
+  type PromptSerializer,
+} from "metabase/metabot/components/editor-extensions/MetabotEmbed";
+import { MetabotMentionExtension } from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotMentionExtension";
+import { MetabotMentionSuggestion } from "metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestion";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
-import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandExtension";
-import { CommandSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
 import { FlexContainer } from "metabase/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
@@ -25,23 +29,23 @@ import { HandleEditorDrop } from "metabase/rich_text_editing/tiptap/extensions/H
 import { LinkHoverMenu } from "metabase/rich_text_editing/tiptap/extensions/LinkHoverMenu/LinkHoverMenu";
 import { MentionExtension } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
-import {
-  MetabotNode,
-  type PromptSerializer,
-} from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed";
-import { MetabotMentionExtension } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
-import { MetabotMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
 import { PlainLink } from "metabase/rich_text_editing/tiptap/extensions/PlainLink/PlainLink";
 import { ResizeNode } from "metabase/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/SupportingText/SupportingText";
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting } from "metabase/settings";
 import { Box, Center, Loader } from "metabase/ui";
 
+import { CardEmbed } from "../editor-extensions/CardEmbed/CardEmbedNode";
+
 import { DocumentBlockShell } from "./DocumentBlockShell";
-import { DocumentEditorHostProvider } from "./DocumentEditorHost";
+import { DocumentCommandSuggestion } from "./DocumentCommandSuggestion";
+import {
+  type DocumentEditorHost,
+  DocumentEditorHostProvider,
+} from "./DocumentEditorHost";
 import DropCursorS from "./DropCursor.module.css";
 import S from "./Editor.module.css";
 import { createChartPasteExtension } from "./chart-paste-extension";
@@ -89,11 +93,16 @@ export interface EditorProps {
   onCardEmbedsChange?: (refs: CardEmbedRef[]) => void;
   initialContent?: JSONContent | null;
   onChange?: (content: JSONContent) => void;
-  onQuestionSelect?: (cardId: number | null) => void;
+  onQuestionSelect?: (
+    cardId: number | null,
+    embedIndex?: number | null,
+  ) => void;
   editable?: boolean;
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
+  hostOverride?: Partial<DocumentEditorHost>;
+  placeholder?: string;
 }
 
 export const Editor: React.FC<EditorProps> = React.memo(
@@ -106,6 +115,8 @@ export const Editor: React.FC<EditorProps> = React.memo(
     onQuestionSelect,
     isLoading = false,
     editorContainerRef,
+    hostOverride,
+    placeholder,
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const { getState } = useStore();
@@ -137,7 +148,9 @@ export const Editor: React.FC<EditorProps> = React.memo(
           defaultProtocol: "https",
         }),
         Placeholder.configure({
-          placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
+          placeholder:
+            placeholder ??
+            t`Start writing, type "/" to list commands, or "@" to mention an item...`,
         }),
         CardEmbed,
         FlexContainer,
@@ -151,7 +164,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
         CommandExtension.configure({
           suggestion: {
             allow: ({ state }) => !isMetabotBlock(state),
-            render: createSuggestionRenderer(CommandSuggestion),
+            render: createSuggestionRenderer(DocumentCommandSuggestion),
           },
         }),
         MetabotNode.configure({
@@ -168,7 +181,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
         HandleEditorDrop,
         createChartPasteExtension(dispatch),
       ],
-      [siteUrl, getState, dispatch],
+      [siteUrl, getState, dispatch, placeholder],
     );
 
     const editor = useEditor(
@@ -236,7 +249,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
     }
 
     return (
-      <DocumentEditorHostProvider>
+      <DocumentEditorHostProvider hostOverride={hostOverride}>
         <Box className={cx(S.editor, DND_IGNORE_CLASS_NAME)}>
           <Box
             className={S.editorContent}

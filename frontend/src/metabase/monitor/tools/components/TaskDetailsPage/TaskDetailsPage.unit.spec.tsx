@@ -9,17 +9,14 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-  within,
 } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Task } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { TaskDetailsPage } from "./TaskDetailsPage";
-
-const RoutedTaskDetailsPage = withRouteProps(TaskDetailsPage);
 
 jest.mock("@mantine/hooks", () => ({
   ...jest.requireActual("@mantine/hooks"),
@@ -40,7 +37,7 @@ const setup = ({ task = createMockTask() }: SetupOpts = {}) => {
   setupTaskEndpoint(task);
 
   return renderWithProviders(
-    <Route path={PATHNAME} element={<RoutedTaskDetailsPage />} />,
+    <Route path={PATHNAME} element={<TaskDetailsPage />} />,
     {
       initialRoute: Urls.monitorTaskDetails(task.id),
       withRouter: true,
@@ -127,18 +124,12 @@ describe("TaskDetailsPage", () => {
 
     await waitForLoaderToBeRemoved();
 
-    const copyButtons = screen.getAllByTestId("copy-button");
+    const copyButtons = screen.getAllByRole("button", { name: "Copy" });
 
-    const startedAtCopyIcon = within(copyButtons[0]).getByRole("img", {
-      name: "copy icon",
-    });
-    await userEvent.click(startedAtCopyIcon);
+    await userEvent.click(copyButtons[0]);
     expect(copyMock).toHaveBeenCalledWith(startedAt);
 
-    const endedAtCopyIcon = within(copyButtons[1]).getByRole("img", {
-      name: "copy icon",
-    });
-    await userEvent.click(endedAtCopyIcon);
+    await userEvent.click(copyButtons[1]);
     expect(copyMock).toHaveBeenCalledWith(endedAt);
   });
 

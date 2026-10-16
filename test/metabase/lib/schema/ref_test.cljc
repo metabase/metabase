@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.ref-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
    [metabase.lib.core :as lib]
@@ -7,6 +8,8 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.malli.registry :as mr]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel unknown-type-test
   (let [expr [:field {:lib/uuid "214211bc-9bc0-4025-afc5-2256a523bafe"} 1]]
@@ -35,12 +38,12 @@
       ;; I don't know why the Cljs versions give us slightly different answers, but I think that's an upstream Malli
       ;; problem, so I'm not going to spend too much time digging in to it. Close enough.
       [:field {:lib/uuid "ede8dc3c-de7e-49ec-a78c-bacfb43f2301"} :1]
-      #?(:clj  [nil nil ["should be a positive int" "should be a string"]]
-         :cljs [nil nil ["should be a positive int" "should be a string"]])
+      #?(:clj  [nil nil ["should be a string" "should be a positive int"]]
+         :cljs [nil nil ["should be a string" "should be a positive int"]])
 
       [:field {:lib/uuid "ede8dc3c-de7e-49ec-a78c-bacfb43f2301"} -1]
-      #?(:clj  [nil nil ["should be a positive int" "should be a string" "should be a positive int"]]
-         :cljs [nil nil ["should be a positive int" "should be a string" "should be a positive int"]]))))
+      #?(:clj  [nil nil ["should be a string" "should be a positive int" "should be a positive int"]]
+         :cljs [nil nil ["should be a string" "should be a positive int" "should be a positive int"]]))))
 
 (deftest ^:parallel field-with-empty-name-test
   (testing "We need to support fields with empty names, this is legal in SQL Server (QUE-1418)"
@@ -70,6 +73,22 @@
 (deftest ^:parallel normalize-field-ref-remove-nil-values-test
   (is (= [:field {:lib/uuid "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} 100]
          (lib/normalize ["field" {"temporal-unit" nil, "lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} 100]))))
+
+(deftest ^:parallel normalize-legacy-expression-ref-test
+  (testing "a legacy :expression ref carries its name in the id slot; normalizing must move it into
+            MBQL 5 position rather than dropping it"
+    (are [legacy-ref] (=? [:expression {:lib/uuid string?} "Foo"]
+                          (lib/normalize ::lib.schema.ref/ref legacy-ref))
+      [:expression "Foo"]
+      ["expression" "Foo"]
+      [:expression "Foo" nil]
+      ["expression" "Foo" nil]
+      [:expression "Foo" {}]
+      ["expression" "Foo" {"base-type" "type/Integer"}]))
+  (testing "an MBQL 5 ref (options map in the id slot) is left alone"
+    (is (= [:expression {:lib/uuid "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} "Foo"]
+           (lib/normalize ::lib.schema.ref/ref
+                          ["expression" {"lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} "Foo"])))))
 
 (deftest ^:parallel rename-old-long-namespaced-keys-in-field-options-test
   (testing "Old long-namespaced keys in field ref options should be renamed to :lib/* equivalents"

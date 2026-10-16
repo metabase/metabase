@@ -3,9 +3,9 @@ import { setupDatabaseEndpoints } from "__support__/server-mocks/database";
 import { setupDependencyGraphEndpoint } from "__support__/server-mocks/dependencies";
 import { setupTableEndpoints } from "__support__/server-mocks/table";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { MetricUrls } from "metabase/common/metrics/types";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Card } from "metabase-types/api";
 import {
@@ -31,6 +31,7 @@ const URLS: MetricUrls = {
   about: (id) => `/metric/${id}/about`,
   overview: (id) => `/metric/${id}/overview`,
   query: (id) => `/metric/${id}/query`,
+  dimensions: (id) => `/metric/${id}/dimensions`,
   dependencies: (id) => `/metric/${id}/dependencies`,
   history: (id) => `/metric/${id}/history`,
   database: (id) => `/browse/databases/${id}`,
@@ -96,7 +97,10 @@ function setup({
       is_data_analyst: role === "analyst",
     }),
     settings: mockSettings({
-      "token-features": createMockTokenFeatures({ dependencies: true }),
+      "token-features": createMockTokenFeatures({
+        advanced_permissions: true,
+        dependencies: true,
+      }),
     }),
   });
   // Enable the dependencies plugin via real EE init (reads the mocked settings).

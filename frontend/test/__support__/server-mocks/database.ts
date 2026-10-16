@@ -4,7 +4,13 @@ import _ from "underscore";
 import { shouldSchemaBePassedAsQueryParam } from "metabase/api";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
-import type { Database, DatabaseUsageInfo } from "metabase-types/api";
+import type {
+  Database,
+  DatabaseId,
+  DatabaseUsageInfo,
+  Engine,
+  SchemaName,
+} from "metabase-types/api";
 
 import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
@@ -57,6 +63,10 @@ export function setupDatabaseUsageInfoEndpoint(
   usageInfo: DatabaseUsageInfo,
 ) {
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
+}
+
+export function setupEnginesEndpoint(engines: Record<string, Engine>) {
+  fetchMock.get("path:/api/setting/engines", engines);
 }
 
 export function setupDatabaseListEndpoint(databases: Database[]) {
@@ -113,6 +123,13 @@ export const setupSchemaEndpoints = (db: Database) => {
       name: `database-${db.id}-schema-${schema}`,
     });
   });
+};
+
+export const setupListDatabaseSchemasEndpoint = (
+  databaseId: DatabaseId,
+  schemaNames: SchemaName[],
+) => {
+  fetchMock.get(`path:/api/database/${databaseId}/schemas`, schemaNames);
 };
 
 export function setupDatabaseIdFieldsEndpoints({

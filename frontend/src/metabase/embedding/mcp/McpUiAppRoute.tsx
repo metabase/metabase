@@ -4,15 +4,14 @@ import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponen
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
-import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/selectors/settings";
+import { useSetting } from "metabase/settings";
 import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
-import { getMcpDeserializedCard } from "./McpUiAppRoute.utils";
+import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
 import { useHandleMcpDrillThrough } from "./hooks/useHandleMcpDrillThrough";
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
@@ -27,17 +26,18 @@ const FOOTER_HORIZONTAL_PADDING = 16;
 
 interface McpUiAppRouteContentProps {
   app: McpAppState["app"];
+  hostError: McpAppState["hostError"];
   hostContext: McpAppState["hostContext"];
   instanceUrl: string;
+  mcpSessionId: string;
   prompt: McpAppState["prompt"];
   query: McpAppState["query"];
-  sessionToken: string;
+  queryError: McpAppState["queryError"];
+  uiCredential: string;
 }
 
 interface McpMetabaseConfig {
   instanceUrl: string;
-  sessionToken: string;
-  mcpSessionId: string;
 }
 
 // CSS for .mcp-loading and .mcp-spinner is defined globally in embed-mcp.html.
@@ -48,11 +48,20 @@ const SimpleLoader = () => (
 );
 
 export function McpUiAppRoute() {
-  const { app, hostContext, prompt, query } = useMcpApp();
-
-  const { instanceUrl = "", sessionToken = "" } =
+  const { instanceUrl = "" } =
     // Unjustified type cast. FIXME
     (window.metabaseConfig as McpMetabaseConfig) ?? {};
+
+  const {
+    app,
+    hostError,
+    hostContext,
+    mcpSessionId,
+    uiCredential,
+    prompt,
+    query,
+    queryError,
+  } = useMcpApp();
 
   const scheme: ResolvedColorScheme =
     hostContext?.theme === "dark" ? "dark" : "light";
@@ -81,11 +90,14 @@ export function McpUiAppRoute() {
     >
       <McpUiAppRouteContent
         app={app}
+        hostError={hostError}
         hostContext={hostContext}
         instanceUrl={instanceUrl}
+        mcpSessionId={mcpSessionId}
         prompt={prompt}
         query={query}
-        sessionToken={sessionToken}
+        queryError={queryError}
+        uiCredential={uiCredential}
       />
     </ComponentProvider>
   );
@@ -93,33 +105,37 @@ export function McpUiAppRoute() {
 
 function McpUiAppRouteContent({
   app,
+  hostError,
   hostContext,
   instanceUrl,
+  mcpSessionId,
   prompt,
   query,
-  sessionToken,
+  queryError,
+  uiCredential,
 }: McpUiAppRouteContentProps) {
-  const handleDrillThrough = useHandleMcpDrillThrough(app);
-  const isHosted = useSelector(getIsHosted);
-
-  const { mcpSessionId = "" } =
-    // Unjustified type cast. FIXME
-    (window.metabaseConfig as McpMetabaseConfig) ?? {};
-
+  const isHosted = useSetting("is-hosted?");
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 
-  const deserializedCard = useMemo(() => {
+  const handleDrillThrough = useHandleMcpDrillThrough({
+    app,
+    uiCredential,
+    mcpSessionId,
+  });
+
+  const deserializedQuery = useMemo(() => {
     if (!query) {
       return null;
     }
 
-    return getMcpDeserializedCard(query);
+    return getMcpDeserializedQuery(query);
   }, [query]);
 
   const { isSettingsReady, userAndSettingsFetchError } =
     useMcpUserAndSettingsFetch({
       instanceUrl,
-      sessionToken,
+      uiCredential,
+      mcpSessionId,
       store,
     });
 
@@ -127,16 +143,17 @@ function McpUiAppRouteContent({
     instanceUrl &&
     hostContext &&
     isSettingsReady &&
-    deserializedCard
+    uiCredential &&
+    deserializedQuery
   );
 
   useEffect(() => {
     // Remove the loading indicator on the HTML page once the app is ready or
     // when initialization fails and the route can render its own error.
-    if (isReady || userAndSettingsFetchError) {
+    if (isReady || hostError || userAndSettingsFetchError || queryError) {
       document.getElementById("mcp-loading")?.remove();
     }
-  }, [isReady, userAndSettingsFetchError]);
+  }, [hostError, isReady, queryError, userAndSettingsFetchError]);
 
   const height = `calc(${MCP_CONTENT_HEIGHT} + ${FOOTER_HEIGHT})`;
 
@@ -170,7 +187,7 @@ function McpUiAppRouteContent({
     mcpSessionId,
     prompt,
     query,
-    sessionToken,
+    uiCredential,
   });
 
   const renderSdkQuestionContent = () => {
@@ -210,9 +227,10 @@ function McpUiAppRouteContent({
   };
 
   const renderQuestionCardView = () =>
-    deserializedCard && (
+    deserializedQuery && (
       <SdkQuestion
-        deserializedCard={deserializedCard}
+        deserializedCard={deserializedQuery.card}
+        initialSqlParameters={deserializedQuery.initialSqlParameters}
         isSaveEnabled={false}
         // we should never show query builder in chat interfaces
         withEditorButton={false}
@@ -224,8 +242,18 @@ function McpUiAppRouteContent({
     );
 
   const renderContentView = () => {
+    if (hostError) {
+      return <SdkError message={hostError} />;
+    }
+
     if (userAndSettingsFetchError) {
       return <SdkError message={userAndSettingsFetchError} />;
+    }
+
+    // A handle that will not resolve has no card to render. Without this the
+    // route would sit on the loading indicator forever.
+    if (queryError) {
+      return <SdkError message={queryError} />;
     }
 
     if (!isReady) {

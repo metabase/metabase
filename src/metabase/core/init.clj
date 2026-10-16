@@ -23,7 +23,7 @@
    [metabase.channel.init]
    [metabase.classloader.init]
    [metabase.cloud-migration.init]
-   [metabase.collections-rest.init]
+   [metabase.collections.init]
    [metabase.comments.init]
    [metabase.config.core :as config]
    [metabase.content-verification.init]
@@ -33,6 +33,7 @@
    [metabase.eid-translation.init]
    [metabase.embedding.init]
    [metabase.events.init]
+   [metabase.explorations.init]
    [metabase.geojson.init]
    [metabase.health-inspector.init]
    [metabase.indexed-entities.init]
@@ -43,6 +44,7 @@
    [metabase.login-history.init]
    [metabase.mcp.init]
    [metabase.metabot.init]
+   [metabase.mfa.init]
    [metabase.model-persistence.init]
    [metabase.models.init]
    [metabase.mq.init]
@@ -84,6 +86,7 @@
    [metabase.users.init]
    [metabase.version.init]
    [metabase.view-log.init]
+   [metabase.warehouse-schema.init]
    [metabase.warehouses.init]
    [metabase.xrays.init]))
 

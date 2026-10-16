@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { TemporalUnit } from "metabase-types/api";
+import type { DayOfWeekId, TemporalUnit } from "metabase-types/api";
 
 import { displayInfo } from "./metadata";
 import type { Bucket, Clause, ColumnMetadata, Query } from "./types";
@@ -26,7 +26,7 @@ export function isTemporalBucketable(
 
 export function withTemporalBucket(
   column: ColumnMetadata,
-  bucket: Bucket | null,
+  bucket: Bucket | "default" | null,
 ): ColumnMetadata {
   return ML.with_temporal_bucket(column, bucket);
 }
@@ -78,15 +78,23 @@ type RelativeDateRangeFormatOpts = {
   includeCurrent?: boolean;
 };
 
-export function formatRelativeDateRange({
-  value,
-  unit,
-  offsetValue,
-  offsetUnit,
-  includeCurrent,
-}: RelativeDateRangeFormatOpts): string {
+export type TimeConfig = {
+  "start-of-week": DayOfWeekId;
+};
+
+export function formatRelativeDateRange(
+  timeConfig: TimeConfig,
+  {
+    value,
+    unit,
+    offsetValue,
+    offsetUnit,
+    includeCurrent,
+  }: RelativeDateRangeFormatOpts,
+): string {
   return ML.format_relative_date_range(value, unit, offsetValue, offsetUnit, {
     "include-current": includeCurrent,
+    ...timeConfig,
   });
 }
 

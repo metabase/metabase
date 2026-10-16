@@ -1,5 +1,8 @@
 (ns metabase.session.models.session-test
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [buddy.core.mac :as mac]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -13,6 +16,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -168,10 +173,51 @@
         (is (nil? (:key session)) "Key is not returned by the insert")
         (is (= (session/hash-session-key key) (t2/select-one-fn :key_hashed :model/Session :user_id user-id)))))))
 
-(deftest ^:parallel hash-session-key-test
-  (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff"
-         (session/hash-session-key "test")))
-  (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff"
-         (session/hash-session-key "test")))
-  (is (= "6d201beeefb589b08ef0672dac82353d0cbd9ad99e1642c83a1601f3d647bcca003257b5e8f31bdc1d73fbec84fb085c79d6e2677b7ff927e823a54e789140d9"
-         (session/hash-session-key "test2"))))
+(deftest hash-session-key-test
+  (testing "the no-secret on-disk format stays plain SHA-512; a format regression here mass-logs-out keyless
+            deployments on upgrade"
+    (with-redefs-fn {#'session/session-hash-secret (constantly nil)}
+      (fn []
+        (is (= "ee26b0dd4af7e749aa1a8ee3c10ae9923f618980772e473f8819a5d4940e0db27ac185f8a0e1d5f84f88bc887fd67b143732c304cc5fa9ad8e6f57f50028a8ff"
+               (session/hash-session-key "test")))
+        (is (= "6d201beeefb589b08ef0672dac82353d0cbd9ad99e1642c83a1601f3d647bcca003257b5e8f31bdc1d73fbec84fb085c79d6e2677b7ff927e823a54e789140d9"
+               (session/hash-session-key "test2")))))))
+
+(deftest keyed-hash-session-key-test
+  (testing "with a configured secret, key_hashed is an HMAC and not derivable from the session key alone"
+    (let [secret      (byte-array (range 64))
+          ^String session-key (str (random-uuid))
+          key-bytes   (.getBytes session-key java.nio.charset.StandardCharsets/US_ASCII)]
+      (with-redefs-fn {#'session/session-hash-secret (constantly secret)}
+        (fn []
+          (is (= (codecs/bytes->hex (mac/hash key-bytes {:key secret :alg :hmac+sha512}))
+                 (session/hash-session-key session-key)))
+          (is (not= (codecs/bytes->hex (buddy-hash/sha512 key-bytes))
+                    (session/hash-session-key session-key))
+              "keyed hash must differ from the unsalted SHA-512 an attacker can compute"))))))
+
+(deftest before-update-only-allows-an-ending-test
+  (mt/with-temp [:model/User {user-id :id}]
+    (mt/with-model-cleanup [:model/Session]
+      (let [session-id (session/generate-session-id)]
+        (t2/insert! :model/Session {:id session-id :user_id user-id :session_key (session/generate-session-key)})
+        (testing "no column outside the four an ending writes can be updated"
+          (doseq [changes [{:expires_at (t/instant)}
+                           {:user_id (mt/user->id :rasta)}
+                           {:last_active_at (t/instant)}
+                           {:ended_at (t/instant), :expires_at (t/instant)}]]
+            (is (thrown-with-msg? RuntimeException #"You cannot update a Session"
+                                  (t2/update! :model/Session session-id changes)))))
+        (testing "recording an ending is allowed"
+          (is (= 1 (t2/update! :model/Session session-id {:ended_at         (t/instant)
+                                                          :end_reason       "admin"
+                                                          :ended_by_user_id (mt/user->id :crowberto)
+                                                          :key_hashed       nil}))))
+        (testing "an ending is final: nothing an ending writes can be changed once it is recorded"
+          (doseq [changes [{:ended_at nil}
+                           {:ended_at (t/instant)}
+                           {:end_reason "timed-out"}
+                           {:ended_by_user_id (mt/user->id :rasta)}
+                           {:key_hashed (session/hash-session-key (session/generate-session-key))}]]
+            (is (thrown-with-msg? RuntimeException #"You cannot change a Session that has ended"
+                                  (t2/update! :model/Session session-id changes)))))))))

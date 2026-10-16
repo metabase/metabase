@@ -21,10 +21,10 @@ export const DatabaseConnectionSectionField = ({
   }, [value, setValue]);
 
   return (
-    <FormField>
+    <FormField mb="lg">
       <Box
         bg="background_page-tertiary"
-        p="lg"
+        p="xl"
         style={{ borderRadius: "var(--default-border-radius)" }}
       >
         <Radio.Group
@@ -36,7 +36,7 @@ export const DatabaseConnectionSectionField = ({
           <Radio
             value="form-fields"
             label={t`Fill out host, port and database name`}
-            my="xs"
+            my="xxs"
           />
           <Radio value="use-conn-uri" label={t`Use a connection string`} />
         </Radio.Group>

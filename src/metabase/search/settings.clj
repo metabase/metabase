@@ -49,7 +49,7 @@
                         ((requiring-resolve 'metabase.search.task.search-index/trigger-init-for-newly-active-engines!)
                          before)
                         (catch Throwable t
-                          (log/error t "Failed to trigger search index init for newly active engines")))))
+                          (log/errorf "Failed to trigger search index init for newly active engines: %s" (ex-message t))))))
                   result))
   :doc        false)
 
@@ -67,6 +67,6 @@
   Value must be a valid configured language option in your database such as ''english'' or ''simple''")
   :visibility :internal
   :export?    false
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    nil
   :type       :string)

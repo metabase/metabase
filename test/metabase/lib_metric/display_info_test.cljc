@@ -40,18 +40,21 @@
                   :display-name "Total Revenue"}
           result (display-info/display-info nil metric)]
       (is (= "Total Revenue" (:display-name result)))
+      (is (= "Total Revenue" (:long-display-name result)))
       (is (= "revenue" (:name result)))))
   (testing ":metadata/metric falls back to name"
     (let [metric {:lib/type :metadata/metric
                   :name "revenue"}
           result (display-info/display-info nil metric)]
-      (is (= "revenue" (:display-name result))))))
+      (is (= "revenue" (:display-name result)))
+      (is (= "revenue" (:long-display-name result))))))
 
 (deftest ^:parallel display-info-method-metric-fallback-test
-  (testing ":metadata/metric has fallback for missing name"
+  (testing ":metadata/metric has fallback for missing name, with matching long-display-name"
     (let [metric {:lib/type :metadata/metric}
           result (display-info/display-info nil metric)]
-      (is (string? (:display-name result))))))
+      (is (string? (:display-name result)))
+      (is (= (:display-name result) (:long-display-name result))))))
 
 (deftest ^:parallel display-info-method-metric-column-name-test
   (testing ":metadata/metric includes column-name from display-name"
@@ -88,12 +91,14 @@
                    :display-name "Count"}
           result (display-info/display-info nil measure)]
       (is (= "Count" (:display-name result)))
+      (is (= "Count" (:long-display-name result)))
       (is (= "count" (:name result)))))
   (testing ":metadata/measure falls back to name"
     (let [measure {:lib/type :metadata/measure
                    :name "sum"}
           result (display-info/display-info nil measure)]
-      (is (= "sum" (:display-name result))))))
+      (is (= "sum" (:display-name result)))
+      (is (= "sum" (:long-display-name result))))))
 
 (deftest ^:parallel display-info-method-measure-column-name-test
   (testing ":metadata/measure includes column-name"

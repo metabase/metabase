@@ -2,8 +2,7 @@ import type { FocusEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, Flex, Icon, Text, TextInput, rem } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
+import { ActionIcon, Flex, Icon, Text, TextInput, rem } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { formatSeparator, label } from "../util";
@@ -49,7 +48,6 @@ export const ColumnAndSeparatorRow = ({
           onChange(index, column, separator);
         }}
       />
-
       <ColumnInput
         query={query}
         stageIndex={stageIndex}
@@ -60,27 +58,21 @@ export const ColumnAndSeparatorRow = ({
           onChange(index, column, separator);
         }}
       />
-
       {showRemove && (
-        <Button
-          styles={{
-            root: {
-              border: "none",
-            },
-          }}
+        <ActionIcon
+          variant="subtle"
+          size="lg"
           aria-label={t`Remove column`}
-          leftSection={<Icon name="close" />}
-          variant="default"
           onClick={() => {
             onRemove(index);
           }}
-        />
+        >
+          <Icon name="close" />
+        </ActionIcon>
       )}
     </Flex>
   );
 };
-
-const { fontFamilyMonospace } = getThemeOverrides();
 
 function SeparatorInput({
   showSeparator,
@@ -124,8 +116,7 @@ function SeparatorInput({
         onBlur={handleBlur}
         styles={{
           input: {
-            // Unjustified type cast. FIXME
-            fontFamily: fontFamilyMonospace as string,
+            fontFamily: "var(--mb-default-monospace-font-family)",
           },
         }}
       />

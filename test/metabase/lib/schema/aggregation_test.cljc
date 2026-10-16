@@ -114,6 +114,61 @@
           ::lib.schema.aggregation/aggregation  ag
           ::lib.schema.aggregation/aggregations [ag])))))
 
+(deftest ^:parallel window-aggregation-expression?-test
+  (let [field    [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+        other    [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]
+        cum-sum  [:cum-sum {:lib/uuid "00000000-0000-0000-0000-000000000003"} field]
+        sum      [:sum {:lib/uuid "00000000-0000-0000-0000-000000000004"} field]
+        gt       [:> {:lib/uuid "00000000-0000-0000-0000-000000000005"} field 3]
+        other-gt [:> {:lib/uuid "00000000-0000-0000-0000-000000000006"} field 7]]
+    (testing "bare window aggregation clauses"
+      (are [clause] (lib.schema.aggregation/window-aggregation-expression? clause)
+        cum-sum
+        [:cum-count {:lib/uuid "00000000-0000-0000-0000-000000000007"}]
+        [:offset {:lib/uuid "00000000-0000-0000-0000-000000000008"} sum -1]))
+    (testing "non-window aggregations"
+      (are [clause] (not (lib.schema.aggregation/window-aggregation-expression? clause))
+        sum
+        [:count {:lib/uuid "00000000-0000-0000-0000-000000000009"}]
+        [:avg {:lib/uuid "00000000-0000-0000-0000-00000000000a"} field]))
+    (testing "walks arithmetic expressions"
+      (is (lib.schema.aggregation/window-aggregation-expression?
+           [:/ {:lib/uuid "00000000-0000-0000-0000-00000000000b"} cum-sum sum]))
+      (is (not (lib.schema.aggregation/window-aggregation-expression?
+                [:/ {:lib/uuid "00000000-0000-0000-0000-00000000000c"} sum sum]))))
+    (doseq [tag [:case :if]]
+      (testing (str tag " with a literal else value doesn't crash (#84452)")
+        ;; literal else values of various types — the walk must not try to seq a scalar
+        (are [else] (not (lib.schema.aggregation/window-aggregation-expression?
+                          [:sum {:lib/uuid "00000000-0000-0000-0000-00000000000d"}
+                           [tag {:lib/uuid "00000000-0000-0000-0000-00000000000e"}
+                            [[gt field]]
+                            else]]))
+          0
+          0.0
+          true
+          false
+          "x"))
+      (testing (str tag " detects a window aggregation inside the else branch")
+        (is (lib.schema.aggregation/window-aggregation-expression?
+             [tag {:lib/uuid "00000000-0000-0000-0000-00000000000f"}
+              [[gt field]]
+              cum-sum])))
+      (testing (str tag " detects a window aggregation inside a non-first case pair")
+        (is (lib.schema.aggregation/window-aggregation-expression?
+             [tag {:lib/uuid "00000000-0000-0000-0000-000000000010"}
+              [[gt other]
+               [other-gt cum-sum]]])))
+      (testing (str tag " detects a window aggregation inside a case condition")
+        (is (lib.schema.aggregation/window-aggregation-expression?
+             [tag {:lib/uuid "00000000-0000-0000-0000-000000000011"}
+              [[[:> {:lib/uuid "00000000-0000-0000-0000-000000000012"} cum-sum 0] field]]])))
+      (testing (str tag " with no fallback and no window aggregation returns false")
+        (is (not (lib.schema.aggregation/window-aggregation-expression?
+                  [tag {:lib/uuid "00000000-0000-0000-0000-000000000013"}
+                   [[gt field]
+                    [other-gt other]]])))))))
+
 (deftest ^:parallel case-and-if-should-be-considered-valid-aggregations-test
   (doseq [clause [:if :case]]
     (testing (str clause " should be allowed as an aggregation expression if it contains an aggregation")

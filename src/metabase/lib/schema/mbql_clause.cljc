@@ -18,7 +18,9 @@
   "Given an MBQL clause tag like `:starts-with`, return the name of the schema we'll register for it, e.g.
   `:mbql.clause/starts-with`."
   [tag]
-  (keyword "mbql.clause" (name tag)))
+  (if (qualified-keyword? tag)
+    tag
+    (keyword "mbql.clause" (name tag))))
 
 (defn registered-tags
   "Snapshot of every MBQL clause tag currently registered via [[define-mbql-clause]]
@@ -30,16 +32,22 @@
 (def ^:private invalid-clause-schema
   [:fn {:error/message "not a known MBQL clause"} (constantly false)])
 
+(mr/def ::schema-form
+  "A Malli schema, in its unparsed (vector/keyword/registry-name) form."
+  [:fn
+   {:description "a malli schema form"}
+   #(or (keyword? %) (mc/schema? %) (and (vector? %) (keyword? (first %))))])
+
 (mu/defn- mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
-  [x]
+  [x :- ::common/clause-tag-candidate]
   (when (and (sequential? x)
              ((some-fn keyword? string?) (first x)))
     (keyword (first x))))
 
 (defn- clause-schema
   "Build the schema for `::clause`, a `:multi` schema that maps MBQL clause tag -> the schema
-  in [[clause-schema-registry]]."
+  in global schema registry in [[metabase.util.malli.registry/registry]]."
   []
   (into [:multi
          {:dispatch common/mbql-clause-tag
@@ -78,8 +86,8 @@
      [:= :is-null]
      ::common/options
      [:ref :metabase.lib.schema.expression/expression]])"
-  ([tag :- simple-keyword?
-    schema]
+  ([tag :- keyword?
+    schema :- ::schema-form]
    (let [schema-name (tag->registered-schema-name tag)]
      (mr/def schema-name schema)
      ;; only need to update the registry and calculated schemas if this is the very first time we're defining this
@@ -89,10 +97,10 @@
        (swap! tag-registry conj tag)))
    nil)
 
-  ([tag         :- simple-keyword?
+  ([tag         :- keyword?
     _arrow      :- [:= :-]
     return-type :- ::expression/base-type
-    schema]
+    schema      :- ::schema-form]
    (define-mbql-clause tag schema)
    (defmethod expression/type-of-method tag
      [_clause]

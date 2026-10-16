@@ -16,7 +16,7 @@ import {
 } from "./utils";
 
 describe("metabot > tool calls", () => {
-  it("should show list each tool being called as it comes in and cleared when finished", async () => {
+  it("should stream each tool call into the chain of thought, settling when finished", async () => {
     setup();
 
     const [pause1, pause2] = createPauses(2);
@@ -46,31 +46,31 @@ describe("metabot > tool calls", () => {
 
     await enterChatMessage("Analyze this query");
 
-    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText("Analyzing the data")).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.queryByText("Inspecting the visualization"),
     ).not.toBeInTheDocument();
 
     pause1.resolve();
 
-    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
     expect(
-      await screen.findByText("Inspecting the visualization"),
-    ).toBeInTheDocument();
+      (await screen.findAllByText("Inspecting the visualization")).length,
+    ).toBeGreaterThan(0);
 
     pause2.resolve();
 
+    expect(
+      await screen.findByText(/Worked (briefly|for|on)/),
+    ).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
+      expect(screen.getByText("Analyzed the data")).not.toBeVisible();
     });
-    await waitFor(() => {
-      expect(
-        screen.queryByText("Inspecting the visualization"),
-      ).not.toBeInTheDocument();
-    });
+    expect(screen.getByText("Inspected the visualization")).not.toBeVisible();
   });
 
-  it("should clear out list of tool calls when new text comes in", async () => {
+  it("should settle the chain when answer text arrives and start a fresh one for later tools", async () => {
     setup();
 
     const [pause1, pause2, pause3] = createPauses(3);
@@ -102,30 +102,23 @@ describe("metabot > tool calls", () => {
 
     await enterChatMessage("Analyze this query");
 
-    expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText("Analyzing the data")).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.queryByText("Inspecting the visualization"),
     ).not.toBeInTheDocument();
 
     pause1.resolve();
-
-    await waitFor(() => {
-      expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
-    });
-    expect(screen.getByText("Hey.")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(
-        screen.queryByText("Inspecting the visualization"),
-      ).not.toBeInTheDocument();
-    });
-
     pause2.resolve();
 
     expect(await screen.findByText("Hey.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Analyzed the data")).not.toBeVisible();
+    });
     expect(
-      await screen.findByText("Inspecting the visualization"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
+      (await screen.findAllByText("Inspecting the visualization")).length,
+    ).toBeGreaterThan(0);
 
     pause3.resolve();
 
@@ -135,6 +128,37 @@ describe("metabot > tool calls", () => {
         ["agent", "Hey."],
       ]);
     });
+  });
+
+  it("should show a tool call that errored as failed", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        {
+          type: "tool-input-available",
+          toolCallId: "x",
+          toolName: "search",
+          input: {},
+        },
+        {
+          type: "tool-output-error",
+          toolCallId: "x",
+          errorText: "Search is unavailable",
+        },
+        { type: "finish", finishReason: "stop" },
+      ],
+    });
+
+    await enterChatMessage("Find the revenue dashboard");
+    expect(
+      await screen.findByText(/Worked (briefly|for|on)/),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByTestId("metabot-chain-of-thought-header"),
+    );
+
+    await waitFor(() => expect(screen.getByText("Searching")).toBeVisible());
+    expect(screen.getByText("Failed")).toBeVisible();
   });
 
   it("should start a new message if there's tool calls between streamed text parts", async () => {
@@ -158,11 +182,13 @@ describe("metabot > tool calls", () => {
     });
     await enterChatMessage("Request");
 
-    await assertConversation([
-      ["user", "Request"],
-      ["agent", "Response 1"],
-      ["agent", "Response 2"],
-    ]);
+    await waitFor(async () => {
+      await assertConversation([
+        ["user", "Request"],
+        ["agent", "Response 1"],
+        ["agent", "Response 2"],
+      ]);
+    });
   });
 
   it("should be able to stop a response via stop button", async () => {
@@ -245,7 +271,7 @@ describe("metabot > tool calls", () => {
     pause1.resolve();
     await waitFor(() => {
       const { messages } = getMetabotConversation(store.getState(), "omnibot");
-      expect(messages).toContainEqual(
+      expect(messages.flatMap((t) => t.parts)).toContainEqual(
         expect.objectContaining({
           type: "tool_call",
           status: "ended",

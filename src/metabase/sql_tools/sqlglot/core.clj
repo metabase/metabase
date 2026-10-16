@@ -41,6 +41,7 @@
     :presto-jdbc         "presto"
     :starburst           "trino"
     :clickhouse          "clickhouse"
+    :druid-jdbc          "druid"
     :vertica             nil
     :h2                  nil
     ;; Default: try using the driver name as dialect
@@ -51,19 +52,18 @@
 (defn- referenced-tables
   [driver query]
   (try
-    (let [db-tables (lib.metadata/tables query)
-          db-transforms (lib.metadata/transforms query)
-          sql (lib/raw-native-query query)
-          default-schema (sql.normalize/default-schema driver)
-          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
-      (into #{}
-            (keep (fn [[_catalog table-schema table]]
-                    (sql-tools.common/find-table-or-transform
-                     driver db-tables db-transforms
-                     (sql-tools.common/normalize-table-spec
-                      driver {:table table
-                              :schema (or table-schema default-schema)}))))
-            query-tables))
+    (let [sql (lib/raw-native-query query)
+          default-schema (:default-schema (lib.metadata/database query))
+          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)
+          specs (map (fn [[_catalog table-schema table]]
+                       (sql-tools.common/normalize-table-spec
+                        driver {:table table
+                                :schema (or table-schema default-schema)}))
+                     query-tables)
+          table-ids (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table specs))
+          db-tables (lib.metadata/bulk-metadata query :metadata/table table-ids)
+          db-transforms (lib.metadata/transforms query)]
+      (sql-tools.common/resolve-table-specs driver (lib.metadata/database query) db-tables db-transforms specs))
     (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
       (if (sql-parsing/parse-error? e)
@@ -135,7 +135,7 @@
   (sql-tools.common/returned-columns parser driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :sqlglot
-  [_parser driver sql-str]
+  [_parser driver sql-str opts]
   (try
     (let [dialect (driver->dialect driver)
           ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
@@ -151,7 +151,7 @@
             table-tuples))
     (catch Exception e
       ;; Return empty sequence on parse error to follow the Macaw implementation behavior.
-      (if (sql-parsing/parse-error? e)
+      (if (and (sql-parsing/parse-error? e) (not (:fail-on-parse-error? opts)))
         []
         (throw e)))))
 
@@ -161,7 +161,7 @@
     ;; No dialect available from caller, use nil for SQLGlot's default dialect
     (sql-parsing/simple-query? nil sql-string)
     (catch Exception e
-      (log/debugf e "Failed to parse query: %s" (ex-message e))
+      (log/debugf "Failed to parse query: %s" (ex-message e))
       {:is_simple false})))
 
 (defmethod sql-tools/add-into-clause-impl :sqlglot

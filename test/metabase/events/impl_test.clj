@@ -1,13 +1,14 @@
 (ns metabase.events.impl-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.hierarchy :as events.hierarchy]
    [metabase.events.impl :as events]
    [methodical.core :as methodical]))
 
 (def ^:private ^:dynamic *method-calls* nil)
 
-(derive ::test-topics :metabase/event)
-(derive ::test-topic ::test-topics)
+(events.hierarchy/derive! ::test-topics :metabase/event)
+(events.hierarchy/derive! ::test-topic ::test-topics)
 
 (methodical/defmethod events/publish-event! ::test-topics
   [_topic event]

@@ -1,9 +1,9 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import type { Route } from "metabase/router";
+import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { PublishedTableMeasureBreadcrumbs } from "../../components/MeasureBreadcrumbs";
-import { usePublishedTableMeasurePage } from "../../hooks";
+import { usePublishedTableMeasurePage } from "../../hooks/use-published-table-measure-page";
 import { MeasureDetailPage } from "../MeasureDetailPage";
 
 type PublishedTableMeasureDetailPageParams = {
@@ -11,15 +11,8 @@ type PublishedTableMeasureDetailPageParams = {
   measureId: string;
 };
 
-type PublishedTableMeasureDetailPageProps = {
-  params: PublishedTableMeasureDetailPageParams;
-  route: Route;
-};
-
-export function PublishedTableMeasureDetailPage({
-  params,
-  route,
-}: PublishedTableMeasureDetailPageProps) {
+export function PublishedTableMeasureDetailPage() {
+  const params = useParams<PublishedTableMeasureDetailPageParams>();
   const { isLoading, error, measure, table, tabUrls, onRemove } =
     usePublishedTableMeasurePage(params);
 
@@ -33,8 +26,8 @@ export function PublishedTableMeasureDetailPage({
 
   return (
     <MeasureDetailPage
-      route={route}
       measure={measure}
+      table={table}
       tabUrls={tabUrls}
       breadcrumbs={
         <PublishedTableMeasureBreadcrumbs table={table} measure={measure} />

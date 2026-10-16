@@ -1,18 +1,23 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import notebookModeIllustration from "img/notebook_mode_illustration.png";
+import notebookModeIllustration2x from "img/notebook_mode_illustration@2x.png";
+import sqlIllustration from "img/sql_illustration.png";
+import sqlIllustration2x from "img/sql_illustration@2x.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { NoDatabasesEmptyState } from "metabase/common/components/NoDatabasesEmptyState";
 import CS from "metabase/css/core/index.css";
-import { NewModelOption } from "metabase/models/components/NewModelOption";
-import { useSelector } from "metabase/redux";
-import type { Location } from "metabase/router";
-import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
-} from "metabase/selectors/user";
+} from "metabase/current-user";
+import { NewModelOption } from "metabase/models/components/NewModelOption";
+import { useSelector } from "metabase/redux";
+import { useLocation } from "metabase/router";
+import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getSetting } from "metabase/settings";
 import { Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -20,11 +25,8 @@ import S from "./NewModelOptions.module.css";
 
 const EDUCATIONAL_LINK = getLearnUrl("metabase-basics/getting-started/models");
 
-interface NewModelOptionsProps {
-  location: Location;
-}
-
-const NewModelOptions = ({ location }: NewModelOptionsProps) => {
+const NewModelOptions = () => {
+  const location = useLocation();
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
@@ -33,8 +35,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const collectionId = Urls.extractEntityId(
-    // Unjustified type cast. FIXME
-    location.query.collectionId as string,
+    new URLSearchParams(location.search).get("collectionId") ?? undefined,
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -63,7 +64,10 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
         {hasDataAccess && (
           <div>
             <NewModelOption
-              image="app/img/notebook_mode_illustration"
+              image={{
+                src: notebookModeIllustration,
+                srcSet: `${notebookModeIllustration2x} 2x`,
+              }}
               title={t`Use the notebook editor`}
               description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
               width={180}
@@ -79,7 +83,10 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
         {hasNativeWrite && (
           <div>
             <NewModelOption
-              image="app/img/sql_illustration"
+              image={{
+                src: sqlIllustration,
+                srcSet: `${sqlIllustration2x} 2x`,
+              }}
               title={t`Use a native query`}
               description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
               to={Urls.newQuestion({

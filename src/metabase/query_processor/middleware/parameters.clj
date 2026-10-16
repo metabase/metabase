@@ -2,7 +2,6 @@
   "Middleware for substituting parameters in queries."
   (:refer-clojure :exclude [mapv some])
   (:require
-   [clojure.data :as data]
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -28,8 +27,11 @@
     stage
     (let [f        (case (:lib/type stage)
                      :mbql.stage/mbql   qp.mbql/expand
-                     :mbql.stage/native (fn [query _path stage]
-                                          (qp.native/expand-stage query stage)))
+                     :mbql.stage/native (mu/fn :- ::lib.schema/stage.native
+                                          [query path _stage]
+                                          (let [{query* :query, :keys [stage-number]} (lib.walk/query-for-path query path)]
+                                            (-> (qp.native/expand-stage query* stage-number)
+                                                (lib/query-stage stage-number)))))
           expanded (f query path stage)]
       (dissoc expanded :parameters :template-tags))))
 
@@ -76,7 +78,7 @@
          (do
            (log/errorf "Query does not have a stage %d, ignoring parameter %s"
                        param-stage-number
-                       (pr-str parameter))
+                       (:id parameter))
            query)
          (lib/update-query-stage query param-stage-number
                                  update :parameters
@@ -151,8 +153,7 @@
                move-top-level-params-to-stage
                expand-all)
     (when (not= <> query)
-      (when-let [diff (second (data/diff query <>))]
-        (log/tracef "\n\nSubstituted params:\n%s\n" (u/pprint-to-str 'cyan diff))))))
+      (log/trace "Substituted params into query"))))
 
 (mu/defn- assoc-database-id-in-snippet-tag :- ::lib.schema.template-tag/template-tags
   [template-tags :- ::lib.schema.template-tag/template-tags

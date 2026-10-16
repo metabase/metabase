@@ -7,6 +7,7 @@ import type {
   SdkIframeEmbedBaseSettings,
   SdkIframeEmbedSettingKey,
 } from "./types/embed";
+import type { MetabaseConfig } from "./types/modular-embedding";
 
 /**
  * The timeout to wait for a session token from the embed.js script.
@@ -29,7 +30,9 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "jwtProviderUri",
     "pluginsConfig",
     "guestEmbedProviderUri",
-  ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
+    "allowedCustomVisualizations",
+    // Every allowed setting must be documented in `MetabaseConfig`
+  ] satisfies (keyof SdkIframeEmbedBaseSettings & keyof MetabaseConfig)[],
   dashboard: [
     "dashboardId",
     "autoRefreshInterval",

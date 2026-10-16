@@ -7,7 +7,7 @@ import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
-import { storybookThemes } from "embedding-sdk-bundle/test/storybook-themes";
+import { storybookThemes } from "embedding-sdk-shared/test/storybook-themes";
 import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 import {
   ActionIcon,
@@ -362,7 +362,7 @@ export const ExperimentalLayout = {
       <ComponentProvider authConfig={storybookSdkAuthDefaultConfig}>
         <Paper
           display="flex"
-          p="xl"
+          p="xxl"
           pos="relative"
           style={{ flexDirection: "row", overflow: "none" }}
           h="40rem"

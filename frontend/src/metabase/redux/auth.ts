@@ -4,28 +4,24 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
-import { loadLocalization } from "metabase/api/localization";
+import { Api } from "metabase/api";
 import {
   type MfaChallengeResponse,
+  type MfaEnrollmentResponse,
   isMfaChallenge,
+  isMfaEnrollment,
   sessionApi,
 } from "metabase/api/session";
+import { getUser, refetchCurrentUser } from "metabase/current-user";
 import { openNavbar } from "metabase/redux/app";
-import { refreshSiteSettings } from "metabase/redux/settings";
-import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { push } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
-import { getUser } from "metabase/selectors/user";
+import { navigate } from "metabase/router";
+import { getSetting, refetchSiteSettings } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { isSmallScreen, reload } from "metabase/utils/dom";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-
-export interface LoginData {
-  username: string;
-  password: string;
-  remember?: boolean;
-}
+import { loadLocalization } from "metabase/utils/localization";
+import type { LoginData } from "metabase-types/api";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(
@@ -51,8 +47,8 @@ export const refreshSession = createAsyncThunk(
   REFRESH_SESSION,
   async (_, { dispatch }) => {
     await Promise.all([
-      dispatch(refreshCurrentUser()),
-      dispatch(refreshSiteSettings()),
+      dispatch(refetchCurrentUser()),
+      dispatch(refetchSiteSettings()),
     ]);
     await dispatch(refreshLocale()).unwrap();
   },
@@ -76,6 +72,7 @@ interface LoginPayload {
 
 export interface LoginResult {
   mfaChallenge?: MfaChallengeResponse;
+  mfaEnrollment?: MfaEnrollmentResponse;
 }
 
 export const LOGIN = "metabase/auth/LOGIN";
@@ -90,6 +87,11 @@ export const login = createAsyncThunk(
       if (isMfaChallenge(result)) {
         const challenge: LoginResult = { mfaChallenge: result };
         return challenge;
+      }
+
+      if (isMfaEnrollment(result)) {
+        const enrollment: LoginResult = { mfaEnrollment: result };
+        return enrollment;
       }
 
       await dispatch(completeLogin()).unwrap();
@@ -143,18 +145,19 @@ export const logout = createAsyncThunk(
         const { "saml-logout-url": samlLogoutUrl } =
           (await initiateSLO(dispatch)) ?? {};
 
-        dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
+
+        dispatch(Api.util.resetApiState());
 
         if (samlLogoutUrl) {
           window.location.href = samlLogoutUrl;
         }
       } else {
         await deleteSession(dispatch);
-        dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
 
-        dispatch(push(Urls.login()));
+        navigate(Urls.login());
+        dispatch(Api.util.resetApiState());
         reload(); // clears redux state and browser caches
       }
     } catch (error) {

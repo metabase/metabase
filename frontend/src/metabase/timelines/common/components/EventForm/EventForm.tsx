@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -7,6 +6,7 @@ import {
   getTimelineIcons,
   getTimelineName,
 } from "metabase/common/utils/timelines";
+import { dayjs } from "metabase/dayjs";
 import {
   Form,
   FormDateInput,
@@ -17,7 +17,15 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Flex, Group, Icon, Stack, TimeInput } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  TimeInput,
+} from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type {
@@ -113,7 +121,7 @@ const EventForm = ({
               placeholder={t`Product launch`}
               data-autofocus
             />
-            <Flex align="end" gap="md">
+            <Flex align="end" gap="lg">
               <FormDateInput
                 name="timestamp"
                 title={t`Date`}
@@ -134,7 +142,7 @@ const EventForm = ({
                 }}
               />
               {values.time_matters ? (
-                <Flex gap="xs" align="end">
+                <Flex gap="xxs" align="end">
                   <TimeInput
                     value={dayjs.tz(values.timestamp).toDate()}
                     name="date"
@@ -149,15 +157,19 @@ const EventForm = ({
                       setFieldValue("timestamp", date.toISOString());
                     }}
                   />
-                  <Button
+                  <ActionIcon
+                    size="sm"
+                    mb="sm"
                     onClick={() => setFieldValue("time_matters", false)}
                     aria-label={t`Remove time`}
                     variant="subtle"
-                    leftSection={<Icon name="close" />}
-                  />
+                  >
+                    <Icon name="close" />
+                  </ActionIcon>
                 </Flex>
               ) : (
                 <Button
+                  size="lg"
                   onClick={() => setFieldValue("time_matters", true)}
                 >{t`Add time`}</Button>
               )}
@@ -190,7 +202,7 @@ const EventForm = ({
                 data={timelineOptions}
               />
             )}
-            <Flex gap="md" justify="end">
+            <Flex gap="lg" justify="end">
               <FormErrorMessage inline />
               {!isNew && (
                 <FormArchiveButton onClick={onArchive}>

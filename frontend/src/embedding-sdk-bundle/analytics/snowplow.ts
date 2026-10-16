@@ -3,8 +3,13 @@ import {
   newTracker,
   trackSelfDescribingEvent,
 } from "@snowplow/browser-tracker";
+import { version as reactVersion } from "react";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import { ANALYTICS_PROXY_PATH } from "embedding-sdk-shared/constants/analytics";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbedPreviewRequest } from "metabase/embedding/lib/auth/set-embed-preview-header";
+import { getSettings } from "metabase/settings";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";
 
@@ -69,7 +74,7 @@ export function initSdkTracker({
   sdkAuthMethod = authMethod;
   sdkLocaleUsed = localeUsed;
 
-  const settingValues = store.getState().settings?.values;
+  const settingValues = getSettings(store.getState());
   sdkMetaplowEnabled = !!settingValues?.["metaplow-tracking-enabled"];
 
   newTracker(SDK_TRACKER_NAME, metabaseInstanceUrl, {
@@ -77,19 +82,20 @@ export function initSdkTracker({
     platform: "web",
     eventMethod: "post",
     contexts: { webPage: true },
-    // Plain JSON on the wire. The main-app tracker uses the default (encodeBase64:true);
+    // Plain JSON on the wire. The main-app tracker keeps base64 on;
     // the SDK tracker is new, so there's no legacy format to preserve.
     encodeBase64: false,
     // Deliver through the instance proxy, not the collector's tp2 path.
-    postPath: "/api/analytics-proxy",
+    postPath: ANALYTICS_PROXY_PATH,
     // No cookies / localStorage: the SDK must not touch the host page's storage.
-    // This also makes cookie-domain config (e.g. discoverRootDomain) irrelevant.
     stateStorageStrategy: "none",
+    // v4 defaults this to true, and the test-cookie probe ignores stateStorageStrategy.
+    discoverRootDomain: false,
     // Server-side anonymisation: strip IP + network_userid, send the SP-Anonymous header.
     anonymousTracking: { withServerAnonymisation: true },
     // The proxy endpoint uses `Access-Control-Allow-Origin: *`. Wildcard CORS rejects
     // credentialed requests, so credentials must be omitted.
-    withCredentials: false,
+    credentials: "omit",
     plugins: [createSdkInstanceContextPlugin(store)],
   });
   return true;
@@ -103,6 +109,25 @@ export function getSdkLocaleUsed(): boolean {
   return sdkLocaleUsed;
 }
 
+export function getHostReactVersion(): string {
+  // `undefined` would get removed by the serialization,
+  // explicit `unknown` to differentiate old data from real unknown
+  return reactVersion ?? "unknown";
+}
+
+type SdkClientHeader =
+  (typeof EMBEDDING_SDK_CONFIG)["metabaseClientRequestHeader"];
+
+export type SdkClient = SdkClientHeader | `${SdkClientHeader}-preview`;
+
+// Same value the backend records as embedding_client for SDK requests,
+// including the -preview suffix added when the preview header is sent
+// (not all clients have a `-preview` variant, but the type allows for it).
+export function getSdkClient(): SdkClient {
+  const client = EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader;
+  return isEmbedPreviewRequest() ? `${client}-preview` : client;
+}
+
 // Attaches the instance context to every SDK event. Omits userId — unlike the
 // main-app tracker, SDK component usage is tracked at instance granularity;
 // the analytics-uuid already identifies the account.
@@ -113,7 +138,7 @@ function createSdkInstanceContextPlugin(store: {
     contexts(): SelfDescribingJson[] {
       // Settings are guaranteed present: initSdkTracker is only called after
       // isTrackingEnabled, which requires anon-tracking-enabled to be loaded.
-      const settings = store.getState().settings?.values;
+      const settings = getSettings(store.getState());
       const version = settings?.["version"] ?? {};
 
       return [

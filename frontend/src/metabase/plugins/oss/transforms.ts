@@ -1,8 +1,14 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import {
+  PluginPlaceholder,
+  pluginPlaceholderRoute,
+} from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
 import type { PythonTransformSourceDraft, Transform } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
 
 // Types
 export type TransformPickerItem = OmniPickerItem & {
@@ -23,15 +29,11 @@ export type PythonTransformEditorUiOptions = {
 
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
-  proposedSource?: PythonTransformSourceDraft;
   uiOptions?: PythonTransformEditorUiOptions;
   isEditMode?: boolean;
   transform?: Transform;
   readOnly?: boolean;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
-  onAcceptProposed: () => void;
-  onRejectProposed: () => void;
-  onDryRunErrorChange?: (error: string | undefined) => void;
   onRunTransform?: (result: any) => void;
   onRun?: () => void;
 };
@@ -55,7 +57,7 @@ export type PythonTransformsPlugin = {
   ) => PythonTransformSourceValidationResult;
   TransformEditor: ComponentType<PythonTransformEditorProps>;
   SourceSection: ComponentType<PythonTransformSourceSectionProps>;
-  PythonRunnerSettingsPage: ComponentType;
+  pythonRunnerSettingsPage: PluginRoute;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
   sharedLibImportPath: string;
@@ -66,7 +68,7 @@ const getDefaultPluginTransforms = (): TransformsPlugin => ({
   TransformsUpsellPage: PluginPlaceholder,
 });
 
-export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
+export const PLUGIN_TRANSFORMS = definePluginSlot(getDefaultPluginTransforms);
 
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
@@ -76,18 +78,12 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
-  PythonRunnerSettingsPage: PluginPlaceholder,
+  pythonRunnerSettingsPage: pluginPlaceholderRoute,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
   sharedLibImportPath: "",
 });
 
-export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_TRANSFORMS, getDefaultPluginTransforms());
-  Object.assign(PLUGIN_TRANSFORMS_PYTHON, getDefaultPluginTransformsPython());
-}
+export const PLUGIN_TRANSFORMS_PYTHON = definePluginSlot(
+  getDefaultPluginTransformsPython,
+);

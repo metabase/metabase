@@ -26,6 +26,7 @@ const init = async () => {
       break;
 
     case "vite-6-host-app-e2e":
+    case "vite-6-data-app-host-app-e2e":
     case "next-15-app-router-host-app-e2e":
     case "next-15-pages-router-host-app-e2e":
     case "angular-20-host-app-e2e":

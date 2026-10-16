@@ -2,7 +2,7 @@
 // imported, vs the *allowed* edges in module-boundaries.mjs). Consumed by
 // .github/scripts/create-test-plan.ts.
 //
-//   bunx depcruise frontend/src enterprise/frontend/src \
+//   bunx depcruise frontend/src enterprise/frontend/src .storybook/preview.tsx \
 //     --config .dependency-cruiser.cjs --output-type json > dependency-graph.json
 
 /** @type {import('dependency-cruiser').IConfiguration} */
@@ -10,9 +10,12 @@ module.exports = {
   options: {
     // Keep only edges between our own source files (drops node_modules etc.),
     // which keeps the JSON small.
-    includeOnly: "^(frontend/src|enterprise/frontend/src)/",
+    includeOnly: "^(frontend/src|enterprise/frontend/src|\\.storybook)/",
 
     doNotFollow: { path: "node_modules" },
+
+    // No rules here, so the cycle and orphan analysis has no consumer and only costs time.
+    skipAnalysisNotInRules: true,
 
     // Resolve the `"*": ["./frontend/src/*", ...]` aliases so bare imports like
     // `metabase/lib/foo` map back to a real file.

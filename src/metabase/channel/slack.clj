@@ -13,6 +13,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -24,6 +25,7 @@
   ;; received. This would happen if access to the Slack workspace is manually revoked via the Slack UI.
   #{"invalid_auth", "account_inactive", "token_revoked", "token_expired"})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *send-token-error-emails?*
   "Whether to send an email to all admins when an invalid or revoked token error is received in response to a Slack
   API call. Should be set to false when checking if an unsaved token is valid. (Default: `true`)"
@@ -64,7 +66,7 @@
                   (channel.settings/unobfuscated-slack-app-token))]
     (when token
       (let [url     (str "https://slack.com/api/" (name endpoint))
-            _       (log/tracef "Slack API request: %s %s" (pr-str url) (pr-str request))
+            _       (log/tracef "Slack API request: %s" (pr-str url))
             request (m/deep-merge
                      {:headers        {:authorization (str "Bearer\n" token)}
                       :as             :stream
@@ -260,13 +262,15 @@
                 (recur)))))))))
 
 (defn complete!
-  "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
-   same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
-  [& {:keys [file-id filename channel-id initial-comment]}]
+  "Completes the file upload by calling the `files.completeUploadExternal` endpoint, and polls the same endpoint until
+   the file is uploaded. Returns the URL of the uploaded file. Shares into a channel via `channel-id`, or with a user
+   via `user-id` — `channel_id` rejects user IDs, while `channels` takes them and opens the DM itself."
+  [& {:keys [file-id filename channel-id user-id initial-comment]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
                       {:query-params (cond-> {:files (json/encode [{:id file-id, :title filename}])}
                                        channel-id      (assoc :channel_id channel-id)
+                                       user-id         (assoc :channels user-id)
                                        initial-comment (assoc :initial_comment initial-comment))}))
         complete-response
         (try
@@ -322,40 +326,33 @@
   (try
     (POST "conversations.join" {:query-params {:channel channel-id}})
     (catch Throwable e
-      (log/warnf e "Could not join Slack channel %s; a file share may fail" channel-id))))
-
-(declare post-chat-message!)
+      (log/warnf "Could not join Slack channel %s; a file share may fail: %s" channel-id (ex-message e)))))
 
 (def ^:private slack-user-id-pattern
-  "Slack user IDs start with U (people) or W (Enterprise Grid). Unlike channel IDs (C/G/D/Z), they are rejected by
-  `files.completeUploadExternal`, so a file shared with a user must target their DM channel instead."
+  "Slack user IDs start with U (people) or W (Enterprise Grid). They are rejected by `files.completeUploadExternal`'s
+  `channel_id`, so a file shared with a user goes through its `channels` parameter instead."
   #"^[UW][A-Z0-9]{8,}$")
 
-(defn- open-dm-channel-id!
-  "Resolve the direct-message channel ID (`D…`) for Slack user `user-id` by posting `text` via `chat.postMessage`,
-  whose response carries the opened DM's channel ID. This needs only `chat:write` (already granted), avoiding the
-  `im:write` scope `conversations.open` would require. The caller therefore shares the file into the DM *without* an
-  `initial-comment`, since `text` was already delivered as this message."
-  [user-id text]
-  (:channel (post-chat-message! {:channel user-id, :text text})))
-
 (defn- complete-upload!
-  "Get an upload URL from Slack, push the `file` bytes to it, and complete the upload — sharing into `channel-id` with
-  `initial-comment` as the message text when provided. Returns the uploaded file URL."
-  [file filename channel-id initial-comment]
+  "Get an upload URL from Slack, push the `file` bytes to it, and complete the upload — sharing it as described by
+  `share` (`{:channel-id …}` or `{:user-id …}`), with `initial-comment` as the message text when provided. Returns the
+  uploaded file URL."
+  [file filename share initial-comment]
   (let [{:keys [upload_url file_id]} (get-upload-url! filename file)]
     (upload-file-to-url! upload_url file)
-    (complete! {:file-id         file_id
-                :filename        filename
-                :channel-id      channel-id
-                :initial-comment initial-comment})))
+    (complete! (assoc share
+                      :file-id         file_id
+                      :filename        filename
+                      :initial-comment initial-comment))))
 
 (mu/defn upload-file-to-channel!
   "Upload `file` bytes to Slack and share them as a downloadable file; returns the file URL. `channel-id` may be a
   channel ID, a user ID, or a legacy display name (\"#general\"/\"@bob\") resolved via the cached channel/user list.
-  A channel is joined and gets the file with `initial-comment` (mrkdwn, optional) as its caption in one message; a
-  user is DM'd, with the caption sent as the DM opener and the file following."
-  ([file filename channel-id]
+  Either way the file arrives as one message with `initial-comment` (mrkdwn, optional) as its caption. A channel is
+  joined first, since sharing into one requires membership; a user's DM is opened by Slack itself."
+  ([file       :- NonEmptyByteArray
+    filename   :- ms/NonBlankString
+    channel-id :- ms/NonBlankString]
    (upload-file-to-channel! file filename channel-id nil))
   ([file            :- NonEmptyByteArray
     filename        :- ms/NonBlankString
@@ -364,17 +361,14 @@
    {:pre [(channel.settings/slack-configured?)]}
    (let [target (or (:id (channel.settings/find-cached-slack-channel-or-username channel-id)) channel-id)]
      (if (re-matches slack-user-id-pattern target)
-       ;; User: open the DM with the caption (chat.postMessage), then share the file — caption already sent.
-       (let [dm-channel-id (open-dm-channel-id! target (or (not-empty initial-comment) filename))]
-         (try
-           (complete-upload! file filename dm-channel-id nil)
-           (catch Throwable e
-             ;; Caption already went out as the DM opener; flag so `send!`'s fallback doesn't re-post it.
-             (throw (ex-info (ex-message e) (assoc (ex-data e) ::caption-already-posted? true) e)))))
-       ;; Channel: join (membership required), then share the file with the caption as its message.
+       (complete-upload! file filename {:user-id target} initial-comment)
        (do
          (join-channel! target)
-         (complete-upload! file filename target initial-comment))))))
+         (complete-upload! file filename {:channel-id target} initial-comment))))))
+
+(mr/def ::slack-block
+  "A Slack Block Kit block or legacy `attachments` entry, whose keys are Slack's (see https://api.slack.com/block-kit)."
+  [:map {:closed false, ::mr/deliberately-open true, :description "Slack Block Kit block"}])
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
@@ -383,9 +377,9 @@
   See: https://app.slack.com/block-kit-builder"
   [message-content :- [:map {:closed true}
                        [:channel                      :string]
-                       [:blocks      {:optional true} [:sequential :map]]
+                       [:blocks      {:optional true} [:sequential ::slack-block]]
                        [:text        {:optional true} :string]
-                       [:attachments {:optional true} [:sequential :map]]]]
+                       [:attachments {:optional true} [:sequential ::slack-block]]]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (let [base-params    {:username "Metabot"
                         :icon_url "http://static.metabase.com/metabot_slack_avatar_whitebg.png"}

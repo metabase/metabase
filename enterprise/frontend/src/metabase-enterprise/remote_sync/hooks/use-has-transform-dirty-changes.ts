@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { buildCollectionTree } from "metabase/common/collections/utils";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/utils";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";
@@ -52,12 +52,13 @@ export function useHasTransformDirtyChanges(): boolean {
     );
 
     // Check if any dirty entity is:
-    // 1. A transform, transform tag, or Python library
+    // 1. A transform, transform tag, transform test, or Python library
     // 2. A collection in the transforms namespace
     return dirty.some((entity) => {
       if (
         entity.model === "transform" ||
         entity.model === "transformtag" ||
+        entity.model === "transformtest" ||
         entity.model === "pythonlibrary"
       ) {
         return true;

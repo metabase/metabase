@@ -12,6 +12,7 @@ import {
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { Route } from "metabase/router";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import type { RowValue } from "metabase-types/api";
 import {
   createMockColumn,
@@ -70,6 +71,7 @@ type SetupOpts = {
   error?: boolean;
   initialRoute?: string;
   deferResponse?: boolean;
+  deferRefetch?: boolean;
 };
 
 async function setup({
@@ -78,12 +80,14 @@ async function setup({
   error,
   initialRoute = "/",
   deferResponse = false,
+  deferRefetch = false,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 100, height: 100 });
 
   let resolveResponse:
     | ((response: ReturnType<typeof createDatasetResponse>) => void)
     | undefined;
+  let resolveRefetch: (() => void) | undefined;
   if (error) {
     fetchMock.post("path:/api/dataset", {
       status: 500,
@@ -96,6 +100,19 @@ async function setup({
       },
     );
     fetchMock.post("path:/api/dataset", () => response);
+  } else if (deferRefetch) {
+    // The initial load resolves right away; every refetch after it stays in
+    // flight until the test resolves it.
+    let callCount = 0;
+    const refetch = new Promise<ReturnType<typeof createDatasetResponse>>(
+      (resolve) => {
+        resolveRefetch = () => resolve(createDatasetResponse(cards, total));
+      },
+    );
+    fetchMock.post("path:/api/dataset", () => {
+      callCount += 1;
+      return callCount > 1 ? refetch : createDatasetResponse(cards, total);
+    });
   } else {
     fetchMock.post("path:/api/dataset", createDatasetResponse(cards, total));
   }
@@ -115,6 +132,7 @@ async function setup({
     ...utils,
     resolveResponse: () =>
       resolveResponse?.(createDatasetResponse(cards, total)),
+    resolveRefetch: () => resolveRefetch?.(),
   };
 }
 
@@ -170,28 +188,41 @@ describe("ErrorOverview", () => {
   });
 
   it("recovers from an error when the search changes and the retry succeeds", async () => {
-    mockGetBoundingClientRect({ width: 100, height: 100 });
+    jest.useFakeTimers({ advanceTimers: true });
+    try {
+      mockGetBoundingClientRect({ width: 100, height: 100 });
 
-    let shouldFail = true;
-    fetchMock.post("path:/api/dataset", () =>
-      shouldFail
-        ? { status: 500, body: { message: "Audit query failed" } }
-        : createDatasetResponse([{ id: 1, card_name: "Recovered question" }]),
-    );
+      let shouldFail = true;
+      fetchMock.post("path:/api/dataset", () =>
+        shouldFail
+          ? { status: 500, body: { message: "Audit query failed" } }
+          : createDatasetResponse([{ id: 1, card_name: "Recovered question" }]),
+      );
 
-    renderWithProviders(<Route path="/" element={<ErrorOverview />} />, {
-      withRouter: true,
-    });
+      renderWithProviders(<Route path="/" element={<ErrorOverview />} />, {
+        withRouter: true,
+      });
 
-    expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
-    const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER);
+      expect(await screen.findByText("Audit query failed")).toBeInTheDocument();
+      const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER);
 
-    // changing the query is the only way to clear RTK's error and refire
-    shouldFail = false;
-    await userEvent.type(search, "recovered");
+      // changing the query is the only way to clear RTK's error and refire
+      shouldFail = false;
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .type(search, "recovered");
+      act(() => {
+        jest.advanceTimersByTime(SEARCH_DEBOUNCE_DURATION);
+      });
 
-    expect(await screen.findByText("Recovered question")).toBeInTheDocument();
-    expect(screen.queryByText("Audit query failed")).not.toBeInTheDocument();
+      // scoped to the row: TreeTable briefly renders a hidden copy of each
+      // cell into document.body to measure auto-width columns
+      const row = await screen.findByTestId("erroring-question");
+      expect(within(row).getByText("Recovered question")).toBeInTheDocument();
+      expect(screen.queryByText("Audit query failed")).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("surfaces an internal-query error returned in the dataset body", async () => {
@@ -221,7 +252,7 @@ describe("ErrorOverview", () => {
   });
 
   it("passes filter values to the query and resets to the first page", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
         id: index + 1,
       })),
@@ -252,7 +283,7 @@ describe("ErrorOverview", () => {
       expect(query.offset).toBe(0);
     });
     await waitFor(() => {
-      expect(history?.getCurrentLocation().search).toBe("");
+      expect(router?.location.search).toBe("");
     });
     expect(screen.queryByText("1 question selected")).not.toBeInTheDocument();
   });
@@ -290,6 +321,33 @@ describe("ErrorOverview", () => {
     await waitFor(async () => {
       const query = await getLastDatasetQuery();
       expect(query.args.slice(1)).toEqual(["last_run_at", "desc"]);
+    });
+  });
+
+  it("covers the grid with a loading overlay on refetch", async () => {
+    const { resolveRefetch } = await setup({ deferRefetch: true });
+
+    const table = await screen.findByTestId("erroring-questions-table");
+    await screen.findByTestId("erroring-question");
+    expect(
+      within(table).queryByTestId("loading-overlay"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("columnheader", { name: /Question/ }),
+    );
+
+    expect(
+      await within(table).findByTestId("loading-overlay"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("erroring-question")).toBeInTheDocument();
+
+    resolveRefetch();
+
+    await waitFor(() => {
+      expect(
+        within(table).queryByTestId("loading-overlay"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -504,7 +562,7 @@ describe("ErrorOverview", () => {
   });
 
   it("paginates showing the total count and syncs the page to the URL", async () => {
-    const { history } = await setup({
+    const { router } = await setup({
       cards: Array.from({ length: PAGE_SIZE }, (_, index) => ({
         id: index + 1,
       })),
@@ -531,7 +589,7 @@ describe("ErrorOverview", () => {
       expect(query.offset).toBe(PAGE_SIZE);
     });
     await waitFor(() => {
-      expect(history?.getCurrentLocation().search).toBe("?page=1");
+      expect(router?.location.search).toBe("?page=1");
     });
   });
 
@@ -553,7 +611,7 @@ describe("ErrorOverview", () => {
   it("waits for the empty response before recovering from a stranded page", async () => {
     jest.useFakeTimers({ advanceTimers: true });
     try {
-      const { history, resolveResponse } = await setup({
+      const { router, resolveResponse } = await setup({
         cards: [],
         total: 0,
         initialRoute: "/?page=2",
@@ -564,7 +622,7 @@ describe("ErrorOverview", () => {
       act(() => {
         jest.advanceTimersByTime(URL_UPDATE_DEBOUNCE_DELAY + 50);
       });
-      expect(history?.getCurrentLocation().search).toBe("?page=2");
+      expect(router?.location.search).toBe("?page=2");
 
       act(() => {
         resolveResponse();
@@ -575,7 +633,7 @@ describe("ErrorOverview", () => {
         expect(query.offset).toBe(0);
       });
       await waitFor(() => {
-        expect(history?.getCurrentLocation().search).toBe("");
+        expect(router?.location.search).toBe("");
       });
     } finally {
       jest.useRealTimers();
@@ -583,7 +641,7 @@ describe("ErrorOverview", () => {
   });
 
   it("links each row to the question and navigates there on click", async () => {
-    const { history } = await setup({ cards: [{ id: 42 }] });
+    const { router } = await setup({ cards: [{ id: 42 }] });
 
     await screen.findByTestId("erroring-question");
     const link = screen.getByRole("link");
@@ -591,32 +649,32 @@ describe("ErrorOverview", () => {
 
     await userEvent.click(link);
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe("/question/42");
+      expect(router?.location.pathname).toBe("/question/42");
     });
   });
 
   it("does not navigate in the current tab on cmd/shift-click, leaving it to the native link", async () => {
-    const { history } = await setup({ cards: [{ id: 42 }] });
+    const { router } = await setup({ cards: [{ id: 42 }] });
 
     await screen.findByTestId("erroring-question");
     const link = screen.getByRole("link");
-    const startingPathname = history?.getCurrentLocation().pathname;
+    const startingPathname = router?.location.pathname;
 
     fireEvent.click(link, { metaKey: true });
     fireEvent.click(link, { shiftKey: true });
 
-    expect(history?.getCurrentLocation().pathname).toBe(startingPathname);
+    expect(router?.location.pathname).toBe(startingPathname);
   });
 
   it("navigates to the question when activated from the keyboard", async () => {
-    const { history } = await setup({ cards: [{ id: 42 }] });
+    const { router } = await setup({ cards: [{ id: 42 }] });
 
     await screen.findByTestId("erroring-question");
     screen.getByRole("treegrid", { name: "Erroring questions" }).focus();
     await userEvent.keyboard("{ArrowDown}{Enter}");
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe("/question/42");
+      expect(router?.location.pathname).toBe("/question/42");
     });
   });
 

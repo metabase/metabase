@@ -11,6 +11,10 @@ export type TokenUsage = {
 export type MessageMetadata = {
   usage?: TokenUsage;
   usageByModel?: Record<string, TokenUsage>;
+  contextWindowTokens?: number;
+  // the turn's final LLM call (prompt + completion) — the conversation's
+  // current size, unlike `usage` which sums every call in the turn
+  contextTokens?: number;
   // a typed error's code, ridden on the trailing `finish` event so the client
   // can branch on it (e.g. the usage-limit upgrade prompt)
   errorCode?: string;
@@ -63,6 +67,24 @@ export type TextDeltaEvent = {
 };
 export type TextEndEvent = {
   type: "text-end";
+  id: string;
+  providerMetadata?: ProviderMetadata;
+};
+
+// reasoning events
+export type ReasoningStartEvent = {
+  type: "reasoning-start";
+  id: string;
+  providerMetadata?: ProviderMetadata;
+};
+export type ReasoningDeltaEvent = {
+  type: "reasoning-delta";
+  id: string;
+  delta: string;
+  providerMetadata?: ProviderMetadata;
+};
+export type ReasoningEndEvent = {
+  type: "reasoning-end";
   id: string;
   providerMetadata?: ProviderMetadata;
 };
@@ -130,6 +152,9 @@ export type SSEEvent =
   | TextStartEvent
   | TextDeltaEvent
   | TextEndEvent
+  | ReasoningStartEvent
+  | ReasoningDeltaEvent
+  | ReasoningEndEvent
   | ToolInputStartEvent
   | ToolInputDeltaEvent
   | ToolInputAvailableEvent

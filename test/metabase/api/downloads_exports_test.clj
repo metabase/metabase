@@ -35,8 +35,6 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :each (fn [thunk] (qp.pivot.test-util/do-with-pivot-parity-check thunk)))
-
 (def ^:private cell-formatter (DataFormatter.))
 
 (defn- read-cell-with-formatting
@@ -404,6 +402,55 @@
                           (group-by second)
                           ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                           (apply concat)))))))))))
+
+(deftest pivot-export-currency-in-header-default-test
+  (testing "Currency symbols are shown inline in pivot exports even with the default `currency_in_header` (UXW-4499).
+            Pivot measures have no column header to carry the symbol, matching the in-app pivot table."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    ["CATEGORY"]
+                                                :columns ["CREATED_AT"]
+                                                :values  ["sum"]}
+                                               ;; note: no `:currency_in_header false` here -- the default leaves the
+                                               ;; currency symbol in the header for regular tables, but pivot exports
+                                               ;; should still show it inline.
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style "currency"}}
+                                               :pivot.condense_duplicate_totals true}
+                      :dataset_query          (mt/mbql-query products
+                                                {:aggregation [[:sum $price]]
+                                                 :breakout    [$category
+                                                               !year.created_at]})}]
+        (testing "csv"
+          (is (= [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+                  ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
+                  ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
+                  ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
+                  ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
+                  ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
+                 (card-download card {:export-format :csv :format-rows true :pivot true}))))
+        (testing "xlsx"
+          ;; The pivot measure cells get a currency data format (`[$$]#,##0.00`), which Excel renders with the
+          ;; symbol. (POI's test DataFormatter renders the `[$$]` marker literally, so we assert on the format string.)
+          (let [result (mt/user-http-request :crowberto :post 200
+                                             (format "card/%d/query/xlsx" (:id card))
+                                             {:format_rows true :pivot_results true})
+                measure-formats (with-open [in (io/input-stream result)]
+                                  (let [sheet (->> (spreadsheet/load-workbook in)
+                                                   (spreadsheet/select-sheet "Query result"))]
+                                    (->> (spreadsheet/row-seq sheet)
+                                         (drop 1) ;; skip header row
+                                         (mapcat (fn [r] (->> (spreadsheet/cell-seq r)
+                                                              (drop 1) ;; skip the row-dimension cell
+                                                              (keep (fn [c]
+                                                                      (some-> (.getCellStyle ^org.apache.poi.ss.usermodel.Cell c)
+                                                                              (.getDataFormatString)))))))
+                                         distinct
+                                         vec)))]
+            (is (every? #(str/includes? % "[$$]") measure-formats))
+            (is (seq measure-formats))))))))
 
 (deftest ^:mb/driver-tests simple-pivot-with-sum-and-average-export-test
   (testing "Pivot table exports look pivoted and can have multiple measures aggregated properly."
@@ -1443,8 +1490,14 @@
                        :model/Card zero-scale-card (assoc (pivot-card-with-scalar 0) :created_at created_at)]
           (let [named-cards {:one-scale-card one-scale-card
                              :two-scale-card zero-scale-card
-                             :no-scale-card no-scale-card}]
-            ;; TODO: We don't support JSON for pivot tables, once we do, we should add them here
+                             :no-scale-card no-scale-card}
+                outputs (into {}
+                              (for [card-name [:one-scale-card :two-scale-card :no-scale-card]
+                                    ;; TODO: We don't support JSON for pivot tables, once we do, we should add them here
+                                    export-format [:csv :xlsx]]
+                                [[card-name export-format]
+                                 (all-outputs! (get named-cards card-name)
+                                               {:export-format export-format :format-rows true :pivot true})]))]
             (doseq [[c1-name c2-name export-format expected] [[:one-scale-card  :no-scale-card  :csv  true]
                                                               [:one-scale-card  :two-scale-card :csv  false]
                                                               [:no-scale-card   :two-scale-card :csv  false]
@@ -1452,11 +1505,8 @@
                                                               [:one-scale-card  :two-scale-card :xlsx false]
                                                               [:no-scale-card   :two-scale-card :xlsx false]]]
               (testing (str "> " (name c1-name) " and " (name c2-name) " with export-format: '" (name export-format) "' should be " expected)
-                (let [c1 (get named-cards c1-name)
-                      c2 (get named-cards c2-name)
-                      [unique-to-a unique-to-b _both]
-                      (data/diff (all-outputs! c1 {:export-format export-format :format-rows true :pivot true})
-                                 (all-outputs! c2 {:export-format export-format :format-rows true :pivot true}))]
+                (let [[unique-to-a unique-to-b _both]
+                      (data/diff (get outputs [c1-name export-format]) (get outputs [c2-name export-format]))]
                   (if expected
                     (is (= [nil nil] [unique-to-a unique-to-b]))
                     (is (or (some? unique-to-a) (some? unique-to-b)))))))))))))

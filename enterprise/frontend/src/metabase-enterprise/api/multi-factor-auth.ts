@@ -1,11 +1,23 @@
+import { provideUserListTags } from "metabase/api/tags";
 import type {
   MfaAdminOverview,
+  MfaAdminUser,
   MfaEnrollResponse,
+  MfaEnrolledUser,
   MfaStatus,
+  MfaUserListRequest,
+  MfaUserListResponse,
+  UserId,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, provideMfaStatusTags, tag } from "./tags";
+import {
+  idTag,
+  invalidateTags,
+  listTag,
+  provideMfaStatusTags,
+  tag,
+} from "./tags";
 
 export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -16,6 +28,45 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => provideMfaStatusTags(),
     }),
+    listEnrolledMfaUsers: builder.query<
+      MfaUserListResponse<MfaEnrolledUser>,
+      MfaUserListRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/mfa/admin/enrolled-users",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideUserListTags(response.data) : [],
+    }),
+    listUnenrolledMfaUsers: builder.query<
+      MfaUserListResponse<MfaAdminUser>,
+      MfaUserListRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/mfa/admin/unenrolled-users",
+        params,
+      }),
+      providesTags: (response) =>
+        response ? provideUserListTags(response.data) : [],
+    }),
+    removeUserMfa: builder.mutation<void, { user_id: UserId }>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/mfa/admin/remove",
+        body,
+      }),
+      invalidatesTags: (_, error, { user_id }) =>
+        invalidateTags(error, [
+          tag("mfa-status"),
+          listTag("user"),
+          idTag("user", user_id),
+        ]),
+    }),
+    // `/api/session/*` 401s mean "wrong code", not "session gone". `noEvent` stops app-main
+    // redirecting to /auth/login, which would remount the page and lose the retry.
     verifyMfa: builder.mutation<
       { id: string },
       { challenge_token: string; code: string; remember?: boolean }
@@ -24,6 +75,18 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/session/mfa/verify",
         body,
+        noEvent: true,
+      }),
+    }),
+    enrollMfaOnLogin: builder.mutation<
+      { id: string; recovery_codes: string[] },
+      { enrollment_token: string; code: string; remember?: boolean }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/mfa/enroll",
+        body,
+        noEvent: true,
       }),
     }),
     getMfaStatus: builder.query<MfaStatus, void>({
@@ -67,6 +130,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/session/mfa/send-email-otp",
         body,
+        noEvent: true,
       }),
     }),
     regenerateRecoveryCodes: builder.mutation<
@@ -85,7 +149,11 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useGetMfaAdminOverviewQuery,
+  useListEnrolledMfaUsersQuery,
+  useListUnenrolledMfaUsersQuery,
+  useRemoveUserMfaMutation,
   useVerifyMfaMutation,
+  useEnrollMfaOnLoginMutation,
   useGetMfaStatusQuery,
   useEnrollMfaMutation,
   useConfirmMfaEnrollmentMutation,

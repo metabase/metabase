@@ -2,11 +2,11 @@ import type {
   OnBeforeRequestHandler,
   OnBeforeRequestHandlerConfig,
 } from "metabase/api/client";
+import { PLUGIN_API } from "metabase/api/client";
 import {
   EMBEDDING_SDK_CONFIG,
   isDataAppDev,
 } from "metabase/embedding-sdk/config";
-import { PLUGIN_API } from "metabase/plugins";
 
 import { isEmbedPreview, setDataApp } from "./config";
 import { setRequestClientHeaders } from "./lib/auth/set-request-client-headers";

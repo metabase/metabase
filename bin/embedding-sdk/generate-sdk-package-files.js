@@ -1,23 +1,8 @@
 #!/usr/bin/env node
-/* eslint-env node */
-/* eslint-disable import/no-commonjs, import/order, no-console */
 const fs = require("fs");
 const path = require("path");
 
 const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
-const DEPENDENCIES = [];
-
-function filterOuDependencies(object) {
-  const result = {};
-
-  Object.entries(object).forEach(([packageName, version]) => {
-    if (DEPENDENCIES.includes(packageName)) {
-      result[packageName] = version;
-    }
-  });
-
-  return result;
-}
 
 function generateSdkPackage() {
   let maybeCommitHash = process.argv[2];
@@ -27,12 +12,9 @@ function generateSdkPackage() {
     maybeCommitHash = maybeCommitHash.slice(0, 7);
   }
 
-  const mainPackageJson = fs.readFileSync(
-    path.resolve("./package.json"),
-    "utf-8",
+  const mainPackageJsonContent = JSON.parse(
+    fs.readFileSync(path.resolve("./package.json"), "utf-8"),
   );
-
-  const mainPackageJsonContent = JSON.parse(mainPackageJson);
 
   const sdkPackageTemplateJson = fs.readFileSync(
     path.resolve(
@@ -42,14 +24,29 @@ function generateSdkPackage() {
   );
   const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
 
+  // `sdkRelease` is release-process metadata (distTag/tagAsLatest) read by
+  // .github/workflows/release-embedding-sdk.yml — it must never ship inside
+  // the published npm package.json.
+  const { sdkRelease: _sdkRelease, ...publishableTemplateJsonContent } =
+    sdkPackageTemplateJsonContent;
+
   const todayDate = new Date().toJSON().slice(0, 10).replaceAll("-", "");
 
   const mergedContent = {
-    ...sdkPackageTemplateJsonContent,
+    ...publishableTemplateJsonContent,
+
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`
       : sdkPackageTemplateJsonContent.version,
-    dependencies: filterOuDependencies(mainPackageJsonContent.dependencies),
+
+    // Runtime dependencies of the CLI for data apps, not pre-bundled.
+    dependencies: {
+      // Compiles app definitions and local imports for the CLI to evaluate.
+      esbuild: mainPackageJsonContent.devDependencies.esbuild,
+
+      // Parses and edits TypeScript source files during resource sync.
+      typescript: mainPackageJsonContent.dependencies.typescript,
+    },
   };
 
   const mergedContentString = JSON.stringify(mergedContent, null, 2);

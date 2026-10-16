@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
+// eslint-disable-next-line eslint-js/no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
@@ -9,6 +9,7 @@ import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-p
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
 import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
+import { isHostReactVersionSupported } from "embedding-sdk-bundle/lib/host-react-version";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
@@ -20,12 +21,14 @@ import {
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import type { MetabaseProviderPropsStoreInternalProps } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
-import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
+import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
+import { getSetting } from "metabase/settings";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { initializePlugins } from "sdk-ee-plugins";
@@ -34,6 +37,7 @@ import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
+import { UnsupportedReactVersionError } from "../../private/UnsupportedReactVersionError/UnsupportedReactVersionError";
 import { METABOT_SDK_EE_PLUGIN } from "../MetabotQuestion/MetabotQuestion";
 
 export type ComponentProviderInternalProps = ComponentProviderProps & {
@@ -48,8 +52,8 @@ let hasInitializedPlugins = false;
  * to avoid an extra frame where children render without plugins.
  */
 function useInitPlugins(reduxStore: SdkStore) {
-  const tokenFeatures = useSelector(
-    (state) => state.settings.values["token-features"],
+  const tokenFeatures = useSelector((state) =>
+    getSetting(state, "token-features"),
   );
 
   // Modular Embedding already initializes the plugins in its entrypoint.
@@ -189,6 +193,11 @@ export type ComponentProviderProps = MetabaseProviderProps & {
   isLocalHost?: boolean;
 };
 
+export type MetabaseProviderPropsStoreExternalProps = Omit<
+  ComponentProviderProps,
+  "children" | keyof MetabaseProviderPropsStoreInternalProps
+>;
+
 export const ComponentProvider = memo(function ComponentProvider({
   children,
   ...props
@@ -197,6 +206,12 @@ export const ComponentProvider = memo(function ComponentProvider({
 
   if (!reduxStoreRef.current) {
     reduxStoreRef.current = props.reduxStore ?? getSdkStore();
+  }
+
+  // Bail out before any provider mounts: a too-old host React would throw
+  // deep inside them and take the host app down with it.
+  if (!isHostReactVersionSupported()) {
+    return <UnsupportedReactVersionError />;
   }
 
   return (

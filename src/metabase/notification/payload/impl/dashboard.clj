@@ -2,6 +2,7 @@
   (:require
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
+   [metabase.notification.db :as notification.db]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.notification.send :as notification.send]
@@ -43,7 +44,7 @@
   [{:keys [creator_id dashboard_subscription handlers] :as _notification-info} :- ::notification.payload/Notification]
   (log/with-context {:dashboard_id (:dashboard_id dashboard_subscription)}
     (let [dashboard-id (:dashboard_id dashboard_subscription)
-          dashboard    (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :tabs)
+          dashboard    (t2/hydrate (notification.db/dashboard dashboard-id) :tabs)
           parameters   (parameters (:parameters dashboard_subscription) (:parameters dashboard))
           attached-ids (attached-card-ids dashboard_subscription)
           only-card-ids (when (attachment-only? handlers)
@@ -84,7 +85,7 @@
   (try
     (run! #(some-> % :result :data :rows notification.payload/cleanup!) (->> notification-payload :payload :dashboard_parts))
     (catch Exception e
-      (log/warn e "Error cleaning up temp files for notification" id)))
+      (log/warn "Error cleaning up temp files for notification" id (ex-message e))))
   (when-not skipped?
     (events/publish-event! :event/subscription-send
                            {:id      id

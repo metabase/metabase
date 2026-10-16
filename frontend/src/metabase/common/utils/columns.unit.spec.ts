@@ -4,8 +4,9 @@ import {
   SAMPLE_PROVIDER,
   columnFinder,
 } from "metabase-lib/test-helpers";
+import { createMockMetricDimension } from "metabase-types/api/mocks";
 
-import { getColumnIcon } from "./columns";
+import { getColumnIcon, getDimensionIcon } from "./columns";
 
 describe("common/utils/columns", () => {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
@@ -52,6 +53,27 @@ describe("common/utils/columns", () => {
       expect(getColumnIcon(stateColumn)).toBe("location");
       expect(getColumnIcon(latColumn)).toBe("location");
       expect(getColumnIcon(lonColumn)).toBe("location");
+    });
+  });
+
+  describe("getDimensionIcon", () => {
+    it("supports API metric dimensions", () => {
+      expect(
+        getDimensionIcon(
+          createMockMetricDimension({
+            effective_type: "type/Text",
+            semantic_type: "type/Country",
+          }),
+        ),
+      ).toBe("location");
+      expect(
+        getDimensionIcon(
+          createMockMetricDimension({
+            effective_type: "type/Integer",
+            semantic_type: null,
+          }),
+        ),
+      ).toBe("int");
     });
   });
 });

@@ -6,9 +6,9 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -27,15 +27,17 @@
   [:maybe
    [:tuple
     #_sql     [:maybe string?]
-    #_args    [:maybe [:sequential any?]]
-    #_missing [:maybe any?]]])
+    #_args    [:maybe [:sequential ::lib.schema.literal/param-value]]
+    #_missing [:maybe [:sequential :string]]]])
 
 (mu/defn- substitute-field-param :- ::acc
-  [metadata-providerable
-   [sql args missing] :- ::acc
-   in-optional?
-   k
-   {:keys [_field value], :as v}]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   [sql args missing]    :- ::acc
+   in-optional?          :- :boolean
+   k                     :- :string
+   {:keys [_field value], :as v} :- [:or
+                                     :metabase.lib.parameters.parse.types/field-filter
+                                     :metabase.lib.parameters.parse.types/temporal-unit]]
   (if (and (= value lib/parsed-param-no-value-placeholder) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
@@ -45,18 +47,21 @@
       [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))
 
 (mu/defn- substitute-simple-query :- ::acc
-  [metadata-providerable
-   [sql args missing] :- ::acc
-   v]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   [sql args missing]    :- ::acc
+   v                     :- [:or
+                             :metabase.lib.parameters.parse.types/referenced-card-query
+                             :metabase.lib.parameters.parse.types/referenced-table-query]]
   (let [{:keys [replacement-snippet prepared-statement-args]}
         (->replacement-snippet-info metadata-providerable v)]
     [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))
 
 (mu/defn- substitute-native-query-snippet :- ::acc
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   param->value
-   [sql args missing]
-   in-optional? v]
+   param->value          :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]
+   [sql args missing]    :- ::acc
+   in-optional?          :- :boolean
+   v                     :- :metabase.lib.parameters.parse.types/referenced-query-snippet]
   (let [{:keys [replacement-snippet]}                    (->replacement-snippet-info metadata-providerable v)
         [processed-snippet snippet-args snippet-missing] (substitute*
                                                           metadata-providerable
@@ -69,9 +74,9 @@
 
 (mu/defn- substitute-param :- ::acc
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   param->value
-   [sql args missing] :- ::acc
-   in-optional?
+   param->value          :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]
+   [sql args missing]    :- ::acc
+   in-optional?          :- :boolean
    {:keys [k]} :- :metabase.lib.parameters.parse.types/param]
   (if-not (contains? param->value k)
     [sql args (conj missing k)]
@@ -98,9 +103,9 @@
 
 (mu/defn- substitute-optional :- ::acc
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   param->value
-   [sql args missing] :- ::acc
-   {subclauses :args}]
+   param->value          :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]
+   [sql args missing]    :- ::acc
+   {subclauses :args} :- :metabase.lib.parameters.parse.types/optional]
   (let [[opt-sql opt-args opt-missing] (substitute* metadata-providerable param->value subclauses true)]
     (if (seq opt-missing)
       [sql args missing]
@@ -109,9 +114,9 @@
 (mu/defn- substitute* :- ::acc
   "Returns a sequence of `[replaced-sql-string jdbc-args missing-parameters]`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   param->value          :- [:maybe [:map-of string? any?]]
+   param->value          :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]
    parsed                :- [:sequential :metabase.lib.parameters.parse/parsed-token]
-   in-optional?]
+   in-optional?          :- :boolean]
   (reduce
    (fn [[sql args missing] x]
      (cond
@@ -139,8 +144,8 @@
     ;; -> [\"select * from foobars where bird_type = ?\" [\"Steller's Jay\"]]"
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    parsed-query          :- [:sequential :metabase.lib.parameters.parse/parsed-token]
-   param->value          :- [:maybe [:map-of string? any?]]]
-  (log/tracef "Substituting params\n%s\nin query:\n%s" (u/pprint-to-str param->value) (u/pprint-to-str parsed-query))
+   param->value          :- [:maybe [:map-of :string :metabase.lib.parameters.parse.types/parsed-value]]]
+  (log/tracef "Substituting %d params in query" (count param->value))
   (let [[sql args missing] (try
                              (substitute* metadata-providerable param->value parsed-query false)
                              (catch Throwable e
@@ -149,7 +154,7 @@
                                                 :params       param->value
                                                 :parsed-query parsed-query}
                                                e))))]
-    (log/tracef "=>%s\n%s" sql (pr-str args))
+    (log/tracef "Substituted %d params" (count args))
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
                       {:type    driver-api/qp.error-type.missing-required-parameter

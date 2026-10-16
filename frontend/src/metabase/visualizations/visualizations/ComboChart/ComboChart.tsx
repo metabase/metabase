@@ -1,11 +1,15 @@
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { CartesianChart } from "metabase/visualizations/visualizations/CartesianChart";
 
 import type { VisualizationProps } from "../../types";
 
 import { COMBO_CHART_DEFINITION } from "./definition";
 
-Object.assign(ComboChart, COMBO_CHART_DEFINITION);
-
-export function ComboChart(props: VisualizationProps) {
+function ComboChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const ComboChart = assignLazily(
+  ComboChartComponent,
+  COMBO_CHART_DEFINITION,
+);

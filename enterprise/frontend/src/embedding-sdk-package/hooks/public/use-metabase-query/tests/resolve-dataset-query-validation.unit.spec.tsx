@@ -1,15 +1,35 @@
-/* eslint-disable import/order */
-
+// Register mocks before loading the modules under test.
+// oxfmt-ignore
 import { createMockStore, resetTestState } from "./setup";
-import { TEST_SCHEMA } from "./fixtures";
 
 import { resolveDatasetQuery as resolveDatasetQueryInBundle } from "embedding-sdk-bundle/lib/create-metabase-query";
 
 import { avg, breakout, filter, orderBy, sum } from "..";
 
+import { TEST_SCHEMA } from "./fixtures";
+
 beforeEach(resetTestState);
 
 describe("resolveDatasetQuery validation", () => {
+  it("does not emit an explicit undefined time unit", () => {
+    const field = TEST_SCHEMA.tables.orders.fields.createdAt;
+
+    expect(breakout(field, { unit: undefined })).not.toHaveProperty("unit");
+    expect(
+      orderBy(breakout(field, { unit: undefined }), "asc"),
+    ).not.toHaveProperty("unit");
+  });
+
+  it("rejects unknown dynamic query properties", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())(
+        { source: TEST_SCHEMA.tables.orders },
+        // The runtime validator must receive a shape the public type rejects.
+        { filter: [] } as never,
+      ),
+    ).rejects.toThrow("Dynamic queries only support");
+  });
+
   it("rejects invalid limits with a clear error message", async () => {
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
@@ -85,9 +105,12 @@ describe("resolveDatasetQuery validation", () => {
           }),
         ],
         orderBys: [
-          orderBy(TEST_SCHEMA.tables.orders.fields.createdAt, "desc", {
-            unit: "year",
-          }),
+          orderBy(
+            breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
+              unit: "year",
+            }),
+            "desc",
+          ),
         ],
       }),
     ).rejects.toThrow(
@@ -135,25 +158,102 @@ describe("resolveDatasetQuery validation", () => {
         fields: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
       }),
     ).rejects.toThrow(
-      "Saved question queries only support source and enabled, but received fields.",
+      "Saved question queries only support source, filters, aggregations, breakouts, orderBys, limit, enabled, but received fields.",
     );
 
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.questions.ordersQuestion,
-        limit: 10,
+        limit: 0,
+      }),
+    ).rejects.toThrow("Saved question query limit must be a positive integer.");
+  });
+
+  it("rejects saved question clauses that leave the question's result columns", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        filters: [filter(TEST_SCHEMA.tables.orders.fields.id, "=", 1)],
       }),
     ).rejects.toThrow(
-      "Saved question queries only support source and enabled, but received limit.",
+      "Saved question query filters must reference a result column of saved question 41, but received ID.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        aggregations: [avg(TEST_SCHEMA.tables.orders.fields.id)],
+      }),
+    ).rejects.toThrow(
+      "Saved question query aggregations must reference a result column of saved question 41, but received ID.",
     );
 
     await expect(
       resolveDatasetQueryInBundle(createMockStore())({
         source: TEST_SCHEMA.questions.ordersQuestion,
         aggregations: [avg(TEST_SCHEMA.questions.ordersQuestion.columns[1])],
+        breakouts: [TEST_SCHEMA.tables.orders.fields.id],
       }),
     ).rejects.toThrow(
-      "Saved question queries only support source and enabled, but received aggregations.",
+      "Saved question query breakouts must reference a result column of saved question 41, but received ID.",
+    );
+
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        orderBys: [orderBy(TEST_SCHEMA.tables.orders.fields.id, "desc")],
+      }),
+    ).rejects.toThrow(
+      "Saved question query orderBys must reference a result column of saved question 41, but received ID.",
+    );
+  });
+
+  // These are rejected by the types too; the runtime guard keeps the failure
+  // legible for JavaScript apps and hand-built query objects.
+  it("rejects table-scoped references in saved question queries", async () => {
+    await expect(
+      // @ts-expect-error Segments belong to a table source
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        filters: [TEST_SCHEMA.tables.orders.segments.completed],
+      }),
+    ).rejects.toThrow(
+      "Saved question query filters cannot use Segments, which belong to a table source.",
+    );
+
+    await expect(
+      // @ts-expect-error Measures belong to a table source
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        aggregations: [TEST_SCHEMA.tables.orders.measures.revenue],
+      }),
+    ).rejects.toThrow(
+      "Saved question query aggregations cannot use Measures or Metrics, which belong to a table source.",
+    );
+
+    await expect(
+      // @ts-expect-error Metrics belong to a table source
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        aggregations: [TEST_SCHEMA.metrics.questionRevenue],
+      }),
+    ).rejects.toThrow(
+      "Saved question query aggregations cannot use Measures or Metrics, which belong to a table source.",
+    );
+  });
+
+  it("rejects saved question orderBys that skip the query's grouping", async () => {
+    await expect(
+      resolveDatasetQueryInBundle(createMockStore())({
+        source: TEST_SCHEMA.questions.ordersQuestion,
+        aggregations: [avg(TEST_SCHEMA.questions.ordersQuestion.columns[1])],
+        breakouts: [TEST_SCHEMA.questions.ordersQuestion.columns[0]],
+        orderBys: [
+          orderBy(TEST_SCHEMA.questions.ordersQuestion.columns[2], "desc"),
+        ],
+      }),
+    ).rejects.toThrow(
+      "Saved question query orderBys for grouped queries must use query breakouts or aggregations included in the query.",
     );
   });
 

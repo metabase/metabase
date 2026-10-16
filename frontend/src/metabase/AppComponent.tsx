@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
 import {
@@ -7,10 +8,12 @@ import {
   getIsAppBarVisible,
   getIsDataApp,
   getIsDataStudioApp,
+  getIsEmbeddingHubApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
-} from "metabase/app/selectors";
+} from "metabase/app/nav/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
   Archived,
   GenericError,
@@ -21,23 +24,22 @@ import {
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
-import ScrollToTop from "metabase/hoc/ScrollToTop";
+import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { connect, useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import type { AppErrorDescriptor, State } from "metabase/redux/store";
-import type { Location } from "metabase/router";
+import type { AppErrorDescriptor } from "metabase/redux/store";
 import { Outlet, useLocation } from "metabase/router";
 import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
 import { StatusListing } from "metabase/status/components/StatusListing";
 import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
-import ErrorBoundary from "./ErrorBoundary";
+import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
-import { useTokenRefresh } from "./api/utils/use-token-refresh";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
@@ -55,63 +57,46 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (data?.error_code === "archived" && context === "query-builder") {
     return <Archived entityName="question" linkTo="/questions/archive" />;
   }
-  return <GenericError details={data?.message} />;
+  return <GenericError details={findErrorMessage(data)} />;
 };
 
-interface AppStateProps {
-  errorPage: AppErrorDescriptor | null;
-  isAdminApp: boolean;
-  isDataStudioApp: boolean;
-  isMonitorApp: boolean;
-  isDataApp: boolean;
-  bannerMessageDescriptor?: string;
-  isAppBarVisible: boolean;
-  isNavBarEnabled: boolean;
-}
-
-interface AppDispatchProps {
-  onError: (error: unknown) => void;
-}
-
-interface AppRouterOwnProps {
-  location: Location;
-}
-
-type AppProps = AppStateProps & AppDispatchProps & AppRouterOwnProps;
-
-const mapStateToProps = (
-  state: State,
-  props: AppRouterOwnProps,
-): AppStateProps => ({
-  errorPage: getErrorPage(state),
-  isAdminApp: getIsAdminApp(state, props),
-  isDataStudioApp: getIsDataStudioApp(state, props),
-  isMonitorApp: getIsMonitorApp(state, props),
-  isDataApp: getIsDataApp(state, props),
-  isAppBarVisible: getIsAppBarVisible(state, props),
-  isNavBarEnabled: getIsNavBarEnabled(state, props),
-});
-
-const mapDispatchToProps: AppDispatchProps = {
-  onError: setErrorPage,
-};
-
-function App({
-  errorPage,
-  isAdminApp,
-  isDataStudioApp,
-  isMonitorApp,
-  isDataApp,
-  isAppBarVisible,
-  isNavBarEnabled,
-  onError,
-}: AppProps) {
+export function App() {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
+  const dispatch = useDispatch();
   const applicationName = useSelector(getApplicationName);
-  const { pathname } = useLocation();
+
+  // These selectors derive the active app section from the URL, so they take
+  // the router props rather than reading them from the store.
+  const location = useLocation();
+  const routerProps = { location };
+  const errorPage = useSelector(getErrorPage);
+  const isAdminApp = useSelector((state) => getIsAdminApp(state, routerProps));
+  const isDataStudioApp = useSelector((state) =>
+    getIsDataStudioApp(state, routerProps),
+  );
+  const isMonitorApp = useSelector((state) =>
+    getIsMonitorApp(state, routerProps),
+  );
+  const isEmbeddingHubApp = useSelector((state) =>
+    getIsEmbeddingHubApp(state, routerProps),
+  );
+  const isDataApp = useSelector((state) => getIsDataApp(state, routerProps));
+  const isAppBarVisible = useSelector((state) =>
+    getIsAppBarVisible(state, routerProps),
+  );
+  const isNavBarEnabled = useSelector((state) =>
+    getIsNavBarEnabled(state, routerProps),
+  );
+
+  const onError = (error: unknown) => dispatch(setErrorPage(error));
+  const { pathname } = location;
 
   usePageTitle(applicationName, { titleIndex: 0 });
   useTokenRefresh();
+  // App-wide subscription that keeps the settings cache alive for the whole
+  // session and makes `session-properties` invalidations refetch.
+  // In RTK if there is no active subscriber, invalidating a tag does not trigger a refetch.
+  useGetSettingsQuery();
 
   useEffect(() => {
     initializeIframeResizer();
@@ -141,9 +126,14 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
+              <EmbedSetupModals />
               <Metabot
                 hide={
-                  isAdminApp || isDataStudioApp || isMonitorApp || isDataApp
+                  isAdminApp ||
+                  isDataStudioApp ||
+                  isMonitorApp ||
+                  isEmbeddingHubApp ||
+                  isDataApp
                 }
               />
             </AppContentContainer>
@@ -154,14 +144,3 @@ function App({
     </ErrorBoundary>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<
-  AppStateProps,
-  AppDispatchProps,
-  AppRouterOwnProps,
-  State
->(
-  mapStateToProps,
-  mapDispatchToProps,
-)(App);

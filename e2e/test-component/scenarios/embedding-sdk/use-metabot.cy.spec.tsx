@@ -112,7 +112,7 @@ const MetabotConsumer = ({ prompts, drills = false }: MetabotConsumerProps) => {
 describe("scenarios > embedding-sdk > use-metabot hook", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
 
     cy.signOut();
     mockAuthProviderAndJwtSignIn();

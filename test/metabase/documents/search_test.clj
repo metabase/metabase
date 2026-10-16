@@ -87,53 +87,59 @@
                   "User with write permissions should see archived documents in accessible collections"))))))))
 
 (deftest document-view-tracking-integration-test
-  (testing "Document view tracking integrates with search"
-    (mt/with-temp [:model/Document {doc-id :id} {:name "Viewed Document"
-                                                 :document (documents.test-util/text->prose-mirror-ast "content")
-                                                 :view_count 0}]
-      (testing "Document has initial state"
-        (let [doc (t2/select-one :model/Document :id doc-id)]
-          (is (= 0 (:view_count doc)))
-          ;; last_viewed_at has a default timestamp from migration, not nil
-          (is (some? (:last_viewed_at doc)))))
-      (testing "Publishing document-read event works without errors"
-        ;; The actual view count increment is batched and asynchronous
-        ;; So we test that the event publishes successfully
-        (is (some? (events/publish-event! :event/document-read
-                                          {:object-id doc-id
-                                           :user-id (mt/user->id :crowberto)}))
-            "Document read event should publish successfully"))
-      (testing "Document with higher view count appears in search"
-        ;; Manually set view count to test search integration
-        (t2/update! :model/Document doc-id {:view_count 5
-                                            :last_viewed_at (t/offset-date-time)})
-        (search.tu/with-temp-index-table
-          (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
-                doc-results (filter #(= "document" (:model %)) (:data results))]
-            (when (seq doc-results)
-              (let [doc-result (first doc-results)]
-                (is (= doc-id (:id doc-result)))
-                ;; View count affects scoring but isn't directly in result
-                (is (some #(= "view-count" (:name %)) (:scores doc-result))))))))
-      (testing "Document with recent view appears in search results"
-        (let [recent-time (t/minus (t/offset-date-time) (t/minutes 5))]
-          (t2/update! :model/Document doc-id {:last_viewed_at recent-time})
+  ;; Create the index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the ambient
+  ;; connection would commit that transaction, preventing rollback and leaking rows into later tests. The nested
+  ;; scope below reuses this table. Use `-if-supported` because the rest of the test does not require an index and
+  ;; should still run where the app DB cannot support one.
+  (search.tu/with-temp-index-table-if-supported
+    (testing "Document view tracking integrates with search"
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Viewed Document"
+                                                   :document (documents.test-util/text->prose-mirror-ast "content")
+                                                   :view_count 0}]
+        (testing "Document has initial state"
+          (let [doc (t2/select-one :model/Document :id doc-id)]
+            (is (= 0 (:view_count doc)))
+            ;; The migration gives `last_viewed_at` a non-nil default timestamp.
+            (is (some? (:last_viewed_at doc)))))
+        (testing "Publishing document-read event works without errors"
+          ;; View-count updates are asynchronous and batched, so assert only that publishing succeeds.
+          (is (some? (events/publish-event! :event/document-read
+                                            {:object-id doc-id
+                                             :user-id (mt/user->id :crowberto)}))
+              "Document read event should publish successfully"))
+        (testing "Document with higher view count appears in search"
+          ;; Set the view count directly to test its search integration.
+          (t2/update! :model/Document doc-id {:view_count 5
+                                              :last_viewed_at (t/offset-date-time)})
           (search.tu/with-temp-index-table
             (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
                   doc-results (filter #(= "document" (:model %)) (:data results))]
               (when (seq doc-results)
                 (let [doc-result (first doc-results)]
                   (is (= doc-id (:id doc-result)))
-                  ;; User recency affects scoring
-                  (is (some #(= "user-recency" (:name %)) (:scores doc-result))))))))))))
+                  ;; View count affects scoring but is not included directly in the result.
+                  (is (some #(= "view-count" (:name %)) (:scores doc-result))))))))
+        (testing "Document with recent view appears in search results"
+          (let [recent-time (t/minus (t/offset-date-time) (t/minutes 5))]
+            (t2/update! :model/Document doc-id {:last_viewed_at recent-time})
+            (search.tu/with-temp-index-table
+              (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
+                    doc-results (filter #(= "document" (:model %)) (:data results))]
+                (when (seq doc-results)
+                  (let [doc-result (first doc-results)]
+                    (is (= doc-id (:id doc-result)))
+                    ;; View recency contributes the `user-recency` score.
+                    (is (some #(= "user-recency" (:name %)) (:scores doc-result)))))))))))))
 
 (deftest document-content-search-test
   (testing "Documents are searchable by their body content, not just their name (UXW-4199)"
     ;; Both engines search document bodies: the appdb engine indexes clean text (via ast->text),
     ;; the legacy in-place engine LIKE-matches the raw prose-mirror JSON.
-    (mt/with-temp [:model/Document {doc-id :id} {:name "Annual Summary"
-                                                 :document (documents.test-util/text->prose-mirror-ast "quarterly revenue projections and growth")}]
-      (search.tu/with-appdb-search-and-legacy-search
+    ;; The index scope must sit outside `with-temp`: it creates and drops the index table on the ambient
+    ;; connection, and on H2 and MySQL that DDL commits the transaction `with-temp` meant to roll back.
+    (search.tu/with-appdb-search-and-legacy-search
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Annual Summary"
+                                                   :document (documents.test-util/text->prose-mirror-ast "quarterly revenue projections and growth")}]
         (testing "found by a term that appears only in the body"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "projections" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))
@@ -146,14 +152,15 @@
 
 (deftest document-smart-link-label-search-test
   (testing "Documents are searchable by the visible label of an embedded smart link (UXW-4199)"
-    (mt/with-temp [:model/Document {doc-id :id}
-                   {:name "Reference Doc"
-                    :document {:type "doc"
-                               :content [{:type "paragraph"
-                                          :content [{:type "text" :text "see"}
-                                                    {:type "smartLink"
-                                                     :attrs {:model "card" :entityId "abc" :label "Customer Retention"}}]}]}}]
-      (search.tu/with-appdb-search-and-legacy-search
+    ;; The index scope must sit outside `with-temp`, as in `document-content-search-test` above.
+    (search.tu/with-appdb-search-and-legacy-search
+      (mt/with-temp [:model/Document {doc-id :id}
+                     {:name "Reference Doc"
+                      :document {:type "doc"
+                                 :content [{:type "paragraph"
+                                            :content [{:type "text" :text "see"}
+                                                      {:type "smartLink"
+                                                       :attrs {:model "card" :entityId "abc" :label "Customer Retention"}}]}]}}]
         (testing "found by a term that appears only in the smart-link label"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Retention" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))))))
@@ -176,3 +183,27 @@
         (testing "no longer found by the replaced body term"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "initial" :models "document")]
             (is (not (contains? (set (map :id (:data results))) doc-id)))))))))
+
+(deftest exploration-document-search-exclusion-test
+  (testing "Documents attached to an exploration are excluded from search"
+    (let [tag (mt/random-name)]
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/User u {}
+                       :model/Exploration e {:name "expl" :creator_id (:id u)}
+                       :model/Document    exploration-doc {:name (str tag "-exploration")
+                                                           :document (documents.test-util/text->prose-mirror-ast "")
+                                                           :creator_id (:id u)
+                                                           :exploration_id (:id e)}
+                       :model/Document    standalone {:name (str tag "-standalone")
+                                                      :document (documents.test-util/text->prose-mirror-ast "")
+                                                      :creator_id (:id u)}]
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q tag :models "document")
+                ids    (set (map :id (:data results)))]
+            (is (contains? ids (u/the-id standalone))
+                "Standalone document should appear")
+            (is (not (contains? ids (u/the-id exploration-doc)))
+                "Exploration-attached document should NOT appear"))
+          (testing "result rows don't leak the internal :exploration_id column"
+            (let [results (mt/user-http-request :crowberto :get 200 "search" :q tag :models "document")]
+              (is (every? (complement #(contains? % :exploration_id))
+                          (:data results))))))))))

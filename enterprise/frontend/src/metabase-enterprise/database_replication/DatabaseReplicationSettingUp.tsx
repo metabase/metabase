@@ -4,7 +4,7 @@ import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { Box, Flex, Loader, Stack, Text, Title } from "metabase/ui";
 
 export const DatabaseReplicationSettingUp = () => (
-  <Stack align="center" gap="lg" my="4.5rem">
+  <Stack align="center" gap="xl" my="4.5rem">
     <Box h={96} pos="relative" w={96}>
       <MetabotLogo variant="cloud" alt={t`Metabot Cloud`} />
       <Flex

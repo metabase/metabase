@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
@@ -5,35 +7,38 @@ import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { publicDashboardClickActionMode } from "metabase/public/PublicDashboardMode";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
-import type { WithRouterProps } from "metabase/router";
+import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
-import { Mode } from "metabase/visualizations/click-actions/Mode";
-import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
+import { parseSearchQuery } from "metabase/utils/browser";
+import { isActionDashCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import { usePublicEndpoints } from "../../../hooks/use-public-endpoints";
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
 
-const PublicOrEmbeddedDashboardPageInner = ({
-  location,
-  router,
-}: WithRouterProps) => {
+const PublicOrEmbeddedDashboardPageInner = () => {
+  const location = useLocation();
+
   useDashboardLocationSync({ location });
-  useDashboardUrlQuery(router, location);
+  useDashboardUrlQuery(location);
 
   return <PublicOrEmbeddedDashboardView />;
 };
 
-export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
+export const PublicOrEmbeddedDashboardPage = () => {
   const dispatch = useDispatch();
 
-  const { location, params } = props;
-  const { uuid, token } = params;
+  const location = useLocation();
+  const { uuid, token } = useParams<{ uuid: string; token: EntityToken }>();
 
-  const parameterQueryParams = props.location.query;
+  const parameterQueryParams = useMemo(
+    () => parseSearchQuery(location.search),
+    [location.search],
+  );
 
   const dashboardId = uuid || token;
 
@@ -53,12 +58,18 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
 
   const canWhitelabel = useSelector(getCanWhitelabel);
 
+  // The `:uuid` (public) and `:token` (embed) routes each supply exactly one of
+  // these, so `dashboardId` is always defined when this page renders.
+  if (dashboardId == null) {
+    return null;
+  }
+
   return (
     <LocaleProvider
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <EmbeddingEntityContextProvider uuid={uuid} token={token}>
+      <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
         <DashboardContextProvider
           dashboardId={dashboardId}
           hideParameters={hide_parameters}
@@ -70,7 +81,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
           parameterQueryParams={parameterQueryParams}
           cardTitled={true}
           withFooter={true}
-          getClickActionMode={({ question }) => new Mode(question, PublicMode)}
+          clickActionMode={publicDashboardClickActionMode}
           navigateToNewCardFromDashboard={null}
           onError={(error) => {
             dispatch(setErrorPage(error));
@@ -78,7 +89,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
           isDashcardVisible={(dashcard) => !isActionDashCard(dashcard)}
           dashcardMenu={({ dashcard, result }) =>
             downloadsEnabled?.results &&
-            isQuestionCard(dashcard.card) &&
+            isQuestionDashCard(dashcard) &&
             !!result?.data &&
             !result?.error && (
               <PublicOrEmbeddedDashCardMenu
@@ -89,7 +100,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
           }
           dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
         >
-          <PublicOrEmbeddedDashboardPageInner {...props} />
+          <PublicOrEmbeddedDashboardPageInner />
         </DashboardContextProvider>
       </EmbeddingEntityContextProvider>
     </LocaleProvider>

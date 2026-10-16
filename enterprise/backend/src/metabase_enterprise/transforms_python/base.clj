@@ -8,6 +8,7 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -23,8 +24,7 @@
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -131,7 +131,7 @@
                                                       source-table-name table-name})
       (transforms-base.u/drop-table! driver db-id temp-table-name)
       (catch Exception e
-        (log/error e "Failed to transfer data using rename-tables strategy")
+        (log/errorf "Failed to transfer data using rename-tables strategy: %s" (ex-message e))
         (try
           (transforms-base.u/drop-table! driver db-id source-table-name)
           (catch Exception _))
@@ -147,7 +147,7 @@
       (transforms-base.u/drop-table! driver db-id table-name)
       (driver/rename-table! driver db-id source-table-name table-name)
       (catch Exception e
-        (log/error e "Failed to transfer data using create-drop-rename strategy")
+        (log/errorf "Failed to transfer data using create-drop-rename strategy: %s" (ex-message e))
         (try
           (transforms-base.u/drop-table! driver db-id source-table-name)
           (catch Exception _))
@@ -161,7 +161,7 @@
     (transforms-base.u/drop-table! driver db-id table-name)
     (create-table-and-insert-data! driver db-id (table-schema table-name metadata indexes) data-source)
     (catch Exception e
-      (log/error e "Failed to transfer data using drop-create fallback strategy")
+      (log/errorf "Failed to transfer data using drop-create fallback strategy: %s" (ex-message e))
       (throw e))))
 
 (defn- upsert-with-merge-strategy!
@@ -261,7 +261,13 @@
 
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
-  [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn source-range-params]}]
+  [{:keys [source] :as transform} :- ::transforms-base.schema/transform
+   db :- :metabase.warehouses.schema/database
+   run-id :- pos-int?
+   cancel-chan :- ::transforms-base.schema/chan
+   message-log :- ::transforms-base.schema/atom
+   {:keys [with-stage-timing-fn source-range-params]}
+   :- ::transforms-base.schema/execute-base-options]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
     (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
@@ -317,7 +323,7 @@
                 (finally
                   (.delete temp-file))))
             (catch Exception e
-              (log/error e "Failed to create resulting table")
+              (log/errorf "Failed to create resulting table: %s" (ex-message e))
               (throw (ex-info "Failed to create the resulting table"
                               {:transform-message (or (:transform-message (ex-data e))
                                                       (i18n/tru "Failed to create the resulting table"))}
@@ -360,7 +366,7 @@
       (when (and cancelled? (cancelled?))
         (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
       (let [{:keys [target] transform-id :id} transform
-            db (t2/select-one :model/Database (:database target))
+            db (transforms-python.db/database (:database target))
             ;; Use run-id if provided, otherwise generate a temp one for python runner
             effective-run-id (or run-id (rand-int Integer/MAX_VALUE))
             cancel-chan (or cancel-chan
@@ -378,7 +384,7 @@
                               ch))
             start-ms (u/start-timer)]
         (log! message-log (i18n/tru "Executing Python transform"))
-        (log/info "Executing Python transform" transform-id "with target" (pr-str target))
+        (log/info "Executing Python transform" transform-id)
         (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log
                                                  {:with-stage-timing-fn with-stage-timing-fn
                                                   :source-range-params  source-range-params})]
@@ -410,7 +416,7 @@
 
             :else
             (do
-              (log/error e "Error executing Python transform")
+              (log/errorf "Error executing Python transform: %s" (ex-message e))
               {:status :failed
                :error e
                :logs (str logs "\n" error-message)})))))))

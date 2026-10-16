@@ -1,7 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
-  setupGetCurrentWorkspaceEndpoint,
   setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
@@ -9,18 +8,15 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type {
   Collection,
-  CurrentWorkspace,
   RemoteSyncEntity,
   TokenFeatures,
 } from "metabase-types/api";
 import {
-  createMockDirtyCardEntity,
-  createMockDirtyTransformEntity,
   createMockLibraryCollection,
   createMockSettings,
   createMockTokenFeatures,
@@ -166,9 +162,7 @@ interface SetupOpts {
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
   canAccessTransforms?: boolean;
-  currentWorkspace?: CurrentWorkspace | null;
-  hasDirtyChanges?: boolean;
-  hasTransformDirtyChanges?: boolean;
+  dirty?: RemoteSyncEntity[];
   remoteSyncTransforms?: boolean;
   isNavbarOpened?: boolean;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
@@ -182,9 +176,7 @@ export const setup = ({
   remoteSyncBranch = null,
   isAdmin = true,
   canAccessTransforms = false,
-  currentWorkspace = null,
-  hasDirtyChanges = false,
-  hasTransformDirtyChanges = false,
+  dirty = [],
   remoteSyncTransforms = false,
   isNavbarOpened = true,
   enterprisePlugins,
@@ -192,23 +184,10 @@ export const setup = ({
   transformsEnabled = false,
   transformsSetupComplete = false,
 }: SetupOpts = {}) => {
-  // Build collections list
-  const collections: Collection[] = [];
-  if (hasDirtyChanges) {
-    collections.push(createMockLibraryCollection());
-  }
-  if (hasTransformDirtyChanges) {
-    collections.push(createMockTransformsCollection());
-  }
-
-  // Build dirty entities list
-  const dirty: RemoteSyncEntity[] = [];
-  if (hasDirtyChanges) {
-    dirty.push(createMockDirtyCardEntity());
-  }
-  if (hasTransformDirtyChanges) {
-    dirty.push(createMockDirtyTransformEntity());
-  }
+  const collections = [
+    createMockLibraryCollection(),
+    createMockTransformsCollection(),
+  ];
 
   const remoteSyncSettings: Partial<RemoteSyncSettings> = {
     enabled: remoteSyncEnabled,
@@ -226,7 +205,6 @@ export const setup = ({
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
-  setupGetCurrentWorkspaceEndpoint(currentWorkspace);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-remote-sync-dev-instance",
@@ -263,7 +241,6 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
     "remote_sync",
     "dependencies",
     "feature_level_permissions",
-    "workspaces",
   ],
   tokenFeatures: {
     remote_sync: true,
@@ -271,6 +248,5 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
     library: true,
     dependencies: true,
     "schema-viewer": true,
-    workspaces: true,
   },
 };

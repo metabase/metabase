@@ -1,35 +1,77 @@
-import type { State } from "metabase/redux/store";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   getUser,
   getUserIsAdmin,
-  getUserIsAnalyst,
-} from "metabase/selectors/user";
+  getUserIsEntitledAnalyst,
+} from "metabase/current-user";
+import type { State } from "metabase/redux/store";
+import { isWithinIframe } from "metabase/utils/iframe";
 
-export function canAccessMonitorDiagnostics(state: State) {
-  if (getIsEmbeddingIframe(state)) {
-    return false;
-  }
-  return getUserIsAdmin(state) || getUserIsAnalyst(state);
+function getUserHasMonitoringPermission(state: State) {
+  return getUser(state)?.permissions?.can_access_monitoring ?? false;
 }
 
-export function canAccessMonitoringTools(state: State) {
-  if (getIsEmbeddingIframe(state)) {
+// Like Data Studio, diagnostics come with the Data Analyst role rather than a
+// permissions graph, so they pause while the plan lacks the feature.
+export function canAccessDependencyDiagnostics(state: State) {
+  if (isWithinIframe()) {
+    return false;
+  }
+  return getUserIsAdmin(state) || getUserIsEntitledAnalyst(state);
+}
+
+export function canAccessContentDiagnostics(state: State) {
+  if (isWithinIframe()) {
     return false;
   }
   return (
     getUserIsAdmin(state) ||
-    (getUser(state)?.permissions?.can_access_monitoring ?? false)
+    getUserIsEntitledAnalyst(state) ||
+    getUserHasMonitoringPermission(state)
   );
 }
 
+export function canAccessMonitoringTools(state: State) {
+  if (isWithinIframe()) {
+    return false;
+  }
+  return getUserIsAdmin(state) || getUserHasMonitoringPermission(state);
+}
+
 export function canAccessAlertsManagement(state: State) {
-  if (getIsEmbeddingIframe(state)) {
+  if (isWithinIframe()) {
+    return false;
+  }
+  return getUserIsAdmin(state);
+}
+
+export function canAccessSessionManagement(state: State) {
+  if (isWithinIframe()) {
+    return false;
+  }
+  return getUserIsAdmin(state);
+}
+
+export function canAccessAiAuditing(state: State) {
+  if (isWithinIframe()) {
+    return false;
+  }
+  return getUserIsAdmin(state);
+}
+
+// Admin-only, unlike the rest of Monitoring tools: the page loads `GET /api/api-key`, which is
+// superuser-only, so a non-admin with just the monitoring application permission would hit a 403.
+export function canAccessApiKeyUsage(state: State) {
+  if (isWithinIframe()) {
     return false;
   }
   return getUserIsAdmin(state);
 }
 
 export function canAccessMonitor(state: State) {
-  return canAccessMonitorDiagnostics(state) || canAccessMonitoringTools(state);
+  return (
+    canAccessDependencyDiagnostics(state) ||
+    canAccessContentDiagnostics(state) ||
+    canAccessMonitoringTools(state) ||
+    canAccessAiAuditing(state)
+  );
 }

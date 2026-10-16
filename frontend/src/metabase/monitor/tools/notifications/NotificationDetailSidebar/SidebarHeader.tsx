@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
+import { SidebarNavButton } from "metabase/monitor/components/DetailSidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   ActionIcon,
   Flex,
@@ -23,7 +24,6 @@ import {
 } from "../analytics";
 
 import { ChannelAvatarStack } from "./ChannelAvatarStack";
-import S from "./NotificationDetailSidebar.module.css";
 import type { SidebarHeaderProps } from "./types";
 
 export const SidebarHeader = ({
@@ -39,6 +39,9 @@ export const SidebarHeader = ({
 }: SidebarHeaderProps) => {
   const cardName = notification?.payload?.card?.name ?? t`Untitled question`;
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const isEditDisabled =
+    notification == null || isQuestionLoading || isBulkLoading;
 
   const handleCopyLink = async () => {
     const url = `${window.location.origin}${Urls.monitorNotificationDetail(notificationId)}`;
@@ -50,42 +53,34 @@ export const SidebarHeader = ({
   const handleNavigate = (id: NotificationId | undefined) => {
     if (id !== undefined) {
       trackAlertsManagementAlertOpened(id, "sidebar_navigation");
-      dispatch(push(Urls.monitorNotificationDetail(id)));
+      navigate(Urls.monitorNotificationDetail(id));
     }
   };
 
   return (
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Flex justify="space-between" align="center">
         <Group gap="sm">
-          <ActionIcon
-            aria-label={t`Previous alert`}
-            size="lg"
-            variant="default"
-            className={S.navButton}
+          <SidebarNavButton
+            direction="previous"
+            label={t`Previous alert`}
             disabled={prevNotificationId === undefined}
             onClick={() => handleNavigate(prevNotificationId)}
-          >
-            <Icon name="chevronup" />
-          </ActionIcon>
-          <ActionIcon
-            aria-label={t`Next alert`}
-            size="lg"
-            variant="default"
-            className={S.navButton}
+          />
+          <SidebarNavButton
+            direction="next"
+            label={t`Next alert`}
             disabled={nextNotificationId === undefined}
             onClick={() => handleNavigate(nextNotificationId)}
-          >
-            <Icon name="chevrondown" />
-          </ActionIcon>
+          />
         </Group>
         <Group gap="sm">
           <Menu position="bottom-end" withinPortal>
             <Menu.Target>
               <ActionIcon
+                variant="subtle"
                 aria-label={t`More actions`}
                 size="lg"
-                c="icon-primary"
                 disabled={isBulkLoading}
               >
                 <Icon name="ellipsis" />
@@ -110,18 +105,18 @@ export const SidebarHeader = ({
             </Menu.Dropdown>
           </Menu>
           <ActionIcon
+            variant="subtle"
             aria-label={t`Edit`}
             size="lg"
-            c="icon-primary"
-            disabled={isQuestionLoading || isBulkLoading}
-            onClick={!isQuestionLoading ? onEdit : undefined}
+            disabled={isEditDisabled}
+            onClick={!isEditDisabled ? onEdit : undefined}
           >
             {isQuestionLoading ? <Loader size="sm" /> : <Icon name="pencil" />}
           </ActionIcon>
           <ActionIcon
+            variant="subtle"
             aria-label={t`Close`}
             size="lg"
-            c="icon-primary"
             onClick={onClose}
           >
             <Icon name="close" />

@@ -109,7 +109,7 @@ export class ApiClient extends EventEmitter<EventMap> {
       );
 
       if (!init.noEvent && (status === 401 || status === 403)) {
-        // Strip basename so listeners (app-main.js) see the relative path.
+        // Strip basename so listeners (app-main.ts) see the relative path.
         this.emit(status, relativeUrl(getBasename(), init.url));
       }
 

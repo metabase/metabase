@@ -7,7 +7,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.core :as core]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.test :as mt]
@@ -147,6 +149,23 @@
         (is (= "apply-changes-version" (written-version task))
             "an in-place collection edit (no rename) is incremental")))))
 
+(deftest collection-rename-falls-back-to-full-export-test
+  (testing "GHY-4642: a collection's path is its contents' directory, so a rename re-exports everything and moves the contents"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        (t2/update! :model/Collection coll-id {:name "Marketing Reports"})
+        (set-status! "Collection" coll-id "update")
+        (let [task   (new-task!)
+              result (impl/export! (source.p/snapshot mock) task "rename collection")]
+          (is (= :success (:status result)))
+          (is (= "write-files-version" (written-version task)) "collection rename is a full export")
+          (is (= #{"collections/main/marketing_reports.yaml"
+                   "collections/main/marketing_reports/card_a.yaml"
+                   "collections/main/marketing_reports/card_b.yaml"}
+                 (set (keys (files mock)))))
+          (is (= "collections/main/marketing_reports/card_a.yaml" (:file_path (rso "Card" card-a))))
+          (is (= "collections/main/marketing_reports/card_b.yaml" (:file_path (rso "Card" card-b)))))))))
+
 (deftest rename-uses-incremental-path-test
   (with-exported-collection!
     (fn [{:keys [mock card-a]}]
@@ -185,6 +204,98 @@
           (is (not (contains? files-after b-path)) "deleted entity's file removed")
           (is (some (fn [[_ c]] (re-find (re-pattern a-eid) c)) files-after) "card A preserved")
           (is (nil? (rso "Card" card-b)) "deleted entity's RemoteSyncObject row removed"))))))
+
+(deftest disable-collection-pushes-removal-and-survives-pull-test
+  (testing "disabling a synced collection removes its files (and its contents') from the remote on the
+            next export, and a subsequent import does not re-enable it (GHY-4189)"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        (let [coll-eid (t2/select-one-fn :entity_id :model/Collection :id coll-id)
+              a-eid    (t2/select-one-fn :entity_id :model/Card :id card-a)
+              b-eid    (t2/select-one-fn :entity_id :model/Card :id card-b)]
+          (is (entity-exported? mock coll-eid) "precondition: the collection is on the remote")
+          ;; Production populates a content RSO's model_collection_id from the card's collection_id (see
+          ;; the tracking specs); the bare seed-synced-row! helper does not, so set it to match reality —
+          ;; it is how a collection's contents are located when the collection is un-synced.
+          (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id [:in [card-a card-b]]
+                      {:model_collection_id coll-id})
+          ;; Clear the initial-export task: a direct impl/export! never marks its task ended, so the
+          ;; bulk-set-remote-sync guard would otherwise (correctly) refuse to run alongside it.
+          (t2/delete! :model/RemoteSyncTask)
+          ;; USER ACTION: disable the collection from remote sync.
+          (core/bulk-set-remote-sync {coll-id false})
+          (is (true? (remote-sync.object/dirty?))
+              "disabling leaves a pending change to push (the removal)")
+          ;; USER ACTION: push. The removal must reach the remote.
+          (let [task   (new-task!)
+                result (impl/export! (source.p/snapshot mock) task "disable collection")]
+            (is (= :success (:status result)))
+            (is (not (entity-exported? mock coll-eid)) "collection file removed from the remote")
+            (is (not (entity-exported? mock a-eid)) "card A removed from the remote")
+            (is (not (entity-exported? mock b-eid)) "card B removed from the remote"))
+          ;; USER ACTION: pull from the remote. Because the removal was pushed, the collection is no
+          ;; longer in the remote, so the import cannot re-enable it.
+          (let [task   (new-task!)
+                result (impl/import! (source.p/snapshot mock) task)]
+            (is (= :success (:status result))
+                "the pull itself succeeds — otherwise the assertion below passes vacuously"))
+          (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id coll-id))
+              "a pull does not re-enable a collection that was disabled and pushed"))))))
+
+(deftest reenable-collection-before-export-keeps-contents-test
+  (testing "disable → re-enable before any export runs: the next export must not delete the collection's
+            contents from the remote (GHY-4189)"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        (let [coll-eid (t2/select-one-fn :entity_id :model/Collection :id coll-id)
+              a-eid    (t2/select-one-fn :entity_id :model/Card :id card-a)
+              b-eid    (t2/select-one-fn :entity_id :model/Card :id card-b)]
+          ;; Production populates a content RSO's model_collection_id from the card's collection_id (see
+          ;; the tracking specs); the bare seed-synced-row! helper does not, so set it to match reality.
+          (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id [:in [card-a card-b]]
+                      {:model_collection_id coll-id})
+          ;; Clear the initial-export task so the bulk-set-remote-sync guard lets us proceed.
+          (t2/delete! :model/RemoteSyncTask)
+          ;; USER ACTION: disable the collection, then re-enable it before any export runs.
+          (core/bulk-set-remote-sync {coll-id false})
+          (core/bulk-set-remote-sync {coll-id true})
+          ;; USER ACTION: push. Nothing was disabled at push time, so nothing may be deleted.
+          (let [task   (new-task!)
+                result (impl/export! (source.p/snapshot mock) task "after re-enable")]
+            (is (= :success (:status result)))
+            (is (entity-exported? mock coll-eid) "collection file still on the remote")
+            (is (entity-exported? mock a-eid) "card A still on the remote")
+            (is (entity-exported? mock b-eid) "card B still on the remote")))))))
+
+(deftest reenable-retracks-never-pushed-content-test
+  (testing "a card created but never pushed, dropped when its collection was disabled, is re-tracked on
+            re-enable so the next export pushes it instead of silently losing it (GHY-4189)"
+    (with-exported-collection!
+      (fn [{:keys [mock coll-id card-a card-b]}]
+        ;; Mirror production: content RSOs carry model_collection_id, so the disable can find them.
+        (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id [:in [card-a card-b]]
+                    {:model_collection_id coll-id})
+        (mt/with-temp [:model/Card {card-c :id} {:name "Card C" :collection_id coll-id}]
+          ;; Card C is new and never pushed: a 'create' RSO with no file_path (as a card-create event
+          ;; produces). It exists locally in the synced collection but is not yet on the remote.
+          (t2/delete! :model/RemoteSyncObject :model_type "Card" :model_id card-c)
+          (t2/insert! :model/RemoteSyncObject
+                      {:model_type "Card" :model_id card-c :model_name "Card C"
+                       :model_collection_id coll-id :status "create"
+                       :status_changed_at (t/offset-date-time)})
+          (let [c-eid (t2/select-one-fn :entity_id :model/Card :id card-c)]
+            (is (not (entity-exported? mock c-eid)) "precondition: card C has never been pushed")
+            ;; Clear the initial-export task so the bulk-set-remote-sync guard lets us proceed.
+            (t2/delete! :model/RemoteSyncTask)
+            ;; USER ACTION: disable then re-enable before card C is ever pushed. The disable drops card C's
+            ;; never-pushed 'create' row; re-enable must re-track it.
+            (core/bulk-set-remote-sync {coll-id false})
+            (core/bulk-set-remote-sync {coll-id true})
+            ;; USER ACTION: push. Card C must reach the remote, not be silently lost.
+            (let [result (impl/export! (source.p/snapshot mock) (new-task!) "after re-enable")]
+              (is (= :success (:status result)))
+              (is (entity-exported? mock c-eid)
+                  "card C is pushed to the remote after the disable/re-enable cycle"))))))))
 
 (deftest rename-without-stored-path-falls-back-test
   (with-exported-collection!
@@ -464,6 +575,24 @@
             (is (entity-exported? mock y-eid)
                 "the external dependency referenced by the new card is exported alongside it")))))))
 
+(deftest create-dashboard-with-action-button-exports-action-test
+  (testing "GHY-4722: a new dashboard with a button for an action exports the action incrementally, as a full export does"
+    (with-cross-scope-setup!
+      (fn [{:keys [mock c-id ext-id]}]
+        (mt/with-temp [:model/Card          {model-id :id}  {:name "Outside Model" :type :model :collection_id ext-id
+                                                             :database_id (mt/id) :dataset_query (venues-query)}
+                       :model/Action        {action-id :id} {:type :implicit :name "Button Action" :model_id model-id}
+                       :model/Dashboard     {d-id :id}      {:name "Buttons" :collection_id c-id}
+                       :model/DashboardCard _               {:dashboard_id d-id :action_id action-id}]
+          (seed-create-row! "Dashboard" d-id)
+          (let [task       (new-task!)
+                action-eid (t2/select-one-fn :entity_id :model/Action :id action-id)]
+            (impl/export! (source.p/snapshot mock) task "add dashboard")
+            (is (= "apply-changes-version" (written-version task))
+                "the create stays incremental")
+            (is (entity-exported? mock action-eid)
+                "the button's action is exported alongside the dashboard")))))))
+
 (deftest update-referencing-synced-card-stays-incremental-test
   (testing "an in-place edit of a card that references a card in another SYNCED collection stays incremental"
     (mt/with-temporary-setting-values [remote-sync-type :read-write
@@ -524,6 +653,28 @@
               "import applied the renamed name from the repo")
           (is (= 1 (t2/count :model/Card :entity_id a-eid))
               "exactly one card for the entity — no duplicate from a stale file"))))))
+
+(deftest pull-removes-action-missing-from-repo-test
+  (testing "GHY-4722: a pull deletes a synced model's action that the repo no longer has"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                       remote-sync-transforms false]
+      (mt/with-temp [:model/Collection {coll-id :id}   {:name "Bench" :is_remote_synced true :location "/"}
+                     :model/Card       {model-id :id}  {:name "Model" :type :model :collection_id coll-id
+                                                        :database_id (mt/id) :dataset_query (venues-query)}
+                     :model/Action     {action-id :id} {:type :implicit :name "Create Venue" :model_id model-id}]
+        (t2/delete! :model/RemoteSyncObject)
+        (doseq [[model-type model-id] [["Collection" coll-id] ["Card" model-id] ["Action" action-id]]]
+          (seed-create-row! model-type model-id))
+        (let [mock       (rs.test/create-mock-source :initial-files {"main" {}})
+              action-eid (t2/select-one-fn :entity_id :model/Action :id action-id)]
+          (impl/export! (source.p/snapshot mock) (new-task!) "init")
+          (is (entity-exported? mock action-eid) "the action is in the repo")
+          ;; another instance deletes the action and pushes
+          (swap! (:files-atom mock) update "main"
+                 (fn [tree] (into {} (remove (fn [[_ content]] (str/includes? content action-eid))) tree)))
+          (is (= :success (:status (impl/import! (source.p/snapshot mock) (new-task!)))))
+          (is (not (t2/exists? :model/Action :id action-id))
+              "the pull deleted the local action"))))))
 
 (deftest two-same-named-creates-use-incremental-path-test
   (with-exported-collection!

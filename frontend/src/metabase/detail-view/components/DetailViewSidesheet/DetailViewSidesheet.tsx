@@ -2,7 +2,9 @@ import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { getActionItems } from "metabase/actions/utils";
 import {
   actionApi,
   skipToken,
@@ -12,6 +14,7 @@ import {
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   DetailsGroup,
@@ -24,10 +27,9 @@ import {
   getRowName,
 } from "metabase/detail-view/utils";
 import { useDispatch } from "metabase/redux";
-import { Link } from "metabase/router";
 import {
+  ActionIcon,
   Box,
-  Button,
   Divider,
   Group,
   Icon,
@@ -37,7 +39,6 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
-import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -51,7 +52,7 @@ import type {
 } from "metabase-types/api";
 
 import { Sidesheet } from "./Sidesheet";
-import { extractData, getActionItems, getModelId } from "./utils";
+import { extractData, getModelId } from "./utils";
 
 interface Props {
   columnSettings: TableColumnOrderSetting[] | undefined;
@@ -242,37 +243,27 @@ export function DetailViewSidesheet({
             {isNavEnabled && (
               <>
                 <Tooltip disabled={!onPreviousClick} label={t`Previous row`}>
-                  <Button
+                  <ActionIcon
                     aria-label={t`Previous row`}
-                    c="text-primary"
                     disabled={!onPreviousClick}
-                    h={20}
-                    leftSection={<Icon name="chevronup" />}
-                    p={0}
+                    size="sm"
                     variant="subtle"
-                    style={{
-                      opacity: onPreviousClick ? undefined : 0.5,
-                    }}
-                    w={20}
                     onClick={onPreviousClick}
-                  />
+                  >
+                    <Icon name="chevronup" />
+                  </ActionIcon>
                 </Tooltip>
 
                 <Tooltip disabled={!onNextClick} label={t`Next row`}>
-                  <Button
+                  <ActionIcon
                     aria-label={t`Next row`}
-                    c="text-primary"
                     disabled={!onNextClick}
-                    h={20}
-                    leftSection={<Icon name="chevrondown" />}
-                    p={0}
+                    size="sm"
                     variant="subtle"
-                    style={{
-                      opacity: onNextClick ? undefined : 0.5,
-                    }}
-                    w={20}
                     onClick={onNextClick}
-                  />
+                  >
+                    <Icon name="chevrondown" />
+                  </ActionIcon>
                 </Tooltip>
 
                 <Divider orientation="vertical" />
@@ -287,16 +278,14 @@ export function DetailViewSidesheet({
               >
                 <Menu.Target>
                   <Tooltip label={t`Actions`}>
-                    <Button
+                    <ActionIcon
                       aria-label={t`Actions`}
-                      c="text-primary"
                       data-testid="actions-menu"
-                      h={20}
-                      leftSection={<Icon name="ellipsis" />}
-                      p={0}
+                      size="sm"
                       variant="subtle"
-                      w={20}
-                    />
+                    >
+                      <Icon name="ellipsis" />
+                    </ActionIcon>
                   </Tooltip>
                 </Menu.Target>
                 <Menu.Dropdown>
@@ -318,33 +307,29 @@ export function DetailViewSidesheet({
                 <Tooltip
                   label={linkCopied ? t`Copied!` : t`Copy link to this record`}
                 >
-                  <Button
+                  <ActionIcon
                     aria-label={
                       linkCopied ? t`Copied!` : t`Copy link to this record`
                     }
-                    c="text-primary"
-                    h={20}
-                    leftSection={<Icon name="link" />}
-                    p={0}
+                    size="sm"
                     variant="subtle"
-                    w={20}
                     onClick={handleCopyLink}
-                  />
+                  >
+                    <Icon name="link" />
+                  </ActionIcon>
                 </Tooltip>
 
                 <Tooltip label={t`Open in full page`}>
                   <Box>
-                    <Button
+                    <ActionIcon
                       aria-label={t`Open in full page`}
-                      c="text-primary"
                       component={Link}
-                      h={20}
-                      leftSection={<Icon name="expand" />}
-                      p={0}
-                      to={url}
+                      size="sm"
                       variant="subtle"
-                      w={20}
-                    />
+                      to={url}
+                    >
+                      <Icon name="expand" />
+                    </ActionIcon>
                   </Box>
                 </Tooltip>
               </>
@@ -356,7 +341,7 @@ export function DetailViewSidesheet({
       >
         <Stack gap={0} mih="100%">
           {headerColumns.length > 0 && (
-            <Box pb="md" pt="xs" px={rem(56)}>
+            <Box pb="lg" pt="xxs" px={rem(56)}>
               <Box
                 // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
                 ml={rem(-8)}
@@ -366,7 +351,7 @@ export function DetailViewSidesheet({
             </Box>
           )}
 
-          <Group pb={rem(48)} pt="xl" px={rem(56)}>
+          <Group pb={rem(48)} pt="xxl" px={rem(56)}>
             <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
               {columns.length > 0 && (
                 <DetailsGroup

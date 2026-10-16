@@ -1,26 +1,27 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useGetUserQuery } from "metabase/api";
+import { skipToken, useGetUserQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { Stack, Text } from "metabase/ui";
-import { getResponseErrorMessage } from "metabase/utils/errors";
+import { parseIntParam } from "metabase/urls";
 import { useUnsubscribeUserFromSubscriptionsMutation } from "metabase-enterprise/api";
 import type { User } from "metabase-types/api";
 
-interface UnsubscribeUserModal {
-  params: { userId: string };
+interface UnsubscribeUserModalProps {
+  params: { userId?: string };
   onClose: () => void;
 }
 
 export const UnsubscribeUserModal = ({
   params,
   onClose,
-}: UnsubscribeUserModal) => {
-  const userId = parseInt(params.userId, 10);
-  const { data: user, isLoading, error } = useGetUserQuery(userId);
+}: UnsubscribeUserModalProps) => {
+  const userId = parseIntParam(params.userId);
+  const { data: user, isLoading, error } = useGetUserQuery(userId ?? skipToken);
 
   const [unsubscribeUserFromSubscriptions] =
     useUnsubscribeUserFromSubscriptionsMutation();
@@ -42,8 +43,8 @@ export const UnsubscribeUserModal = ({
       sendToast({ message: t`Unsubscribe successful` });
       onClose();
     } catch (error) {
-      const msg = getResponseErrorMessage(error);
-      setErrorMessage(msg ?? t`Unknown error encountered`);
+      const message = getErrorMessage(error, t`Unknown error encountered`);
+      setErrorMessage(message);
     }
   };
 
@@ -63,7 +64,7 @@ export const UnsubscribeUserModal = ({
       onConfirm={() => handleConfirmClick(user)}
       title={t`Unsubscribe ${user.common_name} from all subscriptions and alerts?`}
       message={
-        <Stack gap="md">
+        <Stack gap="lg">
           <Text>
             {t`This will delete any dashboard subscriptions or alerts ${user.common_name} has created, and remove them as a recipient from any other subscriptions or alerts.`}
           </Text>

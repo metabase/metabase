@@ -1,10 +1,10 @@
 import { waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { mockSettings } from "__support__/settings";
+import { setupEnginesEndpoint } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import { createMockEngines } from "metabase-types/api/mocks";
 
 import { DatabasePage } from "./DatabasePage";
@@ -14,32 +14,28 @@ jest.mock(
   () => "Postgres MD Content",
 );
 
-const RoutedDatabasePage = withRouteProps(DatabasePage);
-
 const setup = () => {
-  renderWithProviders(<Route path="/" element={<RoutedDatabasePage />} />, {
+  setupEnginesEndpoint(createMockEngines());
+
+  renderWithProviders(<Route path="/" element={<DatabasePage />} />, {
     withRouter: true,
-    storeInitialState: createMockState({
-      settings: mockSettings({
-        engines: createMockEngines(),
-      }),
-    }),
+    storeInitialState: createMockState(),
   });
 };
 
 describe("DatabasePage", () => {
   describe("Help button", () => {
-    it("should render the 'Help is here' button", () => {
+    it("should render the 'Help is here' button", async () => {
       setup();
       expect(
-        screen.getByRole("button", { name: /Help is here/ }),
+        await screen.findByRole("button", { name: /Help is here/ }),
       ).toBeInTheDocument();
     });
 
     it("should show the side panel when 'Help is here' button is clicked", async () => {
       setup();
       await userEvent.click(
-        screen.getByRole("button", { name: /Help is here/ }),
+        await screen.findByRole("button", { name: /Help is here/ }),
       );
       await waitFor(() => {
         expect(

@@ -4,7 +4,7 @@ import { c, t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import {
   Alert,
   Box,
@@ -119,18 +119,23 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
   return (
-    <Stack gap="xl" data-testid="tenant-limits-tab">
+    <Stack gap="xxl" data-testid="tenant-limits-tab">
       <Text c="text-secondary">{getDescription(limitType)}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
         error={hasTenantsError ? t`Error loading tenants` : null}
       >
         {noTenantsToShow ? (
-          <Alert mb="md" variant="error" icon={<Icon name="warning" />}>
+          <Alert
+            size="compact"
+            mb="lg"
+            color="error"
+            icon={<Icon name="warning" />}
+          >
             {t`No tenants to show`}
           </Alert>
         ) : (
-          <Stack gap="xl">
+          <Stack gap="xxl">
             <TextInput
               placeholder={t`Search...`}
               value={search}

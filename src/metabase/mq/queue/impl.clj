@@ -25,7 +25,7 @@
                 :error    error
                 :attempts attempts})
       (catch Throwable t
-        (log/error t "Queue :on-error handler threw; still dropping the batch" {:channel channel})))))
+        (log/error "Queue :on-error handler threw; still dropping the batch" {:channel channel :error (ex-message t)})))))
 
 (defn handle-batch-failure-policy!
   "Retry-vs-drop policy for a just-failed queue batch. `failures` is the number of attempts that have
@@ -45,8 +45,8 @@
       (do
         (run-on-error! channel payload error attempts)
         (u/ignore-exceptions
-          (log/error error "Dropping queue batch after exhausting retries"
-                     {:channel channel :max-retries max-retries})
+          (log/error "Dropping queue batch after exhausting retries"
+                     {:channel channel :max-retries max-retries :error (ex-message error)})
           (analytics/inc! :metabase-mq/batches-dropped
                           {:channel (name channel) :reason "delivery-exhausted"}))
         (on-drop))

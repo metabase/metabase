@@ -45,14 +45,17 @@ const getSampleAppE2eConfig = (suite) => ({
   },
 });
 
-const getHostAppE2eConfig = (suite) => ({
+const getHostAppE2eConfig = (
+  suite,
+  specPattern = "e2e/test-host-app/shared/**/*.cy.spec.{js,ts}",
+) => ({
   [suite]: () => {
     const { env } = HOST_APP_SETUP_CONFIGS[suite];
 
     return getEmbeddingSdkAppE2eConfig({
       baseUrl: getHost(),
       env,
-      specPattern: "e2e/test-host-app/shared/**/*.cy.spec.{js,ts}",
+      specPattern,
     });
   },
 });
@@ -63,6 +66,10 @@ const configs = {
   ...getSampleAppE2eConfig("metabase-nextjs-sdk-embedding-sample-e2e"),
   ...getSampleAppE2eConfig("shoppy-e2e"),
   ...getHostAppE2eConfig("vite-6-host-app-e2e"),
+  ...getHostAppE2eConfig(
+    "vite-6-data-app-host-app-e2e",
+    "e2e/test-host-app/data-apps/**/*.cy.spec.{js,ts}",
+  ),
   ...getHostAppE2eConfig("next-15-app-router-host-app-e2e"),
   ...getHostAppE2eConfig("next-15-pages-router-host-app-e2e"),
   ...getHostAppE2eConfig("angular-20-host-app-e2e"),

@@ -1,4 +1,4 @@
-import { patchDominantBaseline } from "./svg";
+import { patchDominantBaseline, replaceFunctionalColors } from "./svg";
 
 const OUTER_TEXT = "outer-text";
 const G_ELEM = "g-elem";
@@ -48,6 +48,22 @@ const SVG_STR = `<svg width="500" height="500">
   </g>
 </svg>
 `;
+
+describe("replaceFunctionalColors", () => {
+  it("should rewrite hsl/hsla/rgb/rgba attribute values to hex", () => {
+    const svg = `<svg><text fill="hsla(0, 0%, 100%, 0.95)" stroke="hsl(208, 95%, 42%)">a</text><rect fill="rgba(255, 255, 255, 0.5)" stroke="rgb(80, 158, 227)"/></svg>`;
+
+    expect(replaceFunctionalColors(svg)).toBe(
+      `<svg><text fill="#FFFFFF" stroke="#0572D1">a</text><rect fill="#FFFFFF" stroke="#509EE3"/></svg>`,
+    );
+  });
+
+  it("should leave hex colors, keywords, and text content alone", () => {
+    const svg = `<svg><text fill="#509ee3" stroke="none">hsla(0, 0%, 100%, 0.95)</text></svg>`;
+
+    expect(replaceFunctionalColors(svg)).toBe(svg);
+  });
+});
 
 describe("patchDominantBaseline", () => {
   it(`should add "dy='0.5em'" to all text nodes with "dominant-baseline='central'`, () => {

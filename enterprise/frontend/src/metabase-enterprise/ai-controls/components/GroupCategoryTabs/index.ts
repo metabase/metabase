@@ -1,0 +1,1 @@
+export { GroupCategoryTabs } from "./GroupCategoryTabs";

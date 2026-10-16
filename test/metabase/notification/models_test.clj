@@ -2,7 +2,8 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.models-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.channel.api.channel-test :as api.channel-test]
+   [metabase.channel.rest.api.channel-test :as api.channel-test]
+   [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -36,9 +37,7 @@
     (testing "success if :payload_type is supported"
       (is (some? (t2/select-one
                   :model/Notification
-                  (t2/insert-returning-pk! :model/Notification {:payload_type :notification/system-event
-                                                                :created_at   :%now
-                                                                :updated_at   :%now})))))
+                  (t2/insert-returning-pk! :model/Notification {:payload_type :notification/system-event})))))
     (testing "failed if payload_type is invalid"
       (is (thrown-with-msg? Exception #"Value does not match schema*"
                             (t2/insert! :model/Notification {:payload_type :notification/not-existed}))))))
@@ -160,7 +159,7 @@
       ;; like ::api-events, :metabase.audit-app.events.audit-log/remote-sync-event, etc. This was non-deterministic
       ;; for a long time
       (let [random-event (first (filter (comp #{"event"} namespace)
-                                        (descendants :metabase/event)))
+                                        (events/descendants :metabase/event)))
             sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
                                                                              :event_name      random-event
                                                                              :notification_id n-id})]

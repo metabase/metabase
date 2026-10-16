@@ -1,15 +1,11 @@
-import { mockSettings } from "__support__/settings";
+import { setupEnginesEndpoint } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { Route, withRouteProps } from "metabase/router";
+import { Route } from "metabase/router";
 import type { DatabaseData } from "metabase-types/api";
 import { createMockEngines } from "metabase-types/api/mocks";
 
 import { DatabaseEditConnectionForm } from "./DatabaseEditConnectionForm";
-
-const RoutedDatabaseEditConnectionForm = withRouteProps(
-  DatabaseEditConnectionForm,
-);
 
 interface SetupOpts {
   database?: Partial<DatabaseData>;
@@ -17,15 +13,15 @@ interface SetupOpts {
 }
 
 function setup({ database, isAttachedDWH = false }: SetupOpts = {}) {
-  const storeInitialState = createMockState({
-    settings: mockSettings({ engines: createMockEngines() }),
-  });
+  setupEnginesEndpoint(createMockEngines());
+
+  const storeInitialState = createMockState();
 
   renderWithProviders(
     <Route
       path="/"
       element={
-        <RoutedDatabaseEditConnectionForm
+        <DatabaseEditConnectionForm
           database={database}
           isAttachedDWH={isAttachedDWH}
           onSubmitted={jest.fn()}
@@ -39,10 +35,10 @@ function setup({ database, isAttachedDWH = false }: SetupOpts = {}) {
 }
 
 describe("DatabaseEditConnectionForm", () => {
-  it("renders the editable connection form for an ordinary database", () => {
+  it("renders the editable connection form for an ordinary database", async () => {
     setup({ database: { id: 1, engine: "postgres" } });
 
-    expect(screen.getByTestId("database-form")).toBeInTheDocument();
+    expect(await screen.findByTestId("database-form")).toBeInTheDocument();
     expect(screen.queryByText(/cannot be edited/i)).not.toBeInTheDocument();
   });
 

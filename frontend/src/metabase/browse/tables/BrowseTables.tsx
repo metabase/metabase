@@ -2,6 +2,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { findDatabaseByName } from "metabase/common/utils/database";
+import { useParams } from "metabase/router";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { DatabaseId } from "metabase-types/api";
@@ -24,7 +25,7 @@ const BrowseTablesPage = ({
       flex={1}
       direction="column"
       wrap="nowrap"
-      pt="md"
+      pt="lg"
     >
       <BrowseDataHeader />
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
@@ -57,14 +58,12 @@ const BrowseTablesByDatabaseName = ({
   return <BrowseTablesPage dbId={database.id} schemaName={schemaName} />;
 };
 
-export const BrowseTables = ({
-  params: { dbId, schemaName },
-}: {
-  params: {
+export const BrowseTables = () => {
+  const { dbId = "", schemaName = "" } = useParams<{
     dbId: string;
     schemaName: string;
-  };
-}) => {
+  }>();
+
   if (Urls.extractEntityId(dbId) == null) {
     return (
       <BrowseTablesByDatabaseName databaseName={dbId} schemaName={schemaName} />

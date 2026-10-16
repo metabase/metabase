@@ -11,17 +11,16 @@ export const DataAppsBanner = () => (
       hasSeen ? null : (
         <Box
           pos="relative"
-          p="lg"
-          bg="background-brand"
-          bd="1px solid var(--mb-color-border)"
-          bdrs="md"
+          p="xl"
+          bg="background_surface-brand-subtle"
+          bd="1px solid var(--mb-color-border-neutral)"
+          bdrs="sm"
         >
           <ActionIcon
             pos="absolute"
             top="1rem"
             right="1rem"
             variant="subtle"
-            c="text-primary"
             aria-label={t`Dismiss`}
             onClick={ack}
           >
@@ -29,9 +28,9 @@ export const DataAppsBanner = () => (
           </ActionIcon>
 
           <Stack gap="sm">
-            <Group gap="sm" wrap="nowrap" pr="xl">
-              <Icon name="app" c="brand" flex="0 0 auto" />
-              <Text fw={700} c="brand">
+            <Group gap="sm" wrap="nowrap" pr="xxl">
+              <Icon name="app" c="core-brand" flex="0 0 auto" />
+              <Text fw={700} c="core-brand">
                 {t`AI-generated React apps on top of your semantic layer`}
               </Text>
             </Group>

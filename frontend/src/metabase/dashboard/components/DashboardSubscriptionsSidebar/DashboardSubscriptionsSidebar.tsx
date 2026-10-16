@@ -7,6 +7,7 @@ import { useSetArchive } from "metabase/archive/hooks";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ScheduleChangeProp } from "metabase/common/components/Schedule/types";
 import { Sidebar } from "metabase/common/components/Sidebar";
+import { getUser, getUserIsAdmin } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   cancelEditingPulse,
@@ -19,10 +20,10 @@ import {
   getEditingPulse,
   getPulseFormInput,
 } from "metabase/notifications/pulse/selectors";
+import { getEditableSubscriptionChannel } from "metabase/notifications/pulse/subscription-editing";
 import { NEW_PULSE_TEMPLATE, cleanPulse, createChannel } from "metabase/pulse";
-import { connect, useDispatch } from "metabase/redux";
-import type { DraftDashboardSubscription, State } from "metabase/redux/store";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { connect, useDispatch, useSelector } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,
@@ -32,12 +33,15 @@ import type {
   ChannelType,
   Dashboard,
   DashboardSubscription,
+  DraftDashboardSubscription,
   ScheduleSettings,
   SubscriptionSupportingCard,
   User,
 } from "metabase-types/api";
 
+import { clearRequestedSubscription } from "../../actions";
 import { useDashboardContext } from "../../context";
+import { getSharingSubscriptionId } from "../../selectors";
 
 import {
   AddEditEmailSidebar,
@@ -162,6 +166,8 @@ interface DashboardSubscriptionsSidebarInnerProps {
   onCancel: () => void;
   params?: Record<string, string>;
   loading?: boolean;
+  requestedSubscriptionId?: DashboardSubscription["id"];
+  onSubscriptionRequestHandled: () => void;
 }
 
 function DashboardSubscriptionsSidebarInner({
@@ -177,6 +183,8 @@ function DashboardSubscriptionsSidebarInner({
   pulses,
   onCancel,
   loading: isSubscriptionListLoading,
+  requestedSubscriptionId,
+  onSubscriptionRequestHandled,
 }: DashboardSubscriptionsSidebarInnerProps) {
   const dispatch = useDispatch();
   const archive = useSetArchive();
@@ -382,6 +390,29 @@ function DashboardSubscriptionsSidebarInner({
     },
     [editingMode, setPulse],
   );
+
+  useEffect(() => {
+    if (requestedSubscriptionId == null || !pulses || !formInput?.channels) {
+      return;
+    }
+    const requestedPulse = pulses.find(
+      (pulse) => pulse.id === requestedSubscriptionId,
+    );
+    const editableChannel =
+      requestedPulse != null
+        ? getEditableSubscriptionChannel(requestedPulse, formInput)
+        : null;
+    if (requestedPulse != null && editableChannel != null) {
+      editPulse(requestedPulse, editableChannel.channel_type);
+    }
+    onSubscriptionRequestHandled();
+  }, [
+    requestedSubscriptionId,
+    pulses,
+    formInput,
+    editPulse,
+    onSubscriptionRequestHandled,
+  ]);
 
   const handleArchive = useCallback(async () => {
     if (pulse.id != null) {
@@ -631,6 +662,12 @@ const DashboardSubscriptionsSidebarConnected = connect(
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function DashboardSubscriptionsSidebar() {
   const { dashboard, setSharing } = useDashboardContext();
+  const dispatch = useDispatch();
+  const requestedSubscriptionId = useSelector(getSharingSubscriptionId);
+  const handleSubscriptionRequestHandled = useCallback(
+    () => dispatch(clearRequestedSubscription()),
+    [dispatch],
+  );
 
   const { data: pulses, isFetching: isSubscriptionListLoading } =
     useListSubscriptionsQuery(
@@ -647,6 +684,8 @@ export default function DashboardSubscriptionsSidebar() {
       pulses={pulses}
       loading={isSubscriptionListLoading}
       onCancel={() => setSharing(false)}
+      requestedSubscriptionId={requestedSubscriptionId}
+      onSubscriptionRequestHandled={handleSubscriptionRequestHandled}
     />
   );
 }

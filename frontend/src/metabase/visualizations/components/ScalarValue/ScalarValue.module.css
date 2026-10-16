@@ -10,3 +10,19 @@
 .hoverable:hover {
   color: var(--mb-color-core-brand);
 }
+
+.titleLink {
+  && {
+    line-height: inherit;
+  }
+
+  &&:focus-visible {
+    outline: 2px solid var(--mb-color-core-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+.titleIcon {
+  flex: 0 0 auto;
+}

@@ -1,37 +1,41 @@
 import { createElement } from "react";
 
+import { loadCodeEditor } from "metabase/common/components/CodeEditor/lazy";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { modalRoute } from "metabase/common/components/ModalRoute";
-import { canAccessMonitorDiagnostics } from "metabase/common/monitor/selectors";
-import { DependencyDiagnosticsSectionLayout } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout";
-import { DependencyDiagnosticsUpsellPage } from "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage";
-import { JobInfoApp } from "metabase/monitor/tools/components/JobInfoApp";
-import { LogLevelsModal } from "metabase/monitor/tools/components/LogLevelsModal";
-import { Logs } from "metabase/monitor/tools/components/Logs";
 import {
-  ModelCachePage,
-  ModelCacheRefreshJobModal,
-} from "metabase/monitor/tools/components/ModelCacheRefreshJobs";
+  lazyModalRouteElement,
+  modalRoute,
+} from "metabase/common/components/ModalRoute";
+import { canAccessDependencyDiagnostics } from "metabase/common/monitor/selectors";
+// From the file rather than the barrel beside it: the barrel also re-exports
+// the page this file loads lazily, so importing the modal through it would hold
+// the page in the initial bundle.
+import { ModelPersistenceLogJobModal } from "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobModal";
 import { MonitorUpsell } from "metabase/monitor/tools/components/MonitorUpsell";
 import {
   getNotificationsRoutes,
   getTasksRoutes,
 } from "metabase/monitor/tools/routes";
-import { PLUGIN_MONITOR, PLUGIN_MONITOR_TOOLS } from "metabase/plugins";
+import {
+  PLUGIN_AUDIT,
+  PLUGIN_MONITOR,
+  PLUGIN_MONITOR_TOOLS,
+} from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import {
-  Navigate,
-  Route,
-  type RouteComponent,
-  redirect,
-  withRouteProps,
-} from "metabase/router";
+import { Navigate, Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 
-import { MonitorLayout } from "./components/MonitorLayout";
-
-const RoutedJobInfoApp = withRouteProps(JobInfoApp);
+import {
+  CanAccessAiAuditing,
+  CanAccessAlertsManagement,
+  CanAccessApiKeyUsage,
+  CanAccessContentDiagnostics,
+  CanAccessDependencyDiagnostics,
+  CanAccessMonitor,
+  CanAccessMonitoringTools,
+  CanAccessSessionManagement,
+} from "./route-guards";
 
 /** Lands on the first Monitor section the user can access. */
 function MonitorIndexRedirect() {
@@ -39,39 +43,136 @@ function MonitorIndexRedirect() {
   return <Navigate to={indexPath} replace />;
 }
 
-export function getMonitorRoutes(
-  CanAccessMonitor: RouteComponent,
-  CanAccessMonitorDiagnostics: RouteComponent,
-  CanAccessMonitoringTools: RouteComponent,
-  CanAccessAlertsManagement: RouteComponent,
-) {
+/**
+ * The monitor pages, in their own chunk. The access guards stay eager: a guard
+ * has to decide before there is anything to show. So does the job modal, which
+ * is small. The log levels modal is not, so it has a loader of its own below.
+ */
+const monitorLayout = () =>
+  import(/* webpackChunkName: "monitor" */ "./components/MonitorLayout").then(
+    ({ MonitorLayout }) => ({
+      Component: MonitorLayout,
+    }),
+  );
+
+const dependencyDiagnosticsSectionLayout = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsSectionLayout"
+  ).then(({ DependencyDiagnosticsSectionLayout }) => ({
+    Component: DependencyDiagnosticsSectionLayout,
+  }));
+
+const dependencyDiagnosticsUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/dependency-diagnostics/DependencyDiagnosticsUpsellPage"
+  ).then(({ DependencyDiagnosticsUpsellPage }) => ({
+    Component: DependencyDiagnosticsUpsellPage,
+  }));
+
+const contentDiagnosticsSectionLayout = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout"
+  ).then(({ ContentDiagnosticsSectionLayout }) => ({
+    Component: ContentDiagnosticsSectionLayout,
+  }));
+
+const contentDiagnosticsUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/content-diagnostics/ContentDiagnosticsUpsellPage"
+  ).then(({ ContentDiagnosticsUpsellPage }) => ({
+    Component: ContentDiagnosticsUpsellPage,
+  }));
+
+const apiKeyUsageUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/api-key-usage/ApiKeyUsageUpsellPage"
+  ).then(({ ApiKeyUsageUpsellPage }) => ({
+    Component: ApiKeyUsageUpsellPage,
+  }));
+
+const jobInfoApp = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/JobInfoApp"
+  ).then(({ JobInfoApp }) => ({ Component: JobInfoApp }));
+
+const logs = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/Logs"
+  ).then(({ Logs }) => ({
+    Component: Logs,
+  }));
+
+const modelPersistenceLogPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs"
+  ).then(({ ModelPersistenceLogPage }) => ({
+    Component: ModelPersistenceLogPage,
+  }));
+
+const sessionManagementUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/session-management/SessionManagementUpsellPage"
+  ).then(({ SessionManagementUpsellPage }) => ({
+    Component: SessionManagementUpsellPage,
+  }));
+
+// The log levels modal renders a code editor, which nothing else on the logs
+// page needs. Its parent route is already lazy, but a modal declared with
+// `modalRoute` holds its component eagerly.
+const logLevelsModal = () =>
+  Promise.all([
+    import(
+      /* webpackChunkName: "monitor" */ "metabase/monitor/tools/components/LogLevelsModal"
+    ),
+    // Awaited here so the modal appears with its editor already in place,
+    // rather than opening around an empty area that fills in a moment later.
+    loadCodeEditor(),
+  ]).then(([{ LogLevelsModal }]) => LogLevelsModal);
+
+export function getMonitorRoutes() {
   return (
     <Route element={<CanAccessMonitor />}>
-      <Route path="monitor" element={<MonitorLayout />}>
+      <Route path="monitor" lazy={monitorLayout}>
         <Route index element={<MonitorIndexRedirect />} />
-        <Route element={<CanAccessMonitorDiagnostics />}>
+        <Route element={<CanAccessDependencyDiagnostics />}>
           {PLUGIN_MONITOR.isDependencyDiagnosticsEnabled ? (
             <Route
               path="dependency-diagnostics"
-              element={<DependencyDiagnosticsSectionLayout />}
+              lazy={dependencyDiagnosticsSectionLayout}
             >
               {PLUGIN_MONITOR.getDependencyDiagnosticsRoutes()}
             </Route>
           ) : (
             <Route path="dependency-diagnostics">
-              <Route index element={<DependencyDiagnosticsUpsellPage />} />
-              <Route path="*" element={<DependencyDiagnosticsUpsellPage />} />
+              <Route index lazy={dependencyDiagnosticsUpsellPage} />
+              <Route path="*" lazy={dependencyDiagnosticsUpsellPage} />
+            </Route>
+          )}
+        </Route>
+
+        <Route element={<CanAccessContentDiagnostics />}>
+          {PLUGIN_MONITOR.isContentDiagnosticsEnabled ? (
+            <Route
+              path="content-diagnostics"
+              lazy={contentDiagnosticsSectionLayout}
+            >
+              {PLUGIN_MONITOR.getContentDiagnosticsRoutes()}
+            </Route>
+          ) : (
+            <Route path="content-diagnostics">
+              <Route index lazy={contentDiagnosticsUpsellPage} />
+              <Route path="*" lazy={contentDiagnosticsUpsellPage} />
             </Route>
           )}
         </Route>
 
         <Route element={<CanAccessMonitoringTools />}>
           <Route path="tasks">{getTasksRoutes()}</Route>
-          <Route path="jobs" element={<RoutedJobInfoApp />}>
+          <Route path="jobs" lazy={jobInfoApp}>
             <Route path=":jobKey" />
           </Route>
-          <Route path="logs" element={<Logs />}>
-            {modalRoute("levels", LogLevelsModal)}
+          <Route path="logs" lazy={logs}>
+            {lazyModalRouteElement("levels", logLevelsModal)}
           </Route>
           <Route
             path="errors"
@@ -79,13 +180,50 @@ export function getMonitorRoutes(
               PLUGIN_MONITOR_TOOLS.COMPONENT || MonitorUpsell,
             )}
           />
-          <Route path="model-caching" element={<ModelCachePage />}>
-            {modalRoute(":jobId", ModelCacheRefreshJobModal)}
+          <Route path="model-persistence-log" lazy={modelPersistenceLogPage}>
+            {modalRoute(":jobId", ModelPersistenceLogJobModal)}
           </Route>
+        </Route>
+
+        {/* Admin-only, unlike the rest of Monitoring tools above — the page loads
+            `GET /api/api-key`, superuser-only, so a non-admin with just the monitoring
+            application permission would hit a 403. */}
+        <Route element={<CanAccessApiKeyUsage />}>
+          {PLUGIN_MONITOR.isApiKeyUsageEnabled ? (
+            <Route path="api-key-usage">
+              {PLUGIN_MONITOR.getApiKeyUsageRoutes()}
+            </Route>
+          ) : (
+            <Route path="api-key-usage">
+              <Route index lazy={apiKeyUsageUpsellPage} />
+              <Route path="*" lazy={apiKeyUsageUpsellPage} />
+            </Route>
+          )}
         </Route>
 
         <Route element={<CanAccessAlertsManagement />}>
           <Route path="notifications">{getNotificationsRoutes()}</Route>
+        </Route>
+
+        <Route element={<CanAccessSessionManagement />}>
+          {PLUGIN_MONITOR.isSessionManagementEnabled ? (
+            <Route path="sessions">
+              {PLUGIN_MONITOR.getSessionManagementRoutes()}
+            </Route>
+          ) : (
+            <Route path="sessions">
+              <Route index lazy={sessionManagementUpsellPage} />
+              <Route path="*" lazy={sessionManagementUpsellPage} />
+            </Route>
+          )}
+        </Route>
+
+        <Route element={<CanAccessAiAuditing />}>
+          {PLUGIN_AUDIT.isAiAuditingEnabled && (
+            <Route path="ai-auditing">
+              {PLUGIN_AUDIT.getAiAuditingRoutes()}
+            </Route>
+          )}
         </Route>
 
         <Route path="*" element={<NotFound />} />
@@ -94,18 +232,19 @@ export function getMonitorRoutes(
   );
 }
 
-// Diagnostics for analysts/admins; otherwise the Tools pages for users who only
-// hold the monitoring application permission.
+// Content diagnostics requires an additional feature token, so Tasks remains
+// the accessible fallback for users who lack dependency diagnostics access.
 function getMonitorIndexPath(state: State) {
-  return canAccessMonitorDiagnostics(state)
+  return canAccessDependencyDiagnostics(state)
     ? Urls.dependencyDiagnostics()
     : Urls.monitorTasks();
 }
 
 /**
- * Legacy redirects for Admin Tools pages that moved into the Monitor area:
+ * Legacy redirects for pages that moved into the Monitor area:
  *   - /admin/tools → /monitor
  *   - /admin/tools/help → /admin/help
+ *   - /admin/metabot/usage-auditing → /monitor/ai-auditing/usage
  *
  * The Data Studio → Monitor redirect for Dependency Diagnostics lives in
  * data-studio/routes.tsx instead: it must be declared inside the Data Studio
@@ -144,11 +283,11 @@ export function getMonitorRedirects() {
       />
       <Route
         path="/admin/tools/model-caching"
-        element={redirect(Urls.monitorModelCaching())}
+        element={redirect(Urls.monitorModelPersistenceLog())}
       />
       <Route
         path="/admin/tools/model-caching/*"
-        element={redirect(`${Urls.monitorModelCaching()}/*`)}
+        element={redirect(`${Urls.monitorModelPersistenceLog()}/*`)}
       />
       <Route
         path="/admin/tools/notifications"
@@ -157,6 +296,26 @@ export function getMonitorRedirects() {
       <Route
         path="/admin/tools/notifications/*"
         element={redirect(`${Urls.monitorNotifications()}/*`)}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing"
+        element={redirect(Urls.monitorAiAuditingUsage())}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/conversations"
+        element={redirect(Urls.monitorAiAuditingConversations())}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/conversations/*"
+        element={redirect(`${Urls.monitorAiAuditingConversations()}/*`)}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/mcp"
+        element={redirect(Urls.monitorAiAuditingMcp())}
+      />
+      <Route
+        path="/admin/metabot/usage-auditing/cli"
+        element={redirect(Urls.monitorAiAuditingCli())}
       />
       <Route path="/admin/tools" element={redirect(Urls.monitor())} />
     </>

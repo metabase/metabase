@@ -2,6 +2,8 @@ import _ from "underscore";
 
 import type {
   ColorSettings,
+  EnterpriseSettingKey,
+  EnterpriseSettings,
   PasswordComplexity,
   SettingKey,
   Settings,
@@ -10,24 +12,24 @@ import type {
 type SettingListener = (value: any) => void;
 
 class MetabaseSettings {
-  _settings: Partial<Settings>;
+  _settings: Partial<EnterpriseSettings>;
   _listeners: Partial<{ [key: string]: SettingListener[] }> = {};
 
-  constructor(settings: Partial<Settings> = {}) {
+  constructor(settings: Partial<EnterpriseSettings> = {}) {
     this._settings = settings;
   }
 
   /**
    * @deprecated use getSetting(state, key)
    */
-  get<T extends SettingKey>(key: T): Partial<Settings>[T] {
+  get<T extends EnterpriseSettingKey>(key: T): Partial<EnterpriseSettings>[T] {
     return this._settings[key];
   }
 
   /**
    * @deprecated set setting values in the redux store
    */
-  set<T extends SettingKey>(key: T, value: Settings[T]) {
+  set<T extends EnterpriseSettingKey>(key: T, value: EnterpriseSettings[T]) {
     if (this._settings[key] !== value) {
       this._settings[key] = value;
       const listeners = this._listeners[key];
@@ -57,7 +59,7 @@ class MetabaseSettings {
   /**
    * @deprecated call appropriate actions when modifying the setting
    */
-  on(key: SettingKey, callback: SettingListener) {
+  on(key: EnterpriseSettingKey, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
     this._listeners[key].push(callback);
   }
@@ -65,7 +67,7 @@ class MetabaseSettings {
   /**
    * @deprecated remove an event listener
    */
-  off(key: SettingKey, callback: SettingListener) {
+  off(key: EnterpriseSettingKey, callback: SettingListener) {
     this._listeners[key] =
       this._listeners[key]?.filter((c) => c !== callback) || [];
   }
@@ -210,9 +212,8 @@ class MetabaseSettings {
    *
    * Only use this when Redux store is not always available, e.g. in ThemeProvider
    */
-  applicationColors(): ColorSettings {
-    // Unjustified type cast. FIXME
-    return this.get("application-colors" as SettingKey) as ColorSettings;
+  applicationColors(): ColorSettings | undefined {
+    return this.get("application-colors") ?? undefined;
   }
 }
 

@@ -1,9 +1,9 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Outlet } from "metabase/router";
+import { Outlet, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { PublishedTableSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
-import { usePublishedTableSegmentPage } from "../../hooks";
+import { usePublishedTableSegmentPage } from "../../hooks/use-published-table-segment-page";
 import { SegmentDependenciesPage } from "../SegmentDependenciesPage";
 
 type PublishedTableSegmentDependenciesPageParams = {
@@ -11,13 +11,8 @@ type PublishedTableSegmentDependenciesPageParams = {
   segmentId: string;
 };
 
-type PublishedTableSegmentDependenciesPageProps = {
-  params: PublishedTableSegmentDependenciesPageParams;
-};
-
-export function PublishedTableSegmentDependenciesPage({
-  params,
-}: PublishedTableSegmentDependenciesPageProps) {
+export function PublishedTableSegmentDependenciesPage() {
+  const params = useParams<PublishedTableSegmentDependenciesPageParams>();
   const { isLoading, error, segment, table, tabUrls, onRemove } =
     usePublishedTableSegmentPage(params);
 

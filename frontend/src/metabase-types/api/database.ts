@@ -10,7 +10,6 @@ export type InitialSyncStatus = LongTaskStatus;
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
-  "database-enable-workspaces"?: boolean;
 };
 
 export type DatabaseFeature =
@@ -58,8 +57,7 @@ export type DatabaseFeature =
   | "split-part"
   | "collate"
   | "transforms/python"
-  | "transforms/table"
-  | "workspace";
+  | "transforms/table";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -67,9 +65,11 @@ export interface Database extends DatabaseData {
   features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
+  default_schema?: string | null;
   native_permissions: "write" | "none";
   transforms_permissions?: "write" | "none";
   initial_sync_status: InitialSyncStatus;
+  initial_sync_error?: string | null;
   description?: string;
   caveats?: string;
   points_of_interest?: string;
@@ -81,6 +81,7 @@ export interface Database extends DatabaseData {
   uploads_table_prefix: string | null;
   is_audit?: boolean;
   is_attached_dwh?: boolean;
+  is_stub?: boolean;
   router_database_id?: number | null;
   router_user_attribute?: string | null;
 
@@ -96,6 +97,8 @@ export interface DatabaseData {
   id?: DatabaseId;
   name: string;
   engine: string | undefined;
+  /** Hosting provider detected from the connection details, e.g. "AWS RDS" */
+  provider_name?: string | null;
   // If current user lacks write permission to database, `details` will be
   // missing in responses from the backend, cf. implementation of
   // [[metabase.models.interface/to-json]] for `:model/Database`:
@@ -163,6 +166,7 @@ export type ListDatabasesRequest = {
   exclude_uneditable_details?: boolean;
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
+  include_stubs?: boolean;
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
   "can-write-metadata"?: boolean;
@@ -206,7 +210,7 @@ export interface GetDatabaseMetadataRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
-  skip_fields?: boolean;
+  skip_fields: true; // make sure we don't get every field of every table
 }
 
 export interface CreateDatabaseRequest {
@@ -237,6 +241,21 @@ export interface UpdateDatabaseRequest {
   cache_ttl?: number | null;
   settings?: DatabaseSettings | null;
 }
+
+export interface ValidateDatabaseRequest {
+  details: {
+    engine: string;
+    details: Record<string, unknown>;
+    /** Validate against an existing database, resolving details it left redacted */
+    id?: DatabaseId;
+  };
+}
+
+export type ValidateDatabaseResponse = {
+  valid: boolean;
+  message?: string;
+  errors?: Record<string, string>;
+};
 
 export type DatabaseEditErrorType = {
   data: {

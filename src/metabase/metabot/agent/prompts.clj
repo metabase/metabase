@@ -67,7 +67,7 @@
   (try
     (selmer/render template context)
     (catch Exception e
-      (log/error e "Error rendering system prompt template")
+      (log/errorf "Error rendering system prompt template: %s" (ex-message e))
       ;; Return template as-is on error
       template)))
 
@@ -129,7 +129,10 @@
 
   Parameters:
   - profile: Profile map with :prompt-template key
-  - context: Template context map; only :sql_dialect (or :sql-dialect) is read
+  - context: Template context map. Its keys are passed through to the template as-is; :sql_dialect
+    (or :sql-dialect) additionally drives the computed dialect/skill vars. Profiles contribute
+    feature-specific vars through this map via their :system-prompt-context hook — this fn does not
+    name any feature-specific key.
   - tools: Tool registry map (name -> tool def/var)
   - capabilities: Sequence of capability strings/keywords for the request, used to
     gate which skills appear in the manifest.
@@ -159,6 +162,12 @@
             has-sql?             (and (= :yes (:permission/metabot-sql-generation perms))
                                       (boolean (some sql-generation-tool-names (keys tools))))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
+            ;; The NLQ permission does not by itself give the model the notebook builder (:internal-sql omits
+            ;; it), so guidance that names the builder needs the tool too, as the SQL guidance does.
+            has-notebook?        (and has-nlq? (contains? tools "construct_notebook_query"))
+            has-sql-execution?   (and (contains? tools "run_query")
+                                      has-sql?
+                                      (scope/sql-execution-allowed?))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
@@ -170,8 +179,16 @@
                                   :skill_always_on          (mapv :body always-on)
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
-                                  :has_query_tools          (or has-sql? has-nlq?)
+                                  :has_notebook_query       has-notebook?
+                                  :has_query_tools          (or has-sql? has-notebook?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
+                                  ;; run_query reads values only from a query the model can build and run: a
+                                  ;; notebook query, or SQL where run_query may run it.
+                                  :has_query_execution      (and (contains? tools "run_query")
+                                                                 (or has-notebook? has-sql-execution?))
+                                  ;; The SQL guidance tells the model to write SQL and run it, so it needs the
+                                  ;; SQL tools as well as everything run_query checks before it runs SQL.
+                                  :has_sql_execution        has-sql-execution?
                                   :custom_instructions      (not-empty
                                                              (case template-name
                                                                ;; both nlq templates (curated + general-search
@@ -183,7 +200,7 @@
                                                                (metabot.settings/metabot-sql-system-prompt)
                                                                ;; default: internal.selmer and any other templates
                                                                (metabot.settings/metabot-chat-system-prompt)))}]
-        (render-system-prompt template template-context))
+        (render-system-prompt template (merge context template-context)))
       ;; Fallback if template not found
       (do
         (log/error "System prompt template not found:" template-name)

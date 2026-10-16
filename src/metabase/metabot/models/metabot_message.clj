@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-message
   (:require
    [metabase.config.core :as config]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.models.interface :as mi]
@@ -16,9 +17,11 @@
   (derive :metabase/model))
 
 (t2/deftransforms :model/MetabotMessage
-  {:usage mi/transform-json
+  {:usage {:in  mi/json-in
+           :out (comp metabot.schema/normalize-usage mi/json-out-with-keywordization)}
    :data  mi/transform-json
-   :state mi/transform-json
+   :state {:in  mi/json-in
+           :out (comp metabot.schema/normalize-state mi/json-out-with-keywordization)}
    :role  mi/transform-keyword})
 
 (defn- migrate-v1->v2-on-read
@@ -31,7 +34,7 @@
                             (schema.v2/check-message-data "migrated metabot_message.data")))
         (assoc :data_version schema.v2/current-data-version))
     (catch Throwable e
-      (log/warn e "Failed to migrate metabot_message data v1->v2 on read" {:id (:id message)})
+      (log/warn "Failed to migrate metabot_message data v1->v2 on read" {:id (:id message)} (ex-message e))
       message)))
 
 (t2/define-after-select :model/MetabotMessage

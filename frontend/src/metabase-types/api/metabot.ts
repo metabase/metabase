@@ -1,3 +1,6 @@
+import type { GroupId } from "./group";
+import type { EnterpriseSettings } from "./settings";
+
 import type {
   CardDisplayType,
   CardId,
@@ -9,10 +12,13 @@ import type {
   DraftTransform,
   PaginationRequest,
   PaginationResponse,
+  ResearchPlanContext,
   RowValue,
   SuggestedTransform,
   Transform,
   UnsavedCard,
+  User,
+  UserPermissions,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -52,6 +58,7 @@ export type MetabotChatContext = {
   default_database_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
+  research_plan?: ResearchPlanContext;
 };
 
 export type MetabotTool = {
@@ -85,7 +92,6 @@ export type MetabotSeriesConfig = {
 };
 
 export type MetabotChartConfig = {
-  image_base_64?: string;
   title?: string | null;
   description?: string | null;
   data?: Array<{
@@ -155,7 +161,7 @@ export type MetabotAgentRequest = {
   parent_message_id?: string;
   retry_message_id?: string;
   user_message_id?: string; // uuid
-  assistant_message_id?: string; // uuid
+  assistant_message_id: string; // uuid
   metabot_id?: string;
   profile_id?: string;
 };
@@ -173,6 +179,7 @@ export type MetabotConversation = {
   profile_id: string | null;
   message_count: number;
   last_message_at: string | null;
+  forked_from_conversation_id: string | null;
 };
 
 export type MetabotConversationTitleResponse =
@@ -188,48 +195,6 @@ export type ListMetabotConversationsResponse = PaginationResponse & {
   data: MetabotConversation[];
 };
 
-export type MetabotProvider =
-  | "metabase"
-  | "anthropic"
-  | "azure"
-  | "bedrock"
-  | "openai"
-  | "openrouter";
-
-export interface BedrockCredentials {
-  "access-key-id"?: string | null;
-  "secret-access-key"?: string | null;
-  region?: string | null;
-  "session-token"?: string | null;
-}
-
-export interface AzureCredentials {
-  "api-key"?: string | null;
-  "base-url"?: string | null;
-}
-
-/** One permissive map mirroring the backend's request schema: Bedrock sends AWS key
- * material, Azure sends an API key and base URL. */
-export interface MetabotCredentials
-  extends BedrockCredentials, AzureCredentials {}
-
-export interface MetabotSettingsResponse {
-  value: string | null;
-  "credentials-error"?: string | null;
-  models: {
-    id: string;
-    display_name: string;
-    group?: string | null;
-  }[];
-}
-
-export interface UpdateMetabotSettingsRequest {
-  provider: MetabotProvider;
-  model?: string;
-  "api-key"?: string | null;
-  credentials?: MetabotCredentials | null;
-}
-
 /* Metabot - Suggested Prompts */
 
 export type SuggestedMetabotPrompt = {
@@ -244,17 +209,14 @@ export type SuggestedMetabotPrompt = {
 };
 
 type BaseSuggestedMetabotPromptsRequest = {
-  metabot_id: MetabotId;
+  metabot_id: MetabotId | MetabotInfo["entity_id"];
   model?: string;
   model_id?: number;
 };
 
 export type SuggestedMetabotPromptsRequest =
-  BaseSuggestedMetabotPromptsRequest & {
-    metabot_id: MetabotId;
-    model?: string;
-    model_id?: number;
-  } & (
+  BaseSuggestedMetabotPromptsRequest &
+    (
       | { sample?: void; limit?: number | null; offset?: number | null }
       | { sample: true; limit?: number | null; offset?: void }
     );
@@ -286,7 +248,6 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
 
 export type MetabotFeedback = {
-  metabot_id: MetabotId;
   message_id: string;
   freeform_feedback?: string;
 } & ({ positive: true } | { positive: false; issue_type?: MetabotIssueType });
@@ -294,7 +255,6 @@ export type MetabotFeedback = {
 export type MetabotSourceType = "table" | "card" | "model";
 
 export type MetabotSourceFeedback = {
-  metabot_id: MetabotId;
   message_id: string;
   source_id: number;
   source_type: MetabotSourceType;
@@ -337,6 +297,37 @@ export type SubmitMcpAppsFeedbackRequest = {
   payload: McpAppsFeedback;
 };
 
+/**
+ * The current-user projection `GET /api/embed-mcp/bootstrap` returns.
+ *
+ * Deliberately much narrower than `User`: the iframe's UI credential is minted from an
+ * MCP token that may hold nothing but `agent:query:run`, so it must not be able to read
+ * the full profile. Adding a field here means adding it to `::bootstrap-user` in
+ * `metabase.mcp.callback-api`, which is where that decision belongs.
+ */
+export type McpAppsBootstrapUser = Pick<
+  User,
+  | "id"
+  | "locale"
+  | "is_superuser"
+  | "is_data_analyst"
+  | "is_qbnewb"
+  | "tenant_id"
+  | "personal_collection_id"
+> & {
+  permissions: Pick<
+    UserPermissions,
+    "can_create_queries" | "can_create_native_queries"
+  >;
+};
+
+export type McpAppsBootstrapResponse = {
+  user: McpAppsBootstrapUser;
+
+  /** The settings a non-admin authenticated user may read, whoever the credential belongs to. */
+  settings: EnterpriseSettings;
+};
+
 /* Metabot v3 - Entity Types */
 
 export type MetabotId = number;
@@ -372,6 +363,11 @@ export interface SaveMetabotEntityRequest {
   conversation_id: string;
   chart_id: string;
   card: CreateCardRequest;
+}
+
+export interface ForkMetabotConversationRequest {
+  conversation_id: string;
+  message_id: string;
 }
 
 /* Metabot v3 - Data Part Types */
@@ -419,6 +415,34 @@ export type MetabotPermissionsResponse = {
 
 export type UpdateMetabotPermissionsRequest = {
   permissions: MetabotGroupPermission[];
+};
+
+/* MCP - Group Tool Permissions */
+
+export type McpToolAccess = "yes" | "no";
+
+export type McpTool = {
+  name: string;
+  scope: string;
+  description: string;
+  default_access: "allowed" | "denied";
+};
+
+export type McpGroupPermission = {
+  group_id: GroupId;
+  mcp_enabled: boolean;
+  /** An absent tool takes its `default_access`. */
+  tool_access: Record<string, McpToolAccess>;
+};
+
+export type McpToolPermissionsResponse = {
+  advanced: boolean;
+  tools: McpTool[];
+  permissions: McpGroupPermission[];
+};
+
+export type UpdateMcpToolPermissionsRequest = {
+  permissions: McpGroupPermission[];
 };
 
 export type UserMetabotPermissions = {

@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { screen, waitFor, within } from "__support__/ui";
-import * as Urls from "metabase/urls";
+import {
+  createMockDirtyCardEntity,
+  createMockDirtyTransformEntity,
+  createMockRemoteSyncEntity,
+} from "metabase-types/api/mocks";
 
 import { DEFAULT_EE_SETTINGS, setup } from "./setup";
 
@@ -17,30 +21,28 @@ describe("DataStudioLayout", () => {
     jest.restoreAllMocks();
   });
 
-  describe("Set up remote sync button", () => {
-    it("should show Set up remote sync button when git settings is visible", async () => {
+  describe("Remote sync button", () => {
+    it("should show Remote sync button when git settings is visible", async () => {
       setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText("Set up remote sync")).toBeInTheDocument();
+      expect(screen.getByLabelText("Remote sync")).toBeInTheDocument();
     });
 
-    it("should hide Set up remote sync button when git settings is not visible", async () => {
+    it("should hide Remote sync button when git settings is not visible", async () => {
       setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: true });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(
-        screen.queryByLabelText("Set up remote sync"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Remote sync")).not.toBeInTheDocument();
     });
 
-    it("should open modal when Set up remote sync button is clicked", async () => {
+    it("should open modal when Remote sync button is clicked", async () => {
       setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
 
       await waitFor(() => {
@@ -107,7 +109,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("Semantic layer")).toBeInTheDocument();
     });
 
     it("should render GitSyncAppBarControls when sidebar is expanded", async () => {
@@ -149,17 +151,72 @@ describe("DataStudioLayout", () => {
     });
   });
 
+  describe("library tab dirty indicators", () => {
+    const LIBRARY_TABS = [
+      "Semantic layer",
+      "Dashboards",
+      "SQL snippets",
+      "Data actions",
+    ];
+    const getTabStatus = (label: string) =>
+      within(screen.getByLabelText(label)).queryByTestId("remote-sync-status");
+
+    it.each([
+      {
+        name: "a dirty snippet",
+        entity: createMockRemoteSyncEntity({ model: "nativequerysnippet" }),
+        tab: "SQL snippets",
+      },
+      {
+        name: "a dirty data action",
+        entity: createMockRemoteSyncEntity({ model: "action", card_id: null }),
+        tab: "Data actions",
+      },
+    ])("shows $name only on the $tab tab", async ({ entity, tab }) => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        dirty: [entity],
+      });
+
+      await waitFor(() => {
+        expect(getTabStatus(tab)).toBeInTheDocument();
+      });
+      const otherTabs = LIBRARY_TABS.filter((otherTab) => otherTab !== tab);
+      for (const otherTab of otherTabs) {
+        expect(getTabStatus(otherTab)).not.toBeInTheDocument();
+      }
+    });
+
+    it("shows Library changes only on the Semantic layer tab", async () => {
+      setup({
+        ...DEFAULT_EE_SETTINGS,
+        remoteSyncBranch: "main",
+        isNavbarOpened: true,
+        dirty: [createMockDirtyCardEntity()],
+      });
+
+      await waitFor(() => {
+        expect(getTabStatus("Semantic layer")).toBeInTheDocument();
+      });
+      expect(getTabStatus("Dashboards")).not.toBeInTheDocument();
+      expect(getTabStatus("SQL snippets")).not.toBeInTheDocument();
+      expect(getTabStatus("Data actions")).not.toBeInTheDocument();
+    });
+  });
+
   describe("transform dirty indicator", () => {
     it("should show dirty indicator on Transforms tab when transforms have dirty changes", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
-        hasTransformDirtyChanges: true,
+        dirty: [createMockDirtyTransformEntity()],
         remoteSyncTransforms: true,
       });
 
-      const transformsTab = await screen.findByLabelText("Transforms");
+      const transformsTab = await screen.findByLabelText("Data transformation");
       await waitFor(() => {
         expect(
           within(transformsTab).getByTestId("remote-sync-status"),
@@ -172,7 +229,6 @@ describe("DataStudioLayout", () => {
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
-        hasTransformDirtyChanges: false,
         remoteSyncTransforms: true,
       });
 
@@ -180,7 +236,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const transformsTab = screen.getByLabelText("Transforms");
+      const transformsTab = screen.getByLabelText("Data transformation");
       expect(
         within(transformsTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
@@ -191,7 +247,7 @@ describe("DataStudioLayout", () => {
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
-        hasTransformDirtyChanges: true,
+        dirty: [createMockDirtyTransformEntity()],
         remoteSyncTransforms: false,
       });
 
@@ -199,7 +255,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const transformsTab = screen.getByLabelText("Transforms");
+      const transformsTab = screen.getByLabelText("Data transformation");
       expect(
         within(transformsTab).queryByTestId("remote-sync-status"),
       ).not.toBeInTheDocument();
@@ -223,7 +279,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
     });
 
     it("should show Transforms tab for a non-admin with transforms permission", async () => {
@@ -238,7 +294,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
     });
 
     it("should hide Transforms tab for a non-admin without transforms permission", async () => {
@@ -254,25 +310,6 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.queryByLabelText("Transforms")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("workspaces tab", () => {
-    it("admin sees the tab and it links to the workspaces index", async () => {
-      setup({ ...DEFAULT_EE_SETTINGS, isAdmin: true });
-
-      const tab = await screen.findByLabelText("Workspaces");
-      expect(tab).toHaveAttribute("href", Urls.workspaces());
-    });
-
-    it("non-admin does not see the tab", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        isAdmin: false,
-      });
-
-      expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Workspaces")).not.toBeInTheDocument();
     });
   });
 });

@@ -13,15 +13,18 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *publish-buffer-ms*
   "Time window in ms to buffer rapid-fire publishes. 0 = immediate publish.
    Resets on every new message (sliding window)."
   100)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *publish-buffer-max-ms*
   "Maximum time in ms since the first message before a flush is forced. 0 = no max."
   5000)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *publish-buffer*
   "Accumulation buffer for rapid-fire publishes.
    channel → {:messages [...] :deadline-ms long :created-ms long}"
@@ -68,12 +71,12 @@
   (try
     (q.outbox/insert-batch! channel (payload/encode messages))
     (analytics/inc! :metabase-mq/batches-retried {:channel (name channel) :reason "publish-outbox-handoff"})
-    (log/warnf e "Backend publish failed for %s; handed %d message(s) to the durable outbox for recovery"
-               channel (count messages))
+    (log/warnf "Backend publish failed for %s; handed %d message(s) to the durable outbox for recovery: %s"
+               channel (count messages) (ex-message e))
     (catch Exception oe
       (analytics/inc! :metabase-mq/batches-dropped {:channel (name channel) :reason "outbox-handoff-failed"})
-      (log/errorf oe "Backend publish AND outbox handoff both failed for %s; dropping %d message(s). Publish error: %s"
-                  channel (count messages) (ex-message e)))))
+      (log/errorf "Backend publish AND outbox handoff both failed for %s; dropping %d message(s). Publish error: %s; outbox error: %s"
+                  channel (count messages) (ex-message e) (ex-message oe)))))
 
 (defn- flush-accumulation!
   "Drains accumulation entries past their deadline (or all of them when `force?`) and publishes each.
@@ -119,7 +122,7 @@
   (try
     (flush-publish-buffer!)
     (catch Throwable t
-      (log/error t "Unexpected error in publish-buffer flush; flusher continues"))))
+      (log/errorf "Unexpected error in publish-buffer flush; flusher continues: %s" (ex-message t)))))
 
 (defn start-publish-buffer-flush!
   "Starts a daemon thread that flushes the publish buffer every 100ms. Idempotent.

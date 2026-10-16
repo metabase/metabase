@@ -53,7 +53,7 @@
       (analytics/inc! :metabase-mq/batches-handled (assoc labels :status "success"))
       nil
       (catch Throwable e
-        (log/error e (str "Error handling " (namespace channel) " message") labels)
+        (log/error (str "Error handling " (namespace channel) " message") labels (ex-message e))
         (analytics/inc! :metabase-mq/batches-handled (assoc labels :status "error"))
         e)
       (finally
@@ -69,8 +69,9 @@
   (try
     (payload/decode payload)
     (catch Exception e
-      (log/error e "Dropping queue message with an undecodable payload"
-                 {:channel channel :payload-bytes (count (str payload))})
+      (log/error "Dropping queue message with an undecodable payload"
+                 {:channel channel :payload-bytes (count (str payload))}
+                 (ex-message e))
       (analytics/inc! :metabase-mq/batches-dropped {:channel (name channel) :reason "undecodable"})
       undecodable)))
 

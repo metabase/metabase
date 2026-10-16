@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import type { DetailViewState } from "metabase/redux/store";
 import type { CollectionId, SearchResult, User } from "metabase-types/api";
@@ -17,7 +17,6 @@ export interface AppBarProps {
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
-  isCommentSidebarOpen?: boolean;
   isDocumentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
@@ -31,6 +30,7 @@ export interface AppBarProps {
   questionLineage?: ReactNode;
   onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
+  onOpenNavbar: () => void;
   onCloseNavbar: () => void;
 }
 
@@ -39,7 +39,7 @@ export const AppBar = (props: AppBarProps): JSX.Element => {
 
   return (
     <header
-      className={S.AppBarRoot}
+      className={S.appBarRoot}
       data-element-id="app-bar"
       data-testid="app-bar"
       data-with-border={props.detailView != null}

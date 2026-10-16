@@ -90,4 +90,4 @@
       (log/infof "Running shutdown logic %s" (name k))
       (f k)
       (catch Throwable e
-        (log/errorf e "Error running shutdown logic %s" k)))))
+        (log/errorf "Error running shutdown logic %s: %s" k (ex-message e))))))

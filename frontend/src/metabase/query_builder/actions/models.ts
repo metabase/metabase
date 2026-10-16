@@ -7,9 +7,10 @@ import type {
   GetState,
 } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 
-import { getQuestion } from "../selectors";
+import { SET_METADATA_DIFF } from "../store/actions";
+import { getQuestion } from "../store/selectors";
 
 import { apiUpdateQuestion, updateQuestion } from "./core";
 import { runDirtyQuestionQuery } from "./querying";
@@ -26,8 +27,8 @@ export const setDatasetEditorTab =
     dispatch(runDirtyQuestionQuery());
   };
 
-export const onCancelCreateNewModel = () => async (dispatch: Dispatch) => {
-  await dispatch(push("/"));
+export const onCancelCreateNewModel = () => async () => {
+  navigate("/");
 };
 
 export const turnQuestionIntoModel =
@@ -37,11 +38,7 @@ export const turnQuestionIntoModel =
       return;
     }
 
-    const model = question
-      .setType("model")
-      .setPinned(true)
-      .setDisplay("table")
-      .setSettings({});
+    const model = question.setType("model").setDisplay("table").setSettings({});
     await dispatch(apiUpdateQuestion(model, { rerunQuery: true }));
 
     dispatch(
@@ -76,7 +73,6 @@ export const turnModelIntoQuestion =
     );
   };
 
-export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
 
 export const onModelPersistenceChange =

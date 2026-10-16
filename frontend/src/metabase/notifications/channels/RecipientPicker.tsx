@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { useSetting } from "metabase/common/hooks";
 import { type RecipientPickerValue, recipientIsValid } from "metabase/pulse";
+import { useSetting } from "metabase/settings";
 import { Flex, MultiAutocomplete, Text } from "metabase/ui";
 import { isEmail } from "metabase/utils/email";
 import type { User } from "metabase-types/api";

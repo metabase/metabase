@@ -1,51 +1,63 @@
 import { useCallback, useEffect } from "react";
-import { useLocation } from "react-use";
 
-import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import CreateCollectionModal, {
   type CreateCollectionModalOwnProps,
 } from "metabase/common/collections/containers/CreateCollectionModal";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
-import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { LegacyStaticEmbeddingModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
-import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import type {
-  LegacyStaticEmbeddingModalProps,
-  SdkIframeEmbedSetupModalProps,
-} from "metabase/plugins";
+import { ActionCreator } from "metabase/querying/action-creator";
 import { useDispatch, useSelector } from "metabase/redux";
+import { closeNavbar } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
+import type { ModalState } from "metabase/redux/store/modal";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
-import { push, useRouter } from "metabase/router";
-import { getCurrentOpenModalState } from "metabase/selectors/ui";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { WritebackAction } from "metabase-types/api";
+import type { Dashboard, WritebackAction } from "metabase-types/api";
+
+const getCurrentOpenModalState = <TProps,>(state: State) =>
+  // Unjustified type cast. FIXME
+  state.modal as ModalState<TProps>;
 
 export const NewModals = () => {
-  const { location, params } = useRouter();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const params = useParams();
+  const { pathname } = location;
   const { id: currentNewModalId, props: currentNewModalProps } = useSelector(
     getCurrentOpenModalState<CreateCollectionModalOwnProps>,
   );
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const collectionId =
     useInitialCollectionId({ location, params }) ?? undefined;
 
   const handleActionCreated = useCallback(
     (action: WritebackAction) => {
-      const nextLocation = Urls.modelDetail({ id: action.model_id }, "actions");
-      dispatch(push(nextLocation));
+      const nextLocation = Urls.modelDetail(
+        { id: action.model_id ?? undefined },
+        "actions",
+      );
+      navigate(nextLocation);
     },
-    [dispatch],
+    [navigate],
   );
 
   const handleModalClose = useCallback(() => {
     dispatch(closeModal());
   }, [dispatch]);
+
+  const handleDashboardCreated = useCallback(
+    (dashboard: Dashboard) => {
+      dispatch(closeModal());
+      dispatch(closeNavbar());
+      navigate(Urls.dashboard(dashboard, { editMode: true }));
+    },
+    [dispatch, navigate],
+  );
 
   useEffect(() => {
     // Hide the modals on location change
@@ -86,6 +98,7 @@ export const NewModals = () => {
         <CreateDashboardModal
           opened
           onClose={handleModalClose}
+          onCreate={handleDashboardCreated}
           collectionId={collectionId}
         />
       );
@@ -105,31 +118,6 @@ export const NewModals = () => {
           />
         </Modal>
       );
-    case "embed": {
-      // Unjustified type cast. FIXME
-      const props = currentNewModalProps as SdkIframeEmbedSetupModalProps;
-      return (
-        <SdkIframeEmbedSetupModal
-          opened
-          initialState={props?.initialState}
-          onClose={handleModalClose}
-        />
-      );
-    }
-    case STATIC_LEGACY_EMBEDDING_TYPE: {
-      // Unjustified type cast. FIXME
-      const props = currentNewModalProps as LegacyStaticEmbeddingModalProps;
-
-      return (
-        <LegacyStaticEmbeddingModal
-          experience={props?.experience}
-          dashboardId={props?.dashboardId}
-          questionId={props?.questionId}
-          parentInitialState={props?.parentInitialState}
-          onClose={handleModalClose}
-        />
-      );
-    }
     case "upgrade":
       return <UpgradeModal opened onClose={handleModalClose} />;
     default:

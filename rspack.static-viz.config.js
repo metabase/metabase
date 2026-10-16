@@ -1,8 +1,11 @@
 const rspack = require("@rspack/core");
-const YAML = require("json-to-pretty-yaml");
+const yaml = require("js-yaml");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 
 const { WEBPACK_BUNDLE } = require("./frontend/build/shared/constants");
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
@@ -55,6 +58,7 @@ module.exports = (env) => {
 
     module: {
       rules: [
+        SIDE_EFFECT_FREE_RULE,
         {
           test: /\.css$/i,
           use: "null-loader",
@@ -119,7 +123,7 @@ module.exports = (env) => {
       ],
     },
     resolve: {
-      extensions: [".web.js", ".js", ".jsx", ".ts", ".tsx"],
+      extensions: [".js", ".jsx", ".ts", ".tsx"],
       alias: {
         assets: ASSETS_PATH,
         metabase: SRC_PATH,
@@ -169,7 +173,7 @@ module.exports = (env) => {
         },
         filename: "../../../../.github/static-viz-sources.yaml",
         transform: (stats) =>
-          YAML.stringify({
+          yaml.dump({
             static_viz: stats.modules
               .filter(
                 (module) =>

@@ -4,11 +4,11 @@ import { useGetMetricQuery } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import type {
+  MetricPageParams,
   MetricPageProps,
   MetricUrls,
 } from "metabase/common/metrics/types";
-import { useDispatch } from "metabase/redux";
-import { replace } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
@@ -18,14 +18,15 @@ import { MetricPageShell } from "../../components/MetricPageShell";
 import { metricUrls as defaultUrls } from "../../urls";
 
 export function MetricOverviewPage({
-  params,
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
 }: MetricPageProps) {
+  const { cardId } = useParams<MetricPageParams>();
+
   return (
-    <MetricPageCard cardId={params.cardId}>
+    <MetricPageCard cardId={cardId}>
       {(card) => (
         <MetricOverviewPageBody
           card={card}
@@ -39,7 +40,7 @@ export function MetricOverviewPage({
   );
 }
 
-interface MetricOverviewPageBodyProps extends Omit<MetricPageProps, "params"> {
+interface MetricOverviewPageBodyProps extends MetricPageProps {
   card: Card;
   urls: MetricUrls;
 }
@@ -51,18 +52,18 @@ function MetricOverviewPageBody({
   showAppSwitcher,
   showDataStudioLink,
 }: MetricOverviewPageBodyProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { data: metric, isLoading: isMetricLoading } = useGetMetricQuery(
     card.id,
   );
-  const hasDimensions =
-    metric?.dimensions != null && metric.dimensions.length > 0;
+  const dimensions = metric?.dimensions ?? [];
+  const hasDimensions = dimensions.length > 0;
 
   useEffect(() => {
     if (!isMetricLoading && !hasDimensions) {
-      dispatch(replace(urls.about(card.id)));
+      navigate(urls.about(card.id), { replace: true });
     }
-  }, [card.id, isMetricLoading, hasDimensions, dispatch, urls]);
+  }, [card.id, isMetricLoading, hasDimensions, urls, navigate]);
 
   if (isMetricLoading) {
     return (
@@ -77,7 +78,7 @@ function MetricOverviewPageBody({
   }
 
   return (
-    <PageContainer data-testid="metric-overview-page" gap="xl">
+    <PageContainer data-testid="metric-overview-page" gap="xxl">
       <MetricPageShell
         card={card}
         urls={urls}
@@ -85,7 +86,7 @@ function MetricOverviewPageBody({
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
       />
-      <MetricDimensionGrid metricId={card.id} />
+      <MetricDimensionGrid metricId={card.id} dimensions={dimensions} />
     </PageContainer>
   );
 }

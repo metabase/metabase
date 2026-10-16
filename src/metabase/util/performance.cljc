@@ -2,7 +2,7 @@
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
   (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty doseq for
-                            first second update-vals get-in #?(:cljs clj->js)])
+                            first second update-vals get-in str #?(:cljs clj->js)])
   #?(:clj (:require
            [net.cgrand.macrovich :as macros])
      :cljs (:require
@@ -158,7 +158,15 @@
      (persistent [_]
        (LazilyPersistentVector/createOwning arr)))
    :cljs
-   (deftype SmallTransientImpl [^:mutable arr, ^:mutable cnt, f]))
+   (deftype SmallTransientImpl [^:mutable arr, ^:mutable cnt, f]
+     ITransientCollection
+     (-conj! [this x]
+       (aset arr cnt x)
+       (set! cnt (inc cnt))
+       this)
+
+     (-persistent! [_]
+       (PersistentVector. nil cnt 5 (.-EMPTY-NODE PersistentVector) arr nil))))
 
 (defn- small-transient [n f]
   ;; Storing `f` in the transient itself is a hack to reduce lambda generation.
@@ -228,13 +236,13 @@
       :cljs
       (core/mapv f coll1 coll2 coll3 coll4))))
 
-#?(:clj
-   (defn mapv-indexed
-     "Like `clojure.core/map-indexed`, but returns a vector and uses Java iterators under the hood and optimized small
+(defn mapv-indexed
+  "Like `clojure.core/map-indexed`, but returns a vector and uses Java iterators under the hood and optimized small
   transient vectors. Requires `f` to be a primitive function of (long, Object) -> Object."
-     [f coll]
-     (if (nil? coll)
-       []
+  [f coll]
+  (if (nil? coll)
+    []
+    #?(:clj
        (let [n (count coll)
              it1 (.iterator ^Iterable coll)]
          (loop [i 0, res (if (<= n 32)
@@ -243,7 +251,28 @@
            (if (.hasNext it1)
              ;; Use .invokePrim directly to prevent index from autoboxing.
              (recur (inc i) (conj! res (.invokePrim ^clojure.lang.IFn$LOO f i (.next it1))))
-             (persistent! res)))))))
+             (persistent! res))))
+       :cljs
+       (let [n (count coll)]
+         (persistent!
+          (reduce-kv #(conj! %1 (f %2 %3))
+                     (if (<= n 32)
+                       (small-transient n identity)
+                       (transient []))
+                     coll))))))
+
+(defn remove-by-index
+  "Remove an item with the given `index` from vector `v`, returning a vector."
+  [v index]
+  (let [n (count v)]
+    (persistent!
+     (reduce #(if (= %2 index)
+                %1
+                (conj! %1 (nth v %2)))
+             (if (<= n 32)
+               (small-transient (dec n) identity)
+               (transient []))
+             (range (count v))))))
 
 (defn run!
   "Drop-in replacement for `clojure.core/run!`.
@@ -348,6 +377,15 @@
      (let [its (mapv #(.iterator ^Iterable %) coll-of-colls)]
        (mapv (fn [_] (mapv #(.next ^Iterator %) its))
              (first coll-of-colls)))))
+
+(defn dropv
+  "Like `clojure.core/drop`, but always returns a vector, and calls `clojure.core/subvec` when invoked on vectors (so,
+  it is very cheap, but shares the structure with original vector, see its docstring)."
+  ([n] (drop n))
+  ([n coll]
+   (cond (vector? coll) (if (> (count coll) n) (subvec coll n) [])
+         (nil? coll)    []
+         :else          (into [] (drop n) coll))))
 
 (defn select-keys
   "Drop-in replacement for `clojure.walk/select-keys`, but much more efficient."
@@ -575,6 +613,36 @@
        form))
    m))
 
+(defn str
+  "More efficient implementation of `clojure.core/str` because it has more non-variadic arities. Optimization is
+  Clojure-only, on other platforms it reverts back to `clojure.core/str`."
+  (^String [] "")
+  (^String [^Object a]
+   #?(:clj (if (nil? a) "" (.toString a))
+      :default (clojure.core/str a)))
+  (^String [^Object a, ^Object b]
+   #?(:clj (if (nil? a)
+             (str b)
+             (if (nil? b)
+               (.toString a)
+               (.concat (.toString a) (.toString b))))
+      :default (clojure.core/str a b)))
+  (^String [a b c]
+   #?(:clj (let [sb (StringBuilder.)]
+             (.append sb (str a))
+             (.append sb (str b))
+             (.append sb (str c))
+             (.toString sb))
+      :default (clojure.core/str a b c)))
+  (^String [a b c & more]
+   #?(:clj (let [sb (StringBuilder.)]
+             (.append sb (str a))
+             (.append sb (str b))
+             (.append sb (str c))
+             (run! #(.append sb (str %)) more)
+             (.toString sb))
+      :default (apply clojure.core/str a b c more))))
+
 ;;;; Faster clj->js implementation
 
 #?(:cljs
@@ -651,3 +719,14 @@
   [m key value]
   #?(:clj (do (.put ^HashMap m key value) m)
      :cljs (do (.set m key value) m)))
+
+;;;; Cross-platform array-processing functions
+
+(defn mapa
+  "Like [[mapv]], but returns an array. Requires `coll` to be countable and have O(1) access."
+  [f coll]
+  (let [n (count coll)
+        res (object-array n)]
+    (dotimes [i n]
+      (aset res i (f (nth coll i))))
+    res))

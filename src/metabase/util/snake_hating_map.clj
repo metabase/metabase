@@ -23,7 +23,7 @@
                            (pr-str (u/->kebab-case-en k)))
                    {:k k})]
     (if config/is-prod?
-      (log/warn e)
+      (log/warn (ex-message e))
       (throw e))))
 
 (defn- normalize-key [k]

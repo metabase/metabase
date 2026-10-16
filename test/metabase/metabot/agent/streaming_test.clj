@@ -101,24 +101,6 @@
           part (streaming/code-edit-part edit-data)]
       (is (= edit-data (:data part))))))
 
-(deftest transform-suggestion-part-test
-  (testing "creates transform_suggestion data part with correct structure"
-    (let [suggestion {:id 1
-                      :name "My Transform"
-                      :description "A test transform"
-                      :source {:type "sql" :query "SELECT 1"}}
-          part (streaming/transform-suggestion-part suggestion)]
-      (is (= :data (:type part)))
-      (is (= "transform_suggestion" (:data-type part)))
-      (is (= suggestion (:data part)))))
-  (testing "handles Python transform suggestion"
-    (let [suggestion {:id 2
-                      :name "Python Transform"
-                      :source {:type "python"
-                               :query "def transform():\n    return pd.DataFrame()"}}
-          part (streaming/transform-suggestion-part suggestion)]
-      (is (= suggestion (:data part))))))
-
 (deftest adhoc-viz-part-test
   (testing "creates adhoc_viz data part with correct structure"
     (let [value {:query {:database 1 :type :query :query {:source-table 1}}
@@ -149,7 +131,6 @@
     (is (= "state" streaming/state-type))
     (is (= "todo_list" streaming/todo-list-type))
     (is (= "code_edit" streaming/code-edit-type))
-    (is (= "transform_suggestion" streaming/transform-suggestion-type))
     (is (= "generated_entity" streaming/generated-entity-type))
     (is (= "adhoc_viz" streaming/adhoc-viz-type))
     (is (= "static_viz" streaming/static-viz-type))))
@@ -157,6 +138,10 @@
 (deftest persistable-data-part?-test
   (testing "state parts are not persisted (value lives on MetabotConversation.state)"
     (is (false? (streaming/persistable-data-part? (streaming/state-part {:queries {}})))))
+  (testing "search-results parts are not persisted (they render under the ephemeral chain of thought)"
+    (is (false? (streaming/persistable-data-part? (streaming/search-results-part {:total_count 0 :results []})))))
+  (testing "tool-title parts are not persisted (they render under the ephemeral chain of thought)"
+    (is (false? (streaming/persistable-data-part? (streaming/tool-title-part "[Orders](metabase://table/1)")))))
   (testing "other parts are persisted"
     (is (true? (streaming/persistable-data-part? (streaming/todo-list-part []))))
     (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))
@@ -190,7 +175,18 @@
           result (into [] streaming/expand-data-parts-xf parts)]
       (is (= 3 (count result)))
       (is (= "a" (:data-type (second result))))
-      (is (= "b" (:data-type (nth result 2)))))))
+      (is (= "b" (:data-type (nth result 2))))))
+  (testing "stamps the originating tool-call id into every object-shaped data payload"
+    (let [parts [{:type :tool-output
+                  :id "call-7"
+                  :result {:data-parts [(streaming/search-results-part {:total_count 1 :results []})
+                                        (streaming/entity-saved-part {:card_id 5})
+                                        {:type :data :data-type "todo_list" :data []}]}}]
+          [_ search-part entity-part todo-part] (into [] streaming/expand-data-parts-xf parts)]
+      (is (= "call-7" (get-in search-part [:data :tool_call_id])))
+      (is (= "call-7" (get-in entity-part [:data :tool_call_id])))
+      ;; array payloads have no keyed slot, so they're passed through untouched
+      (is (= [] (:data todo-part))))))
 
 (deftest resolve-links-xf-test
   (testing "resolves metabase:// links in text parts"

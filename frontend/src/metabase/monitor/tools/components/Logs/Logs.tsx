@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import {
@@ -10,8 +11,9 @@ import {
 } from "metabase/monitor/components/LogsViewer";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import { Link, Outlet, useRouter } from "metabase/router";
+import { Outlet, useLocation } from "metabase/router";
 import {
+  ActionIcon,
   Button,
   Center,
   DefaultSelectItem,
@@ -40,7 +42,7 @@ export const DEFAULT_POLLING_DURATION_MS = 1000;
 export const Logs = ({
   pollingDurationMs = DEFAULT_POLLING_DURATION_MS,
 }: LogsProps) => {
-  const { location } = useRouter();
+  const location = useLocation();
   const [{ process, query }, { patchUrlState }] = useUrlState(
     location,
     urlStateConfig,
@@ -74,7 +76,7 @@ export const Logs = ({
             </Center>
           ) : (
             <>
-              <Group gap="md" align="center" wrap="nowrap">
+              <Group gap="lg" align="center" wrap="nowrap">
                 <TextInput
                   flex={1}
                   miw="8rem"
@@ -82,17 +84,17 @@ export const Logs = ({
                   placeholder={t`Filter logs`}
                   rightSection={
                     query.length > 0 ? (
-                      <Button
+                      <ActionIcon
                         aria-label={t`Clear`}
-                        c="text-primary"
-                        leftSection={<Icon name="close" />}
-                        size="xs"
                         variant="subtle"
+                        size="sm"
                         onClick={() => {
                           patchUrlState({ query: "" });
                           refollow();
                         }}
-                      />
+                      >
+                        <Icon name="close" />
+                      </ActionIcon>
                     ) : undefined
                   }
                   value={query}
@@ -136,13 +138,14 @@ export const Logs = ({
                 )}
 
                 <Button
+                  size="lg"
                   component={Link}
                   to={Urls.monitorLogLevels()}
                   leftSection={<Icon name="pulse" />}
-                  variant="default"
                 >{t`Customize log levels`}</Button>
 
                 <Button
+                  size="lg"
                   disabled={!hasFilteredLogs}
                   leftSection={<Icon name="download" />}
                   variant="filled"

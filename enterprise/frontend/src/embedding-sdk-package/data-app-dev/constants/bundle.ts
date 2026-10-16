@@ -10,3 +10,5 @@ export const DATA_APP_ENTRY = "src/index.tsx";
 export const DATA_APP_BUNDLE_URL = "/@data-app-bundle.js";
 
 export const DATA_APP_REBUILT_EVENT = "data-app:rebuilt";
+
+export const DATA_APP_BUILD_ID_HEADER = "x-data-app-build-id";

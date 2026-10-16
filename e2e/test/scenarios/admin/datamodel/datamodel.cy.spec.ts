@@ -9,15 +9,8 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
-const {
-  ORDERS,
-  ORDERS_ID,
-  PEOPLE_ID,
-  PRODUCTS,
-  REVIEWS,
-  REVIEWS_ID,
-  PRODUCTS_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE_ID, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
+  SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const { FieldSection, PreviewSection, TablePicker, TableSection } = H.DataModel;
 
@@ -45,13 +38,31 @@ describe("scenarios > admin > datamodel", () => {
     cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
-  it("should allow to navigate to a table when on a segments page (SEM-484)", () => {
+  it("should restore previously selected table when expanding the tree (SEM-435) and allow to navigate to a table when on a segments page (SEM-484)", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
       schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
     });
 
+    cy.log(
+      "should restore previously selected table when expanding the tree (SEM-435)",
+    );
+    H.DataModel.TablePicker.getDatabase("Sample Database").click();
+    cy.location("pathname").should(
+      "eq",
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+    );
+
+    H.DataModel.TablePicker.getDatabase("Sample Database").click();
+    cy.location("pathname").should(
+      "eq",
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+    );
+
+    cy.log(
+      "should allow to navigate to a table when on a segments page (SEM-484)",
+    );
     cy.findByRole("link", { name: /Segments/ }).click();
     cy.location("pathname").should("eq", "/admin/datamodel/segments");
     cy.wait("@schema");
@@ -92,26 +103,6 @@ describe("scenarios > admin > datamodel", () => {
         TablePicker.getSchemas().should("have.length", 0);
         TablePicker.getTables().should("have.length", 8);
       });
-
-      it("should restore previously selected table when expanding the tree (SEM-435)", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-        });
-
-        TablePicker.getDatabase("Sample Database").click();
-        cy.location("pathname").should(
-          "eq",
-          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-        );
-
-        TablePicker.getDatabase("Sample Database").click();
-        cy.location("pathname").should(
-          "eq",
-          `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-        );
-      });
     });
 
     describe(
@@ -124,7 +115,7 @@ describe("scenarios > admin > datamodel", () => {
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         });
 
-        it("should allow to search for tables", () => {
+        it("should allow to search for tables and restore previously selected table when expanding the tree (SEM-435)", () => {
           H.DataModel.visit();
 
           TablePicker.getSearchInput().type("rd");
@@ -152,9 +143,11 @@ describe("scenarios > admin > datamodel", () => {
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 2);
           TablePicker.getTables().should("have.length", 2);
-        });
 
-        it("should restore previously selected table when expanding the tree (SEM-435)", () => {
+          cy.log(
+            "should restore previously selected table when expanding the tree (SEM-435)",
+          );
+          // Reload so the tree starts fully collapsed, as the tree state is not persisted
           H.DataModel.visit();
 
           TablePicker.getDatabase("Writable Postgres12").click();
@@ -177,7 +170,7 @@ describe("scenarios > admin > datamodel", () => {
     );
 
     describe("Table visibility", () => {
-      it("should allow changing the table visibility", () => {
+      it("should allow changing the table visibility and not prevent editing related question after turning table visibility off (metabase#15947)", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -195,6 +188,12 @@ describe("scenarios > admin > datamodel", () => {
           cy.findByText("People").should("be.visible");
           cy.findByText("Orders").should("not.exist");
         });
+
+        cy.log(
+          "shouldn't prevent editing related question after turning table visibility off - simple question (metabase#15947-1)",
+        );
+        H.visitQuestion(ORDERS_QUESTION_ID);
+        H.queryBuilderHeader().findByText("View-only").should("be.visible");
 
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
@@ -292,7 +291,7 @@ describe("scenarios > admin > datamodel", () => {
       });
 
       it(
-        "should allow hiding and restoring all tables in a single-schema database",
+        "should allow hiding and restoring all tables in a multi-schema database",
         { tags: ["@external"] },
         () => {
           H.restore("postgres-writable");
@@ -415,63 +414,6 @@ describe("scenarios > admin > datamodel", () => {
           cy.contains("Orders").should("not.exist");
         });
       });
-
-      describe("shouldn't prevent editing related question after turning table visibility off (metabase#15947)", () => {
-        it("simple question (metabase#15947-1)", () => {
-          turnTableVisibilityOff(ORDERS_ID);
-          H.visitQuestion(ORDERS_QUESTION_ID);
-
-          H.queryBuilderHeader().findByText("View-only").should("be.visible");
-        });
-
-        it("question with joins (metabase#15947-2)", { tags: "@skip" }, () => {
-          H.createQuestion({
-            name: "15947",
-            query: {
-              "source-table": ORDERS_ID,
-              joins: [
-                {
-                  fields: "all",
-                  "source-table": PRODUCTS_ID,
-                  condition: [
-                    "=",
-                    ["field", ORDERS.PRODUCT_ID, null],
-                    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                  ],
-                  alias: "Products",
-                },
-              ],
-              filter: [
-                "and",
-                ["=", ["field", ORDERS.QUANTITY, null], 1],
-                [
-                  ">",
-                  ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
-                  3,
-                ],
-              ],
-              aggregation: [
-                ["sum", ["field", ORDERS.TOTAL, null]],
-                [
-                  "sum",
-                  ["field", PRODUCTS.RATING, { "join-alias": "Products" }],
-                ],
-              ],
-              breakout: [
-                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
-                ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-              ],
-            },
-          }).then(({ body: { id: QUESTION_ID } }) => {
-            turnTableVisibilityOff(PRODUCTS_ID);
-            cy.visit(`/question/${QUESTION_ID}/notebook`);
-            cy.findByText("Products");
-            cy.findByText("Quantity is equal to 1");
-            cy.findByText("Rating is greater than 3");
-            H.queryBuilderHeader().findByText("View-only").should("be.visible");
-          });
-        });
-      });
     });
   });
 
@@ -576,18 +518,8 @@ describe("scenarios > admin > datamodel", () => {
     });
 
     describe("Sorting", () => {
-      it("should allow sorting fields as in the database", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("database")
-          .should("be.checked");
-
+      it("should allow sorting fields alphabetically and smartly", () => {
+        cy.log("fields are sorted as in the database by default");
         H.openProductsTable();
         H.assertTableData({
           columns: [
@@ -601,9 +533,7 @@ describe("scenarios > admin > datamodel", () => {
             "Created At",
           ],
         });
-      });
 
-      it("should allow sorting fields alphabetically", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -611,6 +541,10 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         TableSection.getSortButton().click();
+        TableSection.getSortOrderInput()
+          .findByDisplayValue("database")
+          .should("be.checked");
+
         TableSection.getSortOrderInput()
           .findByLabelText("Alphabetical order")
           .click();
@@ -633,9 +567,8 @@ describe("scenarios > admin > datamodel", () => {
             "Vendor",
           ],
         });
-      });
 
-      it("should allow sorting fields smartly", () => {
+        cy.log("should allow sorting fields smartly");
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -665,52 +598,7 @@ describe("scenarios > admin > datamodel", () => {
         });
       });
 
-      it("should allow sorting fields in the custom order", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("database")
-          .should("be.checked");
-
-        TableSection.getSortableField("ID").as("dragElement");
-        H.moveDnDKitElementByAlias("@dragElement", {
-          vertical: 50,
-        });
-        cy.wait("@updateFieldOrder");
-        verifyAndCloseToast("Field order updated");
-
-        cy.log(
-          "should not show loading state after an update (metabase#56482)",
-        );
-        cy.findByTestId("loading-indicator", { timeout: 0 }).should(
-          "not.exist",
-        );
-
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("custom")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "Ean",
-            "ID",
-            "Title",
-            "Category",
-            "Vendor",
-            "Price",
-            "Rating",
-            "Created At",
-          ],
-        });
-      });
-
-      it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
+      it("should allow sorting fields in a custom order and switching back to predefined order (metabase#56482)", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -778,6 +666,21 @@ describe("scenarios > admin > datamodel", () => {
         TableSection.getSortableFields().should(($items) => {
           expect($items[0].textContent).to.equal("Ean");
           expect($items[1].textContent).to.equal("ID");
+        });
+
+        cy.log("custom order is applied in the query builder");
+        H.openProductsTable();
+        H.assertTableData({
+          columns: [
+            "Ean",
+            "ID",
+            "Title",
+            "Category",
+            "Vendor",
+            "Price",
+            "Rating",
+            "Created At",
+          ],
         });
       });
     });
@@ -935,29 +838,6 @@ describe("scenarios > admin > datamodel", () => {
           });
           cy.findByLabelText("Left column").should("contain.text", "User ID");
         });
-
-        it("should not allow setting foreign key target for inaccessible tables", () => {
-          H.activateToken("pro-self-hosted");
-          setDataModelPermissions({ tableIds: [REVIEWS_ID] });
-
-          cy.signIn("none");
-          H.DataModel.visit({
-            databaseId: SAMPLE_DB_ID,
-            schemaId: SAMPLE_DB_SCHEMA_ID,
-            tableId: REVIEWS_ID,
-            fieldId: REVIEWS.PRODUCT_ID,
-          });
-          FieldSection.getDisplayValuesInput().click();
-
-          H.popover().within(() => {
-            cy.findByRole("option", { name: /Use original value/ })
-              .should("be.visible")
-              .and("not.have.attr", "data-combobox-disabled");
-            cy.findByRole("option", { name: /Use foreign key/ })
-              .should("be.visible")
-              .and("have.attr", "data-combobox-disabled", "true");
-          });
-        });
       });
     });
 
@@ -992,11 +872,35 @@ describe("scenarios > admin > datamodel", () => {
           cy.findByText("Rustic Paper Wallet").should("be.visible");
         });
 
-        it("should show a proper error message when using custom mapping", () => {
+        it("should not allow setting foreign key target for inaccessible tables and show a proper error message when using custom mapping", () => {
           H.activateToken("pro-self-hosted");
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
+
+          cy.log(
+            "should not allow setting foreign key target for inaccessible tables",
+          );
+          H.DataModel.visit({
+            databaseId: SAMPLE_DB_ID,
+            schemaId: SAMPLE_DB_SCHEMA_ID,
+            tableId: REVIEWS_ID,
+            fieldId: REVIEWS.PRODUCT_ID,
+          });
+          FieldSection.getDisplayValuesInput().click();
+
+          H.popover().within(() => {
+            cy.findByRole("option", { name: /Use original value/ })
+              .should("be.visible")
+              .and("not.have.attr", "data-combobox-disabled");
+            cy.findByRole("option", { name: /Use foreign key/ })
+              .should("be.visible")
+              .and("have.attr", "data-combobox-disabled", "true");
+          });
+
+          cy.log(
+            "should show a proper error message when using custom mapping",
+          );
           H.DataModel.visit({
             databaseId: SAMPLE_DB_ID,
             schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1046,7 +950,7 @@ describe("scenarios > admin > datamodel", () => {
 
   describe("Preview section", () => {
     describe("Esc key", () => {
-      it("should allow closing the preview with Esc key", () => {
+      it("should not close the preview when hitting Esc key while modal is open, and allow closing it with Esc key otherwise", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1055,21 +959,6 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         PreviewSection.get().should("not.exist");
-
-        FieldSection.getPreviewButton().click();
-        PreviewSection.get().should("be.visible");
-
-        cy.realPress("Escape");
-        PreviewSection.get().should("not.exist");
-      });
-
-      it("should not close the preview when hitting Esc key while modal is open", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.PRODUCT_ID,
-        });
 
         FieldSection.getPreviewButton().click();
         PreviewSection.get().should("be.visible");
@@ -1087,28 +976,15 @@ describe("scenarios > admin > datamodel", () => {
         cy.realPress("Escape");
         H.modal().should("not.exist");
         PreviewSection.get().should("be.visible");
-      });
 
-      it("should not close the preview when hitting Esc key while popover is open", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.PRODUCT_ID,
-        });
-
-        FieldSection.getPreviewButton().click();
-        PreviewSection.get().should("be.visible");
-
-        FieldSection.getSemanticTypeInput().click();
-        H.popover().should("be.visible");
-
+        cy.log("should allow closing the preview with Esc key");
+        // Focus returns to the "Field values" button once the modal closes. Esc is
+        // ignored while an input is focused, so this must not follow the popover case.
         cy.realPress("Escape");
-        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
-        PreviewSection.get().should("be.visible");
+        PreviewSection.get().should("not.exist");
       });
 
-      it("should not close the preview when hitting Esc key while command palette is open", () => {
+      it("should not close the preview when hitting Esc key while command palette or popover is open", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -1124,6 +1000,16 @@ describe("scenarios > admin > datamodel", () => {
 
         cy.realPress("Escape");
         H.commandPalette().should("not.exist");
+        PreviewSection.get().should("be.visible");
+
+        cy.log(
+          "should not close the preview when hitting Esc key while popover is open",
+        );
+        FieldSection.getSemanticTypeInput().click();
+        H.popover().should("be.visible");
+
+        cy.realPress("Escape");
+        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
         PreviewSection.get().should("be.visible");
       });
     });
@@ -1279,13 +1165,6 @@ describe("scenarios > admin > datamodel", () => {
     });
   });
 });
-
-function turnTableVisibilityOff(tableId: TableId) {
-  cy.request("PUT", "/api/table", {
-    ids: [tableId],
-    visibility_type: "hidden",
-  });
-}
 
 const setDataModelPermissions = ({
   tableIds = [],

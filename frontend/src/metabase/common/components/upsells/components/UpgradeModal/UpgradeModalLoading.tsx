@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
-import { useGetSettingsQuery } from "metabase/api";
-import { useTokenRefreshUntil } from "metabase/api/utils";
+import {
+  WAITING_REFRESH_INTERVAL,
+  useGetSettingsQuery,
+  useTokenRefreshUntil,
+} from "metabase/settings";
 import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
 
 import type { UpgradeFlow } from "./types";
@@ -16,7 +19,7 @@ export function UpgradeModalLoading({
   onDone,
 }: UpgradeModalLoadingProps) {
   // Poll every second until no-upsell feature appears
-  useTokenRefreshUntil("no-upsell", { intervalMs: 1000 });
+  useTokenRefreshUntil("no-upsell", { intervalMs: WAITING_REFRESH_INTERVAL });
 
   const { data: settings } = useGetSettingsQuery();
   const tokenFeatures = settings?.["token-status"]?.features ?? [];
@@ -31,10 +34,10 @@ export function UpgradeModalLoading({
         t`Setting up Metabase Pro, please wait`;
 
     return (
-      <Stack align="center" gap="lg" py="xl">
+      <Stack align="center" gap="xl" py="xxl">
         <Loader size="xl" />
 
-        <Stack align="center" gap="xs">
+        <Stack align="center" gap="xxs">
           <Title order={3} ta="center">
             {title}
           </Title>
@@ -44,7 +47,7 @@ export function UpgradeModalLoading({
         </Stack>
 
         <Flex justify="center" w="100%">
-          <Button variant="filled" color="core-brand" disabled>
+          <Button variant="filled" color="brand" disabled>
             {t`Done`}
           </Button>
         </Flex>
@@ -59,7 +62,7 @@ export function UpgradeModalLoading({
       t`Metabase Pro is ready to use`;
 
   return (
-    <Stack align="center" gap="lg" py="xl">
+    <Stack align="center" gap="xl" py="xxl">
       <Flex
         align="center"
         justify="center"
@@ -71,7 +74,7 @@ export function UpgradeModalLoading({
         <Icon name="check" c="core-white" size={32} />
       </Flex>
 
-      <Stack align="center" gap="xs">
+      <Stack align="center" gap="xxs">
         <Title order={3} ta="center">
           {successTitle}
         </Title>
@@ -83,7 +86,7 @@ export function UpgradeModalLoading({
       <Flex justify="center" w="100%">
         <Button
           variant="filled"
-          color="core-brand"
+          color="brand"
           onClick={() => {
             onDone();
             window.location.reload();

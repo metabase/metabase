@@ -10,12 +10,11 @@ import {
 } from "metabase/utils/dashboard";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
+import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
   getDatasetPermissionError,
   getGenericErrorMessage,
-} from "metabase/visualizations/lib/errors";
-import { hasNoResults } from "metabase/visualizations/lib/no-results";
-import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
+} from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
@@ -43,6 +42,7 @@ import type {
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
+import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
@@ -102,6 +102,12 @@ export function isHeadingDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is VirtualDashboardCard {
   return getVirtualCardType(dashcard) === "heading";
+}
+
+export function isTextDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
+  return getVirtualCardType(dashcard) === "text";
 }
 
 export function isLinkDashCard(
@@ -207,15 +213,25 @@ export function getAllDashboardCards(dashboard: Dashboard) {
   return results;
 }
 
+export const isDashCardOnTab = (
+  dashcard: BaseDashboardCard,
+  tabId: SelectedTabId,
+) => (dashcard.dashboard_tab_id ?? null) === tabId;
+
 export function getCurrentTabDashboardCards(
   dashboard: Dashboard,
   selectedTabId: SelectedTabId,
 ) {
-  return getAllDashboardCards(dashboard).filter(
-    ({ dashcard }) =>
-      (dashcard.dashboard_tab_id == null && selectedTabId == null) ||
-      dashcard.dashboard_tab_id === selectedTabId,
+  return getAllDashboardCards(dashboard).filter(({ dashcard }) =>
+    isDashCardOnTab(dashcard, selectedTabId),
   );
+}
+
+export function isDashboardOrTabEmpty(
+  dashboard: Dashboard,
+  selectedTabId: SelectedTabId,
+): boolean {
+  return getCurrentTabDashboardCards(dashboard, selectedTabId).length === 0;
 }
 
 export function hasDatabaseActionsEnabled(database: Database) {
@@ -270,7 +286,7 @@ export function isDashcardAccessRestricted(
 }
 
 export function getDashcardResultsError(
-  datasets: Dataset[],
+  datasets: Partial<Dataset>[],
   isGuestEmbed: boolean,
 ) {
   const permissionError = datasets
@@ -403,8 +419,10 @@ export const isDashboardCacheable = (
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
 
 export function parseTabSlug(location: Location) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
+  const slugs = new URLSearchParams(location.search).getAll("tab");
+  // A repeated `tab` is ambiguous, so treat it as no tab at all.
+  const slug = slugs.length === 1 ? slugs[0] : "";
+  if (slug.length > 0) {
     const id = parseInt(slug, 10);
     return Number.isSafeInteger(id) ? id : null;
   }
@@ -503,7 +521,7 @@ export function getClickBehaviorDescription(dashcard: DashboardCard) {
   const noBehaviorMessage = hasActionsMenu(dashcard)
     ? t`Open the drill-through menu`
     : t`Do nothing`;
-  if (isTableDisplay(dashcard)) {
+  if (hasColumnLevelClickBehavior(dashcard)) {
     const columnSettings: Record<string, ColumnSettings> =
       getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
 
@@ -565,6 +583,9 @@ export function hasActionsMenu(dashcard: DashboardCard) {
   return !question.isNative();
 }
 
-export function isTableDisplay(dashcard: DashboardCard) {
+export function hasColumnLevelClickBehavior(dashcard: DashboardCard) {
+  if (isVisualizerDashboardCard(dashcard)) {
+    return dashcard.visualization_settings.visualization.display === "table";
+  }
   return dashcard?.card?.display === "table";
 }

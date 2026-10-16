@@ -17,12 +17,12 @@ export function CollectionUpload({
   collection,
   uploadsEnabled,
   isAdmin,
-  saveFile,
+  onSaveFile,
 }: {
   collection: Collection;
   uploadsEnabled: boolean;
   isAdmin: boolean;
-  saveFile: (file: File) => void;
+  onSaveFile: (file: File) => void;
 }) {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -32,8 +32,7 @@ export function CollectionUpload({
       <>
         <UploadTooltip collection={collection}>
           <ActionIcon
-            variant="viewHeader"
-            size="2rem"
+            variant="subtle"
             aria-label={t`Upload data`}
             onClick={() => setShowInfoModal(true)}
           >
@@ -55,7 +54,7 @@ export function CollectionUpload({
     trackCSVFileUploadClicked();
     const file = event.target.files?.[0];
     if (file !== undefined) {
-      saveFile(file);
+      onSaveFile(file);
 
       // reset the input so that the same file can be uploaded again
       if (uploadInputRef.current) {
@@ -68,8 +67,7 @@ export function CollectionUpload({
     <UploadTooltip collection={collection}>
       <UploadLabel>
         <ActionIcon
-          variant="viewHeader"
-          size="2rem"
+          variant="subtle"
           component="span"
           aria-label={t`Upload data`}
         >

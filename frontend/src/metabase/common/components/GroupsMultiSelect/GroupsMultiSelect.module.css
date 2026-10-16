@@ -1,7 +1,7 @@
 /* White, outlined pill (same approach as DimensionPill / ReorderableTagsInput).
    Color, background and weight are set via Pill props. */
 .pill {
-  gap: var(--mantine-spacing-xs);
+  gap: var(--mantine-spacing-xxs);
   padding: rem(2px) rem(6px) rem(2px) var(--mantine-spacing-sm);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.75rem;
@@ -18,4 +18,19 @@
 .remove {
   margin: 0 !important;
   transform: translateY(1px);
+}
+
+/* The checkbox is decorative; clicks must fall through to the option row. */
+.checkbox {
+  pointer-events: none;
+}
+
+/* The raw Combobox theme leaves the section-header color transparent (unlike Select),
+   so set a visible one; matches Select's group-label treatment. */
+.groupLabel {
+  color: var(--mb-color-text-secondary);
+
+  &::after {
+    display: none;
+  }
 }

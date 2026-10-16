@@ -7,22 +7,22 @@ export const DataAppsEmptyState = () => (
     direction="column"
     align="center"
     justify="center"
-    gap="md"
-    bd="1px solid var(--mb-color-border)"
-    bdrs="md"
-    bg="background-primary"
+    gap="lg"
+    bd="1px solid var(--mb-color-border-neutral)"
+    bdrs="sm"
+    bg="background_page-primary"
     mih="16rem"
-    p="xl"
+    p="xxl"
   >
     <Flex
       align="center"
       justify="center"
       w="6rem"
       h="6rem"
-      bg="background-secondary"
+      bg="background_page-secondary"
       style={{ borderRadius: "50%" }}
     >
-      <Icon name="app" size={48} c="border" />
+      <Icon name="app" size={48} c="border-neutral" />
     </Flex>
     <Text c="text-disabled">{t`Your data apps will appear here`}</Text>
   </Flex>

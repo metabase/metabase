@@ -41,7 +41,62 @@ function setup({
 }
 
 describe("useDimensionPickerSidebarSections", () => {
-  it("uses table names without a Shared prefix for grouped shared dimensions", () => {
+  it("returns a single flat section for one metric, keeping the curated order", () => {
+    const { result } = setup({
+      availableDimensions: {
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              group: { id: "orders", type: "main", displayName: "Orders" },
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 0: "dim-created-at" },
+              },
+            },
+            {
+              icon: "label",
+              group: {
+                id: "products",
+                type: "connection",
+                displayName: "Products",
+              },
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Product - Category",
+                dimensionMapping: { 0: "dim-category" },
+              },
+            },
+            {
+              icon: "int",
+              group: { id: "orders", type: "main", displayName: "Orders" },
+              dimensionBreakoutInfo: {
+                type: "numeric",
+                label: "Subtotal",
+                dimensionMapping: { 0: "dim-subtotal" },
+              },
+            },
+          ],
+        },
+      },
+      sourceOrder: [REVENUE_SOURCE_ID],
+      sourceDataById: {
+        [REVENUE_SOURCE_ID]: { type: "metric", name: "Revenue" },
+      },
+    });
+
+    expect(result.current).toHaveLength(1);
+    expect(result.current[0].name).toBeUndefined();
+    expect(result.current[0].items.map((item) => item.name)).toEqual([
+      "Created At",
+      "Product - Category",
+      "Subtotal",
+    ]);
+  });
+
+  it("returns one Shared section without splitting shared dimensions by table", () => {
     const { result } = setup({
       availableDimensions: {
         shared: [
@@ -80,35 +135,55 @@ describe("useDimensionPickerSidebarSections", () => {
     });
 
     expect(result.current).toEqual([
-      expect.objectContaining({ name: "Customers", isShared: true }),
-      expect.objectContaining({ name: "Orders", isShared: true }),
+      expect.objectContaining({ name: "Shared", isShared: true }),
+    ]);
+    expect(result.current[0].items.map((item) => item.name)).toEqual([
+      "Customer Name",
+      "Created At",
     ]);
   });
 
-  it("orders main dimension groups before related groups", () => {
+  it("returns one section per metric named after the metric", () => {
     const { result } = setup({
       availableDimensions: {
-        shared: [
-          {
-            icon: "label",
-            group: { id: "users", type: "connection", displayName: "Users" },
-            dimensionBreakoutInfo: {
-              type: "category",
-              label: "User Name",
-              dimensionMapping: { 0: "dim-user-name", 1: "dim-user-name" },
+        shared: [],
+        bySource: {
+          [REVENUE_SOURCE_ID]: [
+            {
+              icon: "calendar",
+              group: { id: "orders", type: "main", displayName: "Orders" },
+              dimensionBreakoutInfo: {
+                type: "time",
+                label: "Created At",
+                dimensionMapping: { 0: "dim-created-at" },
+              },
             },
-          },
-          {
-            icon: "calendar",
-            group: { id: "orders", type: "main", displayName: "Orders" },
-            dimensionBreakoutInfo: {
-              type: "time",
-              label: "Created At",
-              dimensionMapping: { 0: "dim-created-at", 1: "dim-created-at" },
+            {
+              icon: "label",
+              group: {
+                id: "products",
+                type: "connection",
+                displayName: "Products",
+              },
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Product - Category",
+                dimensionMapping: { 0: "dim-category" },
+              },
             },
-          },
-        ],
-        bySource: {},
+          ],
+          [ORDERS_SOURCE_ID]: [
+            {
+              icon: "label",
+              group: { id: "plans", type: "connection", displayName: "Plans" },
+              dimensionBreakoutInfo: {
+                type: "category",
+                label: "Plan Name",
+                dimensionMapping: { 1: "dim-plan-name" },
+              },
+            },
+          ],
+        },
       },
       sourceOrder: [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
       sourceDataById: {
@@ -117,9 +192,13 @@ describe("useDimensionPickerSidebarSections", () => {
       },
     });
 
-    expect(result.current.map((section) => section.name)).toEqual([
-      "Orders",
-      "Users",
+    expect(result.current).toEqual([
+      expect.objectContaining({ name: "Revenue", sourceId: REVENUE_SOURCE_ID }),
+      expect.objectContaining({ name: "Orders", sourceId: ORDERS_SOURCE_ID }),
+    ]);
+    expect(result.current[0].items.map((item) => item.name)).toEqual([
+      "Created At",
+      "Product - Category",
     ]);
   });
 });

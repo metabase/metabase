@@ -2,16 +2,14 @@ import { type ReactNode, useMemo, useState } from "react";
 import { useMount } from "react-use";
 
 import { useSearchQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
 import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
 import { useIsSsoEnabledAndConfigured } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-is-sso-enabled-and-configured";
 import { shouldAllowPreviewAndNavigation } from "metabase/embedding/embedding-iframe-sdk-setup/utils/should-allow-preview-and-navigation";
-import {
-  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
-  type SdkIframeEmbedSetupModalInitialState,
-} from "metabase/plugins";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
+import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 
 import {
   SdkIframeEmbedSetupContext,
@@ -27,6 +25,7 @@ import {
 import { useSdkIframeEmbedSettings } from "../hooks/use-sdk-iframe-embed-settings";
 import type { SdkIframeEmbedSetupStep } from "../types";
 import { getExperienceFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
+import { getResourceCustomVisualizations } from "../utils/get-resource-custom-visualizations";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -42,10 +41,14 @@ export const SdkIframeEmbedSetupProvider = ({
   const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
-  const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
-  const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
+  // One setting backs both since 0.65.0; only the terms they gate still differ.
+  const isModularEmbeddingEnabled = useSetting("enable-embedding-modular");
+  const isSimpleEmbeddingEnabled = isModularEmbeddingEnabled;
+  const isGuestEmbedsEnabled = isModularEmbeddingEnabled;
 
-  const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
+  const isSimpleEmbeddingTermsAccepted = !useSetting(
+    "show-modular-embed-terms",
+  );
   const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
 
   const isSsoEnabledAndConfigured = useIsSsoEnabledAndConfigured();
@@ -112,6 +115,15 @@ export const SdkIframeEmbedSetupProvider = ({
     dashboardId: settings.dashboardId,
     questionId: settings.questionId,
   });
+
+  const embedSettings = useMemo(() => {
+    const allowedCustomVisualizations =
+      getResourceCustomVisualizations(resource);
+
+    return allowedCustomVisualizations.length > 0
+      ? { ...settings, allowedCustomVisualizations }
+      : settings;
+  }, [resource, settings]);
 
   const { availableParameters, initialAvailableParameters } =
     useAvailableParameters({
@@ -196,7 +208,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isLoading,
     isFetching,
     isRecentsLoading,
-    settings,
+    settings: embedSettings,
     defaultSettings,
     replaceSettings,
     updateSettings,

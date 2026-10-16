@@ -1,15 +1,13 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDataApps } from "metabase/admin/upsells";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_DATA_APPS } from "metabase/plugins";
+import { SettingsPageWrapper } from "metabase/settings-components";
 
 /**
- * Admin page at /admin/settings/apps. Lives in OSS so the nav item + upsell
- * show on every edition; the real management UI is provided by the enterprise
- * plugin (`PLUGIN_DATA_APPS.ManageDataAppsPage`) and only rendered once the
- * `data-apps` token feature is present.
+ * Admin page at /admin/settings/apps. Shows the upsell on instances without the
+ * `data-apps` token feature; the enterprise plugin provides the management UI.
  */
 export function DataAppsManagePage() {
   const hasDataApps = useHasTokenFeature("data-apps");
@@ -17,10 +15,14 @@ export function DataAppsManagePage() {
   if (!hasDataApps) {
     return (
       <SettingsPageWrapper title={t`Data apps`}>
-        <UpsellDataApps location="settings-data-apps" />
+        <UpsellDataApps source="settings-data-apps" />
       </SettingsPageWrapper>
     );
   }
 
   return <PLUGIN_DATA_APPS.ManageDataAppsPage />;
+}
+
+export function DataAppGroupsManagePage() {
+  return <PLUGIN_DATA_APPS.ManageDataAppGroupsPage />;
 }

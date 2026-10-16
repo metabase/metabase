@@ -2,6 +2,7 @@ import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
 } from "e2e/support/helpers";
+import type { DataApp } from "metabase-types/api";
 
 import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
@@ -77,6 +78,57 @@ describe("scenarios > data apps > admin management", () => {
       .findByText(/AI-generated React apps/)
       .should("not.exist");
   });
+
+  describe("outdated apps", () => {
+    // Only a bump of the supported version makes a real app outdated, so the flag
+    // the API computes is patched onto a real app's responses instead.
+    const OUTDATED_APP = "good";
+
+    function markAppOutdated() {
+      H.pullExampleDataApps();
+      cy.request<DataApp>("GET", `/api/apps/${OUTDATED_APP}`)
+        .its("body.display_name")
+        .as("outdatedAppName");
+
+      cy.intercept("GET", "/api/apps", (req) => {
+        req.continue((res) => {
+          res.body = res.body.map((app: DataApp) =>
+            app.name === OUTDATED_APP
+              ? { ...app, version: 1, outdated: true }
+              : app,
+          );
+        });
+      });
+      cy.intercept(
+        { method: "GET", pathname: `/api/apps/${OUTDATED_APP}` },
+        (req) => {
+          req.continue((res) => {
+            res.body = { ...res.body, version: 1, outdated: true };
+          });
+        },
+      );
+    }
+
+    it("badges an outdated app and refuses to open it", () => {
+      markAppOutdated();
+
+      cy.visit("/admin/settings/apps");
+
+      cy.get<string>("@outdatedAppName").then((displayName) => {
+        cy.findByTestId(`data-app-list-item-${OUTDATED_APP}`)
+          .scrollIntoView()
+          .within(() => {
+            cy.findByText("Outdated").should("be.visible");
+            cy.findByText(displayName).should("be.visible");
+            cy.findByRole("link", { name: displayName }).should("not.exist");
+          });
+      });
+
+      H.openDataApp(OUTDATED_APP);
+      H.main().findByText("This data app is outdated").should("be.visible");
+      cy.get("iframe").should("not.exist");
+    });
+  });
 });
 
 describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
@@ -87,20 +139,16 @@ describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
     // settings page shows the upsell instead of the management UI.
   });
 
-  it("shows the data-apps upsell instead of the management UI", () => {
+  it("shows the data-apps upsell instead of the management UI, and marks the Data apps settings nav item with an upsell gem", () => {
     cy.visit("/admin/settings/apps");
 
     H.main().within(() => {
-      cy.findByText("Build apps on your data").should("be.visible");
+      cy.findByText("Build custom data apps").should("be.visible");
       cy.findByText("Try for free").should("be.visible");
     });
-  });
-
-  it("marks the Data apps settings nav item with an upsell gem", () => {
-    cy.visit("/admin/settings/apps");
 
     cy.findByRole("link", { name: /Data apps/ }).within(() => {
-      cy.findByTestId("upsell-gem").should("exist");
+      cy.findByTestId("upsell-gem").should("be.visible");
     });
   });
 });

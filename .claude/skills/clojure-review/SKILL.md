@@ -2,6 +2,14 @@
 name: clojure-review
 description: Review Clojure and ClojureScript code changes for compliance with Metabase coding standards, style violations, and code quality issues. Use when reviewing pull requests or diffs containing Clojure/ClojureScript code.
 allowed-tools: Read, Grep, Bash, Glob
+metadata:
+  metareview:
+    title: Clojure review
+    kind: agent
+    rule: Clojure files changed
+    watches: ["*.clj", "*.cljc", "*.cljs"]
+    icon: lambda
+    color: green
 ---
 
 # Clojure Code Review Skill
@@ -55,6 +63,11 @@ Use this to scan through changes efficiently:
 - [ ] Docstrings use Markdown conventions
 - [ ] References use `[[other-var]]` not backticks
 - [ ] `TODO` comments include author and date: `;; TODO (Name 2025-01-01) -- description`
+
+Docstring content — check every new or rewritten docstring against the anti-pattern table in the
+style guide above. Read the diff's docstrings on their own, separately from the code: prose is
+where review attention slides off, and a long docstring reads as diligence rather than as the
+liability it usually is.
 
 ### Code Organization
 
@@ -134,6 +147,17 @@ Quick scan for common issues:
 **For missing documentation:**
 
 > This public var needs a docstring explaining its purpose, inputs, and outputs.
+
+**For docstrings documenting code they don't own:**
+
+> This describes how `lib` decides binning strategies internally. Nothing here fails when that
+> changes, so it will go stale silently — drop it and let `available-binning-strategies` answer
+> for its own behavior.
+
+**For docstring content that belongs in the body:**
+
+> This paragraph explains why the branches are ordered this way, which is what someone editing
+> the `cond` needs — but a caller can't act on it. Move it to an inline comment above the `cond`.
 
 **For organization issues:**
 

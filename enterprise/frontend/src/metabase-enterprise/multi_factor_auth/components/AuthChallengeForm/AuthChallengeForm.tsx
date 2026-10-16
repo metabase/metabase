@@ -69,7 +69,7 @@ function ChallengeCodeForm({
         setFieldTouched,
       }) => (
         <Form>
-          <Stack gap="md">
+          <Stack gap="lg">
             <Text c="text-secondary" ta="center">
               {useRecoveryCode
                 ? t`Enter one of your recovery codes.`
@@ -126,13 +126,14 @@ function EmailOtpForm({ challengeToken }: EmailOtpFormProps) {
     <FormProvider initialValues={{}} onSubmit={handleSubmit}>
       {({ isSubmitting, submitForm }) => (
         <Form>
-          <Stack gap="md" ta="center">
+          <Stack gap="lg" ta="center">
             {emailSent && (
               <Text c="text-secondary">{t`Code sent — check your email`}</Text>
             )}
             <AuthTextButton
               disabled={isSubmitting}
               onClick={() => submitForm()}
+              ta="center"
             >
               {emailSent ? t`Resend code` : t`Email me a code`}
             </AuthTextButton>
@@ -151,7 +152,7 @@ export function AuthChallengeForm({
   onCancel,
 }: AuthChallengeFormProps) {
   return (
-    <Stack mt="2.5rem" gap="md">
+    <Stack mt="2.5rem" gap="lg">
       <ChallengeCodeForm challengeToken={challengeToken} remember={remember} />
       {methods?.includes("email") && (
         <EmailOtpForm challengeToken={challengeToken} />

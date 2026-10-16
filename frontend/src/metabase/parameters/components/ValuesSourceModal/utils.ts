@@ -19,7 +19,7 @@ export const getValuesText = (
 
 export const getStaticValues = (value: string): ParameterValue[] => {
   try {
-    const strings = parse(value, {
+    const strings = parse<SelectItem>(value, {
       delimiter: [","],
       skip_empty_lines: true,
       relax_column_count: true,

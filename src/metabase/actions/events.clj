@@ -2,11 +2,15 @@
   (:require
    [metabase.events.core :as events]))
 
-(derive ::event :metabase/event)
+(events/derive! ::event :metabase/event)
 
-(derive :event/action.invoked ::event)
-(derive :event/action.success ::event)
-(derive :event/action.failure ::event)
+(events/derive! :event/action.invoked ::event)
+(events/derive! :event/action.success ::event)
+(events/derive! :event/action.failure ::event)
+
+(events/derive! :event/action-create ::event)
+(events/derive! :event/action-update ::event)
+(events/derive! :event/action-delete ::event)
 
 (defn publish-action-invocation!
   "Publish the details of action of how a"

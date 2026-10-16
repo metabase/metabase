@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 
-import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSetupContextType } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { getResourceTypeFromExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
+import { useSetting } from "metabase/settings";
 
 import { getSignedToken } from "../../lib/auth/get-signed-token";
 

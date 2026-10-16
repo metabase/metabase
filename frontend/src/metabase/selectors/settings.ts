@@ -1,46 +1,14 @@
 import { createSelector } from "@reduxjs/toolkit";
 
-import { getPlan } from "metabase/common/utils/plan";
 import type { State } from "metabase/redux/store";
-import type { TokenFeature, TokenStatus, Version } from "metabase-types/api";
-
-export const getSettings: <S extends State>(state: S) => GetSettings<S> =
-  createSelector(
-    (state: State) => state.settings,
-    (settings) => settings.values,
-  );
-
-export const getSettingsLoading = createSelector(
-  (state: State) => state.settings,
-  (settings) => settings.loading,
-);
-
-type GetSettings<S extends State> = S["settings"]["values"];
-type GetSettingKey<S extends State> = keyof GetSettings<S>;
-
-export const getSetting = <S extends State, T extends GetSettingKey<S>>(
-  state: S,
-  key: T,
-): GetSettings<S>[T] => {
-  const settings = getSettings(state);
-  const setting = settings[key];
-  return setting;
-};
+import { getPlan, getSetting } from "metabase/settings";
+import type { TokenStatus, Version } from "metabase-types/api";
 
 export const isSsoEnabled = (state: State) =>
   getSetting(state, "ldap-enabled") ||
   getSetting(state, "google-auth-enabled") ||
   getSetting(state, "saml-enabled") ||
   getSetting(state, "other-sso-enabled?");
-
-export const getIsHosted = (state: State): boolean => {
-  return getSetting(state, "is-hosted?");
-};
-
-export const getTokenFeature = (state: State, feature: TokenFeature) => {
-  const tokenFeatures = getSetting(state, "token-features");
-  return tokenFeatures[feature];
-};
 
 export type StorePaths =
   /** store main page */
@@ -197,9 +165,7 @@ export const getUpgradeUrl = createSelector(
       utm_content: utmTags.utm_content,
       source_plan: plan,
     };
-    for (const key in searchParams) {
-      // Unjustified type cast. FIXME
-      const utmValue = searchParams[key as keyof typeof searchParams];
+    for (const [key, utmValue] of Object.entries(searchParams)) {
       if (utmValue) {
         url.searchParams.append(key, utmValue);
       }

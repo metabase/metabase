@@ -3,10 +3,11 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { replace } from "metabase/router";
+import { useNavigate } from "metabase/router";
 
 export const SlackConnectSuccess = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   useMount(() => {
     dispatch(
@@ -15,7 +16,7 @@ export const SlackConnectSuccess = () => {
         icon: "check",
       }),
     );
-    dispatch(replace("/"));
+    navigate("/", { replace: true });
   });
 
   return null;

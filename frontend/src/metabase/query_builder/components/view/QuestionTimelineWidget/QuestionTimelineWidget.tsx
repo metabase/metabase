@@ -1,12 +1,11 @@
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/query_builder/components/view/ViewFooterButton";
-import { getUiControls } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
-import {
-  onCloseTimelines,
-  onOpenTimelines,
-} from "metabase/redux/query-builder";
+
+import { openTimelines } from "../../../actions/timelines";
+import { onCloseTimelines } from "../../../store/actions";
+import { getUiControls } from "../../../store/selectors";
+import { ViewFooterButton } from "../ViewFooterButton";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;
@@ -18,7 +17,7 @@ export const QuestionTimelineWidget = ({
   const { isShowingTimelineSidebar } = useSelector(getUiControls);
 
   const dispatch = useDispatch();
-  const handleOpenTimelines = () => dispatch(onOpenTimelines());
+  const handleOpenTimelines = () => dispatch(openTimelines("footer"));
   const handleCloseTimelines = () => dispatch(onCloseTimelines());
 
   function handleClick(isShowingTimelineSidebar: boolean) {

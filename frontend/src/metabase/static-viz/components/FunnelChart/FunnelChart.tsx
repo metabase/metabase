@@ -2,10 +2,7 @@ import { Group } from "@visx/group";
 import { Line, Polygon } from "@visx/shape";
 import { Fragment } from "react";
 
-import type {
-  FunnelDatum,
-  FunnelSettings,
-} from "metabase/static-viz/components/FunnelChart/types";
+import type { FunnelSettings } from "metabase/static-viz/components/FunnelChart/types";
 import {
   calculateFunnelPolygonPoints,
   getFormattedStep,
@@ -15,9 +12,10 @@ import {
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextHeight } from "metabase/static-viz/lib/text";
 import {
+  type FunnelDatum,
   calculateFunnelSteps,
   calculateStepOpacity,
-} from "metabase/visualizations/lib/funnel/utils";
+} from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
 

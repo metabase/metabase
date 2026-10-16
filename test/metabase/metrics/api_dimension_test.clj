@@ -1,11 +1,18 @@
 (ns metabase.metrics.api-dimension-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.events.core :as events]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [dropv]]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
@@ -15,6 +22,18 @@
 (defn- metric-query []
   (let [mp (mt/metadata-provider)
         table-metadata (lib.metadata/table mp (mt/id :venues))]
+    (-> (lib/query mp table-metadata)
+        (lib/aggregate (lib/count)))))
+
+(defn- orders-metric-query []
+  (let [mp (mt/metadata-provider)
+        table-metadata (lib.metadata/table mp (mt/id :orders))]
+    (-> (lib/query mp table-metadata)
+        (lib/aggregate (lib/count)))))
+
+(defn- people-metric-query []
+  (let [mp (mt/metadata-provider)
+        table-metadata (lib.metadata/table mp (mt/id :people))]
     (-> (lib/query mp table-metadata)
         (lib/aggregate (lib/count)))))
 
@@ -62,7 +81,7 @@
       (metrics/sync-dimensions! :metadata/metric (:id metric))
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/values"))]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              GET /api/metric/:id/dimension/:key/search/:query                                  |
@@ -102,7 +121,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search")
                                            :query "test")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               GET /api/metric/:id/dimension/:key/remapping                                     |
@@ -142,7 +161,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/remapping")
                                            :value "1")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 (deftest dimension-remapping-requires-value-param-test
   (testing "GET /api/metric/:id/dimension/:key/remapping requires value parameter"
@@ -205,3 +224,633 @@
                (mt/user-http-request :rasta :get 403
                                      (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/remapping")
                                      :value "1")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Dimension CRUD Endpoints                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmacro ^:private with-seeded-metric [[binding] & body]
+  `(mt/with-temp [:model/Card metric# {:name          "CRUD Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :venues)
+                                       :dataset_query (metric-query)}]
+     (metrics/sync-dimensions! :metadata/metric (:id metric#))
+     (let [~binding metric#]
+       ~@body)))
+
+(deftest list-dimensions-test
+  (testing "GET /api/metric/:id/dimension lists the curated (self-table) dimensions"
+    (with-seeded-metric [metric]
+      (let [resp (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))]
+        (is (seq (:added resp)) "should list seeded self-table dimensions")
+        (is (= [] (:addable resp)) "addable is empty unless requested")
+        (is (contains? (set (map :display_name (:added resp))) "Price"))))))
+
+(deftest list-dimensions-with-addable-test
+  (testing "GET /api/metric/:id/dimension?with-addable=true returns joinable columns to add"
+    (with-seeded-metric [metric]
+      (let [resp (mt/user-http-request :crowberto :get 200
+                                       (str "metric/" (:id metric) "/dimension") :with-addable true)]
+        (is (seq (:addable resp)) "FK-joinable (categories) columns should be addable")
+        (is (every? #(and (contains? % :group) (seq (:dimensions %))) (:addable resp))
+            "each addable entry is a {group, dimensions} group")))))
+
+(deftest list-dimensions-search-test
+  (testing "GET /api/metric/:id/dimension?query=… filters added dimensions by name"
+    (with-seeded-metric [metric]
+      (let [names (->> (mt/user-http-request :crowberto :get 200
+                                             (str "metric/" (:id metric) "/dimension") :query "Price")
+                       :added (map :display_name) set)]
+        (is (contains? names "Price"))
+        (is (not (contains? names "Latitude")))))))
+
+(deftest list-dimensions-excludes-orphaned-dimensions-test
+  (testing "GET /api/metric/:id/dimension synchronizes and optionally includes orphaned dimensions"
+    (with-seeded-metric [metric]
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+            orphan-id (:id (first dimensions))
+            mappings  (mapv #(if (= orphan-id (:dimension-id %))
+                               (assoc-in % [:target 2] (mt/id :users :name))
+                               %)
+                            dimension_mappings)]
+        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (str "metric/" (:id metric) "/dimension"))]
+          (is (not (some #(= orphan-id (:id %)) (:added response)))))
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (str "metric/" (:id metric) "/dimension")
+                                             :include-orphaned true)
+              orphan   (some #(when (= orphan-id (:id %)) %) (:added response))]
+          (is (= "status/orphaned" (:status orphan))))))))
+
+(deftest remove-dimensions-test
+  (testing "POST /api/metric/:id/dimension/remove removes dimensions by id and persists"
+    (with-seeded-metric [metric]
+      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+            resp     (mt/user-http-request :crowberto :post 200
+                                           (str "metric/" (:id metric) "/dimension/remove")
+                                           {:dimension_ids [price-id]})]
+        (is (not (contains? (set (map :id resp)) price-id))
+            "removed dimension is gone from the response")
+        (is (not (contains? (set (map :id (:dimensions (t2/select-one :model/Card :id (:id metric))))) price-id))
+            "removal is persisted")))))
+
+(deftest remove-default-dimension-test
+  (testing "removing the default dimension leaves the metric without a default"
+    (with-seeded-metric [metric]
+      (let [dimension-id (:id (first (:dimensions (t2/select-one :model/Card :id (:id metric)))))]
+        (mt/user-http-request :crowberto :post 200
+                              (str "metric/" (:id metric) "/dimension/set-default")
+                              {:dimension_id dimension-id})
+        (let [resp (mt/user-http-request :crowberto :post 200
+                                         (str "metric/" (:id metric) "/dimension/remove")
+                                         {:dimension_ids [dimension-id]})]
+          (is (seq resp))
+          (is (empty? (filter :default resp))))))))
+
+(deftest remove-all-dimensions-test
+  (testing "removing all dimensions leaves the metric without a default"
+    (with-seeded-metric [metric]
+      (let [dimension-ids (mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))
+            resp          (mt/user-http-request :crowberto :post 200
+                                                (str "metric/" (:id metric) "/dimension/remove")
+                                                {:dimension_ids dimension-ids})]
+        (is (empty? resp))
+        (is (empty? (:dimensions (t2/select-one :model/Card :id (:id metric)))))))))
+
+(deftest add-dimensions-test
+  (testing "POST /api/metric/:id/dimension/add adds a full dimension object and preserves the default"
+    (with-seeded-metric [metric]
+      (let [default-id (:id (first (:dimensions (t2/select-one :model/Card :id (:id metric)))))
+            addable    (-> (mt/user-http-request :crowberto :get 200
+                                                 (str "metric/" (:id metric) "/dimension") :with-addable true)
+                           :addable first :dimensions first)]
+        (is (some? addable) "there should be an addable joinable dimension")
+        (mt/user-http-request :crowberto :post 200
+                              (str "metric/" (:id metric) "/dimension/set-default")
+                              {:dimension_id default-id})
+        (let [resp      (mt/user-http-request :crowberto :post 200
+                                              (str "metric/" (:id metric) "/dimension/add")
+                                              {:dimensions [addable]})
+              field-ids (->> resp (mapcat :sources) (map :field-id) set)]
+          (is (contains? (set (map :id resp)) (:id addable))
+              "added dimension keeps the posted UUID")
+          (is (contains? field-ids (-> addable :sources first :field-id))
+              "added dimension targets the chosen column")
+          (is (contains? (set (map :id (:dimensions (t2/select-one :model/Card :id (:id metric))))) (:id addable))
+              "the addition is persisted")
+          (is (= [default-id] (mapv :id (filter :default resp)))
+              "the existing default is preserved"))))))
+
+(deftest add-dimension-validation-test
+  (testing "POST /api/metric/:id/dimension/add validates names and descriptions"
+    (with-seeded-metric [metric]
+      (let [path    (str "metric/" (:id metric) "/dimension/add")
+            addable (-> (mt/user-http-request :crowberto :get 200
+                                              (str "metric/" (:id metric) "/dimension") :with-addable true)
+                        :addable first :dimensions first)]
+        (doseq [display-name [nil "" " "]]
+          (mt/user-http-request :crowberto :post 400 path
+                                {:dimensions [(assoc addable :display_name display-name)]}))
+        (mt/user-http-request :crowberto :post 400 path
+                              {:dimensions [(assoc addable :description 42)]})))))
+
+(deftest add-dimension-through-one-of-multiple-foreign-key-paths-test
+  (testing "adding a dimension reached through duplicate foreign key paths preserves the selected path"
+    (let [product-id-field-id (mt/id :orders :product_id)
+          user-id-field-id    (mt/id :orders :user_id)
+          product-title-id    (mt/id :products :title)]
+      (mt/with-temp-vals-in-db :model/Field user-id-field-id
+                               {:fk_target_field_id (mt/id :products :id)}
+        (mt/with-temp [:model/Card metric {:name          "Duplicate FK Metric"
+                                           :type          :metric
+                                           :database_id   (mt/id)
+                                           :table_id      (mt/id :orders)
+                                           :dataset_query (orders-metric-query)}]
+          (metrics/sync-dimensions! :metadata/metric (:id metric))
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (str "metric/" (:id metric) "/dimension")
+                                               :with-addable true)
+                title-dimensions (->> (:addable response)
+                                      (mapcat :dimensions)
+                                      (filter #(= product-title-id (-> % :sources first :field-id))))
+                source-field     #(get (second (:mapping_target %)) :source-field)
+                by-source-field  (m/index-by source-field
+                                             title-dimensions)
+                selected         (get by-source-field product-id-field-id)]
+            (is (= #{product-id-field-id user-id-field-id}
+                   (set (keys by-source-field))))
+            (is (some? selected))
+            (when selected
+              (mt/user-http-request :crowberto :post 200
+                                    (str "metric/" (:id metric) "/dimension/add")
+                                    {:dimensions [selected]})
+              (let [stored-mapping (->> (t2/select-one-fn :dimension_mappings
+                                                          :model/Card :id (:id metric))
+                                        (m/find-first #(= (:id selected) (:dimension-id %))))
+                    remaining     (->> (mt/user-http-request :crowberto :get 200
+                                                             (str "metric/" (:id metric) "/dimension")
+                                                             :with-addable true)
+                                       :addable
+                                       (mapcat :dimensions)
+                                       (filter #(= product-title-id (-> % :sources first :field-id))))]
+                (is (= product-id-field-id (get-in stored-mapping [:target 1 :source-field])))
+                (is (= [user-id-field-id]
+                       (mapv source-field remaining)))))))))))
+
+(deftest update-dimension-display-name-test
+  (testing "POST /api/metric/:id/dimension/:id updates display_name"
+    (with-seeded-metric [metric]
+      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+            resp     (mt/user-http-request :crowberto :post 200
+                                           (str "metric/" (:id metric) "/dimension/" price-id)
+                                           {:display_name "Cost"})]
+        (is (= "Cost" (:display_name resp)))
+        (is (= "Cost" (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
+                           :added (m/find-first #(= price-id (:id %))) :display_name))
+            "the rename is persisted")))))
+
+(deftest update-dimension-default-temporal-unit-test
+  (testing "POST /api/metric/:id/dimension/:id persists and returns a temporal default"
+    (mt/with-temp [:model/Card metric {:name          "Orders CRUD Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query (orders-metric-query)}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [created-at-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "CREATED_AT")
+            path          (str "metric/" (:id metric) "/dimension/" created-at-id)
+            topics        (atom [])
+            resp          (with-redefs [events/publish-event! (fn [topic _event]
+                                                                (swap! topics conj topic))]
+                            (mt/user-http-request :crowberto :post 200 path
+                                                  {:default_temporal_unit "week"}))
+            stored        (->> (t2/select-one :model/Card :id (:id metric))
+                               :dimensions
+                               (m/find-first #(= created-at-id (:id %))))
+            fetched       (->> (mt/user-http-request :crowberto :get 200
+                                                     (str "metric/" (:id metric) "/dimension"))
+                               :added
+                               (m/find-first #(= created-at-id (:id %))))]
+        (is (= "week" (:default_temporal_unit resp)))
+        (is (= :week (:default-temporal-unit stored)))
+        (is (= "week" (:default_temporal_unit fetched)))
+        (is (some #{:event/card-update} @topics)
+            (str "a presentation-only dimension edit still announces a Card update, so remote sync marks the "
+                 "metric dirty; re-running the dependency graph is the accepted cost"))))))
+
+(deftest update-dimension-default-temporal-unit-validation-test
+  (testing "default_temporal_unit must be visible and compatible with the dimension type"
+    (with-seeded-metric [metric]
+      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+            path     (str "metric/" (:id metric) "/dimension/" price-id)]
+        (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit "week"})))
+    (mt/with-temp [:model/Card metric {:name          "Orders CRUD Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query (orders-metric-query)}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [created-at-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "CREATED_AT")
+            path          (str "metric/" (:id metric) "/dimension/" created-at-id)]
+        (doseq [unit ["default" "millisecond" "not-a-unit"]]
+          (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit unit}))
+        (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit nil})))
+    (mt/with-temp [:model/Card metric {:name          "People CRUD Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :people)
+                                       :dataset_query (people-metric-query)}]
+      (metrics/sync-dimensions! :metadata/metric (:id metric))
+      (let [birth-date-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "BIRTH_DATE")
+            path          (str "metric/" (:id metric) "/dimension/" birth-date-id)]
+        (doseq [unit ["hour" "year-of-era"]]
+          (mt/user-http-request :crowberto :post 400 path {:default_temporal_unit unit}))))))
+
+(deftest update-dimension-validation-test
+  (testing "POST /api/metric/:id/dimension/:id validates names and descriptions"
+    (with-seeded-metric [metric]
+      (let [price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")
+            path     (str "metric/" (:id metric) "/dimension/" price-id)]
+        (doseq [display-name [nil "" " "]]
+          (mt/user-http-request :crowberto :post 400 path {:display_name display-name}))
+        (mt/user-http-request :crowberto :post 400 path {:description 42})
+        (is (= "A price"
+               (:description (mt/user-http-request :crowberto :post 200 path {:description "A price"}))))
+        (is (nil? (:description (mt/user-http-request :crowberto :post 200 path {:description nil}))))))))
+
+(deftest update-dimension-source-type-mismatch-test
+  (testing "POST /api/metric/:id/dimension/:id rejects a source column of a different type"
+    (with-seeded-metric [metric]
+      (let [name-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "NAME")
+            resp    (mt/user-http-request :crowberto :post 400
+                                          (str "metric/" (:id metric) "/dimension/" name-id)
+                                          {:source {:type "field" :field-id (mt/id :venues :price)}})]
+        (is (re-find #"different type" resp))))))
+
+(deftest dimension-crud-permission-test
+  (testing "dimension CRUD endpoints require write permission"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       metric {:name          "Protected Metric"
+                                               :type          :metric
+                                               :collection_id (:id collection)
+                                               :database_id   (mt/id)
+                                               :table_id      (mt/id :venues)
+                                               :dataset_query (metric-query)}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403
+                                     (str "metric/" (:id metric) "/dimension/remove")
+                                     {:dimension_ids [fake-dimension-id]})))))))
+
+(deftest no-default-dimension-picked-on-seed-test
+  (testing "a freshly seeded metric has a curated dimension list and no default dimension"
+    (with-seeded-metric [metric]
+      (let [added (:added (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")))]
+        (is (seq added))
+        (is (empty? (filter :default added)))))))
+
+(deftest set-default-dimension-test
+  (testing "POST /api/metric/:id/dimension/set-default keeps exactly one dimension as the default"
+    (with-seeded-metric [metric]
+      (let [added    (:added (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")))
+            a        (:id (first added))
+            b        (:id (second added))
+            defaults (fn [resp] (into #{} (comp (filter :default) (map :id)) resp))]
+        (t2/update! :model/Card (:id metric)
+                    {:dimensions (mapv #(assoc % :default true)
+                                       (t2/select-one-fn :dimensions :model/Card :id (:id metric)))})
+        (is (= #{a} (defaults (mt/user-http-request :crowberto :post 200
+                                                    (str "metric/" (:id metric) "/dimension/set-default")
+                                                    {:dimension_id a})))
+            "setting A repairs multiple persisted defaults")
+        (is (= #{b} (defaults (mt/user-http-request :crowberto :post 200
+                                                    (str "metric/" (:id metric) "/dimension/set-default")
+                                                    {:dimension_id b})))
+            "setting B clears A — still exactly one default")
+        (is (= #{b} (defaults (:added (mt/user-http-request :crowberto :get 200
+                                                            (str "metric/" (:id metric) "/dimension")))))
+            "the default is persisted")))))
+
+(deftest unset-default-dimension-test
+  (testing "set-default with a null dimension_id clears the default"
+    (with-seeded-metric [metric]
+      (let [added        (:added (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension")))
+            dimension-id (:id (first added))
+            path         (str "metric/" (:id metric) "/dimension/set-default")]
+        (is (= [dimension-id]
+               (mapv :id (filter :default (mt/user-http-request :crowberto :post 200 path
+                                                                {:dimension_id dimension-id})))))
+        (let [resp (mt/user-http-request :crowberto :post 200 path {:dimension_id nil})]
+          (is (= (mapv :id added) (mapv :id resp))
+              "the dimensions themselves are untouched")
+          (is (empty? (filter :default resp))))
+        (is (empty? (filter :default (:added (mt/user-http-request :crowberto :get 200
+                                                                   (str "metric/" (:id metric) "/dimension")))))
+            "clearing the default is persisted")))))
+
+(deftest set-default-dimension-not-found-test
+  (testing "set-default returns 404 for an unknown dimension"
+    (with-seeded-metric [metric]
+      (is (mt/user-http-request :crowberto :post 404
+                                (str "metric/" (:id metric) "/dimension/set-default")
+                                {:dimension_id fake-dimension-id})))))
+
+(deftest reorder-dimensions-test
+  (testing "POST /api/metric/:id/dimension/reorder persists the given order"
+    (with-seeded-metric [metric]
+      (let [ids       (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
+                           :added (mapv :id))
+            new-order (vec (reverse ids))
+            resp      (mt/user-http-request :crowberto :post 200
+                                            (str "metric/" (:id metric) "/dimension/reorder")
+                                            {:dimension_ids new-order})]
+        (is (= new-order (mapv :id resp))
+            "response reflects the new order")
+        (is (= new-order
+               (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
+                    :added (mapv :id)))
+            "the order is persisted")))))
+
+(deftest reorder-dimensions-partial-list-test
+  (testing "dimensions missing from the posted order keep their relative order after the listed ones"
+    (with-seeded-metric [metric]
+      (let [ids            (->> (mt/user-http-request :crowberto :get 200 (str "metric/" (:id metric) "/dimension"))
+                                :added (mapv :id))
+            [listed unlisted] [(vec (reverse (take 2 ids))) (dropv 2 ids)]
+            resp           (mt/user-http-request :crowberto :post 200
+                                                 (str "metric/" (:id metric) "/dimension/reorder")
+                                                 {:dimension_ids listed})]
+        (is (= (into listed unlisted) (mapv :id resp)))))))
+
+(deftest reorder-dimensions-permission-test
+  (testing "POST /api/metric/:id/dimension/reorder requires write permission"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card       metric {:name          "Protected Metric"
+                                               :type          :metric
+                                               :collection_id (:id collection)
+                                               :database_id   (mt/id)
+                                               :table_id      (mt/id :venues)
+                                               :dataset_query (metric-query)}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403
+                                     (str "metric/" (:id metric) "/dimension/reorder")
+                                     {:dimension_ids [fake-dimension-id]})))))))
+
+(deftest update-dimension-preserves-other-mappings-test
+  (testing "updating one dimension leaves every dimension mapping intact"
+    (with-seeded-metric [metric]
+      (let [before   (:dimension_mappings (t2/select-one :model/Card :id (:id metric)))
+            price-id (get-dimension-id (t2/select-one :model/Card :id (:id metric)) "PRICE")]
+        (mt/user-http-request :crowberto :post 200
+                              (str "metric/" (:id metric) "/dimension/" price-id)
+                              {:display_name "Cost"})
+        (let [after (:dimension_mappings (t2/select-one :model/Card :id (:id metric)))]
+          (is (= (count before) (count after)) "no mappings dropped")
+          (is (every? some? after) "no nil mappings")
+          (is (= (set (map :dimension-id before)) (set (map :dimension-id after)))
+              "every dimension is still mapped"))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                     Curated dimensions: pre-curation metric modernization on read                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- pre-curation-metric!
+  "Insert a metric on ORDERS and stamp it with the previous release's `card_schema` and no persisted
+   `:dimensions`, simulating a metric created before curated dimensions shipped. `f` receives the
+   metric id."
+  [f]
+  (let [mp       (mt/metadata-provider)
+        orders-q (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                     (lib/aggregate (lib/count)))]
+    (mt/with-temp [:model/Card metric {:name          "Orders Count"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query orders-q}]
+      ;; Force the previous release's card_schema (23) and clear the dimensions the insert hook
+      ;; seeded, so the row looks like a metric created before curated dimensions shipped.
+      ;; Done with a raw UPDATE to bypass before-update, so nothing bumps the schema back up.
+      (t2/query-one {:update :report_card
+                     :set    {:card_schema        23
+                              :dimensions         nil
+                              :dimension_mappings nil}
+                     :where  [:= :id (:id metric)]})
+      (f (:id metric)))))
+
+(deftest pre-curation-metric-modernized-to-full-dimension-set-on-read-test
+  (testing (str "UXW-4808: a metric with the previous release's `card_schema` and no persisted "
+                "`:dimensions` is modernized on read — the `:model/Card` schema upgrade backfills the "
+                "FULL implicitly-joined dimension set (own-table + FK-joined columns) it implicitly "
+                "exposed pre-curation, so existing dashboard-filter mappings on joined columns still "
+                "correspond to a live dimension.")
+    (pre-curation-metric!
+     (fn [metric-id]
+       (let [cat-field (mt/id :products :category)   ; reachable from ORDERS only via the implicit FK join
+             dims      (:dimensions (mt/user-http-request :crowberto :get 200 (str "metric/" metric-id)))
+             groups    (into #{} (comp (map :group)
+                                       (map :type))
+                             dims)
+             fields    (into #{} (comp (mapcat :sources)
+                                       (map :field-id))
+                             dims)
+             field-names (into {}
+                               (map (juxt #(-> % :sources first :field-id) :display_name))
+                               dims)]
+         (testing "the modernized set spans the own-table AND joined columns"
+           (is (contains? groups "main")       "own-table (main) dimensions are present")
+           (is (contains? groups "connection") "FK-joined (connection) dimensions are present"))
+         (testing "a joined column that an existing dashboard filter targets exists as a dimension"
+           (is (contains? fields cat-field)
+               "implicitly-joined PRODUCTS.CATEGORY is a live dimension after modernization"))
+         (testing "connected dimensions use table-prefixed display names (UXW-4896)"
+           (doseq [{:keys [display_name group]} dims
+                   :when (= "connection" (:type group))]
+             (is (str/starts-with? display_name (str (:display_name group) " - "))))
+           (is (= "ID" (field-names (mt/id :orders :id))))
+           (is (= "Product - ID" (field-names (mt/id :products :id))))
+           (is (= "User - ID" (field-names (mt/id :people :id))))))))))
+
+(deftest pre-curation-metric-dashboard-filter-on-joined-column-works-test
+  (testing (str "UXW-4808: a dashboard filter bound to an implicitly-joined column of a pre-curation metric "
+                "(previous-release `card_schema`, no persisted `:dimensions`) resolves and filters the "
+                "query. The metric is modernized on read while the dashcard query runs, and the "
+                "parameter mapping (a field ref via :source-field) executes correctly.")
+    (pre-curation-metric!
+     (fn [metric-id]
+       (let [cat-field (mt/id :products :category)
+             fk-field  (mt/id :orders :product_id)
+             target    [:dimension [:field cat-field {:source-field fk-field}]]]
+         (mt/with-temp [:model/Dashboard dash {:name       "Dash"
+                                               :parameters [{:id "cat" :name "Category"
+                                                             :slug "category" :type "string/="}]}
+                        :model/DashboardCard dc {:dashboard_id (:id dash)
+                                                 :card_id      metric-id
+                                                 :parameter_mappings
+                                                 [{:parameter_id "cat"
+                                                   :card_id      metric-id
+                                                   :target       target}]}]
+           (let [run      (fn [params]
+                            (mt/user-http-request
+                             :crowberto :post 202
+                             (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                     (:id dash) (:id dc) metric-id)
+                             {:parameters params}))
+                 total    (-> (run []) :data :rows ffirst)
+                 filtered (-> (run [{:id     "cat"
+                                     :target target
+                                     :value  ["Gadget"]}])
+                              :data :rows ffirst)]
+             (testing "the join-column filter applies to the pre-curation metric's dashcard query"
+               (is (pos-int? total)
+                   "unfiltered metric returns a positive count")
+               (is (pos-int? filtered)
+                   "the filtered query executes and returns a count")
+               (is (< filtered total)
+                   "filtering by a single joined product category returns fewer rows than unfiltered")))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |            Curated dimensions: modernizing a pre-curation metric that ALREADY has dimensions                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- legacy-dimension-set
+  "The `{:dimensions ... :dimension-mappings ...}` a metric on `query` would have had at `card_schema` 23:
+   the same full set [[metrics/compute-full-dimension-set]] produces, but *without* the table-prefixed
+   `:display-name`s that schema 24 introduced. `owner-key` seeds the dimension ids; pass the metric's
+   `:entity_id`, as the schema-24 upgrade does."
+  [owner-key query]
+  (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) owner-key query)
+        {:keys [dimensions dimension-mappings]}
+        (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)]
+    {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
+     :dimension-mappings dimension-mappings}))
+
+(defn- legacy-curated-metric!
+  "Insert a metric on ORDERS whose row looks like a metric that was curated *before* schema 24: previous
+   release's `card_schema` and a persisted dimension set using the old un-prefixed `:display-name`s.
+   `f` receives the metric id.
+
+   Distinct from [[pre-curation-metric!]], which leaves `:dimensions` NULL and so exercises the backfill
+   branch of the schema-24 upgrade rather than the modernization branch."
+  [f]
+  (let [orders-q (orders-metric-query)]
+    (mt/with-temp [:model/Card metric {:name          "Orders Count"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query orders-q}]
+      (let [{:keys [dimensions dimension-mappings]} (legacy-dimension-set (:entity_id metric) orders-q)]
+        ;; Raw UPDATE so nothing bumps the schema back up or re-modernizes on the way in.
+        (t2/query-one {:update :report_card
+                       :set    {:card_schema        23
+                                :dimensions         (json/encode dimensions)
+                                :dimension_mappings (json/encode dimension-mappings)}
+                       :where  [:= :id (:id metric)]})
+        (f (:id metric))))))
+
+(defn- stored-card
+  "Read `card-id` straight out of `report_card`, bypassing `:model/Card`'s after-select. Necessary for any
+   assertion about what was actually *persisted* — a `t2/select-one` re-runs the schema upgrade on read and
+   would report the modernized value whether or not it ever reached the database."
+  [card-id]
+  (let [row (t2/query-one {:select [:card_schema :dimensions]
+                           :from   [:report_card]
+                           :where  [:= :id card-id]})]
+    (update row :dimensions #(some-> % (json/decode true)))))
+
+(defn- display-name-by-field-id [dimensions]
+  (into {} (map (juxt #(-> % :sources first :field-id) :display-name)) dimensions))
+
+(deftest legacy-curated-metric-dimensions-modernized-on-read-test
+  (testing (str "UXW-4987: a metric with the previous release's `card_schema` and dimensions ALREADY "
+                "persisted in the old un-prefixed form is modernized on read — the schema-24 upgrade "
+                "rewrites implicitly-joined dimensions' `:display-name`s to carry their group prefix.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (testing "precondition: the stored dimensions are the un-prefixed, pre-24 form"
+         (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+               stored-names (display-name-by-field-id dimensions)]
+           (is (= 23 card_schema))
+           (is (= "ID" (stored-names (mt/id :products :id))))
+           (is (= "ID" (stored-names (mt/id :people :id))))))
+       (let [dims  (:dimensions (t2/select-one :model/Card :id metric-id))
+             names (display-name-by-field-id dims)]
+         (testing "implicitly-joined dimensions gain their group prefix"
+           (is (= "Product - ID" (names (mt/id :products :id))))
+           (is (= "User - ID" (names (mt/id :people :id)))))
+         (testing "own-table dimensions are left alone"
+           (is (= "ID" (names (mt/id :orders :id))))))))))
+
+(deftest legacy-curated-metric-unrelated-update-leaves-vintage-alone-test
+  (testing (str "UXW-4987: an update that touches no schema-governed column must NOT bump `card_schema`. "
+                "Stamping the current version while leaving the legacy dimensions in place would strand "
+                "them — the schema-24 upgrade would never run again and the un-prefixed `:display-name`s "
+                "would become permanent.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (t2/update! :model/Card metric-id {:name "Renamed"})
+       (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+             stored-names (display-name-by-field-id dimensions)]
+         (is (= "Renamed" (t2/select-one-fn :name :model/Card :id metric-id))
+             "the rename itself is persisted")
+         (is (= 23 card_schema)
+             "the vintage is left behind, so the read-time upgrade keeps applying")
+         (testing "the stored dimensions are untouched"
+           (is (= "ID" (stored-names (mt/id :products :id))))
+           (is (= "ID" (stored-names (mt/id :people :id))))))
+       (testing "and reads still modernize"
+         (let [names (display-name-by-field-id
+                      (:dimensions (t2/select-one :model/Card :id metric-id)))]
+           (is (= "Product - ID" (names (mt/id :products :id))))
+           (is (= "User - ID" (names (mt/id :people :id))))))))))
+
+(deftest legacy-curated-metric-governed-update-migrates-whole-group-test
+  (testing (str "UXW-4987: an update that DOES touch a schema-governed column migrates the whole group and "
+                "stamps `:card_schema`, so the vintage and the representation move together.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       ;; `:dataset_query` is a migration trigger: upgrade 24 derives a metric's dimensions from it.
+       (t2/update! :model/Card metric-id {:dataset_query (people-metric-query)})
+       (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+             stored-names (display-name-by-field-id dimensions)]
+         (is (= card/current-card-schema-version card_schema)
+             "the vintage advances alongside the migrated columns")
+         (testing "the dimensions written alongside that bump are the modernized ones"
+           (is (= "Product - ID" (stored-names (mt/id :products :id))))
+           (is (= "User - ID" (stored-names (mt/id :people :id))))
+           (is (= "ID" (stored-names (mt/id :orders :id))))))))))
+
+(deftest legacy-curated-metric-explicit-dimensions-win-over-migration-test
+  (testing (str "UXW-4987: when the caller supplies `:dimensions` explicitly, those values win over the "
+                "migrated ones — writing back an already-modernized set must not re-prefix it into "
+                "`User - User - ID`.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (let [modernized (:dimensions (t2/select-one :model/Card :id metric-id))]
+         (t2/update! :model/Card metric-id {:dimensions modernized})
+         (let [{:keys [card_schema dimensions]} (stored-card metric-id)
+               stored-names (display-name-by-field-id dimensions)]
+           (is (= card/current-card-schema-version card_schema))
+           (is (= "Product - ID" (stored-names (mt/id :products :id))))
+           (is (= "User - ID" (stored-names (mt/id :people :id))))
+           (doseq [[field-id display-name] stored-names]
+             (is (not (re-find #"(.+ - )\1" display-name))
+                 (format "field %d has a doubled group prefix: %s" field-id display-name)))))))))
+
+(deftest legacy-curated-metric-not-modernized-twice-test
+  (testing (str "UXW-4987: once persisted, the modernization must not be applied a second time. If the "
+                "`card_schema` bump were lost, the next read would re-prefix already-prefixed names and "
+                "produce `User - User - ID`.")
+    (legacy-curated-metric!
+     (fn [metric-id]
+       (metrics/sync-dimensions! :metadata/metric metric-id)
+       (let [names (display-name-by-field-id
+                    (:dimensions (t2/select-one :model/Card :id metric-id)))]
+         (is (= "User - ID" (names (mt/id :people :id)))
+             "re-reading after the write does not double-prefix")
+         (is (= "Product - ID" (names (mt/id :products :id))))
+         (doseq [[field-id display-name] names]
+           (is (not (re-find #"(.+ - )\1" display-name))
+               (format "field %d has a doubled group prefix: %s" field-id display-name))))))))

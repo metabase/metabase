@@ -11,16 +11,17 @@ import {
   useGetTableQuery,
   useValidateGroupTableAccessPolicyMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import { QuestionLoader } from "metabase/common/components/QuestionLoader";
 import { QuestionName } from "metabase/common/components/QuestionName";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
+import { QuestionLoader } from "metabase/questions/components/QuestionLoader";
 import {
   ActionIcon,
   Box,
@@ -54,9 +55,6 @@ import {
 } from "../AttributeMappingEditor";
 
 import S from "./EditSandboxingModal.module.css";
-
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const ERROR_MESSAGE = t`An error occurred.`;
 
 const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
@@ -235,6 +233,8 @@ const EditSandboxingModal = ({
                 <Menu position="bottom-end">
                   <Menu.Target>
                     <ActionIcon
+                      variant="subtle"
+                      size="sm"
                       aria-label={t`Question options`}
                       className={S.optionsButton}
                     >
@@ -340,10 +340,7 @@ const EditSandboxingModal = ({
         </div>
         {error && (
           <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
-            {typeof error === "string"
-              ? error
-              : // @ts-expect-error provide correct type for error
-                (error.data.message ?? ERROR_MESSAGE)}
+            {getErrorMessage(error, t`An error occurred.`)}
           </div>
         )}
       </div>

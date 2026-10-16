@@ -10,9 +10,7 @@ import { t } from "ttag";
 import { ActionIcon, Box, Icon, Paper, Text, TextInput } from "metabase/ui";
 
 import S from "./EmojiPicker.module.css";
-
-// Snapshot from https://cdn.jsdelivr.net/npm/emojibase-data@16.0.3/en/data.json
-const EMOJIBASE_URL = "/app/assets/emoji";
+import { resolveEmojiData } from "./emoji-data";
 
 type EmojiPickerProps = {
   search?: string;
@@ -33,11 +31,11 @@ export function EmojiPicker({
   const searchValue = controlledSearch ?? search;
 
   return (
-    <Paper data-testid="emoji-picker" radius="sm">
+    <Paper data-testid="emoji-picker" radius="xs">
       <Picker.Root
         className={S.root}
-        emojibaseUrl={EMOJIBASE_URL}
         locale="en"
+        resolveEmojiData={resolveEmojiData}
         onEmojiSelect={(emoji) => onEmojiSelect?.(emoji)}
       >
         {!hideSearch && (
@@ -100,9 +98,8 @@ function Emoji({
 }: Omit<EmojiPickerListEmojiProps, "color">) {
   return (
     <ActionIcon
-      c="text-primary"
+      variant="subtle"
       component="button"
-      w="2rem"
       fz="1.25rem"
       // Unjustified type cast. FIXME
       ref={ref as React.RefObject<HTMLButtonElement>}

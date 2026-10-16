@@ -22,9 +22,9 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase.app-db.db :as app-db.db]
    [metabase.app-db.format :as app-db.format]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -115,10 +115,13 @@
                      (throw (ex-info (str "Error compiling Honey SQL: " (ex-message e))
                                      {:honey-sql honey-sql}
                                      e))))]
-    (log/tracef "Compiled SQL:\n%s\nparameters: %s"
-                (app-db.format/format-sql (first sql-args))
-                (pr-str (rest sql-args)))
     sql-args))
+
+(defn current-timestamp-string
+  "The application DB's own current timestamp, as a string. Read from the DB rather than from this machine's clock,
+  for the `settings-last-updated` marker that instances compare against each other."
+  ^String [db-type]
+  (app-db.db/current-timestamp-string db-type))
 
 ;;; TODO -- we should mark this deprecated and tell people to use [[toucan2.core/query]] directly instead
 (defn query

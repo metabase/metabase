@@ -21,7 +21,9 @@
    [metabase.app-db.core :as mdb]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
-   [metabase.search.core :as search]))
+   [metabase.search.core :as search]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.log :as log]))
 
 (defn load-from-h2!
   "Transfer data from existing H2 database to a newly created (presumably MySQL or Postgres) DB. Intended as a tool for
@@ -34,4 +36,16 @@
    (let [h2-filename    (str h2-filename ";IFEXISTS=TRUE")
          h2-data-source (copy.h2/h2-data-source h2-filename)]
      (copy/copy! :h2 h2-data-source (mdb/db-type) (mdb/data-source))
+     ;; The rows were copied verbatim, sentinel included, so the target is in whatever state the H2 file was in.
+     (let [status (mdb/encryption-check-status)]
+       (cond
+         (= status :invalid)
+         (throw (ex-info (str "The H2 database is encrypted with a different key than the MB_ENCRYPTION_SECRET_KEY "
+                              "environment contains (or the key is not set)")
+                         {}))
+
+         (and (= status :absent) (encryption/default-encryption-enabled?))
+         (do
+           (log/info "MB_ENCRYPTION_SECRET_KEY is set and the loaded data is not encrypted. Encrypting...")
+           (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil))))
      (search/reset-tracking!))))

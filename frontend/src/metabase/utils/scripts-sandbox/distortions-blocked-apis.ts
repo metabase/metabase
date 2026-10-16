@@ -1,3 +1,5 @@
+import { GLOBAL_BLOCKED_EVENT_TYPES } from "./distortions-event";
+
 export const BLOCKED_NATIVE_REFS = new Map<object, string>();
 
 const method = (proto: object, key: string): object | undefined =>
@@ -103,6 +105,23 @@ if (window.CookieStore) {
   block(method(window.CookieStore.prototype, "delete"), "CookieStore.delete");
 }
 
+// Global event-handler IDL setters — the property-path twin of the `addEventListener` block.
+// Window is a WebIDL [Global] interface, so its on* accessors are own
+// properties of the window instance, not Window.prototype.
+for (const eventType of GLOBAL_BLOCKED_EVENT_TYPES) {
+  const handler = `on${eventType}`;
+  block(setter(Document.prototype, handler), `Document.set ${handler}`);
+  block(setter(window, handler), `window.set ${handler}`);
+  block(
+    setter(HTMLBodyElement.prototype, handler),
+    `HTMLBodyElement.set ${handler}`,
+  );
+  block(
+    setter(HTMLFrameSetElement.prototype, handler),
+    `HTMLFrameSetElement.set ${handler}`,
+  );
+}
+
 // Referrer — URL of the page that linked here, which can leak internal
 // admin URLs or embed-link query params. Unlike `location.href`, the
 // sandboxed script has no other way to read this.
@@ -116,7 +135,11 @@ block(getter(Document.prototype, "URL"), "Document.get URL");
 block(getter(Document.prototype, "documentURI"), "Document.get documentURI");
 block(getter(Node.prototype, "baseURI"), "Node.get baseURI");
 
-// Storage exfiltration
+// Storage access. These getters aren't enough on their own — Near-Membrane reads
+// the global window's OWN accessors directly, bypassing the distortion, so gating
+// the getters doesn't stop a Window from yielding a live Storage. The instance is
+// swapped for a throwing decoy instead — see `HOST_STORAGE_CTORS` in
+// `distortions.ts`.
 block(getter(Window.prototype, "localStorage"), "Window.get localStorage");
 block(getter(Window.prototype, "sessionStorage"), "Window.get sessionStorage");
 block(getter(Window.prototype, "indexedDB"), "Window.get indexedDB");
@@ -266,6 +289,11 @@ block(
 block(
   setter(HTMLAnchorElement.prototype, "target"),
   "HTMLAnchorElement.set target",
+);
+block(method(HTMLFormElement.prototype, "submit"), "HTMLFormElement.submit");
+block(
+  method(HTMLFormElement.prototype, "requestSubmit"),
+  "HTMLFormElement.requestSubmit",
 );
 
 /**

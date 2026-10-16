@@ -3,17 +3,19 @@ import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import type {
   ContinueWithoutDataComponent,
   FormLocation,
 } from "metabase/databases/types";
 import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
-import { Button, Flex, Text } from "metabase/ui";
+import { useSetting } from "metabase/settings";
+import { ActionIcon, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
 import { DatabaseFormError } from "../DatabaseFormError";
 
+import { DatabaseTestConnectionButton } from "./DatabaseTestConnectionButton";
 import { useHasConnectionError, useIsFormDirty } from "./utils";
 
 interface DatabaseFormFooterProps {
@@ -33,6 +35,7 @@ export const DatabaseFormFooter = ({
 }: DatabaseFormFooterProps) => {
   const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
+  const isFullPage = location === "full-page";
   const hasConnectionError = useHasConnectionError();
   const isDirty = useIsFormDirty();
 
@@ -43,25 +46,26 @@ export const DatabaseFormFooter = ({
 
   if (isAdvanced) {
     return (
-      <FormFooter
-        data-testid="form-footer"
-        px={location === "full-page" ? undefined : "xl"}
-      >
+      <FormFooter data-testid="form-footer" px={isFullPage ? undefined : "xxl"}>
         <Flex justify="space-between" align="center" w="100%">
-          {isNew ? (
-            <ExternalLink
-              key="link"
-              href={docsUrl}
-              style={{ fontWeight: 500, fontSize: ".875rem" }}
-            >
-              {t`Need help connecting?`}
-            </ExternalLink>
-          ) : (
-            <div />
-          )}
+          <Flex gap="sm" align="center">
+            <DatabaseTestConnectionButton />
+            {isNew && (
+              <Tooltip label={t`Need help connecting?`}>
+                <ActionIcon
+                  variant="subtle"
+                  component={ExternalLink}
+                  href={docsUrl}
+                  aria-label={t`Need help connecting?`}
+                >
+                  <Icon name="question" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Flex>
 
           <Flex gap="sm">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
+            {!isFullPage && <Button onClick={onCancel}>{t`Cancel`}</Button>}
             <FormSubmitButton
               disabled={!isDirty}
               label={isNew ? t`Save` : t`Save changes`}
@@ -97,7 +101,7 @@ export const DatabaseFormFooter = ({
     );
     return (
       <>
-        <Button variant="filled" mb="md" mt="lg" onClick={onCancel}>
+        <Button variant="filled" mb="lg" mt="xl" onClick={onCancel}>
           {t`Continue with sample data`}
         </Button>
         <Text fz="sm">
@@ -111,7 +115,7 @@ export const DatabaseFormFooter = ({
   }
 
   return (
-    <Button variant="filled" mt="lg" onClick={onCancel}>
+    <Button variant="filled" mt="xl" onClick={onCancel}>
       {t`I'll add my data later`}
     </Button>
   );

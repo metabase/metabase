@@ -3,10 +3,14 @@ import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
 export type {
+  BrushClickObject,
+  BrushRange,
   ClickObject,
   ClickObjectDataRow,
   ClickObjectDimension,
 } from "metabase-lib";
+
+export { isBrushClickObject } from "metabase-lib";
 
 export type ClickActionProps = {
   question: Question;

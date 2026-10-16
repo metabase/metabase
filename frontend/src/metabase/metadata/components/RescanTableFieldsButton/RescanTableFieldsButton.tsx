@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import { useRescanTableFieldValuesMutation } from "metabase/api";
-import { useTemporaryState } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts, useTemporaryState } from "metabase/common/hooks";
 import { Button } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
@@ -26,7 +25,7 @@ export const RescanTableFieldsButton = ({ tableId }: Props) => {
   };
 
   return (
-    <Button variant="default" onClick={handleClick}>
+    <Button onClick={handleClick}>
       {started ? t`Scan triggered!` : t`Re-scan table`}
     </Button>
   );

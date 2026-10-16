@@ -66,13 +66,14 @@ describe("scenarios > data-studio > transforms > inspect", () => {
   });
 
   describe("generic-summary lens", () => {
-    it("should show Summary tab after running an MBQL transform", () => {
+    it("should show Summary and Column Distributions lenses for an MBQL transform and the Summary lens for a SQL transform, and show the loading spinner only on the active tab", () => {
       H.createAndRunMbqlTransform({
         sourceTable: SOURCE_TABLE,
         targetTable: "inspect_mbql_table",
         targetSchema: TARGET_SCHEMA,
         name: "MBQL inspect transform",
       }).then(({ transformId }) => {
+        cy.wrap(transformId).as("mbqlTransformId");
         H.DataStudio.Transforms.visitInspect(transformId);
       });
 
@@ -148,170 +149,6 @@ describe("scenarios > data-studio > transforms > inspect", () => {
         event: "transform_inspect_lens_loaded",
         event_detail: "generic-summary",
       });
-    });
-  });
-
-  describe("join-analysis lens", () => {
-    it("should show Join Analysis tab when transform has joins", () => {
-      createAndRunMbqlJoinTransform({
-        name: "Join MBQL inspect transform",
-        sourceSchema: TARGET_SCHEMA,
-        targetTable: "inspect_join_table",
-      });
-
-      cy.wait("@inspectorDiscovery");
-
-      cy.findByRole("tab", { name: /Summary/ }).should("be.visible");
-      cy.findByRole("tab", { name: /Join Analysis/ }).should("be.visible");
-    });
-
-    it("should display join step data in tree table", () => {
-      createAndRunMbqlJoinTransform({
-        name: "Join tree inspect transform",
-        sourceSchema: TARGET_SCHEMA,
-        targetTable: "inspect_join_tree_table",
-      });
-
-      const tabName = /Join Analysis/;
-
-      cy.wait("@inspectorDiscovery");
-      cy.wait("@inspectorLens");
-
-      cy.findByRole("tab", { name: tabName }).within(() => {
-        cy.findByLabelText(/clock icon/i).should("be.visible");
-      });
-      cy.findByRole("tab", { name: tabName }).click();
-
-      cy.wait("@inspectorLens");
-
-      cy.findByRole("tab", { name: tabName }).within(() => {
-        cy.findByLabelText(/clock icon/i).should("not.exist");
-      });
-
-      cy.findByRole("treegrid").within(() => {
-        cy.findByText("Join").should("be.visible");
-        cy.findByText("Output").should("be.visible");
-        cy.findByText("Matched").should("be.visible");
-        cy.findByText("Table rows").should("be.visible");
-      });
-
-      cy.findByRole("heading", { name: /1 join/i }).should("be.visible");
-    });
-
-    it("should show unmatched rows alert for left join with non-matching rows", () => {
-      H.resetTestTable({ type: "postgres", table: "no_pk_table" });
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
-
-      createAndRunMbqlJoinTransform({
-        name: "Left join unmatched transform",
-        targetTable: "inspect_unmatched_table",
-        sourceTable: "no_pk_table",
-        sourceSchema: undefined,
-        joinTable: SOURCE_TABLE,
-        joinSchema: TARGET_SCHEMA,
-        joinStrategy: "left-join",
-      });
-
-      cy.wait("@inspectorDiscovery");
-      cy.wait("@inspectorLens");
-
-      cy.findByRole("tab", { name: /Join Analysis/ }).click();
-
-      cy.wait("@inspectorLens");
-
-      // Wait for trigger evaluation — drill button appears once card stats are loaded
-      cy.findByRole("button", {
-        name: /Unmatched rows in Animals - Name/i,
-      }).should("be.visible");
-
-      // Expand the alert by clicking the warning icon in the first cell
-      cy.findByRole("treegrid").within(() => {
-        cy.findAllByRole("gridcell").first().findByRole("button").click();
-        cy.findByText(/Join 'Animals - Name' has >20% unmatched rows/).should(
-          "be.visible",
-        );
-      });
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_inspect_alert_clicked",
-      });
-    });
-  });
-
-  describe("drill-down lenses", () => {
-    it("loads unmatched-rows drill-down lens when triggered", () => {
-      H.resetTestTable({ type: "postgres", table: "no_pk_table" });
-      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
-      createAndRunMbqlJoinTransform({
-        name: "Left join unmatched transform",
-        targetTable: "inspect_unmatched_table",
-        sourceTable: "no_pk_table",
-        sourceSchema: undefined,
-        joinTable: SOURCE_TABLE,
-        joinSchema: TARGET_SCHEMA,
-        joinStrategy: "left-join",
-      });
-
-      cy.findByRole("tab", { name: /Join Analysis/ }).click();
-
-      cy.findByRole("button", {
-        name: /Unmatched rows in Animals - Name/,
-      }).click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_inspect_drill_lens_clicked",
-        triggered_from: "join_analysis",
-      });
-
-      const tabName = /Unmatched Rows/;
-
-      cy.wait("@inspectorLens");
-      cy.findByRole("tab", { name: tabName }).click();
-
-      cy.findByRole("heading", { name: /Unmatched Row Samples/ }).should(
-        "be.visible",
-      );
-      cy.findByRole("link", {
-        name: /Animals - Name: Rows with key but no match/,
-      }).should("be.visible");
-
-      cy.findAllByTestId("visualization-root")
-        .eq(0)
-        .within(() => {
-          cy.findByTestId("table-footer").should("have.text", "3 rows");
-        });
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_inspect_lens_loaded",
-        event_detail: "unmatched-rows?join_step=1",
-      });
-
-      cy.findByRole("tab", { name: tabName }).within(() => {
-        cy.findByRole("button", { name: /Close tab/i }).click();
-      });
-
-      cy.findByRole("link", {
-        name: tabName,
-      }).should("not.exist");
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_inspect_drill_lens_closed",
-      });
-    });
-  });
-
-  describe("column-comparison lens", () => {
-    it("should show Column Distributions lens", () => {
-      H.createAndRunMbqlTransform({
-        sourceTable: SOURCE_TABLE,
-        targetTable: "inspect_coldist_table",
-        targetSchema: TARGET_SCHEMA,
-        name: "ColDist inspect transform",
-      }).then(({ transformId }) => {
-        H.DataStudio.Transforms.visitInspect(transformId);
-      });
-
-      cy.wait("@inspectorDiscovery");
 
       cy.findByRole("tab", { name: /Column Distributions/ }).click();
 
@@ -326,23 +163,39 @@ describe("scenarios > data-studio > transforms > inspect", () => {
             cy.findByRole("link").should("exist");
           });
         });
-    });
-  });
 
-  describe("loading indicator", () => {
-    it("shows the spinner only on the active tab and never leaves it stuck when switching tabs", () => {
+      cy.log("show the Summary tab for a SQL transform");
+      H.createSqlTransform({
+        name: "SQL inspect transform",
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        targetTable: "inspect_sql_table",
+        targetSchema: TARGET_SCHEMA,
+      }).then(({ body: transform }) => {
+        H.runTransformAndWaitForSuccess(transform.id);
+        H.DataStudio.Transforms.visitInspect(transform.id);
+      });
+
+      cy.wait("@inspectorDiscovery");
+
+      cy.findByRole("tab", { name: /Summary/ }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+
+      cy.findByRole("heading", { name: /1 input table/i }).should("be.visible");
+      cy.findByRole("heading", { name: /1 output table/i }).should(
+        "be.visible",
+      );
+
+      cy.log("the tab loading spinner shows only on the active tab");
       cy.intercept("POST", "/api/ee/transforms/*/inspect/*/query", (req) => {
         req.continue((res) => {
           res.setDelay(1000);
         });
       }).as("inspectorQuery");
 
-      H.createAndRunMbqlTransform({
-        sourceTable: SOURCE_TABLE,
-        targetTable: "inspect_loading_table",
-        targetSchema: TARGET_SCHEMA,
-        name: "Loading indicator inspect transform",
-      }).then(({ transformId }) => {
+      cy.get<TransformId>("@mbqlTransformId").then((transformId) => {
         H.DataStudio.Transforms.visitInspect(transformId);
       });
 
@@ -391,29 +244,122 @@ describe("scenarios > data-studio > transforms > inspect", () => {
     });
   });
 
-  describe("sql transforms", () => {
-    it("should show Summary tab for a SQL transform", () => {
-      H.createAndRunSqlTransform({
-        name: "SQL inspect transform",
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        targetTable: "inspect_sql_table",
-        targetSchema: TARGET_SCHEMA,
-      }).then(({ transformId }) => {
-        H.DataStudio.Transforms.visitInspect(transformId);
+  describe("join-analysis lens", () => {
+    it("should display join step data in tree table", () => {
+      createAndRunMbqlJoinTransform({
+        name: "Join tree inspect transform",
+        sourceSchema: TARGET_SCHEMA,
+        targetTable: "inspect_join_tree_table",
+      });
+
+      const tabName = /Join Analysis/;
+
+      cy.wait("@inspectorDiscovery");
+      cy.wait("@inspectorLens");
+
+      cy.findByRole("tab", { name: /Summary/ }).should("be.visible");
+
+      cy.findByRole("tab", { name: tabName }).within(() => {
+        cy.findByLabelText(/clock icon/i).should("be.visible");
+      });
+      cy.findByRole("tab", { name: tabName }).click();
+
+      cy.wait("@inspectorLens");
+
+      cy.findByRole("tab", { name: tabName }).within(() => {
+        cy.findByLabelText(/clock icon/i).should("not.exist");
+      });
+
+      cy.findByRole("treegrid").within(() => {
+        cy.findByText("Join").should("be.visible");
+        cy.findByText("Output").should("be.visible");
+        cy.findByText("Matched").should("be.visible");
+        cy.findByText("Table rows").should("be.visible");
+      });
+
+      cy.findByRole("heading", { name: /1 join/i }).should("be.visible");
+    });
+
+    it("should show unmatched rows alert for left join with non-matching rows and load the unmatched-rows drill-down lens", () => {
+      H.resetTestTable({ type: "postgres", table: "no_pk_table" });
+      H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "no_pk_table" });
+
+      createAndRunMbqlJoinTransform({
+        name: "Left join unmatched transform",
+        targetTable: "inspect_unmatched_table",
+        sourceTable: "no_pk_table",
+        sourceSchema: undefined,
+        joinTable: SOURCE_TABLE,
+        joinSchema: TARGET_SCHEMA,
+        joinStrategy: "left-join",
       });
 
       cy.wait("@inspectorDiscovery");
+      cy.wait("@inspectorLens");
 
-      cy.findByRole("tab", { name: /Summary/ }).should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
+      cy.findByRole("tab", { name: /Join Analysis/ }).click();
 
-      cy.findByRole("heading", { name: /1 input table/i }).should("be.visible");
-      cy.findByRole("heading", { name: /1 output table/i }).should(
+      cy.wait("@inspectorLens");
+
+      // Wait for trigger evaluation — drill button appears once card stats are loaded
+      cy.findByRole("button", {
+        name: /Unmatched rows in Animals - Name/i,
+      }).should("be.visible");
+
+      // Expand the alert by clicking the warning icon in the first cell
+      cy.findByRole("treegrid").within(() => {
+        cy.findAllByRole("gridcell").first().findByRole("button").click();
+        cy.findByText(/Join 'Animals - Name' has >20% unmatched rows/).should(
+          "be.visible",
+        );
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_inspect_alert_clicked",
+      });
+
+      cy.log("load the unmatched-rows drill-down lens");
+      cy.findByRole("button", {
+        name: /Unmatched rows in Animals - Name/,
+      }).click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_inspect_drill_lens_clicked",
+        triggered_from: "join_analysis",
+      });
+
+      const tabName = /Unmatched Rows/;
+
+      cy.wait("@inspectorLens");
+      cy.findByRole("tab", { name: tabName }).click();
+
+      cy.findByRole("heading", { name: /Unmatched Row Samples/ }).should(
         "be.visible",
       );
+      cy.findByRole("link", {
+        name: /Animals - Name: Rows with key but no match/,
+      }).should("be.visible");
+
+      cy.findAllByTestId("visualization-root")
+        .eq(0)
+        .within(() => {
+          cy.findByTestId("table-footer").should("have.text", "3 rows");
+        });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_inspect_lens_loaded",
+        event_detail: "unmatched-rows?join_step=1",
+      });
+
+      cy.findByRole("tab", { name: tabName }).within(() => {
+        cy.findByRole("button", { name: /Close tab/i }).click();
+      });
+
+      cy.findByRole("tab", { name: tabName }).should("not.exist");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_inspect_drill_lens_closed",
+      });
     });
   });
 });

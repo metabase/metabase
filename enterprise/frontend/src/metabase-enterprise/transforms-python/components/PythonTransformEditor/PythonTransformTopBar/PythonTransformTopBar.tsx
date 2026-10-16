@@ -3,15 +3,12 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { hasFeature } from "metabase/common/utils/database";
+import { hasFeature } from "metabase/databases";
 import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
-import { useSelector } from "metabase/redux";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
-import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
-import type MetadataDatabase from "metabase-lib/v1/metadata/Database";
-import type { Database, DatabaseId, Transform } from "metabase-types/api";
+import type { DatabaseId, Transform } from "metabase-types/api";
 
 import S from "./PythonTransformTopBar.module.css";
 
@@ -32,9 +29,7 @@ export function PythonTransformTopBar({
   onDatabaseChange,
   canChangeDatabase = true,
 }: PythonTransformTopBarProps) {
-  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
-  const showEditButton =
-    !isEditMode && transform && !isRemoteSyncReadOnly && !readOnly;
+  const showEditButton = !isEditMode && transform && !readOnly;
 
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -60,29 +55,18 @@ export function PythonTransformTopBar({
             className={S.databaseSelector}
             selectedDatabaseId={databaseId}
             setDatabaseFn={handleDatabaseChange}
-            // DataSelector is typed against metabase-lib entities; here we feed
-            // it plain API databases, which carry the fields it actually reads.
-            // TODO(dataselector-api-vs-metabase-lib-casts): remove this cast once
-            // DataSelector's entity props use structural interfaces.
-            databases={(databases?.data ?? []) as unknown as MetadataDatabase[]}
+            databases={databases?.data ?? []}
             readOnly={!isEditMode}
-            databaseIsDisabled={
-              // DataSelector types this callback against metabase-lib databases;
-              // the predicate only reads plain API database fields.
-              // TODO(dataselector-api-vs-metabase-lib-casts): remove this cast
-              // once DataSelector's entity props use structural interfaces.
-              ((database: Database) =>
-                !doesDatabaseSupportTransforms(database) ||
-                !hasFeature(database, "transforms/python")) as unknown as (
-                database: MetadataDatabase,
-              ) => boolean
+            databaseIsDisabled={(database) =>
+              !doesDatabaseSupportTransforms(database) ||
+              !hasFeature(database, "transforms/python")
             }
           />
         </Flex>
       ) : (
         <Flex
           h="3rem"
-          p="md"
+          p="lg"
           ml="sm"
           align="center"
           data-testid="selected-database"
@@ -91,15 +75,8 @@ export function PythonTransformTopBar({
         </Flex>
       )}
       {showEditButton && (
-        <Flex ml="auto" mr="lg" align="center" h="3rem">
-          <EditDefinitionButton
-            bg="transparent"
-            fz="sm"
-            h="1.5rem"
-            px="sm"
-            size="xs"
-            transformId={transform.id}
-          />
+        <Flex ml="auto" mr="xl" align="center" h="3rem">
+          <EditDefinitionButton size="sm" transformId={transform.id} />
         </Flex>
       )}
     </Flex>

@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { Alert } from "metabase/common/components/Alert";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
-import { Anchor, Box, Icon, Text } from "metabase/ui";
+import { SettingHeader } from "metabase/settings-components";
+import { Alert, Anchor, Box, Icon } from "metabase/ui";
 import type { BillingInfo as IBillingInfo } from "metabase-types/api";
 
 import { BillingInfoTable } from "./BillingInfoTable";
@@ -47,19 +46,17 @@ const BillingInfoError = () => {
     <>
       <SettingHeader id="billing" title={t`Billing`} />
       <Box mt="1rem" data-testid="billing-info-error">
-        <Alert variant="error" icon="warning">
-          <Text c="text-secondary">
-            {t`An error occurred while fetching information about your billing.`}
-            <br />
-            <strong>{t`Need help?`}</strong>{" "}
-            {t`You can ask for billing help at `}
-            <strong>
-              {/* eslint-disable-next-line i18next/no-literal-string */}
-              <Anchor href="mailto:billing@metabase.com">
-                billing@metabase.com
-              </Anchor>
-            </strong>
-          </Text>
+        <Alert color="error" icon={<Icon name="warning" />}>
+          {t`An error occurred while fetching information about your billing.`}
+          <br />
+          <strong>{t`Need help?`}</strong> {t`You can ask for billing help at `}
+          <strong>
+            {/* eslint-disable i18next/no-literal-string -- untranslated billing address */}
+            <Anchor href="mailto:billing@metabase.com">
+              billing@metabase.com
+            </Anchor>
+            {/* eslint-enable i18next/no-literal-string */}
+          </strong>
         </Alert>
       </Box>
     </>
@@ -94,10 +91,11 @@ const BillingInfoNotStoreManaged = () => {
       description={
         <>
           {t`To manage your billing preferences, please email `}
-          {/* eslint-disable-next-line i18next/no-literal-string */}
+          {/* eslint-disable i18next/no-literal-string -- untranslated billing address */}
           <Anchor href="mailto:billing@metabase.com">
             billing@metabase.com
           </Anchor>
+          {/* eslint-enable i18next/no-literal-string */}
         </>
       }
     />
