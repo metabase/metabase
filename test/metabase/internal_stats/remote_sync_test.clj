@@ -37,17 +37,14 @@
                      :model/Card _ {:collection_id local-id :type :metric}
                      :model/Card _ {:collection_id nil :type :question}]
         (testing "counts active synced content, including descendants and content with no sync ledger entry"
-          (is (= {:remote-sync-card-count               8
-                  :remote-sync-model-count              2
-                  :remote-sync-question-count           2
-                  :remote-sync-metric-count             4
-                  :remote-sync-standalone-question-count 1
-                  :remote-sync-non-library-metric-count  2
-                  :remote-sync-content-count            8}
+          (is (= {:remote-sync-card-count    8
+                  :remote-sync-model-count   2
+                  :remote-sync-question-count 2
+                  :remote-sync-metric-count  4
+                  :remote-sync-content-count 8}
                  (select-keys (merge-with - (remote-sync/remote-sync-stats) before)
                               [:remote-sync-card-count :remote-sync-model-count :remote-sync-question-count
-                               :remote-sync-metric-count :remote-sync-standalone-question-count
-                               :remote-sync-non-library-metric-count :remote-sync-content-count]))))))))
+                               :remote-sync-metric-count :remote-sync-content-count]))))))))
 
 (deftest collection-content-counts-test
   (mt/with-temp [:model/Collection {synced-id :id} {:is_remote_synced true}

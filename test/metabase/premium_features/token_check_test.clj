@@ -7,7 +7,6 @@
    [mb.hawk.parallel]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
-   [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.task.clear-token-cache]
    [metabase.premium-features.test-util :as tu]
@@ -735,16 +734,6 @@
       (is (contains? stats :domains))
       (is (contains? stats :embedding-dashboard-count))
       (is (contains? stats :embedding-question-count)))))
-
-(deftest metering-stats-includes-remote-sync-counts-test
-  (let [counts {:remote-sync-model-count               2
-                :remote-sync-standalone-question-count 3
-                :remote-sync-non-library-metric-count  5
-                :remote-sync-dashboard-count          7
-                :remote-sync-transform-count          11
-                :remote-sync-content-count            28}]
-    (mt/with-dynamic-fn-redefs [internal-stats/remote-sync-stats (constantly counts)]
-      (is (= counts (select-keys (token-check/metering-stats) (keys counts)))))))
 
 (defn- capture-compiled-queries
   "Call `f` and return every compiled `[sql & params]` query it ran against the app DB."

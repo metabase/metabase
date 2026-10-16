@@ -143,7 +143,6 @@
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
                                          (internal-stats/metabot-stats)
                                          (internal-stats/data-app-stats)
-                                         (internal-stats/remote-sync-stats)
                                          (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count

@@ -19,13 +19,11 @@
 (defn- content-counts [transforms?]
   (let [cards           (internal-stats.db/remote-sync-card-counts)
         library-synced? (internal-stats.db/remote-sync-library?)]
-    {:remote-sync-card-count                (:card_count cards)
-     :remote-sync-model-count               (:model_count cards)
-     :remote-sync-question-count            (:question_count cards)
-     :remote-sync-metric-count              (:metric_count cards)
-     :remote-sync-standalone-question-count (:standalone_question_count cards)
-     :remote-sync-non-library-metric-count  (:non_library_metric_count cards)
-     :remote-sync-dashboard-count          (internal-stats.db/remote-sync-collection-content-count :model/Dashboard)
+    {:remote-sync-card-count               (:card_count cards)
+     :remote-sync-model-count              (:model_count cards)
+     :remote-sync-question-count           (:question_count cards)
+     :remote-sync-metric-count             (:metric_count cards)
+     :remote-sync-dashboard-count         (internal-stats.db/remote-sync-collection-content-count :model/Dashboard)
      :remote-sync-document-count           (internal-stats.db/remote-sync-collection-content-count :model/Document)
      :remote-sync-timeline-count           (internal-stats.db/remote-sync-collection-content-count :model/Timeline)
      :remote-sync-transform-count          (if transforms? (internal-stats.db/transform-count) 0)
@@ -39,13 +37,12 @@
 
 (defn remote-sync-stats
   "Counts active content configured for Git sync, including pending changes. The total counts each item once;
-  card types and the standalone-question/non-Library-metric counts are subsets. Returns zeros when sync is disabled."
+  the card type counts are subsets of the card count. Returns zeros when sync is disabled."
   []
   (let [{:keys [enabled? transforms?]} (remote-sync-configuration)
         counts (if enabled?
                  (content-counts transforms?)
                  (zipmap (into content-count-keys
-                               [:remote-sync-model-count :remote-sync-question-count :remote-sync-metric-count
-                                :remote-sync-standalone-question-count :remote-sync-non-library-metric-count])
+                               [:remote-sync-model-count :remote-sync-question-count :remote-sync-metric-count])
                          (repeat 0)))]
     (assoc counts :remote-sync-content-count (reduce + (map counts content-count-keys)))))

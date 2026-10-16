@@ -16,18 +16,13 @@
   (t2/count :data_app :enabled true))
 
 (mu/defn remote-sync-card-counts
-  "Counts active synced cards by type, with standalone-question and non-Library-metric subsets."
+  "Counts active synced cards, in total and by type."
   []
   (t2/query-one
    {:select [[:%count.* :card_count]
              [(u/count-case [:= :card.type "model"]) :model_count]
              [(u/count-case [:= :card.type "question"]) :question_count]
-             [(u/count-case [:= :card.type "metric"]) :metric_count]
-             [(u/count-case [:and [:= :card.type "question"] [:= :card.dashboard_id nil]]) :standalone_question_count]
-             [(u/count-case [:and [:= :card.type "metric"]
-                             [:or [:= :collection.type nil]
-                              ;; collections.core depends on token-check, which calls these stats.
-                              [:not= :collection.type "library-metrics"]]]) :non_library_metric_count]]
+             [(u/count-case [:= :card.type "metric"]) :metric_count]]
     :from   [[(t2/table-name :model/Card) :card]]
     :join   [[(t2/table-name :model/Collection) :collection] [:= :collection.id :card.collection_id]]
     :where  [:and [:or [:= :collection.is_remote_synced true] [:= :collection.namespace "data-apps"]]
