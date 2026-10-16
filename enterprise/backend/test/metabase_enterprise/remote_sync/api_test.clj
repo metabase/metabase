@@ -2449,17 +2449,16 @@
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
         (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))
 
-(deftest settings-syncs-library-and-transforms-without-custom-collections-test
-  (testing "Saving read-write remote sync settings with no collection synced besides the Library syncs the Library and
-            transforms"
+(deftest settings-syncs-transforms-without-custom-collections-test
+  (testing "Saving read-write remote sync settings with no collection synced besides the Library turns on transforms
+            sync"
     (mt/with-temporary-setting-values [remote-sync-url        nil
                                        remote-sync-token      nil
                                        remote-sync-branch     nil
                                        remote-sync-type       :read-only
                                        remote-sync-transforms false]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Custom" :location "/" :is_remote_synced true}]
-        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
-                                    impl/finish-remote-config!   (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)]
           (try
             (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                   {:remote-sync-url    "https://github.com/test/repo.git"
@@ -2467,11 +2466,9 @@
                                    :remote-sync-branch "main"})
             (testing "but not while another collection is synced"
               (is (true? (settings/remote-sync-custom-collections-synced)))
-              (is (not (t2/exists? :model/Collection :type "library" :is_remote_synced true)))
               (is (false? (settings/remote-sync-transforms))))
             (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id false}})
             (is (false? (settings/remote-sync-custom-collections-synced)))
-            (is (=? {:is_remote_synced true} (t2/select-one :model/Collection :type "library")))
             (is (true? (settings/remote-sync-transforms)))
             (finally
               (test-helpers/set-library-remote-synced! false))))))))
@@ -2484,8 +2481,7 @@
                                        remote-sync-branch     nil
                                        remote-sync-type       :read-only
                                        remote-sync-transforms false]
-      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
-                                  impl/finish-remote-config!   (constantly nil)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)]
         (try
           (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                 {:remote-sync-url    "https://github.com/test/repo.git"

@@ -305,7 +305,7 @@
     (try
       (when (seq collections)
         (remote-sync.core/bulk-set-remote-sync collections))
-      (remote-sync.core/sync-library-and-transforms-without-custom-collections!)
+      (remote-sync.core/sync-transforms-without-custom-collections!)
       (catch Exception e
         (throw (ex-info (or (ex-message e) "Invalid collection settings")
                         (assoc (ex-data e)

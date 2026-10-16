@@ -188,6 +188,18 @@
     (or (some (complement collection/library-root-collection?) (remote-sync.db/collections collection-ids))
         (remote-sync.db/collection-content-exists? collection-ids))))
 
+(defn- ensure-library!
+  "Creates the Library when it's missing and marks it remote-synced when it holds no content, counting the snippets,
+  glossary entries, and data actions that sync with it; saving the remote sync settings and every pull run it."
+  []
+  (let [library (collection/ensure-library-collection!)]
+    (when (and (not (:is_remote_synced library))
+               (not (library-has-content? library))
+               (not (remote-sync.db/snippets-exist?))
+               (not (remote-sync.db/glossary-entries-exist?))
+               (not (remote-sync.db/data-actions-exist?)))
+      (remote-sync.db/mark-subtree-remote-synced! [library]))))
+
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
    - :first-import-conflicts - feature/namespace/library conflicts that only block on the very first import
@@ -421,7 +433,7 @@
   (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
         has-transforms?     (snapshot-has-transforms? base-ingestable)
-        _                   (collection/ensure-library-collection!)
+        _                   (ensure-library!)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
         load-result         (serdes/with-cache
                               (serialization/load-metabase! ingestable-snapshot :reindex? false))
@@ -534,7 +546,7 @@
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
   [{:keys [ingestable deleted-rsos] :as _plan} snapshot-version report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
-  (collection/ensure-library-collection!)
+  (ensure-library!)
   (let [load-result   (when ingestable
                         (serdes/with-cache
                           (serialization/load-metabase!
@@ -1804,7 +1816,7 @@
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
-      (collection/ensure-library-collection!)
+      (ensure-library!)
       (when (= :read-only (settings/remote-sync-type))
         ;; force? true bypasses the version/dirty guards for setup, but force-deletion? false keeps unsynced
         ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).

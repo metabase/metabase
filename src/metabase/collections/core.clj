@@ -49,6 +49,7 @@
   shared-tenant-collection?
   slugify
   transforms-ns
+  snippets-ns
   data-apps-ns
   data-actions-ns
   default-allowed-namespaces]

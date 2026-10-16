@@ -40,6 +40,21 @@
         (let [result (impl/import! (source.p/snapshot (test-helpers/create-mock-source)) task-id)]
           (is (= :success (:status result))))))))
 
+(deftest import!-syncs-an-empty-library-test
+  (testing "A pull creates the Library and marks it synced while it's empty"
+    (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+      (try
+        (is (= :success (:status (impl/import! (source.p/snapshot (test-helpers/create-mock-source)) task-id))))
+        (is (=? {:is_remote_synced true} (t2/select-one :model/Collection :type "library")))
+        (finally
+          (t2/update! :model/RemoteSyncTask task-id {:ended_at :%now})
+          (test-helpers/set-library-remote-synced! false)))))
+  (testing "but leaves it unsynced while a snippet, which syncs with it, exists"
+    (mt/with-temp [:model/NativeQuerySnippet _ {:name "snippet" :content "1"}]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (is (= :success (:status (impl/import! (source.p/snapshot (test-helpers/create-mock-source)) task-id))))
+        (is (=? {:is_remote_synced false} (t2/select-one :model/Collection :type "library")))))))
+
 (deftest import!-with-branch-parameter-test
   (testing "import! with branch parameter uses provided branch"
     (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})

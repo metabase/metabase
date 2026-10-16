@@ -361,8 +361,8 @@
 
 (deftest finish-remote-config-creates-library-test
   (doseq [remote-sync-type [:read-write :read-only]]
-    (testing (str "Saving " (name remote-sync-type) " remote sync settings creates the Library and leaves Library and "
-                  "transforms sync alone")
+    (testing (str "Saving " (name remote-sync-type) " remote sync settings creates the Library and syncs it while it's "
+                  "empty")
       (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                          :remote-sync-type remote-sync-type
                                          :remote-sync-branch "main"]
@@ -370,10 +370,15 @@
           (mt/with-dynamic-fn-redefs [impl/async-import! capture]
             (is (nil? (collection/library-collection)))
             (impl/finish-remote-config!)
-            (is (some? (collection/library-collection)))
-            (is (=? {:is_remote_synced false} (t2/select-one :model/Collection :type "library")))
-            (is (false? (settings/remote-sync-transforms)))
-            (t2/delete! :model/Collection :type [:in (vec collection/library-collection-types)])))))))
+            (is (=? {:is_remote_synced true} (t2/select-one :model/Collection :type "library")))
+            (t2/delete! :model/Collection :type [:in (vec collection/library-collection-types)]))))))
+  (testing "but leaves it unsynced while snippets or glossary entries, which sync with it, exist"
+    (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                       :remote-sync-type :read-write
+                                       :remote-sync-branch "main"]
+      (mt/with-temp [:model/NativeQuerySnippet _ {:name "snippet" :content "1"}]
+        (impl/finish-remote-config!)
+        (is (=? {:is_remote_synced false} (t2/select-one :model/Collection :type "library")))))))
 
 (deftest builtin-python-library-transforms-tracking-test
   (testing "Turning on transforms sync leaves nothing to push for an unchanged built-in Python library"

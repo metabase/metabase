@@ -4,6 +4,7 @@
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -391,6 +392,23 @@
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
   []
   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
+
+(mu/defn snippets-exist? :- :boolean
+  "Whether a NativeQuerySnippet or snippet Collection exists."
+  []
+  (boolean (or (t2/exists? :model/NativeQuerySnippet)
+               (t2/exists? :model/Collection :namespace (name collections/snippets-ns)))))
+
+(mu/defn glossary-entries-exist? :- :boolean
+  "Whether a Glossary entry exists."
+  []
+  (t2/exists? :model/Glossary))
+
+(mu/defn data-actions-exist? :- :boolean
+  "Whether an Action without a model or a data actions Collection exists."
+  []
+  (boolean (or (t2/exists? :model/Action :model_id nil)
+               (t2/exists? :model/Collection :namespace (name collections/data-actions-ns)))))
 
 (mu/defn glossary-entries
   "The `:id` and `:term` of every Glossary entry."

@@ -497,15 +497,13 @@
                              {:object (assoc collection :is_remote_synced false)
                               :user-id api/*current-user-id*}))))
 
-(defn sync-library-and-transforms-without-custom-collections!
-  "Creates the Library and syncs it and transforms on a read-write instance where no custom collection is synced, per
-  [[settings/remote-sync-custom-collections-synced]], throwing when the Library can't sync."
+(defn sync-transforms-without-custom-collections!
+  "Turns on transforms sync on a read-write instance where no custom collection is synced, per
+  [[settings/remote-sync-custom-collections-synced]], unless an environment variable sets it."
   []
   (when (and (settings/remote-sync-enabled)
              (= :read-write (settings/remote-sync-type))
-             (not (settings/remote-sync-custom-collections-synced)))
-    (let [library (collections/ensure-library-collection!)]
-      (when-not (:is_remote_synced library)
-        (bulk-set-remote-sync {(:id library) true}))
-      (when-not (or (settings/remote-sync-transforms) (settings/transforms-set-by-env?))
-        (settings/remote-sync-transforms! true)))))
+             (not (settings/remote-sync-custom-collections-synced))
+             (not (settings/remote-sync-transforms))
+             (not (settings/transforms-set-by-env?)))
+    (settings/remote-sync-transforms! true)))
