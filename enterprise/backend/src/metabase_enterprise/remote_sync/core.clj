@@ -507,5 +507,5 @@
     (let [library (collections/ensure-library-collection!)]
       (when-not (:is_remote_synced library)
         (bulk-set-remote-sync {(:id library) true}))
-      (when-not (settings/remote-sync-transforms)
+      (when-not (or (settings/remote-sync-transforms) (settings/transforms-set-by-env?))
         (settings/remote-sync-transforms! true)))))

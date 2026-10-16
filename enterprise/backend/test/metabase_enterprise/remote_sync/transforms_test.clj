@@ -238,6 +238,31 @@
           (settings/sync-transform-tracking! true)
           (is (= "create" (transforms-root-status))))))))
 
+(defn- insert-rso!
+  [model-type model-id status]
+  (t2/insert! :model/RemoteSyncObject {:model_type model-type :model_id model-id :model_name "T"
+                                       :status status :status_changed_at (t/offset-date-time)}))
+
+(deftest transform-tracking-toggle-test
+  (mt/with-temporary-setting-values [remote-sync-type :read-write]
+    (testing "Re-enabling transforms sync undoes a pending deletion"
+      (insert-rso! "Collection" settings/transforms-root-id "delete")
+      (settings/sync-transform-tracking! true)
+      (is (= "create" (transforms-root-status))))
+    (testing "Disabling it before the root was pushed also drops the transforms tracked since"
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "T"}]
+        (insert-rso! "Transform" transform-id "create")
+        (settings/sync-transform-tracking! false)
+        (is (nil? (transforms-root-status)))
+        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Transform")))))
+    (testing "Loading the settings cache with transforms sync off records no deletion"
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "T"}]
+        (insert-rso! "Transform" transform-id "synced")
+        (#'settings/sync-transform-tracking-on-change nil "false")
+        (is (nil? (transforms-root-status)))
+        (is (t2/exists? :model/RemoteSyncObject :model_type "Transform" :model_id transform-id))
+        (t2/delete! :model/RemoteSyncObject :model_type "Transform")))))
+
 (deftest transform-tracking-read-only-test
   (testing "A read-only instance never tracks the Transforms root, so it never reports it as unsaved"
     (mt/with-temporary-setting-values [remote-sync-type :read-only]

@@ -302,16 +302,9 @@
         (throw (ex-info (or (ex-message e) "Invalid settings")
                         {:error       (ex-message e)
                          :status-code 400} e))))
-    (when (seq collections)
-      (try
-        (remote-sync.core/bulk-set-remote-sync collections)
-        (catch Exception e
-          (throw (ex-info (or (ex-message e) "Invalid collection settings")
-                          (assoc (ex-data e)
-                                 :error       (ex-message e)
-                                 :status-code 400)
-                          e)))))
     (try
+      (when (seq collections)
+        (remote-sync.core/bulk-set-remote-sync collections))
       (remote-sync.core/sync-library-and-transforms-without-custom-collections!)
       (catch Exception e
         (throw (ex-info (or (ex-message e) "Invalid collection settings")

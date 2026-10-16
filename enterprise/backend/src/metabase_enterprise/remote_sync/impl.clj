@@ -395,6 +395,14 @@
   [root-ids {:keys [model_type model_id]}]
   (and (= "Collection" model_type) (contains? root-ids model_id)))
 
+(defn- exportable-entities
+  "What an export serializes: [[spec/exportable-entities]] without the Library's system collections."
+  []
+  (let [targets  (spec/exportable-entities)
+        root-ids (library-root-ids)]
+    (cond-> targets
+      (some root-ids (get targets "Collection")) (update "Collection" #(vec (remove root-ids %))))))
+
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
   runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
@@ -526,6 +534,7 @@
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
   [{:keys [ingestable deleted-rsos] :as _plan} snapshot-version report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
+  (collection/ensure-library-collection!)
   (let [load-result   (when ingestable
                         (serdes/with-cache
                           (serialization/load-metabase!
@@ -610,7 +619,7 @@
     - Sets version to remote tip"
   [snapshot base-snapshot task-id report sync-timestamp finalize!]
   (let [{:keys [conflicts merged summary]} (serdes/with-cache
-                                             (let [targets (spec/exportable-entities)]
+                                             (let [targets (exportable-entities)]
                                                (source/compute-merge (spec/extract-entities-for-export targets)
                                                                      snapshot base-snapshot task-id
                                                                      :total (spec/exportable-entity-count targets))))]
@@ -1178,13 +1187,10 @@
   "WriteRows for a full export — every exportable id tagged with its RemoteSyncObject id (untracked deps and
   Dimensions, whose RemoteSyncObject is keyed by their Field, get :id nil)."
   []
-  (let [rso-id   (u/index-by (juxt :model_type :model_id) :id (remote-sync.db/rso-keys))
-        root-ids (library-root-ids)]
-    (for [[model ids] (spec/exportable-entities)
-          id          ids
-          :let        [row {:model_type model :model_id id}]
-          :when       (not (library-root-row? root-ids row))]
-      (assoc row :id (when-not (= "Dimension" model) (rso-id [model id]))))))
+  (let [rso-id (u/index-by (juxt :model_type :model_id) :id (remote-sync.db/rso-keys))]
+    (for [[model ids] (exportable-entities)
+          id          ids]
+      {:model_type model :model_id id :id (when-not (= "Dimension" model) (rso-id [model id]))})))
 
 (def ^:private user-settings-model-types
   "The model types tracked by the user-settings event handlers rather than a remote-sync spec."
@@ -1328,7 +1334,7 @@
                :message   "Cannot merge: the remote branch history was rewritten. Re-import then export, or force the export to overwrite."}
 
               :else
-              (let [targets (spec/exportable-entities)]
+              (let [targets (exportable-entities)]
                 (export-merged! src snapshot base-snapshot task-id message sync-timestamp
                                 (spec/extract-entities-for-export targets)
                                 :total (spec/exportable-entity-count targets))))
@@ -1752,7 +1758,7 @@
       no-changes
       (if-let [base-snapshot (source.p/snapshot-at source base-version)]
         (serdes/with-cache
-          (let [targets (spec/exportable-entities)]
+          (let [targets (exportable-entities)]
             (if (seq targets)
               (assoc (source/preview-merge (spec/extract-entities-for-export targets) snapshot base-snapshot nil)
                      :diverged? true)
@@ -1762,7 +1768,7 @@
         {:diverged? true :clean? false :reason :history-rewritten
          :conflicts [] :summary {:added 0 :updated 0 :removed 0}
          :force-push-casualties (serdes/with-cache
-                                  (let [targets (spec/exportable-entities)]
+                                  (let [targets (exportable-entities)]
                                     (if (seq targets)
                                       (source/force-push-casualties-no-base
                                        (spec/extract-entities-for-export targets) snapshot)
