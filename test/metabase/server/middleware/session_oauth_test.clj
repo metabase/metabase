@@ -60,9 +60,10 @@
 (deftest oauth-token->token-scopes-test
   (testing "a token carrying the full-access scope maps to the unrestricted sentinel (general REST reachable)"
     (is (= #{::scope/unrestricted}
-           (oauth-token->token-scopes #{oauth-server/full-access-scope})))
-    (is (= #{::scope/unrestricted}
-           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:query:execute"}))))
+           (oauth-token->token-scopes #{oauth-server/full-access-scope}))))
+  (testing "GHY-4942: the other scopes it was granted ride along, since MCP ignores the sentinel and gates on them"
+    (is (= #{::scope/unrestricted "agent:sql:run"}
+           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:sql:run"}))))
   (testing "any narrower scope set is passed through verbatim (only opted-in agent endpoints reachable)"
     (is (= #{"agent:query:execute"}
            (oauth-token->token-scopes #{"agent:query:execute"})))
