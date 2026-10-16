@@ -5,3 +5,12 @@
   border-right: 1px solid var(--mb-color-border);
   box-shadow: inset -8px 0 10px -10px var(--mb-color-shadow);
 }
+
+.handle {
+  cursor: col-resize;
+  z-index: 1;
+}
+
+.handle:hover {
+  background-color: var(--mb-color-border-brand);
+}

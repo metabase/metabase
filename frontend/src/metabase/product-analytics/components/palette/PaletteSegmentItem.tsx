@@ -68,12 +68,12 @@ export const PaletteSegmentItem = ({
         openDelay={400}
         position="right"
       >
-        <Text size="sm" truncate flex={1} miw={0}>
+        <Text truncate flex={1} miw={0}>
           {segment.name}
         </Text>
       </Tooltip>
       {segment.status === "draft" && (
-        <Text size="xs" c="text-tertiary" style={{ flexShrink: 0 }}>
+        <Text c="text-tertiary" style={{ flexShrink: 0 }}>
           {t`Draft`}
         </Text>
       )}

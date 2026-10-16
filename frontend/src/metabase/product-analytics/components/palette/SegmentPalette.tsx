@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { type HTMLAttributes, type Ref, forwardRef, useState } from "react";
+import { Resizable, type ResizeCallbackData } from "react-resizable";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -37,7 +38,9 @@ import { NewSegmentModal } from "./NewSegmentModal";
 import { PaletteSegmentItem } from "./PaletteSegmentItem";
 import S from "./SegmentPalette.module.css";
 
-const WIDTH = "17rem";
+const DEFAULT_WIDTH = 272;
+const MIN_WIDTH = 240;
+const MAX_WIDTH = 400;
 
 type SegmentPaletteProps = {
   tableId: ConcreteTableId | undefined;
@@ -66,57 +69,98 @@ export const SegmentPalette = ({
   onSelectPeopleSegment,
 }: SegmentPaletteProps) => {
   const peopleTitle = getPeopleTitle(usersTable);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+
+  const handleResize = (_event: unknown, data: ResizeCallbackData) =>
+    setWidth(data.size.width);
 
   return (
-    <Stack className={S.root} w={WIDTH} gap={0}>
-      <Text size="sm" fw="bold" c="text-secondary" px="md" pt="md" pb="xs">
-        {t`Event data`}
-      </Text>
-      <Box px="md">
-        {onTableChange !== undefined ? (
-          <EventTablePicker
-            tableId={tableId}
-            isLoading={isTableLoading}
-            onChange={onTableChange}
-            size="md"
-            fullWidth
-          />
-        ) : (
-          <Group gap="sm" wrap="nowrap">
-            <Icon name="database" />
-            <Text fw="bold" truncate>
-              {table?.display_name ?? t`Loading…`}
-            </Text>
-          </Group>
-        )}
-        {tableError !== undefined && (
-          <Alert mt="sm" color="error" icon={<Icon name="warning" />}>
-            {tableError}
-          </Alert>
-        )}
-      </Box>
-      <Divider my="md" />
-      <ScrollArea flex={1} mih={0}>
-        <Stack gap="xl" pb="lg">
-          <PaletteSection
-            title={t`Event segments`}
-            source="event"
-            table={table}
-            emptyMessage={t`No segments on this table yet.`}
-          />
-          <PaletteSection
-            title={peopleTitle}
-            source="people"
-            table={usersTable?.table}
-            samples={usersTable === undefined ? getSamplePeopleSegments() : []}
-            emptyMessage={t`No segments on this table yet.`}
-            onSelect={onSelectPeopleSegment}
-          />
-        </Stack>
-      </ScrollArea>
-    </Stack>
+    <Resizable
+      width={width}
+      height={0}
+      axis="x"
+      minConstraints={[MIN_WIDTH, 0]}
+      maxConstraints={[MAX_WIDTH, 0]}
+      resizeHandles={["e"]}
+      handle={<PaletteResizeHandle />}
+      onResize={handleResize}
+    >
+      <Stack className={S.root} w={width} pos="relative" gap={0}>
+        <Text fw="bold" c="text-secondary" px="md" pt="md" pb="xs">
+          {t`Event data`}
+        </Text>
+        <Box px="md">
+          {onTableChange !== undefined ? (
+            <EventTablePicker
+              tableId={tableId}
+              isLoading={isTableLoading}
+              onChange={onTableChange}
+              size="md"
+              fullWidth
+            />
+          ) : (
+            <Group gap="sm" wrap="nowrap">
+              <Icon name="database" />
+              <Text fw="bold" truncate>
+                {table?.display_name ?? t`Loading…`}
+              </Text>
+            </Group>
+          )}
+          {tableError !== undefined && (
+            <Alert mt="sm" color="error" icon={<Icon name="warning" />}>
+              {tableError}
+            </Alert>
+          )}
+        </Box>
+        <Divider my="md" />
+        <ScrollArea flex={1} mih={0}>
+          <Stack gap="xl" pb="lg">
+            <PaletteSection
+              title={t`Event segments`}
+              source="event"
+              table={table}
+              emptyMessage={t`No segments on this table yet.`}
+            />
+            <PaletteSection
+              title={peopleTitle}
+              source="people"
+              table={usersTable?.table}
+              samples={
+                usersTable === undefined ? getSamplePeopleSegments() : []
+              }
+              emptyMessage={t`No segments on this table yet.`}
+              onSelect={onSelectPeopleSegment}
+            />
+          </Stack>
+        </ScrollArea>
+      </Stack>
+    </Resizable>
   );
 };
+
+type PaletteResizeHandleProps = HTMLAttributes<HTMLDivElement> & {
+  /** Passed by `Resizable`; a div can't take it. */
+  handleAxis?: string;
+};
+
+/** The grab strip on the palette's right edge. `Resizable` attaches the drag. */
+const PaletteResizeHandle = forwardRef(function PaletteResizeHandle(
+  { handleAxis: _handleAxis, ...rest }: PaletteResizeHandleProps,
+  ref: Ref<HTMLDivElement>,
+) {
+  return (
+    <Box
+      ref={ref}
+      className={S.handle}
+      pos="absolute"
+      top={0}
+      right={-4}
+      w="sm"
+      h="100%"
+      {...rest}
+    />
+  );
+});
 
 const getPeopleTitle = (usersTable: UsersTable | undefined): string => {
   const name = usersTable?.table.display_name ?? "";
@@ -164,9 +208,7 @@ const PaletteSection = ({
   return (
     <Stack gap="xs" px="md">
       <Group justify="space-between" wrap="nowrap" mb="xs">
-        <Text size="sm" fw="bold">
-          {title}
-        </Text>
+        <Text fw="bold">{title}</Text>
         {isLoading && <Loader size="xs" />}
       </Group>
       {items.map((segment) => (
@@ -186,9 +228,7 @@ const PaletteSection = ({
         />
       ))}
       {items.length === 0 && !isDrafting && !isLoading && (
-        <Text size="sm" c="text-tertiary">
-          {emptyMessage}
-        </Text>
+        <Text c="text-tertiary">{emptyMessage}</Text>
       )}
       {isDrafting && tableQuery !== undefined && (
         <EventDefinitionEditor
@@ -205,7 +245,7 @@ const PaletteSection = ({
       <Box mt="xs">
         <Tooltip label={disabledHint} disabled={disabledHint === undefined}>
           <Button
-            size="compact-sm"
+            size="compact-md"
             variant="subtle"
             leftSection={<Icon name="add" />}
             disabled={!canEdit || isDrafting}
