@@ -1,4 +1,4 @@
-(ns ^:synchronized metabase-enterprise.content-diagnostics.api-test
+(ns metabase-enterprise.content-diagnostics.api-test
   "Who may invoke the content-diagnostics endpoints at all. The reads take the same union as the FE
   `canAccessContentDiagnostics` guard. What an authorized caller then sees is collection-filtered in
   `api.common` and covered by the per-finding-type suites."
@@ -205,7 +205,7 @@
                          :duplicate_name {:normalized_name "counter fixture" :duplicate_entity_ids []}
                          {:threshold 5 :unit "items"})})))
 
-(deftest counts-default-populations-test
+(deftest ^:synchronized counts-default-populations-test
   (testing "counters match the UI's personal-inclusive defaults, excluding archived and missing entities"
     (mt/with-premium-features #{:content-diagnostics}
       (let [baseline (default-list-counts :crowberto)
@@ -242,7 +242,7 @@
                 (is (= (update expected :empty dec)
                        (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/counts")))))))))))
 
-(deftest counts-live-collection-visibility-test
+(deftest ^:synchronized counts-live-collection-visibility-test
   (testing "an analyst's counts follow current collection permissions and moves, not the scan-time collection"
     (mt/with-premium-features #{:content-diagnostics :advanced-permissions}
       (mt/with-data-analyst-role! (mt/user->id :rasta)
@@ -264,7 +264,7 @@
                 (is (= (update-vals baseline #(+ % 2))
                        (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/counts")))))))))))
 
-(deftest counts-transform-entitlements-test
+(deftest ^:synchronized counts-transform-entitlements-test
   (testing "transform findings require both an entitled analyst and an enabled transforms feature"
     (mt/with-user-in-groups [group {:name "Counter monitoring"}
                              user [group]]

@@ -2800,15 +2800,13 @@
 
 (defn- default-dependency-list-total
   [user query-type & params]
-  (:total (apply mt/user-http-request user :get 200 (str "ee/dependencies/graph/" (name query-type))
-                 :include-personal-collections true
-                 :types (case query-type
-                          :breaking ["table" "card" "transform"]
-                          :unreferenced ["table" "card" "segment" "measure" "snippet"])
-                 :card-types (case query-type
-                               :breaking ["question" "model"]
-                               :unreferenced ["question" "model" "metric"])
-                 params)))
+  (let [{:keys [types card-types include-personal-collections]}
+        (get @#'deps.api/monitor-default-params query-type)]
+    (:total (apply mt/user-http-request user :get 200 (str "ee/dependencies/graph/" (name query-type))
+                   :include-personal-collections include-personal-collections
+                   :types (mapv name types)
+                   :card-types (mapv name card-types)
+                   params))))
 
 (deftest ^:synchronized counts-unreferenced-test
   (mt/with-premium-features #{:dependencies :transforms-basic :hosting}
