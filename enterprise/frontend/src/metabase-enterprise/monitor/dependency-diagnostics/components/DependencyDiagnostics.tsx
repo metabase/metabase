@@ -6,6 +6,7 @@ import { trackDependencyDiagnosticsEntitySelected } from "metabase/common/data-s
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { Center, Flex } from "metabase/ui";
 import type * as Urls from "metabase/urls";
 import {
@@ -22,7 +23,6 @@ import {
   getDependencyTypes,
   isSameNode,
 } from "metabase-enterprise/dependencies/utils";
-import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type { DependencyEntry } from "metabase-types/api";
 
 import { DiagnosticsFilterBar } from "./DiagnosticsFilterBar";

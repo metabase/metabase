@@ -44,7 +44,10 @@ export function DashboardTabs({ dashboardId, tabsInfo }: DashboardTabsProps) {
     {
       label: t`Subscriptions`,
       to: subscriptionsUrl,
-      count: tabsInfo.subscriptionCount,
+      count:
+        tabsInfo.subscriptionCount === undefined
+          ? undefined
+          : { status: "loaded", value: tabsInfo.subscriptionCount },
       isSelected: (pathname) => pathname.startsWith(subscriptionsUrl),
     },
   ];
