@@ -143,6 +143,7 @@ describe("rules beyond the pilot", () => {
   it("puts query result elements and raw iframes in C?", () => {
     expect(triage(`cy.visit("/"); cy.findByTestId("table-body");`).bucket).toBe("C?");
     expect(triage(`cy.visit("/"); cy.get("iframe");`).bucket).toBe("C?");
+    expect(triage(`cy.visit("/"); H.main().find("metabase-dashboard");`).bucket).toBe("C?");
     expect(triage(`cy.visit("/"); cy.findByTestId("changelog-iframe");`).bucket).toBe("B");
   });
 

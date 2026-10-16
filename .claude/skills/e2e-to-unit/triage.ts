@@ -603,6 +603,10 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
     if (/^iframe\b/.test(firstArg)) {
       events.push({ kind: "realBrowser", what: "iframe" });
     }
+    // Embedding SDK web components, such as `<metabase-dashboard>`.
+    if (/^metabase-[a-z-]+$/.test(firstArg)) {
+      events.push({ kind: "realBrowser", what: `<${firstArg}>` });
+    }
     // `cy.get("@alias.all")` reads the requests that an intercept saw.
     if (root === "cy" && /^@[\w-]+\.all$/.test(firstArg)) {
       events.push({ kind: "backend", name: `asserts on requests ${firstArg}` });
