@@ -635,6 +635,38 @@
         (is (= {"$expr" {"$eq" ["$EMAIL" "$EMAIL"]}}
                (compile-filter (lib/= email email))))))))
 
+(deftest ^:parallel filter-multiple-values-compilation-test
+  (testing ":= and :!= with more than one value should compile to $in and $nin (#23101)"
+    (let [mp    meta/metadata-provider
+          price (lib/ref (lib.metadata/field mp (meta/id :venues :price)))
+          email (lib/ref (lib.metadata/field mp (meta/id :people :email)))]
+      (testing "simple comparisons use the direct match form"
+        (is (= {"PRICE" {"$in" [1 2 3]}}
+               (compile-filter (lib/= price 1 2 3))))
+        (is (= {"PRICE" {"$nin" [1 2 3]}}
+               (compile-filter (lib/!= price 1 2 3))))
+        (is (= {"EMAIL" {"$in" ["$abc" "def"]}}
+               (compile-filter (lib/= email (lib/value "$abc") "def")))))
+      (testing "negating := gives :!="
+        (is (= {"PRICE" {"$nin" [1 2]}}
+               (compile-filter (lib/not (lib/= price 1 2))))))
+      (testing "when the comparison needs `$expr`, use the aggregation `$in` operator (there's no aggregation `$nin`)"
+        (is (= {"$expr" {"$in" [{"$add" ["$PRICE" 1]} [2 3]]}}
+               (compile-filter (lib/= (lib/+ price 1) 2 3))))
+        (is (= {"$expr" {"$not" [{"$in" [{"$add" ["$PRICE" 1]} [2 3]]}]}}
+               (compile-filter (lib/!= (lib/+ price 1) 2 3))))
+        (is (= {"$expr" {"$in" [{"$concat" ["$EMAIL" "!"]} [{"$literal" "$abc"} "def"]]}}
+               (compile-filter (lib/= (lib/concat email "!") (lib/value "$abc") "def")))))
+      (testing "comparisons against fields compile to field paths"
+        (is (= {"$expr" {"$in" ["$PRICE" ["$PRICE" 2]]}}
+               (compile-filter (lib/= price price 2)))))
+      (testing "conditions, e.g. in :case expressions"
+        (let [query (lib/native-query mp "[]")]
+          (is (= {"$in" ["$PRICE" [1 2 3]]}
+                 (#'mongo.qp/compile-cond query -1 (lib/= price 1 2 3))))
+          (is (= {"$not" [{"$in" ["$PRICE" [1 2 3]]}]}
+                 (#'mongo.qp/compile-cond query -1 (lib/!= price 1 2 3)))))))))
+
 (deftest ^:parallel unique-alias-index-test
   (mt/test-driver
     :mongo

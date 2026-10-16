@@ -360,6 +360,22 @@
             lib/=  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
             lib/!= [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
                     [3 nil]]))
+        (testing "can filter nullable uuids with equals and not equals with multiple values (#23101)"
+          (are [filter-fn values exp-rows]
+               (= exp-rows (filter-rows (apply filter-fn uuid-field values)))
+            lib/=  ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+            [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+             [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]]
+
+            lib/!= ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+            [[3 nil]]
+
+            lib/=  ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" "not-a-uuid"]
+            [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+
+            lib/!= ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" "not-a-uuid"]
+            [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+             [3 nil]]))
         (testing "can filter nullable uuids with empty and not empty"
           (are [filter-fn exp-rows]
                (= exp-rows (filter-rows (filter-fn uuid-field)))

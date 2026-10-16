@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.wrap-value-literals
   "Middleware that wraps value literals in `value`/`absolute-datetime`/etc. clauses containing relevant type
   information; parses datetime string literals when appropriate."
-  (:refer-clojure :exclude [select-keys])
+  (:refer-clojure :exclude [select-keys some])
   (:require
    [java-time.api :as t]
    [metabase.lib.core :as lib]
@@ -19,7 +19,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [select-keys]])
+   [metabase.util.performance :refer [select-keys some]])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 
@@ -313,6 +313,14 @@
     ;; literal and field (literal on LHS)
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts (x :guard wrappable-literal?) (field :guard (not (wrappable-literal? field)))]
     [tag opts (wrap-literal-against-field query path field x) field]
+
+    ;; field and several values, e.g. `[:= {} <field> 1 2 3]` (`<field> IN (1, 2, 3)`)
+    [(tag :guard #{:= :!=}) opts (field :guard (not (wrappable-literal? field))) x y & more-values]
+    (let [values (list* x y more-values)]
+      (when (some wrappable-literal? values)
+        (into [tag opts field]
+              (map #(wrap-literal-against-field query path field %))
+              values)))
 
     ;; two literals, no field to wrap against — still parse a string-valued `:absolute-datetime` (using
     ;; its own unit) so a bare string can't survive to execution. Guarded on

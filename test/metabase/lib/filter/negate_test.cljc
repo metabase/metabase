@@ -83,16 +83,13 @@
             (negate-boolean-expression [:or {} [:!= {} [:field {} 1] 10] [:!= {} [:field {} 2] 20]])))))
 
 (deftest ^:parallel negate-syntactic-sugar-filter-clause-test-1
-  (testing "= with extra args"
-    (is (=? [:and {}
-             [:!= {} [:field {} 1] 10]
-             [:!= {} [:field {} 1] 20]
-             [:!= {} [:field {} 1] 30]]
+  (testing "= with extra args should get negated to != with extra args (#23101)"
+    (is (=? [:!= {} [:field {} 1] 10 20 30]
             (negate-boolean-expression [:= {} [:field {} 1] 10 20 30])))))
 
 (deftest ^:parallel negate-syntactic-sugar-filter-clause-test-2
-  (testing "!= with extra args"
-    (is (=? [:or {} [:= {} [:field {} 1] 10] [:= {} [:field {} 1] 20] [:= {} [:field {} 1] 30]]
+  (testing "!= with extra args should get negated to = with extra args (#23101)"
+    (is (=? [:= {} [:field {} 1] 10 20 30]
             (negate-boolean-expression [:!= {} [:field {} 1] 10 20 30])))))
 
 (deftest ^:parallel negate-syntactic-sugar-filter-clause-test-3

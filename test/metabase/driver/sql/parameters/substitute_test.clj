@@ -242,11 +242,7 @@
                                           "from"
                                           "  venues"
                                           "where"
-                                          "  ("
-                                          "    (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
-                                          "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
-                                          "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
-                                          "  )"]
+                                          "  (\"PUBLIC\".\"VENUES\".\"NAME\" IN (?, ?, ?))"]
                                          ["foo" "bar" "baz"]]}
     :string/!=               {:field    :name
                               :value    ["foo" "bar"]
@@ -256,14 +252,8 @@
                                           "  venues"
                                           "where"
                                           "  ("
-                                          "    ("
-                                          "      (\"PUBLIC\".\"VENUES\".\"NAME\" <> ?)"
-                                          "      OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
-                                          "    )"
-                                          "    AND ("
-                                          "      (\"PUBLIC\".\"VENUES\".\"NAME\" <> ?)"
-                                          "      OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
-                                          "    )"
+                                          "    (\"PUBLIC\".\"VENUES\".\"NAME\" NOT IN (?, ?))"
+                                          "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
                                           "  )"]
                                          ["foo" "bar"]]}
     :number/=                {:field    :price
@@ -282,11 +272,7 @@
                                           "from"
                                           "  venues"
                                           "where"
-                                          "  ("
-                                          "    (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1)"
-                                          "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 2)"
-                                          "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3)"
-                                          "  )"]
+                                          "  (\"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2, 3))"]
                                          []]}
     :number/!=               {:field    :price
                               :value    [1]
@@ -308,18 +294,8 @@
                                           "  venues"
                                           "where"
                                           "  ("
-                                          "    ("
-                                          "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1)"
-                                          "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
-                                          "    )"
-                                          "    AND ("
-                                          "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 2)"
-                                          "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
-                                          "    )"
-                                          "    AND ("
-                                          "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 3)"
-                                          "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
-                                          "    )"
+                                          "    (\"PUBLIC\".\"VENUES\".\"PRICE\" NOT IN (1, 2, 3))"
+                                          "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
                                           "  )"]
                                          []]}
     :number/>=               {:field    :price
@@ -899,36 +875,18 @@
                         "WHERE"
                         "  ("
                         "    ("
-                        "      ("
-                        "        extract("
-                        "          month"
-                        "          from"
-                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) <> 1"
-                        "      )"
-                        "      OR ("
-                        "        extract("
-                        "          month"
-                        "          from"
-                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) IS NULL"
-                        "      )"
+                        "      extract("
+                        "        month"
+                        "        from"
+                        "          \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "      ) NOT IN (1, 2)"
                         "    )"
-                        "    AND ("
-                        "      ("
-                        "        extract("
-                        "          month"
-                        "          from"
-                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) <> 2"
-                        "      )"
-                        "      OR ("
-                        "        extract("
-                        "          month"
-                        "          from"
-                        "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) IS NULL"
-                        "      )"
+                        "    OR ("
+                        "      extract("
+                        "        month"
+                        "        from"
+                        "          \"PUBLIC\".\"CHECKINS\".\"DATE\""
+                        "      ) IS NULL"
                         "    )"
                         "  );"]
                 :params []}

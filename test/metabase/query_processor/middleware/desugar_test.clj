@@ -28,9 +28,7 @@
               [:interval {} -30 :day]]]
             [:!= {}
              [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :source)]
-             "(not set)"]
-            [:!= {}
-             [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :source)]
+             "(not set)"
              "Twitter"]
             [:> {}
              [:temporal-extract {}
@@ -96,9 +94,7 @@
               [:relative-datetime {} -1 :day]]
              [:!= {}
               [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :source)]
-              "(not set)"]
-             [:!= {}
-              [:field {:source-field (meta/id :orders :user-id)} (meta/id :people :source)]
+              "(not set)"
               "Twitter"]]]]
           (-> (lib/query
                meta/metadata-provider
