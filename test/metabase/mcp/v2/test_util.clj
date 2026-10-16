@@ -7,7 +7,6 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
-   [metabase.system.core :as system]
    [metabase.test :as mt]
    [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
@@ -42,38 +41,6 @@
                         :scope     (vec scopes)
                         :expiry    (+ (System/currentTimeMillis) 3600000)})
            (f {"authorization" (str "Bearer " token)})))))))
-
-(defn do-with-bearer-headers!
-  "Call `f` with request headers that present a new OAuth access token held by `user-id` with `scopes` (default
-   [[all-scopes]]), and return what `f` returns. The token and its client are deleted afterwards. The token store
-   needs a `site-url`, so this sets one for the call when none is set. Unlike [[do-with-bearer-token!]], this opens no
-   rollback-only transaction, so what the requests in `f` write is still there when `f` returns."
-  ([user-id f]
-   (do-with-bearer-headers! user-id all-scopes f))
-  ([user-id scopes f]
-   (let [thunk (fn []
-                 (let [client-id (str (random-uuid))
-                       token     (str (random-uuid))]
-                   (t2/insert! :model/OAuthClient {:client_id         client-id
-                                                   :redirect_uris     ["https://example.com/callback"]
-                                                   :grant_types       ["authorization_code"]
-                                                   :response_types    ["code"]
-                                                   :scopes            ["openid"]
-                                                   :registration_type "static"})
-                   (try
-                     (t2/insert! :model/OAuthAccessToken {:token     (oidc.util/hash-token token)
-                                                          :user_id   user-id
-                                                          :client_id client-id
-                                                          :scope     (vec scopes)
-                                                          :expiry    (+ (System/currentTimeMillis) 3600000)})
-                     (f {"authorization" (str "Bearer " token)})
-                     (finally
-                       (t2/delete! :model/OAuthAccessToken :client_id client-id)
-                       (t2/delete! :model/OAuthClient :client_id client-id)))))]
-     (if (system/site-url)
-       (thunk)
-       (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-         (thunk))))))
 
 (defn data-parts
   "`[boundary json after]` of tool result `text` that opens with a data section: the section's boundary, the JSON text

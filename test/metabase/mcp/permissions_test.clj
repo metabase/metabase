@@ -131,8 +131,8 @@
 (deftest initialize-is-refused-when-mcp-is-disabled-test
   (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly no-access-policy)]
     (let [initialize (fn [user expected-status]
-                       (v2.tu/do-with-bearer-headers!
-                        (mt/user->id user)
+                       (v2.tu/do-with-bearer-token!
+                        user v2.tu/all-scopes
                         (fn [headers]
                           (:body (client/client-full-response :post expected-status "metabase-mcp"
                                                               {:request-options {:headers headers}}
