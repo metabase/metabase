@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.storage.kind-folders :as kind-folders]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
+   [metabase-enterprise.serialization.v2.table-document :as table-document]
    [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.core :as lib]
@@ -22,9 +23,7 @@
 
 (def kind-words
   "The word of each kind of item, in its file name `<name>.<word>.yaml`."
-  ;; Open item 1: the proposed list. `field`, `field_settings`, `dimension` and `field_values` are not in it: they
-  ;; name the files a table has until one file holds a table and its field settings (its table settings are the file
-  ;; `_table_settings.yaml` in the table's folder until then).
+  ;; Open item 1, decided: the proposed list, with `field_values` for a column's field values.
   {:table             "table"
    :segment           "segment"
    :measure           "measure"
@@ -47,9 +46,6 @@
    :embedding-theme   "embedding_theme"
    :custom-viz-plugin "custom_viz_plugin"
    :osi-ai-context    "osi_ai_context"
-   :field             "field"
-   :field-settings    "field_settings"
-   :dimension         "dimension"
    :field-values      "field_values"})
 
 (defn- python-library-file
@@ -368,15 +364,6 @@
   [path]
   (into [] (comp (filter #(= "Field" (:model %))) (map :id)) path))
 
-(defn- field-file
-  "The resolved path of the file of `kind` for the field in the serdes `path`, in its table's `fields/` folder."
-  [ctx path kind]
-  (let [names  (field-names path)
-        folder (-> (table-path ctx (table-ref path))
-                   (conj "fields")
-                   (into (map slug) (butlast names)))]
-    (item-file ctx folder kind names (last names))))
-
 ;;; ------------------------------------------------- Layout ---------------------------------------------------------
 
 (defn- model-of [entity]
@@ -465,18 +452,11 @@
 (defmethod item-path "Table" [ctx entity]
   (table-path ctx (table-ref (serdes/path entity))))
 
-(defmethod item-path "TableUserSettings" [ctx entity]
-  (let [table (table-path ctx (table-ref (serdes/path entity)))]
-    (conj table "_table_settings")))
-
-(defmethod item-path "Field" [ctx entity]
-  (field-file ctx (serdes/path entity) :field))
-
-(defmethod item-path "FieldUserSettings" [ctx entity]
-  (field-file ctx (serdes/path entity) :field-settings))
-
-(defmethod item-path "Dimension" [ctx entity]
-  (field-file ctx (serdes/path entity) :dimension))
+;; A table's settings, its columns, their settings and their remappings are in the table's own file (see
+;; [[table-document/assemble]]), so they have no files of their own.
+(doseq [model ["TableUserSettings" "Field" "FieldUserSettings" "Dimension"]]
+  (defmethod item-path model [_ctx _entity]
+    nil))
 
 (defmethod item-path "FieldValues" [ctx entity]
   ;; one file per column, in the table's folder; a nested column is named by its path of names
@@ -496,8 +476,19 @@
 (defmethod item-path "Measure" [ctx entity]
   (item-file ctx (definition-table-path ctx (:definition entity)) :measure (:entity_id entity) (:name entity)))
 
-(defn kind-layout
-  "The kind layout: the resolved path of the file of the extracted `entity` in storage context `ctx` (which needs a
-  `:layout-cache`), or nil when the entity has no file of its own (the Library and its section collections)."
-  [ctx entity]
-  (item-path ctx entity))
+(defn- document
+  "What the file of the extracted `entity` holds in storage context `ctx`: for a table, its table document (see
+  [[table-document/assemble]]), with the schema when the context's `:table-schema?` says so; for anything else, the
+  entity."
+  [{:keys [table-schema? extract-opts]} entity]
+  (if (= "Table" (model-of entity))
+    (table-document/assemble entity {:schema? table-schema? :extract-opts extract-opts})
+    entity))
+
+(def kind-layout
+  "The kind layout: a function of a storage context `ctx` (which needs a `:layout-cache`) and an extracted entity,
+  giving the resolved path of the entity's file, or nil when the entity has no file of its own: the Library and its
+  section collections, and a table's settings, columns and remappings, which are in the table's file. Its metadata
+  names, as `:document`, what a file holds (see [[storage.util/entity-document]])."
+  (with-meta (fn kind-layout [ctx entity] (item-path ctx entity))
+             {:document document}))

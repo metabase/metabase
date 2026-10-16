@@ -53,6 +53,12 @@
                                           [:in :id card-ids]
                                           [:in :collection_id collection-ids]]}))
 
+(mu/defn field-ids-of-table :- [:sequential ms/PositiveInt]
+  "The IDs of the Fields of the Table with `table-id`."
+  [table-id :- ms/PositiveInt]
+  (vec (t2/select-pks-vec :model/Field :table_id table-id
+                          {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
+
 (mu/defn layout-collections
   "The `:id`, `:entity_id`, `:name`, `:location`, `:namespace`, `:type`, `:archived`, `:personal_owner_id` and
   `:created_at` of every Collection."

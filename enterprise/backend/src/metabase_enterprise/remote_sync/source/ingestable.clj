@@ -28,10 +28,15 @@
         mark (str (format " (line %d, column %d)" (inc (.getLine mark)) (inc (.getColumn mark))))))
     (some-> (ex-message e) str/split-lines first str/trim)))
 
-(defn- ingest-content
+(defn- ingest-contents
+  "The entities of the YAML file whose text is `file-content`: the parts of a table document, or its one entity."
   [file-content]
-  (serdes/restore-path
-   (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key}))))
+  (serialization/ingested-entities (yaml/parse-string file-content {:key-fn serialization/parse-key})))
+
+(defn- ingest-content
+  "The entity of the YAML file whose text is `file-content`, the first part of a table document."
+  [file-content]
+  (first (ingest-contents file-content)))
 
 (defn check-data-app-files!
   "Throws, naming each file, when a data app's files in `snapshot` (its manifest, its collection, and what the
@@ -82,14 +87,17 @@
                                         (serialization/entity-content? content))
                               :let [loaded (try
                                              (when content
-                                               (serdes/path (ingest-content content)))
+                                               (ingest-contents content))
                                              (catch Exception e
                                                (log/warn (u/strip-error e "Error parsing file during ingestion"))
                                                (swap! errors conj (ex-info (format "Failed to parse file: %s" path)
                                                                            {:file path :reason (error-reason e)} e))
                                                nil))]
-                              :when loaded]
-                          [(serialization/strip-labels loaded) {:content content :path path}]))
+                              [index entity] (map-indexed vector loaded)]
+                          ;; the parts of a table document are kept parsed, so each isn't parsed from the whole file
+                          [(serialization/strip-labels (serdes/path entity))
+                           (cond-> {:content content :path path :index index}
+                             (< 1 (count loaded)) (assoc :entity entity))]))
      :errors @errors}))
 
 ;; Wraps another Ingestable calling a callback when a file is ingested
@@ -178,10 +186,10 @@
 
   (ingest-one [_ serdes-path]
     (populate-cache! cache errors-atom #(ingest-all snapshot))
-    (when-let [{:keys [content ^String path]} (get @cache (serialization/strip-labels serdes-path))]
+    (when-let [{:keys [content ^String path index entity]} (get @cache (serialization/strip-labels serdes-path))]
       (try
         (let [dir (subs path 0 (inc (or (str/last-index-of path "/") -1)))]
-          (serialization/read-resources (ingest-content content)
+          (serialization/read-resources (or entity (nth (ingest-contents content) index))
                                         #(source.p/read-file snapshot (str dir %))))
         (catch Exception e
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))))

@@ -28,7 +28,7 @@
              (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
                                   :file (str (.relativize (Path/of (str root-dir) (make-array String 0))
                                                           (.toPath f)))})
-             (spit-yaml! f (storage.util/without-resources entity))
+             (spit-yaml! f (storage.util/without-resources (storage.util/entity-document ctx entity)))
              (doseq [[segments content] (storage.util/resource-files resolved entity)
                      :let [resource (apply io/file root-dir segments)]]
                (io/make-parents resource)

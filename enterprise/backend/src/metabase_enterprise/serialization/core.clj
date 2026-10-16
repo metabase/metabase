@@ -32,6 +32,7 @@
   content-checked-path?
   entity-content?
   entity-file-path?
+  ingested-entities
   legal-top-level-paths
   replaced-top-level-paths
   shared-top-level-paths
@@ -56,6 +57,7 @@
   kind-layout]
  [metabase-enterprise.serialization.v2.storage.util
   default-layout
+  entity-document
   entity-file-path
   entity-yaml
   resolve-storage-path

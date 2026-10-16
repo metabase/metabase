@@ -62,13 +62,26 @@
   "A storage context (see [[serdes/storage-base-context]]) whose paths come from `layout`, a function of a storage
   context and an extracted entity that returns the entity's resolved path (a vector of strings, the last one the file
   name without its extension), or nil when the entity has no file of its own. `:layout-cache` is an atom a layout may use for
-  data it reads once per context."
+  data it reads once per context. `opts` go into the context: `:table-schema?` (true unless given) says whether a
+  file of a table holds the table's schema, and `:extract-opts` are the extraction options of the export."
   ([]
    (storage-context default-layout))
   ([layout]
-   (assoc (serdes/storage-base-context)
-          :layout       layout
-          :layout-cache (atom {}))))
+   (storage-context layout {}))
+  ([layout opts]
+   (merge (serdes/storage-base-context)
+          {:table-schema? true}
+          opts
+          {:layout       layout
+           :layout-cache (atom {})})))
+
+(defn entity-document
+  "What the file of the extracted `entity` holds in storage context `ctx`: the entity itself, or the document that
+  the context's layout makes of it (a layout names its document function as `:document` in its metadata)."
+  [ctx entity]
+  (if-let [document (:document (meta (:layout ctx)))]
+    (document ctx entity)
+    entity))
 
 (defn resolve-storage-path
   "Given ctx and entity, returns a vector of resolved (slugified, deduplicated) path strings, from the ctx's

@@ -7,6 +7,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.serialization.v2.storage.kind-folders :as kind-folders]
+   [metabase-enterprise.serialization.v2.table-document :as table-document]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -73,6 +74,16 @@
   [hierarchy]
   (mapv #(dissoc % :label) hierarchy))
 
+(defn ingested-entities
+  "The entities in the parsed YAML file `parsed`, each cleaned up (timestamps parsed, serdes path restored) and in
+  \"extracted\" form, ready to be passed to the `load` step: the parts of a table document (see
+  [[table-document/split]]), or the file's one entity."
+  [parsed]
+  (mapv (comp serdes/restore-path read-timestamps)
+        (if (table-document/table-document? parsed)
+          (table-document/split parsed)
+          [parsed])))
+
 (defn- ingest-file
   "Reads an entity YAML file and clean it up (eg. parsing timestamps)
   The returned entity is in \"extracted\" form, ready to be passed to the `load` step."
@@ -81,6 +92,14 @@
       (yaml/from-file {:key-fn parse-key})
       read-timestamps
       serdes/restore-path))
+
+(defn- ingest-file-entities
+  "Reads an entity YAML file into its entities: the parts of a table document, which only a `<name>.table.yaml` file
+  can hold (see [[ingested-entities]]), or its one entity."
+  [^File file]
+  (if (str/ends-with? (.getName file) ".table.yaml")
+    (ingested-entities (yaml/from-file file {:key-fn parse-key}))
+    [(ingest-file file)]))
 
 (defn- check-resource-path!
   "Throws unless `path` is a relative path that stays inside its entity's directory."
@@ -195,12 +214,12 @@
          (or (not (content-checked-path? path))
              (entity-content? (slurp file))))))
 
-(defn- file-hierarchy!
-  "Parses `file` and returns its `:serdes/meta` abstract path, or nil on parse failure.
+(defn- file-entities!
+  "Parses `file` and returns its entities, or nil on parse failure.
   On failure the exception is recorded in the `errors` atom."
   [^File file errors]
   (try
-    (serdes/path (ingest-file file))
+    (ingest-file-entities file)
     (catch Exception e
       (log/warn (u/strip-error e "Error reading file during ingestion"))
       (let [file-name (.getName file)]
@@ -209,7 +228,8 @@
       nil)))
 
 (defn- ingest-all
-  "Returns {:entities {unlabeled-hierarchy File}, :errors [Exception...]}.
+  "Returns {:entities {unlabeled-hierarchy File}, :errors [Exception...]}; for a file that may hold several entities
+  (a `<name>.table.yaml` file), the value is [File index entity], with the parsed entity.
   Dotfiles are silently skipped (editor temp files, see #41567).
   Non-dotfile YAML parse failures are collected in :errors."
   [^File root-dir]
@@ -217,9 +237,11 @@
         intern-path (path-interner)]
     {:entities (into {} (for [^File file (file-seq root-dir)
                               :when (ingestible-file? root-dir file)
-                              :let  [hierarchy (file-hierarchy! file errors)]
-                              :when hierarchy]
-                          [(intern-path (strip-labels hierarchy)) file]))
+                              :let  [entities (file-entities! file errors)]
+                              [index entity] (map-indexed vector entities)]
+                          ;; the parts of a table document are kept parsed, so each isn't parsed from the whole file
+                          [(intern-path (strip-labels (serdes/path entity)))
+                           (if (str/ends-with? (.getName file) ".table.yaml") [file index entity] file)]))
      :errors  @errors}))
 
 (defn- populate-cache! [cache errors-atom ingest-fn]
@@ -244,16 +266,17 @@
       (if (= ["Setting"] (mapv :model serdes-meta))
         (when (contains? settings kw-id)
           {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
-        (when-let [file (get @cache (strip-labels serdes-meta))]
-          (try
-            (read-resources (ingest-file file)
-                            (fn [path]
-                              (let [resource (io/file (.getParentFile ^File file) ^String path)]
-                                (when (.isFile resource)
-                                  (slurp resource)))))
-            (catch Exception e
-              (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
-                                                       :abs-path serdes-meta} e))))))))
+        (when-let [cached (get @cache (strip-labels serdes-meta))]
+          (let [[^File file _index entity] (if (vector? cached) cached [cached])]
+            (try
+              (read-resources (or entity (ingest-file file))
+                              (fn [path]
+                                (let [resource (io/file (.getParentFile ^File file) ^String path)]
+                                  (when (.isFile resource)
+                                    (slurp resource)))))
+              (catch Exception e
+                (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
+                                                         :abs-path serdes-meta} e)))))))))
 
   (ingest-errors [_]
     (or @errors-atom [])))

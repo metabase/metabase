@@ -14,16 +14,34 @@
   resolved path (see [[serialization/storage-context]])."
   serialization/default-layout)
 
+(def git-sync-extract-opts
+  "Serdes extraction opts for git sync."
+  {:include-field-values     false
+   :include-database-secrets false
+   :continue-on-error        false
+   :skip-archived            true})
+
 (defn storage-context
-  "A fresh storage context whose paths come from [[layout]]."
+  "A fresh storage context whose paths come from [[layout]]; a table's file holds no schema."
   []
-  (serialization/storage-context layout))
+  (serialization/storage-context layout {:table-schema? false :extract-opts git-sync-extract-opts}))
+
+(defn kind-layout?
+  "Whether [[layout]] is the kind layout."
+  []
+  (identical? serialization/kind-layout layout))
 
 (defn library-without-files?
   "Whether [[layout]] gives the Library's own collections no files, so that the repository holds only the Library's
   content."
   []
-  (identical? serialization/kind-layout layout))
+  (kind-layout?))
+
+(defn tables-in-own-files?
+  "Whether [[layout]] writes each table to a file of its own, which holds the table's settings, columns and
+  remappings, so that remote sync writes the table rather than walking through it."
+  []
+  (kind-layout?))
 
 (defn current-move-rule
   "A full export writes every item at its computed path. An incremental export writes each changed

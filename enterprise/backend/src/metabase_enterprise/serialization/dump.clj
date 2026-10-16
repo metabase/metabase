@@ -13,16 +13,30 @@
              (update-vals (fn [order]
                             (into {} (map vector order (range))))))))
 
+(def ^:private trailing-keys
+  "Keys that come after every other key of a map at a path, in this order: in a table's file, the table's schema and
+  its columns; in a column's entry, its remapping and its schema."
+  {[:Table]          {:metadata 0 :columns 1}
+   [:Table :columns] {:remapping 0 :metadata 1}})
+
+(def ^:private leading-keys
+  "Keys that come before every other key of a map at a path that has no order of its own."
+  {[:Table :columns] {:name 0 :parents 1}})
+
 (defn- serialization-sorted-map* [order-key]
-  (if-let [order (or (get @serialization-order order-key)
+  (let [trailing (get trailing-keys order-key {})
+        order    (or (get leading-keys order-key)
+                     (get @serialization-order order-key)
                      (get @serialization-order (last order-key)))]
-    ;; known columns are sorted by their order, then unknown are sorted alphabetically
-    (let [getter #(if (contains? order %)
-                    [0 (get order %)]
-                    [1 %])]
-      (sorted-map-by (fn [k1 k2]
-                       (compare (getter k1) (getter k2)))))
-    (sorted-map)))
+    (if (or order (seq trailing))
+      ;; known columns are sorted by their order, then unknown are sorted alphabetically, then the trailing ones
+      (let [getter #(cond
+                      (contains? trailing %) [2 (get trailing %)]
+                      (contains? order %)    [0 (get order %)]
+                      :else                  [1 %])]
+        (sorted-map-by (fn [k1 k2]
+                         (compare (getter k1) (getter k2)))))
+      (sorted-map))))
 
 (def ^:private serialization-sorted-map (memoize/memo serialization-sorted-map*))
 

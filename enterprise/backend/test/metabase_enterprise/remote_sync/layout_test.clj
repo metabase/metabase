@@ -14,6 +14,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -380,6 +381,81 @@
           (is (= :success (:status result)) (:message result))
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection
                                         :entity_id collection/library-entity-id))))))))
+
+(defn- with-published-venues!
+  "Publishes the test `venues` table in a synced Library Data collection, with a table setting, a column setting and a
+  remapping to a column of `categories`, and calls `f` with a MockSource that holds a forced full export in the
+  layout `layout`."
+  [layout f]
+  (mt/with-temporary-setting-values [remote-sync-type       :read-write
+                                     remote-sync-transforms false]
+    (collection/ensure-library-collection!)
+    (rs.test/set-library-remote-synced! true)
+    (let [data-id (t2/select-one-pk :model/Collection :entity_id "librarylibrarydatadat")]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:is_published true :collection_id data-id}
+        ;; a pull re-creates the rows the test deletes, under new ids
+        (mt/with-model-cleanup [:model/TableUserSettings :model/FieldUserSettings :model/Dimension]
+          (mt/with-temp [:model/TableUserSettings _ {:table_id (mt/id :venues) :display_name "Places"}
+                         :model/FieldUserSettings _ {:field_id (mt/id :venues :price) :description "Cost"}
+                         :model/Dimension _ {:field_id (mt/id :venues :category_id) :type :external :name "Category"
+                                             :human_readable_field_id (mt/id :categories :name)}]
+            (t2/delete! :model/RemoteSyncObject)
+            (with-redefs [remote-sync.layout/layout layout]
+              (let [mock (rs.test/create-mock-source :initial-files {"main" {}})]
+                (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "full" :force? true))))
+                (f mock)))))))))
+
+(def ^:private venues-file "data/venues.table.yaml")
+
+(deftest one-file-per-table-git-sync-round-trip-test
+  (with-published-venues!
+    kind-layout/kind-layout
+    (fn [mock]
+      (let [files    (get @(:files-atom mock) "main")
+            document (yaml/parse-string (get files venues-file))]
+        (testing "a published table is one file: its settings, then its columns with their settings and remappings"
+          (is (= "Places" (:display_name document)))
+          (is (= (t2/select-fn-vec :name :model/Field :table_id (mt/id :venues) {:order-by [[:position :asc]]})
+                 (map :name (:columns document))))
+          (is (=? {:description "Cost"} (some #(when (= "PRICE" (:name %)) %) (:columns document))))
+          (is (=? {:remapping {:human_readable_field_id ["test-data (h2)" "PUBLIC" "CATEGORIES" "NAME"]}}
+                  (some #(when (= "CATEGORY_ID" (:name %)) %) (:columns document))))
+          (is (not (contains? document :metadata)) "git sync writes no schema")
+          (is (not-any? #(str/starts-with? % "databases/") (keys files)))
+          (is (not-any? #(str/starts-with? % "data/venues.table/") (keys files))))
+        (testing "a pull loads the settings back"
+          (t2/delete! :model/TableUserSettings :table_id (mt/id :venues))
+          (t2/delete! :model/FieldUserSettings :field_id (mt/id :venues :price))
+          (t2/delete! :model/Dimension :field_id (mt/id :venues :category_id))
+          (let [result (impl/import! (source.p/snapshot mock) (new-task!) :force? true)]
+            (is (= :success (:status result)) (:message result)))
+          (is (= "Places" (t2/select-one-fn :display_name :model/TableUserSettings :table_id (mt/id :venues))))
+          (is (= "Cost" (t2/select-one-fn :description :model/FieldUserSettings :field_id (mt/id :venues :price))))
+          (is (=? {:human_readable_field_id (mt/id :categories :name)}
+                  (t2/select-one :model/Dimension :field_id (mt/id :venues :category_id)))))
+        (testing "an export after a column setting changes rewrites the table's file"
+          (t2/update! :model/FieldUserSettings {:field_id (mt/id :venues :price)} {:description "Price level"})
+          (t2/update! :model/RemoteSyncObject {:model_type "FieldUserSettings" :model_id (mt/id :venues :price)}
+                      {:status "update"})
+          (is (t2/exists? :model/RemoteSyncObject :model_type "FieldUserSettings" :status "update"))
+          (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-task!) "edit column"))))
+          (is (=? {:description "Price level"}
+                  (some #(when (= "PRICE" (:name %)) %)
+                        (:columns (yaml/parse-string (get-in @(:files-atom mock) ["main" venues-file])))))))))))
+
+(deftest old-table-files-still-load-test
+  (testing "a repo whose table settings are files of their own, as the earlier layout writes them, still loads"
+    (with-published-venues!
+      serialization/default-layout
+      (fn [mock]
+        (is (some #(str/includes? % "___fieldusersettings") (keys (get @(:files-atom mock) "main"))))
+        (t2/delete! :model/FieldUserSettings :field_id (mt/id :venues :price))
+        (t2/delete! :model/Dimension :field_id (mt/id :venues :category_id))
+        (with-redefs [remote-sync.layout/layout kind-layout/kind-layout]
+          (let [result (impl/import! (source.p/snapshot mock) (new-task!) :force? true)]
+            (is (= :success (:status result)) (:message result))))
+        (is (= "Cost" (t2/select-one-fn :description :model/FieldUserSettings :field_id (mt/id :venues :price))))
+        (is (t2/exists? :model/Dimension :field_id (mt/id :venues :category_id)))))))
 
 (defn- with-move-changed-items!
   "Calls `f` with the kind layout and the move-changed-items rule swapped in, and remote sync on."

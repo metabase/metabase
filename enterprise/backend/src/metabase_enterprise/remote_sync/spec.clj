@@ -14,6 +14,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.layout :as remote-sync.layout]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.core :as collections]
@@ -1352,14 +1353,15 @@
 
 (def git-sync-extract-opts
   "Serdes extraction opts for git sync."
-  {:include-field-values     false
-   :include-database-secrets false
-   :continue-on-error        false
-   :skip-archived            true})
+  remote-sync.layout/git-sync-extract-opts)
 
-(def ^:private models-traversed-but-not-stored
-  "Models git sync walks through but never writes."
-  #{"Table" "Field"})
+(defn- models-traversed-but-not-stored
+  "Models git sync walks through but never writes. When the layout writes each table to its own file, the table is
+  written (its file holds its settings, columns and remappings)."
+  []
+  (if (remote-sync.layout/tables-in-own-files?)
+    #{"Field"}
+    #{"Table" "Field"}))
 
 (defn- without-excluded-collection-content
   "`targets` (a map of {model-name [id ...]}) without the instances in the Collections whose content of their model
@@ -1385,7 +1387,7 @@
         targets (-> #{}
                     (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) git-sync-extract-opts))))
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
-    (-> (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)
+    (-> (apply dissoc (u/group-by first second targets) (models-traversed-but-not-stored))
         without-excluded-collection-content)))
 
 (defn exportable-entity-count

@@ -16,6 +16,7 @@
    [metabase.collections.core :as collections]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -136,7 +137,6 @@
 (def ^:private expected-data-model-paths
   "The path the kind layout gives each table, field and database of [[create-world!]]."
   #{"data/sales/orders.table.yaml"
-    "data/sales/orders.table/fields/total.field.yaml"
     "databases/my_db/public/customers.table.yaml"
     "databases/my_db.database.yaml"})
 
@@ -167,7 +167,13 @@
               (is (= (count written) (count (distinct written))))))
           (testing "only the Library's collections have no file"
             (is (= #{(:library eids) (:data eids) (:metrics eids) (:dashboards eids)}
-                   (into #{} (comp (filter (comp nil? val)) (map (comp :entity_id key))) paths))))
+                   (into #{} (comp (filter (comp nil? val))
+                                   (map key)
+                                   ;; a table's settings, columns and remappings are in the table's file
+                                   (remove (comp #{"TableUserSettings" "Field" "FieldUserSettings" "Dimension"}
+                                                 :model last :serdes/meta))
+                                   (map :entity_id))
+                         paths))))
           (testing "every path is in a folder the import reads"
             (is (every? ingest/entity-file-path? (remove nil? (vals paths)))))
           (testing "export then import gives the same items"
@@ -281,6 +287,56 @@
             ctx    (storage.util/storage-context kind-layout/kind-layout)]
         (is (= "databases/my_db/public/customers.table/status.field_values.yaml"
                (storage.util/entity-file-path ctx (serdes/extract-one "FieldValues" {} values))))))))
+
+(defn- table-world!
+  "A database with two tables, `orders` and `products`: `orders` has settings, a column with settings, and a column
+  remapped to a column of `products`. Returns the ids."
+  []
+  (let [db       (ts/create! :model/Database :name "Shop" :engine :postgres)
+        orders   (ts/create! :model/Table :name "orders" :schema "PUBLIC" :db_id (:id db))
+        products (ts/create! :model/Table :name "products" :schema "PUBLIC" :db_id (:id db))
+        title    (ts/create! :model/Field :name "TITLE" :table_id (:id products) :base_type :type/Text :position 0)
+        total    (ts/create! :model/Field :name "TOTAL" :table_id (:id orders) :base_type :type/Float :position 1)
+        product  (ts/create! :model/Field :name "PRODUCT_ID" :table_id (:id orders) :base_type :type/Integer
+                             :position 0)]
+    (t2/insert! :model/TableUserSettings {:table_id (:id orders) :display_name "Shop orders"})
+    (t2/insert! :model/FieldUserSettings {:field_id (:id total) :description "Total with tax"})
+    (ts/create! :model/Dimension :field_id (:id product) :type :external :name "Product"
+                :human_readable_field_id (:id title))
+    {:orders (:id orders) :products (:id products) :title (:id title) :total (:id total) :product (:id product)}))
+
+(deftest one-file-per-table-serdes-round-trip-test
+  (testing "a serdes export in the kind layout writes one file per table, which loads back to the same rows"
+    (ts/with-random-dump-dir [dump-dir "table-document-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (table-world!)
+          (storage/store! (extract-all) (storage.files/file-writer dump-dir kind-layout/kind-layout)))
+        (let [orders-file (io/file dump-dir "databases" "shop" "public" "orders.table.yaml")
+              document    (yaml/from-file orders-file)]
+          (testing "the file holds the table's settings, then its columns in column order"
+            (is (= "Shop orders" (:display_name document)))
+            (is (= ["PRODUCT_ID" "TOTAL"] (map :name (:columns document))))
+            (is (=? {:name      "PRODUCT_ID"
+                     :remapping {:type "external" :human_readable_field_id ["Shop" "PUBLIC" "products" "TITLE"]}
+                     :metadata  {:base_type "type/Integer"}}
+                    (first (:columns document))))
+            (is (=? {:name "TOTAL" :description "Total with tax" :metadata {:base_type "type/Float"}}
+                    (second (:columns document))))
+            (is (=? {:name "orders" :db_id "Shop"} (:metadata document)) "a serdes export adds the schema"))
+          (testing "no file for a column, its settings or its remapping"
+            (is (not (.exists (io/file dump-dir "databases" "shop" "public" "orders.table")))))
+          (testing "the files load into an empty instance, the remapping across two tables included"
+            (ts/with-db dest-db
+              (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))
+              (let [table-id (t2/select-one-pk :model/Table :name "orders")
+                    field-id (fn [table field] (t2/select-one-pk :model/Field :name field
+                                                                 :table_id (t2/select-one-pk :model/Table :name table)))]
+                (is (= "Shop orders" (t2/select-one-fn :display_name :model/TableUserSettings :table_id table-id)))
+                (is (= "Total with tax" (t2/select-one-fn :description :model/FieldUserSettings
+                                                          :field_id (field-id "orders" "TOTAL"))))
+                (is (=? {:type :external :human_readable_field_id (field-id "products" "TITLE")}
+                        (t2/select-one :model/Dimension :field_id (field-id "orders" "PRODUCT_ID"))))))))))))
 
 (deftest kind-layout-is-not-the-default-test
   (testing "a storage context without a layout, and plain serdes export, keep today's layout"

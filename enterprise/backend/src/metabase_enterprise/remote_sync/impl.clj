@@ -1262,24 +1262,25 @@
     (into (vec whole) (source/owned-paths snapshot checked))))
 
 (defn- stage-write
-  "Stage `entity` at the path `(path-fn row entity)`, or nothing when that is nil (the item has no file of its own);
-  returns its synced write-row when `row` has an `:id`."
-  [commit path-fn [row entity]]
+  "Stage what the file of `entity` holds in storage context `opts` at the path `(path-fn row entity)`, or nothing when
+  that is nil (the item has no file of its own); returns its synced write-row when `row` has an `:id`."
+  [commit opts path-fn [row entity]]
   (let [path  (path-fn row entity)
-        fspec (source/entity->file-spec-at path entity)]
+        fspec (source/entity->file-spec-in opts path entity)]
     (run! #(source.p/stage-upsert! commit %) (source/file-specs fspec))
     (when (:id row)
       [{:id (:id row) :file_path path :content_hash (source/file-spec-hash fspec)}])))
 
 (defn- chunk-stage-writes
-  [commit path-fn chunk]
+  [commit opts path-fn chunk]
   (->> chunk
        (extract-chunk)
-       (mapcat #(stage-write commit path-fn %))
+       (mapcat #(stage-write commit opts path-fn %))
        (doall)))
 
 (defn- stage-writes
-  "Stage WriteRows ({:model_type :model_id, optional :id}) to `commit`, each at the path `(path-fn row entity)`,
+  "Stage WriteRows ({:model_type :model_id, optional :id}) to `commit`, each at the path `(path-fn row entity)`, as
+  storage context `opts` writes it,
   chunking internally per model type so each chunk's entities load in one query with bounded memory. Callers pass a
   flat seq.
 
@@ -1288,13 +1289,13 @@
 
   Returns:
    - [{:id :file_path :content_hash}]"
-  ([commit path-fn rows] (stage-writes commit path-fn rows nil))
-  ([commit path-fn rows on-chunk]
+  ([commit opts path-fn rows] (stage-writes commit opts path-fn rows nil))
+  ([commit opts path-fn rows on-chunk]
    (let [staged (volatile! 0)]
      (->> rows
           (->sized-chunks)
           (mapcat (fn [chunk]
-                    (let [res (chunk-stage-writes commit path-fn chunk)]
+                    (let [res (chunk-stage-writes commit opts path-fn chunk)]
                       (vswap! staged + (count (:rows chunk)))
                       (when on-chunk (on-chunk @staged))
                       res)))
@@ -1367,7 +1368,7 @@
              [synced version] (commit-staged! snapshot message
                                               (fn [commit]
                                                 (source/replace-managed-files! commit snapshot) ; replace the managed files wholesale
-                                                (let [synced (stage-writes commit (full-export-path-fn rule opts) export-rows
+                                                (let [synced (stage-writes commit opts (full-export-path-fn rule opts) export-rows
                                                                            (fn [staged]
                                                                              (report (+ export-progress-plan-done
                                                                                         (* span (/ staged total))))))]
@@ -1397,7 +1398,8 @@
     (report export-progress-plan-done {:force? true})
     (let [[synced version] (commit-staged! snapshot message
                                            (fn [commit]
-                                             (let [synced (stage-writes commit (fn [row _entity] (:file_path row)) writes
+                                             (let [synced (stage-writes commit (remote-sync.layout/storage-context)
+                                                                        (fn [row _entity] (:file_path row)) writes
                                                                         (fn [staged]
                                                                           (report (+ export-progress-plan-done
                                                                                      (* span (/ staged total))))))]

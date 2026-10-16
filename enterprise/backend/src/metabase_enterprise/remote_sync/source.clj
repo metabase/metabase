@@ -85,10 +85,16 @@
    :content   (serialization/entity-yaml entity)
    :resources (if path (vec (resource-specs path entity)) [])})
 
+(defn entity->file-spec-in
+  "[[entity->file-spec-at]] `path`, of what the file of `entity` holds in storage context `opts` (see
+  [[serialization/entity-document]]); the entity itself when `path` is nil."
+  [opts path entity]
+  (entity->file-spec-at path (if path (serialization/entity-document opts entity) entity)))
+
 (defn entity->file-spec
-  "[[entity->file-spec-at]] the path storage context `opts` (from [[remote-sync.layout/storage-context]]) gives `entity`."
+  "[[entity->file-spec-in]] the path storage context `opts` (from [[remote-sync.layout/storage-context]]) gives `entity`."
   [opts entity]
-  (entity->file-spec-at (serialization/entity-file-path opts entity) entity))
+  (entity->file-spec-in opts (serialization/entity-file-path opts entity) entity))
 
 (defn file-specs
   "The `{:path :content}` specs of every file a `file-spec` from [[entity->file-spec]] writes: none when it has no
@@ -164,7 +170,7 @@
                                (when (instance? Exception entity)
                                  (throw entity))
                                (let [path (path-fn opts entity)
-                                     spec (entity->file-spec-at path entity)]
+                                     spec (entity->file-spec-in opts path entity)]
                                  (claim! path (entity-label entity))
                                  (report (inc idx))
                                  (file-specs spec))))

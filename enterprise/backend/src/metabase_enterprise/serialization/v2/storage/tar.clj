@@ -36,7 +36,8 @@
       (store-entity! [_ entity]
         (when-let [resolved (storage.util/resolve-storage-path ctx entity)]
           (let [path    (str dirname "/" (storage.util/yaml-file-path resolved))
-                content (.getBytes ^String (storage.util/entity-yaml entity) "UTF-8")]
+                content (.getBytes ^String (storage.util/entity-yaml (storage.util/entity-document ctx entity))
+                                   "UTF-8")]
             (log/trace "Storing" {:path (serdes/log-path-str (:serdes/meta entity))})
             (put-entry! tar path content)
             (doseq [[segments ^String resource] (storage.util/resource-files resolved entity)]

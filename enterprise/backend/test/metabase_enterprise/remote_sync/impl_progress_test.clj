@@ -107,7 +107,7 @@
                     {:model_type "card" :model_id 2 :file_path "b"}
                     {:model_type "card" :model_id 3 :file_path "c"}]
             seen   (atom [])]
-        (#'impl/stage-writes commit (fn [row _entity] (:file_path row)) rows (fn [n] (swap! seen conj n)))
+        (#'impl/stage-writes commit nil (fn [row _entity] (:file_path row)) rows (fn [n] (swap! seen conj n)))
         (is (= [1 2 3] @seen) "cumulative staged count reported once per chunk")
         (is (= ["a" "b" "c"] @staged) "all rows staged")))))
 
