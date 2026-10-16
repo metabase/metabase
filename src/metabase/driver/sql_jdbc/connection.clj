@@ -24,7 +24,7 @@
    [potemkin :as p])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources PooledDataSource)
-   (java.sql Connection)
+   (java.sql Connection SQLException)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
 
@@ -375,7 +375,7 @@
   (and (instance? PooledDataSource data-source)
        (try
          (zero? (.getNumConnectionsDefaultUser ^PooledDataSource data-source))
-         (catch Exception _
+         (catch SQLException _
            false))))
 
 (defn invalidate-empty-pool!
