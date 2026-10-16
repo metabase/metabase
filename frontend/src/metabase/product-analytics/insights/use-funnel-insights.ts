@@ -1,0 +1,294 @@
+import { useMemo } from "react";
+
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
+import { useMetadataProvider } from "metabase/metadata-store";
+import type {
+  ConcreteTableId,
+  Dataset,
+  SingleSeries,
+  UnsavedCard,
+} from "metabase-types/api";
+
+import type { AnalysisContext } from "../analyses/types";
+import type { BaseQueryInput } from "../base-query";
+import { buildSql } from "../build-sql";
+import { getEventFilterColumns } from "../events/filter-columns";
+import type { AnalysisSpec } from "../spec/types";
+import {
+  type FunnelInsightsQuery,
+  planFunnelInsights,
+} from "../sql/analyses/funnel-insights";
+import {
+  getDatasetError,
+  toNativeDatasetQuery,
+  useCompiledBase,
+} from "../use-analysis-query";
+import { useStableValue } from "../use-stable-value";
+
+import { getInsightAttributes } from "./candidates";
+import { indexCounts } from "./counts";
+import {
+  getExploreCard,
+  getExploreData,
+  getExploreSegmentLabel,
+} from "./explore";
+import { DEFAULT_INSIGHT_OPTIONS } from "./options";
+import { planPairs } from "./plan-pairs";
+import { parseCountRows } from "./rows";
+import { findInsights } from "./search";
+import {
+  getInsightSegments,
+  getMinSegmentSize,
+  isDescending,
+} from "./segments";
+import type { GroupCounts, Insight, InsightAttribute } from "./types";
+
+export type FunnelTransition = {
+  /** Step k → step k+1, numbered from 1. */
+  transition: number;
+  from: string;
+  to: string;
+  reached: number;
+  converted: number;
+};
+
+export type FunnelInsightsState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; error: string }
+  | {
+      status: "done";
+      insights: Insight[];
+      attributes: InsightAttribute[];
+      transitions: FunnelTransition[];
+      /** Pairs of attributes are still being counted. */
+      isFindingPairs: boolean;
+      /** Single-attribute insights are still shown when pairs fail. */
+      pairsError: string | undefined;
+    };
+
+export type InsightExplore = {
+  /** The explore question, to open in the query builder. */
+  card: UnsavedCard;
+  /** Its result, from the counts the insights came from. */
+  series: SingleSeries<UnsavedCard>;
+};
+
+type UseFunnelInsightsArgs = {
+  spec: AnalysisSpec | undefined;
+  tableId: ConcreteTableId | undefined;
+  /** Must keep its identity while unchanged. */
+  base: BaseQueryInput;
+  context: AnalysisContext;
+};
+
+const parseDataset = (
+  dataset: Dataset | undefined,
+  attributeIds: readonly string[],
+): GroupCounts[] | undefined =>
+  dataset?.data !== undefined && !dataset.error
+    ? parseCountRows(
+        dataset.data.cols.map(({ name }) => name),
+        dataset.data.rows,
+        attributeIds,
+      )
+    : undefined;
+
+const getTransitions = (
+  spec: AnalysisSpec,
+  rows: readonly GroupCounts[],
+): FunnelTransition[] => {
+  const steps = spec.funnel?.steps ?? [];
+  return rows
+    .filter(({ conditions }) => conditions.length === 0)
+    .flatMap(({ transition, reached, converted }) => {
+      const from = steps[transition - 1];
+      const to = steps[transition];
+      return from !== undefined && to !== undefined
+        ? [{ transition, from: from.label, to: to.label, reached, converted }]
+        : [];
+    })
+    .sort((a, b) => a.transition - b.transition);
+};
+
+/**
+ * Finds what's different about people who convert at each funnel step:
+ * counts by single attributes, then by pairs of the most promising ones, and
+ * searches them. Single-attribute insights arrive first.
+ */
+export const useFunnelInsights = ({
+  spec,
+  tableId,
+  base,
+  context,
+}: UseFunnelInsightsArgs) => {
+  const isFunnel = spec?.kind === "funnel";
+  const metadataProvider = useMetadataProvider(context.table?.db_id ?? null);
+
+  const attributes = useMemo(() => {
+    if (!isFunnel) {
+      return [];
+    }
+    const stepColumns = new Set(
+      base.events.flatMap(({ event }) =>
+        getEventFilterColumns(metadataProvider, event),
+      ),
+    );
+    return getInsightAttributes({ context, roles: base.columns, stepColumns });
+  }, [isFunnel, metadataProvider, base, context]);
+  const attributeIds = useMemo(
+    () => attributes.map(({ id }) => id),
+    [attributes],
+  );
+
+  const insightsBase = useStableValue<BaseQueryInput>({
+    ...base,
+    extraColumns: [
+      ...base.extraColumns,
+      ...attributes.map(({ id, column, from }) => ({ as: id, column, from })),
+    ],
+  });
+  const compiledBase = useCompiledBase({
+    isReady: isFunnel && attributes.length > 0,
+    tableId,
+    base: insightsBase,
+  });
+  const { compiled } = compiledBase;
+
+  const toSql = (query: FunnelInsightsQuery) =>
+    spec !== undefined && compiled !== undefined
+      ? buildSql(
+          spec,
+          compiled.sql,
+          compiled.columns,
+          planFunnelInsights(spec, query),
+        ).sql
+      : undefined;
+  const toQuery = (query: FunnelInsightsQuery, maxRows?: number) => {
+    const sql = toSql(query);
+    return sql !== undefined && compiled !== undefined
+      ? toNativeDatasetQuery(sql, compiled.databaseId, maxRows)
+      : undefined;
+  };
+
+  const singlesQuery =
+    isFunnel && attributeIds.length > 0
+      ? toQuery(
+          { kind: "singles", attributes: attributeIds },
+          DEFAULT_INSIGHT_OPTIONS.pairRowBudget,
+        )
+      : undefined;
+  const singles = useGetAdhocQueryQuery(singlesQuery ?? skipToken);
+  const singleRows = useMemo(
+    () => parseDataset(singles.currentData, attributeIds),
+    [singles.currentData, attributeIds],
+  );
+
+  const pairValues = useMemo(
+    () =>
+      singleRows !== undefined
+        ? planPairs(
+            indexCounts({ rows: singleRows, singleAttributes: attributeIds }),
+            attributeIds,
+          )
+        : undefined,
+    [singleRows, attributeIds],
+  );
+  const pairsQuery =
+    pairValues !== undefined && pairValues.size > 0
+      ? toQuery(
+          { kind: "pairs", kept: pairValues },
+          DEFAULT_INSIGHT_OPTIONS.pairRowBudget,
+        )
+      : undefined;
+  const pairs = useGetAdhocQueryQuery(pairsQuery ?? skipToken);
+  const pairRows = useMemo(
+    () => parseDataset(pairs.currentData, attributeIds),
+    [pairs.currentData, attributeIds],
+  );
+
+  const counts = useMemo(
+    () =>
+      singleRows !== undefined
+        ? indexCounts({
+            rows: [...singleRows, ...(pairRows ?? [])],
+            singleAttributes: attributeIds,
+            pairValues,
+          })
+        : undefined,
+    [singleRows, pairRows, attributeIds, pairValues],
+  );
+  const insights = useMemo(
+    () => (counts !== undefined ? findInsights(counts) : undefined),
+    [counts],
+  );
+
+  const getExplore = (insight: Insight): InsightExplore | undefined => {
+    const total = counts?.totals.get(insight.transition);
+    if (counts === undefined || total === undefined || compiled === undefined) {
+      return undefined;
+    }
+    const insightAttributes = insight.conditions.flatMap(
+      ({ attributeId }) =>
+        attributes.find(({ id }) => id === attributeId) ?? [],
+    );
+    const sql = toSql({
+      kind: "explore",
+      transition: insight.transition,
+      attributes: insightAttributes.map(({ id }) => id),
+      segmentLabel: getExploreSegmentLabel(insightAttributes),
+      minPeople: getMinSegmentSize(total.reached),
+      isDescending: isDescending(insight),
+    });
+    if (sql === undefined) {
+      return undefined;
+    }
+    const card = getExploreCard(
+      toNativeDatasetQuery(sql, compiled.databaseId),
+      insightAttributes,
+    );
+    const segments = getInsightSegments(counts, insight);
+    return {
+      card,
+      series: { card, data: getExploreData(segments, insightAttributes, sql) },
+    };
+  };
+
+  const state = ((): FunnelInsightsState => {
+    if (!isFunnel || spec === undefined) {
+      return { status: "idle" };
+    }
+    if (context.table === undefined) {
+      return { status: "loading" };
+    }
+    if (attributes.length === 0) {
+      return {
+        status: "done",
+        insights: [],
+        attributes,
+        transitions: [],
+        isFindingPairs: false,
+        pairsError: undefined,
+      };
+    }
+    const error = compiledBase.error ?? getDatasetError(singles);
+    if (error !== undefined) {
+      return { status: "error", error };
+    }
+    if (singleRows === undefined || insights === undefined) {
+      return { status: "loading" };
+    }
+    return {
+      status: "done",
+      insights,
+      attributes,
+      transitions: getTransitions(spec, singleRows),
+      isFindingPairs: pairsQuery !== undefined && pairs.isFetching,
+      pairsError: pairsQuery !== undefined ? getDatasetError(pairs) : undefined,
+    };
+  })();
+
+  return { state, getExplore };
+};
+
+export type FunnelInsights = ReturnType<typeof useFunnelInsights>;

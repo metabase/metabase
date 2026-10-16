@@ -12,10 +12,12 @@ import type {
   ConcreteTableId,
   Dataset,
   DatasetQuery,
+  NativeDatasetQuery,
 } from "metabase-types/api";
 
 import { type BaseQueryInput, buildBaseQuery } from "./base-query";
 import { type BaseColumns, buildSql } from "./build-sql";
+import type { ProjectedColumn } from "./columns";
 import { nativeCompileRequest } from "./compile-base";
 import { COLUMN_ROLE_FOR_GRAIN } from "./filters";
 import type { AnalysisSpec } from "./spec/types";
@@ -24,15 +26,8 @@ export type AnalysisQueryArgs = {
   /** Undefined while the settings are incomplete. Nothing is compiled or run. */
   spec: AnalysisSpec | undefined;
   tableId: ConcreteTableId | undefined;
-  /** Must keep its identity while unchanged; see the comment on `compiledBase`. */
+  /** Must keep its identity while unchanged; see the comment in `useCompiledBase`. */
   base: BaseQueryInput;
-};
-
-/** The compiled event stream an analysis reads, for building related queries. */
-export type CompiledBase = {
-  sql: string;
-  databaseId: number;
-  columns: BaseColumns;
 };
 
 export type AnalysisQueryResult = {
@@ -45,11 +40,38 @@ export type AnalysisQueryResult = {
   error: string | undefined;
 };
 
-export const useAnalysisQuery = ({
-  spec,
+/**
+ * The base query compiled to SQL, with what the planners need to read it.
+ * Shared by the analysis and the queries built from it, such as drills.
+ */
+export type CompiledBase = {
+  sql: string;
+  databaseId: number;
+  columns: BaseColumns;
+};
+
+type CompiledBaseArgs = {
+  isReady: boolean;
+  tableId: ConcreteTableId | undefined;
+  /** Must keep its identity while unchanged. */
+  base: BaseQueryInput;
+};
+
+type CompiledBaseResult = {
+  compiled: CompiledBase | undefined;
+  isLoading: boolean;
+  error: string | undefined;
+};
+
+/**
+ * Compiles the base query to SQL with `/api/dataset/native`. Nothing is
+ * compiled until `isReady`.
+ */
+export const useCompiledBase = ({
+  isReady,
   tableId,
   base,
-}: AnalysisQueryArgs): AnalysisQueryResult => {
+}: CompiledBaseArgs): CompiledBaseResult => {
   const tableMetadata = useGetTableQueryMetadataQuery(
     tableId !== undefined ? { id: tableId } : skipToken,
   );
@@ -58,13 +80,11 @@ export const useAnalysisQuery = ({
   const table = tableMetadata.currentData;
   const databaseId = table?.db_id;
   const metadataProvider = useMetadataProvider(databaseId ?? null);
-  // A boolean, not `spec`: the spec is rebuilt every render, see below.
-  const isReady = spec !== undefined;
 
   // Lib.toJsQuery mints a new lib/uuid on every clause. Rebuilding the request
   // each render gives RTK a new cache key, so getNativeDataset stays pending
   // forever and /api/dataset never runs.
-  const compiledBase = useMemo(() => {
+  const request = useMemo(() => {
     if (
       !isReady ||
       databaseId === undefined ||
@@ -87,33 +107,94 @@ export const useAnalysisQuery = ({
     }
   }, [isReady, databaseId, tableId, table, metadataProvider, base]);
 
-  const native = useGetNativeDatasetQuery(compiledBase?.request ?? skipToken);
-  const compiledDatabaseId = compiledBase?.databaseId;
-  const baseError = compiledBase?.error;
+  const native = useGetNativeDatasetQuery(request?.request ?? skipToken);
+  const sql = native.currentData?.query;
 
-  const baseSql = native.currentData?.query;
-
-  const compiled = useMemo<CompiledBase | undefined>(
-    () =>
-      baseSql !== undefined &&
-      compiledBase?.extraColumns !== undefined &&
+  const compiled = useMemo((): CompiledBase | undefined => {
+    const extraColumns: ProjectedColumn[] | undefined = request?.extraColumns;
+    const compiledDatabaseId = request?.databaseId;
+    return sql !== undefined &&
+      extraColumns !== undefined &&
       compiledDatabaseId !== undefined
-        ? {
-            sql: baseSql,
-            databaseId: compiledDatabaseId,
-            columns: {
-              columns: base.columns,
-              flags: base.events.map(({ flag }) => flag),
-              extraColumns: compiledBase.extraColumns,
-              cohorts: base.filters.cohorts.flatMap(({ grain, ids }) => {
-                const column = base.columns[COLUMN_ROLE_FOR_GRAIN[grain]];
-                return column !== null ? [{ column, ids }] : [];
-              }),
-            },
-          }
-        : undefined,
-    [baseSql, compiledBase, compiledDatabaseId, base],
-  );
+      ? {
+          sql,
+          databaseId: compiledDatabaseId,
+          columns: {
+            columns: base.columns,
+            flags: base.events.map(({ flag }) => flag),
+            extraColumns,
+            cohorts: base.filters.cohorts.flatMap(({ grain, ids }) => {
+              const column = base.columns[COLUMN_ROLE_FOR_GRAIN[grain]];
+              return column !== null ? [{ column, ids }] : [];
+            }),
+          },
+        }
+      : undefined;
+  }, [sql, request, base]);
+
+  const queryError = native.error
+    ? getErrorMessage(native.error)
+    : tableMetadata.error
+      ? getErrorMessage(tableMetadata.error)
+      : undefined;
+
+  return {
+    compiled,
+    isLoading:
+      tableId !== undefined && (tableMetadata.isFetching || native.isFetching),
+    error: request?.error ?? queryError,
+  };
+};
+
+type NativeQueryWithConstraints = NativeDatasetQuery & {
+  constraints: { "max-results": number; "max-results-bare-rows": number };
+};
+
+/**
+ * A native query for `/api/dataset`. `maxRows` raises the default row limit
+ * for results that are known to be bounded.
+ */
+export const toNativeDatasetQuery = (
+  sql: string,
+  databaseId: number,
+  maxRows?: number,
+): DatasetQuery => {
+  const query: NativeDatasetQuery = {
+    type: "native",
+    database: databaseId,
+    native: { query: sql },
+  };
+  if (maxRows === undefined) {
+    return query;
+  }
+  const constrained: NativeQueryWithConstraints = {
+    ...query,
+    constraints: { "max-results": maxRows, "max-results-bare-rows": maxRows },
+  };
+  return constrained;
+};
+
+/** The error a query result carries, from the request or the query itself. */
+export const getDatasetError = (result: {
+  error?: unknown;
+  currentData?: Dataset;
+}): string | undefined =>
+  result.error
+    ? getErrorMessage(result.error)
+    : result.currentData?.error
+      ? getErrorMessage(result.currentData.error)
+      : undefined;
+
+export const useAnalysisQuery = ({
+  spec,
+  tableId,
+  base,
+}: AnalysisQueryArgs): AnalysisQueryResult => {
+  const { compiled, isLoading, error } = useCompiledBase({
+    isReady: spec !== undefined,
+    tableId,
+    base,
+  });
 
   const built =
     spec && compiled
@@ -121,39 +202,19 @@ export const useAnalysisQuery = ({
       : undefined;
 
   const datasetQuery: DatasetQuery | undefined =
-    built && compiledDatabaseId !== undefined
-      ? {
-          type: "native",
-          database: compiledDatabaseId,
-          native: { query: built.sql },
-        }
+    built && compiled
+      ? toNativeDatasetQuery(built.sql, compiled.databaseId)
       : undefined;
 
   const adhoc = useGetAdhocQueryQuery(datasetQuery ?? skipToken);
 
-  const queryError = native.error
-    ? getErrorMessage(native.error)
-    : adhoc.error
-      ? getErrorMessage(adhoc.error)
-      : adhoc.currentData?.error
-        ? getErrorMessage(adhoc.currentData.error)
-        : tableMetadata.error
-          ? getErrorMessage(tableMetadata.error)
-          : undefined;
-
-  const error = baseError ?? queryError;
-
-  const isLoading =
-    tableId !== undefined &&
-    (tableMetadata.isFetching || native.isFetching || adhoc.isFetching);
-
   return {
-    sql: built?.sql ?? baseSql ?? null,
+    sql: built?.sql ?? compiled?.sql ?? null,
     compiledBase: compiled,
     dataset: adhoc.currentData,
     datasetQuery,
     warnings: built?.warnings ?? [],
-    isLoading,
-    error,
+    isLoading: isLoading || adhoc.isFetching,
+    error: error ?? getDatasetError(adhoc),
   };
 };

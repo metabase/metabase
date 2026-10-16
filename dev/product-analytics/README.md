@@ -178,6 +178,15 @@ no Metabase) and compares counts to `ground-truth.json`. It also checks the
 identities tables: one resolved row per identified person, every identified
 person in events has one, and no identity row lacks events.
 
+```bash
+bun run dev/product-analytics/check-insights.ts
+```
+
+Runs the funnel insight search the same way and checks it finds the effects
+`generate.ts` planted (`insights` in `ground-truth.json`). After regenerating,
+re-sync the database in Metabase so new columns like `trial_source` get
+fingerprints, since insights only consider fingerprinted columns.
+
 ## What the generator deliberately does *not* copy from Track
 
 Columns are filled with the meanings they **should** have:

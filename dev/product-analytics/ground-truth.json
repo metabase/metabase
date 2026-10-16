@@ -9,8 +9,8 @@
     "end": "2026-09-17T00:00:00.000Z"
   },
   "counts": {
-    "events": 1626506,
-    "pageviews": 1489890,
+    "events": 1638220,
+    "pageviews": 1500599,
     "signup": 22123,
     "trial_started": 5123,
     "checkout_completed": 1436,
@@ -22,11 +22,63 @@
     "identities": 28771
   },
   "funnel": {
-    "pricing": 19505,
-    "trial_started": 5123,
-    "checkout_completed": 1436
+    "pricing": 19366,
+    "trial_started": 5077,
+    "checkout_completed": 1443
   },
   "inviteWeek1": 2668,
   "twoDevicePeople": 3672,
-  "identifiedPeople": 22123
+  "identifiedPeople": 22123,
+  "insights": {
+    "expected": [
+      {
+        "transition": "Started trial → Purchased",
+        "conditions": [
+          {
+            "os": "iOS"
+          }
+        ],
+        "direction": "lower",
+        "why": "iOS checkout conversion × 0.5. iOS always means Safari, so this should not also show as Safari, or Safari and iOS."
+      },
+      {
+        "transition": "Viewed pricing → Started trial",
+        "conditions": [
+          {
+            "browser": "Firefox",
+            "os": "Android"
+          },
+          {
+            "browser": "Firefox",
+            "device": "mobile"
+          }
+        ],
+        "direction": "lower",
+        "why": "Android + Firefox trial starts × 0.25. Android or Firefox alone should be explained by the pair."
+      },
+      {
+        "transition": "Started trial → Purchased",
+        "conditions": [
+          {
+            "trial_source": "sales_email"
+          }
+        ],
+        "direction": "higher",
+        "why": "Checkout × 1.8. trial_source is only set on trial_started events, so this tests sparse columns."
+      }
+    ],
+    "unexpected": [
+      {
+        "transition": "Started trial → Purchased",
+        "column": "plan",
+        "why": "plan is only set on checkout_completed, so it isn't known when someone starts a trial."
+      },
+      {
+        "transition": "Viewed pricing → Started trial",
+        "column": "country",
+        "value": "NZ",
+        "why": "NZ trial starts × 2.4, but NZ is too small to report."
+      }
+    ]
+  }
 }

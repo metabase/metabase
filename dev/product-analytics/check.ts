@@ -5,13 +5,21 @@
  * Usage: bun run dev/product-analytics/check.ts
  */
 
-import { buildSql } from "../../frontend/src/metabase/product-analytics/build-sql";
+import {
+  type BaseColumns,
+  buildSql,
+} from "../../frontend/src/metabase/product-analytics/build-sql";
 import type { ProjectedColumn } from "../../frontend/src/metabase/product-analytics/columns";
 import type {
   AnalysisKind,
   AnalysisSpec,
   PathsSpec,
 } from "../../frontend/src/metabase/product-analytics/spec/types";
+import {
+  type FunnelPathsRange,
+  getOutcomeLabels,
+  planFunnelPaths,
+} from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-paths";
 import { hasCyclicFlow } from "../../frontend/src/metabase/visualizations/visualizations/SankeyChart/utils/cycle-detection";
 
 import { FLAG, defaultSpec } from "./specs";
@@ -21,7 +29,11 @@ const CH = process.env.CLICKHOUSE_URL ?? "http://127.0.0.1:18123";
 type GroundTruth = {
   start: string;
   end: string;
-  funnel: { pricing: number; trial_started: number; checkout_completed: number };
+  funnel: {
+    pricing: number;
+    trial_started: number;
+    checkout_completed: number;
+  };
   counts: Record<string, number>;
   inviteWeek1: number;
   identifiedPeople: number;
@@ -30,8 +42,13 @@ type GroundTruth = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const asNumber = (value: unknown, fallback = 0): number =>
-  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+// ClickHouse's JSON output quotes 64-bit integers, so counts arrive as strings.
+const asNumber = (value: unknown, fallback = 0): number => {
+  const parsed = typeof value === "string" ? Number(value) : value;
+  return typeof parsed === "number" && Number.isFinite(parsed)
+    ? parsed
+    : fallback;
+};
 
 const parseTruth = (raw: unknown): GroundTruth => {
   if (!isRecord(raw) || !isRecord(raw.funnel) || !isRecord(raw.counts)) {
@@ -56,8 +73,7 @@ const parseTruth = (raw: unknown): GroundTruth => {
   };
 };
 
-const chDateTime = (iso: string): string =>
-  iso.slice(0, 19).replace("T", " ");
+const chDateTime = (iso: string): string => iso.slice(0, 19).replace("T", " ");
 
 async function chQuery(sql: string): Promise<string> {
   const res = await fetch(CH, { method: "POST", body: sql });
@@ -100,7 +116,11 @@ WHERE created_at >= toDateTime('${chDateTime(truth.start)}')
 `;
 
 const relative = (actual: number, expected: number): number =>
-  expected === 0 ? (actual === 0 ? 0 : Infinity) : Math.abs(actual - expected) / expected;
+  expected === 0
+    ? actual === 0
+      ? 0
+      : Infinity
+    : Math.abs(actual - expected) / expected;
 
 const failures: string[] = [];
 
@@ -167,6 +187,18 @@ const checkIdentities = async (truth: GroundTruth) => {
   check("no identity without events", orphans === 0, `${orphans} orphan rows`);
   check("resolved traits are filled", missingTraits === 0, `${missingTraits} rows missing email or plan`);
 };
+const baseColumns = (spec: AnalysisSpec): BaseColumns => ({
+  columns: {
+    timestamp: "created_at",
+    person: "person_id",
+    session: "session_id",
+    event_id: "event_id",
+    event_name: "event_name",
+    url_path: "url_path",
+  },
+  flags: Object.values(FLAG),
+  extraColumns: cohortColumns(spec),
+});
 
 const run = async (
   kind: AnalysisKind,
@@ -174,18 +206,7 @@ const run = async (
   spec: AnalysisSpec = defaultSpec(kind),
   label: string = kind,
 ) => {
-  const built = buildSql(spec, eventsBaseSql(truth), {
-    columns: {
-      timestamp: "created_at",
-      person: "person_id",
-      session: "session_id",
-      event_id: "event_id",
-      event_name: "event_name",
-      url_path: "url_path",
-    },
-    flags: Object.values(FLAG),
-    extraColumns: cohortColumns(spec),
-  });
+  const built = buildSql(spec, eventsBaseSql(truth), baseColumns(spec));
   const rows = await chJson(built.sql);
   console.log(`\n${label} (${rows.length} rows)`);
 
@@ -193,7 +214,8 @@ const run = async (
     // label is "1. Viewed pricing"
     const byStep = new Map<number, number>();
     for (const row of rows) {
-      byStep.set(Number(String(row.label).split(".")[0]), asNumber(row.people));
+      // Labels are "<step>. <name>".
+      byStep.set(parseInt(String(row.label), 10), asNumber(row.people));
     }
     const step1 = byStep.get(1) ?? 0;
     const step2 = byStep.get(2) ?? 0;
@@ -203,7 +225,11 @@ const run = async (
       relative(step1, truth.funnel.pricing) < 0.2 && step1 > 0,
       `got ${step1}, truth ${truth.funnel.pricing}`,
     );
-    check("funnel is monotonic", step1 >= step2 && step2 >= step3, `${step1} ≥ ${step2} ≥ ${step3}`);
+    check(
+      "funnel is monotonic",
+      step1 >= step2 && step2 >= step3,
+      `${step1} ≥ ${step2} ≥ ${step3}`,
+    );
     check(
       "funnel has purchases",
       step3 > 0 && relative(step3, truth.funnel.checkout_completed) < 0.6,
@@ -235,7 +261,11 @@ const run = async (
   }
 
   if (kind === "habit") {
-    check("habit histogram has buckets", rows.length > 0, `${rows.length} buckets`);
+    check(
+      "habit histogram has buckets",
+      rows.length > 0,
+      `${rows.length} buckets`,
+    );
     return;
   }
 
@@ -243,7 +273,9 @@ const run = async (
     const states = new Set(rows.map((row) => String(row.state)));
     check(
       "lifecycle has the four states",
-      ["new", "returning", "resurrected", "dormant"].every((s) => states.has(s)),
+      ["new", "returning", "resurrected", "dormant"].every((s) =>
+        states.has(s),
+      ),
       [...states].join(", "),
     );
     return;
@@ -283,7 +315,13 @@ for (const [table, file] of [
 
 await checkIdentities(truth);
 
-for (const kind of ["funnel", "paths", "habit", "lifecycle", "cohorts"] as const) {
+for (const kind of [
+  "funnel",
+  "paths",
+  "habit",
+  "lifecycle",
+  "cohorts",
+] as const) {
   await run(kind, truth);
 }
 
@@ -315,6 +353,82 @@ if (cohortsSpec.cohorts !== undefined) {
       cohorts: { ...cohortsSpec.cohorts, by: "attribute" },
     },
     "cohorts (by country)",
+  );
+}
+
+// Funnel paths must agree with the funnel: everyone who reached the starting
+// step starts a path, and everyone who reached the ending step converts.
+const funnelSpec = defaultSpec("funnel");
+const funnelCounts = await chJson(
+  buildSql(funnelSpec, eventsBaseSql(truth), baseColumns(funnelSpec)).sql,
+);
+const funnelCountAt = (step: number) =>
+  asNumber(
+    funnelCounts.find((row) => parseInt(String(row.label), 10) === step)
+      ?.people,
+  );
+const funnelPathsRanges: FunnelPathsRange[] = [
+  { start: 1, end: 3 },
+  { start: 2, end: 3 },
+  { start: 1, end: 2 },
+];
+for (const range of funnelPathsRanges) {
+  const rows = await chJson(
+    buildSql(
+      funnelSpec,
+      eventsBaseSql(truth),
+      baseColumns(funnelSpec),
+      planFunnelPaths(funnelSpec, { ...range, steps: 5, maxNodes: 6 }),
+    ).sql,
+  );
+  console.log(
+    `\nfunnel paths ${range.start} → ${range.end} (${rows.length} rows)`,
+  );
+  const started = rows
+    .filter((row) => asNumber(row.step) === 1)
+    .reduce((sum, row) => sum + asNumber(row.weight), 0);
+  const converted = rows
+    .filter((row) => row.target_kind === "converted")
+    .reduce((sum, row) => sum + asNumber(row.weight), 0);
+  check(
+    "funnel paths start with the starting step's people",
+    started === funnelCountAt(range.start),
+    `paths ${started}, funnel ${funnelCountAt(range.start)}`,
+  );
+  check(
+    "funnel paths convert the ending step's people",
+    converted === funnelCountAt(range.end),
+    `paths ${converted}, funnel ${funnelCountAt(range.end)}`,
+  );
+  const unlabeled = rows.filter(
+    (row) => row.source_label === "" || row.target_label === "",
+  );
+  check(
+    "every funnel paths node has a label",
+    unlabeled.length === 0,
+    unlabeled
+      .slice(0, 2)
+      .map((row) => `${row.source} → ${row.target}`)
+      .join(", ") || `${rows.length} links`,
+  );
+  const edges = rows.map((row) => [String(row.source), String(row.target)]);
+  check(
+    "funnel paths have no cycles",
+    !hasCyclicFlow(edges, 0, 1),
+    `${edges.length} links`,
+  );
+  const isConvertedLink = (row: Record<string, unknown>) =>
+    row.outcome === getOutcomeLabels().converted;
+  check(
+    "only converted links reach the ending step, only the rest drop off",
+    rows.every((row) =>
+      row.target_kind === "converted"
+        ? isConvertedLink(row)
+        : row.target_kind !== "dropped" || !isConvertedLink(row),
+    ),
+    [...new Set(rows.map((row) => String(row.target_label)))]
+      .slice(0, 6)
+      .join(", "),
   );
 }
 

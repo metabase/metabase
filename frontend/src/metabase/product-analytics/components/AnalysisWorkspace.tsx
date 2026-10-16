@@ -22,6 +22,7 @@ import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 import { grainLabel } from "../sql/compile/grain";
 import type { DrillPoint } from "../sql/compose";
+import { useSupportingAnalyses } from "../supporting/use-supporting-analyses";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
 import { useAnalysisState } from "../use-analysis-state";
@@ -35,6 +36,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { CreateSegmentModal } from "./drills/CreateSegmentModal";
 import { MembersModal } from "./drills/MembersModal";
 import { SegmentPalette } from "./palette/SegmentPalette";
+import { SupportingAnalyses } from "./supporting/SupportingAnalyses";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
@@ -52,8 +54,10 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
 /**
  * The event analysis page: the kind tabs for a new analysis across the top;
  * below them the segment palette on the far left, running the full height,
- * then the title and toolbar above the setup panel and the result. A saved analysis opens on
- * its result, with both side panels collapsed.
+ * then the title and toolbar above the setup panel and the result. The
+ * result's column scrolls, with the kind's supporting analyses below the
+ * primary chart. A saved analysis opens on its result, with both side panels
+ * collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
@@ -80,7 +84,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     config,
     table,
     usersTable,
+    context,
     computed,
+    base,
     spec,
     widgets,
     missing,
@@ -93,6 +99,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     stored,
     onChangeSettings,
   });
+  const supporting = useSupportingAnalyses({ spec, tableId, base, context });
   const drillQueries = useDrillQueries({
     spec,
     compiledBase: query.compiledBase,
@@ -111,6 +118,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     countColumn: grainLabel(computed.counting),
     describePoint,
     queries: drillQueries,
+    getExtraActions: supporting.getClickActions,
   });
 
   useEffect(() => {
@@ -229,27 +237,30 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               {panel && (
                 <SettingsPanel key={kind} panel={panel} widgets={widgets} />
               )}
-              <AnalysisResult
-                title={config.question}
-                display={display}
-                vizSettings={vizSettings}
-                dataset={query.dataset}
-                datasetQuery={query.datasetQuery}
-                isLoading={query.isLoading}
-                error={
-                  query.error ??
-                  (tableId === undefined
-                    ? t`Choose a table to analyze.`
-                    : undefined)
-                }
-                warnings={query.warnings}
-                missing={missing}
-                setupLabel={config.setupLabel}
-                onOpenSetup={
-                  panel !== "setup" ? () => setPanel("setup") : undefined
-                }
-                clickActionsMode={drillActions.mode}
-              />
+              <Stack flex={1} miw={0} gap="lg" style={{ overflowY: "auto" }}>
+                <AnalysisResult
+                  title={config.question}
+                  display={display}
+                  vizSettings={vizSettings}
+                  dataset={query.dataset}
+                  datasetQuery={query.datasetQuery}
+                  isLoading={query.isLoading}
+                  error={
+                    query.error ??
+                    (tableId === undefined
+                      ? t`Choose a table to analyze.`
+                      : undefined)
+                  }
+                  warnings={query.warnings}
+                  missing={missing}
+                  setupLabel={config.setupLabel}
+                  onOpenSetup={
+                    panel !== "setup" ? () => setPanel("setup") : undefined
+                  }
+                  clickActionsMode={drillActions.mode}
+                />
+                <SupportingAnalyses supporting={supporting} />
+              </Stack>
             </Group>
           </Stack>
         </Group>
