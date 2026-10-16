@@ -1758,7 +1758,7 @@
         }
       },
       "metabase-enterprise.data-apps.schema.app-files" : {
-        "description" : "A new data app's files, each at its path from the repository root.",
+        "description" : "A data app's files, each at its path from the repository root.",
         "type" : "object",
         "properties" : {
           "files" : {
@@ -1782,11 +1782,29 @@
         "additionalProperties" : false
       },
       "metabase-enterprise.data-apps.schema.app-request" : {
-        "description" : "What a new data app's files are generated from.",
+        "description" : "What a data app's files are generated from. An existing app passes the entity IDs of its `data_app.yaml` and of its\n  collection, so its files keep them.",
         "type" : "object",
         "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "description" : {
             "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            }, {
+              "type" : "null"
+            } ]
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
@@ -32568,7 +32586,7 @@
       "post" : {
         "operationId" : "post-api-apps-generate-app",
         "summary" : "POST /api/apps/generate/app",
-        "description" : "A new data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the\n  YAML a remote-sync export writes, with new entity IDs. For superusers: the files are written into the app's\n  repository, which only an admin works with.",
+        "description" : "A data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the\n  YAML a remote-sync export writes. An existing app passes its `entity_id` and `collection_id` to keep them; a new app\n  gets new entity IDs. For superusers: the files are written into the app's repository, which only an admin works\n  with.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
