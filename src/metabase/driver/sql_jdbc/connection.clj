@@ -389,8 +389,10 @@
       (log/warnf "Could not acquire a connection for database %d; closing its empty connection pool" db-id)
       ;; do not remove a newer pool that another thread put in the cache
       (swap! pool-cache-key->connection-pool
-             #(cond-> %
-                (identical? (get % cache-key) pool-spec) (dissoc cache-key)))
+             (fn [m]
+               (if (identical? (get m cache-key) pool-spec)
+                 (dissoc m cache-key)
+                 m)))
       (destroy-pool! db-id pool-spec)
       (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
 
