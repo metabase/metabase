@@ -488,6 +488,8 @@
    (perf/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))))
 
 (defn- flatten-and-clause
+  ;; `metabase.agent-lib.representations.repair/and-filter-operands` does the same flattening on the
+  ;; string-keyed portable form; keep the two in step.
   [a-filter]
   (if (lib.util/clause-of-type? a-filter :and)
     (into [] (mapcat flatten-and-clause) (drop 2 a-filter))
