@@ -176,20 +176,20 @@ export const getInitialValues = (
   initialCollectionId: FormValues["collection_id"],
   initialDashboardId: FormValues["dashboard_id"],
 ): FormValues => {
-  const isNewQuestion = originalQuestion && question.card().type === "question";
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
+  const hasOwnCollection = !isReadonly && question.collectionId() !== undefined;
+  const hasOwnDashboard = !isReadonly && question.dashboardId() !== undefined;
 
+  const collectionId = hasOwnCollection
+    ? question.collectionId()
+    : initialCollectionId;
+
+  // A recently selected dashboard must not replace the collection a question
+  // was started in, so it only applies when the question has no location yet.
   const dashboardId =
-    question.dashboardId() === undefined || isReadonly
-      ? initialDashboardId
-      : question.dashboardId();
-
-  const collectionId =
-    question.collectionId() === undefined ||
-    isReadonly ||
-    (isNewQuestion && question.collectionId() === undefined)
-      ? initialCollectionId
-      : question.collectionId();
+    hasOwnCollection || hasOwnDashboard
+      ? question.dashboardId()
+      : initialDashboardId;
 
   return {
     name: getName(question, originalQuestion),
