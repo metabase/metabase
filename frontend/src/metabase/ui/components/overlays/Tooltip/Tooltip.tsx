@@ -1,4 +1,8 @@
-import { Tooltip as MantineTooltip, type TooltipProps } from "@mantine/core";
+import {
+  Tooltip as MantineTooltip,
+  type TooltipProps,
+  useProps,
+} from "@mantine/core";
 import {
   type PropsWithChildren,
   createContext,
@@ -6,6 +10,9 @@ import {
   useContext,
   useMemo,
 } from "react";
+
+import { useIsTransitionOpen } from "./use-is-transition-open";
+import { useTooltipEventIsolation } from "./use-tooltip-event-isolation";
 
 const TooltipPortalTargetContext = createContext<HTMLElement | null>(null);
 
@@ -21,7 +28,12 @@ export function TooltipPortalTargetProvider({
 }
 
 const TooltipImpl = forwardRef<HTMLDivElement, TooltipProps>(
-  function TooltipImpl({ portalProps, ...props }, ref) {
+  function TooltipImpl(props, ref) {
+    const { label, portalProps, transitionProps, mod, ...rest } = useProps(
+      "Tooltip",
+      {},
+      props,
+    );
     const contextTarget = useContext(TooltipPortalTargetContext);
     const resolvedPortalProps = useMemo(
       () =>
@@ -31,8 +43,24 @@ const TooltipImpl = forwardRef<HTMLDivElement, TooltipProps>(
       [contextTarget, portalProps],
     );
 
+    const isControlled = rest.opened !== undefined;
+    const { isOpen, transitionProps: resolvedTransitionProps } =
+      useIsTransitionOpen(transitionProps);
+
+    const isHoverable = isOpen && !isControlled;
+
+    const { tooltipProps, labelProps } = useTooltipEventIsolation(rest);
+
     return (
-      <MantineTooltip {...props} portalProps={resolvedPortalProps} ref={ref} />
+      <MantineTooltip
+        {...rest}
+        {...tooltipProps}
+        label={<div {...labelProps}>{label}</div>}
+        mod={[{ hoverable: isHoverable }, mod]}
+        portalProps={resolvedPortalProps}
+        transitionProps={resolvedTransitionProps}
+        ref={ref}
+      />
     );
   },
 );

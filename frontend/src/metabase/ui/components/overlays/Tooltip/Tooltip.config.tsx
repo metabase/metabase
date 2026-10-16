@@ -11,6 +11,8 @@ import TooltipStyles from "./Tooltip.module.css";
 const ARROW_WIDTH = 9;
 const ARROW_SIZE = ARROW_WIDTH / Math.SQRT2;
 const ARROW_TO_TARGET_GAP = 8;
+// Long enough for the pointer to cross the gap from the target onto the tooltip.
+export const TOOLTIP_CLOSE_DELAY_MS = 100;
 
 export const tooltipOverrides: MantineThemeOverride["components"] = {
   Tooltip: Tooltip.extend({
@@ -32,6 +34,7 @@ export const tooltipOverrides: MantineThemeOverride["components"] = {
         transition: "fade",
         duration: 200,
       },
+      closeDelay: TOOLTIP_CLOSE_DELAY_MS,
       events: {
         hover: true,
         focus: true,

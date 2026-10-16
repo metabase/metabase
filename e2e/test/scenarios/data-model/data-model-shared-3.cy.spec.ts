@@ -645,8 +645,9 @@ areas.forEach((area) => {
               .realHover({ scrollBehavior: "center" });
             H.tooltip().should("be.visible").and("have.text", longPrefix);
 
-            // hide tooltip
-            FieldSection.getDescriptionInput().realHover();
+            // hide tooltip, by hovering something it can't be covering (it can
+            // flip below the prefix, over the description input)
+            FieldSection.get().findByText("Field settings").realHover();
             H.tooltip().should("not.exist");
 
             cy.log("in table section");
