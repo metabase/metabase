@@ -1118,4 +1118,4 @@
           (str "status " status))))
   (testing "a missing font is not cached either"
     (is (= "max-age=0, no-cache, must-revalidate, proxy-revalidate"
-           (cache-control-for "/app/fonts/Lato/lato-v16-latin-regular.woff2" {:status 404})))))
+           (cache-control-for "/app/dist/fonts/Lato/lato-v16-latin-regular.cc2c3b4a.woff2" {:status 404})))))

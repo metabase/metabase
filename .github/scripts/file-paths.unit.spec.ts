@@ -195,7 +195,7 @@ describe("file-paths.yaml", () => {
     "patches/@loki+browser+0.35.0.patch",
     "frontend/src/metabase/css/index.module.css",
     "frontend/src/metabase/css/core/base.module.css",
-    "resources/frontend_client/app/fonts/Lato/lato-v16-latin-regular.woff2",
+    "frontend/fonts/Lato/lato-v16-latin-regular.woff2",
     "resources/frontend_client/app/assets/img/no_results.svg",
     "frontend/src/metabase/ui/components/icons/Icon/icons/warning.svg",
     "enterprise/frontend/src/metabase-enterprise/google_drive/database-error.svg",
