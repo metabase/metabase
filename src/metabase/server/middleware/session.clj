@@ -285,6 +285,8 @@
      ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
      ;; merging it whole both authenticates the request and records the granted scopes.
      (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider :session-key-hash)
+     ;; Not derived from `auth-method`: an SSO session reports its provider there, and an embedding route overrides it.
+     (when session-info {:authenticated-via-session? true})
      ;; `:metabase-session-key` is attached by [[wrap-session-key]] from an unvalidated cookie or header, so its
      ;; presence says nothing about whether the session is the credential that authenticated this request.
      ;; `:metabase/authed-session-key-hash` identifies the session that did, and being namespaced it cannot arrive
@@ -300,7 +302,8 @@
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
   token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
-  `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
+  `:token-scopes` (the access it was granted), and a login session sets `:authenticated-via-session?`; precedence is
+  session > API key > bearer > MCP UI credential.
   Bearer tokens and MCP UI credentials authenticate only when `options` supplies their `:oauth-bearer` and
   `:mcp-ui-credentials` fns.
 
