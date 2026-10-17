@@ -4,9 +4,12 @@ import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { cardApi } from "metabase/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
@@ -80,6 +83,29 @@ async function setup() {
   await waitForLoaderToBeRemoved();
 }
 
+const SALES = createMockCollection({ id: 3, name: "Sales", here: [] });
+
+function setupModelCreation() {
+  const collections = [SALES];
+
+  setupCollectionsEndpoints({ collections });
+  fetchMock.get("path:/api/collection/root/items", {
+    total: 0,
+    data: [],
+    models: [],
+    limit: null,
+    offset: null,
+  });
+  fetchMock.post("path:/api/card", () => {
+    collections[0] = { ...SALES, here: ["dataset"] };
+    return createMockCard({ id: 10, type: "model", collection_id: SALES.id });
+  });
+
+  return renderWithProviders(
+    <SavedEntityPicker type="model" onSelect={jest.fn()} onBack={jest.fn()} />,
+  );
+}
+
 describe("SavedEntityPicker", () => {
   it("shows the current user personal collection on the top after the root", async () => {
     await setup();
@@ -99,5 +125,35 @@ describe("SavedEntityPicker", () => {
     expect(
       screen.getAllByTestId("option-text").map((node) => node.textContent),
     ).toEqual(["a", "A", "B"]);
+  });
+
+  it("should show a collection after a model is saved into it", async () => {
+    const { store } = setupModelCreation();
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/collection/tree"),
+      ).toHaveLength(1),
+    );
+    expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+    expect(screen.queryByText("Sales")).not.toBeInTheDocument();
+
+    const model = createMockCard({ type: "model", collection_id: SALES.id });
+    await store.dispatch(
+      cardApi.endpoints.createCard.initiate({
+        name: model.name,
+        type: model.type,
+        dataset_query: model.dataset_query,
+        display: model.display,
+        visualization_settings: model.visualization_settings,
+        collection_id: model.collection_id,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/collection/tree"),
+      ).toHaveLength(2),
+    );
+    expect(await screen.findByText("Sales")).toBeInTheDocument();
   });
 });
