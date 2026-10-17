@@ -953,15 +953,73 @@
 
 ;;;; Module boundary analysis
 
+(defn module-cycles
+  "Each module cycle with its members and [[module-graph/cycle-metrics]], largest first.
+  The strong bridges are the single dependency edges whose removal splits a cycle."
+  ([]
+   (module-cycles (dependencies)))
+  ([deps]
+   (module-graph/cycles (module-dependencies deps))))
+
+(defn- enterprise-companion?
+  "Whether `module` is the `enterprise/X` companion of OSS module `ancestor`."
+  [module ancestor]
+  (and (= "enterprise" (namespace module))
+       (= ancestor (symbol (name module)))))
+
+(defn- upward-references*
+  "The [[upward-references]] of `deps`, given the [[module-cycles]] of the same `deps` as `cycles`."
+  [deps config cycles]
+  ;; A nested module may use its ancestors' internals, and a parent usually requires its children, so one
+  ;; require back up is enough to make a cycle.
+  ;; The linter allows these requires, so nothing else reports them.
+  (let [module->cycle-members (u/for-map [{:keys [modules]} cycles
+                                          :let              [members (set modules)]
+                                          module            modules]
+                                [module members])]
+    (vec (for [{:keys [module], :as file} deps
+               dep   (:deps file)
+               :let  [ancestor (:module dep)]
+               :when (and (not= module ancestor)
+                          (modules/descendant-of? config module ancestor)
+                          (not (enterprise-companion? module ancestor)))
+               :let  [api (modules/module-api-namespaces config ancestor)]]
+           {:namespace          (:namespace file)
+            :module             module
+            :required-namespace (:namespace dep)
+            :ancestor           ancestor
+            ;; A nil API means `:api :any`, where every namespace is public.
+            :api?               (or (nil? api) (contains? api (:namespace dep)))
+            :cycle?             (contains? (module->cycle-members module) ancestor)}))))
+
+(defn upward-references
+  "Requires from a module into one of its ancestors.
+  An `enterprise/X` module requiring OSS `X` is expected and left out.
+
+  Returns one map per require:
+
+  - `:namespace`, `:module`            the requiring side
+  - `:required-namespace`, `:ancestor` the required side
+  - `:api?`                            whether the required namespace is in the ancestor's `:api`
+  - `:cycle?`                          whether the ancestor also reaches the module, closing a cycle"
+  ([]
+   (upward-references (dependencies) (kondo-config)))
+  ([deps config]
+   (upward-references* deps config (module-cycles deps))))
+
 (defn module-boundary-stats
   "REPL diagnostics for the module graph:
 
-  - `:api-any-namespaces`  namespaces exposed by `:api :any` modules
-  - `:module-count`        configured modules
-  - `:scc-module-sizes`    modules per cycle, largest first
-  - `:scc-namespace-sizes` namespaces per cycle, in the same order
-  - `:scc-densities`       edges per cycle over the most it could have, in the same order
-  - `:scc-cycle-ranks`     independent cycles per cycle, in the same order
+  - `:api-any-namespaces`       namespaces exposed by `:api :any` modules
+  - `:module-count`             configured modules
+  - `:scc-module-sizes`         modules per cycle, largest first
+  - `:scc-namespace-sizes`      namespaces per cycle, in the same order
+  - `:scc-densities`            edges per cycle over the most it could have, in the same order
+  - `:scc-cycle-ranks`          independent cycles per cycle, in the same order
+  - `:upward-requires`          requires from a module into an ancestor, see [[upward-references]]
+  - `:upward-module-edges`      distinct module and ancestor pairs behind them
+  - `:upward-internal-requires` upward requires that reach past the ancestor's `:api`
+  - `:upward-cycle-requires`    upward requires that close a cycle
 
   These values are not ratcheted because any source change can move them. Use namespace sizes to track
   cycle reduction: splitting a module can grow a cycle's module count without removing namespaces.
@@ -972,24 +1030,22 @@
   ([deps config]
    (let [any-modules (into #{} (keep (fn [[module cfg]] (when (= :any (:api cfg)) module))) config)
          ns-counts   (frequencies (keep :module deps))
-         cycles      (module-graph/cycles (module-dependencies deps))]
-     {:api-any-namespaces  (count (filter #(contains? any-modules (:module %)) deps))
-      :module-count        (count config)
-      :scc-module-sizes    (mapv :size cycles)
-      :scc-namespace-sizes (mapv (fn [{:keys [modules]}]
-                                   (transduce (map #(get ns-counts % 0)) + 0 modules))
-                                 cycles)
-      :scc-densities       (mapv #(u/round-to-decimals 2 (:density %)) cycles)
-      :scc-cycle-ranks     (mapv :cycle-rank cycles)})))
-
-(defn module-cycles
-  "Each module cycle with its members and [[module-graph/cycle-metrics]], largest first.
-  The strong bridges are the single dependency edges whose removal splits a cycle."
-  ([]
-   (module-cycles (dependencies)))
-  ([deps]
-   (module-graph/cycles (module-dependencies deps))))
+         cycles      (module-cycles deps)
+         upward      (upward-references* deps config cycles)]
+     {:api-any-namespaces       (count (filter #(contains? any-modules (:module %)) deps))
+      :module-count             (count config)
+      :scc-module-sizes         (mapv :size cycles)
+      :scc-namespace-sizes      (mapv (fn [{:keys [modules]}]
+                                        (transduce (map #(get ns-counts % 0)) + 0 modules))
+                                      cycles)
+      :scc-densities            (mapv #(u/round-to-decimals 2 (:density %)) cycles)
+      :scc-cycle-ranks          (mapv :cycle-rank cycles)
+      :upward-requires          (count upward)
+      :upward-module-edges      (count (into #{} (map (juxt :module :ancestor)) upward))
+      :upward-internal-requires (count (remove :api? upward))
+      :upward-cycle-requires    (count (filter :cycle? upward))})))
 
 (comment
   (module-boundary-stats)
+  (frequencies (map (juxt :module :ancestor) (upward-references)))
   (module-cycles))
