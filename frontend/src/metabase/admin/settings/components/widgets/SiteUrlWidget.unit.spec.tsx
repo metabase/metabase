@@ -127,6 +127,22 @@ describe("siteUrlWidget", () => {
     ).toBeInTheDocument();
   });
 
+  it("should show the validation message from the API (metabase#4506)", async () => {
+    setup({});
+    setupUpdateSettingEndpoint({
+      status: 500,
+      body: { cause: 'Invalid site URL: "http://mysite.bizfoo"' },
+    });
+
+    const input = await screen.findByDisplayValue("mysite.biz");
+    await userEvent.type(input, "foo");
+    fireEvent.blur(input);
+
+    expect(
+      await screen.findByText('Invalid site URL: "http://mysite.bizfoo"'),
+    ).toBeInTheDocument();
+  });
+
   it("should not render if it's hosted", async () => {
     setup({ isHosted: true });
     expect(screen.queryByText("Site url")).not.toBeInTheDocument();

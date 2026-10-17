@@ -57,7 +57,7 @@ const setup = async (props: {
     },
   );
 
-  await screen.findByText(props.hosted ? /SMTP/ : "From Name");
+  await screen.findByText("From Address");
   await waitFor(async () => {
     const gets = await findRequests("GET");
     expect(gets).toHaveLength(2); // 2 settings fetches
@@ -87,6 +87,21 @@ describe("EmailSettingsPage", () => {
     ].forEach((text) => {
       expect(screen.queryByText(text)).not.toBeInTheDocument();
     });
+  });
+
+  it("should lock SMTP setup without custom SMTP on a hosted instance, and offer a test email when email is configured", async () => {
+    await setup({ hosted: true, disablePremiumFeatures: true });
+
+    expect(screen.getByLabelText("From Address")).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Send test email" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("self-hosted-smtp-connection-card"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("cloud-smtp-connection-card"),
+    ).not.toBeInTheDocument();
   });
 
   it("should update multiple settings", async () => {

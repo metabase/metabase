@@ -1,4 +1,6 @@
+import { mockSettings } from "__support__/settings";
 import { checkNotNull } from "metabase/utils/types";
+import { formatValue } from "metabase/value-formatting";
 import type { DatasetColumn, Series } from "metabase-types/api";
 import {
   createMockColumn,
@@ -123,6 +125,80 @@ describe("column settings", () => {
       computed.column?.(series[0].data.cols[0]),
     );
     expect(number_style).toBe("percent");
+  });
+
+  describe("global formatting settings", () => {
+    afterEach(() => {
+      mockSettings();
+    });
+
+    it("should apply the global currency to a non-currency column with the currency style (metabase#10787)", () => {
+      mockSettings({
+        "custom-formatting": { "type/Currency": { currency: "EUR" } },
+      });
+      const series = seriesWithColumn({
+        base_type: "type/Integer",
+        semantic_type: null,
+      });
+      const computed = getComputedSettings({ ...columnSettings() }, series, {
+        column_settings: {
+          '["name","foo"]': { number_style: "currency" },
+        },
+      });
+      const settings = checkNotNull(computed.column?.(series[0].data.cols[0]));
+
+      expect(formatValue(10, settings)).toBe("€10.00");
+    });
+  });
+
+  describe("global date and time styles (metabase#11394)", () => {
+    afterEach(() => {
+      mockSettings();
+    });
+
+    const formatDateTime = (timeStyle: string) => {
+      mockSettings({
+        "custom-formatting": {
+          "type/Temporal": { date_style: "YYYY/M/D", time_style: timeStyle },
+        },
+      });
+      const series = seriesWithColumn({
+        base_type: "type/DateTime",
+        semantic_type: null,
+      });
+      const computed = getComputedSettings({ ...columnSettings() }, series, {});
+      const settings = checkNotNull(computed.column?.(series[0].data.cols[0]));
+
+      return formatValue("2028-02-11T21:40:27", settings);
+    };
+
+    it("should apply the global date style and the 24-hour time style", () => {
+      expect(formatDateTime("HH:mm")).toBe("2028/2/11, 21:40");
+    });
+
+    it("should apply the global date style and the 12-hour time style", () => {
+      expect(formatDateTime("h:mm A")).toBe("2028/2/11, 9:40 PM");
+    });
+  });
+
+  describe("currency unit in table cells", () => {
+    const formatCurrencyCell = (currencyInHeader: boolean) => {
+      const series = seriesWithColumn({
+        settings: { currency_in_header: currencyInHeader },
+      });
+      const computed = getComputedSettings({ ...columnSettings() }, series, {});
+      const settings = checkNotNull(computed.column?.(series[0].data.cols[0]));
+
+      return formatValue(39.72, { ...settings, type: "cell" });
+    };
+
+    it("should show the currency symbol in every cell of a currency field", () => {
+      expect(formatCurrencyCell(false)).toBe("$39.72");
+    });
+
+    it("should leave the currency symbol out of cells when it is in the column heading", () => {
+      expect(formatCurrencyCell(true)).toBe("39.72");
+    });
   });
 
   describe("NUMBER_COLUMN_SETTINGS", () => {

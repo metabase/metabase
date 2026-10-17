@@ -49,11 +49,13 @@ const setup = async ({
   hasAuditApp,
   isHosted,
   hasEmbeddingSdk,
+  isSiteUrlFromEnv,
 }: {
   isCloudPlan?: boolean;
   hasAuditApp?: boolean;
   isHosted?: boolean;
   hasEmbeddingSdk?: boolean;
+  isSiteUrlFromEnv?: boolean;
 } = {}) => {
   // Direct control, bypassing hasPremiumFeature/MetabaseSettings singleton
   // timing -- deterministic regardless of what earlier tests in this worker
@@ -82,11 +84,21 @@ const setup = async ({
   );
 
   setupUpdateSettingEndpoint();
+  const settingDefinitions = Object.entries(settings).map(([key, value]) =>
+    // Unjustified type cast. FIXME
+    createMockSettingDefinition({ key: key as SettingKey, value }),
+  );
+  const envSiteUrlDefinition = createMockSettingDefinition({
+    key: "site-url",
+    is_env_setting: true,
+    env_name: "MB_SITE_URL",
+  });
   setupSettingsEndpoints(
-    Object.entries(settings).map(([key, value]) =>
-      // Unjustified type cast. FIXME
-      createMockSettingDefinition({ key: key as SettingKey, value }),
-    ),
+    isSiteUrlFromEnv
+      ? settingDefinitions.map((definition) =>
+          definition.key === "site-url" ? envSiteUrlDefinition : definition,
+        )
+      : settingDefinitions,
   );
 
   setupUserKeyValueEndpoints({
@@ -128,6 +140,15 @@ describe("GeneralSettingsPage", () => {
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
+  });
+
+  it("should render when the site URL is set by an environment variable (metabase#14900)", async () => {
+    await setup({ isSiteUrlFromEnv: true });
+
+    expect(screen.getByText("Site name")).toBeInTheDocument();
+    expect(screen.getByText("Site url")).toBeInTheDocument();
+    expect(await screen.findByText(/MB_SITE_URL/)).toBeInTheDocument();
+    expect(screen.queryByText(/a little lost/)).not.toBeInTheDocument();
   });
 
   it("should make only 5 api calls", async () => {

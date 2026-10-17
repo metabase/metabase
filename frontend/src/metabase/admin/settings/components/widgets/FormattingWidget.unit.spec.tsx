@@ -174,6 +174,27 @@ describe("FormattingWidget", () => {
     });
   });
 
+  it("should save the year-first date style (metabase#11394)", async () => {
+    await setup();
+
+    await userEvent.click(await screen.findByLabelText("Date style"));
+    await userEvent.click(await screen.findByText("2018/1/31"));
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+    });
+
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/custom-formatting");
+    expect(body).toEqual({
+      value: expect.objectContaining({
+        "type/Temporal": expect.objectContaining({ date_style: "YYYY/M/D" }),
+      }),
+    });
+    expect(await screen.findByDisplayValue("2018/1/31")).toBeInTheDocument();
+  });
+
   it("should provide expected number separators (#61854)", async () => {
     await setup();
 

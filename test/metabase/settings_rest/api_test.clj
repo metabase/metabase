@@ -222,6 +222,12 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/bad-setting" {:value "NICE!"}))))))
 
+(deftest update-site-url-invalid-test
+  (testing "PUT /api/setting/site-url with an invalid URL returns a 500 with the validation message as `cause` (#4506)"
+    (mt/discard-setting-changes [site-url]
+      (let [response (mt/user-http-request :crowberto :put 500 "setting/site-url" {:value "localhost:3000foo"})]
+        (is (str/starts-with? (:cause response) "Invalid site URL"))))))
+
 (deftest update-setting-without-premium-feature-test
   (testing "PUT /api/setting/:key for a setting whose premium feature is unavailable returns a 402, not a 500"
     (mt/with-premium-features #{}

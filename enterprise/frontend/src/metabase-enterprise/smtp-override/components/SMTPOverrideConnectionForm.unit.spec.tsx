@@ -7,7 +7,7 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   EnterpriseSettingKey,
   SettingDefinition,
@@ -208,5 +208,34 @@ describe("SMTPOverrideConnectionForm", () => {
 
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);
+  });
+
+  it("should reset the form to empty values and secure defaults after clearing", async () => {
+    await setup({});
+
+    await userEvent.click(screen.getByDisplayValue("587"));
+    await userEvent.click(screen.getByLabelText("TLS"));
+    expect(screen.getByDisplayValue("587")).toBeChecked();
+    expect(screen.getByLabelText("TLS")).toBeChecked();
+
+    setupPropertiesEndpoints(
+      createMockSettings({
+        "email-smtp-host-override": null,
+        "email-smtp-port-override": null,
+        "email-smtp-security-override": null,
+        "email-smtp-username-override": null,
+        "email-smtp-password-override": null,
+      }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/SMTP Host/i)).toHaveDisplayValue("");
+    });
+    expect(await findRequests("DELETE")).toHaveLength(1);
+    expect(screen.getByDisplayValue("465")).toBeChecked();
+    expect(screen.getByLabelText("SSL")).toBeChecked();
+    expect(screen.getByLabelText(/SMTP Username/i)).toHaveDisplayValue("");
+    expect(screen.getByLabelText(/SMTP Password/i)).toHaveDisplayValue("");
   });
 });

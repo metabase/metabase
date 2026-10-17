@@ -19,12 +19,14 @@ interface SetupOptions {
   configured?: boolean;
   isValid?: boolean;
   bugReporting?: boolean;
+  isTokenInvalid?: boolean;
 }
 
 const setup = async ({
   configured = false,
   isValid = true,
   bugReporting = false,
+  isTokenInvalid = false,
 }: SetupOptions = {}) => {
   const settings = createMockSettings({
     "slack-app-token": configured ? "xoxb-test-token" : null,
@@ -34,7 +36,7 @@ const setup = async ({
 
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
-  setupSlackSettingsEndpoint();
+  setupSlackSettingsEndpoint({ isTokenInvalid });
   setupSlackManifestEndpoint();
   setupSlackAppInfoEndpoint();
 
@@ -103,6 +105,19 @@ describe("SlackSetup", () => {
     expect(body).toEqual({
       "slack-app-token": "new-bot-token",
     });
+  });
+
+  it("should show the API error when the token is rejected", async () => {
+    await setup({ isTokenInvalid: true });
+
+    await userEvent.type(
+      await screen.findByLabelText("Slack bot user OAuth token"),
+      "xoxb",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    expect(await screen.findByText("invalid token")).toBeInTheDocument();
+    expect(screen.getByText("Invalid Slack token.")).toBeInTheDocument();
   });
 
   it("should show bug reporting channel if bug reporting is enabled", async () => {

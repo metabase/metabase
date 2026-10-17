@@ -79,6 +79,7 @@ describe("LocalizationSettingsPage", () => {
     await userEvent.clear(timezoneInput);
     await userEvent.type(timezoneInput, "Mount");
     await userEvent.click(await screen.findByText("US/Mountain"));
+    expect(timezoneInput).toHaveValue("US/Mountain");
     blur();
 
     const startOfWeekInput = screen.getByLabelText("First day of the week");

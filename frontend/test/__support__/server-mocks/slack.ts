@@ -7,8 +7,21 @@ export function setupSlackManifestEndpoint() {
   fetchMock.get("path:/api/slack/manifest", "manifest-content");
 }
 
-export function setupSlackSettingsEndpoint() {
-  fetchMock.put("path:/api/slack/settings", { status: 204 });
+export function setupSlackSettingsEndpoint({
+  isTokenInvalid = false,
+}: { isTokenInvalid?: boolean } = {}) {
+  fetchMock.put(
+    "path:/api/slack/settings",
+    isTokenInvalid
+      ? {
+          status: 400,
+          body: {
+            message: "Invalid Slack token.",
+            errors: { "slack-app-token": "invalid token" },
+          },
+        }
+      : { status: 204 },
+  );
 }
 
 export function setupSlackAppInfoEndpoint(appInfo?: Partial<SlackAppInfo>) {

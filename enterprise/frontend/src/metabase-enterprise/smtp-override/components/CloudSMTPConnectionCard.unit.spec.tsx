@@ -2,12 +2,13 @@ import userEvent from "@testing-library/user-event";
 
 import {
   findRequests,
+  setupEmailOverrideEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
@@ -16,6 +17,12 @@ import {
 } from "metabase-types/api/mocks";
 
 import { CloudSMTPConnectionCard } from "./CloudSMTPConnectionCard";
+
+// `metabase/analytics` is auto-mocked for every test (see `__support__/mocks`).
+// Reached via requireMock because the lint rule forbids importing it here.
+const { trackSimpleEvent: mockTrackSimpleEvent } = jest.requireMock<{
+  trackSimpleEvent: jest.Mock;
+}>("metabase/analytics");
 
 const setup = async (props: {
   cloudCustomSMTPFF?: boolean;
@@ -39,6 +46,7 @@ const setup = async (props: {
 
   setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
+  setupEmailOverrideEndpoints();
   setupSettingsEndpoints([
     createMockSettingDefinition({ key: "is-hosted?", value: props.hosted }),
     createMockSettingDefinition({
@@ -67,6 +75,10 @@ const setup = async (props: {
 };
 
 describe("CloudSMTPConnectionCard", () => {
+  beforeEach(() => {
+    mockTrackSimpleEvent.mockClear();
+  });
+
   it("should be Managed by Metabase if no custom smtp config", async () => {
     await setup({
       hosted: true,
@@ -146,5 +158,58 @@ describe("CloudSMTPConnectionCard", () => {
     expect(
       screen.queryByTestId("smtp-override-connection-form"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should track the setup click and a successful save, then show the custom server as enabled", async () => {
+    await setup({
+      hosted: true,
+      cloudCustomSMTPConfigured: false,
+      cloudSMTPEnabled: false,
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Set up a custom SMTP server" }),
+    );
+
+    expect(mockTrackSimpleEvent).toHaveBeenCalledTimes(1);
+    expect(mockTrackSimpleEvent).toHaveBeenCalledWith({
+      event: "custom_smtp_setup_clicked",
+      event_detail: "cloud",
+    });
+
+    const form = screen.getByTestId("smtp-override-connection-form");
+    await userEvent.type(
+      within(form).getByLabelText(/SMTP Host/i),
+      "localhost",
+    );
+    await userEvent.type(
+      within(form).getByLabelText(/SMTP Username/i),
+      "admin",
+    );
+    await userEvent.type(
+      within(form).getByLabelText(/SMTP Password/i),
+      "admin",
+    );
+
+    setupPropertiesEndpoints(
+      createMockSettings({
+        "email-smtp-host-override": "localhost",
+        "smtp-override-enabled": true,
+      }),
+    );
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Save changes" }),
+    );
+
+    const card = screen.getByTestId("cloud-smtp-connection-card");
+    expect(
+      await within(card).findByRole("button", { name: "Edit settings" }),
+    ).toBeInTheDocument();
+    expect(within(card).getByLabelText("Custom SMTP Server")).toBeChecked();
+    expect(mockTrackSimpleEvent).toHaveBeenCalledTimes(2);
+    expect(mockTrackSimpleEvent).toHaveBeenLastCalledWith({
+      event: "custom_smtp_setup_success",
+      event_detail: "cloud",
+    });
   });
 });
