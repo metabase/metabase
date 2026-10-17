@@ -69,7 +69,7 @@ function inRepo(target: string) {
 }
 
 /**
- * The fixture filesystem lives behind tasks rather than `cy.exec`/`cy.writeFile`
+ * The fixture filesystem lives behind tasks rather than `cy.writeFile`
  * so a spec changes an app in one round trip, and so nothing is composed into a
  * shell string.
  */

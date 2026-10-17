@@ -28,15 +28,13 @@ export const CUSTOM_VIZ_IDENTIFIER_4_SECURITY_COMPONENT =
 export const CUSTOM_VIZ_DISPLAY = `custom:${CUSTOM_VIZ_IDENTIFIER}` as const;
 
 /**
- * Compute the SHA-256 of a .tgz fixture on disk via `shasum`. The chip on the
+ * Compute the SHA-256 of a .tgz fixture on disk. The chip on the
  * plugin list shows the first 8 chars, so tests that assert on the chip read
  * the hash through this helper instead of hardcoding it (which would drift
  * silently when the fixture is regenerated).
  */
 export function getCustomVizFixtureHash(tgzPath: string) {
-  return cy
-    .exec(`shasum -a 256 ${tgzPath}`)
-    .then(({ stdout }) => stdout.split(" ")[0]);
+  return cy.task<string>("hashFile", { path: tgzPath });
 }
 
 // -- Intercept helpers --

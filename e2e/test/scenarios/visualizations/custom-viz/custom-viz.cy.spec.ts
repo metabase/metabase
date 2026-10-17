@@ -1554,20 +1554,27 @@ describe("admin > custom visualizations", () => {
       // Cypress never retries a failed `before all` hook, so a slow install
       // there fails the whole suite with no second attempt.
       cy.log("Build the SDK so we can use the repo-local CLI");
-      cy.exec(`mkdir -p ${tmpDir}`);
-      cy.exec(
-        `cd "${sdkDir}" && bun install --frozen-lockfile && bun run build`,
-        {
-          timeout: TIMEOUT,
-        },
+      cy.task("runCommand", { command: "mkdir", args: ["-p", tmpDir] });
+      cy.task(
+        "runCommand",
+        { command: "bun", args: ["install", "--frozen-lockfile"], cwd: sdkDir },
+        { timeout: TIMEOUT },
+      );
+      cy.task(
+        "runCommand",
+        { command: "bun", args: ["run", "build"], cwd: sdkDir },
+        { timeout: TIMEOUT },
       );
 
-      cy.exec(`rm -rf "${projectDir}"`, { timeout: TIMEOUT });
-      cy.exec(
-        `cd "${tmpDir}" && node "${cliPath}" init "${CUSTOM_VIZ_DEV_PROJECT_NAME}"`,
+      cy.task("removeDirectory", projectDir);
+      cy.task(
+        "runCommand",
         {
-          timeout: TIMEOUT,
+          command: "node",
+          args: [cliPath, "init", CUSTOM_VIZ_DEV_PROJECT_NAME],
+          cwd: tmpDir,
         },
+        { timeout: TIMEOUT },
       );
 
       // Use current version of the SDK in the plugin.
@@ -1588,7 +1595,11 @@ describe("admin > custom visualizations", () => {
         );
       });
 
-      cy.exec(`cd "${projectDir}" && bun install`, { timeout: TIMEOUT });
+      cy.task(
+        "runCommand",
+        { command: "bun", args: ["install"], cwd: projectDir },
+        { timeout: TIMEOUT },
+      );
 
       cy.task<{ pid: number }>("startCustomVizDevServer", {
         cwd: projectDir,

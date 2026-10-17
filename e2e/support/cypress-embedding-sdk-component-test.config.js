@@ -7,7 +7,6 @@ const embeddingSdkComponentTestConfig = {
   defaultCommandTimeout: 10000,
   requestTimeout: 10000,
   video: process.env["CYPRESS_VIDEO"] !== "false",
-  experimentalMemoryManagement: true,
   numTestsKeptInMemory: 1,
   specPattern: "e2e/test-component/scenarios/**/*.cy.spec.tsx",
   indexHtmlFile: "e2e/support/component-index.html",

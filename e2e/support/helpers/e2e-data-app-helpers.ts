@@ -28,6 +28,7 @@ import {
   copySyncedCollectionFixture,
   setupGitSync,
 } from "./e2e-remote-sync-helpers";
+import type { RunCommandResult } from "./e2e-shell-tasks";
 
 export const DATA_APP_NAME = "kitchen-sink";
 export const DATA_APP_DISPLAY_NAME = "Kitchen Sink";
@@ -581,10 +582,13 @@ export function declareDataAppQueries(
  * reaches it through `env` (see `dataAppCliEnv`).
  */
 export function runDataAppCli(command: string, env?: Record<string, string>) {
-  return cy.exec(
-    `cd "${dataAppHostAppRoot()}" && ./node_modules/.bin/embedding-sdk-react data-apps ${command}`,
-    { failOnNonZeroExit: false, timeout: 60_000, env },
-  );
+  return cy.task<RunCommandResult>("runCommand", {
+    command: "./node_modules/.bin/embedding-sdk-react",
+    args: ["data-apps", command],
+    cwd: dataAppHostAppRoot(),
+    env,
+    failOnNonZeroExit: false,
+  });
 }
 
 /**
@@ -767,10 +771,16 @@ export function publishDataAppExpectingRefusal(
  * collection files don't back its definitions.
  */
 export function buildDataAppHostApp() {
-  return cy.exec(`cd "${dataAppHostAppRoot()}" && npm run build`, {
-    failOnNonZeroExit: false,
-    timeout: 180_000,
-  });
+  return cy.task<RunCommandResult>(
+    "runCommand",
+    {
+      command: "npm",
+      args: ["run", "build"],
+      cwd: dataAppHostAppRoot(),
+      failOnNonZeroExit: false,
+    },
+    { timeout: 180_000 },
+  );
 }
 
 /** Create a group and assign it to a data app by slug. */

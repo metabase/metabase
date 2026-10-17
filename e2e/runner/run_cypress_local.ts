@@ -94,7 +94,7 @@ const init = async () => {
     await runCypress({
       configFile: "e2e/support/cypress-snapshots.config.js",
       ...(options.CYPRESS_TESTING_TYPE === "component" && {
-        env: { grepTags: "-@external" }, // component tests do not need QA DB snapshots for now
+        expose: { grepTags: "-@external" }, // component tests do not need QA DB snapshots for now
       }),
     });
     process.env.CYPRESS_GUI = `${options.CYPRESS_GUI}`;

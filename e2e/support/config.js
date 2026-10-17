@@ -44,6 +44,11 @@ import {
   startMockOidcServer,
   stopMockOidcServer,
 } from "./helpers/e2e-mock-oidc-tasks";
+import {
+  hashFile,
+  isUrlReachable,
+  runCommand,
+} from "./helpers/e2e-shell-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const coverageTask = require("@cypress/code-coverage/task");
@@ -201,7 +206,8 @@ const defaultConfig = {
     CI: isCI,
     IS_ENTERPRISE: isEnterprise,
     MB_EDITION: process.env["MB_EDITION"],
-    ENABLE_NETWORK_THROTTLING: !!process.env["ENABLE_NETWORK_THROTTLING"],
+    ENABLE_NETWORK_THROTTLING:
+      process.env["ENABLE_NETWORK_THROTTLING"] === "true",
     SNOWPLOW_MICRO_URL: snowplowMicroUrl,
     CLIENT_PORT: process.env["CLIENT_PORT"],
     feHealthcheck: process.env["FE_HEALTHCHECK_URL"]
@@ -211,8 +217,6 @@ const defaultConfig = {
     // uninstrumented runs, instead of logging a warning on every spec.
     coverage: isInstrumented,
   },
-
-  allowCypressEnv: false,
 
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(cypressOn, config) {
@@ -314,6 +318,9 @@ const defaultConfig = {
       buildDataApp,
       writeDataAppFiles,
       removeDataAppPaths,
+      runCommand,
+      hashFile,
+      isUrlReachable,
       ...perTestCaptureTasks,
     });
 

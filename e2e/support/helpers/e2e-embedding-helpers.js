@@ -94,41 +94,41 @@ export function getEmbeddedPageUrl(
     qs,
   } = {},
 ) {
-  const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
-
   const payloadWithExpiration = {
     ...payload,
     exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
   };
 
-  const stringifiedPayload = JSON.stringify(payloadWithExpiration);
-  const signTransaction = `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`;
+  return cy
+    .task("signJwt", {
+      payload: payloadWithExpiration,
+      secret: METABASE_SECRET_KEY,
+    })
+    .then((tokenizedQuery) => {
+      const embeddableObject = getEmbeddableObject(payload);
+      const hiddenFilters = getHiddenFilters(hideFilters);
+      const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
+      const urlHash = getHash(
+        {
+          ...pageStyle,
+          ...(locale && { locale }),
+          ...(font && { font }),
+          ...(theme && { theme }),
+        },
+        hiddenFilters,
+      );
 
-  return cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
-    const embeddableObject = getEmbeddableObject(payload);
-    const hiddenFilters = getHiddenFilters(hideFilters);
-    const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
-    const urlHash = getHash(
-      {
-        ...pageStyle,
-        ...(locale && { locale }),
-        ...(font && { font }),
-        ...(theme && { theme }),
-      },
-      hiddenFilters,
-    );
-
-    return {
-      url: urlRoot,
-      qs: { ...setFilters, ...qs },
-      onBeforeLoad: (window) => {
-        onBeforeLoad?.(window);
-        if (urlHash) {
-          window.location.hash = urlHash;
-        }
-      },
-    };
-  });
+      return {
+        url: urlRoot,
+        qs: { ...setFilters, ...qs },
+        onBeforeLoad: (window) => {
+          onBeforeLoad?.(window);
+          if (urlHash) {
+            window.location.hash = urlHash;
+          }
+        },
+      };
+    });
 
   /**
    * Construct a hidden filters object from the list of filters we want to hide

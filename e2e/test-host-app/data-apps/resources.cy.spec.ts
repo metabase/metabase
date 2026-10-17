@@ -263,7 +263,7 @@ describe("Embedding SDK: data-app resources (queries)", () => {
   });
 
   describe("the build guard", () => {
-    /** `cy.exec` reports the command's output; vite prints this only on success. */
+    /** The build reports its output; vite prints this only on success. */
     const expectBuildToSucceed = () =>
       H.buildDataAppHostApp().should((result) => {
         expect(`${result.stdout}${result.stderr}`).to.contain("built in");
