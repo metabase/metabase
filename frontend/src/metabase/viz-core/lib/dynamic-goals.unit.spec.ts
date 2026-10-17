@@ -13,6 +13,7 @@ import {
 import type { GoalCard } from "../types";
 
 import {
+  getGoalErrorMessage,
   getGoalSegmentBounds,
   getGoalValues,
   getNumericGoalValue,
@@ -480,6 +481,38 @@ describe("resolveOpenEndedGoalSegments", () => {
     expect(
       resolveOpenEndedGoalSegments(DATA, [{ min: 0, max: null }], getColor),
     ).toEqual([{ min: 0, max: null, color: "#123456", label: undefined }]);
+  });
+});
+
+describe("getGoalErrorMessage", () => {
+  const REF = { type: "card", id: 9, column: "goal" } as const;
+
+  it("shows the server's explanation of a failed query", () => {
+    expect(
+      getGoalErrorMessage({ ...REF, reason: "query-failed", message: "boom" }),
+    ).toBe("boom");
+  });
+
+  it("falls back to a generic message for a failed query", () => {
+    expect(getGoalErrorMessage({ ...REF, reason: "query-failed" })).toBe(
+      "Couldn't load this value",
+    );
+  });
+
+  it("explains a missing column regardless of the server message", () => {
+    expect(
+      getGoalErrorMessage({
+        ...REF,
+        reason: "column-not-found",
+        message: "boom",
+      }),
+    ).toBe("This column no longer exists");
+  });
+
+  it("explains a non-numeric value regardless of the server message", () => {
+    expect(
+      getGoalErrorMessage({ ...REF, reason: "not-a-number", message: "boom" }),
+    ).toBe("This value isn't a number");
   });
 });
 

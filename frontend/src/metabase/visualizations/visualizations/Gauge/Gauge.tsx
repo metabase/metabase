@@ -4,8 +4,15 @@ import * as d3 from "d3";
 import { useCallback, useEffect, useRef } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { Box } from "metabase/ui";
+import { getFontFamilyValue } from "metabase/utils/fonts";
+import { measureTextWidth } from "metabase/utils/measure-text";
 import { formatValue } from "metabase/value-formatting";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
+import {
+  GOAL_WARNING_ICON_SIZE,
+  GoalWarningIcon,
+} from "metabase/visualizations/components/GoalWarning";
 import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { getGoalSegmentBounds, resolveGoalSegments } from "metabase/viz-core";
@@ -18,6 +25,7 @@ import {
   ARC_DEGREES,
   FONT_SIZE_CENTER_LABEL_MAX,
   FONT_SIZE_CENTER_LABEL_MIN,
+  FONT_SIZE_SEGMENT_LABEL,
   INNER_RADIUS,
   LABEL_OFFSET_PERCENT,
   MAX_WIDTH,
@@ -30,12 +38,21 @@ import {
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange } from "./types";
-import { getSegmentsRange, getValue, radians } from "./utils";
+import {
+  getGaugeWarnings,
+  getLabelBox,
+  getSegmentsRange,
+  getValue,
+  getWarningRadiusClearOfLabels,
+  radians,
+} from "./utils";
 
 function GaugeComponent({
   className,
+  fontFamily,
   isSettings,
   height: heightProp,
+  isQueryBuilder,
   series: [{ card, data }],
   settings,
   visualizationIsClickable,
@@ -78,6 +95,10 @@ function GaugeComponent({
   const gaugeRange = settings["gauge.range"];
   const range: number[] =
     getSegmentsRange(segments) ?? (isGaugeRange(gaugeRange) ? gaugeRange : []);
+  const warnings =
+    isQueryBuilder && goalData.status === "resolved" && isGaugeRange(range)
+      ? getGaugeWarnings(goalData.results, range)
+      : [];
 
   // value to angle in radians, clamped
   const angle = d3
@@ -115,7 +136,42 @@ function GaugeComponent({
 
   // expand the width to fill available space so that labels don't overflow as often
   const expandWidthFactor = width / svgWidth;
+  const svgLeft =
+    (width - svgWidth) / 2 -
+    // shift to the left the
+    (svgWidth * expandWidthFactor - svgWidth) / 2;
+  const svgTop = (height - svgHeight) / 2;
+  // pixels per viewBox unit
+  const svgScale = svgWidth / viewBoxWidth;
+  const arcCenterX = (viewBoxWidth * expandWidthFactor) / 2;
+  const arcCenterY = 50;
   const columnSettings = column && settings.column && settings.column(column);
+  const labelRadius = OUTER_RADIUS * LABEL_OFFSET_PERCENT;
+  const warningIconSize = GOAL_WARNING_ICON_SIZE / svgScale;
+  // measured at the rendered size, then converted back to viewBox units
+  const measureLabelWidth = (text: string) =>
+    measureTextWidth(text, {
+      family: getFontFamilyValue(fontFamily),
+      size: FONT_SIZE_SEGMENT_LABEL * svgScale,
+    }) / svgScale;
+  const labelBoxes =
+    showLabels && warnings.length > 0
+      ? [
+          ...numberLabels.map((value) => ({
+            value,
+            text: String(formatValue(value, columnSettings)),
+          })),
+          ...textLabels.map(({ label, value }) => ({
+            value,
+            text: label ?? "",
+          })),
+        ].map(({ value, text }) =>
+          getLabelBox(
+            valuePosition(value, labelRadius),
+            measureLabelWidth(text),
+          ),
+        )
+      : [];
 
   const updateLabelSize = useCallback(() => {
     const label = labelRef.current;
@@ -158,21 +214,14 @@ function GaugeComponent({
         style={{
           width: svgWidth * expandWidthFactor,
           height: svgHeight,
-          top: (height - svgHeight) / 2,
-          left:
-            (width - svgWidth) / 2 -
-            // shift to the left the
-            (svgWidth * expandWidthFactor - svgWidth) / 2,
+          top: svgTop,
+          left: svgLeft,
         }}
       >
         <svg
           viewBox={`0 0 ${viewBoxWidth * expandWidthFactor} ${viewBoxHeight}`}
         >
-          <g
-            transform={`translate(${
-              (viewBoxWidth * expandWidthFactor) / 2
-            },50)`}
-          >
+          <g transform={`translate(${arcCenterX},${arcCenterY})`}>
             {/* BACKGROUND ARC */}
             <GaugeArc
               start={angle(range[0])}
@@ -249,6 +298,30 @@ function GaugeComponent({
           </g>
         </svg>
       </div>
+      {warnings.map(({ value, errors }, index) => {
+        // labels grow outward from the label radius, so the icon's inner edge sits there too
+        const [x, y] = valuePosition(
+          value,
+          getWarningRadiusClearOfLabels(
+            valuePosition(value, 1),
+            labelRadius + warningIconSize / 2,
+            warningIconSize,
+            labelBoxes,
+          ),
+        );
+
+        return (
+          <Box
+            key={index}
+            pos="absolute"
+            left={svgLeft + (arcCenterX + x) * svgScale}
+            top={svgTop + (arcCenterY + y) * svgScale}
+            style={{ transform: "translate(-50%, -50%)" }}
+          >
+            <GoalWarningIcon errors={errors} source="color-ranges" />
+          </Box>
+        );
+      })}
     </div>
   );
 }

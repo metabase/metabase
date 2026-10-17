@@ -8,8 +8,10 @@ import { assignLazily } from "metabase/utils/merge-lazily";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
+import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
 import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { getGoalErrors } from "metabase/viz-core";
 
 import { PROGRESS_CHART_DEFINITION } from "./definition";
 import {
@@ -31,6 +33,7 @@ function ProgressComponent(props: VisualizationProps) {
   const {
     className,
     isMobile,
+    isQueryBuilder,
     series: [{ card, data }],
     settings,
     onVisualizationClick,
@@ -58,6 +61,8 @@ function ProgressComponent(props: VisualizationProps) {
     : -1;
 
   const value = extractProgressValue(rows, columnIndex);
+  const goalErrors =
+    goalData.status === "resolved" ? getGoalErrors(goalData.results) : [];
   const goal =
     goalData.status === "resolved"
       ? getGoalValue(goalSetting, goalData.data)
@@ -220,11 +225,14 @@ function ProgressComponent(props: VisualizationProps) {
         </div>
         <div className={CS.mt1}>
           <span className={CS.floatLeft}>0</span>
-          <span className={CS.floatRight}>
+          <Flex className={CS.floatRight} align="center" gap="xs">
+            {isQueryBuilder && goalErrors.length > 0 && (
+              <GoalWarningIcon errors={goalErrors} source="goal" />
+            )}
             {hasValidGoal
               ? t`Goal ${formatValue(goal, columnSettings)}`
               : t`Goal: Not set`}
-          </span>
+          </Flex>
         </div>
       </div>
     </div>

@@ -342,12 +342,17 @@ describe("Scalar", () => {
 describe("Scalar conditional colors", () => {
   const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
 
-  function setup(series: Series, segments: ScalarSegment[]) {
+  function setup(
+    series: Series,
+    segments: ScalarSegment[],
+    { isQueryBuilder = false } = {},
+  ) {
     renderWithProviders(
       <Scalar
         {...mockedProps}
         actionButtons={<button>Download</button>}
         height={200}
+        isQueryBuilder={isQueryBuilder}
         rawSeries={series}
         series={series}
         settings={{ ...settings, "scalar.segments": segments }}
@@ -416,41 +421,75 @@ describe("Scalar conditional colors", () => {
     expect(getValueColor()).toBe("green");
   });
 
-  it("renders the value when a self-column range's cell is null", () => {
-    setup(createScalarSeries({ rows: [[null]] }), [
-      { min: "count", max: null, color: "green", label: "above goal" },
-    ]);
-
-    expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
-  });
-
-  it("renders the value when a self-column range's question returned no rows", () => {
-    setup(createScalarSeries({ rows: [] }), [
-      { min: "count", max: null, color: "green", label: "above goal" },
-    ]);
-
-    expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
-  });
-
-  it("colors the value as if a bound that failed to load were unset", () => {
+  it("renders the value with a warning in the query builder when a self-column range's cell is null", async () => {
     setup(
-      createScalarSeries({
-        referenced_entities: createMockFailedReferencedEntitiesResults({
-          id: GOAL_REF.id,
-        }),
-      }),
-      [
-        { min: 10000, max: GOAL_REF, color: "green", label: "high" },
-        { min: GOAL_REF, max: null, color: "red", label: "low" },
-      ],
+      createScalarSeries({ rows: [[null]] }),
+      [{ min: "count", max: null, color: "green", label: "above goal" }],
+      { isQueryBuilder: true },
     );
+
+    expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
+
+    await userEvent.hover(screen.getByLabelText("Goal warning"));
+    expect(
+      await screen.findByText("This value isn't a number"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the value with a warning in the query builder when a self-column range's question returned no rows", async () => {
+    setup(
+      createScalarSeries({ rows: [] }),
+      [{ min: "count", max: null, color: "green", label: "above goal" }],
+      { isQueryBuilder: true },
+    );
+
+    expect(screen.getByTestId("scalar-value")).toBeInTheDocument();
+
+    await userEvent.hover(screen.getByLabelText("Goal warning"));
+    expect(
+      await screen.findByText("This value isn't a number"),
+    ).toBeInTheDocument();
+  });
+
+  it("colors the value as if a bound that failed to load were unset, with a warning in the query builder", async () => {
+    setup(createPartlyFailedScalarSeries(), PARTLY_FAILED_SEGMENTS, {
+      isQueryBuilder: true,
+    });
 
     expect(screen.getByText("12,345")).toBeInTheDocument();
     expect(getValueColor()).toBe("green");
     expect(screen.getByTestId("scalar-title")).toHaveTextContent(
       "Scalar Title",
     );
+
+    await userEvent.hover(screen.getByLabelText("Goal warning"));
+    expect(
+      await screen.findByText("Couldn't get some color range values"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("boom")).toHaveLength(2);
   });
+
+  it("colors the value as if a bound that failed to load were unset, without a warning outside the query builder", () => {
+    setup(createPartlyFailedScalarSeries(), PARTLY_FAILED_SEGMENTS);
+
+    expect(getValueColor()).toBe("green");
+    expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
+  });
+
+  // a bound that failed to load counts as unset, like on a range left open
+  const PARTLY_FAILED_SEGMENTS: ScalarSegment[] = [
+    { min: 10000, max: GOAL_REF, color: "green", label: "high" },
+    { min: GOAL_REF, max: null, color: "red", label: "low" },
+  ];
+
+  function createPartlyFailedScalarSeries(): Series {
+    return createScalarSeries({
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        id: GOAL_REF.id,
+        error: "boom",
+      }),
+    });
+  }
 
   function createScalarSeries(data: Partial<DatasetData> = {}): Series {
     return [

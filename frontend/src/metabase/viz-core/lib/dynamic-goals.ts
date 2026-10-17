@@ -28,6 +28,7 @@ import type {
   GoalData,
   GoalRefError,
   GoalValueResult,
+  ReferencedEntityKind,
   ResolvedGoalSegment,
   ResolvedOpenEndedGoalSegment,
 } from "../types";
@@ -184,6 +185,32 @@ export function isDynamicGoalSetting(
 ): boolean {
   return getDynamicGoalSettingKeys(display).includes(key);
 }
+
+export const getGoalErrorMessage = (
+  { reason, message }: GoalRefError,
+  sourceKind?: ReferencedEntityKind,
+) =>
+  match(reason)
+    .with("query-failed", () => message ?? t`Couldn't load this value`)
+    .with("too-many-rows", () => getTooManyRowsMessage(sourceKind))
+    .with("column-not-found", () => t`This column no longer exists`)
+    .with("not-a-number", () => t`This value isn't a number`)
+    .exhaustive();
+
+const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>
+  match(sourceKind)
+    .with(
+      "question",
+      () => t`The question's result must be a single value or row.`,
+    )
+    .with("model", () => t`The model's result must be a single value or row.`)
+    .with("metric", () => t`The metric's result must be a single value or row.`)
+    .with(
+      "measure",
+      () => t`The measure's result must be a single value or row.`,
+    )
+    .with(undefined, () => t`The result must be a single value or row.`)
+    .exhaustive();
 
 function isGoalSettingActive(
   settings: VisualizationSettings,

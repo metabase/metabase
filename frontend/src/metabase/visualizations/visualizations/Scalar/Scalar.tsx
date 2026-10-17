@@ -4,6 +4,7 @@ import _ from "underscore";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
+import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
 import {
   ScalarCardShell,
   useScalarCardShell,
@@ -23,6 +24,7 @@ import type {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   type ComputedVisualizationSettings,
+  getGoalErrors,
   getGoalSegmentBounds,
   resolveOpenEndedGoalSegments,
 } from "metabase/viz-core";
@@ -56,6 +58,7 @@ function ScalarComponent(
     onVisualizationClick,
     rawSeries,
     actionButtons,
+    isQueryBuilder,
   } = props;
   const { cols, rows } = data;
 
@@ -122,6 +125,7 @@ function ScalarComponent(
   };
 
   const segments = resolveOpenEndedGoalSegments(goalData.data, scalarSegments);
+  const goalErrors = getGoalErrors(goalData.results);
   const color = getColor(value, segments);
   const tooltipContent = getTooltipContent(segments, formatOptions);
 
@@ -164,7 +168,11 @@ function ScalarComponent(
       actionButtons={actionButtons}
       innerTooltipHoverHandlers={innerTooltipHoverHandlers}
     >
-      <Box maw="100%" {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}>
+      <Box
+        maw="100%"
+        pos="relative"
+        {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
+      >
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
           tooltip={fullScalarValue}
@@ -199,6 +207,11 @@ function ScalarComponent(
             </Stack>
           </Tooltip>
         </ScalarValueContainer>
+        {isQueryBuilder && goalErrors.length > 0 && (
+          <Box pos="absolute" top={0} left="100%" ml="xs">
+            <GoalWarningIcon errors={goalErrors} source="color-ranges" />
+          </Box>
+        )}
       </Box>
       {titleElement}
     </ScalarCardShell>

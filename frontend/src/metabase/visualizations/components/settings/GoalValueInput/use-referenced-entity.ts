@@ -2,13 +2,10 @@ import { useMemo } from "react";
 
 import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
 import * as Urls from "metabase/urls";
+import type { ReferencedEntityKind } from "metabase/viz-core";
 import type { GoalForeignEntityRef } from "metabase-types/api";
 
-import type {
-  ColumnOption,
-  ReferencedEntityInfo,
-  ReferencedEntityKind,
-} from "./types";
+import type { ColumnOption, ReferencedEntityInfo } from "./types";
 import { getNumericColumnOptions } from "./utils";
 
 export function useReferencedEntity(

@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCardDataset } from "__support__/server-mocks";
@@ -34,9 +35,14 @@ const SETTINGS: VisualizationSettings = {
 type SetupOpts = {
   settings?: VisualizationSettings;
   referencedEntities?: ReferencedEntitiesResults;
+  isQueryBuilder?: boolean;
 };
 
-function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
+function setup({
+  settings = SETTINGS,
+  referencedEntities,
+  isQueryBuilder = false,
+}: SetupOpts = {}) {
   const series: RawSeries = [
     createMockSingleSeries(
       createMockCard({ display: "progress", visualization_settings: settings }),
@@ -50,7 +56,9 @@ function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
     ),
   ];
 
-  renderWithProviders(<Visualization rawSeries={series} />);
+  renderWithProviders(
+    <Visualization rawSeries={series} isQueryBuilder={isQueryBuilder} />,
+  );
 
   return { series };
 }
@@ -104,19 +112,36 @@ describe("progress chart dynamic goal", () => {
     expect(screen.queryByTestId("progress-bar")).not.toBeInTheDocument();
   });
 
-  it("measures against a goal of 0 when fetching the reference fails", async () => {
+  it("measures against a goal of 0 with a warning in the query builder when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
-    setup();
+    setup({ isQueryBuilder: true });
 
-    expect(await screen.findByText("Goal 0")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Goal warning")).toBeInTheDocument();
     expect(screen.getByText("50")).toBeInTheDocument();
+    expect(screen.getByText("Goal 0")).toBeInTheDocument();
     expect(screen.getByText("Goal exceeded")).toBeInTheDocument();
   });
 
-  it("measures against a goal of 0 when the dataset reports the reference as failed", async () => {
+  it("explains the failure in the warning", async () => {
+    setup({
+      referencedEntities: createMockFailedReferencedEntitiesResults({
+        error: "boom",
+      }),
+      isQueryBuilder: true,
+    });
+
+    await userEvent.hover(await screen.findByLabelText("Goal warning"));
+    expect(
+      await screen.findByText("Couldn't get the goal value"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("boom")).toBeInTheDocument();
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
+  it("measures against a goal of 0 without a warning outside the query builder", async () => {
     setup({ referencedEntities: createMockFailedReferencedEntitiesResults() });
 
     expect(await screen.findByText("Goal 0")).toBeInTheDocument();
-    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+    expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
   });
 });
