@@ -34,6 +34,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 ## Frontend
 
 - **[analytics-events](.claude/skills/analytics-events/SKILL.md)** - Add product analytics events to track user interactions
+- **[e2e-to-unit](.claude/skills/e2e-to-unit/SKILL.md)** - Triage a Cypress spec, move the frontend-only tests to Jest, and verify with aimed breaks that no coverage is lost
 
 **Important**: When working with frontend code, read [frontend/CLAUDE.md](frontend/CLAUDE.md) for project-specific guidelines on component preferences, styling, testing requirements, and available scripts.
 
