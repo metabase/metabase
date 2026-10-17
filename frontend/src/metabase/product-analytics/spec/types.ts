@@ -102,8 +102,9 @@ export interface PathsSpec {
 export interface HabitSpec {
   /** What counts as showing up. Undefined: any event does. */
   active?: FlagRef;
-  lookback: Duration;
   subPeriod: Extract<Period, "day" | "week">;
+  /** How many sub-periods the date range spans; undefined when open-ended. */
+  periods?: number;
   measure: "histogram" | "ratio" | "threshold";
   threshold: number;
 }

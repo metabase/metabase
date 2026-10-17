@@ -87,7 +87,6 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
         ...chrome,
         habit: {
           active: { flag: FLAG.active },
-          lookback: { value: 28, unit: "day" },
           subPeriod: "day",
           measure: "histogram",
           threshold: 5,

@@ -210,11 +210,19 @@ describe("analysis settings", () => {
   });
 
   it("hides granularity for analyses without a time grain", () => {
-    expect(setup({ kind: "habit" }).isHidden("granularity")).toBe(true);
+    expect(setup({ kind: "paths" }).isHidden("granularity")).toBe(true);
     expect(
-      setup({ kind: "habit", stored: { granularity: "day" } }).computed
+      setup({ kind: "paths", stored: { granularity: "day" } }).computed
         .granularity,
     ).toBe("week");
+  });
+
+  it("limits habit granularity to days and weeks", () => {
+    expect(setup({ kind: "habit" }).computed.granularity).toBe("day");
+    expect(
+      setup({ kind: "habit", stored: { granularity: "month" } }).computed
+        .granularity,
+    ).toBe("day");
   });
 
   it("only offers counting by columns the table has", () => {
@@ -249,15 +257,27 @@ describe("analysis settings", () => {
     expect(computed["columns.timestamp"]).toBe("ts");
   });
 
-  it("derives the habit threshold default from the sub-period", () => {
+  it("derives the habit threshold default from the granularity", () => {
     const { computed, isHidden } = setup({
       kind: "habit",
-      stored: { "habit.sub_period": "week", "habit.measure": "threshold" },
+      stored: { granularity: "week", "habit.measure": "threshold" },
     });
 
     expect(computed["habit.threshold"]).toBe(2);
     expect(isHidden("habit.threshold")).toBe(false);
     expect(setup({ kind: "habit" }).isHidden("habit.threshold")).toBe(true);
+  });
+
+  it("counts habit sub-periods over the date range", () => {
+    const { specResult } = setup({
+      kind: "habit",
+      stored: { granularity: "week", date_range: "past4weeks" },
+    });
+
+    expect(getReadySpec(specResult).habit).toMatchObject({
+      subPeriod: "week",
+      periods: 4,
+    });
   });
 
   it("follows cohorts for as many periods as the date range spans", () => {

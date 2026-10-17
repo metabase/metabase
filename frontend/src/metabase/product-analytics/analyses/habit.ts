@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
-import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
+import { countPeriodsInDateRange } from "../date-range";
 import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
+import type { Granularity, HabitSpec } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 
@@ -14,7 +15,6 @@ import {
   getEventDefinitionProps,
   isOneOf,
   isOptionalEventDefinition,
-  isPositiveDuration,
   isPositiveInteger,
   ready,
 } from "./setting-helpers";
@@ -24,10 +24,10 @@ import type {
   HabitSettings,
 } from "./types";
 
-const SUB_PERIODS: readonly HabitSettings["habit.sub_period"][] = [
-  "day",
-  "week",
-];
+/** The toolbar's granularity is the sub-period people are counted active in. */
+const toSubPeriod = (granularity: Granularity): HabitSpec["subPeriod"] =>
+  granularity === "week" ? "week" : "day";
+
 const MEASURES: readonly HabitSettings["habit.measure"][] = [
   "histogram",
   "ratio",
@@ -35,7 +35,9 @@ const MEASURES: readonly HabitSettings["habit.measure"][] = [
 ];
 
 const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
-  ...commonSettings({ granularity: null }),
+  ...commonSettings({
+    granularity: { units: ["day", "week"], defaultUnit: "day" },
+  }),
   "habit.active": withWidgetProps({
     getTitle: () => t`What event counts as showing up?`,
     getSection: () => "setup",
@@ -47,27 +49,6 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
       emptyLabel: t`Any action or event`,
     }),
   }),
-  "habit.lookback": {
-    getTitle: () => t`Look back`,
-    getSection: () => "setup",
-    widget: DurationWidget,
-    getDefault: () => ({ value: 28, unit: "day" }),
-    isValid: (value) => isPositiveDuration(value),
-    getProps: () => ({ units: ["day", "week"] }),
-  },
-  "habit.sub_period": {
-    getTitle: () => t`Count active`,
-    getSection: () => "setup",
-    widget: "segmentedControl",
-    getDefault: () => "day",
-    isValid: (value) => isOneOf(SUB_PERIODS, value),
-    getProps: () => ({
-      options: [
-        { name: t`Days`, value: "day" },
-        { name: t`Weeks`, value: "week" },
-      ],
-    }),
-  },
   "habit.measure": {
     getTitle: () => t`Measure`,
     getSection: () => "setup",
@@ -87,11 +68,11 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
     getSection: () => "setup",
     widget: NumberStepperWidget,
     getDefault: (_context, settings) =>
-      settings["habit.sub_period"] === "week" ? 2 : 5,
+      toSubPeriod(settings.granularity ?? "day") === "week" ? 2 : 5,
     isValid: (value) => isPositiveInteger(value),
     getHidden: (_context, settings) =>
       settings["habit.measure"] !== "threshold",
-    readDependencies: ["habit.measure", "habit.sub_period"],
+    readDependencies: ["habit.measure", "granularity"],
   },
 };
 
@@ -109,13 +90,14 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
   settings: SETTINGS,
   toSpec: (settings, events) => {
     const active = settings["habit.active"];
+    const subPeriod = toSubPeriod(settings.granularity);
     return ready({
       ...getCommonSpec("habit", settings),
       habit: {
         // Empty means any event counts as showing up.
         active: active === null ? undefined : { flag: events.flagFor(active) },
-        lookback: settings["habit.lookback"],
-        subPeriod: settings["habit.sub_period"],
+        subPeriod,
+        periods: countPeriodsInDateRange(settings.date_range, subPeriod),
         measure: settings["habit.measure"],
         threshold: settings["habit.threshold"],
       },
@@ -161,7 +143,7 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         if (periods === null) {
           return null;
         }
-        return settings["habit.sub_period"] === "day"
+        return toSubPeriod(settings.granularity) === "day"
           ? t`Active on ${periods} different days`
           : t`Active in ${periods} different weeks`;
       }
