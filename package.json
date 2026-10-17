@@ -479,7 +479,7 @@
     "lint-config-update": "node frontend/lint/update-recommended-rules.mjs && oxfmt frontend/lint/recommended-rules.json frontend/lint/oxlint/rule-defaults.json",
     "module-boundaries": "eslint --config eslint.config.module-boundaries.mjs 'frontend/src/**/*.{ts,tsx}' 'enterprise/frontend/src/**/*.{ts,tsx}'",
     "lint-format": "bun install && bun lint-format-pure",
-    "lint-format-pure": "oxfmt --check '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'",
+    "lint-format-pure": "oxfmt --check '{frontend,enterprise/frontend,e2e,metaplow}/**/*.{js,jsx,ts,tsx,css}'",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
     "postinstall": "if [ -z \"$CI\" ]; then patch-package; fi",
     "precommit": "lint-staged",
