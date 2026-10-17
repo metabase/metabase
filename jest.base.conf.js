@@ -55,7 +55,8 @@ const baseConfig = {
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     // The real catalogues are a build artifact, so tests resolve a small fixture
     // per locale instead.
-    "^locales/(.*)\\.json$": "<rootDir>/frontend/test/__mocks__/locales/$1.json",
+    "^locales/(.*)\\.json$":
+      "<rootDir>/frontend/test/__mocks__/locales/$1.json",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.tsx",
     "csv-parse/browser/esm/sync":
@@ -109,6 +110,9 @@ const baseConfig = {
     "<rootDir>/.*/__mocks__",
     "<rootDir>/enterprise/frontend/src/custom-viz",
   ],
+  // The node:test runner keeps its caches and each worker's files there, and
+  // in watch mode a change there would start the next run.
+  watchPathIgnorePatterns: ["<rootDir>/node_modules/\\.cache/"],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js",
