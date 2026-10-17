@@ -50,7 +50,8 @@
                         {:path path :entity entity}))
         problems (data-apps/problems files)]
     (when (seq problems)
-      (throw (ex-info (str/join "\n" (cons "Invalid data app files:" (map #(str "- " (:message %)) problems)))
+      (throw (ex-info (str/join " " (map (fn [{:keys [file message]}] (format "Invalid data app file %s: %s" file message))
+                                         problems))
                       {:files (mapv :file problems) :error ::invalid-data-app-files})))
     (doseq [{:keys [file message]} (data-apps/warnings files)]
       (log/warnf "Data app file %s: %s" file message))))
@@ -174,7 +175,9 @@
       (try
         (let [dir (subs path 0 (inc (or (str/last-index-of path "/") -1)))]
           (serialization/read-resources (ingest-content content)
-                                        #(source.p/read-file snapshot (str dir %))))
+                                        (last (str/split dir #"/"))
+                                        #(source.p/read-file snapshot (str dir %))
+                                        #(source.p/read-bytes snapshot (str dir %))))
         (catch Exception e
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))))
 

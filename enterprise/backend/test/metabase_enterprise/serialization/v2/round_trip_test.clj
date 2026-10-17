@@ -43,7 +43,8 @@
   (:import
    (java.io File)
    (java.nio.file Files Path StandardCopyOption)
-   (java.nio.file.attribute FileAttribute)))
+   (java.nio.file.attribute FileAttribute)
+   (java.util Arrays)))
 
 (set! *warn-on-reflection* true)
 
@@ -102,12 +103,16 @@
     diff))
 
 (defn compare-files
-  "Test for differences between two YAML files. Ignores some keys and some key ordering."
-  [file1 file2]
-  (->> (data/diff (read-yaml file1)
-                  (read-yaml file2))
-       (take 2)
-       non-empty-diff))
+  "Test for differences between two YAML files. Ignores some keys and some key ordering. A resource file beside an
+  entity's YAML, such as a plugin's bundle, must match byte for byte."
+  [^File file1 ^File file2]
+  (if (str/ends-with? (.getName file1) ".yaml")
+    (->> (data/diff (read-yaml file1)
+                    (read-yaml file2))
+         (take 2)
+         non-empty-diff)
+    (when-not (Arrays/equals (Files/readAllBytes (.toPath file1)) (Files/readAllBytes (.toPath file2)))
+      [:resource-file-differs])))
 
 (defn load-extract!
   "Perform a round-trip of loading an existing serialization, then serializing it again."

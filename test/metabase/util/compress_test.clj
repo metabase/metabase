@@ -110,3 +110,45 @@
             (finally
               (io/delete-file archive true)
               (run! #(io/delete-file % true) (reverse (file-seq out))))))))))
+
+(deftest tgz-bytes-test
+  (let [files {"dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
+               "metabase-plugin.json" (.getBytes "{}" "UTF-8")
+               "dist/assets/icon.png" (byte-array [0 (int 0x80) (int 0xff) 1])}]
+    (testing "an archive of a map of files reads back as the same map"
+      (is (= (update-vals files seq)
+             (update-vals (u.compress/untgz-files (u.compress/tgz-bytes files)) seq))))
+    (testing "the same files always make the same bytes, whatever their order or the time"
+      (is (= (seq (u.compress/tgz-bytes files))
+             (seq (u.compress/tgz-bytes (into (sorted-map-by (fn [a b] (compare b a))) files))))))
+    (testing "an entry path that could leave a directory is refused"
+      (doseq [path ["../escape" "/etc/passwd" "foo/../bar" "" "a//b"]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid path"
+                              (u.compress/tgz-bytes {path (.getBytes "x" "UTF-8")})))))))
+
+(deftest untgz-files-test
+  (testing "only regular files are read, hidden entries are skipped, and the limits of untgz apply"
+    (let [content (.getBytes (apply str (repeat 1024 \a)) "UTF-8")
+          archive (create-multi-entry-tgz 10 content)]
+      (try
+        (is (= (into {} (for [i (range 10)] [(format "file-%d" i) (seq content)]))
+               (update-vals (u.compress/untgz-files archive) seq)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"max uncompressed bytes"
+                              (u.compress/untgz-files archive {:max-uncompressed-bytes 4096})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"max entries"
+                              (u.compress/untgz-files archive {:max-entries 5})))
+        (finally
+          (io/delete-file archive true))))
+    (let [archive (create-tgz ".hidden" (.getBytes "x" "UTF-8"))]
+      (try
+        (is (= {} (u.compress/untgz-files archive)))
+        (finally
+          (io/delete-file archive true)))))
+  (testing "an entry whose path could leave a directory is refused"
+    (doseq [file-name ["../../etc/foo" "foo/../../escape"]]
+      (let [archive (create-tgz file-name (.getBytes "content" "UTF-8"))]
+        (try
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid path"
+                                (u.compress/untgz-files archive)))
+          (finally
+            (io/delete-file archive true)))))))

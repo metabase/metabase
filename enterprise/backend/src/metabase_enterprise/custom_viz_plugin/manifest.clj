@@ -45,12 +45,23 @@
   [manifest]
   (some-> (mr/explain ManifestFieldTypes manifest) me/humanize))
 
+(def ^:private identifier-pattern
+  "The identifiers the representation format accepts: an identifier names the plugin's directory in a repository, so
+   letters, digits, `.`, `_` and `-`, starting with a letter or digit."
+  #"[A-Za-z0-9][A-Za-z0-9._-]*")
+
 (defn identifier-error
   "Why `identifier` can't name a plugin, or nil. `:` separates the parts of `custom:<identifier>:<setting id>`
    viz-settings keys, so an identifier containing it could read another plugin's settings."
   [identifier]
-  (when (and (string? identifier) (str/includes? identifier ":"))
-    (format "Plugin identifier \"%s\" must not contain \":\"" identifier)))
+  (when (string? identifier)
+    (cond
+      (str/includes? identifier ":")
+      (format "Plugin identifier \"%s\" must not contain \":\"" identifier)
+
+      (not (re-matches identifier-pattern identifier))
+      (format "Plugin identifier \"%s\" must be letters, digits, \".\", \"_\" or \"-\", starting with a letter or digit"
+              identifier))))
 
 ;;; ------------------------------------------------ Version ------------------------------------------------
 
@@ -139,6 +150,18 @@
   (when-let [icon (:icon manifest)]
     (when (and (image-file? icon) (safe-relative-path? icon))
       [icon])))
+
+(defn packed-asset-names
+  "The file names under `dist/assets/` that `npx @metabase/custom-viz pack` archives for `manifest`: the `icon`
+   and the `assets` list, in that order, without repeats. A name that isn't a safe relative path is left out."
+  [manifest]
+  (into []
+        (comp (filter string?)
+              (remove str/blank?)
+              (filter safe-relative-path?)
+              (distinct))
+        (cons (:icon manifest) (let [assets (:assets manifest)]
+                                 (when (sequential? assets) assets)))))
 
 (defn asset-content-type
   "Return the MIME content type for an image asset file, or nil if not recognized.

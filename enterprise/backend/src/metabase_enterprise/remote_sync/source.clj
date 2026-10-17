@@ -55,6 +55,10 @@
     (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
       (source.p/read-file original-snapshot path)))
 
+  (read-bytes [_ path]
+    (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
+      (source.p/read-bytes original-snapshot path)))
+
   (open-commit [_]
     (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
 
@@ -166,7 +170,8 @@
                         (try
                           (let [entity (yaml/parse-string (source.p/read-file snapshot path)
                                                           {:key-fn serialization/parse-key})]
-                            (map #(str dir "/" %) (serdes/resource-paths entity)))
+                            (map #(str dir "/" %)
+                                 (serdes/resource-paths entity #(source.p/read-file snapshot (str dir "/" %)))))
                           (catch Exception _
                             nil)))))
         (source.p/list-dir snapshot dir)))
@@ -228,6 +233,7 @@
       (list-files [_] (vec (keys by-path)))
       (list-dir [_ path] (paths->children (keys by-path) path))
       (read-file [_ path] (get by-path path))
+      (read-bytes [_ path] (some-> ^String (get by-path path) (.getBytes "UTF-8")))
       (open-commit [_] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))
 
