@@ -22,6 +22,7 @@ const nodeProject = {
   testEnvironment: "node",
   transform: baseConfig.transform,
   transformIgnorePatterns: baseConfig.transformIgnorePatterns,
+  watchPathIgnorePatterns: baseConfig.watchPathIgnorePatterns,
 };
 
 /** @type {import('jest').Config} */
