@@ -539,12 +539,7 @@
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defn- dbms-version [database]
-  ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
-  (when-let [k (some #(when (contains? database %)
-                        %)
-                     [:dbms-version
-                      :dbms_version])]
-    (get database k)))
+  (:dbms-version database))
 
 (defmethod driver/database-supports? [:mongo :window-functions/cumulative]
   [_driver _feat db]
