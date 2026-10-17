@@ -24,7 +24,7 @@
   [writer]
   (cheshire/create-generator writer))
 
-;; Tell the JSON middleware to use a date format that includes milliseconds (why?)
+;; Tell the JSON middleware to use a date format with milliseconds (why?)
 (def default-date-format "Default date formatter for JSON serialization." "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
 (alter-var-root #'cheshire.factory/default-date-format (constantly default-date-format))
