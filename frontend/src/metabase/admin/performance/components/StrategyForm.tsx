@@ -232,6 +232,7 @@ const StrategyFormBody = ({
           className={cx(Styles.FormBox, {
             [Styles.FormBoxSidebar]: isInSidebar,
           })}
+          pt={layout === "default" ? "xxxl" : undefined}
         >
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-secondary">
