@@ -10,11 +10,11 @@ import { applyVisualizationSettingsDataTransformations } from "./dataset";
 import type { BaseCartesianChartModel, ChartDataset, Datum } from "./types";
 
 // Rows that don't fit fold into one summed "Other" row. One rule for app and
-// email: each band (per series, or one when stacked) needs MIN_BAR_HEIGHT.
-export const MIN_BAR_HEIGHT = 24;
+// email: each band (per series, or one when stacked) needs this much height.
+export const ROW_CHART_MIN_BAR_HEIGHT = 24;
 
 const getRowChartBudget = (chartHeight: number, bandCount: number): number =>
-  Math.max(Math.floor(chartHeight / (MIN_BAR_HEIGHT * bandCount)), 1);
+  Math.max(Math.floor(chartHeight / (ROW_CHART_MIN_BAR_HEIGHT * bandCount)), 1);
 
 const sumInto = (target: Datum, source: Datum, keys: string[]) => {
   keys.forEach((key) => {
@@ -32,7 +32,7 @@ const foldDataset = (
   dataset: ChartDataset,
   budget: number,
   seriesKeys: string[],
-): ChartDataset => {
+): { dataset: ChartDataset; foldedDataset: ChartDataset } => {
   const kept = dataset.slice(0, budget - 1);
   const folded = dataset.slice(budget - 1);
 
@@ -47,7 +47,7 @@ const foldDataset = (
   };
   folded.forEach((datum) => sumInto(total, datum, seriesKeys));
 
-  return [...kept, total];
+  return { dataset: [...kept, total], foldedDataset: folded };
 };
 
 export const foldRowChartModel = <Model extends BaseCartesianChartModel>(
@@ -76,7 +76,11 @@ export const foldRowChartModel = <Model extends BaseCartesianChartModel>(
     ...chartModel.seriesModels,
     ...(chartModel.groupedSeriesModels ?? []),
   ].map((series) => series.dataKey);
-  const dataset = foldDataset(chartModel.dataset, budget, seriesKeys);
+  const { dataset, foldedDataset } = foldDataset(
+    chartModel.dataset,
+    budget,
+    seriesKeys,
+  );
   const transformedDataset = applyVisualizationSettingsDataTransformations(
     dataset,
     chartModel.stackModels,
@@ -91,6 +95,7 @@ export const foldRowChartModel = <Model extends BaseCartesianChartModel>(
     ...chartModel,
     dataset,
     transformedDataset,
+    foldedDataset,
     // "Other" can exceed every row's range; row charts only have a left axis.
     leftAxisModel: chartModel.leftAxisModel && {
       ...chartModel.leftAxisModel,
