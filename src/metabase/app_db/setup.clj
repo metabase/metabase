@@ -233,7 +233,7 @@
                        "\n\n"
                        (trs "Once your database has been downgraded, try running the application again.")
                        "\n\n"
-                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
+                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade-or-to-an-older-version"))
                   {})))))))
 
 (mu/defn- run-schema-migrations!
