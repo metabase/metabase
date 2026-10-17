@@ -280,7 +280,7 @@
                 (mt/with-temporary-setting-values [use-native-pivot-tables setting]
                   (qp.pivot.test-util/without-pivot-parity-check
                    (let [rows     (mt/rows (qp.pivot/run-pivot-query forced))
-                         bitmasks (into (sorted-set) (map #(nth % (count fields))) rows)]
+                         bitmasks (into (sorted-set) (map #(long (nth % (count fields)))) rows)]
                      (is (= bitmask-set bitmasks)))))))))))))
 
 (deftest ^:parallel generate-queries-test
