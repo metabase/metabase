@@ -33,7 +33,7 @@ describe("dashboard_grid", () => {
   });
 });
 
-// shorthand for creating a position object, default to 2x2
+// shorthand to create a position object, default to 2x2
 function pos(col: number, row: number, size_x = 2, size_y = 2): CardPosition {
   return { col, row, size_x, size_y };
 }
