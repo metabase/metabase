@@ -14,6 +14,7 @@ import S from "./LegendLayout.module.css";
 import {
   HIDDEN_LEGEND_LAYOUT,
   LEGEND_SIZES,
+  type PlotInset,
   getLegendLayout,
   getLegendSize,
 } from "./layout";
@@ -26,6 +27,7 @@ interface LegendLayoutProps {
   height?: number;
   chartHeight?: number;
   indent?: number;
+  plotInset?: PlotInset;
   hasLegend: boolean;
   legendPosition?: LegendPosition;
   alwaysVisible?: boolean;
@@ -53,6 +55,7 @@ export const LegendLayout = ({
   height = 0,
   chartHeight,
   indent = 0,
+  plotInset,
   hasLegend,
   legendPosition = "auto",
   alwaysVisible,
@@ -81,6 +84,7 @@ export const LegendLayout = ({
       height,
       chartHeight,
       horizontalWidth: width - Math.abs(indent),
+      plotInset,
       size,
       fontFamily,
       measureText,
@@ -96,6 +100,7 @@ export const LegendLayout = ({
     height,
     chartHeight,
     indent,
+    plotInset,
     size,
     fontFamily,
     measureText,
@@ -123,8 +128,8 @@ export const LegendLayout = ({
       miw={0}
       mt={isLegendBeforeChart ? 0 : horizontalGap}
       mb={isLegendBeforeChart ? horizontalGap : 0}
-      ml={Math.max(indent, 0)}
-      mr={Math.max(-indent, 0)}
+      ml={layout.isIndented ? Math.max(indent, 0) : 0}
+      mr={layout.isIndented ? Math.max(-indent, 0) : 0}
       data-testid="legend-horizontal"
     >
       <Legend {...legendProps} visibleLength={layout.visibleCount} />

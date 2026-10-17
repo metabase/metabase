@@ -246,6 +246,10 @@ function BoxPlotInner({
         height={height}
         chartHeight={chartSize.height || undefined}
         indent={cartesianLayout.padding.left - cartesianLayout.padding.right}
+        plotInset={{
+          width: cartesianLayout.padding.left + cartesianLayout.padding.right,
+          height: cartesianLayout.padding.top + cartesianLayout.padding.bottom,
+        }}
       >
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}

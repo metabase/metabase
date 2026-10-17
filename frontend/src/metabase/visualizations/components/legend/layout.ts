@@ -5,7 +5,7 @@ import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
-import { LEGEND_PLACEMENTS, type LegendPlacement } from "./placement";
+import { LEGEND_PLACEMENTS } from "./placement";
 
 export type LegendSize = "sm" | "lg" | "md";
 
@@ -102,10 +102,20 @@ export const MIN_LEGEND_CARD_HEIGHT = 200;
 const MAX_VERTICAL_WIDTH_RATIO = 0.25;
 const MAX_TRUNCATED_ITEMS_RATIO = 0.5;
 export const MIN_VISIBLE_COUNT = 1;
+const AUTO_MIN_VISIBLE_COUNT = 2;
+// the plot is the chart without its axes, as in PLOT_HEIGHT_BREAKPOINTS
+const MIN_PLOT_WIDTH = 150;
+const MIN_PLOT_HEIGHT = 80;
+const MIN_COLUMN_CARD_HEIGHT = 100;
 
 export type LegendLayoutResult =
   | { type: "hidden" }
-  | { type: "horizontal"; isBeforeChart: boolean; visibleCount: number }
+  | {
+      type: "horizontal";
+      isBeforeChart: boolean;
+      isIndented: boolean;
+      visibleCount: number;
+    }
   | {
       type: "vertical";
       isBeforeChart: boolean;
@@ -115,8 +125,16 @@ export type LegendLayoutResult =
 
 export const HIDDEN_LEGEND_LAYOUT: LegendLayoutResult = { type: "hidden" };
 
+export interface PlotInset {
+  width: number;
+  height: number;
+}
+
+const NO_PLOT_INSET: PlotInset = { width: 0, height: 0 };
+
 interface GetLegendLayoutOptions {
   items: LegendItemData[];
+  plotInset?: PlotInset;
   position: LegendPosition;
   width: number;
   height: number;
@@ -131,10 +149,12 @@ interface GetLegendLayoutOptions {
 
 interface LegendMetrics {
   config: LegendSizeConfig;
+  width: number;
+  height: number;
+  plotInset: PlotInset;
   labelWidths: number[];
   itemWidths: number[];
   availableWidth: number;
-  availableRowWidth: number;
   rowWidthInsideIndent: number;
   availableHeight: number;
   measureOverflowLabel: (overflowCount: number) => number;
@@ -147,41 +167,95 @@ export function getLegendLayout(
   options: GetLegendLayoutOptions,
 ): LegendLayoutResult {
   const { items, position, alwaysVisible = false } = options;
-  if (
-    items.length === 0 ||
-    position === "off" ||
-    (isCardTooSmall(options) && !alwaysVisible)
-  ) {
+  if (items.length === 0 || position === "off") {
     return HIDDEN_LEGEND_LAYOUT;
   }
 
   const metrics = measureLegend(options);
-  const isAuto = position === "auto";
-  const placement = isAuto ? getAutoPlacement(metrics) : position;
-  const { orientation, isBeforeChart } = LEGEND_PLACEMENTS[placement];
-  if (orientation === "horizontal") {
-    return {
-      type: "horizontal",
-      isBeforeChart,
-      visibleCount: isAuto ? items.length : getRowVisibleCount(metrics),
-    };
+  if (position === "auto") {
+    return getAutoLayout(metrics, alwaysVisible);
   }
-  return getColumnLayout(metrics, {
+  const { orientation, isBeforeChart } = LEGEND_PLACEMENTS[position];
+  const fit = {
     isBeforeChart,
-    minVisibleCount: isAuto && !alwaysVisible ? 0 : MIN_VISIBLE_COUNT,
+    minVisibleCount: MIN_VISIBLE_COUNT,
     alwaysVisible,
-  });
+  };
+  return orientation === "horizontal"
+    ? getRowLayout(metrics, fit)
+    : getColumnLayout(metrics, { ...fit, allowMostlyTruncated: true });
 }
 
-const getAutoPlacement = ({
-  itemWidths,
-  config,
-  availableRowWidth,
-}: LegendMetrics): LegendPlacement =>
-  getRowWidth(itemWidths, config) <= availableRowWidth ? "bottom" : "right";
+// Auto tries a complete row at the bottom at any height, as x.64 did on top,
+// then a column on the right, which x.64 drew truncated on cards as wide as
+// MIN_LEGEND_CARD_WIDTH.
+function getAutoLayout(
+  metrics: LegendMetrics,
+  alwaysVisible: boolean,
+): LegendLayoutResult {
+  const itemCount = metrics.itemWidths.length;
+  const fit = {
+    isBeforeChart: false,
+    minVisibleCount: alwaysVisible ? MIN_VISIBLE_COUNT : AUTO_MIN_VISIBLE_COUNT,
+    alwaysVisible,
+  };
+  const completeRow = getRowLayout(metrics, { ...fit, alwaysVisible: true });
+  if (completeRow.type !== "hidden" && completeRow.visibleCount === itemCount) {
+    return completeRow;
+  }
+  const column = getColumnLayout(metrics, {
+    ...fit,
+    allowMostlyTruncated:
+      alwaysVisible || metrics.width >= MIN_LEGEND_CARD_WIDTH,
+  });
+  if (column.type !== "hidden") {
+    return column;
+  }
+  return getRowLayout(metrics, fit);
+}
 
-const isCardTooSmall = ({ width, height }: GetLegendLayoutOptions) =>
-  width < MIN_LEGEND_CARD_WIDTH || height < MIN_LEGEND_CARD_HEIGHT;
+function getRowLayout(
+  metrics: LegendMetrics,
+  {
+    isBeforeChart,
+    minVisibleCount,
+    alwaysVisible,
+  }: {
+    isBeforeChart: boolean;
+    minVisibleCount: number;
+    alwaysVisible: boolean;
+  },
+): LegendLayoutResult {
+  const { config, width, height, plotInset, itemWidths, availableWidth } =
+    metrics;
+  const rowHeight =
+    config.fontSize * config.lineHeight +
+    config.horizontalGap +
+    LEGEND_PADDING * 2;
+  const hasRoom =
+    width - plotInset.width >= MIN_PLOT_WIDTH &&
+    height - rowHeight - plotInset.height >= MIN_PLOT_HEIGHT;
+  if (!hasRoom && !alwaysVisible) {
+    return HIDDEN_LEGEND_LAYOUT;
+  }
+  const visibleCount = getRowVisibleCount(metrics);
+  // a row that only fits across the y-axis indent starts at the card edge, as on x.64
+  const isIndented =
+    visibleCount === itemWidths.length ||
+    getRowWidth(itemWidths, config) > availableWidth - LEGEND_PADDING * 2;
+  if (
+    isIndented &&
+    visibleCount < Math.min(minVisibleCount, itemWidths.length)
+  ) {
+    return HIDDEN_LEGEND_LAYOUT;
+  }
+  return {
+    type: "horizontal",
+    isBeforeChart,
+    isIndented,
+    visibleCount: isIndented ? visibleCount : itemWidths.length,
+  };
+}
 
 function isColumnMostlyTruncated(metrics: LegendMetrics): boolean {
   const labelWidth = getColumnItemWidth(metrics) - getDotWidth(metrics.config);
@@ -203,6 +277,7 @@ function measureLegend({
   fontFamily,
   measureText,
   isReversed,
+  plotInset = NO_PLOT_INSET,
 }: GetLegendLayoutOptions): LegendMetrics {
   const config = LEGEND_SIZES[size];
   const font = {
@@ -219,13 +294,12 @@ function measureLegend({
 
   return {
     config,
+    width,
+    height,
+    plotInset,
     labelWidths,
     itemWidths: labelWidths.map((labelWidth) => dotWidth + labelWidth),
     availableWidth,
-    availableRowWidth: Math.min(
-      availableWidth,
-      horizontalWidth - LEGEND_PADDING * 2,
-    ),
     rowWidthInsideIndent:
       availableWidth - (width - horizontalWidth) - LEGEND_PADDING * 2,
     availableHeight:
@@ -297,22 +371,33 @@ function getColumnLayout(
     isBeforeChart,
     minVisibleCount,
     alwaysVisible,
+    allowMostlyTruncated,
   }: {
     isBeforeChart: boolean;
     minVisibleCount: number;
     alwaysVisible: boolean;
+    allowMostlyTruncated: boolean;
   },
 ): LegendLayoutResult {
-  if (!alwaysVisible && isColumnMostlyTruncated(metrics)) {
+  const { width, height, config, plotInset } = metrics;
+  const columnSpace =
+    getColumnItemWidth(metrics) + LEGEND_PADDING * 2 + config.verticalGap;
+  const hasRoom =
+    width - columnSpace - plotInset.width >= MIN_PLOT_WIDTH &&
+    height >= MIN_COLUMN_CARD_HEIGHT;
+  if (!alwaysVisible && !hasRoom) {
+    return HIDDEN_LEGEND_LAYOUT;
+  }
+  if (!allowMostlyTruncated && isColumnMostlyTruncated(metrics)) {
     return HIDDEN_LEGEND_LAYOUT;
   }
 
-  const visibleCount = getColumnVisibleCount(metrics, minVisibleCount);
-  if (visibleCount === 0) {
+  const visibleCount = getColumnVisibleCount(metrics, alwaysVisible ? 1 : 0);
+  if (visibleCount < Math.min(minVisibleCount, metrics.itemWidths.length)) {
     return HIDDEN_LEGEND_LAYOUT;
   }
 
-  const { itemWidths, config, measureOverflowLabel } = metrics;
+  const { itemWidths, measureOverflowLabel } = metrics;
   const overflowCount = itemWidths.length - visibleCount;
   const overflowLabelWidth =
     overflowCount > 0 ? measureOverflowLabel(overflowCount) : 0;
