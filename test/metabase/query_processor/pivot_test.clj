@@ -228,38 +228,60 @@
                     :json_query map?}
                    (qp.pivot/run-pivot-query userland-query)))))))))
 
+(defn- orders-pivot-query
+  "Build a pivot query against `orders` with the breakouts in `fields` and an MBQL `:pivot` clause
+  pointing at the given row/column indexes into the breakout vector. Uses `lib.pivot/with-pivot` (not
+  legacy top-level keys) because the stale-UUID bug this test guards against is specific to the stage
+  `:pivot` clause — legacy keys never propagate to sub-queries' stages."
+  [fields rows-idx cols-idx]
+  (let [mp    (mt/metadata-provider)
+        base  (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) q
+                (reduce (fn [q f] (lib/breakout q (lib.metadata/field mp (mt/id :orders f)))) q fields)
+                (lib/aggregate q (lib/count)))
+        uuids (mapv lib.options/uuid (lib/breakouts base))]
+    (lib.pivot/with-pivot base
+      {:rows               (mapv uuids rows-idx)
+       :columns            (mapv uuids cols-idx)
+       :show-row-totals    true
+       :show-column-totals true})))
+
 (deftest ^:mb/driver-tests pivot-returns-every-rollup-bitmask-test
   (testing "every pivot flow emits rows for every grouping-combo bitmask"
     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
       (mt/dataset test-data
-        (let [mp      (mt/metadata-provider)
-              base    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                          (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id)))
-                          (lib/breakout (lib.metadata/field mp (mt/id :orders :user_id)))
-                          (lib/aggregate (lib/count)))
-              uuids   (mapv lib.options/uuid (lib/breakouts base))
-              query   (lib.pivot/with-pivot base
-                        {:rows               [(uuids 0)]
-                         :columns            [(uuids 1)]
-                         :show-row-totals    true
-                         :show-column-totals true})
-              native? (driver.u/supports? driver/*driver* :native-pivot-tables (mt/db))
+        (let [native? (driver.u/supports? driver/*driver* :native-pivot-tables (mt/db))
               sql?    (isa? driver/hierarchy driver/*driver* :sql)
               ;; `use-native-pivot-tables` picks the primary runner between `run-pivot-query-multi`
               ;; (false) and `run-sql-pivot-query` (true). `:qp.pivot/forced-shape` picks which
               ;; sub-shape `run-sql-pivot-query` compiles.
               flows   (cond-> [{:flow :multi-query, :setting false, :shape nil}]
                         sql?    (conj {:flow :union-all,          :setting true,  :shape :union-all})
-                        native? (conj {:flow :native-pivot-query, :setting true,  :shape :native-pivot-query}))]
-          (doseq [{:keys [flow setting shape]} flows]
-            (testing (str "flow = " flow)
-              (let [forced (cond-> query
+                        native? (conj {:flow :native-pivot-query, :setting true,  :shape :native-pivot-query}))
+              shapes  [{:label       "1 row x 1 col over 2 breakouts"
+                        :fields      [:product_id :user_id]
+                        :rows-idx    [0]
+                        :cols-idx    [1]
+                        :bitmask-set #{0 1 2 3}}
+                       {:label       "2 rows x 1 col over 3 breakouts"
+                        :fields      [:product_id :user_id :quantity]
+                        :rows-idx    [0 1]
+                        :cols-idx    [2]
+                        :bitmask-set #{0 2 3 4 6 7}}
+                       {:label       "1 row x 2 cols over 3 breakouts"
+                        :fields      [:product_id :user_id :quantity]
+                        :rows-idx    [2]
+                        :cols-idx    [0 1]
+                        :bitmask-set #{0 3 4 7}}]]
+          (doseq [{:keys [label fields rows-idx cols-idx bitmask-set]} shapes
+                  {:keys [flow setting shape]}                         flows]
+            (testing (str label " / flow = " flow)
+              (let [forced (cond-> (orders-pivot-query fields rows-idx cols-idx)
                              shape (lib.util/update-query-stage -1 assoc :qp.pivot/forced-shape shape))]
                 (mt/with-temporary-setting-values [use-native-pivot-tables setting]
                   (qp.pivot.test-util/without-pivot-parity-check
                    (let [rows     (mt/rows (qp.pivot/run-pivot-query forced))
-                         bitmasks (into (sorted-set) (map #(nth % 2)) rows)]
-                     (is (= #{0 1 2 3} bitmasks)))))))))))))
+                         bitmasks (into (sorted-set) (map #(nth % (count fields))) rows)]
+                     (is (= bitmask-set bitmasks)))))))))))))
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)

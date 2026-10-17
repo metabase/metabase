@@ -631,6 +631,24 @@
       (quot *pivot-max-result-rows* num-aggs)
       *pivot-max-result-rows*)))
 
+(defn- mbql-pivot-options
+  "Translate the last stage's MBQL `:pivot` clause into the same pivot-options shape [[pivot-options]]
+  produces, resolving each row/column breakout clause to its index in the stage's breakouts. Returns
+  `nil` when the stage has no `:pivot` or every row/column reference resolves outside its own breakouts."
+  [query]
+  (when-let [pivot-clause (lib.pivot/pivot query)]
+    (let [breakout-ix (zipmap (lib/breakouts query -1) (range))
+          ->indexes   (fn [bs] (into [] (keep breakout-ix) bs))
+          rows        (->indexes (lib.pivot/pivot-rows query))
+          cols        (->indexes (lib.pivot/pivot-columns query))]
+      (when (or (seq rows) (seq cols))
+        {:pivot-rows         rows
+         :pivot-cols         cols
+         :pivot-measures     nil
+         :show-row-totals    (lib.pivot/read-show-flag pivot-clause :show-row-totals)
+         :show-column-totals (lib.pivot/read-show-flag pivot-clause :show-column-totals)
+         :column-sort-order  {}}))))
+
 (defn- pivot-opts-from-query
   "Return `query`'s pivot-options map — as downstream export middleware and streaming writers read it from
   `[:middleware :pivot-options]` — or `nil` when `query` carries no pivot intent."
@@ -638,7 +656,8 @@
   (or
    (pivot-options query (get query :viz-settings))
    (pivot-options query (get-in query [:info :visualization-settings]))
-   (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals]))))
+   (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals]))
+   (mbql-pivot-options query)))
 
 (mu/defn- run-pivot-query-multi
   "Generate one subquery per breakout combination implied by `query`'s pivot intent (viz-settings or legacy keys),
