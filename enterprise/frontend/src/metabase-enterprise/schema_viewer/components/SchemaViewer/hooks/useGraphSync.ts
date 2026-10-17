@@ -14,7 +14,9 @@ import type {
 } from "metabase-types/api";
 
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "../types";
-import { applyLayout, getNodeId } from "../utils";
+import { getNodeId } from "../utils";
+
+import type { GraphLayoutMethods } from "./useGraphLayout";
 
 type UseGraphSyncArgs = {
   hasDbSelected: boolean;
@@ -33,6 +35,7 @@ type UseGraphSyncArgs = {
   setExpandingTableIds: Dispatch<SetStateAction<Set<ConcreteTableId>>>;
   zoomToNode: (nodeId: string) => void;
   zoomToCanvas: () => void;
+  graphLayout: Pick<GraphLayoutMethods, "requestLayout" | "cancelLayout">;
 };
 
 type PendingExpansion = {
@@ -89,28 +92,16 @@ function getExpandingTableIds(
   return hasChanges ? newExpandingTableIds : currentExpandingTableIds;
 }
 
-function getMergedGraphLayout({
-  graph,
-  currentNodes,
-}: {
-  graph: NonNullable<UseGraphSyncArgs["graph"]>;
-  currentNodes: SchemaViewerFlowNode[];
-}) {
-  return applyLayout({
-    mode: "merge",
-    incoming: graph.nodes,
-    current: currentNodes,
-    edges: graph.edges,
-  });
-}
-
 function focusSyncedGraph({
   layout,
   pendingExpansionRef,
   zoomToNode,
   zoomToCanvas,
 }: {
-  layout: ReturnType<typeof applyLayout>;
+  layout: {
+    nodes: SchemaViewerFlowNode[];
+    preservedExistingPositions: boolean;
+  };
   pendingExpansionRef: { current: PendingExpansion | null };
   zoomToNode: (nodeId: string) => void;
   zoomToCanvas: () => void;
@@ -138,11 +129,12 @@ function focusSyncedGraph({
  * Owns the data → React Flow state sync for the schema viewer:
  *
  *  - Clears the canvas immediately on context change (database/schema swap).
- *  - When ERD response arrives: either lays out a fresh canvas or merges incoming nodes with the
- *    current canvas to preserve positions of tables that were already
- *    placed.
+ *  - When ERD response arrives: requests either a fresh worker layout or an
+ *    incremental merge that preserves positions.
+ *  - Commits nodes and their matching edges only after the current layout
+ *    succeeds.
  *  - On FK expansion: once the new graph arrives, auto-selects the FK edge
- *    that triggered the expansion AND zooms onto the new target table.
+ *    that triggered the expansion AND zooms onto that node.
  */
 export function useGraphSync({
   hasDbSelected,
@@ -156,14 +148,12 @@ export function useGraphSync({
   setExpandingTableIds,
   zoomToNode,
   zoomToCanvas,
+  graphLayout,
 }: UseGraphSyncArgs) {
   /**
    * Register the FK-expansion target. Once the next ERD response includes
    * a node for `targetTableId`, graph sync auto-selects the connecting
    * edge (from `candidateEdgeIds`) and zooms onto that node.
-   *
-   * `candidateEdgeIds` should include both source-first and target-first
-   * orderings since the backend's source/target convention isn't fixed.
    */
   const pendingExpansionRef = useRef<PendingExpansion | null>(null);
   const registerPendingExpansion = useCallback(
@@ -177,13 +167,15 @@ export function useGraphSync({
   );
 
   const nodesRef = useLatest(nodes);
+  const { requestLayout, cancelLayout } = graphLayout;
   const shouldClearCanvas = !hasDbSelected || error != null;
   const renderedGraph = shouldClearCanvas || isFetching ? null : graph;
 
-  // Clear the canvas whenever the database/schema context changes.
+  // Clear the canvas immediately whenever the database/schema context changes.
   const prevContextForClearRef = useRef(contextKey);
   if (prevContextForClearRef.current !== contextKey) {
     prevContextForClearRef.current = contextKey;
+    cancelLayout();
     setNodes([]);
     setEdges([]);
     setExpandingTableIds(clearExpandingTableIds);
@@ -192,55 +184,65 @@ export function useGraphSync({
 
   useEffect(() => {
     if (shouldClearCanvas) {
+      cancelLayout();
       setNodes([]);
       setEdges([]);
       setExpandingTableIds(clearExpandingTableIds);
       pendingExpansionRef.current = null;
     }
-  }, [shouldClearCanvas, setEdges, setExpandingTableIds, setNodes]);
+  }, [
+    cancelLayout,
+    setEdges,
+    setExpandingTableIds,
+    setNodes,
+    shouldClearCanvas,
+  ]);
 
   useEffect(() => {
     if (renderedGraph == null) {
       return;
     }
 
-    // If we expanded via FK click and a matching edge has now arrived in
-    // the new graph, mark it as selected.
-    setEdges(
-      markPendingEdgeSelected(renderedGraph.edges, pendingExpansionRef.current),
+    const edges = markPendingEdgeSelected(
+      renderedGraph.edges,
+      pendingExpansionRef.current,
     );
-  }, [renderedGraph, setEdges]);
 
-  useEffect(() => {
-    if (renderedGraph == null) {
-      return;
-    }
+    void requestLayout(
+      {
+        mode: "merge",
+        incoming: renderedGraph.nodes,
+        current: nodesRef.current,
+        edges,
+      },
+      "graph-sync",
+    ).then((outcome) => {
+      if (outcome.status !== "success") {
+        return;
+      }
 
-    const layout = getMergedGraphLayout({
-      graph: renderedGraph,
-      currentNodes: nodesRef.current,
+      setNodes(outcome.result.nodes);
+      setEdges(edges);
+      focusSyncedGraph({
+        layout: outcome.result,
+        pendingExpansionRef,
+        zoomToNode,
+        zoomToCanvas,
+      });
+      setExpandingTableIds((prev) =>
+        getExpandingTableIds(prev, outcome.result.nodes),
+      );
     });
-
-    setNodes(layout.nodes);
-    focusSyncedGraph({
-      layout,
-      pendingExpansionRef,
-      zoomToNode,
-      zoomToCanvas,
-    });
-  }, [nodesRef, renderedGraph, setNodes, zoomToCanvas, zoomToNode]);
-
-  useEffect(() => {
-    if (renderedGraph == null) {
-      return;
-    }
-
-    // Clear any expand-in-flight markers for tables that just arrived in the
-    // new graph (or that are no longer in the selection).
-    setExpandingTableIds((prev) =>
-      getExpandingTableIds(prev, renderedGraph.nodes),
-    );
-  }, [renderedGraph, setExpandingTableIds]);
+  }, [
+    nodesRef,
+    renderedGraph,
+    requestLayout,
+    setEdges,
+    setExpandingTableIds,
+    setNodes,
+    zoomToCanvas,
+    zoomToNode,
+  ]);
 
   return { registerPendingExpansion };
 }

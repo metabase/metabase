@@ -3,6 +3,7 @@
 
   position: relative;
   width: 20rem;
+  height: 100%;
   border: 1px solid var(--node-border-color);
   border-radius: 0.5rem;
   background: var(--mb-color-core-white);
@@ -14,7 +15,142 @@
 }
 
 .header {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 3.5rem;
+  padding: 1rem;
+  cursor: pointer;
   border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.title {
+  flex: 1;
+  overflow: hidden;
+  color: var(--mb-color-text-primary);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+
+/*
+ * Placeholder field rows for summary cards, drawn as background layers aligned
+ * with the real 48px rows: a 16px icon square, a name bar, and a right-aligned
+ * type bar, each alternating in length between rows, plus the row divider.
+ * Row padding (1rem) and the icon-to-text gap (0.5rem) match
+ * SchemaViewerFieldRow.
+ */
+.skeletonRows {
+  --skeleton-color: var(--mb-color-border-neutral);
+  --row-height: 3rem;
+
+  position: relative;
+  height: calc(100% - 3.5rem);
+  background-image:
+    linear-gradient(
+      to bottom,
+      transparent 1rem,
+      var(--skeleton-color) 1rem,
+      var(--skeleton-color) 2rem,
+      transparent 2rem
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 1.1875rem,
+      var(--skeleton-color) 1.1875rem,
+      var(--skeleton-color) 1.8125rem,
+      transparent 1.8125rem
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 1.1875rem,
+      var(--skeleton-color) 1.1875rem,
+      var(--skeleton-color) 1.8125rem,
+      transparent 1.8125rem
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 1.1875rem,
+      var(--skeleton-color) 1.1875rem,
+      var(--skeleton-color) 1.8125rem,
+      transparent 1.8125rem
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 1.1875rem,
+      var(--skeleton-color) 1.1875rem,
+      var(--skeleton-color) 1.8125rem,
+      transparent 1.8125rem
+    ),
+    linear-gradient(
+      to bottom,
+      transparent calc(var(--row-height) - 1px),
+      var(--mb-color-border-neutral) calc(var(--row-height) - 1px)
+    );
+  background-position:
+    1rem 0,
+    2.5rem 0,
+    2.5rem var(--row-height),
+    right 1rem top 0,
+    right 1rem top var(--row-height),
+    0 0;
+  background-size:
+    1rem var(--row-height),
+    45% calc(var(--row-height) * 2),
+    30% calc(var(--row-height) * 2),
+    1.75rem calc(var(--row-height) * 2),
+    3rem calc(var(--row-height) * 2),
+    100% var(--row-height);
+  background-repeat: repeat-y;
+}
+
+/* Linked FK rows render as brand-colored links when zoomed in. */
+.linkedSkeletonRows {
+  --skeleton-color: var(--mb-color-core-brand);
+
+  position: absolute;
+  right: 0;
+  left: 0;
+  background-image:
+    linear-gradient(
+      to bottom,
+      transparent 1rem,
+      var(--skeleton-color) 1rem,
+      var(--skeleton-color) 2rem,
+      transparent 2rem
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 1.1875rem,
+      var(--skeleton-color) 1.1875rem,
+      var(--skeleton-color) 1.8125rem,
+      transparent 1.8125rem
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 1.1875rem,
+      var(--skeleton-color) 1.1875rem,
+      var(--skeleton-color) 1.8125rem,
+      transparent 1.8125rem
+    );
+  background-size:
+    1rem var(--row-height),
+    45% calc(var(--row-height) * 2),
+    30% calc(var(--row-height) * 2);
+  background-repeat: repeat-y;
 }
 
 .fields {

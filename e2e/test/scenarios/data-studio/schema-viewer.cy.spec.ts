@@ -7,7 +7,7 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { checkNotNull } from "metabase/utils/types";
-import type { TableId } from "metabase-types/api";
+import type { ErdResponse, TableId } from "metabase-types/api";
 
 const { ORDERS_ID, PEOPLE_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -72,11 +72,129 @@ const SV_REQUIRED_TABLES = [
   "other",
 ];
 
+const VIRTUAL_TABLE_COUNT = 30;
+const virtualTableId = (position: number) => 10_000 + position;
+const virtualPrimaryKeyId = (position: number) =>
+  virtualTableId(position) * 10 + 1;
+const virtualForeignKeyId = (position: number) =>
+  virtualTableId(position) * 10 + 2;
+
+function makeVirtualizedErdResponse(): ErdResponse {
+  const positions = Array.from(
+    { length: VIRTUAL_TABLE_COUNT },
+    (_, index) => index + 1,
+  );
+
+  return {
+    nodes: positions.map((position) => {
+      const tableId = virtualTableId(position);
+      const nextPosition = position + 1;
+      const hasNext = nextPosition <= VIRTUAL_TABLE_COUNT;
+      return {
+        table_id: tableId,
+        name: `virtual_table_${String(position).padStart(2, "0")}`,
+        display_name: `Virtual Table ${String(position).padStart(2, "0")}`,
+        description: null,
+        owner: null,
+        schema: PUBLIC_SCHEMA,
+        visibility_type: null,
+        db_id: SAMPLE_DB_ID,
+        fields: [
+          {
+            id: virtualPrimaryKeyId(position),
+            name: "id",
+            display_name: "ID",
+            database_type: "BIGINT",
+            base_type: "type/BigInteger",
+            effective_type: "type/BigInteger",
+            semantic_type: "type/PK",
+            fk_target_field_id: null,
+            fk_target_table_id: null,
+          },
+          ...(hasNext
+            ? [
+                {
+                  id: virtualForeignKeyId(position),
+                  name: "next_id",
+                  display_name: "Next ID",
+                  database_type: "BIGINT",
+                  base_type: "type/BigInteger",
+                  effective_type: "type/BigInteger",
+                  semantic_type: "type/FK",
+                  fk_target_field_id: virtualPrimaryKeyId(nextPosition),
+                  fk_target_table_id: virtualTableId(nextPosition),
+                },
+              ]
+            : []),
+          {
+            id: tableId * 10 + 3,
+            name: "label",
+            display_name: "Label",
+            database_type: "TEXT",
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            semantic_type: null,
+            fk_target_field_id: null,
+            fk_target_table_id: null,
+          },
+        ],
+      };
+    }),
+    edges: positions.slice(0, -1).map((position) => ({
+      source_table_id: virtualTableId(position),
+      source_field_id: virtualForeignKeyId(position),
+      target_table_id: virtualTableId(position + 1),
+      target_field_id: virtualPrimaryKeyId(position + 1),
+      relationship: "many-to-one",
+    })),
+  };
+}
+
 const tableNode = (tableId: TableId) => cy.get(`[data-id="table-${tableId}"]`);
+const tableCard = (tableId: TableId) =>
+  tableNode(tableId).find("[data-detail-level]");
 const schemaPickerTrigger = () => cy.findByTestId("schema-picker-button");
 const searchInput = () => cy.findByTestId("schema-viewer-node-search-input");
 const infoPanel = () => cy.findByTestId("graph-info-panel");
 const reactFlowViewport = () => cy.get(".react-flow__viewport");
+const edgeLayer = () => cy.findByTestId("schema-viewer-edges");
+const selectedEdges = () => cy.findAllByTestId("schema-viewer-selected-edge");
+
+function assertEdgeCount(matcher: (count: number) => void) {
+  edgeLayer().should(($layer) => {
+    matcher(Number($layer.attr("data-edge-count")));
+  });
+}
+
+function waitForViewportToSettle() {
+  let previousTransform: string | undefined;
+  reactFlowViewport().should(($viewport) => {
+    const transform = $viewport.attr("style");
+    const isSettled = transform === previousTransform;
+    previousTransform = transform;
+    expect(isSettled, "viewport transform should stop changing").to.be.true;
+  });
+}
+
+// Edges are drawn as batched SVG paths and hit-tested on pane clicks, so a
+// click on an edge is a pane click at a point on its path.
+function clickSelectedEdge() {
+  waitForViewportToSettle();
+  cy.findByTestId("schema-viewer-selected-edge-path").then(($path) => {
+    // jQuery types every element as HTMLElement; this test id is on a <path>.
+    const path = $path.get(0) as unknown as SVGPathElement;
+    const matrix = checkNotNull(path.getScreenCTM());
+    const point = path
+      .getPointAtLength(path.getTotalLength() / 2)
+      .matrixTransform(matrix);
+    cy.get(".react-flow__pane").then(($pane) => {
+      const paneRect = $pane[0].getBoundingClientRect();
+      cy.wrap($pane).click(point.x - paneRect.left, point.y - paneRect.top, {
+        force: true,
+      });
+    });
+  });
+}
 
 function assertViewportZoom(matcher: (zoom: number) => void) {
   reactFlowViewport().should(($el) => {
@@ -167,7 +285,7 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     tableNode(REVIEWS_ID).should("be.visible");
 
     cy.log("Edges are rendered between FK-related tables");
-    cy.get(".react-flow__edge").should("have.length.at.least", 3);
+    assertEdgeCount((count) => expect(count).to.be.at.least(3));
 
     cy.log("Click the Orders table header to select the node");
     tableNode(ORDERS_ID).findByText("ORDERS").click();
@@ -231,7 +349,9 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.log(
       "Double-click Reviews — camera zooms in onto Reviews; the focus-node button stays shown",
     );
-    tableNode(REVIEWS_ID).findByText("REVIEWS").dblclick();
+    // Focus mode packs non-neighbor tables beside Orders, so Reviews can sit
+    // off-screen or under the info panel; the zoom below is what's verified.
+    tableNode(REVIEWS_ID).findByText("REVIEWS").dblclick({ force: true });
     assertViewportZoom((z) =>
       expect(z, "double-click should zoom in").to.be.at.least(
         MIN_ZOOM_FOR_TARGET,
@@ -250,22 +370,26 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     cy.contains("button", "Focus node").should("not.exist");
 
     cy.log(
+      "Bring Orders back into view: tables far from the viewport render without field rows",
+    );
+    searchInput().click().type("orders");
+    cy.findByRole("option", { name: /Orders/i }).click();
+    assertNodeFocused(ORDERS_ID);
+
+    cy.log(
       "Clicking the USER_ID FK on Orders (target on canvas) selects the connecting edge and pans the camera",
     );
 
     tableNode(ORDERS_ID).findByText("USER_ID").click({ force: true });
     assertNodeFocused(PEOPLE_ID);
-    cy.findAllByTestId("schema-viewer-edge-path")
-      .filter('[data-selected="true"]')
-      .should("have.length", 1);
+    selectedEdges().should("have.length", 1);
 
     cy.log(
       "Re-clicking the now-selected edge alternates the camera between source (Orders) and target (People)",
     );
-    const selectedEdge = () => cy.get(".react-flow__edge.selected");
-    selectedEdge().click({ force: true });
+    clickSelectedEdge();
     assertNodeFocused(ORDERS_ID);
-    selectedEdge().click({ force: true });
+    clickSelectedEdge();
     assertNodeFocused(PEOPLE_ID);
 
     cy.log(
@@ -315,6 +439,71 @@ describe("scenarios > schema-viewer (Sample Database happy path)", () => {
     schemaPickerTrigger().click();
     H.miniPicker().findByText("Sample Database").should("be.visible");
     H.miniPicker().findByTestId("mini-picker-header").should("not.exist");
+  });
+
+  it("distant tables remain searchable and render after focus", () => {
+    // The tables form a chain, so every middle table has two edges; the first
+    // of them is the most connected table, which the initial view centers on.
+    const nearPosition = 2;
+    const farPosition = VIRTUAL_TABLE_COUNT;
+    const nearTableId = virtualTableId(nearPosition);
+    const farTableId = virtualTableId(farPosition);
+    const nearName = "Virtual Table 02";
+    const farName = "Virtual Table 30";
+    const farTableName = "virtual_table_30";
+
+    cy.intercept("GET", "/api/ee/erd*", {
+      body: makeVirtualizedErdResponse(),
+    }).as("virtualizedErd");
+
+    cy.visit(`${BASE_URL}?database-id=${SAMPLE_DB_ID}&schema=${PUBLIC_SCHEMA}`);
+    cy.wait("@virtualizedErd");
+
+    cy.log(
+      "The initial view centers on the most connected table, with field rows",
+    );
+    assertViewportZoom((zoom) =>
+      expect(zoom, "initial fit should be zoomed out").to.be.lessThan(
+        MIN_ZOOM_FOR_TARGET,
+      ),
+    );
+    tableCard(nearTableId)
+      .should("have.attr", "data-detail-level", "full")
+      .and("contain", "virtual_table_02");
+    assertNodeInViewport(nearTableId);
+    tableCard(nearTableId).within(() => {
+      cy.findByRole("group", { name: "3 fields" }).should("exist");
+      cy.findByRole("group", { name: "1 foreign key" }).should("exist");
+      cy.findByText("next_id").should("exist");
+      cy.findByText("label").should("exist");
+    });
+
+    cy.log("Search focuses the distant table and renders its field rows");
+    searchInput().click().type(farName);
+    cy.findByRole("option", { name: new RegExp(farName, "i") })
+      .should("be.visible")
+      .click();
+    tableCard(farTableId)
+      .should("have.attr", "data-detail-level", "full")
+      .and("contain", farTableName)
+      .and("contain", "id")
+      .and("contain", "label");
+    assertNodeInViewport(farTableId);
+    assertEdgeCount((count) => expect(count).to.be.at.least(1));
+
+    cy.log(
+      "Returning to the original region downgrades or releases the distant table",
+    );
+    searchInput().click().clear().type(nearName);
+    cy.findByRole("option", { name: new RegExp(nearName, "i") }).click();
+    tableCard(nearTableId).should("have.attr", "data-detail-level", "full");
+    cy.get(`[data-id="table-${farTableId}"] [data-detail-level="full"]`).should(
+      "not.exist",
+    );
+    searchInput().click().clear().type(farName);
+    cy.findByRole("option", { name: new RegExp(farName, "i") }).should(
+      "be.visible",
+    );
   });
 });
 
@@ -408,7 +597,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.log(
       "Edges visible: users<->profiles (one-to-one) and categories self-ref. Cross-schema FK has no edge until expansion",
     );
-    cy.get(".react-flow__edge").should("have.length", 2);
+    assertEdgeCount((count) => expect(count).to.equal(2));
 
     cy.log(
       "Clicking the profiles.user_id FK (target on canvas) selects the connecting edge",
@@ -416,9 +605,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.get<TableId>("@profilesId").then((id) =>
       tableNode(id).findByText("user_id").click(),
     );
-    cy.findAllByTestId("schema-viewer-edge-path")
-      .filter('[style*="stroke-width: 2"]')
-      .should("have.length", 1);
+    selectedEdges().should("have.length", 1);
 
     cy.log(
       "Click the cross-schema FK on products.lookup_id — adds sv_extra.lookup to the canvas",
@@ -432,7 +619,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
       assertNodeFocused(id);
     });
     cy.log("Edge count grows by one (products → lookup edge added)");
-    cy.get(".react-flow__edge").should("have.length", 3);
+    assertEdgeCount((count) => expect(count).to.equal(3));
 
     cy.log(
       "Reload — the expanded lookup table persists via UKV (URL stays untouched, canvas keeps the table)",
@@ -442,7 +629,7 @@ describe("scenarios > schema-viewer (writable Postgres: multi-schema, self-ref, 
     cy.get<TableId>("@lookupId").then((id) => {
       tableNode(id).should("be.visible");
     });
-    cy.get(".react-flow__edge").should("have.length", 3);
+    assertEdgeCount((count) => expect(count).to.equal(3));
 
     cy.log(
       "URL precedence: visit the same context with table-ids=<other> — URL must win, the UKV-saved lookup is ignored",
