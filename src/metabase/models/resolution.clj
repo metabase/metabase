@@ -39,6 +39,7 @@
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/DataApp                           metabase-enterprise.data-apps.models.data-app
     :model/DataAppGroupAssignment            metabase-enterprise.data-apps.models.data-app-group-assignment
+    :model/DataEncryptionKey                 metabase.app-db.models.data-encryption-key
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card

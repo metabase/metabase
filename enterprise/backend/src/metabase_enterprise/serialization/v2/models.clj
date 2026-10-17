@@ -96,6 +96,7 @@
    "DashboardBookmark"
    "DataAppGroupAssignment"
    "DataComplexityScore"
+   "DataEncryptionKey"
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"

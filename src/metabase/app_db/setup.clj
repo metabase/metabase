@@ -15,6 +15,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations :as custom-migrations]
    [metabase.app-db.db :as mdb.db]
+   [metabase.app-db.dek-store :as dek-store]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
@@ -298,6 +299,11 @@
                  custom-migrations/*create-sample-content* create-sample-content?]
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
+         ;; Install the DEK-store resolver before anything decrypts: a v2 sentinel only decrypts through a store, and
+         ;; whether the resolver hands one out is derived from the database itself (see `dek-store`), so this is safe
+         ;; on a database with no tables yet, and swapping the application DB (dump-to-h2, load-from-h2, tests) needs
+         ;; nothing further.
+         (dek-store/install-resolver!)
          (let [db-state (mdb.encryption/encryption-state)]
            (when manage-encryption-state?
              (mdb.encryption/check-encryption db-state))
