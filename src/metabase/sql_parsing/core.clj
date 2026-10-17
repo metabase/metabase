@@ -100,10 +100,16 @@
 ;; CPython). We strip them on the JVM side before passing SQL to Python, because GraalPy is too
 ;; slow at character-by-character string scanning over multi-MB inputs.
 
-(def ^:private ^:const strip-threshold
+(def ^:private ^:const literal-list-strip-threshold
   "Strip VALUES clauses with more than this many tuples, and IN lists / ARRAY literals with at
-   least this many commas."
+   least this many commas. Tuned for the fail-soft *analysis* callers, which run in bulk background
+   passes over stored queries: over-stripping is free there (they never need the literal values), so a
+   low cutoff — far below the thousands of items where GraalPy actually OOMs — is the safe default."
   100)
+
+(def ^:private ^:const executable-literal-list-ceiling
+  "The literal-list ceiling for a caller that will execute what it validates."
+  2000)
 
 (def ^:private literal-list-keyword-pattern
   "Pattern to find a VALUES, IN, or ARRAY keyword followed by its opening delimiter."
@@ -193,12 +199,17 @@
 (defn- strip-values-at
   "Decide whether to strip the VALUES clause whose `VALUES (` match spans [match-start, match-end).
    Returns [replacement resume-pos]: a single-row NULL placeholder (column count taken from the
-   first tuple) covering the SQL up to resume-pos, or [nil match-end] to leave the clause untouched."
-  [^String sql ^long match-start ^long match-end ^long n]
-  (let [paren-start (dec match-end)
+   first tuple) covering the SQL up to resume-pos, or [nil match-end] to leave the clause untouched.
+
+   Takes `threshold` rather than reading a var so the impersonation validator can ask for its own, much
+   higher ceiling; `n` is derived rather than passed because a fn carrying primitive hints is capped at
+   four args."
+  [^String sql ^long match-start ^long match-end ^long threshold]
+  (let [n           (.length sql)
+        paren-start (dec match-end)
         first-end   (skip-balanced-parens sql paren-start n)
         [tuple-count end-pos] (count-and-skip-tuples sql first-end n)]
-    (if (and (> (long tuple-count) strip-threshold)
+    (if (and (> (long tuple-count) threshold)
              (> first-end (inc paren-start)))
       [(make-null-placeholder (extract-keyword sql match-start match-end)
                               (count-top-level-commas (.substring sql (inc paren-start) (dec first-end))))
@@ -234,20 +245,23 @@
    [match-start, match-end). Returns [replacement resume-pos]: `IN (NULL)` / `ARRAY[NULL]`
    covering the whole list, or [nil match-end] to leave it untouched (resuming just inside the
    delimiter, so a large list nested in a subquery — `IN (SELECT ... WHERE x IN (...))` — is
-   still found)."
-  [^String sql ^long match-start ^long match-end ^long n]
+   still found).
+
+   Takes `threshold` rather than reading a var, and derives `n`, for the reasons
+   on [[strip-values-at]]."
+  [^String sql ^long match-start ^long match-end ^long threshold]
   (let [open-pos         (dec match-end)
-        [commas end-pos] (simple-list-end sql open-pos n)]
-    (if (and commas (>= (long commas) strip-threshold))
+        [commas end-pos] (simple-list-end sql open-pos (.length sql))]
+    (if (and commas (>= (long commas) threshold))
       [(str (extract-keyword sql match-start match-end)
             (if (= (.charAt sql open-pos) \[) "[NULL]" " (NULL)"))
        end-pos]
       [nil match-end])))
 
 (defn- strip-large-literal-lists*
-  "Single pass over `sql`, replacing every oversized literal list — VALUES clause or literal-only
-   IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped."
-  ^String [^String sql]
+  "Single pass over `sql`, replacing every literal list larger than `threshold` — VALUES clause
+   or literal-only IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped."
+  ^String [^String sql ^long threshold]
   (let [matcher (re-matcher literal-list-keyword-pattern sql)
         n       (.length sql)]
     (if-not (.find matcher)
@@ -262,8 +276,8 @@
                   match-end   (.end matcher)
                   [replacement resume] (let [ch (.charAt sql match-start)]
                                          (if (or (= ch \V) (= ch \v))
-                                           (strip-values-at sql match-start match-end n)
-                                           (strip-list-at sql match-start match-end n)))]
+                                           (strip-values-at sql match-start match-end threshold)
+                                           (strip-list-at sql match-start match-end threshold)))]
               (if replacement
                 (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
                 (.append sb sql (int i) (int resume)))
@@ -272,24 +286,29 @@
                      (.find matcher (int resume))))))))))
 
 (defn strip-large-literal-lists
-  "Replace large literal lists with NULL placeholders: VALUES clauses with more than
-   [[strip-threshold]] tuples become a single-row NULL tuple (preserving the column count from the
-   first tuple), and simple IN lists / ARRAY literals — numbers, single-quoted strings, and
-   VALUES-style tuples of them — with at least [[strip-threshold]] commas become `IN (NULL)` /
-   `ARRAY[NULL]`. All surrounding SQL structure is preserved.
+  "Replace large literal lists with NULL placeholders: VALUES clauses with more than `threshold`
+   tuples become a single-row NULL tuple (preserving the column count from the first tuple), and simple
+   IN lists / ARRAY literals — numbers, single-quoted strings, and VALUES-style tuples of them — with at
+   least `threshold` commas become `IN (NULL)` / `ARRAY[NULL]`. All surrounding SQL structure is preserved.
+   `threshold` defaults to [[literal-list-strip-threshold]] (the analysis default).
 
    This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
    On any error, returns the original SQL unchanged so parsing can proceed normally.
 
-   Best-effort by design: stripping only feeds fail-soft analysis, and execution paths restore the
-   original SQL when anything was stripped ([[is-single-stmt-of-type?]]), so edge cases like
-   keyword-shaped text inside string literals or comments are deliberately not guarded against."
-  ^String [^String sql]
-  (try
-    (strip-large-literal-lists* sql)
-    (catch Exception e
-      (log/warnf "Error stripping large literal lists, passing SQL through unchanged: %s" (ex-message e))
-      sql)))
+   Best-effort by design: stripping feeds fail-soft *analysis* (lineage, referenced tables/fields, returned
+   columns), so edge cases like keyword-shaped text inside string literals or comments are deliberately not
+   guarded against. A caller that needs its answer to hold for the string it goes on to run must NOT use
+   the rewrite: [[validate-executable-stmt]] and [[classify-stmt]] parse the original SQL and call this
+   only to find out whether a list is over their ceiling, refusing outright when it is rather than
+   answering about a rewrite — those same unguarded edge cases are what make a rewrite unsound to reason
+   about."
+  (^String [^String sql] (strip-large-literal-lists sql literal-list-strip-threshold))
+  (^String [^String sql ^long threshold]
+   (try
+     (strip-large-literal-lists* sql threshold)
+     (catch Exception e
+       (log/warnf "Error stripping large literal lists, passing SQL through unchanged: %s" (ex-message e))
+       sql))))
 
 ;;; -------------------------------------------------- Public API --------------------------------------------------
 
@@ -567,38 +586,96 @@
   [dialect sql replacements]
   (protocol/replace-names (parser) dialect sql replacements))
 
-;; Parsing time and memory grow with the length of the SQL, whatever it holds, and the "read-only" check runs on SQL
-;; a user or a model wrote.
+;;; --------------------------------------- Single-statement classification ----------------------------------------
+
+;; Parsing time and memory grow with the length of the SQL, whatever it holds.
 ;; As of 2026-10-10, the densest SQL that fits, a list of about 8,000 one-character items, takes about a second to
 ;; check, and six such checks at once complete on a 1 GB heap. At 60,000 characters one check took 1 to 3 seconds.
-(def ^:private max-read-only-sql-chars
-  "The longest SQL, in characters, that the \"read-only\" check parses."
+(def ^:private ^:const max-gate-sql-chars
+  "The longest SQL, in characters, that [[classify-stmt]] parses. A cheap ceiling on work spent for a
+   caller that is only gating, and whose SQL a user or a model wrote."
   (* 16 1024))
 
-(defn is-single-stmt-of-type?
-  "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
-   and returns the query reconstructed from the parsed AST. `stmt-type` is \"read\", \"write\", or \"read-only\": a
-   read statement that also holds nothing that writes or locks anywhere in its tree.
-   For \"read-only\", SQL that is not allowed carries a `:reason`, and SQL that is too long or holds a literal list
-   too large to parse whole is refused without being parsed."
+(def ^:private executable-limits
+  "Limits for a caller that will execute the `:sql` the verdict carries — [[validate-executable-stmt]].
+
+   Such a caller needs the verdict to hold for the exact string it goes on to run, so a known `dialect` is
+   required: `nil` makes SQLGlot parse in its generic dialect and hand back a confident verdict plus a
+   generically-regenerated `:sql`, which is not the string that was checked."
+  {:max-sql-chars        nil
+   :literal-list-ceiling executable-literal-list-ceiling
+   :require-dialect?     true})
+
+(def ^:private gate-limits
+  "Limits for a caller that only reads the verdict and never executes its `:sql` — [[classify-stmt]]."
+  {:max-sql-chars        max-gate-sql-chars
+   :literal-list-ceiling literal-list-strip-threshold
+   :require-dialect?     false})
+
+(defn- unknown
+  "A verdict that `sql` could not be checked, for `reason`."
+  [sql reason]
+  {:verdict :unknown, :reason reason, :sql sql})
+
+(defn- verdict
+  "Turn the parser's raw result for `sql` into a verdict map."
+  [sql raw]
+  (let [{:keys [is-single-stmt? allowed-stmt-type? error reason reason-detail] parsed-sql :sql}
+        (perf/update-keys raw (comp keyword u/->kebab-case-en))]
+    (cond
+      ;; SQL that does not parse is SQL we know nothing about. `:error` carries the parser's message, which
+      ;; a caller may want to word differently from the refusals it *can* explain.
+      error              (assoc (unknown sql "unparseable") :error error)
+      allowed-stmt-type? {:verdict :allowed, :single-stmt? true, :sql parsed-sql}
+      :else              (cond-> {:verdict :disallowed, :single-stmt? (boolean is-single-stmt?)}
+                           reason        (assoc :reason reason)
+                           reason-detail (assoc :detail reason-detail)
+                           parsed-sql    (assoc :sql parsed-sql)))))
+
+(defn- classify-single-stmt
+  "Classify `sql` as a single statement of `stmt-type` for `dialect`, spending no more than `limits` allow.
+   Applies `limits` as given; it does not infer them from `stmt-type`."
+  [dialect sql stmt-type {:keys [max-sql-chars literal-list-ceiling require-dialect?]}]
+  (cond
+    ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that
+    ;; grows with it.
+    (and max-sql-chars (< (long max-sql-chars) (count sql)))
+    (unknown sql "too-long")
+
+    (and require-dialect? (nil? dialect))
+    (unknown sql "unknown-dialect")
+
+    ;; Stripping is only ever a size guard: if it would collapse a list, parsing that list could OOM the
+    ;; shared JVM, so refuse rather than parse the collapsed form and answer about that instead. Stripping
+    ;; also does not skip comments, so a collapsed list can swallow a second statement into a comment.
+    ;; Under the ceiling nothing is stripped, so we parse exactly the string the caller holds.
+    (not= sql (strip-large-literal-lists sql literal-list-ceiling))
+    (unknown sql "large-literal-list")
+
+    :else
+    (verdict sql (protocol/single-stmt-of-type (parser) dialect sql stmt-type))))
+
+(defn validate-executable-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `dialect`, for a caller that will **execute** the
+  `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or DELETE,
+  `\"read-only\"` = a read statement that also holds nothing that writes or locks anywhere in its tree.
+
+  The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
+  parsed as it stands comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched
+  for in its original one. See [[executable-limits]] for what that costs, and [[classify-stmt]] for the
+  same question asked by a caller that only needs a verdict."
   [dialect sql stmt-type]
-  ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that grows with it.
-  (if (and (= stmt-type "read-only") (< max-read-only-sql-chars (count sql)))
-    {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "too-long"}
-    (let [stripped-sql (strip-large-literal-lists sql)]
-      ;; Stripping does not skip comments, so it can rewrite a second statement into a commented-out list.
-      ;; "read-only" must judge the SQL that will run, and parsing a large list unstripped risks a GraalPy OOM, so it
-      ;; refuses.
-      (if (and (= stmt-type "read-only") (not= sql stripped-sql))
-        {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "large-literal-list"}
-        (let [result (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql stmt-type)
-                         (perf/update-keys (comp keyword u/->kebab-case-en)))]
-          ;; The `:sql` in the `result` is the reconstructed SQL from the SQLGlot parser.
-          ;; We generally want to use the reconstructed SQL, but if the original SQL had its VALUES/IN
-          ;; literal lists stripped (to avoid GraalPy OOM) then we need to return the original SQL to
-          ;; preserve the values. (#74284)
-          (cond-> result
-            (not= sql stripped-sql) (assoc :sql sql)))))))
+  (classify-single-stmt dialect sql stmt-type executable-limits))
+
+(defn classify-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `dialect` (see [[validate-executable-stmt]] for
+  the `stmt-type` values), for a caller that only reads the verdict and never executes its `:sql`.
+
+  Cheaper and more permissive about `dialect` than [[validate-executable-stmt]] — see [[gate-limits]].
+  Do not execute the `:sql` this returns: with no `dialect` it is a generic-dialect regeneration, not the
+  string that was checked."
+  [dialect sql stmt-type]
+  (classify-single-stmt dialect sql stmt-type gate-limits))
 
 (comment
   (referenced-tables "postgres" "select * from transactions")
