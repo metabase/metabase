@@ -20,3 +20,7 @@
     "{\"a\": 1} and more"
     "{\"a\": 1}{\"b\": 2}"
     "[1] [2]"))
+
+(deftest ^:parallel add-encoder-rejects-generator-encoders-test
+  (is (thrown-with-msg? IllegalArgumentException #"must take one argument"
+                        (json/add-encoder java.util.BitSet (fn [value _json-generator] value)))))

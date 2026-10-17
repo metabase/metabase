@@ -30,8 +30,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo Keyword)
-   (com.fasterxml.jackson.core JsonParseException)
-   (com.fasterxml.jackson.core.io JsonEOFException)
+   (com.s_exp.oda JsonParseException)
    (java.io StringWriter)
    (java.time.temporal Temporal)
    (java.util.concurrent TimeUnit)
@@ -1724,8 +1723,8 @@
 
 (defmethod may-contain-raw-token? :json [ex _]
   (cond
-    (instance? JsonEOFException ex) false
-    (instance? JsonParseException ex) true
+    ;; oda's parse errors only give the position, never the input
+    (instance? JsonParseException ex) false
     :else (do (log/warnf "Unexpected exception while parsing JSON: %s" (ex-message ex))
               ;; err on the side of caution
               true)))

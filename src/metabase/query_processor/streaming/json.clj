@@ -1,7 +1,7 @@
 (ns metabase.query-processor.streaming.json
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
-  (:refer-clojure :exclude [mapv empty? not-empty])
+  (:refer-clojure :exclude [mapv])
   (:require
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
@@ -9,13 +9,15 @@
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.util.json :as json]
-   [metabase.util.performance :refer [mapv empty? not-empty]])
+   [metabase.util.performance :refer [mapv]])
   (:import
-   (com.fasterxml.jackson.core JsonGenerator)
-   (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.io BufferedOutputStream OutputStream)
    (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
+
+(defn- write-ascii! [^OutputStream os ^String s]
+  (.write os (.getBytes s StandardCharsets/US_ASCII)))
 
 (defmethod qp.si/stream-options :json
   ([_]
@@ -29,7 +31,7 @@
 
 (defmethod qp.si/streaming-results-writer :json
   [_ ^OutputStream os]
-  (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+  (let [out                (BufferedOutputStream. os)
         col-names          (volatile! nil)
         ordered-formatters (volatile! nil)
         ;; if we're processing results from a pivot query, there will be a column 'pivot-grouping' that we don't want to include
@@ -46,7 +48,7 @@
             (vreset! col-names names))
           (vreset! ordered-formatters
                    (mapv #(formatter/create-formatter results_timezone % viz-settings format-rows?) ordered-cols))
-          (.write writer "[\n")))
+          (write-ascii! out "[\n")))
 
       (write-row! [_ row row-num _ {:keys [output-order]}]
         (let [ordered-row        (vec
@@ -63,7 +65,7 @@
           (when (or (not group)
                     (= pivot.postprocess/non-pivot-row-group (int group)))
             (when-not (zero? row-num)
-              (.write writer ",\n"))
+              (write-ascii! out ",\n"))
             (json/encode-to
              ;; #12247 Use array-map instead of zipmap for preserving order in json export
              (apply array-map
@@ -80,76 +82,57 @@
                                 (formatter/TextWrapper? res)    (:text-str res)
                                 :else                          res)))
                           @ordered-formatters cleaned-row)))
-             writer {}))))
+             out {}))))
       ;; no flush per row: it would sync-flush the GZIP response per row (one native Deflater call each, TCP packet
-      ;; overhead per #34795); the BufferedWriter pushes rows through as it fills, like the CSV writer
+      ;; overhead per #34795); the BufferedOutputStream pushes rows through as it fills, like the CSV writer
 
       (finish! [_ _]
-        (.write writer "\n]")
-        (.flush writer)
-        (.flush os)
-        (.close writer)))))
+        (write-ascii! out "\n]")
+        (.flush out)
+        (.close out)))))
 
 (defmethod qp.si/stream-options :api
   ([_]   (qp.si/stream-options :api nil))
   ([_ _] {:content-type "application/json; charset=utf-8"}))
 
-(defn- generate-map-contents [^JsonGenerator jgen maplike]
-  (reduce (fn [^JsonGenerator jg kv]
-            (let [k (key kv)
-                  v (val kv)]
-              (.writeFieldName jg (if (keyword? k)
-                                    (subs (str k) 1)
-                                    (str k)))
-              (json/generate jg v json/default-date-format nil nil)
-              jg))
-          jgen maplike))
-
-(defn- make-generator ^JsonGenerator [^OutputStream os]
-  (-> os
-      (OutputStreamWriter. StandardCharsets/UTF_8)
-      (BufferedWriter.)
-      json/create-generator))
+(defn- write-map-entries!
+  "Write the entries of `maplike` as JSON object members, each preceded by a comma: they follow other members."
+  [^OutputStream out maplike]
+  (doseq [[k v] maplike]
+    (write-ascii! out ",")
+    (json/encode-to (if (keyword? k) (subs (str k) 1) (str k)) out {})
+    (write-ascii! out ":")
+    (json/encode-to v out {})))
 
 (defmethod qp.si/streaming-results-writer :api
   [_ ^OutputStream os]
-  ;; Cheshire supports a custom encoding API that we would like to use for streaming, say by generating JSON on
-  ;; `{:data {:rows (a/chan), ...}}` and having a custom encoder for the channel.
-  ;; But there's a problem: the `metadata that arrives in `finish!` adds new keys to both the `:data` and outer maps,
-  ;; and there's no way to handle that mutation with a custom encoder.
+  ;; The metadata that arrives in `finish!` adds new keys to both the `:data` and outer maps, so the response can't
+  ;; be generated from a single value: write its structure by hand around the rows instead.
 
-  ;; So instead we would like to use Cheshire's streaming generator API. But it is very eager to `(.flush writer)`.
-  ;; That results in sending 3 + N packets over the wire, where N is the number of rows in the response! That's a lot
-  ;; of TCP overhead, which causes download time slowdowns, especially with complex load balancing etc. See #34795.
-
-  ;; And so that leads to this low-level code that mixes calls to the underlying Jackson Java library with calls to
-  ;; Cheshire's streaming API for handling Clojure data. It duplicates some Cheshire logic for generating maps, since
-  ;; Cheshire doesn't have an API which generate in key-value pairs of a map without including the `{}`s.
-  (let [jgen (make-generator os)]
+  ;; Rows are not flushed as they are written: that would send 3 + N packets over the wire, where N is the number of
+  ;; rows in the response! That's a lot of TCP overhead, which causes download time slowdowns, especially with
+  ;; complex load balancing etc. See #34795.
+  (let [out (BufferedOutputStream. os)
+        first-row? (volatile! true)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ _ _]
-        (doto jgen
-          (.writeStartObject)
-          (.writeFieldName "data")
-          (.writeStartObject)
-          (.writeFieldName "rows")
-          (.writeStartArray)))
+        (write-ascii! out "{\"data\":{\"rows\":["))
 
       (write-row! [_ row _ _ _]
-        (json/generate jgen row json/default-date-format nil nil))
+        (if @first-row?
+          (vreset! first-row? false)
+          (write-ascii! out ","))
+        (json/encode-to row out {}))
 
       (finish! [_ {:keys [data], :as metadata}]
-        (.writeEndArray jgen)
+        (write-ascii! out "]")
         ;; write any remaining keys in data
-        (when-not (empty? data)
-          (generate-map-contents jgen data))
+        (write-map-entries! out data)
         ;; close data
-        (.writeEndObject jgen)
+        (write-ascii! out "}")
         ;; write any remaining top-level keys
-        (when-let [other-metadata (not-empty (dissoc metadata :data))]
-          (generate-map-contents jgen other-metadata))
+        (write-map-entries! out (dissoc metadata :data))
         ;; close top-level map
-        (doto jgen
-          (.writeEndObject)
-          (.flush)
-          (.close))))))
+        (write-ascii! out "}")
+        (.flush out)
+        (.close out)))))

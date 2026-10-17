@@ -56,8 +56,8 @@
 
 (methodical/defmethod mi/to-json :model/CustomVizPlugin
   "Never include the raw bundle bytes in JSON."
-  [plugin json-generator]
-  (next-method (dissoc plugin :bundle) json-generator))
+  [plugin]
+  (next-method (dissoc plugin :bundle)))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

@@ -1,96 +1,156 @@
 (ns metabase.util.json
   "Functions for encoding and decoding JSON that abstract away the underlying implementation."
   (:require
-   ;; this ns is the JSON facade; it wraps cheshire directly
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [cheshire.core :as cheshire]
-   [cheshire.factory]
-   [cheshire.generate :as json.generate]
    [clojure.java.io :as io]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [s-exp.oda :as oda])
   (:import
-   (com.fasterxml.jackson.core JsonGenerator)
-   (java.io InputStream Reader StringReader)))
+   (clojure.lang AFunction RestFn)
+   (java.io InputStream OutputStream Reader Writer)
+   (java.lang.reflect Method)))
 
 (set! *warn-on-reflection* true)
 
-(defn add-encoder
-  "Register a custom `encoder` for `class`."
-  [class encoder]
-  (json.generate/add-encoder class encoder))
+(defonce ^:private encoders
+  ;; {Class fn}, handed to oda as-is: it caches resolutions per map, so it only changes when an encoder is added.
+  (atom {}))
 
-(defn create-generator
-  "Returns JsonGenerator for given writer."
-  [writer]
-  (cheshire/create-generator writer))
+(defonce ^:private fallback-encoder
+  ;; Encoder registered for `Object`. oda would apply an `Object` encoder to every value, natively writable ones
+  ;; included, so it is kept apart and only used for values oda cannot write.
+  (atom nil))
+
+(defn- one-arg-callable?
+  "False when `f` is a fn that cannot be called with one argument. Only plain fns can be checked: other callables
+  (multimethods, ...) are assumed to be callable."
+  [f]
+  (let [f (if (var? f) @f f)]
+    (cond
+      (instance? RestFn f)
+      (<= (.getRequiredArity ^RestFn f) 1)
+
+      (instance? AFunction f)
+      (boolean (some (fn [^Method m]
+                       (and (= "invoke" (.getName m))
+                            (= 1 (.getParameterCount m))))
+                     (.getDeclaredMethods (class f))))
+
+      :else
+      true)))
+
+(defn add-encoder
+  "Register `encoder`, a fn of an instance of `class` returning the value to write in its place (e.g. a String).
+
+  It takes precedence over the built-in encoding of `class` (records, byte arrays, java.time...), and applies to
+  subclasses and implementations of `class` that have no encoder of their own, like protocol dispatch. The returned
+  value is written without re-applying this encoder, so it may be the instance itself.
+
+  An encoder for `Object` is the exception: it is only used for values that cannot be written otherwise."
+  [^Class class encoder]
+  (when-not (one-arg-callable? encoder)
+    ;; encoders used to be fns of [value json-generator] that wrote to a Jackson generator: fail where they are
+    ;; registered rather than on the first value they should encode
+    (throw (IllegalArgumentException.
+            (str "JSON encoder for " (.getName class) " must take one argument, the value to encode, and return the"
+                 " value to write in its place. Encoders of [value json-generator] are no longer supported."))))
+  (if (= class Object)
+    (reset! fallback-encoder encoder)
+    (swap! encoders assoc class encoder)))
+
+(defn has-custom-encoder?
+  "Return true if the type of the given value has a registered custom encoder."
+  [value]
+  (contains? @encoders (type value)))
 
 ;; Tell the JSON middleware to use a date format that includes milliseconds (why?)
 (def default-date-format "Default date formatter for JSON serialization." "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
-(alter-var-root #'cheshire.factory/default-date-format (constantly default-date-format))
-(alter-var-root #'json.generate/*date-format* (constantly default-date-format))
+(defn- default-fn
+  "Called by oda on values it cannot write: non-finite floating point numbers, written as strings like Jackson does
+  (`\"NaN\"`), and values of types without an encoder."
+  [x]
+  (cond
+    (or (instance? Double x) (instance? Float x)) (str x)
+    @fallback-encoder (@fallback-encoder x)
+    :else (throw (ex-info (str "Cannot JSON encode object of class: " (.getName (class x)))
+                          {:class (class x)}))))
 
-(defn generate
-  "Call `cheshire.generate/generate`."
-  [jg obj date-format ex key-fn]
-  (json.generate/generate jg obj date-format ex key-fn))
+(defn- map-key
+  "Writes map keys oda has no encoding for (nil, dates, collections...) as their `str`, like cheshire did."
+  [k]
+  (if (or (keyword? k) (string? k))
+    k
+    (str k)))
 
-(defn generate-map
-  "Encode a clojure map to the json generator."
-  [m jg]
-  (json.generate/encode-map m jg))
-
-(defn generate-nil
-  "Encode null to the json generator."
-  [_ ^JsonGenerator jg]
-  (.writeNull jg))
-
-(defn raw-json-generator
-  "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
-  [^String s]
-  (reify json.generate/JSONable
-    (to-json [_ generator]
-      (.writeRawValue ^JsonGenerator generator s))))
-
-(defn has-custom-encoder?
-  "Return true if the type of the given value has a registered custom implementation of JSONable."
-  [value]
-  (contains? (:impls json.generate/JSONable) (type value)))
-
-(defn write-string
-  "Encode string to the json generator."
-  [^JsonGenerator jg ^String str]
-  (json.generate/write-string jg str))
+(defn- write-opts
+  [opt-map]
+  {:encoders @encoders
+   :default-fn default-fn
+   :key-fn map-key
+   :date-format default-date-format
+   :pretty (:pretty opt-map)})
 
 (defn encode
-  "Return a JSON-encoding String for the given object."
+  "Return a JSON-encoding String for the given object.
+
+  Options:
+  * `:pretty` - when true, indent the output one map entry per line, like Jackson's default pretty printer."
   (^String [obj]
-   (cheshire/generate-string obj))
+   (oda/write-str obj (write-opts nil)))
   (^String [obj opt-map]
-   (cheshire/generate-string obj opt-map)))
+   (oda/write-str obj (write-opts opt-map))))
 
 (defn encode-to
-  "Encode a value as JSON and write to the given Writer object."
-  [obj writer opt-map]
-  (cheshire/generate-stream obj writer opt-map))
+  "Encode a value as JSON and write it to `out`, an OutputStream (UTF-8) or a Writer, and return `out`. Neither
+  flushes nor closes `out`. See [[encode]] for options."
+  [obj out opt-map]
+  (if (instance? OutputStream out)
+    (oda/write obj out (write-opts opt-map))
+    (.write ^Writer out (encode obj opt-map)))
+  out)
+
+(defn- parse-opts
+  [key-fn]
+  {:key-fn (cond
+             (true? key-fn) keyword
+             key-fn key-fn)})
+
+(defn- read-one
+  "Read the first JSON value from `rdr`, a Reader or InputStream, or nil if it is empty."
+  [rdr key-fn]
+  (oda/read (oda/reader rdr (parse-opts key-fn)) {:eof-value nil}))
+
+(defn- blank-bytes?
+  [^bytes bs]
+  (loop [i 0]
+    (if (= i (alength bs))
+      true
+      (case (aget bs i)
+        (32 9 10 13) (recur (inc i))
+        false))))
+
+(defn- parse-bytes
+  "Parse the UTF-8 JSON in `bs`, or nil if it is blank."
+  [^bytes bs key-fn]
+  (when-not (blank-bytes? bs)
+    (oda/parse bs (parse-opts key-fn))))
 
 (defn decode
-  "Decode a value from a JSON from a string, InputStream, or Reader.
+  "Decode a value from JSON in a string, byte array, InputStream (UTF-8), or Reader. Blank input decodes to nil.
 
-  For strings this uses `cheshire/parse-string-strict`, NOT `parse-string`: for a top-level JSON array `parse-string`
-  returns a *lazy* seq that retains the Jackson parser (and its ~8KB read buffers) until fully realized -- so e.g.
-  every Field's `nfc_path` (a JSON array) would pin a parser, and a wide table's worth of them costs >1GB. The strict
-  variant realizes the value and releases the parser; laziness buys nothing here anyway since the source string is
-  already fully in memory."
+  Prefer an InputStream to a Reader over the same bytes: oda parses bytes, so it reads a whole InputStream at once
+  and parses it about twice as fast as it can transcode a Reader's chars back to bytes as it goes.
+
+  `key-fn` transforms map keys: `true` keywordizes them, otherwise it is a fn of the key String."
   ([source] (decode source nil))
   ([source key-fn]
-   (cond (string? source) (cheshire/parse-string-strict source key-fn)
-         (instance? Reader source) (cheshire/parse-stream source key-fn)
-         (instance? InputStream source) (with-open [r (io/reader source)]
-                                          (cheshire/parse-stream r key-fn))
+   (cond (string? source) (when-not (str/blank? source)
+                            (oda/parse ^String source (parse-opts key-fn)))
+         (instance? Reader source) (read-one source key-fn)
+         (instance? InputStream source) (with-open [^InputStream is source]
+                                          (parse-bytes (.readAllBytes is) key-fn))
          (nil? source) nil
-         (bytes? source) (with-open [r (io/reader (java.io.ByteArrayInputStream. ^bytes source))]
-                           (cheshire/parse-stream r))
+         (bytes? source) (parse-bytes source key-fn)
          :else (throw (ex-info (str "Unsupported source type: " (type source)) {})))))
 
 (defn decode+kw
@@ -102,10 +162,7 @@
   "Decode the single JSON value that makes up string `s`, keywordizing map keys.
   Throws if anything other than whitespace follows that value."
   [^String s]
-  (let [[value & more] (cheshire/parsed-seq (io/reader (StringReader. s)) true)]
-    (when more
-      (throw (ex-info "Expected one JSON value, found more" {})))
-    value))
+  (decode s true))
 
 (defn- parse-charset
   "Parse charset from content-type header, e.g. 'application/json; charset=utf-8' -> 'utf-8'.
@@ -117,14 +174,13 @@
 (defn- decode-with-encoding
   "Decode JSON from body, respecting the charset from content-type header."
   [body content-type]
-  (let [encoding (or (parse-charset content-type) "UTF-8")]
-    (cond
-      (string? body)               (decode body true)
-      (instance? InputStream body) (with-open [r (io/reader body :encoding encoding)]
-                                     (cheshire/parse-stream r true))
-      (instance? Reader body)      (cheshire/parse-stream body true)
-      (nil? body)                  nil
-      :else                        (decode body true))))
+  (let [encoding (parse-charset content-type)]
+    (if (and (instance? InputStream body)
+             encoding
+             (not (.equalsIgnoreCase "UTF-8" ^String encoding)))
+      (with-open [r (io/reader body :encoding encoding)]
+        (read-one r true))
+      (decode body true))))
 
 (defn decode-body
   "Given a response map, decodes body if headers indicate it's a JSON response, or just slurps if it's not a string."

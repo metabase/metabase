@@ -1673,11 +1673,7 @@
   (testing "Validation will throw an exception if a setting has invalid JSON via an environment variable"
     (let [ex (get-parse-exception :json "[1, 2,")]
       (assert-parser-exception!
-       :json ex
-       ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
-       #_(str "Unexpected end-of-input within/between Array entries\n"
-              " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
-       "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+       :json ex "unexpected end of input at line 1, column 7 (offset 6)"))))
 
 (deftest sensitive-data-redacted-test
   (testing "The exception thrown by validation will not contain sensitive info from the config"
@@ -1685,7 +1681,7 @@
           ex (get-parse-exception :json (str "[" password))]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
-       :json ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+       :json ex "unexpected character at line 1, column 2 (offset 1)"))))
 
 (deftest safe-exceptions-not-redacted-test
   (testing "An exception known not to contain sensitive info will not be redacted"
@@ -1694,9 +1690,7 @@
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
        :json ex
-       (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
-            " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
-            " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
+       "unterminated object at line 1, column 23 (offset 22)"))))
 
 (define-setting-for-type :csv)
 

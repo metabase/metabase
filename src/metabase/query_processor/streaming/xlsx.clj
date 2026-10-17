@@ -406,7 +406,7 @@
 (defmethod set-cell! Object
   [^Cell cell value _styles _typed-styles]
   ;; Ok, this seems a bit strange, but the reason for generating the string and sometimes parsing it again:
-  ;; An Object can come in without an encoder (custom encoders can be added with `json.generate/add-encoder`)
+  ;; An Object can come in without an encoder (custom encoders can be added with `json/add-encoder`)
   ;; In such cases, we want to just turn that object into a json-encoded string, and be done with it.
   ;; But in cases where the Object DOES have an encoder, we want the encoder's output directly, not wrapped in
   ;; another set of quotes, so we read the encoded result back to 'unwrap' it once.

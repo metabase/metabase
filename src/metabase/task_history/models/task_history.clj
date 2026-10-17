@@ -269,5 +269,4 @@
 ;; serialization of a `Throwable->map` to make this something that can be JSON encoded.
 (json/add-encoder
  Throwable
- (fn [throwable json-generator]
-   (json/generate-map (Throwable->map throwable) json-generator)))
+ Throwable->map)

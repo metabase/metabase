@@ -1586,12 +1586,12 @@
     (lib/fully-parameterized-query? query)))
 
 (methodical/defmethod mi/to-json :model/Card
-  [card json-generator]
+  [card]
   ;; we're doing update + dissoc instead of [[medley.core/dissoc-in]] because we don't want it to remove the
   ;; `:dataset_query` key entirely if it is empty, as it is in a lot of tests.
   (let [card (cond-> card
                (map? (:dataset_query card)) (update :dataset_query dissoc :lib/metadata))]
-    (next-method card json-generator)))
+    (next-method card)))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

@@ -11,7 +11,6 @@
    [metabase.test :as mt]
    [metabase.util.json :as json])
   (:import
-   (com.fasterxml.jackson.core JsonGenerator)
    (java.io
     BufferedInputStream
     BufferedOutputStream
@@ -690,15 +689,15 @@
 
 (json/add-encoder
  SampleNastyClass
- (fn [obj, ^JsonGenerator json-generator]
-   (.writeString json-generator (str (:v obj)))))
+ (fn [obj]
+   (str (:v obj))))
 
 (defrecord ^:private SampleNastyClass2 [^Number v])
 
 (json/add-encoder
  SampleNastyClass2
- (fn [obj, ^JsonGenerator json-generator]
-   (.writeNumber json-generator (long (:v obj)))))
+ (fn [obj]
+   (long (:v obj))))
 
 (defrecord ^:private AnotherNastyClass [^String v])
 

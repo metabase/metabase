@@ -40,7 +40,7 @@
 ;; JSON Encoding (etc.)
 
 ;; Encode BSON undefined like `nil`
-(json/add-encoder org.bson.BsonUndefined json/generate-nil)
+(json/add-encoder org.bson.BsonUndefined (constantly nil))
 
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
   [^ObjectId oid data-output]

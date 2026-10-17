@@ -619,7 +619,7 @@
   password. No one gets to see this in an API response!
 
   Also remove settings that the User doesn't have read perms for."
-  [db json-generator]
+  [db]
   (letfn [(redact-sensitive-fields [details]
             (reduce
              #(m/update-existing %1 %2 (fn [v] (when v secret/protected-password)))
@@ -655,8 +655,7 @@
                             false)))
                       settings)
                      (when (not= <> settings)
-                       (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
-     json-generator)))
+                       (log/debug "Redacting non-user-readable database settings during json encoding."))))))))))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 (defmethod serdes/make-spec "Database"

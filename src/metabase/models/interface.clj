@@ -950,16 +950,16 @@
 ;;;; [[to-json]]
 
 (methodical/defmulti to-json
-  "Serialize an `instance` to JSON."
-  {:arglists            '([instance json-generator])
-   :defmethod-arities   #{2}
+  "Return the value to serialize to JSON in place of `instance`."
+  {:arglists            '([instance])
+   :defmethod-arities   #{1}
    :dispatch-value-spec (some-fn keyword? symbol?)} ; dispatch value should be either keyword model name or symbol
   t2.u/dispatch-on-first-arg)
 
 (methodical/defmethod to-json :default
   "Default method for encoding instances of a Toucan model to JSON."
-  [instance json-generator]
-  (json/generate-map instance json-generator))
+  [instance]
+  instance)
 
 (json/add-encoder
  Instance
