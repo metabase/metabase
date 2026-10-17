@@ -66,16 +66,22 @@
             (as-> graph <>
               (reduce (card-recurse mp node-type node-id) <> card-ids)
               (reduce (snippet-recurse mp node-type node-id) <> snippet-ids)))
+          ;; a node that is already in the graph has already been walked (or is being walked), so we only need to add
+          ;; the new edge (which throws if it creates a cycle) instead of walking it again
+          (depend-and-walk [graph node dependency walk]
+            (let [visited? (contains? (dep/nodes graph) dependency)
+                  graph    (dep/depend graph node dependency)]
+              (if visited?
+                graph
+                (walk graph))))
           (card-recurse [mp node-type id]
             (fn [graph nested-card-id]
-              (card-subquery-graph mp
-                                   (dep/depend graph [node-type id] [::card nested-card-id])
-                                   nested-card-id)))
+              (depend-and-walk graph [node-type id] [::card nested-card-id]
+                               #(card-subquery-graph mp % nested-card-id))))
           (snippet-recurse [mp node-type id]
             (fn [graph nested-snippet-id]
-              (snippet-subquery-graph mp
-                                      (dep/depend graph [node-type id] [::snippet nested-snippet-id])
-                                      nested-snippet-id)))]
+              (depend-and-walk graph [node-type id] [::snippet nested-snippet-id]
+                               #(snippet-subquery-graph mp % nested-snippet-id))))]
     (let [card-ids    (lib/native-query-card-ids init-query)
           snippet-ids (lib/native-query-snippet-ids init-query)]
       (subquery-graph* metadata-providerable
