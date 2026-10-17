@@ -98,14 +98,12 @@ export const LEGEND_FONT_WEIGHT = 400;
 // room for the focus outline of the legend items
 export const LEGEND_PADDING = 2;
 export const MIN_LEGEND_CARD_WIDTH = 420;
-export const MIN_LEGEND_CARD_HEIGHT = 200;
 const MAX_VERTICAL_WIDTH_RATIO = 0.25;
 const MAX_TRUNCATED_ITEMS_RATIO = 0.5;
 export const MIN_VISIBLE_COUNT = 1;
 const AUTO_MIN_VISIBLE_COUNT = 2;
 // the plot is the chart without its axes, as in PLOT_HEIGHT_BREAKPOINTS
 const MIN_PLOT_WIDTH = 150;
-const MIN_PLOT_HEIGHT = 80;
 const MIN_COLUMN_CARD_HEIGHT = 100;
 
 export type LegendLayoutResult =
@@ -125,16 +123,10 @@ export type LegendLayoutResult =
 
 export const HIDDEN_LEGEND_LAYOUT: LegendLayoutResult = { type: "hidden" };
 
-export interface PlotInset {
-  width: number;
-  height: number;
-}
-
-const NO_PLOT_INSET: PlotInset = { width: 0, height: 0 };
-
 interface GetLegendLayoutOptions {
   items: LegendItemData[];
-  plotInset?: PlotInset;
+  // the width the axes take from the chart, so width - plotInsetWidth is the plot
+  plotInsetWidth?: number;
   position: LegendPosition;
   width: number;
   height: number;
@@ -151,7 +143,7 @@ interface LegendMetrics {
   config: LegendSizeConfig;
   width: number;
   height: number;
-  plotInset: PlotInset;
+  plotInsetWidth: number;
   labelWidths: number[];
   itemWidths: number[];
   availableWidth: number;
@@ -186,9 +178,9 @@ export function getLegendLayout(
     : getColumnLayout(metrics, { ...fit, allowMostlyTruncated: true });
 }
 
-// Auto tries a complete row at the bottom at any height, as x.64 did on top,
-// then a column on the right, which x.64 drew truncated on cards as wide as
-// MIN_LEGEND_CARD_WIDTH.
+// Auto shows a complete row below the chart, else a column on the right, else
+// the partial row with "+ N more" when it keeps AUTO_MIN_VISIBLE_COUNT items.
+// A column with most labels truncated needs a card MIN_LEGEND_CARD_WIDTH wide.
 function getAutoLayout(
   metrics: LegendMetrics,
   alwaysVisible: boolean,
@@ -199,19 +191,16 @@ function getAutoLayout(
     minVisibleCount: alwaysVisible ? MIN_VISIBLE_COUNT : AUTO_MIN_VISIBLE_COUNT,
     alwaysVisible,
   };
-  const completeRow = getRowLayout(metrics, { ...fit, alwaysVisible: true });
-  if (completeRow.type !== "hidden" && completeRow.visibleCount === itemCount) {
-    return completeRow;
+  const row = getRowLayout(metrics, fit);
+  if (row.type !== "hidden" && row.visibleCount === itemCount) {
+    return row;
   }
   const column = getColumnLayout(metrics, {
     ...fit,
     allowMostlyTruncated:
       alwaysVisible || metrics.width >= MIN_LEGEND_CARD_WIDTH,
   });
-  if (column.type !== "hidden") {
-    return column;
-  }
-  return getRowLayout(metrics, fit);
+  return column.type !== "hidden" ? column : row;
 }
 
 function getRowLayout(
@@ -226,16 +215,8 @@ function getRowLayout(
     alwaysVisible: boolean;
   },
 ): LegendLayoutResult {
-  const { config, width, height, plotInset, itemWidths, availableWidth } =
-    metrics;
-  const rowHeight =
-    config.fontSize * config.lineHeight +
-    config.horizontalGap +
-    LEGEND_PADDING * 2;
-  const hasRoom =
-    width - plotInset.width >= MIN_PLOT_WIDTH &&
-    height - rowHeight - plotInset.height >= MIN_PLOT_HEIGHT;
-  if (!hasRoom && !alwaysVisible) {
+  const { config, width, plotInsetWidth, itemWidths, availableWidth } = metrics;
+  if (width - plotInsetWidth < MIN_PLOT_WIDTH && !alwaysVisible) {
     return HIDDEN_LEGEND_LAYOUT;
   }
   const visibleCount = getRowVisibleCount(metrics);
@@ -277,7 +258,7 @@ function measureLegend({
   fontFamily,
   measureText,
   isReversed,
-  plotInset = NO_PLOT_INSET,
+  plotInsetWidth = 0,
 }: GetLegendLayoutOptions): LegendMetrics {
   const config = LEGEND_SIZES[size];
   const font = {
@@ -296,7 +277,7 @@ function measureLegend({
     config,
     width,
     height,
-    plotInset,
+    plotInsetWidth,
     labelWidths,
     itemWidths: labelWidths.map((labelWidth) => dotWidth + labelWidth),
     availableWidth,
@@ -379,11 +360,11 @@ function getColumnLayout(
     allowMostlyTruncated: boolean;
   },
 ): LegendLayoutResult {
-  const { width, height, config, plotInset } = metrics;
+  const { width, height, config, plotInsetWidth } = metrics;
   const columnSpace =
     getColumnItemWidth(metrics) + LEGEND_PADDING * 2 + config.verticalGap;
   const hasRoom =
-    width - columnSpace - plotInset.width >= MIN_PLOT_WIDTH &&
+    width - columnSpace - plotInsetWidth >= MIN_PLOT_WIDTH &&
     height >= MIN_COLUMN_CARD_HEIGHT;
   if (!alwaysVisible && !hasRoom) {
     return HIDDEN_LEGEND_LAYOUT;
