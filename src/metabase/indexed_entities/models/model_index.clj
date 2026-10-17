@@ -5,12 +5,11 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
-   ;; legacy usage, do not use this in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ;; model-index pk/value refs are stored as legacy field refs; validated against the legacy schema
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.interface :as mi]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
@@ -34,11 +33,8 @@
 #_(derive :model/ModelIndex :hook/search-index)
 
 (t2/deftransforms :model/ModelIndex
-  ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
-  ;; first place!) on the way out
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  {:pk_ref    mi/transform-legacy-field-ref
-   :value_ref mi/transform-legacy-field-ref})
+  {:pk_ref    lib-be/transform-field-ref
+   :value_ref lib-be/transform-field-ref})
 
 (defn trigger-key
   "Quartz trigger key for the job that refreshes the values of model index `model-index-id`."
@@ -68,45 +64,40 @@
   "Filter function for valid tuples for indexing: an id and a value."
   [[id v]] (and id v))
 
-(mu/defn- fix-expression-refs :- ::mbql.s/FieldOrExpressionRef
-  "Convert expression ref into a field ref.
-
-  Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
-  don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
-  `:type/Text` enforced by the endpoint to create model indexes."
-  [field-ref :- ::mbql.s/FieldOrExpressionRef
-   base-type :- ::lib.schema.common/base-type]
-  (case (first field-ref)
-    :field field-ref
-    :expression (let [[_ expression-name] field-ref]
-                  ;; api validated that this is a text field when the model-index was created. When selecting the
-                  ;; expression we treat it as a field.
-                  [:field expression-name {:base-type base-type}])
-    (throw (ex-info (format "Invalid field ref for indexing: %s" field-ref)
-                    {:field-ref field-ref
-                     :valid-clauses [:field :expression]}))))
+(defn- filter-pk-val [query pk-col pk-val]
+  (-> query
+      (lib/filter (lib/= pk-col pk-val))
+      (lib/limit 1)))
 
 (mu/defn- values-query
   "The query selecting `[pk value]` tuples from `model-index`'s model: every record when `pk` is nil, otherwise just
   the record with that primary key."
   [model-index :- ::indexed-entities.schema/model-index
-   pk          :- [:maybe :int]]
+   pk-val      :- [:maybe :int]]
   (let [model     (indexed-entities.db/card (:model_id model-index))
-        fix       (mu/fn [field-ref :- ::mbql.s/FieldOrExpressionRef
-                          base-type :- ::lib.schema.common/base-type]
-                    ;; stored value/pk refs are legacy MBQL; normalize as legacy before use
-                    (-> field-ref #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
+        mp        (lib-be/application-database-metadata-provider
+                   (:database_id model))
+        query (lib/query mp (lib.metadata/card mp (:id model)))
+        columns   (lib/returned-columns query)
+        fix       (fn [ref typ]
+                    (-> (lib/normalize ::lib.schema.ref/ref ref)
+                        (lib/update-options assoc :base-type typ)))
         ;; :type/Text and :type/Integer are ensured at creation time on the api.
-        value-ref (-> model-index :value_ref (fix :type/Text))
-        pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
-    ;; TODO (Cam 10/1/25) -- update this to generate the query using Lib
-    {:database (:database_id model)
-     :type     :query
-     :query    (cond-> {:source-table (format "card__%d" (:id model))
-                        :breakout     [pk-ref value-ref]
-                        :limit        (inc max-indexed-values)}
-                 pk (assoc :filter [:= pk-ref pk]
-                           :limit  1))}))
+        ;; Expression refs are how the _query_ refers to a custom column. But
+        ;; nested queries don't, (and shouldn't) care that those are expressions.
+        ;; They are just another field. pulling columns from the model normalizes
+        ;; expressions into fields.
+        value-col (lib.equality/find-matching-column (fix (:value_ref model-index)
+                                                          :type/Text) columns)
+        pk-col (lib.equality/find-matching-column (fix (:pk_ref model-index)
+                                                       :type/Integer) columns)]
+    (-> query
+        (lib/breakout pk-col)
+        (lib/breakout value-col)
+        (lib/limit (inc max-indexed-values))
+        ;; feels like this doesn't belong in this function, but this is where we
+        ;; have access to pk-col, so doing the filter in the caller doesn't work
+        (cond-> pk-val (filter-pk-val pk-col pk-val)))))
 
 (mu/defn ^:private fetch-values
   [model-index :- ::indexed-entities.schema/model-index]
