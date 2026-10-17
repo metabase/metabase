@@ -9,6 +9,7 @@
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
@@ -23,6 +24,7 @@
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.memoize :as u.memo]
    [metabase.util.performance :refer [mapv empty? some]]
    [metabase.warehouses.schema :as warehouses.schema])
   (:import
@@ -340,13 +342,6 @@
       (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))
 
-(def ^:private memoized-supports?*
-  (memoize/memo
-   (-> supports?*
-       (vary-meta assoc ::memoize/args-fn
-                  (fn [[driver feature database]]
-                    [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
-
 ;;; this can get called in post-select which doesn't always have ID
 (mu/defn ensure-lib-database :- [:map [:lib/type [:= :metadata/database]]]
   "Ensures the database is in Lib metadata format (SnakeHatingMap with kebab-case keys).
@@ -356,35 +351,25 @@
     (lib-be/instance->metadata database :metadata/database)
     database))
 
-(mu/defn supports?
-  "A defensive wrapper around [[metabase.driver/database-supports?]]. It adds logging, caching, and error handling to
-  avoid crashing the app if this method takes a long time to execute or throws an exception. This is useful because
-  `supports?` is used in so many critical places in the app, and we don't want a single driver to crash the app if it
-  throws an exception, or delay the user if it takes a long time to execute.
-
-  TODO -- this is only supposed to be called with a Lib-style Database metadata; if this is called with a Toucan
-  instance that is incorrect. I don't have the time to fix every single incorrect usage, so we'll just log an error
-  and move on for now."
-  [driver   :- :keyword
-   feature  :- :keyword
-   database :- [:maybe ::warehouses.schema/database-or-metadata]]
-  (let [database (some-> database ensure-lib-database)
-        f        (if *memoize-supports?* memoized-supports?* supports?*)]
-    (f driver feature database)))
-
 (def ^:private skip-internal-features
   #{;; used intenrally during the sync process, does not really need to be hydrated
     :metadata/table-writable-check})
 
-(defn- feature-set
-  "The set of features for which `supported?` returns truthy, minus the ones we never hydrate."
-  [supported?]
-  (set (for [feature driver/features
-             :when (and (not (skip-internal-features feature)) (supported? feature))]
-         feature)))
+(def ^:private intern-feature-set
+  "Feature sets are drawn from a tiny population (roughly one per driver × version × settings
+  combination), so intern them: equal sets collapse to one shared instance instead of one copy
+  of the set structure per database."
+  (u.memo/fast-interner))
 
-(defn- features* [driver database]
-  (feature-set #(supports? driver % database)))
+(defn- feature-set
+  "The set of features in [[driver/features]] for which `supported?` returns truthy."
+  [supported?]
+  (set (filter supported? driver/features)))
+
+(defn- features*
+  "Every feature `driver` supports for `database`, bounding each check with its own timeout."
+  [driver database]
+  (feature-set #(supports?* driver % database)))
 
 (defn- features-timeout-ms
   "Budget for one batched scan of every feature. Read per call so that rebinding [[supports?-timeout-ms]] moves it too."
@@ -395,8 +380,8 @@
   "Like [[features*]], but bounds the whole scan with a single timeout instead of giving each of the ~90 checks its
   own. A per-check timeout costs a thread handoff that the check itself does not, and that handoff dominates the scan.
 
-  Only used while [[*memoize-supports?*]] is off. With memoization on, [[memoized-supports?*]] already absorbs the
-  repeat cost, and going around it would change what that cache ends up holding."
+  Only used while the cache is off (see [[use-cache?]]), where every call pays for a full scan. The cache keeps the
+  per-check bound, so one hung check degrades to false instead of holding up the sweep."
   [driver database]
   (try
     (u/with-timeout (features-timeout-ms)
@@ -406,21 +391,135 @@
       ;; exactly what this call would have yielded had it never been batched.
       (features* driver database))))
 
-(def ^:private memoized-features*
-  (memoize/memo
-   (-> features*
-       (vary-meta assoc ::memoize/args-fn
-                  (fn [[driver database]]
-                    [driver (mdb/unique-identifier) (:id database) (:updated-at database)])))))
+(defn- compute-feature-set
+  "Ask `driver` about every feature in [[driver/features]] for `database`, bounding each check with its own timeout.
+  This fills the cache."
+  [driver database]
+  (intern-feature-set (features* driver (some-> database ensure-lib-database))))
+
+;;; A validating cache for per-database feature sets.
+;;;
+;;; - Identity (the key): the *router's* database id — a mirror database (a row with
+;;;   `router_database_id` set) never gets its own entry; its reads follow its router. Ordinary
+;;;   databases are their own router. The driver lives inside the value rather than in the key
+;;;   because eviction is by database id, and because in rare flows (e.g. changing a database's
+;;;   engine) two drivers are asked about the same database row.
+;;; - Validity (the stamp): the router row's `updated-at`, stored in the value and checked on
+;;;   read — never part of the key, which would turn replacement into accumulation. Only the
+;;;   router's own row can validate: a mirror's `updated-at` says nothing about the router's
+;;;   entry, and Lib metadata maps don't carry `updated-at` at all; both are pure consumers.
+;;; - Space: entries are replaced in place on stale reads, and evicted by the
+;;;   `:event/database-update` / `:event/database-delete` handlers
+;;;   (see [[metabase.driver.events.driver-notifications]]).
+(defonce ^:private db-feature-sets
+  ;; {[app-db-uid router-db-id] {:stamp <updated-at>, :features {driver #{feature}}}}
+  (atom {}))
+
+(u.memo/register-monitored-cache! (str `db-feature-sets) #(count @db-feature-sets))
+
+(defn invalidate-features-cache!
+  "Evict the cached feature set(s) for the Database with `database-id`. Called from the
+  `:event/database-update` / `:event/database-delete` handlers; between events, the stamp check
+  in [[cached-feature-set]] keeps entries fresh."
+  [database-id]
+  (swap! db-feature-sets dissoc [(mdb/unique-identifier) database-id])
+  nil)
+
+;;; NOTE: Lib metadata maps are SnakeHatingMaps — looking up a snake_case key on one throws (in
+;;; dev/test) — so only fall back to the snake key on Toucan rows.
+
+(defn- database-router-id [database]
+  (or (:router-database-id database)
+      (when-not (:lib/type database)
+        (:router_database_id database))))
+
+(defn- database-stamp [database]
+  (or (:updated-at database)
+      (when-not (:lib/type database)
+        (:updated_at database))))
+
+(defn- newer?
+  "Is `stamp` newer than `current`? A missing stamp is never newer; anything is newer than a missing one."
+  [stamp current]
+  (and (some? stamp)
+       (or (nil? current) (pos? (compare stamp current)))))
+
+(defn- store-feature-set!
+  "Store `driver`'s `features` for `cache-key` as of `stamp`, and return `features`. Never regresses an entry: a newer
+  stamp replaces it, the same stamp adds this driver's set, and an older stamp leaves it alone."
+  [cache-key stamp driver features]
+  (swap! db-feature-sets update cache-key
+         (fn [entry]
+           (cond
+             (or (nil? entry) (newer? stamp (:stamp entry))) {:stamp stamp, :features {driver features}}
+             (= stamp (:stamp entry))                       (assoc-in entry [:features driver] features)
+             :else                                          entry)))
+  features)
+
+(defn- cached-feature-set
+  "Cached feature set for `database` (a Toucan row or Lib metadata map). See the notes
+  on [[db-feature-sets]] for the caching scheme."
+  [driver database]
+  (let [router-id (database-router-id database)
+        db-id     (or router-id (:id database))
+        cache-key [(mdb/unique-identifier) db-id]
+        ;; only a database's own row says how fresh its entry is; a routed database's row says nothing about its
+        ;; router's features
+        stamp     (when-not router-id (database-stamp database))
+        entry     (get @db-feature-sets cache-key)]
+    (cond
+      ;; hit, and the caller has nothing newer (an unstamped caller accepts the hit)
+      (and entry (not (newer? stamp (:stamp entry))))
+      (or (get (:features entry) driver)
+          ;; same database asked about another driver (an engine change in flight): add its set under this stamp
+          (store-feature-set! cache-key (:stamp entry) driver (compute-feature-set driver database)))
+
+      ;; the caller has its own row, newer than the entry (or there is no entry): compute from it and store
+      stamp
+      (store-feature-set! cache-key stamp driver (compute-feature-set driver database))
+
+      ;; a miss for an unstamped caller or a routed database: load the row so the entry gets a real stamp. Loading it
+      ;; hydrates `:features`, which usually fills the entry; re-read rather than compute twice.
+      :else
+      (if-let [row (driver.db/database db-id)]
+        (or (get (:features (get @db-feature-sets cache-key)) driver)
+            (store-feature-set! cache-key (database-stamp row) driver (compute-feature-set driver row)))
+        ;; no such row: answer from the map in hand, don't cache it
+        (compute-feature-set driver database)))))
+
+(defn- use-cache? [database]
+  (and *memoize-supports?*
+       (some? (or (database-router-id database) (:id database)))))
+
+(mu/defn supports?
+  "A defensive wrapper around [[metabase.driver/database-supports?]]. It adds logging, caching, and error handling to
+  avoid crashing the app if this method takes a long time to execute or throws an exception. This is useful because
+  `supports?` is used in so many critical places in the app, and we don't want a single driver to crash the app if it
+  throws an exception, or delay the user if it takes a long time to execute.
+
+  Feature support is cached per database: all of a database's features are computed in one sweep and cached
+  together, and a routed database answers with its router's features."
+  [driver   :- :keyword
+   feature  :- :keyword
+   database :- [:maybe ::warehouses.schema/database-or-metadata]]
+  (if (and (some? database)
+           (use-cache? database)
+           ;; features outside the enumerated set (test-only features and the like) can't be
+           ;; answered by the cached sweep; ask the driver directly.
+           (contains? driver/features feature))
+    (contains? (cached-feature-set driver database) feature)
+    (supports?* driver feature (some-> database ensure-lib-database))))
 
 (mu/defn features
-  "Return a set of all features supported by `driver` with respect to `database`."
+  "Return a set of all features supported by `driver` with respect to `database`. A mirror
+  database reports its router's features."
   [driver   :- :keyword
    database :- ::warehouses.schema/database-or-metadata]
-  (let [database (ensure-lib-database database)]
-    (if *memoize-supports?*
-      (memoized-features* driver database)
-      (features-batched* driver database))))
+  (intern-feature-set
+   (set/difference (if (use-cache? database)
+                     (cached-feature-set driver database)
+                     (features-batched* driver (ensure-lib-database database)))
+                   skip-internal-features)))
 
 (defn available-drivers
   "Return a set of all currently available drivers."
