@@ -27,22 +27,34 @@
                     (throw (NoSuchElementException. (str "no element at " i))))))
       (close [_]))))
 
-(defn- make-mongo-aggregate-iterable [rows]
-  (reify com.mongodb.client.AggregateIterable
-    (cursor [_] (make-mongo-cursor rows))))
+(defn- make-mongo-aggregate-iterable
+  "Reified [[com.mongodb.client.AggregateIterable]] yielding `rows`. When `comment-vol` is supplied, records any
+  value passed to `.comment` so tests can assert that the query remark is attached to the aggregate command."
+  ([rows] (make-mongo-aggregate-iterable rows nil))
+  ([rows comment-vol]
+   (reify com.mongodb.client.AggregateIterable
+     (cursor [_] (make-mongo-cursor rows))
+     (^com.mongodb.client.AggregateIterable comment [_ ^String c]
+       (some-> comment-vol (vreset! c))
+       nil))))
 
 (deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo
-    (let [now (str (java.time.Instant/now))]
+    (let [now (str (java.time.Instant/now))
+          captured-comment (volatile! nil)]
       (binding [mongo.execute/*aggregate*
-                (fn [& _] (make-mongo-aggregate-iterable
-                           [{"_id" 0
-                             "name" "Crowberto"
-                             "alias" "the Brave"}
-                            {"_id" 1
-                             "name" "Rasta"
-                             "last_login" now
-                             "nickname" "Blue"}]))]
+                (fn [& _args]
+                  ;; `.comment` (set in [[mongo.execute/execute-reducible-query]]) records the query remark into
+                  ;; `captured-comment` via the reified iterable below.
+                  (make-mongo-aggregate-iterable
+                   [{"_id" 0
+                     "name" "Crowberto"
+                     "alias" "the Brave"}
+                    {"_id" 1
+                     "name" "Rasta"
+                     "last_login" now
+                     "nickname" "Blue"}]
+                   captured-comment))]
         (testing "Projected and first-row fields are returned"
           (let [query {:database (mt/id)
                        :native
@@ -65,7 +77,18 @@
             (is (= {:rows [[0 "Crowberto" nil "the Brave"]
                            [1 "Rasta"     now nil]]
                     :columns ["_id" "name" "last_login" "alias"]}
-                   (mt/rows+column-names (qp/process-query query))))))))))
+                   (mt/rows+column-names (qp/process-query query))))))
+        (testing "The query remark is attached as the aggregate `comment` option (#9514)"
+          ;; `query->remark` defaults to "Metabase" because these queries carry no `:info`. Asserting via the
+          ;; `comment` option (rather than a pipeline stage) also confirms the pipeline is not polluted — the
+          ;; row/column assertions above would break if a `$comment` stage were injected, since it is not a
+          ;; valid aggregation stage (see the docstring of [[mongo.execute/execute-reducible-query]]).
+          (is (re-find #"^Metabase" (deref captured-comment))))
+        (testing "include-user-id-and-hash? defaults to true and honors the detail (#9514)"
+          (is (true? (#'mongo.execute/include-user-id-and-hash? nil)))
+          (is (true? (#'mongo.execute/include-user-id-and-hash? {})))
+          (is (true? (#'mongo.execute/include-user-id-and-hash? {:include-user-id-and-hash true})))
+          (is (false? (#'mongo.execute/include-user-id-and-hash? {:include-user-id-and-hash false}))))))))
 
 (deftest kill-an-in-flight-query-test
   (mt/test-driver
