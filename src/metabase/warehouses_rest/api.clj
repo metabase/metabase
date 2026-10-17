@@ -860,6 +860,175 @@
           details
           (database/sensitive-fields-for-db database)))
 
+(def ^:private connection-neutral-detail-keys
+  "Detail keys that only configure Metabase's own behavior and never affect where, or how, it connects."
+  #{:advanced-options :let-user-control-scheduling :auto_run_queries :refingerprint :json-unfolding
+    :multi-level-schema :cloud-ip-address-info :write-data-connection :admin-connection :destination-database})
+
+(defn- connection-neutral-detail-key? [k]
+  (let [k-name (name k)]
+    (or (contains? connection-neutral-detail-keys k)
+        (re-find #"-filters-(type|patterns)$" k-name)
+        (str/starts-with? k-name "schedules."))))
+
+(defn- secret-property-names [database]
+  (keys (secret/secret-conn-props-by-name (keyword (:engine database)))))
+
+(defn- secret-property-key [prop-name suffix]
+  (keyword (str prop-name "-" suffix)))
+
+(defn- secret-property-supplied?
+  "Whether `details` carries a fresh value for the Secret-backed property `prop-name`, rather than leaving it redacted."
+  [details prop-name]
+  (let [v (get details (secret-property-key prop-name "value"))]
+    (or (some? (get details (secret-property-key prop-name "path")))
+        (and (some? v) (not= secret/protected-password v)))))
+
+(defn- reused-secret-keys
+  "Keys of the secrets in `existing-details` that end up in `final-details` without the client having supplied them in
+  `incoming-details`, i.e. they were sent back redacted or omitted. Secret-backed properties are reported by their
+  `-value` key, which is what the client sends."
+  [database existing-details incoming-details final-details]
+  (into (set (for [k     (database/sensitive-fields-for-db database)
+                   :let  [v (get existing-details k)]
+                   :when (and (some? v)
+                              (= v (get final-details k))
+                              (not= v (get incoming-details k)))]
+               k))
+        (for [prop-name (secret-property-names database)
+              :let      [id-key (secret-property-key prop-name "id")
+                         id     (get existing-details id-key)]
+              :when     (and (some? id)
+                             (= id (get final-details id-key))
+                             (not (secret-property-supplied? incoming-details prop-name)))]
+          (secret-property-key prop-name "value"))))
+
+(defn- connection-target
+  "The parts of `details` that determine where, and how, a connection is made, i.e. everything but the secrets
+  themselves and settings that only affect Metabase's own behavior. Empty values are dropped, so that a client filling
+  in unset fields with blank defaults doesn't count as a change."
+  [database details]
+  (let [secret-props (secret-property-names database)]
+    (into {}
+          (remove (fn [[k v]]
+                    (or (contains? #{nil false ""} v)
+                        (connection-neutral-detail-key? k)
+                        (contains? (database/sensitive-fields-for-db database) k)
+                        (some #(str/starts-with? (name k) (str % "-")) secret-props))))
+          details)))
+
+(defn- connection-target-changed?
+  [database engine-changed? existing-details incoming-details final-details]
+  (or engine-changed?
+      (not= (connection-target database existing-details)
+            (connection-target database final-details))
+      (some #(secret-property-supplied? incoming-details %) (secret-property-names database))))
+
+(defn- client-connection-props
+  "The connection properties of `database`'s driver as the client sees them, by name, with `visible-if` resolved."
+  [database]
+  (let [driver (keyword (:engine database))]
+    (when-some [conn-props-fn (get-method driver/connection-properties driver)]
+      (driver.u/collect-all-props-by-name (driver.u/connection-props-server->client driver (conn-props-fn driver))))))
+
+(defn- prop-hidden?
+  "Whether the client form hides the connection property `prop-name` given `details`, the same way the client does.
+  Hidden properties aren't submitted by the form, so their values can't be re-entered."
+  [client-props details prop-name]
+  (when-let [{:keys [visible-if]} (get client-props prop-name)]
+    (not (every? (fn [[k expected]]
+                   (let [v (get details (keyword k))]
+                     (if (sequential? expected)
+                       (some #(= % v) expected)
+                       (= expected v))))
+                 visible-if))))
+
+(defn- drop-hidden-secret
+  "Removes the secret `k` (as reported by [[reused-secret-keys]]) from `details`. Secret-backed properties are cleared
+  with an explicit `nil` value, which makes the Database model delete the stored Secret."
+  [database details k]
+  (if-let [prop-name (some (fn [prop-name]
+                             (when (= k (secret-property-key prop-name "value"))
+                               prop-name))
+                           (secret-property-names database))]
+    (-> (apply dissoc details (map #(secret-property-key prop-name %) ["id" "options" "path"]))
+        (assoc k nil))
+    (dissoc details k)))
+
+(defn- drop-hidden-reused-secrets
+  "Removes reused stored secrets that the client form hides given `final-details`, e.g. an SSH tunnel password for a
+  disabled tunnel. The form doesn't submit hidden fields, so they could never be re-entered."
+  [database existing-details incoming-details final-details]
+  (let [client-props (client-connection-props database)
+        prop-name    (fn [k]
+                       (let [k-name (name k)]
+                         ;; a Secret-backed property's `-options` field carries its visibility when there is one
+                         (or (some (fn [prop-name]
+                                     (when (= k (secret-property-key prop-name "value"))
+                                       (when (contains? client-props (str prop-name "-options"))
+                                         (str prop-name "-options"))))
+                                   (secret-property-names database))
+                             k-name)))]
+    (reduce (fn [details k]
+              (if (prop-hidden? client-props final-details (prop-name k))
+                (drop-hidden-secret database details k)
+                details))
+            final-details
+            (reused-secret-keys database existing-details incoming-details final-details))))
+
+(defn- protect-stored-secrets
+  "Stored secrets are never shown to non-admins, so they must not be able to send them to a different connection target
+  than the one they were saved for, otherwise they could point the connection at a server they control and capture
+  the secrets during the connection test. When the target changes, such users must re-enter the secrets; stored
+  secrets for options the form hides are dropped, since they can't be re-entered. Throws a 400 otherwise.
+
+  `incoming` and `final` are maps of `:details` and `:write_data_details` as sent by the client and as they would be
+  saved, respectively. Returns the `:details` to use."
+  [existing-database engine-changed? incoming final]
+  (let [final-details (:details final)]
+    (if api/*is-superuser?*
+      final-details
+      (let [existing-details (:details existing-database)
+            final-details    (cond->> final-details
+                               (and final-details
+                                    (connection-target-changed? existing-database engine-changed? existing-details
+                                                                (:details incoming) final-details))
+                               (drop-hidden-reused-secrets existing-database existing-details (:details incoming)))
+            final            (cond-> (merge (select-keys existing-database [:details :write_data_details :admin_details])
+                                            final)
+                               final-details (assoc :details final-details))
+            ;; the write and admin connections are overlays over `:details`, so each one is checked as the effective
+            ;; details it connects with
+            effective        (fn [details-map overlay-key]
+                               (merge (:details details-map) (get details-map overlay-key)))
+            offending        (fn [overlay-key]
+                               (let [existing (effective existing-database overlay-key)
+                                     incoming (effective incoming overlay-key)
+                                     final    (effective final overlay-key)]
+                                 (when (connection-target-changed?
+                                        existing-database engine-changed? existing incoming final)
+                                   (not-empty (reused-secret-keys existing-database existing incoming final)))))
+            reentry-required (fn [message data]
+                               (ex-info message (merge {:status-code 400
+                                                        :error-code  "secrets-reentry-required"
+                                                        :message     message}
+                                                       data)))]
+        (when-let [ks (offending :details)]
+          (throw (reentry-required
+                  (tru "Re-enter the saved password and other secrets to change these connection settings.")
+                  {:errors (into {} (map (fn [k] [k (deferred-tru "re-enter this value")])) ks)})))
+        (when-let [ks (offending :write_data_details)]
+          (throw (reentry-required
+                  (tru "These changes would reuse the saved credentials of the writable connection. Re-enter them, or ask an admin to make this change.")
+                  ;; the fields can only be re-entered when the writable connection is what's being edited
+                  (when (:write_data_details incoming)
+                    {:errors (into {} (map (fn [k] [k (deferred-tru "re-enter this value")])) ks)}))))
+        (when (offending :admin_details)
+          (throw (reentry-required
+                  (tru "These changes would reuse the saved credentials of the admin connection. Ask an admin to make this change.")
+                  nil)))
+        final-details))))
+
 (defn- test-existing-database-details
   "Like [[warehouses/test-connection-details]], but for `details` that are an edit of the existing `database`."
   [database engine details]
@@ -1010,6 +1179,14 @@
                                           (upsert-sensitive-fields existing-database incoming-details :details engine-changed?))
         write-data-details-with-secrets (when  write_data_details
                                           (upsert-sensitive-fields existing-database write_data_details :write_data_details engine-changed?))
+        details-with-secrets            (protect-stored-secrets
+                                         existing-database
+                                         engine-changed?
+                                         {:details            incoming-details
+                                          :write_data_details incoming-write-data-details}
+                                         (cond-> {:details details-with-secrets}
+                                           (contains? body :write_data_details) (assoc :write_data_details
+                                                                                       write-data-details-with-secrets)))
         ;; verify that we can connect to the database if details OR `:engine` have changed.
         details-changed?                (some-> details-with-secrets (not= (:details existing-database)))
         write-details-changed?          (some-> write-data-details-with-secrets (not= (:write_data_details existing-database)))
