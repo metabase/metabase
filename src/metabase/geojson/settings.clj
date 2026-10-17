@@ -158,7 +158,7 @@
 (defn defined-region?
   "Whether `region-key` names a region map whose GeoJSON we could resolve: a built-in region (when default
   maps are enabled), or a user-defined one (when custom GeoJSON is enabled). Mirrors what
-  [[metabase.geojson.api/region-geojson]] can resolve, minus the fetch itself."
+  [[metabase.geojson.core/region-geojson]] can resolve, minus the fetch itself."
   [region-key]
   (let [k (keyword region-key)]
     (or (contains? (builtin-geojson) k)
