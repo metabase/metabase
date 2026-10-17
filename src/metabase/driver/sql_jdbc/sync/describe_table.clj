@@ -33,7 +33,7 @@
     JsonParser
     JsonParser$NumberType
     JsonToken)
-   (java.sql Connection DatabaseMetaData ResultSet)))
+   (java.sql Connection DatabaseMetaData ResultSet SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -333,15 +333,52 @@
        ;; find PKs and mark them
        (add-table-pks driver conn)))
 
+(def ^:private ^:dynamic *table-metadata-connection* nil)
+
+(defn reducible-table-metadata
+  "Scope connection reuse to each reduction of `rows`. Rows must be consumed on the reducing thread."
+  [driver database rows]
+  (if-not (isa? driver/hierarchy driver :sql-jdbc)
+    rows
+    (reify clojure.lang.IReduceInit
+      (reduce [_ rf init]
+        (driver/do-with-resilient-connection
+         driver database
+         (fn [driver database]
+           ;; Acquire lazily: an empty traversal or a custom reader need not use a JDBC connection.
+           (let [connection (volatile! nil)
+                 connection! (fn []
+                               (sql-jdbc.execute/try-ensure-open-conn!
+                                driver
+                                (or @connection
+                                    (vreset! connection
+                                             (sql-jdbc.execute/do-with-connection-with-options
+                                              driver database {:keep-open? true} identity)))))]
+             (try
+               (binding [*table-metadata-connection* {:driver driver :database-id (u/the-id database)
+                                                      :thread (Thread/currentThread) :connection connection!}]
+                 (reduce rf init rows))
+               (finally
+                 (when-let [conn @connection]
+                   (.close ^Connection conn)))))))))))
+
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db table]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   db
-   nil
-   (fn [^Connection conn]
-     (describe-table* driver conn table))))
+  (if (and (= driver (:driver *table-metadata-connection*))
+           (= (u/the-id db) (:database-id *table-metadata-connection*))
+           (identical? (Thread/currentThread) (:thread *table-metadata-connection*)))
+    (let [conn ((:connection *table-metadata-connection*))]
+      (try
+        (describe-table* driver conn table)
+        (catch SQLException e
+          ;; Some drivers leave a failed connection reporting open; retire it before the next table.
+          (sql-jdbc.execute/is-conn-open? conn :check-valid? true)
+          (throw e))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver db nil
+     (fn [^Connection conn]
+       (describe-table* driver conn table)))))
 
 (defmulti describe-fields-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
