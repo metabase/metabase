@@ -136,7 +136,7 @@ const baseConfig = {
     "/target/cljs_release/",
     "/frontend/test/",
   ],
-  testEnvironment: "jest-environment-jsdom",
+  testEnvironment: "@happy-dom/jest-environment",
   testRunner: "<rootDir>/frontend/test/jest-test-runner.js",
 };
 
