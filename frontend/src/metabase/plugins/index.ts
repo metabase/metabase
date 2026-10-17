@@ -10,6 +10,7 @@ export {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   type AuthSettingsPageProps,
   type AuthSettingsPageTab,
+  type SettingsJWTFormProps,
 } from "./oss/auth";
 export {
   PLUGIN_CACHING,
@@ -94,7 +95,7 @@ export {
 } from "./oss/metabot";
 export {
   PLUGIN_METADATA_GENERATION,
-  type MetadataGenerationDatabasePaneProps,
+  type MetadataGenerationDatabaseButtonProps,
   type MetadataGenerationTableButtonProps,
 } from "./oss/metadata-generation";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";

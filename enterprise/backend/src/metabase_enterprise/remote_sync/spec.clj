@@ -374,7 +374,6 @@
     :archived-key   nil
     :tracking       {:select-fields  [:name]
                      :field-mappings {:model_name :name}}
-    :conditions     {:draft false}
     :removal        {:statuses #{"removed" "delete"}}
     :resources?     true
     :export-scope   :all
@@ -584,14 +583,15 @@
 
 (defn- has-unsynced-entities-for-feature?
   "Returns true if any model in the feature group has local entities not tracked in RemoteSyncObject.
-   Excludes entities filtered by export-conditions (e.g., built-in TransformTags) from the count since
-   they are system-created and not user data. Namespace collections are not checked here because they are
-   organizational containers, not user data that would be lost on import."
+   Excludes entities filtered by removal-conditions (e.g., built-in TransformTags and the built-in common.py
+   PythonLibrary every instance gets from a migration) from the count since they are system-created and not
+   user data. Namespace collections are not checked here because they are organizational containers, not
+   user data that would be lost on import."
   [specs-for-feature]
   (some (fn [[_ spec]]
           (let [model-key (:model-key spec)
                 model-type (:model-type spec)
-                conditions (export-conditions spec)
+                conditions (removal-conditions spec)
                 local-count (remote-sync.db/count-where model-key conditions)
                 synced-count (remote-sync.db/rso-count-of-type model-type)]
             (and (pos? local-count)
@@ -724,6 +724,11 @@
   (or (snippets-namespace-collection? object)
       (data-actions-namespace-collection? object)))
 
+(defn data-apps-namespace-collection?
+  "Check if this is a data-apps-namespace collection: a data app's resource collection, synced with the app."
+  [object]
+  (= (keyword (:namespace object)) collections/data-apps-ns))
+
 (defn library-collection?
   "Check if this is the Library collection."
   [collection]
@@ -731,13 +736,14 @@
 
 (defn should-sync-collection?
   "Check if a collection should be synced - either remote-synced, transforms-namespace with setting enabled,
-   or snippets-namespace with Library synced."
+   snippets-namespace with Library synced, or data-apps-namespace, a data app's collection, synced with the app."
   [collection]
   (or (collections/remote-synced-collection? collection)
       (and (rs-settings/remote-sync-transforms)
            (transforms-namespace-collection? collection))
       (and (rs-settings/library-is-remote-synced?)
-           (library-namespace-collection? collection))))
+           (library-namespace-collection? collection))
+      (data-apps-namespace-collection? collection)))
 
 (defn all-syncable-collection-ids
   "Returns a vector of all collection IDs that are eligible for remote sync.
@@ -745,6 +751,7 @@
    - Collections with is_remote_synced=true
    - Transforms-namespace collections (when remote-sync-transforms setting is enabled)
    - Snippets- and data-actions-namespace collections (when Library is remote-synced)
+   - Data-apps-namespace collections (data apps are synced globally)
 
    Used by import cleanup to determine which collections to scope deletions to."
   []
@@ -756,7 +763,8 @@
          (when (rs-settings/library-is-remote-synced?)
            (remote-sync.db/collection-ids-in-namespace "snippets"))
          (when (rs-settings/library-is-remote-synced?)
-           (remote-sync.db/collection-ids-in-namespace (name collections/data-actions-ns)))]))
+           (remote-sync.db/collection-ids-in-namespace (name collections/data-actions-ns)))
+         (remote-sync.db/collection-ids-in-namespace (name collections/data-apps-ns))]))
 
 (def ^:private max-conflict-names
   "Cap on how many entity names a collection deletion conflict carries, so the payload stays bounded when
@@ -850,13 +858,18 @@
 (defmethod check-eligibility-by-type :collection
   [{:keys [eligibility] :as spec} object]
   (let [collection-type (:collection eligibility)
-        collection-id   (:collection_id object)]
-    (if (library-synced-object? spec object)
+        collection-id   (:collection_id object)
+        ;; what sits in a data app's collection is synced with the app, an action without a model included: the
+        ;; app's copies belong to no model, and are the app's rather than the Library's
+        in-data-app?    (and (some? collection-id)
+                             (data-apps-namespace-collection? {:namespace (remote-sync.db/collection-namespace collection-id)}))]
+    (if (and (library-synced-object? spec object) (not in-data-app?))
       (and (rs-settings/library-is-remote-synced?)
            (library-content? spec object))
       (case collection-type
         :remote-synced
-        (collections/remote-synced-collection? collection-id)
+        (or (collections/remote-synced-collection? collection-id)
+            in-data-app?)
 
         :transforms-namespace
         (and (rs-settings/remote-sync-transforms)
@@ -871,7 +884,8 @@
             (and (rs-settings/remote-sync-transforms)
                  (transforms-namespace-collection? object))
             (and (rs-settings/library-is-remote-synced?)
-                 (library-namespace-collection? object)))
+                 (library-namespace-collection? object))
+            (data-apps-namespace-collection? object))
 
         false))))
 
@@ -1275,7 +1289,8 @@
          (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace "snippets")))
        (when (rs-settings/library-is-remote-synced?)
          (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace
-                           (name collections/data-actions-ns))))))
+                           (name collections/data-actions-ns))))
+       (collection-keys (remote-sync.db/unarchived-root-collection-ids-in-namespace (name collections/data-apps-ns)))))
     :derived
     (library-synced-root-export-roots spec)))
 

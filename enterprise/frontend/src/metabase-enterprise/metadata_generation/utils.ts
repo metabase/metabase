@@ -1,17 +1,18 @@
 import { t } from "ttag";
 
-import type { BadgeColor } from "metabase/ui";
 import type {
   MetadataGenerationAttribute,
   MetadataGenerationRun,
+  MetadataGenerationRunRequest,
   MetadataGenerationRunStatus,
+  MetadataGenerationScope,
 } from "metabase-types/api";
 
 export const RUN_POLLING_INTERVAL = 2000;
 
 export const DEFAULT_ATTRIBUTES: MetadataGenerationAttribute[] = [
-  "data_sensitivity",
   "semantic_type",
+  "data_sensitivity",
 ];
 
 const ACTIVE_STATUSES: MetadataGenerationRunStatus[] = [
@@ -32,6 +33,11 @@ export function canRetryRun(run: MetadataGenerationRun): boolean {
   return !isRunActive(run) && (run.table_errors?.length ?? 0) > 0;
 }
 
+/** A finished run with at least one processed table has suggestions to review. */
+export function canReviewRun(run: MetadataGenerationRun): boolean {
+  return !isRunActive(run) && run.done_tables > 0;
+}
+
 export function getAttributeLabel(
   attribute: MetadataGenerationAttribute,
 ): string {
@@ -42,6 +48,19 @@ export function getAttributeLabel(
       return t`Semantic type`;
     case "description":
       return t`Description`;
+  }
+}
+
+export function getAttributePluralLabel(
+  attribute: MetadataGenerationAttribute,
+): string {
+  switch (attribute) {
+    case "data_sensitivity":
+      return t`Data sensitivities`;
+    case "semantic_type":
+      return t`Semantic types`;
+    case "description":
+      return t`Descriptions`;
   }
 }
 
@@ -66,34 +85,32 @@ export function getRunStatusLabel(status: MetadataGenerationRunStatus): string {
   }
 }
 
-export function getRunStatusColor(
-  status: MetadataGenerationRunStatus,
-): BadgeColor {
-  switch (status) {
-    case "succeeded":
-      return "positive";
-    case "failed":
-    case "timeout":
-    case "usage_limit":
-      return "negative";
-    case "canceled":
-    case "canceling":
-      return "neutral";
-    default:
-      return "brand";
+export function getRunTitle(scope: MetadataGenerationScope): string {
+  switch (scope.type) {
+    case "database":
+      return t`Generating field metadata for this database`;
+    case "schemas":
+      return t`Generating field metadata for some schemas`;
+    case "tables":
+      return t`Generating field metadata for some tables`;
   }
 }
 
-export function getScopeLabel(run: MetadataGenerationRun): string {
+/** The request that starts a run with the same scope and attributes as `run`. */
+export function getRunRequest(
+  run: MetadataGenerationRun,
+): MetadataGenerationRunRequest {
+  const request: MetadataGenerationRunRequest = {
+    database_id: run.database_id,
+    attributes: run.attributes,
+  };
   switch (run.scope.type) {
     case "database":
-      return t`Whole database`;
+      return request;
     case "schemas":
-      return run.scope.schemas.join(", ");
+      return { ...request, schemas: run.scope.schemas };
     case "tables":
-      return run.scope.table_ids.length === 1
-        ? t`1 table`
-        : t`${run.scope.table_ids.length} tables`;
+      return { ...request, table_ids: run.scope.table_ids };
   }
 }
 
@@ -108,10 +125,6 @@ export function getUnavailableMessage(reason: string): string {
     default:
       return t`AI metadata generation is not available: ${reason}.`;
   }
-}
-
-export function formatCost(costUsd: number): string {
-  return costUsd < 0.01 ? "< $0.01" : `$${costUsd.toFixed(2)}`;
 }
 
 export function formatTokens(tokens: number): string {

@@ -54,6 +54,13 @@
   "Re-export of [[metabase.query-processor.pivot.common/group-bitmask]]."
   pivot.common/group-bitmask)
 
+(def ^:private max-powerset-breakouts
+  "The most breakouts [[breakout-combinations]] will expand to their full powerset (2^n grouping combinations) when no
+  pivot rows or columns are given. Beyond this a single request could force the server to enumerate billions of
+  combinations. Each combination is a separate query on the multi-query path, so the cap is kept low: 10 breakouts
+  is 1024 combinations."
+  10)
+
 (defn- powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
   [xs]
@@ -87,7 +94,7 @@
 
 (defn- validate-pivot-indices!
   "Throw an `:invalid-query` error if any index in `pivot-rows` or `pivot-cols` falls outside
-  `[0, num-breakouts)`."
+  `[0, num-breakouts)`, if either contains duplicates, or if they overlap."
   [num-breakouts pivot-rows pivot-cols]
   (doseq [[k pivots] [[:pivot-rows pivot-rows]
                       [:pivot-cols pivot-cols]]
@@ -98,7 +105,29 @@
                       {:type          qp.error-type/invalid-query
                        :num-breakouts num-breakouts
                        :pivot-rows    pivot-rows
-                       :pivot-cols    pivot-cols})))))
+                       :pivot-cols    pivot-cols}))))
+  (doseq [[k pivots] [[:pivot-rows pivot-rows]
+                      [:pivot-cols pivot-cols]]]
+    (when-not (apply distinct? (or (seq pivots) [nil]))
+      (throw (ex-info (tru "Invalid {0}: duplicate breakout indices" (name k))
+                      {:type       qp.error-type/invalid-query
+                       :pivot-rows pivot-rows
+                       :pivot-cols pivot-cols}))))
+  (when (some (set pivot-rows) pivot-cols)
+    (throw (ex-info (tru "Invalid pivot options: pivot-rows and pivot-cols must not overlap")
+                    {:type       qp.error-type/invalid-query
+                     :pivot-rows pivot-rows
+                     :pivot-cols pivot-cols}))))
+
+(defn- validate-powerset-size!
+  "Throw an `:invalid-query` error if `num-breakouts` is too large to expand into its full powerset of combinations."
+  [num-breakouts]
+  (when (> num-breakouts max-powerset-breakouts)
+    (throw (ex-info (tru "Too many breakouts for a pivot query without pivot rows or columns: {0} breakouts, but the maximum is {1}"
+                         num-breakouts max-powerset-breakouts)
+                    {:type          qp.error-type/invalid-query
+                     :num-breakouts num-breakouts
+                     :max-breakouts max-powerset-breakouts}))))
 
 (defmacro ^:private wrapping-pivot-generation-errors
   "Rewrap any throw from `body` as `\"Error generating pivot queries\"` of type `:qp`, matching the
@@ -132,7 +161,9 @@
        ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
        ;; we'll just generate everything
        (if (empty? (concat pivot-rows pivot-cols))
-         (powerset (range 0 num-breakouts))
+         (do
+           (validate-powerset-size! num-breakouts)
+           (powerset (range 0 num-breakouts)))
          (concat
           ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
           ;; primary data: return all breakouts

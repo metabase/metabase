@@ -1,65 +1,36 @@
+.header {
+  align-items: center;
+  gap: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-lg) var(--mantine-spacing-xl);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_surface-primary);
+}
+
+.body {
+  background-color: var(--mb-color-background_page-secondary);
+  border-bottom-left-radius: var(--mantine-radius-xs);
+  border-bottom-right-radius: var(--mantine-radius-xs);
+}
+
 .tableList {
   flex: 0 0 18rem;
-  border-right: 1px solid var(--mb-color-border-neutral);
-  padding-right: var(--mantine-spacing-sm);
+}
+
+.fieldPane {
+  flex: 0 0 26rem;
+  min-height: 0;
 }
 
 .suggestions {
-  width: 100%;
-  min-width: 48rem;
-  table-layout: fixed;
-  border-collapse: collapse;
+  flex: 1;
+  min-height: 0;
 }
 
-.checkboxColumn {
-  width: 2.75rem;
+/* Cells hold inputs and badges, so they wrap instead of truncating. */
+.suggestionCell {
+  white-space: normal;
 }
 
-.fieldColumn {
-  width: 10rem;
-}
-
-.attributeColumn {
-  width: 9rem;
-}
-
-.currentColumn {
-  width: 20%;
-}
-
-.reasoningColumn {
-  width: 2.5rem;
-}
-
-.suggestions th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  text-align: left;
-  font-weight: bold;
-  color: var(--mb-color-text-secondary);
-  background-color: var(--mb-color-background_page-primary);
-  border-bottom: 1px solid var(--mb-color-border-neutral);
-}
-
-.suggestions th,
-.suggestions td {
-  padding: var(--mantine-spacing-sm);
-  vertical-align: top;
-}
-
-.suggestions td {
-  border-bottom: 1px solid var(--mb-color-border-neutral);
-}
-
-.humanSet td {
+.suggestions [data-human-set="true"] {
   background-color: var(--mb-color-background_surface-warning);
-}
-
-.humanSet td:first-child {
-  box-shadow: inset 3px 0 0 var(--mb-color-feedback-warning);
-}
-
-.value {
-  overflow-wrap: anywhere;
 }

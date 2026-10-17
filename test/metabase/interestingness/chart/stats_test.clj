@@ -117,6 +117,52 @@
             max-pairs (/ (* max-k (dec max-k)) 2)]
         (is (<= (count (:correlations stats)) max-pairs))))))
 
+;;; ----------------------------------------------- Nil Values -----------------------------------------------------
+
+(deftest ^:parallel time-series-skips-nil-y-values-test
+  (testing "a period with a nil value is left out of the stats"
+    (is (=? {:series [{:data-points 4
+                       :trend       {:start-value 0.0 :end-value 4.0}}]}
+            (stats.core/compute-chart-stats (assoc-in (make-chart-config 1 5) [:series "series_0" :y_values 2] nil)
+                                            {:deep? true})))))
+
+(deftest ^:parallel time-series-skips-nil-x-values-test
+  (testing "a nil date bucket is not analyzed as a period"
+    (is (=? {:series [{:data-points 4
+                       :time-range  {:start "2020-01-02"}
+                       :trend       {:start-value 1.0}}]}
+            (stats.core/compute-chart-stats (assoc-in (make-chart-config 1 5) [:series "series_0" :x_values 0] nil)
+                                            {:deep? true})))))
+
+(deftest ^:parallel time-series-skips-series-with-only-nil-dates-test
+  (testing "a series whose dates are all nil is left out, and the other series still gets stats"
+    (let [config (assoc-in (make-chart-config 2 5) [:series "series_0" :x_values] [nil nil nil nil nil])]
+      (is (=? {:series-count 1
+               :series       [{:name "series_1" :data-points 5}]}
+              (stats.core/compute-chart-stats config {:deep? true}))))))
+
+(deftest ^:parallel chart-type-ignores-dropped-series-test
+  (testing "a first series whose categories are all nil does not pick the chart type"
+    (let [counts (assoc (make-series 3) :x {:name "Category" :type "string"} :x_values ["Gadget" "Gizmo" "Widget"])]
+      (doseq [display-type ["bar" "line"]]
+        (testing display-type
+          (is (=? {:chart-type   :categorical
+                   :series-count 1
+                   :series       [{:name "Globex"}]}
+                  (stats.core/compute-chart-stats {:display_type display-type
+                                                   :series       {"Acme"   (assoc counts :x_values [nil nil nil])
+                                                                  "Globex" counts}}
+                                                  {:deep? true}))))))))
+
+(deftest ^:parallel correlations-skip-nil-y-values-test
+  (testing "a nil in one series leaves its other points to correlate"
+    (let [series (assoc (make-series 12) :x {:name "Category" :type "string"} :x_values (mapv str (range 12)))]
+      (is (=? {:correlations [{:strength :strong :direction :positive :aligned-sample-size 11}]}
+              (stats.core/compute-chart-stats {:display_type "bar"
+                                               :series       {"a" (assoc-in series [:y_values 4] nil)
+                                                              "b" series}}
+                                              {:deep? true}))))))
+
 ;;; ---------------------------------------- chart-stats-schema codec ----------------------------------------------
 
 (def ^:private codec

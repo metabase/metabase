@@ -3338,6 +3338,34 @@
           (migrate! :down 62)
           (is (not (column?))))))))
 
+(deftest resolve-pending-custom-viz-plugins-test
+  (testing "v63.m2tnuz, v63.18voz9: custom_viz_plugin rows left in 'pending' by older serialization imports are resolved"
+    (impl/test-migrations ["v63.m2tnuz" "v63.18voz9"] [migrate!]
+      (let [new-plugin! (fn [identifier status & {:as extra}]
+                          (t2/insert-returning-pk! :custom_viz_plugin (merge {:identifier   identifier
+                                                                              :display_name identifier
+                                                                              :status       status
+                                                                              :created_at   :%now
+                                                                              :updated_at   :%now}
+                                                                             extra)))
+            bundle      (.getBytes "pretend tgz bytes" "UTF-8")
+            pending-id  (new-plugin! "pending-viz" "pending" :bundle bundle :bundle_hash "abc")
+            dev-id      (new-plugin! "pending-dev-viz" "pending")
+            active-id   (new-plugin! "active-viz" "active" :bundle bundle :bundle_hash "abc")
+            error-id    (new-plugin! "error-viz" "error" :error_message "stale")]
+        (migrate!)
+        (testing "a pending row with a bundle becomes active"
+          (is (=? {:status "active" :error_message nil}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id pending-id))))
+        (testing "a pending row without a bundle (dev-only plugin) becomes an error"
+          (is (=? {:status "error" :error_message "Bundle is empty"}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id dev-id))))
+        (testing "already resolved rows are untouched"
+          (is (=? {:status "active" :error_message nil}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id active-id)))
+          (is (=? {:status "error" :error_message "stale"}
+                  (t2/select-one [:custom_viz_plugin :status :error_message] :id error-id))))))))
+
 (deftest move-metabot-conversation-state-to-messages-test
   (testing "v64.2026-07-06: the legacy conversation state blob moves to the earliest live assistant message, then the column drops"
     (impl/test-migrations ["v64.2026-07-06T00:00:01" "v64.2026-07-06T00:00:02"] [migrate!]
@@ -3730,6 +3758,36 @@
             (is (= 3 (count (set entity-ids))))
             (is (every? #(and (string? %) (re-matches #"[A-Za-z0-9_-]{21}" %)) entity-ids))))))))
 
+(deftest timeline-event-timestamp-kept-on-update-test
+  (testing "v65.m2xncr: updating a timeline event keeps its date"
+    (impl/test-migrations ["v65.m2xncr"] [migrate!]
+      (let [user-id     (t2/insert-returning-pk! :core_user {:email       "migration-cranes@example.com"
+                                                             :password    "password"
+                                                             :date_joined :%now
+                                                             :entity_id   (u/generate-nano-id)})
+            timeline-id (t2/insert-returning-pk! :timeline {:name       "Crane seasons"
+                                                            :icon       "star"
+                                                            :creator_id user-id
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :entity_id  (u/generate-nano-id)})
+            event-id    (t2/insert-returning-pk! :timeline_event {:name         "Cranes arrive"
+                                                                  :archived     false
+                                                                  :icon         "star"
+                                                                  :timeline_id  timeline-id
+                                                                  :creator_id   user-id
+                                                                  :created_at   :%now
+                                                                  :updated_at   :%now
+                                                                  :timestamp    #t "2027-03-10T00:00:00Z"
+                                                                  :time_matters false
+                                                                  :timezone     "UTC"
+                                                                  :entity_id    (u/generate-nano-id)})
+            event-date  #(t2/select-one-fn :timestamp :timeline_event :id event-id)
+            before      (event-date)]
+        (migrate!)
+        (t2/update! :timeline_event event-id {:archived true})
+        (is (= before (event-date)))))))
+
 (deftest add-library-dashboards-section-test
   (testing "v65.2026-10-06T16:00:00 through v65.2026-10-06T16:00:02: an existing Library gets a Dashboards section with its permissions"
     (impl/test-migrations ["v65.2026-10-06T16:00:00" "v65.2026-10-06T16:00:02"] [migrate!]
@@ -3767,6 +3825,7 @@
     (impl/test-migrations ["v65.2026-10-06T16:00:00" "v65.2026-10-06T16:00:02"] [migrate!]
       (migrate!)
       (is (not (t2/exists? :collection :entity_id "librarylibrarydashbrd"))))))
+
 (deftest metabot-message-finish-reason-column-test
   (testing "v65.2026-10-08T00:00:00: metabot_message gains a nullable finish_reason, and finished is left alone"
     (impl/test-migrations ["v65.2026-10-08T00:00:00"] [migrate!]
@@ -3978,3 +4037,48 @@
           (migrate! :down 64)
           (is (thrown? Exception (t2/query "SELECT id FROM metadata_generation_suggestion")))
           (is (thrown? Exception (t2/query "SELECT id FROM metadata_generation_run"))))))))
+
+(deftest data-app-group-assignment-migration-test
+  (impl/test-migrations ["v65.2026-09-16T00:00:00" "v65.2026-09-16T00:00:08"] [migrate!]
+    (let [legacy-group (t2/insert-returning-pk! :permissions_group
+                                                {:name "Data App: birds"
+                                                 :is_data_app_group true
+                                                 :entity_id "legacy-app-group"})
+          ordinary-group (t2/insert-returning-pk! :permissions_group
+                                                  {:name "Finches" :entity_id "ordinary-group"})
+          user-id (t2/insert-returning-pk! :core_user
+                                           {:email "finch@test.com"
+                                            :entity_id "migration-finch"
+                                            :date_joined :%now
+                                            :password "password"
+                                            :password_salt "salt"})
+          app-id (t2/insert-returning-pk! :data_app
+                                          {:name "birds"
+                                           :display_name "Birds"
+                                           :bundle_path "birds.js"
+                                           :permission_group_id legacy-group
+                                           :created_at :%now
+                                           :updated_at :%now})]
+      (t2/insert! :permissions_group_membership {:group_id legacy-group :user_id user-id})
+      (t2/insert! :permissions {:group_id legacy-group :object "/collection/999/read/"})
+      (testing "migration removes legacy groups and their access"
+        (migrate!)
+        (is (not (t2/exists? :permissions_group :id legacy-group)))
+        (is (not (t2/exists? :permissions_group_membership :group_id legacy-group)))
+        (is (not (t2/exists? :permissions :group_id legacy-group))))
+      (testing "migration preserves apps and ordinary groups without converting legacy access"
+        (is (t2/exists? :permissions_group :id ordinary-group))
+        (is (t2/exists? :data_app :id app-id))
+        (is (empty? (t2/select :data_app_group_assignment))))
+      (testing "migration removes the obsolete columns"
+        (is (not (contains? (t2/select-one :data_app :id app-id) :permission_group_id)))
+        (is (not (contains? (t2/select-one :permissions_group :id ordinary-group) :is_data_app_group))))
+      (testing "rollback restores the old columns without deleting apps or ordinary groups"
+        (migrate! :down 64)
+        (is (contains? (t2/select-one :data_app :id app-id) :permission_group_id))
+        (is (false? (:is_data_app_group (t2/select-one :permissions_group :id ordinary-group)))))
+      (testing "the migration can run again after rollback"
+        (migrate!)
+        (is (t2/exists? :data_app :id app-id))
+        (is (t2/exists? :permissions_group :id ordinary-group))
+        (is (empty? (t2/select :data_app_group_assignment)))))))

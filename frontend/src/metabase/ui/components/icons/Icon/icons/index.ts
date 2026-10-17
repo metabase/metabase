@@ -133,6 +133,7 @@ import grid_component from "./grid.svg?component";
 import grid_2x2_component from "./grid_2x2.svg?component";
 import grid_bordered_component from "./grid_bordered.svg?component";
 import group_component from "./group.svg?component";
+import heart_handshake_component from "./heart_handshake.svg?component";
 import history_component from "./history.svg?component";
 import home_component from "./home.svg?component";
 import horizontal_bar_component from "./horizontal_bar.svg?component";
@@ -174,6 +175,7 @@ import message_circle_component from "./message_circle.svg?component";
 import metabot_component from "./metabot.svg?component";
 import metabot_sad_component from "./metabot_sad.svg?component";
 import metric_component from "./metric.svg?component";
+import minimize_component from "./minimize.svg?component";
 import mode_component from "./mode.svg?component";
 import model_component from "./model.svg?component";
 import model_with_badge_component from "./model_with_badge.svg?component";
@@ -436,6 +438,7 @@ export const Icons: Record<IconName, React.VFC> = {
   google: google_component,
   google_drive: google_drive_component,
   google_sheet: google_sheet_component,
+  heart_handshake: heart_handshake_component,
   history: history_component,
   home: home_component,
   horizontal_bar: horizontal_bar_component,
@@ -477,6 +480,7 @@ export const Icons: Record<IconName, React.VFC> = {
   metabot: metabot_component,
   metabot_sad: metabot_sad_component,
   metric: metric_component,
+  minimize: minimize_component,
   mode: mode_component,
   model: model_component,
   model_with_badge: model_with_badge_component,

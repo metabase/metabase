@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Flex, Modal, Text } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 
 type UnsubscribeConfirmModalProps = {
   onConfirm: () => void;
@@ -18,14 +18,14 @@ export const UnsubscribeConfirmModal = ({
     size="lg"
     onClose={onClose}
   >
-    <Text py="1rem">{t`You’ll stop receiving this alert from now on. Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}</Text>
-    <Flex justify="flex-end" gap="0.75rem">
+    <Text>{t`You’ll stop receiving this alert from now on. Depending on your organization’s permissions you might need to ask a moderator to be re-added in the future.`}</Text>
+    <Modal.Footer>
       <Button onClick={onClose}>{t`Cancel`}</Button>
       <Button
         variant="filled"
         color="negative"
         onClick={onConfirm}
       >{t`Unsubscribe`}</Button>
-    </Flex>
+    </Modal.Footer>
   </Modal>
 );

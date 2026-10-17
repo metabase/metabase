@@ -34,7 +34,12 @@ describe(
       createDataAppScoreboardAction().then((action) => {
         H.mockDataApp(APP_NAME, {
           displayName: APP_DISPLAY_NAME,
-          testEnv: { ...TEST_ENV, actionId: action.id, actionParams },
+          testEnv: {
+            ...TEST_ENV,
+            actionId: action.id,
+            actionEntityId: action.entity_id,
+            actionParams,
+          },
         });
       });
 
@@ -107,6 +112,7 @@ describe(
                   testEnv: {
                     ...TEST_ENV,
                     actionId: action.id,
+                    actionEntityId: action.entity_id,
                     actionParams: { team_name: "Data App FC", score: 7 },
                   },
                 });

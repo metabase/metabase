@@ -63,7 +63,7 @@ export const DataSensitivityPicker = ({
           ...comboboxProps,
         }}
         data={getData(canClear)}
-        placeholder={t`Not labeled`}
+        placeholder={t`Unspecified`}
         value={value ?? (isUserSet ? NO_LABEL_VALUE : null)}
         onChange={handleChange}
         {...props}
@@ -118,7 +118,7 @@ function getData(canClear: boolean) {
       label: getDataSensitivityLabel(type),
       value: type,
     })),
-    ...(canClear ? [{ label: t`No label`, value: NO_LABEL_VALUE }] : []),
+    ...(canClear ? [{ label: t`Unspecified`, value: NO_LABEL_VALUE }] : []),
   ];
 }
 

@@ -55,8 +55,7 @@ function flushUnavailableCustomVizPluginReports() {
 
   if (plugins.length > 0 && onMessage) {
     onMessage({
-      icon: "warning_triangle_filled",
-      iconColor: "feedback-warning",
+      variant: "warning",
       message: getUnavailableMessage(plugins),
     });
   }

@@ -30,9 +30,10 @@
                              :where  [:= :pg.id (u/the-id group)]})
         {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
                                             (:dataset_query card))]
-    (if metadata
-      (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
-      (card.metadata/save-metadata-async! metadata-future card))))
+    (mt/with-test-user :crowberto
+      (if metadata
+        (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})
+        (card.metadata/save-metadata-async! metadata-future card)))))
 
 (deftest database-metadata-respects-column-sandbox-test
   (testing "GET /api/database/:id/metadata excludes columns hidden by a column-restricting sandbox."

@@ -61,18 +61,6 @@ const errorPage = handleActions(
   null,
 );
 
-// regexr.com/7r89i
-// Word boundaries are added so partial matches don't collapse the navbar
-// e.g. /model shouldn't match /browse/models, /question shouldn't match /reference/.../questions
-const PATH_WITH_COLLAPSED_NAVBAR =
-  /\/(model\b|question\b|dashboard|metabot|document|explore).*/;
-
-export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
-  return (
-    !isSmallScreen() && !PATH_WITH_COLLAPSED_NAVBAR.test(pathname) && prevState
-  );
-}
-
 export const OPEN_NAVBAR = "metabase/app/OPEN_NAVBAR";
 export const CLOSE_NAVBAR = "metabase/app/CLOSE_NAVBAR";
 export const TOGGLE_NAVBAR = "metabase/app/TOGGLE_NAVBAR";
@@ -86,6 +74,9 @@ const isNavbarOpen = handleActions(
     [OPEN_NAVBAR]: () => true,
     [TOGGLE_NAVBAR]: (isOpen) => !isOpen,
     [CLOSE_NAVBAR]: () => false,
+    // The navbar only opens or closes on explicit user action, so navigation
+    // keeps whatever state the user last chose. The one exception is small
+    // screens, where an open navbar would cover the whole page.
     [LOCATION_CHANGE]: (
       prevState: boolean,
       { payload }: LocationChangeAction,
@@ -94,7 +85,7 @@ const isNavbarOpen = handleActions(
         return prevState;
       }
 
-      return isNavbarOpenForPathname(payload.pathname, prevState);
+      return isSmallScreen() ? false : prevState;
     },
   },
   true,

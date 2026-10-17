@@ -141,6 +141,10 @@
           (instance? java.net.UnknownHostException (ex-cause e)))
       "Network error: Unable to reach git repository host"
 
+      ;; the validator names a file, whose path may hold any word the matches below look for
+      (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
+      (str "Failed to reload from git repository. " message)
+
       (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
 
@@ -636,11 +640,14 @@
     (try
       (let [snapshot-version      (source.p/version snapshot)
             last-imported-version (remote-sync.task/last-version)
+            ;; before anything is read for loading, the files of each data app's collection are checked; a pull of
+            ;; the commit already imported loads nothing, so there is nothing to check
+            _                     (when (or force? merge? (not= last-imported-version snapshot-version))
+                                    (source.ingestable/check-data-app-files! snapshot))
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
-            finalize!             (fn []
-                                    (remote-sync.task/set-version! task-id snapshot-version))
+            finalize!             (fn [] (remote-sync.task/set-version! task-id snapshot-version))
             report                (import-progress-reporter task-id)
             path-filters          (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
             ;; First-import conflicts only block the first import; deletion conflicts block every import (an
@@ -810,7 +817,8 @@
          :conflicts     labels
          :merge-summary summary
          :message       "Export blocked: the same content was changed both locally and on the remote branch."})
-      (let [[_ version] (commit-staged! snapshot message
+      (let [_           (source.ingestable/check-data-app-files! (source/specs->snapshot merged))
+            [_ version] (commit-staged! snapshot message
                                         (fn [commit]
                                           (source/replace-managed-files! commit snapshot) ; merged set replaces the managed files wholesale
                                           (run! #(source.p/stage-upsert! commit %) merged)))
@@ -942,7 +950,7 @@
                                       (catch Exception _ nil)))}))
 
 (defn- dependency->incremental-export-plan [snapshot opts [row entity]]
-  (let [path (source/entity->path opts entity)]
+  (let [path (serialization/entity-file-path opts entity)]
     (if (path-free? (entity-path-info snapshot path (:entity_id entity)))
       {:writes [(assoc row :file_path path)]}
       :remote-sync/incremental-not-possible)))
@@ -1058,7 +1066,7 @@
       :remote-sync/incremental-not-possible ; extract-chunk omits gone entities; some row is unsyncable
       (->> found
            (map (fn [[row entity]]
-                  (row->incremental-export-plan row (entity-path-info snapshot (source/entity->path opts entity) (:entity_id entity)))))
+                  (row->incremental-export-plan row (entity-path-info snapshot (serialization/entity-file-path opts entity) (:entity_id entity)))))
            (reduce merge-incremental-export-plans-reducer {})))))
 
 (defn- incremental-export-plan
@@ -1101,7 +1109,7 @@
     (not (settings/library-is-remote-synced?)) (into ["snippets" "glossary"])))
 
 (defn- stage-write [commit opts [row entity]]
-  (let [path  (or (:file_path row) (source/entity->path opts entity))
+  (let [path  (or (:file_path row) (serialization/entity-file-path opts entity))
         fspec (source/entity->file-spec-at path entity)]
     (run! #(source.p/stage-upsert! commit %) (source/file-specs fspec))
     (when (:id row)
@@ -1446,6 +1454,12 @@
 
 ;;; ------------------------------------------- Task Result Handling -------------------------------------------
 
+(defn- outcome-on-branch
+  "Names `branch`, the branch the task ran on, in an `outcome` that names one, since the setting the outcome was built from switches to it only after the task."
+  [outcome branch]
+  (cond-> outcome
+    (and branch (contains? outcome :branch)) (assoc :branch branch)))
+
 (defn handle-task-result!
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
@@ -1482,7 +1496,7 @@
                   :success (do
                              (when branch
                                (settings/remote-sync-branch! branch))
-                             (remote-sync.task/complete-sync-task! task-id (:outcome result)))
+                             (remote-sync.task/complete-sync-task! task-id (outcome-on-branch (:outcome result) branch)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result) (:outcome result)))
@@ -1621,7 +1635,8 @@
                        :conflicts true
                        ;; The un-pushed local changes a switch would discard, so the client can name exactly
                        ;; what would be lost without a second round-trip to /dirty.
-                       :dirty_objects (remote-sync.object/dirty-objects)})))
+                       :dirty_objects (remote-sync.object/dirty-objects)
+                       :response/keys #{:conflicts :dirty_objects}})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)

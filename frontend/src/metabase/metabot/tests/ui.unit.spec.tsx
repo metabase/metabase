@@ -5,12 +5,14 @@ import { assocIn } from "icepick";
 
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotMessage,
   createMockMetabotTextMessage,
   setupGetMetabotConversationEndpoint,
   setupGetMetabotConversationEndpointError,
 } from "__support__/server-mocks";
 import { act, fireEvent, screen, waitFor, within } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
@@ -25,6 +27,7 @@ import { Metabot } from "../components/Metabot";
 import { MetabotChat } from "../components/MetabotChat";
 
 import {
+  TEST_METABOT_IDS,
   assertConversation,
   assertNotVisible,
   assertVisible,
@@ -421,7 +424,7 @@ describe("metabot > ui", () => {
       const prompts = [
         {
           id: 1,
-          metabot_id: 1,
+          metabot_id: TEST_METABOT_IDS.INTERNAL,
           prompt: "What is the total revenue for this quarter?",
           model: "metric" as const,
           model_id: 1,
@@ -431,7 +434,7 @@ describe("metabot > ui", () => {
         },
         {
           id: 2,
-          metabot_id: 1,
+          metabot_id: TEST_METABOT_IDS.INTERNAL,
           prompt:
             "Show me the customer acquisition trends over the last 6 months",
           model: "model" as const,
@@ -442,7 +445,7 @@ describe("metabot > ui", () => {
         },
         {
           id: 3,
-          metabot_id: 1,
+          metabot_id: TEST_METABOT_IDS.INTERNAL,
           prompt: "What are our top performing products by sales volume?",
           model: "metric" as const,
           model_id: 3,
@@ -480,7 +483,7 @@ describe("metabot > ui", () => {
       await waitFor(async () => {
         expect(
           fetchMock.callHistory.calls(
-            `path:/api/metabot/metabot/1/prompt-suggestions`,
+            `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
           ),
         ).toHaveLength(1);
       });
@@ -490,7 +493,7 @@ describe("metabot > ui", () => {
       await waitFor(async () => {
         expect(
           fetchMock.callHistory.calls(
-            `path:/api/metabot/metabot/1/prompt-suggestions`,
+            `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
           ),
         ).toHaveLength(2);
       });
@@ -744,6 +747,57 @@ describe("metabot > ui", () => {
       ).toHaveTextContent(/This chat has reached the/);
       expect(
         screen.queryByTestId("metabot-context-usage-ring"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps a loaded conversation full when its last turn did not fit the context window", async () => {
+      const FULL_CONVERSATION_ID = "44444444-4444-4444-4444-444444444444";
+      const COPY =
+        "This conversation has reached its maximum length and can't continue. Please start a new chat.";
+      setupGetMetabotConversationEndpoint(
+        createMockMetabotConversationDetail({
+          conversation_id: FULL_CONVERSATION_ID,
+          title: "Too long",
+          messages: [
+            createMockMetabotTextMessage("user", "How many orders?"),
+            createMockMetabotMessage({
+              role: "agent",
+              status: {
+                type: "errored",
+                error: { type: "ai_provider_context_full", message: COPY },
+              },
+            }),
+          ],
+        }),
+      );
+      setup({
+        conversations: [
+          createMockMetabotConversation({
+            conversation_id: FULL_CONVERSATION_ID,
+            title: "Too long",
+          }),
+        ],
+      });
+
+      await selectPastConversation("Too long");
+
+      await assertConversation([
+        ["user", "How many orders?"],
+        ["agent", /This conversation has reached its maximum length/],
+      ]);
+      expect(
+        screen.queryByText(/Something went wrong/),
+      ).not.toBeInTheDocument();
+      const notice = await screen.findByTestId("metabot-long-chat-notice");
+      expect(notice).toHaveTextContent(/This chat has reached the/);
+      expect(
+        within(notice).getByTestId("metabot-long-chat-new-chat"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-chat-input"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-chat-message-retry"),
       ).not.toBeInTheDocument();
     });
 

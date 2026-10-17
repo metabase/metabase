@@ -14,7 +14,10 @@
    [:dashboard {:optional true} [:set ::lib.schema.id/dashboard]]
    [:document  {:optional true} [:set ::documents.schema/document.id]]
    [:sandbox   {:optional true} [:set ::lib.schema.id/sandbox]]
-   [:segment   {:optional true} [:set ::lib.schema.id/segment]]])
+   [:segment   {:optional true} [:set ::lib.schema.id/segment]]
+   [:unresolved-table {:optional true} [:set [:map
+                                              [:schema {:optional true} :string]
+                                              [:table :string]]]]])
 
 (mr/def ::analysis-finding
   "A AnalysisFinding as selected from the app DB: every column of `:analysis_finding`."
@@ -81,4 +84,5 @@
    [:stale                       {:optional true} [:maybe :boolean]]
    [:fail_count                  {:optional true} [:maybe :int]]
    [:next_retry_at               {:optional true} [:maybe ms/TemporalInstant]]
-   [:terminal                    {:optional true} [:maybe :boolean]]])
+   [:terminal                    {:optional true} [:maybe :boolean]]
+   [:unresolved_tables           {:optional true} [:maybe :boolean]]])
