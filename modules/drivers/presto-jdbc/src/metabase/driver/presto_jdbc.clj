@@ -58,6 +58,22 @@
   [_driver]
   ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
 
+(defmethod driver/file-path-parameters :presto-jdbc
+  [_driver]
+  {"SSLKeyStorePath"             :read
+   "SSLTrustStorePath"           :read
+   "KerberosConfigPath"          :read
+   "KerberosCredentialCachePath" :read
+   "KerberosKeytabPath"          :read})
+
+(defmethod driver/non-file-path-parameters :presto-jdbc
+  [_driver]
+  ["KerberosConstrainedDelegation" "KerberosDelegation" "KerberosPrincipal" "KerberosRemoteServiceName"
+   "KerberosServicePrincipalPattern" "KerberosUseCanonicalHostname" "SSLKeyStorePassword" "SSLKeyStoreType"
+   "SSLTrustStorePassword" "SSLTrustStoreType" "SSLUseSystemKeyStore" "SSLUseSystemTrustStore"
+   "assumeNullCatalogMeansCurrentCatalog" "catalog" "externalAuthenticationRedirectHandlers"
+   "externalAuthenticationTokenCache" "hostnameInCertificate" "httpLoggingLevel" "path"])
+
 (doseq [[feature supported?] {:basic-aggregations               true
                               :binning                          true
                               :database-routing                 true

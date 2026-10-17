@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
@@ -32,6 +33,17 @@
    (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
+
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a user-supplied file-path connection parameter has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [spec #(driver.u/validate-connection-file-paths! :clickhouse (merge {:host "h" :port 8123 :dbname "db"} %))]
+        (testing "a path outside the allowed directories is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:sslrootcert "/etc/secret.pem"}))))
+        (testing "a path inside one, or none at all, is allowed"
+          (is (nil? (spec {:sslrootcert "/allowed-dir/ok.pem"})))
+          (is (nil? (spec {}))))))))
 
 (deftest default-schema-test
   (mt/test-driver :clickhouse

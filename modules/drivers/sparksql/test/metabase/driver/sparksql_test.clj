@@ -7,6 +7,7 @@
    [metabase.driver.sparksql :as sparksql]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
@@ -178,3 +179,13 @@
         (testing "The query should run successfully"
           (is (= [[1 4] [2 11] [3 11]]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a file path in the JDBC flags has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [check #(driver.u/validate-connection-file-paths! :sparksql {:host "h" :port 10000 :db "db" :jdbc-flags %})]
+        (doseq [param ["initFile" "sslTrustStore" "sslKeyStore"]]
+          (testing param
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                  (check (str ";ssl=true;" param "=/etc/secret"))))
+            (is (nil? (check (str ";ssl=true;" param "=/allowed-dir/ok"))))))))))

@@ -29,6 +29,19 @@
 
 (driver/register! :sparksql, :parent #{:hive-like ::sql.qp.like-built-in/like-escape-char-built-in})
 
+(defmethod driver/file-path-parameters :sparksql
+  [_driver]
+  {"initFile"                    :read
+   "sslTrustStore"               :read
+   "sslKeyStore"                 :read
+   "storePasswordPath"           :read
+   "zooKeeperKeystoreLocation"   :read
+   "zooKeeperTruststoreLocation" :read})
+
+(defmethod driver/additional-options-detail-key :sparksql [_driver] :jdbc-flags)
+
+(defmethod driver/additional-options-style :sparksql [_driver] :semicolon)
+
 ;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
 
 (def ^:private source-table-alias
