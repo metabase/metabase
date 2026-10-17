@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
-import { type KeyboardEvent, useState } from "react";
+import { type KeyboardEvent, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -13,9 +12,8 @@ import {
 import {
   ActionIcon,
   Badge,
-  Box,
   Button,
-  Checkbox,
+  Card,
   Flex,
   Group,
   Icon,
@@ -27,6 +25,9 @@ import {
   Text,
   Textarea,
   Tooltip,
+  TreeTable,
+  type TreeTableColumnDef,
+  useTreeTableInstance,
 } from "metabase/ui";
 import {
   useApplyMetadataGenerationRunMutation,
@@ -60,7 +61,6 @@ import {
   getApplyFailureReasonLabel,
   getApplySummary,
   getFieldLabel,
-  getHumanSetAcceptable,
   getNotAcceptedCount,
   getRunTotals,
   getSuggestionStatusColor,
@@ -96,26 +96,60 @@ export function ReviewModal({
   const { data: tables } = useListMetadataGenerationRunTablesQuery(runId, {
     skip: !opened,
   });
+  const [applyResult, setApplyResult] =
+    useState<MetadataGenerationApplyResult | null>(null);
   const isEmpty = tables != null && tables.length === 0;
+  const hasTables = tables != null && tables.length > 0;
+
+  const handleClose = () => {
+    setApplyResult(null);
+    onClose();
+  };
 
   return (
-    <Modal
+    <Modal.Root
       opened={opened}
-      title={t`Review AI-generated metadata suggestions`}
       size={isEmpty ? "lg" : "90rem"}
-      onClose={onClose}
+      onClose={handleClose}
     >
-      {opened && isEmpty && (
-        <EmptyRun
-          runId={runId}
-          onRegenerate={onRegenerate}
-          onDone={onDone ?? onClose}
-        />
-      )}
-      {opened && !isEmpty && (
-        <ReviewContent runId={runId} onRegenerate={onRegenerate} />
-      )}
-    </Modal>
+      <Modal.Overlay />
+      <Modal.Content>
+        <Modal.Header className={S.header}>
+          <Modal.Title>{t`Review AI-generated metadata suggestions`}</Modal.Title>
+          <Group gap="sm" wrap="nowrap">
+            {opened && hasTables && (
+              <ReviewActions
+                runId={runId}
+                totals={getRunTotals(tables)}
+                onApply={setApplyResult}
+                onRegenerate={onRegenerate}
+              />
+            )}
+            <ActionIcon aria-label={t`Close`} onClick={handleClose}>
+              <Icon name="close" />
+            </ActionIcon>
+          </Group>
+        </Modal.Header>
+        <Modal.Body className={S.body} p="xl">
+          {opened && tables == null && <Loader size="sm" />}
+          {opened && isEmpty && (
+            <EmptyRun
+              runId={runId}
+              onRegenerate={onRegenerate}
+              onDone={onDone ?? handleClose}
+            />
+          )}
+          {opened && hasTables && (
+            <ReviewContent
+              runId={runId}
+              tables={tables}
+              applyResult={applyResult}
+              onDismissApplyResult={() => setApplyResult(null)}
+            />
+          )}
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 }
 
@@ -229,28 +263,23 @@ function useDecide(runId: MetadataGenerationRunId): DecideState {
 
 type ReviewContentProps = {
   runId: MetadataGenerationRunId;
-  onRegenerate?: (run: MetadataGenerationRun) => void;
+  tables: MetadataGenerationRunTable[];
+  applyResult: MetadataGenerationApplyResult | null;
+  onDismissApplyResult: () => void;
 };
 
-function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
-  const {
-    data: tables,
-    error,
-    isLoading,
-  } = useListMetadataGenerationRunTablesQuery(runId);
+function ReviewContent({
+  runId,
+  tables,
+  applyResult,
+  onDismissApplyResult,
+}: ReviewContentProps) {
   const [selectedTableId, setSelectedTableId] =
     useState<ConcreteTableId | null>(null);
-  const [applyResult, setApplyResult] =
-    useState<MetadataGenerationApplyResult | null>(null);
   const [detailFieldId, setDetailFieldId] = useState<FieldId | null>(null);
   const decideState = useDecide(runId);
+  const { humanSetPending } = getRunTotals(tables);
 
-  if (error) {
-    return <Text c="feedback-negative">{getErrorMessage(error)}</Text>;
-  }
-  if (isLoading || tables == null) {
-    return <Loader size="sm" />;
-  }
   const selectedTable =
     tables.find((table) => table.table_id === selectedTableId) ??
     tables.find(hasOpenDecisions) ??
@@ -258,19 +287,19 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
 
   return (
     <Stack gap="md" data-testid="metadata-generation-review">
-      <RunHeader
-        runId={runId}
-        totals={getRunTotals(tables)}
-        onApply={setApplyResult}
-        onRegenerate={onRegenerate}
-      />
-      {applyResult && (
-        <ApplyResult
-          result={applyResult}
-          onDismiss={() => setApplyResult(null)}
-        />
+      {humanSetPending > 0 && (
+        <Text size="sm" c="text-secondary">
+          {ngettext(
+            msgid`${humanSetPending} suggestion would replace a value a person set. Accept it one by one.`,
+            `${humanSetPending} suggestions would replace values a person set. Accept them one by one.`,
+            humanSetPending,
+          )}
+        </Text>
       )}
-      <Flex gap="md" h="65vh" mih={0}>
+      {applyResult && (
+        <ApplyResult result={applyResult} onDismiss={onDismissApplyResult} />
+      )}
+      <Flex gap="lg" h="65vh" mih={0}>
         <ScrollArea className={S.tableList}>
           <TableList
             tables={tables}
@@ -281,7 +310,7 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
             }}
           />
         </ScrollArea>
-        <Box flex={1} miw={0}>
+        <Card withBorder p={0} flex={1} miw={0} mih={0} display="flex">
           <TableReview
             key={selectedTable.table_id}
             runId={runId}
@@ -294,7 +323,7 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
               )
             }
           />
-        </Box>
+        </Card>
         {detailFieldId != null && (
           <FieldDetailsPane
             key={detailFieldId}
@@ -308,14 +337,20 @@ function ReviewContent({ runId, onRegenerate }: ReviewContentProps) {
   );
 }
 
-type RunHeaderProps = {
+type ReviewActionsProps = {
   runId: MetadataGenerationRunId;
   totals: RunTotals;
   onApply: (result: MetadataGenerationApplyResult) => void;
   onRegenerate?: (run: MetadataGenerationRun) => void;
 };
 
-function RunHeader({ runId, totals, onApply, onRegenerate }: RunHeaderProps) {
+/** The regenerate and apply actions of the modal header. */
+function ReviewActions({
+  runId,
+  totals,
+  onApply,
+  onRegenerate,
+}: ReviewActionsProps) {
   const [applyRun, { isLoading: isApplying }] =
     useApplyMetadataGenerationRunMutation();
   const { regenerate, canRegenerate, isRegenerating } = useRegenerate(
@@ -327,7 +362,7 @@ function RunHeader({ runId, totals, onApply, onRegenerate }: RunHeaderProps) {
     { open: openRegenerateConfirm, close: closeRegenerateConfirm },
   ] = useDisclosure();
   const { sendErrorToast } = useMetadataToasts();
-  const { counts, humanSetPending } = totals;
+  const { counts } = totals;
 
   const handleRegenerate = async () => {
     await regenerate();
@@ -346,49 +381,36 @@ function RunHeader({ runId, totals, onApply, onRegenerate }: RunHeaderProps) {
   };
 
   return (
-    <Group justify="space-between" wrap="nowrap" align="flex-start">
-      <Box>
-        {humanSetPending > 0 && (
-          <Text size="sm" c="text-secondary">
-            {ngettext(
-              msgid`${humanSetPending} suggestion would replace a value a person set. Accept it one by one.`,
-              `${humanSetPending} suggestions would replace values a person set. Accept them one by one.`,
-              humanSetPending,
-            )}
-          </Text>
-        )}
-      </Box>
-      <Group gap="sm" wrap="nowrap">
-        {onRegenerate != null && (
-          <Tooltip label={t`Regenerate suggestions`}>
-            <ActionIcon
-              aria-label={t`Regenerate suggestions`}
-              disabled={!canRegenerate}
-              onClick={openRegenerateConfirm}
-            >
-              <Icon name="refresh" />
-            </ActionIcon>
-          </Tooltip>
-        )}
-        <ConfirmModal
-          opened={isRegenerateConfirmOpen}
-          title={t`Regenerate suggestions?`}
-          message={t`This discards the current suggestions, including the ones you accepted or edited, and starts a new run.`}
-          confirmButtonText={t`Regenerate`}
-          confirmButtonProps={{ loading: isRegenerating }}
-          onConfirm={handleRegenerate}
-          onClose={closeRegenerateConfirm}
-        />
-        <Button
-          variant="filled"
-          loading={isApplying}
-          disabled={counts.accepted === 0}
-          onClick={handleApply}
-        >
-          {t`Apply ${counts.accepted} accepted`}
-        </Button>
-      </Group>
-    </Group>
+    <>
+      {onRegenerate != null && (
+        <Tooltip label={t`Regenerate suggestions`}>
+          <ActionIcon
+            aria-label={t`Regenerate suggestions`}
+            disabled={!canRegenerate}
+            onClick={openRegenerateConfirm}
+          >
+            <Icon name="refresh" />
+          </ActionIcon>
+        </Tooltip>
+      )}
+      <ConfirmModal
+        opened={isRegenerateConfirmOpen}
+        title={t`Regenerate suggestions?`}
+        message={t`This discards the current suggestions, including the ones you accepted or edited, and starts a new run.`}
+        confirmButtonText={t`Regenerate`}
+        confirmButtonProps={{ loading: isRegenerating }}
+        onConfirm={handleRegenerate}
+        onClose={closeRegenerateConfirm}
+      />
+      <Button
+        variant="filled"
+        loading={isApplying}
+        disabled={counts.accepted === 0}
+        onClick={handleApply}
+      >
+        {t`Apply ${counts.accepted} accepted`}
+      </Button>
+    </>
   );
 }
 
@@ -404,6 +426,7 @@ function ApplyResult({ result, onDismiss }: ApplyResultProps) {
       p="md"
       bd="1px solid var(--mb-color-border-neutral)"
       bdrs="sm"
+      bg="background_surface-primary"
       data-testid="metadata-generation-apply-result"
     >
       <Group justify="space-between" wrap="nowrap">
@@ -490,6 +513,15 @@ type TableReviewProps = {
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
+type SuggestionNode = {
+  id: MetadataGenerationSuggestionId;
+  suggestion: MetadataGenerationSuggestion;
+  /** The first suggestion of a field shows the field name. */
+  isFirstOfField: boolean;
+};
+
+const noop = () => undefined;
+
 function TableReview({
   runId,
   table,
@@ -497,7 +529,7 @@ function TableReview({
   detailFieldId,
   onToggleFieldDetails,
 }: TableReviewProps) {
-  const { decide, isDeciding } = decideState;
+  const { decide, decidingIds } = decideState;
   const {
     data: suggestions,
     error,
@@ -507,214 +539,173 @@ function TableReview({
     table_id: table.table_id,
   });
 
+  const nodes = useMemo<SuggestionNode[]>(
+    () =>
+      (suggestions ?? []).map((suggestion, index, all) => ({
+        id: suggestion.id,
+        suggestion,
+        isFirstOfField:
+          index === 0 || all[index - 1].field_id !== suggestion.field_id,
+      })),
+    [suggestions],
+  );
+  const rowSelection = useMemo(
+    () =>
+      Object.fromEntries(
+        nodes
+          .filter((node) => isSuggestionChecked(node.suggestion))
+          .map((node) => [String(node.id), true]),
+      ),
+    [nodes],
+  );
+  const columns = useMemo(
+    () => getColumns({ runId, decide, detailFieldId, onToggleFieldDetails }),
+    [runId, decide, detailFieldId, onToggleFieldDetails],
+  );
+  const instance = useTreeTableInstance<SuggestionNode>({
+    data: nodes,
+    columns,
+    getNodeId: (node) => String(node.id),
+    enableRowSelection: (row) => isSuggestionDecidable(row.original.suggestion),
+    rowSelection,
+    onRowSelectionChange: noop,
+  });
+
   if (error) {
-    return <Text c="feedback-negative">{getErrorMessage(error)}</Text>;
+    return (
+      <Text c="feedback-negative" p="md">
+        {getErrorMessage(error)}
+      </Text>
+    );
   }
   if (isLoading || suggestions == null) {
-    return <Loader size="sm" />;
+    return <Loader size="sm" m="md" />;
   }
 
-  const humanSetAcceptable = getHumanSetAcceptable(suggestions);
   const tableCheckbox = getTableCheckboxState(suggestions);
 
   return (
-    <Stack gap="sm" h="100%" mih={0}>
-      <Group justify="space-between" wrap="nowrap">
-        <Text fw="bold" truncate>
-          {getTableLabel(table)}
-        </Text>
-        <Group gap="sm" wrap="nowrap">
-          {humanSetAcceptable.length > 0 && (
-            <Tooltip
-              label={t`Replaces the values a person set with the AI suggestions.`}
-            >
-              <Button
-                variant="default"
-                c="feedback-warning"
-                disabled={isDeciding}
-                onClick={() =>
-                  decide({
-                    decision: "accept",
-                    suggestion_ids: humanSetAcceptable.map((s) => s.id),
-                  })
-                }
-              >
-                {ngettext(
-                  msgid`Accept ${humanSetAcceptable.length} value set by a person`,
-                  `Accept ${humanSetAcceptable.length} values set by a person`,
-                  humanSetAcceptable.length,
-                )}
-              </Button>
-            </Tooltip>
-          )}
-        </Group>
-      </Group>
-      <ScrollArea flex={1}>
-        <table
-          className={S.suggestions}
-          data-testid="metadata-generation-suggestions"
-        >
-          <colgroup>
-            <col className={S.checkboxColumn} />
-            <col className={S.fieldColumn} />
-            <col className={S.attributeColumn} />
-            <col className={S.currentColumn} />
-            <col />
-            <col className={S.explanationColumn} />
-            <col className={S.detailsColumn} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>
-                <Tooltip
-                  label={t`Accepts or clears every suggestion of this table, except those that would replace a value a person set.`}
-                >
-                  <Box component="span" display="inline-flex">
-                    <Checkbox
-                      aria-label={t`Accept the suggestions of this table`}
-                      checked={tableCheckbox.checked}
-                      indeterminate={tableCheckbox.indeterminate}
-                      disabled={tableCheckbox.disabled || isDeciding}
-                      onChange={() =>
-                        decide({
-                          decision: tableCheckbox.checked
-                            ? "unaccept"
-                            : "accept",
-                          table_ids: [table.table_id],
-                        })
-                      }
-                    />
-                  </Box>
-                </Tooltip>
-              </th>
-              <th>{t`Field`}</th>
-              <th>{t`Attribute`}</th>
-              <th>{t`Current`}</th>
-              <th>{t`Proposed`}</th>
-              <th>{t`Explanation`}</th>
-              <th aria-label={t`Field details`} />
-            </tr>
-          </thead>
-          <tbody>
-            {suggestions.map((suggestion, index) => (
-              <SuggestionRow
-                key={suggestion.id}
-                suggestion={suggestion}
-                isFirstOfField={
-                  index === 0 ||
-                  suggestions[index - 1].field_id !== suggestion.field_id
-                }
-                runId={runId}
-                isDeciding={decideState.decidingIds.has(suggestion.id)}
-                decide={decide}
-                isDetailOpen={suggestion.field_id === detailFieldId}
-                onToggleFieldDetails={onToggleFieldDetails}
-              />
-            ))}
-          </tbody>
-        </table>
-      </ScrollArea>
-    </Stack>
+    <TreeTable
+      instance={instance}
+      hierarchical={false}
+      showCheckboxes
+      classNames={{ root: S.suggestions, cell: S.suggestionCell }}
+      ariaLabel={t`Suggestions of ${getTableLabel(table)}`}
+      headerCheckboxAriaLabel={t`Accept the suggestions of this table`}
+      onHeaderCheckboxClick={() =>
+        decide({
+          decision: tableCheckbox.checked ? "unaccept" : "accept",
+          table_ids: [table.table_id],
+        })
+      }
+      onCheckboxClick={(row) =>
+        decide({
+          decision: isSuggestionChecked(row.original.suggestion)
+            ? "unaccept"
+            : "accept",
+          suggestion_ids: [row.original.id],
+        })
+      }
+      isRowLoading={(row) => decidingIds.has(row.original.id)}
+      getRowProps={(row) => ({
+        "data-testid": "metadata-generation-suggestion",
+        "data-human-set":
+          isHumanSet(row.original.suggestion) &&
+          isSuggestionDecidable(row.original.suggestion),
+      })}
+      emptyState={
+        <Text
+          c="text-secondary"
+          p="md"
+        >{t`No suggestions for this table.`}</Text>
+      }
+    />
   );
 }
 
-type SuggestionRowProps = {
+type ColumnOptions = {
   runId: MetadataGenerationRunId;
-  suggestion: MetadataGenerationSuggestion;
-  isFirstOfField: boolean;
-  isDeciding: boolean;
   decide: Decide;
-  isDetailOpen: boolean;
+  detailFieldId: FieldId | null;
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
-function SuggestionRow({
+function getColumns({
   runId,
-  suggestion,
-  isFirstOfField,
-  isDeciding,
   decide,
-  isDetailOpen,
+  detailFieldId,
   onToggleFieldDetails,
-}: SuggestionRowProps) {
-  const humanSet = isHumanSet(suggestion);
-  const isConflict = humanSet && isSuggestionDecidable(suggestion);
-  const current = formatSuggestionValue(
-    suggestion.attribute,
-    suggestion.current_value,
-  );
-  const fieldLabel = getFieldLabel(suggestion);
-  const attributeLabel = getAttributeLabel(suggestion.attribute);
-  const isChecked = isSuggestionChecked(suggestion);
-
-  return (
-    <tr
-      className={cx({ [S.humanSet]: isConflict })}
-      data-testid="metadata-generation-suggestion"
-    >
-      <td>
-        <Checkbox
-          aria-label={t`Accept ${attributeLabel} of ${fieldLabel}`}
-          checked={isChecked}
-          disabled={!isSuggestionDecidable(suggestion) || isDeciding}
-          onChange={() =>
-            decide({
-              decision: isChecked ? "unaccept" : "accept",
-              suggestion_ids: [suggestion.id],
-            })
-          }
-        />
-      </td>
-      <td>
-        {isFirstOfField && (
+}: ColumnOptions): TreeTableColumnDef<SuggestionNode>[] {
+  return [
+    {
+      id: "field",
+      header: t`Field`,
+      width: 180,
+      cell: ({ row }) => {
+        const { suggestion, isFirstOfField } = row.original;
+        const fieldLabel = getFieldLabel(suggestion);
+        return isFirstOfField ? (
           <Text fw="bold" title={fieldLabel} truncate>
             {fieldLabel}
           </Text>
-        )}
-      </td>
-      <td>
-        <Text title={attributeLabel} truncate>
-          {attributeLabel}
-        </Text>
-      </td>
-      <td className={S.value}>
-        <Stack gap={4} align="flex-start">
-          {current != null ? (
-            <Text>{current}</Text>
-          ) : (
-            <Text c="text-secondary">{t`Empty`}</Text>
-          )}
-          {humanSet && (
-            <Badge variant="light" color="warning">{t`Set by a person`}</Badge>
-          )}
-          {suggestion.source === "ai" && (
-            <Badge variant="light" color="neutral">{t`Set by AI`}</Badge>
-          )}
-        </Stack>
-      </td>
-      <td className={S.value}>
-        <Stack gap={4} align="flex-start">
+        ) : null;
+      },
+    },
+    {
+      id: "attribute",
+      header: t`Attribute`,
+      width: 150,
+      cell: ({ row }) => {
+        const attributeLabel = getAttributeLabel(
+          row.original.suggestion.attribute,
+        );
+        return (
+          <Text title={attributeLabel} truncate>
+            {attributeLabel}
+          </Text>
+        );
+      },
+    },
+    {
+      id: "current",
+      header: t`Current`,
+      minWidth: 180,
+      maxWidth: 360,
+      cell: ({ row }) => <CurrentValue suggestion={row.original.suggestion} />,
+    },
+    {
+      id: "proposed",
+      header: t`Proposed`,
+      minWidth: 280,
+      cell: ({ row }) => (
+        <Stack gap={4} align="flex-start" py="xs">
           <ProposedValue
             runId={runId}
-            suggestion={suggestion}
+            suggestion={row.original.suggestion}
             decide={decide}
           />
-          {!isSuggestionDecidable(suggestion) && (
-            <Tooltip label={getFixedStatusTooltip(suggestion)}>
+          {!isSuggestionDecidable(row.original.suggestion) && (
+            <Tooltip label={getFixedStatusTooltip(row.original.suggestion)}>
               <Badge
                 variant="light"
-                color={getSuggestionStatusColor(suggestion.status)}
+                color={getSuggestionStatusColor(row.original.suggestion.status)}
                 data-testid="metadata-generation-suggestion-status"
               >
-                {getSuggestionStatusLabel(suggestion.status)}
+                {getSuggestionStatusLabel(row.original.suggestion.status)}
               </Badge>
             </Tooltip>
           )}
         </Stack>
-      </td>
-      <td>
-        {suggestion.reasoning && (
-          <Tooltip label={suggestion.reasoning} maw="25rem" multiline>
+      ),
+    },
+    {
+      id: "explanation",
+      header: t`Explanation`,
+      width: 120,
+      cell: ({ row }) => {
+        const { reasoning } = row.original.suggestion;
+        return reasoning ? (
+          <Tooltip label={reasoning} maw="25rem" multiline>
             <Icon
               name="comment"
               c="text-secondary"
@@ -722,23 +713,58 @@ function SuggestionRow({
               aria-hidden={false}
             />
           </Tooltip>
-        )}
-      </td>
-      <td>
-        <Tooltip
-          label={isDetailOpen ? t`Hide field details` : t`Field details`}
-        >
-          <ActionIcon
-            aria-label={t`Field details of ${fieldLabel}`}
-            aria-pressed={isDetailOpen}
-            selected={isDetailOpen}
-            onClick={() => onToggleFieldDetails(suggestion.field_id)}
+        ) : null;
+      },
+    },
+    {
+      id: "details",
+      header: "",
+      width: 64,
+      cell: ({ row }) => {
+        const { suggestion } = row.original;
+        const isDetailOpen = suggestion.field_id === detailFieldId;
+        return (
+          <Tooltip
+            label={isDetailOpen ? t`Hide field details` : t`Field details`}
           >
-            <Icon name="info" />
-          </ActionIcon>
-        </Tooltip>
-      </td>
-    </tr>
+            <ActionIcon
+              aria-label={t`Field details of ${getFieldLabel(suggestion)}`}
+              aria-pressed={isDetailOpen}
+              selected={isDetailOpen}
+              onClick={() => onToggleFieldDetails(suggestion.field_id)}
+            >
+              <Icon name="info" />
+            </ActionIcon>
+          </Tooltip>
+        );
+      },
+    },
+  ];
+}
+
+function CurrentValue({
+  suggestion,
+}: {
+  suggestion: MetadataGenerationSuggestion;
+}) {
+  const current = formatSuggestionValue(
+    suggestion.attribute,
+    suggestion.current_value,
+  );
+  return (
+    <Stack gap={4} align="flex-start" py="xs">
+      {current != null ? (
+        <Text>{current}</Text>
+      ) : (
+        <Text c="text-secondary">{t`Empty`}</Text>
+      )}
+      {isHumanSet(suggestion) && (
+        <Badge variant="light" color="warning">{t`Set by a person`}</Badge>
+      )}
+      {suggestion.source === "ai" && (
+        <Badge variant="light" color="neutral">{t`Set by AI`}</Badge>
+      )}
+    </Stack>
   );
 }
 
