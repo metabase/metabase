@@ -1,0 +1,1 @@
+export { QuestionCompareButton } from "./QuestionCompareButton";

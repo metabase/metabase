@@ -19,6 +19,7 @@
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
    [metabase.metabot.api.permissions]
+   [metabase.metabot.column-name :as metabot.column-name]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.conversation-title :as conversation-title]
@@ -456,6 +457,16 @@
   (metabot.config/check-metabot-enabled!)
   (metabot.feedback/persist-source-feedback! body)
   api/generic-204-no-content)
+
+(api.macros/defendpoint :post "/column-name" :- [:map [:name [:maybe ms/NonBlankString]]]
+  "Suggest a short name for a custom column computed by `expression` (custom expression source). `name` is nil when
+  no LLM is available to the current user, so the client should fall back to its own default."
+  [_route-params
+   _query-params
+   {:keys [expression table_name]} :- [:map {:closed true}
+                                       [:expression ms/NonBlankString]
+                                       [:table_name {:optional true} [:maybe :string]]]]
+  {:name (metabot.column-name/suggest-name expression table_name)})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."
