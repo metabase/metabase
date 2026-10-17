@@ -13,7 +13,6 @@ import S from "./LegendLayout.module.css";
 import {
   HIDDEN_LEGEND_LAYOUT,
   LEGEND_SIZES,
-  type PlotInset,
   getLegendLayout,
   getLegendSize,
 } from "./layout";
@@ -26,7 +25,7 @@ interface LegendLayoutProps {
   height?: number;
   chartHeight?: number;
   indent?: number;
-  plotInset?: PlotInset;
+  plotInsetWidth?: number;
   hasLegend: boolean;
   legendPosition?: LegendPosition;
   alwaysVisible?: boolean;
@@ -54,7 +53,7 @@ export const LegendLayout = ({
   height = 0,
   chartHeight,
   indent = 0,
-  plotInset,
+  plotInsetWidth,
   hasLegend,
   legendPosition = "auto",
   alwaysVisible,
@@ -83,7 +82,7 @@ export const LegendLayout = ({
       height,
       chartHeight,
       horizontalWidth: width - Math.abs(indent),
-      plotInset,
+      plotInsetWidth,
       size,
       fontFamily,
       measureText,
@@ -99,7 +98,7 @@ export const LegendLayout = ({
     height,
     chartHeight,
     indent,
-    plotInset,
+    plotInsetWidth,
     size,
     fontFamily,
     measureText,

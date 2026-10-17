@@ -27,6 +27,8 @@ const PADDING = 14;
 const DEFAULT_GRID_SIZE = 100;
 export const HIDE_HORIZONTAL_LEGEND_THRESHOLD = 180;
 export const HIDE_SECONDARY_INFO_THRESHOLD = 260;
+const MIN_ROW_GRID_HEIGHT = 3;
+const MIN_ROW_GRID_WIDTH = 2;
 
 type GridSize = {
   width: number;
@@ -235,13 +237,12 @@ export function getChartLayout({
     legendTitles,
   };
 
-  const autoPlacement = getAutoPlacement(area, gridSize);
-  if (position === "off" || autoPlacement == null) {
+  const placement = getPlacement(position, area, getGridSize(area, gridSize));
+  if (placement == null) {
     return getSmallLayout(area);
   }
 
   const isAuto = position === "auto";
-  const placement = isAuto ? autoPlacement : position;
   const { orientation, isBeforeChart } = LEGEND_PLACEMENTS[placement];
   if (orientation === "vertical") {
     return getSideLayout(area, { isLegendBeforeChart: isBeforeChart });
@@ -252,31 +253,66 @@ export function getChartLayout({
   });
 }
 
-function getAutoPlacement(
+function getPlacement(
+  position: LegendPosition,
+  area: LayoutArea,
+  grid: GridSize,
+): LegendPlacement | null {
+  if (position === "off") {
+    return null;
+  }
+  if (position === "auto") {
+    return getAutoPlacement(area, grid);
+  }
+  return hasRoomForPlacement(position, area, grid) ? position : null;
+}
+
+function getGridSize(
   { adjustedWidth, adjustedHeight }: LayoutArea,
   gridSize: GridSize | undefined,
+): GridSize {
+  return (
+    gridSize ?? {
+      width: adjustedWidth / DEFAULT_GRID_SIZE,
+      height: adjustedHeight / DEFAULT_GRID_SIZE,
+    }
+  );
+}
+
+function getAutoPlacement(
+  area: LayoutArea,
+  grid: GridSize,
 ): LegendPlacement | null {
-  const calculatedGridSize = gridSize || {
-    width: adjustedWidth / DEFAULT_GRID_SIZE,
-    height: adjustedHeight / DEFAULT_GRID_SIZE,
-  };
+  const isHorizontal = grid.width > grid.height / GRID_ASPECT_RATIO;
 
-  const isHorizontal =
-    calculatedGridSize.width > calculatedGridSize.height / GRID_ASPECT_RATIO;
-
-  if (isHorizontal && adjustedWidth > HIDE_HORIZONTAL_LEGEND_THRESHOLD) {
+  if (isHorizontal && hasRoomForColumn(area)) {
     return "left";
   }
 
-  if (
-    !isHorizontal &&
-    calculatedGridSize.height > 3 &&
-    calculatedGridSize.width > 2
-  ) {
+  if (!isHorizontal && hasRoomForRow(grid)) {
     return "bottom";
   }
 
   return null;
+}
+
+function hasRoomForPlacement(
+  placement: LegendPlacement,
+  area: LayoutArea,
+  grid: GridSize,
+): boolean {
+  const { orientation } = LEGEND_PLACEMENTS[placement];
+  return orientation === "vertical"
+    ? hasRoomForColumn(area)
+    : hasRoomForRow(grid);
+}
+
+function hasRoomForColumn({ adjustedWidth }: LayoutArea): boolean {
+  return adjustedWidth > HIDE_HORIZONTAL_LEGEND_THRESHOLD;
+}
+
+function hasRoomForRow(grid: GridSize): boolean {
+  return grid.height > MIN_ROW_GRID_HEIGHT && grid.width > MIN_ROW_GRID_WIDTH;
 }
 
 function getSideLayout(

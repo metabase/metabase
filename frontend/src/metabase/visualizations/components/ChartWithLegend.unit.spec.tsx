@@ -255,8 +255,78 @@ describe("getChartLayout", () => {
     },
   );
 
+  it.each<LegendPosition>(["left", "right"])(
+    "should show a %s legend on a tall card wide enough for a column where the automatic layout hides it",
+    (position) => {
+      const input = {
+        ...defaultInput,
+        width: 300,
+        height: 600,
+        gridSize: { width: 2, height: 8 },
+      };
+
+      expect(getChartLayout(input).type).toBe("small");
+      expect(getChartLayout({ ...input, position })).toMatchObject({
+        type: "horizontal",
+        LegendComponent: LegendVertical,
+      });
+    },
+  );
+
+  it.each<LegendPosition>(["top", "bottom"])(
+    "should show a %s legend on a wide card whose grid fits a row where the automatic layout hides it",
+    (position) => {
+      const input = {
+        ...defaultInput,
+        width: 200,
+        height: 150,
+        gridSize: { width: 6, height: 4 },
+      };
+
+      expect(getChartLayout(input).type).toBe("small");
+      expect(getChartLayout({ ...input, position })).toMatchObject({
+        type: "vertical",
+        LegendComponent: LegendHorizontal,
+      });
+    },
+  );
+
+  it.each<LegendPosition>(["left", "right"])(
+    "should hide a %s legend when the card is too narrow for a column",
+    (position) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        width: HIDE_HORIZONTAL_LEGEND_THRESHOLD,
+        height: 600,
+        gridSize: { width: 6, height: 8 },
+      });
+
+      expect(layout).toMatchObject({
+        type: "small",
+        LegendComponent: undefined,
+      });
+    },
+  );
+
+  it.each<LegendPosition>(["top", "bottom"])(
+    "should hide a %s legend when the grid is too short for a row",
+    (position) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        gridSize: { width: 8, height: 3 },
+      });
+
+      expect(layout).toMatchObject({
+        type: "small",
+        LegendComponent: undefined,
+      });
+    },
+  );
+
   it.each<LegendPosition>(["top", "bottom", "left", "right"])(
-    "should fall back to the small layout for a %s legend where the automatic layout does",
+    "should hide a %s legend on a card too small for any legend",
     (position) => {
       const layout = getChartLayout({
         ...defaultInput,

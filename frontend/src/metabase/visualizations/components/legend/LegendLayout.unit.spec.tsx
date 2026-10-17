@@ -5,6 +5,7 @@ import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
 import { LegendLayout } from "./LegendLayout";
+import { MIN_LEGEND_CARD_WIDTH } from "./layout";
 
 const CHAR_WIDTH = 6;
 
@@ -18,6 +19,7 @@ interface SetupOpts {
   legendPosition?: LegendPosition;
   width?: number;
   height?: number;
+  plotInsetWidth?: number;
   isQueryBuilder?: boolean;
   actionButtons?: React.ReactNode;
 }
@@ -27,6 +29,7 @@ const setup = ({
   legendPosition,
   width = 600,
   height = 300,
+  plotInsetWidth,
   isQueryBuilder,
   actionButtons,
 }: SetupOpts) => {
@@ -37,6 +40,7 @@ const setup = ({
       legendPosition={legendPosition}
       width={width}
       height={height}
+      plotInsetWidth={plotInsetWidth}
       isQueryBuilder={isQueryBuilder}
       actionButtons={actionButtons}
       fontFamily="Lato"
@@ -47,17 +51,35 @@ const setup = ({
   );
 };
 
+const MOSTLY_TRUNCATED_NAMES = [
+  "a".repeat(40),
+  "b".repeat(40),
+  "c".repeat(40),
+  "d",
+];
+
+const expectNoLegend = () => {
+  expect(screen.getByTestId("chart")).toBeInTheDocument();
+  expect(screen.queryByLabelText("Legend")).not.toBeInTheDocument();
+};
+
 const isBefore = (element: Element, other: Element) =>
   Boolean(
     element.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING,
   );
 
 describe("LegendLayout", () => {
-  it("should render the chart without a legend on cards smaller than the minimum size", () => {
-    setup({ names: ["a", "b"], width: 400, height: 150 });
+  it("should render the chart without a legend when the plot would be under 150px wide", () => {
+    setup({ names: ["a", "b"], width: 149 });
 
-    expect(screen.getByTestId("chart")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Legend")).not.toBeInTheDocument();
+    expectNoLegend();
+  });
+
+  it("should render a complete row on a short card", () => {
+    setup({ names: ["first", "second"], width: 300, height: 60 });
+
+    const legend = screen.getByTestId("legend-horizontal");
+    expect(within(legend).getAllByTestId("legend-item")).toHaveLength(2);
   });
 
   it("should render a horizontal legend below the chart when the items fit", () => {
@@ -93,11 +115,17 @@ describe("LegendLayout", () => {
     expect(within(popover).getByText("series 19")).toBeInTheDocument();
   });
 
-  it("should hide the legend when more than half of the items would be truncated", () => {
-    setup({ names: ["a".repeat(40), "b".repeat(40), "c".repeat(40), "d"] });
+  it("should render a column with most items truncated on cards at least 420px wide", () => {
+    setup({ names: MOSTLY_TRUNCATED_NAMES, width: MIN_LEGEND_CARD_WIDTH });
 
-    expect(screen.getByTestId("chart")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Legend")).not.toBeInTheDocument();
+    const legend = screen.getByTestId("legend-vertical");
+    expect(within(legend).getAllByTestId("legend-item")).toHaveLength(4);
+  });
+
+  it("should hide a column with most items truncated on narrower cards", () => {
+    setup({ names: MOSTLY_TRUNCATED_NAMES, width: MIN_LEGEND_CARD_WIDTH - 1 });
+
+    expectNoLegend();
   });
 
   it("should keep the action buttons above the chart", () => {
@@ -116,8 +144,39 @@ describe("LegendLayout with an explicit position", () => {
   it("should render no legend when the position is off", () => {
     setup({ names: ["first", "second"], legendPosition: "off" });
 
-    expect(screen.getByTestId("chart")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Legend")).not.toBeInTheDocument();
+    expectNoLegend();
+  });
+
+  it("should render a bottom legend on a short card", () => {
+    setup({
+      names: ["first", "second"],
+      legendPosition: "bottom",
+      width: 300,
+      height: 60,
+    });
+
+    expect(screen.getByTestId("legend-horizontal")).toBeInTheDocument();
+  });
+
+  it("should hide a bottom legend when the axes leave the plot under 150px", () => {
+    setup({
+      names: ["first", "second"],
+      legendPosition: "bottom",
+      width: 300,
+      plotInsetWidth: 151,
+    });
+
+    expectNoLegend();
+  });
+
+  it("should render a left column with most items truncated", () => {
+    setup({
+      names: MOSTLY_TRUNCATED_NAMES,
+      legendPosition: "left",
+      width: MIN_LEGEND_CARD_WIDTH - 1,
+    });
+
+    expect(screen.getByTestId("legend-vertical")).toBeInTheDocument();
   });
 
   it.each<{
