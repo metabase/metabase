@@ -553,7 +553,6 @@
   #?(:clj  (if (:lib/type col)
              (lib.normalize/normalize ::lib.schema.metadata/column col)
              ;; legacy usages -- do not use these going forward
-             #_{:clj-kondo/ignore [:deprecated-var]}
              (->> col
                   (lib.normalize/normalize :metabase.query-processor.schema/result-metadata.column)))
      :cljs (lib.normalize/normalize ::lib.schema.metadata/column col)))
