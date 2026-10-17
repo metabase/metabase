@@ -5,7 +5,7 @@ import { measureTextWidth } from "metabase/utils/measure-text";
 
 import type { LegendItemData } from "./LegendItem";
 import { LegendLayout } from "./LegendLayout";
-import { MIN_LEGEND_CARD_HEIGHT, MIN_LEGEND_CARD_WIDTH } from "./layout";
+import { MIN_LEGEND_CARD_WIDTH } from "./layout";
 
 export default {
   title: "viz/Legend/LegendLayout",
@@ -86,20 +86,14 @@ export const Horizontal: StoryObj = {
   render: () => <Card names={SHORT_NAMES} width={600} height={300} />,
 };
 
-// the smallest card that still shows a legend (the unit tests cover the
-// exact 420x200 boundary)
-export const MinimumCardSize: StoryObj = {
-  render: () => (
-    <Card
-      names={SHORT_NAMES}
-      width={MIN_LEGEND_CARD_WIDTH}
-      height={MIN_LEGEND_CARD_HEIGHT}
-    />
-  ),
+// a complete row shows at any card height
+export const ShortCard: StoryObj = {
+  render: () => <Card names={SHORT_NAMES} width={300} height={120} />,
 };
 
-export const HiddenOnSmallCard: StoryObj = {
-  render: () => <Card names={SHORT_NAMES} width={360} height={180} />,
+// the plot would be narrower than 150px
+export const HiddenOnNarrowCard: StoryObj = {
+  render: () => <Card names={SHORT_NAMES} width={140} height={180} />,
 };
 
 export const Vertical: StoryObj = {
@@ -122,9 +116,16 @@ export const VerticalTruncated: StoryObj = {
   ),
 };
 
-// more than half of the names are truncated, so the legend is dropped
-export const HiddenWhenMostlyTruncated: StoryObj = {
+export const VerticalMostlyTruncated: StoryObj = {
   render: () => <Card names={LONG_NAMES} width={600} height={300} />,
+};
+
+// below this width a column with most names truncated is dropped, and a row
+// fits only one item
+export const HiddenWhenMostlyTruncated: StoryObj = {
+  render: () => (
+    <Card names={LONG_NAMES} width={MIN_LEGEND_CARD_WIDTH - 20} height={300} />
+  ),
 };
 
 export const LargeCardHorizontal: StoryObj = {

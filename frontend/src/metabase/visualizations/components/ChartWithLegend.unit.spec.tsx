@@ -2,6 +2,7 @@ import type { CSSProperties, MouseEvent, ReactNode } from "react";
 
 import { render, screen } from "__support__/ui";
 import type { HoveredObject } from "metabase/viz-core";
+import type { LegendPosition } from "metabase-types/api";
 
 import {
   ChartWithLegend,
@@ -29,7 +30,7 @@ interface SetupProps {
   aspectRatio?: number;
   height: number;
   width: number;
-  showLegend?: boolean;
+  legendPosition?: LegendPosition;
   isDashboard?: boolean;
   isDocument?: boolean;
   onToggleSeriesVisibility?: (event: MouseEvent, index: number) => void;
@@ -41,7 +42,6 @@ const defaultProps: SetupProps = {
     ["Series 2", "50%"],
   ],
   legendColors: ["Red", "Green"],
-  showLegend: true,
   width: 800,
   height: 600,
   gridSize: { width: 8, height: 6 },
@@ -102,10 +102,18 @@ describe("ChartWithLegend", () => {
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Foo 10%");
     expect(screen.getByTestId("chart-legend")).toHaveTextContent("Bar 90%");
   });
+
+  it("should render no legend when the position is off", () => {
+    setup({ legendPosition: "off" });
+
+    expect(screen.getByText("Chart stub")).toBeInTheDocument();
+    expect(screen.queryByTestId("chart-legend")).not.toBeInTheDocument();
+  });
 });
 
 describe("getChartLayout", () => {
   const defaultInput: Parameters<typeof getChartLayout>[0] = {
+    position: "auto",
     width: 800,
     height: 400,
     gridSize: undefined,
@@ -118,6 +126,7 @@ describe("getChartLayout", () => {
 
     expect(layout).toMatchObject({
       type: "horizontal",
+      isLegendBeforeChart: true,
       LegendComponent: LegendVertical,
       chartWidth: 386,
       chartHeight: 386,
@@ -155,7 +164,9 @@ describe("getChartLayout", () => {
 
     expect(layout).toMatchObject({
       type: "vertical",
+      isLegendBeforeChart: false,
       LegendComponent: LegendHorizontal,
+      isLegendSingleRow: false,
       chartWidth: 772,
       chartHeight: 386,
       flexChart: false,
@@ -190,4 +201,144 @@ describe("getChartLayout", () => {
 
     expect(layout).toMatchObject({ type: "small", hasDimensions: false });
   });
+
+  it.each<{ position: LegendPosition; isLegendBeforeChart: boolean }>([
+    { position: "left", isLegendBeforeChart: true },
+    { position: "right", isLegendBeforeChart: false },
+  ])(
+    "should place a $position legend beside the chart even when the grid is tall",
+    ({ position, isLegendBeforeChart }) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        height: 600,
+        gridSize: { width: 3, height: 8 },
+        legendTitles: [["Series 1", "50%"], "Series 2"],
+      });
+
+      expect(layout).toMatchObject({
+        type: "horizontal",
+        isLegendBeforeChart,
+        LegendComponent: LegendVertical,
+        flexChart: true,
+      });
+      expect(layout.processedLegendTitles).toEqual([
+        ["Series 1", "50%"],
+        "Series 2",
+      ]);
+    },
+  );
+
+  it.each<{ position: LegendPosition; isLegendBeforeChart: boolean }>([
+    { position: "top", isLegendBeforeChart: true },
+    { position: "bottom", isLegendBeforeChart: false },
+  ])(
+    "should stack a $position legend with the chart even when the area is wide",
+    ({ position, isLegendBeforeChart }) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        legendTitles: [["Series 1", "50%"], "Series 2"],
+      });
+
+      expect(layout).toMatchObject({
+        type: "vertical",
+        isLegendBeforeChart,
+        LegendComponent: LegendHorizontal,
+        isLegendSingleRow: true,
+        flexChart: true,
+      });
+      expect(layout.processedLegendTitles).toEqual([
+        "Series 1 50%",
+        "Series 2",
+      ]);
+    },
+  );
+
+  it.each<LegendPosition>(["left", "right"])(
+    "should show a %s legend on a tall card wide enough for a column where the automatic layout hides it",
+    (position) => {
+      const input = {
+        ...defaultInput,
+        width: 300,
+        height: 600,
+        gridSize: { width: 2, height: 8 },
+      };
+
+      expect(getChartLayout(input).type).toBe("small");
+      expect(getChartLayout({ ...input, position })).toMatchObject({
+        type: "horizontal",
+        LegendComponent: LegendVertical,
+      });
+    },
+  );
+
+  it.each<LegendPosition>(["top", "bottom"])(
+    "should show a %s legend on a wide card whose grid fits a row where the automatic layout hides it",
+    (position) => {
+      const input = {
+        ...defaultInput,
+        width: 200,
+        height: 150,
+        gridSize: { width: 6, height: 4 },
+      };
+
+      expect(getChartLayout(input).type).toBe("small");
+      expect(getChartLayout({ ...input, position })).toMatchObject({
+        type: "vertical",
+        LegendComponent: LegendHorizontal,
+      });
+    },
+  );
+
+  it.each<LegendPosition>(["left", "right"])(
+    "should hide a %s legend when the card is too narrow for a column",
+    (position) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        width: HIDE_HORIZONTAL_LEGEND_THRESHOLD,
+        height: 600,
+        gridSize: { width: 6, height: 8 },
+      });
+
+      expect(layout).toMatchObject({
+        type: "small",
+        LegendComponent: undefined,
+      });
+    },
+  );
+
+  it.each<LegendPosition>(["top", "bottom"])(
+    "should hide a %s legend when the grid is too short for a row",
+    (position) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        gridSize: { width: 8, height: 3 },
+      });
+
+      expect(layout).toMatchObject({
+        type: "small",
+        LegendComponent: undefined,
+      });
+    },
+  );
+
+  it.each<LegendPosition>(["top", "bottom", "left", "right"])(
+    "should hide a %s legend on a card too small for any legend",
+    (position) => {
+      const layout = getChartLayout({
+        ...defaultInput,
+        position,
+        width: 200,
+        height: 100,
+      });
+
+      expect(layout).toMatchObject({
+        type: "small",
+        LegendComponent: undefined,
+      });
+    },
+  );
 });

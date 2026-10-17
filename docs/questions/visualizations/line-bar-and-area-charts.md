@@ -128,6 +128,7 @@ Use the **Display** tab to set:
 - [Trend lines](#trend-lines)
 - [Values on data points](#values-on-data-points)
 - [Autoformatting](#autoformatting)
+- [Legend position](#chart-legend)
 
 ### Stacking
 
@@ -227,7 +228,7 @@ To permanently hide the series from the chart, use the [data settings](#data-set
 
 You can also select a range on the chart to filter results to a specific time period, then drill through to the individual records.
 
-You can't hide the legend or change its position on the chart.
+To move or hide the legend, go to the **Display** tab and set **Legend position** to **Auto**, **Top**, **Bottom**, **Left**, **Right**, or **Off**. **Auto** puts the legend below the chart when every label fits on one line, and in a column to the right of the chart otherwise. Legend items that don't fit go into a **+ N more** list. Metabase hides the legend only when the card has no room for it on that side. Turning the legend off brings back any series you hid by clicking the legend.
 
 ## Further reading
 

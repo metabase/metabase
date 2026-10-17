@@ -1,6 +1,5 @@
 import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
-import { useSet } from "react-use";
 
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { assignLazily } from "metabase/utils/merge-lazily";
@@ -9,6 +8,7 @@ import { DataPointsVisiblePopover } from "metabase/visualizations/components/Dat
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
+import { useLegendHiddenSeries } from "metabase/visualizations/hooks/use-legend-hidden-series";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -63,7 +63,6 @@ function BoxPlotInner({
   const chartRef = useRef<EChartsType>();
   const [chartInstance, setChartInstance] = useState<EChartsType>();
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
-  const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -79,6 +78,10 @@ function BoxPlotInner({
         gridSize: isMobile ? undefined : gridSize, // mobile doesn't use the grid layout
       }),
     [originalSettings, height, width, isMobile, gridSize],
+  );
+
+  const [hiddenSeries, toggleSeriesVisibility] = useLegendHiddenSeries<string>(
+    settings["legend.position"],
   );
 
   const renderingContext = useBrowserRenderingContext({
@@ -228,6 +231,7 @@ function BoxPlotInner({
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
+        legendPosition={settings["legend.position"]}
         alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!showTitle ? actionButtons : undefined}
@@ -242,6 +246,9 @@ function BoxPlotInner({
         height={height}
         chartHeight={chartSize.height || undefined}
         indent={cartesianLayout.padding.left - cartesianLayout.padding.right}
+        plotInsetWidth={
+          cartesianLayout.padding.left + cartesianLayout.padding.right
+        }
       >
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}
