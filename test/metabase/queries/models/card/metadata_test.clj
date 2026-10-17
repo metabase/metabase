@@ -107,3 +107,20 @@
           (is (= typed (metadata typed-id))))
         (testing "a model whose metadata still cannot be inferred is not changed"
           (is (= unresolvable (metadata unresolvable-id))))))))
+
+(deftest missing-required-parameter-is-not-an-error-test
+  (testing "a native query whose required parameter has no value is expected to fail metadata calculation (GHY-4954)"
+    (let [mp    (mt/metadata-provider)
+          query (fn [sql template-tags]
+                  (lib/query mp (mt/native-query {:query sql, :template-tags template-tags})))
+          logs  (fn [query]
+                  (mt/with-log-messages-for-level [messages [metabase.queries.models.card.metadata :debug]]
+                    (is (= [] @(#'card.metadata/legacy-result-metadata-future query)))
+                    (into #{} (map :level) (messages))))]
+      (testing "logs at debug"
+        (is (= #{:debug}
+               (logs (query "SELECT * FROM venues WHERE id = {{id}}"
+                            {"id" {:name "id", :display-name "ID", :type :number, :required true, :id "1"}})))))
+      (testing "other failures still log at error"
+        (is (= #{:error}
+               (logs (query "SELECT * FROM no_such_table" {}))))))))

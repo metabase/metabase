@@ -270,10 +270,12 @@
 
    Returns a set of errors, each enriched with source entity information when possible.
    Returns empty set for queries with table-type template tags since the actual
-   table (and therefore columns) is unknown at check time."
+   table (and therefore columns) is unknown at check time, and for non-SQL drivers (e.g. Mongo), whose native queries
+   the SQL parser can't read."
   [driver :- :keyword
    query  :- ::lib.schema/query]
-  (if (has-table-template-tags? query)
+  (if (or (not (isa? driver/hierarchy driver :sql))
+          (has-table-template-tags? query))
     #{}
     (into #{}
           (comp

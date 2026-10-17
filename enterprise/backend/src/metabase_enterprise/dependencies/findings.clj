@@ -81,7 +81,16 @@
     (try (upsert-analysis! instance)
          (catch Exception e
            (log/errorf "Analyzing entity %s %s failed: %s"
-                       (t2/model instance) (:id instance) (ex-message e))))))
+                       (t2/model instance) (:id instance) (ex-message e))
+           ;; The failed upsert rolled back, leaving the entity unanalyzed, so it would be picked first on every run.
+           ;; Record a failed analysis instead; it re-checks normally once it is marked stale again.
+           (try
+             (deps.analysis-finding/upsert-analysis!
+              (deps.dependency-types/model->dependency-type (t2/model instance)) (:id instance) false
+              [(lib/validation-exception-error (str "Analysis failed: " (ex-message e)))])
+             (catch Exception e2
+               (log/errorf "Recording the failed analysis of entity %s %s failed: %s"
+                           (t2/model instance) (:id instance) (ex-message e2))))))))
 
 (def analyzable-entities
   "Entities for which we can compute analysis findings."

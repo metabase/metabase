@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
@@ -32,7 +33,10 @@
       #_{:clj-kondo/ignore [:deprecated-var]}
       (qp.metadata/legacy-result-metadata query api/*current-user-id*)
       (catch Throwable e
-        (log/errorf "Error calculating result metadata for Card: %s" (ex-message e))
+        ;; a native query with a required parameter and no default can't run without a value; that's expected here
+        (if (qp.error-type/missing-required-parameter? e)
+          (log/debugf "Not calculating result metadata for Card: %s" (ex-message e))
+          (log/errorf "Error calculating result metadata for Card: %s" (ex-message e)))
         []))))
 
 (def ^:private metadata-sync-wait-ms
