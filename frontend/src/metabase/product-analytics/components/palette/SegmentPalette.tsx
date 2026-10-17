@@ -53,6 +53,8 @@ type SegmentPaletteProps = {
   onTableChange?: (tableId: ConcreteTableId) => void;
   /** A click on a people segment, which adds it as a filter. */
   onSelectPeopleSegment: (segment: PaletteSegment) => void;
+  /** The toolbar button that closes the palette is hovered. */
+  isHinted?: boolean;
 };
 
 /**
@@ -68,6 +70,7 @@ export const SegmentPalette = ({
   tableError,
   onTableChange,
   onSelectPeopleSegment,
+  isHinted = false,
 }: SegmentPaletteProps) => {
   const peopleTitle = getPeopleTitle(usersTable);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
@@ -91,7 +94,13 @@ export const SegmentPalette = ({
       onResizeStart={handleResizeStart}
       onResizeStop={handleResizeStop}
     >
-      <Stack className={S.root} w={width} pos="relative" gap={0}>
+      <Stack
+        className={S.root}
+        w={width}
+        pos="relative"
+        gap={0}
+        data-hinted={isHinted}
+      >
         <Stack gap="md" px="md" pt="lg" pb="md">
           <Text fw="bold" c="text-secondary">
             {t`Event data`}

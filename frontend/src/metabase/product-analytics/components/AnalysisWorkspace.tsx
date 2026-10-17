@@ -25,7 +25,7 @@ import type { DrillPoint } from "../sql/compose";
 import { useSupportingAnalyses } from "../supporting/use-supporting-analyses";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
-import { useAnalysisState } from "../use-analysis-state";
+import { type HintedPanel, useAnalysisState } from "../use-analysis-state";
 import { useSaveAnalysis } from "../use-save-analysis";
 
 import { AnalysisResult } from "./AnalysisResult";
@@ -74,6 +74,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const navigate = useNavigate();
   const isNew = savedSettings === undefined;
   const [isPaletteOpen, setIsPaletteOpen] = useState(isNew);
+  // The panel whose toolbar button is hovered lights up its border.
+  const [hintedPanel, setHintedPanel] = useState<HintedPanel | null>(null);
   const {
     stored,
     hasUnsavedChanges,
@@ -212,6 +214,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             isPaletteOpen={isPaletteOpen}
             onTogglePalette={() => setIsPaletteOpen((isOpen) => !isOpen)}
             onPanelChange={setPanel}
+            onHintPanel={setHintedPanel}
             onSave={handleSave}
           />
           <FilterPills
@@ -239,10 +242,16 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               tableError={tableError}
               onTableChange={onTableChange}
               onSelectPeopleSegment={handleAddPeopleFilter}
+              isHinted={hintedPanel === "palette"}
             />
           )}
           {panel && (
-            <SettingsPanel key={kind} panel={panel} widgets={widgets} />
+            <SettingsPanel
+              key={kind}
+              panel={panel}
+              widgets={widgets}
+              isHinted={hintedPanel === panel}
+            />
           )}
           <Stack flex={1} miw={0} gap="lg" style={{ overflowY: "auto" }}>
             <AnalysisResult
