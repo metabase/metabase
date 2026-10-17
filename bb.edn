@@ -324,6 +324,22 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
+  module-history
+  {:doc "Update the CSV files that track how the backend module graph changed on master, and optionally publish them. Measures only commits it has not measured before."
+   :examples [["./bin/mage module-history --dir ~/module-history" "Fetch master, measure its new commits, and write the CSV files and history.json"]
+              ["./bin/mage module-history --dir ~/module-history --publish ~/module-history/publish.edn" "Then fill pages, replace Metabase uploads, refresh cards and update shares, as the EDN file says"]
+              ["./bin/mage module-history --dir ~/module-history-ahead --ref origin/my-stack-tip" "Write the history as it would be with a branch merged: master up to where the branch left it, then the branch's commits"]
+              ["./bin/mage module-history --dir ~/module-history --no-measure --publish ~/module-history/publish.edn --dry-run" "Print what publishing the files already there would run"]]
+   :options [["-d" "--dir DIR" "Directory to keep the files in (required)"]
+             ["-P" "--publish FILE" "Publish the files as this EDN file says; see the mage.module-history docstring for its shape"]
+             ["-D" "--dry-run" "With --publish, print the commands that would change Metabase or a share instead of running them"]
+             ["-r" "--ref REF" "Measure the first-parent history of this ref instead of origin/master"]
+             ["-F" "--no-fetch" "Measure the ref as last fetched"]
+             ["-M" "--no-measure" "Skip fetching and measuring; use the files already in DIR"]]
+   :arg-schema [:tuple]
+   :requires [[mage.module-history]]
+   :task (task! (mage.module-history/cli-update parsed))}
+
   fix-modules-config
   {:doc "Regenerate .clj-kondo/config/modules/config.edn so it passes metabase.core.modules-test."
    :examples [["./bin/mage fix-modules-config" "Fix the modules config (uses the running dev REPL if available, else a JVM)"]

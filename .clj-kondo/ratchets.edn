@@ -86,7 +86,7 @@
  :config-counts                {:constant-condition                      1
                                 :deprecated-namespace                    7
                                 :deprecated-var                          16
-                                :discouraged-namespace                   14
+                                :discouraged-namespace                   15
                                 :discouraged-var                         14
                                 :inline-def                              1
                                 :main-without-gen-class                  1
