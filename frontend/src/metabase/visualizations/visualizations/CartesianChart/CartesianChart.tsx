@@ -266,6 +266,10 @@ function CartesianChartInner(props: VisualizationProps) {
         height={outerHeight}
         chartHeight={chartSize.height || undefined}
         indent={chartLayout.padding.left - chartLayout.padding.right}
+        plotInset={{
+          width: chartLayout.padding.left + chartLayout.padding.right,
+          height: chartLayout.padding.top + chartLayout.padding.bottom,
+        }}
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}
