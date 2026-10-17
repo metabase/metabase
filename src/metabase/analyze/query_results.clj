@@ -3,6 +3,7 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
+  (:refer-clojure :exclude [for])
   (:require
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
@@ -13,6 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [for]]
    [redux.core :as redux]))
 
 (def ^:private ResultColumnMetadata
@@ -51,23 +53,25 @@
       ;; HACK - not sure why we don't have display_name yet in some cases
       (u/assoc-default :display_name (:name column))))
 
+(defn- column-metadata [col]
+  (try
+    (maybe-infer-semantic-type (col->ResultColumnMetadata col))
+    (catch Throwable e
+      (log/errorf "Error generating insights for column %s: %s" (pr-str (:name col)) (ex-message e))
+      col)))
+
 (mu/defn insights-rf :- fn?
   "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
   results. `metadata` is the usual QP results metadata e.g. as received by an `rff`."
   {:arglists '([metadata])}
   [{:keys [cols]} :- ::query-processor.schema/metadata]
-  (let [cols (for [col cols]
-               (try
-                 (maybe-infer-semantic-type (col->ResultColumnMetadata col))
-                 (catch Throwable e
-                   (log/errorf "Error generating insights for column %s: %s" (pr-str (:name col)) (ex-message e))
-                   col)))]
+  (let [cols (mapv column-metadata cols)]
     (redux/post-complete
      (redux/juxt
-      (apply fingerprinters/col-wise (for [{:keys [fingerprint], :as metadata} cols]
-                                       (if-not fingerprint
-                                         (fingerprinters/fingerprinter metadata)
-                                         (fingerprinters/constant-fingerprinter fingerprint))))
+      (fingerprinters/col-wise (for [{:keys [fingerprint], :as metadata} cols]
+                                 (if-not fingerprint
+                                   (fingerprinters/fingerprinter metadata)
+                                   (fingerprinters/constant-rf fingerprint))))
       (insights/insights cols))
      (fn [[fingerprints insights]]
        {:metadata (mapv (fn [fingerprint metadata]
@@ -78,3 +82,10 @@
                         cols)
         :insights (when-not (instance? Throwable insights)
                     insights)}))))
+
+(mu/defn cheap-metadata-rf :- fn?
+  "Like [[insights-rf]], but skips the expensive per-row fingerprint/insights scan entirely and just returns column
+  metadata. Every column comes back with no `:fingerprint` and `:insights` comes back `nil`."
+  {:arglists '([metadata])}
+  [{:keys [cols]} :- ::query-processor.schema/metadata]
+  (fingerprinters/constant-rf {:metadata (mapv column-metadata cols), :insights nil}))

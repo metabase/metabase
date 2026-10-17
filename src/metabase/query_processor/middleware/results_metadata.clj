@@ -124,12 +124,15 @@
    insights-col-metadata))
 
 (mu/defn- insights-xform :- fn?
-  [orig-metadata :- [:maybe ::qp.schema/metadata]
-   record!       :- ifn?
-   rf            :- ifn?]
+  [orig-metadata  :- [:maybe ::qp.schema/metadata]
+   record!        :- ifn?
+   rf             :- ifn?
+   skip-insights? :- :boolean]
   (qp.reducible/combine-additional-reducing-fns
    rf
-   [(analyze/insights-rf orig-metadata)]
+   [(if skip-insights?
+      (analyze/cheap-metadata-rf orig-metadata)
+      (analyze/insights-rf orig-metadata))]
    (fn combine [result {:keys [metadata insights]}]
      (let [metadata (merge-final-column-metadata (-> result :data :cols) metadata)]
        (record! metadata)
@@ -144,7 +147,7 @@
 
 (mu/defn record-and-return-metadata! :- ::qp.schema/rff
   "Post-processing middleware that records metadata about the columns returned when running the query. Returns an rff."
-  [{{:keys [skip-results-metadata? skip-result-metadata-persistence?]} :middleware, :as query}
+  [{{:keys [skip-results-metadata? skip-result-metadata-persistence? skip-insights?]} :middleware, :as query}
    :- ::qp.schema/any-query
    rff :- ::qp.schema/rff]
   (if skip-results-metadata?
@@ -154,7 +157,7 @@
                     (assoc :qp/skip-result-metadata-persistence true))
           record! (partial record-metadata! query)]
       (fn record-and-return-metadata!-rff* [metadata]
-        (insights-xform metadata record! (rff metadata))))))
+        (insights-xform metadata record! (rff metadata) (boolean skip-insights?))))))
 
 (mu/defn store-previous-result-metadata!
   "Store the previous value of a card's result metadata in the qp.store"
