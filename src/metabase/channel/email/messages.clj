@@ -100,9 +100,13 @@
     (email/send-message!
      (assoc email-args
             :message-type :attachments
-            :message      (vec (cons {:type    "text/html; charset=utf-8"
-                                      :content message}
-                                     [(make-message-attachment (first attachment))]))))
+            ;; :related (-> multipart/related, see postal.message/eval-multipart), not the untagged
+            ;; default of multipart/mixed, so mail clients that require it (e.g. Thunderbird) resolve
+            ;; the logo's cid: reference and render it inline instead of as a broken/attached image.
+            :message      [:related
+                           {:type    "text/html; charset=utf-8"
+                            :content message}
+                           (make-message-attachment (first attachment))]))
     (email/send-message! email-args)))
 
 ;;; ### Public Interface
