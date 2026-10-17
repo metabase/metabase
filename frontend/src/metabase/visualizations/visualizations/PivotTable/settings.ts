@@ -145,6 +145,17 @@ export const settings = {
       return addMissingCardBreakouts(setting, columnsToPartition);
     },
   },
+  "pivot.auto_height": {
+    getSection: () => t`Display`,
+    get title() {
+      return t`Automatically adjust dashboard height`;
+    },
+    get hint() {
+      return t`Fit the card to visible rows when viewing a dashboard.`;
+    },
+    widget: "toggle",
+    getDefault: () => false,
+  },
   "pivot.show_row_totals": {
     getSection: () => t`Columns`,
     get title() {
