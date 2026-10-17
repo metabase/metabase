@@ -1,0 +1,30 @@
+.dropdown {
+  overflow: visible;
+  /* content-box so the inherited max-height does not include the border */
+  box-sizing: content-box;
+}
+
+.dropdownContent {
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  max-width: inherit;
+  max-height: inherit;
+
+  /* Keep the scrollbar visible when the content overflows (UXW-4024) */
+  &::-webkit-scrollbar {
+    width: 0.6875rem;
+    min-height: 0.625rem;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border: 0.1875rem solid transparent;
+    border-radius: 0.4375rem;
+    background-clip: padding-box;
+    background-color: var(--mb-color-background_page-tertiary);
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--mb-color-background_page-tertiary-inverse);
+  }
+}
