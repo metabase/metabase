@@ -302,6 +302,20 @@
   [since :- ms/TemporalInstant]
   (t2/count :model/QueryExecution :started_at [:>= since]))
 
+(mu/defn sdk-react-18-hostnames-since
+  "Up to `limit` distinct hostnames of React SDK query executions started at or after `since` whose host app runs
+  React 18."
+  [since :- ms/TemporalInstant
+   limit :- pos-int?]
+  (t2/select-fn-vec :embedding_hostname :model/QueryExecution
+                    {:select-distinct [:embedding_hostname]
+                     :where [:and
+                             [:>= :started_at [:auto/param since]]
+                             [:= :embedding_client "embedding-sdk-react"]
+                             [:like :embedding_react_version "18.%"]
+                             [:not= :embedding_hostname nil]]
+                     :limit limit}))
+
 (mu/defn database-engines-among
   "The set of engines of the Databases whose engine is one of `engine-names`."
   [engine-names :- [:sequential :string]]

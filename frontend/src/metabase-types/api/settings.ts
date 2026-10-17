@@ -538,6 +538,7 @@ interface AdminSettings {
   "default-embedding-themes-seeded": boolean;
   "security-center-email-recipients": NotificationRecipient[] | null;
   "security-center-slack-channel": string | null;
+  "sdk-react-18-hostnames"?: string[];
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;

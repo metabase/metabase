@@ -43,11 +43,13 @@
   embedding-mw
   extract-hostname
   extract-path
+  include-react-version
   include-sdk-info
   pii-fields-from
   pii-request-info
   with-auth-method! get-auth-method
   with-client! get-client
+  get-react-version
   get-route
   with-version! get-version]
  [metabase.analytics.settings

@@ -35,6 +35,11 @@
 (defn get-version "Returns [[*version*]]." [] *version*)
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *react-version* "Used to track the React version of the host app of the React embedding SDK." nil)
+
+(defn get-react-version "Returns [[*react-version*]]." [] *react-version*)
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
 
 (defmacro with-client! "Used to track information about the metabase embedding client client."
@@ -152,6 +157,7 @@
    [:cache_hash                  {:optional true} [:maybe [:or bytes? :string]]]
    [:embedding_client            {:optional true} [:maybe :string]]
    [:embedding_sdk_version       {:optional true} [:maybe :string]]
+   [:embedding_react_version     {:optional true} [:maybe :string]]
    [:parameterized               {:optional true} [:maybe :boolean]]
    [:transform_id                {:optional true} [:maybe :int]]
    [:lens_id                     {:optional true} [:maybe :string]]
@@ -186,6 +192,12 @@
       (update :auth_method (fn [method] (or *auth-method* method)))
       (assoc :metabase_version (:tag config/mb-version-info))
       (merge (hostname-fields) (pii-fields))))
+
+(defn include-react-version
+  "Adds the currently bound, or existing `*react-version*` as `embedding_react_version`. Only `query_execution` has
+  this column, so call this for query executions and not for `view_log` rows."
+  [m]
+  (update m :embedding_react_version (fn [version] (or *react-version* version))))
 
 (def ^:private embedding-clients
   #{"embedding-sdk-react"
@@ -238,6 +250,8 @@
     [request respond raise]
     (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
           version (get-in request [:headers "x-metabase-client-version"])
+          react-version (some-> (get-in request [:headers "x-metabase-client-react-version"])
+                                (as-> s (subs s 0 (min (count s) 254))))
           ;; column is varchar(254); truncate rather than fail the row insert on an oversized header
           identifier (some-> (get-in request [:headers "x-metabase-client-identifier"])
                              (as-> s (subs s 0 (min (count s) 254))))
@@ -249,7 +263,8 @@
       (binding [*client*            client
                 *client-identifier* identifier
                 *route*             route
-                *version*           version]
+                *version*           version
+                *react-version*     react-version]
         (handler request
                  (fn responder [response]
                    ;; Only track prometheus when NO route match AND header is an embedding context
