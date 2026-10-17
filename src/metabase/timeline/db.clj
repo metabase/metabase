@@ -5,11 +5,17 @@
    [malli.util :as mut]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.timeline.event-update]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.validated :as validated]
+   [toucan2.core :as t2])
+  (:import
+   (metabase.timeline.event_update EventUpdate TimelineWrite)))
+
+(set! *warn-on-reflection* true)
 
 (mu/defn insert-timeline!
   "Insert the Timeline `row` and return the inserted instance."
@@ -106,11 +112,16 @@
                           (when end
                             [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}))
 
-(mu/defn update-timeline-event!
-  "Apply `changes` to the TimelineEvent with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :description :timestamp :time_matters :timezone :icon :timeline_id :archived])]
-  (t2/update! :model/TimelineEvent id changes))
+(defn update-timeline-event!
+  "Apply `validated-update`, an [[metabase.timeline.event-update/->EventUpdate]] that has been validated, returning the
+  number updated."
+  [validated-update]
+  (let [^EventUpdate validated-update (validated/validated EventUpdate validated-update)
+        ^TimelineWrite new-timeline    (.-new-timeline validated-update)]
+    (t2/update! :model/TimelineEvent
+                (.-event-id validated-update)
+                (cond-> (.-changes validated-update)
+                  new-timeline (assoc :timeline_id (.-timeline-id new-timeline))))))
 
 (mu/defn delete-timeline-event!
   "Delete the TimelineEvent with `id`, returning the number deleted."

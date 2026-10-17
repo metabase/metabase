@@ -317,6 +317,16 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-print-module-tree parsed))}
 
+  write-census
+  {:doc "Count app-DB write call sites per module, and how many are gated by a validated record"
+   :examples [["./bin/mage write-census" "Print module | write-sites | gated | ungated"]
+              ["./bin/mage write-census --module timeline" "Print one module's row and each ungated site"]
+              ["./bin/mage write-census --module timeline --max-ungated 6" "Fail if timeline has more than 6 ungated sites"]]
+   :options [["-m" "--module MODULE" "Only this module, listing each ungated site as file:line and enclosing var"]
+             [nil "--max-ungated N" "With --module, exit 1 when the module has more than N ungated sites"]]
+   :requires [[mage.write-census]]
+   :task (task! (mage.write-census/cli parsed))}
+
   can-skip-driver-tests
   {:doc "Can we skip driver tests for this branch?"
    :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]

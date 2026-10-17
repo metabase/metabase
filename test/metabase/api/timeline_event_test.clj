@@ -82,6 +82,27 @@
                                                  {:timeline_id tl-b}))))
       (is (= tl-b (t2/select-one-fn :timeline_id :model/TimelineEvent :id ev-id))))))
 
+(deftest move-timeline-event-to-unwritable-timeline-test
+  (testing "PUT /api/timeline-event/:id refuses to move an event to a timeline the user cannot write"
+    (mt/with-temp [:model/Collection    {writable :id}   {}
+                   :model/Collection    {read-only :id}  {}
+                   :model/Timeline      {tl-a :id}       {:collection_id writable}
+                   :model/Timeline      {tl-b :id}       {:collection_id read-only}
+                   :model/TimelineEvent {ev-id :id}      {:name "Event" :timeline_id tl-a}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) read-only)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) read-only)
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (str "timeline-event/" ev-id) {:timeline_id tl-b :name "moved"})))
+      (is (= {:timeline_id tl-a :name "Event"}
+             (select-keys (t2/select-one :model/TimelineEvent :id ev-id) [:timeline_id :name]))
+          "nothing was written")
+      (is (= "Not found."
+             (mt/user-http-request :rasta :put 404 (str "timeline-event/" Integer/MAX_VALUE) {:timeline_id tl-b}))
+          "a missing event is a 404 before anything is said about the destination timeline")))
+  (testing "PUT /api/timeline-event/:id is a 404 for an event that does not exist"
+    (is (= "Not found."
+           (mt/user-http-request :rasta :put 404 (str "timeline-event/" Integer/MAX_VALUE) {:name "nope"})))))
+
 (deftest timeline-event-permissions-test
   (testing "read-only users cannot create or edit timeline events"
     (mt/with-temp [:model/Collection    {coll-id :id} {}

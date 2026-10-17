@@ -82,6 +82,7 @@
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
+  :metabase/validated-field-access                           {:level :warning}
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
   :metabase/validate-defendpoint-query-params-use-kebab-case {:level :warning}
   :metabase/validate-logging                                 {:level :warning}
@@ -625,6 +626,7 @@
    clojure.core/defrecord                                                                                                    hooks.clojure.core.def/lint-def
    clojure.core/deftype                                                                                                      hooks.clojure.core.def/lint-def
    clojure.core/ex-info                                                                                                      hooks.metabase.agent-message/lint-ex-info
+   clojure.core/let                                                                                                          hooks.clojure.core.let/lint-let
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
