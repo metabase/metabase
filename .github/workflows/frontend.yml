@@ -101,10 +101,12 @@ jobs:
         id: fe-tests
         env:
           JEST_TEST_PATHS_FILE: ${{ steps.unit-selection.outputs.paths-file }}
+        # jest selects the files and writes the results, and the node:test runner
+        # runs them. So the steps below read the same reports as in the jest job.
         # Jest exits non-zero on a shard with no files unless --passWithNoTests is set.
         run: |
           rm -f "$UNIT_TEST_RESULTS_FILE" "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
-          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
+          bun run test-unit-harness --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
         # Ordinary assertion failures can be quarantined, but runner failures cannot.
         continue-on-error: true
       - name: Check unit test results
@@ -121,6 +123,55 @@ jobs:
         with:
           test-suite: fe-tests-unit
           adapter: frontend
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: frontend
+          test-suite: fe-tests-unit
+          enforce-quarantine: ${{ vars.QUARANTINE_ENGINE == 'ci-conductor' }}
+
+  # The same specs under jest, which stays the reference for the node:test
+  # runner above. It runs on a push to a merge target and not on a pull request:
+  # a test that passes there and fails here is a difference between the runners.
+  fe-tests-unit-jest:
+    needs: gate
+    if: >-
+      ${{ github.event_name == 'push'
+      && contains(fromJSON(needs.gate.outputs.matched), 'frontend_all') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2] # 2 shards for parallel execution
+    env:
+      SHARDS: 2 # should match matrix above
+      JEST_JUNIT_OUTPUT_DIR: ./target/junit
+      JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
+      UNIT_TEST_RESULTS_FILE: unit-test-results.json
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Run frontend unit tests
+        id: fe-tests
+        run: |
+          rm -f "$UNIT_TEST_RESULTS_FILE" "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
+          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE"
+        # Ordinary assertion failures can be quarantined, but runner failures cannot.
+        continue-on-error: true
+      - name: Check unit test results
+        if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
+        env:
+          TEST_OUTCOME: ${{ steps.fe-tests.outcome }}
+        run: bun .github/scripts/check-unit-test-results.ts
+      # The job above reports failures to ci-conductor. This one only reads the
+      # quarantine list, under the same suite name, so a test has one history.
       - name: Quarantine gate
         if: ${{ !cancelled() && steps.fe-tests.outcome == 'failure' }}
         continue-on-error: ${{ vars.QUARANTINE_ENGINE != 'ci-conductor' }}
@@ -187,6 +238,7 @@ jobs:
       - fe-lint
       - fe-type-check
       - fe-tests-unit
+      - fe-tests-unit-jest
       - fe-tests-timezones
       - fe-tests-ci-scripts
       - fe-custom-viz
