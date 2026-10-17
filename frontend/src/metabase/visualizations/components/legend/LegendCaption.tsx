@@ -7,18 +7,11 @@ import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { IconProps } from "metabase/ui";
-import { Ellipsified, Icon, Menu, Tooltip } from "metabase/ui";
+import { Box, Ellipsified, Flex, Icon, Menu, Tooltip } from "metabase/ui";
 import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/viz-core";
 
-import { LegendActions } from "../LegendActions";
-
-import {
-  LegendCaptionRoot,
-  LegendDescriptionIcon,
-  LegendLabel,
-  LegendLabelIcon,
-  LegendRightContent,
-} from "./LegendCaption.styled";
+import { LegendActions } from "./LegendActions";
+import { LegendLabel } from "./LegendLabel";
 
 function shouldHideDescription(width: number | undefined) {
   const HIDE_DESCRIPTION_THRESHOLD = 100;
@@ -87,6 +80,9 @@ export const LegendCaption = ({
   const titleElement = (
     <LegendLabel
       className={cx(
+        CS.flex,
+        CS.alignCenter,
+        CS.overflowHidden,
         DashboardS.fullscreenNormalText,
 
         // html2canvas doesn't support `text-overflow: ellipsis` (#45499) https://github.com/niklasvh/html2canvas/issues/324
@@ -105,18 +101,29 @@ export const LegendCaption = ({
       </Ellipsified>
       {title && hasTitleMenuItems && (
         <Icon
-          style={{ flexShrink: 0, marginRight: 10 }}
+          className={cx(CS.ml1, CS.flexNoShrink)}
           name="chevrondown"
           size={10}
-          className={CS.ml1}
+          mr={10}
         />
       )}
     </LegendLabel>
   );
 
   return (
-    <LegendCaptionRoot className={className} data-testid="legend-caption">
-      {icon && <LegendLabelIcon {...icon} />}
+    <Flex
+      className={className}
+      align="center"
+      miw={0}
+      data-testid="legend-caption"
+    >
+      {icon && (
+        <Icon
+          {...icon}
+          className={cx(CS.flexNoShrink, icon.className)}
+          mr="xxs"
+        />
+      )}
       {hasTitleMenuItems ? (
         <Menu>
           <Menu.Target>{titleElement}</Menu.Target>
@@ -137,17 +144,23 @@ export const LegendCaption = ({
           }
           maw="22em"
         >
-          <LegendDescriptionIcon
-            name="info"
-            className={cx(CS.hoverChild, CS.hoverChildSmooth)}
+          <Box
+            component="span"
+            className={cx(
+              CS.textLight,
+              CS.textMediumHover,
+              CS.hoverChild,
+              CS.hoverChildSmooth,
+            )}
             mt="3px"
             mr="lg"
-          />
+            ml="xxs"
+          >
+            <Icon name="info" />
+          </Box>
         </Tooltip>
       )}
-      <LegendRightContent>
-        {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
-      </LegendRightContent>
-    </LegendCaptionRoot>
+      {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
+    </Flex>
   );
 };
