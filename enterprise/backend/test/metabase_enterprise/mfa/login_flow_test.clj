@@ -6,8 +6,10 @@
    [java-time.api :as t]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.management :as mfa.management]
+   [metabase-enterprise.mfa.test-helpers :as mfa.test]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.request.core :as request]
    [metabase.session.api :as api.session]
@@ -261,3 +263,52 @@
               (testing "the new password works through the normal, gated login"
                 (let [login (mt/client :post 200 "session" {:username email :password new-password})]
                   (is (true? (:mfa_enrollment login))))))))))))
+
+(deftest ^:synchronized login-events-test
+  (testing "two-step login reports which factor completed it, attributed to the user logging in"
+    (with-enrolled-rasta! [secret]
+      (let [rasta (str (mt/user->id :rasta))]
+        (snowplow-test/with-fake-snowplow-collector
+          (testing "a rejected code"
+            (let [{token :challenge_token} (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+              (mt/client :post 401 "session/mfa/verify" {:challenge_token token :code (wrong-code secret)})
+              ;; the user-id matters as much as the event here: these endpoints run before a session exists, so
+              ;; `track-event!`'s `api/*current-user-id*` default would attribute every login event to nobody
+              (is (= [{:event          "mfa_verification_failed"
+                       :event_detail   nil
+                       :triggered_from "login"
+                       :user-id        rasta}]
+                     (mfa.test/mfa-events!)))))
+          (reset-throttlers)
+          (testing "a valid TOTP code"
+            (let [{token :challenge_token} (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+              (mt/client :post 200 "session/mfa/verify" {:challenge_token token
+                                                         :code            (totp/generate-code secret)})
+              (is (= [{:event          "mfa_verified"
+                       :event_detail   "totp"
+                       :triggered_from "login"
+                       :user-id        rasta}]
+                     (mfa.test/mfa-events!))))))))))
+
+(deftest ^:synchronized login-with-recovery-code-reports-the-fallback-test
+  (testing "a recovery-code login is reported as such -- fallback rates are the lockout-pressure signal"
+    (mt/with-premium-features #{:multi-factor-auth}
+      (mt/with-temporary-setting-values [mfa-enforcement :optional]
+        (let [secret (totp/generate-secret)]
+          (try
+            (let [codes (:recovery-codes
+                         (do (t2/insert! :model/AuthIdentity {:user_id     (mt/user->id :rasta)
+                                                              :provider    "totp"
+                                                              :credentials {:secret secret}})
+                             (enrollment/confirm-enrollment! (mt/user->id :rasta)
+                                                             (totp/generate-code secret))))]
+              (snowplow-test/with-fake-snowplow-collector
+                (let [{token :challenge_token} (mt/client :post 200 "session" (mt/user->credentials :rasta))]
+                  (mt/client :post 200 "session/mfa/verify" {:challenge_token token :code (first codes)})
+                  (is (= [{:event          "mfa_verified"
+                           :event_detail   "recovery"
+                           :triggered_from "login"
+                           :user-id        (str (mt/user->id :rasta))}]
+                         (mfa.test/mfa-events!))))))
+            (finally
+              (t2/delete! :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "totp"))))))))

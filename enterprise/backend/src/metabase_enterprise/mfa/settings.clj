@@ -33,6 +33,22 @@
                   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication")))
                 (setting/set-value-of-type! :timestamp :mfa-requirement-deadline new-value)))
 
+(defn mfa-requirement-deadline-state
+  "Where this instance sits relative to its `:required` grace period: `:unset` when no deadline is configured (so
+  `:required` enforcement, if on, is immediate), `:pending` while the deadline is still in the future, and `:passed`
+  once it has elapsed and enforcement has actually taken effect.
+
+  Exists for the analytics ping, which reports this instead of the timestamp: the signal we want is whether admins
+  use the grace period at all and whether it has elapsed, not the date they chose. Shares
+  [[mfa-required?]]'s coercion so the two cannot disagree about when the deadline has passed."
+  []
+  (if-let [deadline (mfa-requirement-deadline)]
+    (if (t/after? (u.time/coerce-to-timestamp (t/offset-date-time))
+                  (u.time/coerce-to-timestamp deadline))
+      :passed
+      :pending)
+    :unset))
+
 (defn mfa-required?
   "True when MFA is required for all users (enforcement is :required)."
   ([now]

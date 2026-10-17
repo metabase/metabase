@@ -381,3 +381,77 @@
   "The connection details of the Starburst Databases."
   []
   (t2/select-fn-set :details :model/Database :engine "starburst"))
+
+;;; ------------------------------------------------- MFA -------------------------------------------------
+
+(def ^:private totp-provider "totp")
+
+(def ^:private confirmed-totp-exists
+  ;; enrollment state is the auth_identity.confirmed_at COLUMN (queryable), not the encrypted credentials JSON
+  [:exists ^:allow-subquery {:select [1]
+                             :from   [:auth_identity]
+                             :where  [:and
+                                      [:= :auth_identity.user_id :core_user.id]
+                                      [:= :auth_identity.provider totp-provider]
+                                      [:not= :auth_identity.confirmed_at nil]]}])
+
+(def ^:private active-personal-user
+  [:and
+   [:= :core_user.is_active true]
+   [:= :core_user.type "personal"]])
+
+(mu/defn mfa-enrolled-user-count
+  "The number of active personal Users with a confirmed TOTP second factor.
+
+  Scoped to active personal users so that this and [[mfa-unenrolled-user-count]] sum to the instance's addressable
+  population, which is what makes an enrollment rate computable. `metabase-enterprise.mfa.db/confirmed-totp-count`,
+  behind the admin overview, counts enrollment rows without that filter, so the two legitimately differ once an
+  enrolled user is deactivated."
+  []
+  (t2/count :model/User {:where [:and active-personal-user confirmed-totp-exists]}))
+
+(mu/defn mfa-unenrolled-user-count
+  "The number of active personal Users without a confirmed TOTP second factor."
+  []
+  (t2/count :model/User {:where [:and active-personal-user [:not confirmed-totp-exists]]}))
+
+(mu/defn mfa-verified-session-count-since
+  "The number of Sessions created at or after `since` that completed a second factor."
+  [since :- ms/TemporalInstant]
+  (t2/count :model/Session {:where [:and
+                                    [:not= :core_session.mfa_auth_identity_id nil]
+                                    [:>= :core_session.created_at since]]}))
+
+(def ^:private mfa-challenged-provider-names
+  ;; Providers whose first factor Metabase verifies itself, and which an MFA challenge therefore applies to -- as the
+  ;; strings stored in `auth_identity.provider`. A sorted vector, not a set, so the compiled SQL is stable.
+  ;;
+  ;; Deliberately a second copy of `metabase.server.db`'s private `mfa-supported-methods` rather than a shared var:
+  ;; that namespace is internal to the `server` module (not in its `:api`), and `server` already `:uses analytics`,
+  ;; so requiring it back here would close a module cycle. Both copies are literals for the same underlying reason --
+  ;; neither query should depend on provider-namespace load order -- and
+  ;; `metabase.server.middleware.session-test/mfa-providers-list-test` pins this one, that one, and the
+  ;; `:metabase.auth-identity.provider/supports-mfa` hierarchy to each other.
+  ["ldap" "password"])
+
+(mu/defn mfa-blocked-session-count
+  "The number of live Sessions that the `:required` MFA enforcement clause rejects: no second factor, and a first
+  factor Metabase verifies itself. This is the population an admin logs out by turning enforcement on, counted whether
+  or not enforcement is on now.
+
+  Enforcement itself is a `WHERE` clause in [[metabase.server.db]]'s session lookup, so a rejected request is
+  indistinguishable from an expired cookie and emits no event — this count is the only way to see it. Liveness is
+  mirrored from that query (unexpired, and created within `max-session-age`) so a backlog of long-dead rows cannot
+  inflate the number; `now` and `oldest-allowed` are passed in rather than built as SQL to keep this free of
+  app-DB-specific interval expressions. Keep the predicate in step with that query."
+  [now            :- ms/TemporalInstant
+   oldest-allowed :- ms/TemporalInstant]
+  (t2/count :model/Session
+            {:left-join [:auth_identity [:= :auth_identity.id :core_session.auth_identity_id]]
+             :where     [:and
+                         [:= :core_session.mfa_auth_identity_id nil]
+                         [:in :auth_identity.provider mfa-challenged-provider-names]
+                         [:> :core_session.created_at oldest-allowed]
+                         [:or
+                          [:= :core_session.expires_at nil]
+                          [:> :core_session.expires_at now]]]}))
