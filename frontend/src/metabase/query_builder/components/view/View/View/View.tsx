@@ -241,23 +241,30 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
     const isNotebookContainerOpen =
       isNewQuestion || queryBuilderMode === "notebook";
 
+    const isShowingStructuredSummarySidebar =
+      !isNative && isShowingSummarySidebar;
     const showLeftSidebar =
       isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
     const showRightSidebar =
       isShowingTimelineSidebar ||
       isShowingQuestionInfoSidebar ||
       isShowingQuestionSettingsSidebar ||
-      (!isNative && isShowingSummarySidebar) ||
+      isShowingStructuredSummarySidebar ||
       (isNative &&
         (isShowingTemplateTagsEditor ||
           isShowingDataReference ||
           isShowingSnippetSidebar));
 
     const rightSidebarWidth = match({
+      isShowingStructuredSummarySidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
       isShowingQuestionSettingsSidebar,
     })
+      .with(
+        { isShowingStructuredSummarySidebar: true },
+        () => SIDEBAR_SIZES.SUMMARIZE,
+      )
       .with({ isShowingTimelineSidebar: true }, () => SIDEBAR_SIZES.TIMELINE)
       .with({ isShowingQuestionInfoSidebar: true }, () => 0)
       .with({ isShowingQuestionSettingsSidebar: true }, () => 0)

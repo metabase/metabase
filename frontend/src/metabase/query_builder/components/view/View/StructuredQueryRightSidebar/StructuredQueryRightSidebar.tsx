@@ -2,9 +2,9 @@ import { match } from "ts-pattern";
 
 import type Question from "metabase-lib/v1/Question";
 
+import { SummarySidebar } from "../../SummarySidebar";
 import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
-import { SummarizeSidebar } from "../../sidebars/SummarizeSidebar";
 import { TimelineSidebar } from "../../sidebars/TimelineSidebar";
 
 interface StructuredQueryRightSidebarProps {
@@ -35,24 +35,15 @@ export const StructuredQueryRightSidebar = ({
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
   })
-    .with(
-      {
-        isShowingSummarySidebar: true,
-      },
-      () => (
-        <SummarizeSidebar
-          query={question.query()}
-          onQueryChange={(nextQuery) => {
-            const nextQuestion = question.setQuery(nextQuery);
-            updateQuestion(nextQuestion.setDefaultDisplay(), {
-              run: true,
-            });
-          }}
-          onClose={onCloseSummary}
-          stageIndex={-1}
-        />
-      ),
-    )
+    .with({ isShowingSummarySidebar: true }, () => (
+      <SummarySidebar
+        question={question}
+        onQuestionChange={(nextQuestion) =>
+          updateQuestion(nextQuestion, { run: true })
+        }
+        onClose={onCloseSummary}
+      />
+    ))
     .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)
     .with(
       {
