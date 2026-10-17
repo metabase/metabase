@@ -6,10 +6,11 @@ import {
   getAllParamValues,
   getFirstParamValue,
   parsePage,
+  parseQuery,
   parseSortColumn,
   parseSortDirection,
 } from "metabase/common/hooks/use-url-state";
-import { dayjs } from "metabase/dayjs";
+import { parseTimePreset } from "metabase/monitor/time-presets";
 import {
   type RevokeSessionsRequest,
   SESSION_END_REASONS,
@@ -29,16 +30,9 @@ import {
 } from "./constants";
 import {
   SESSIONS_TABS,
-  SESSIONS_TIME_PRESETS,
   type SessionsTab,
-  type SessionsTimePreset,
   type SessionsUrlState,
 } from "./types";
-
-const parseQuery = (param: QueryParam): string => {
-  const value = getFirstParamValue(param);
-  return typeof value === "string" ? value.trim() : "";
-};
 
 const isProvider = (value: string): value is SessionProvider =>
   SESSION_PROVIDERS.some((provider) => provider === value);
@@ -48,20 +42,12 @@ const isProvider = (value: string): value is SessionProvider =>
 const parseProviders = (param: QueryParam): SessionProvider[] =>
   getAllParamValues(param).filter(isProvider);
 
-export const isTab = (value: string): value is SessionsTab =>
+const isTab = (value: string): value is SessionsTab =>
   SESSIONS_TABS.some((tab) => tab === value);
 
 const parseTab = (param: QueryParam): SessionsTab => {
   const value = getFirstParamValue(param);
   return typeof value === "string" && isTab(value) ? value : DEFAULT_TAB;
-};
-
-export const isTimePreset = (value: string): value is SessionsTimePreset =>
-  SESSIONS_TIME_PRESETS.some((preset) => preset === value);
-
-const parseTimePreset = (param: QueryParam): SessionsTimePreset | null => {
-  const value = getFirstParamValue(param);
-  return typeof value === "string" && isTimePreset(value) ? value : null;
 };
 
 export const isEndReason = (value: string): value is SessionEndReason =>
@@ -111,11 +97,6 @@ export const urlStateConfig: UrlStateConfig<SessionsUrlState> = {
   }),
 };
 
-export const getTimePresetCutoff = (
-  preset: SessionsTimePreset | null,
-): string | undefined =>
-  preset === null ? undefined : dayjs().subtract(1, preset).toISOString();
-
 export const buildListParams = (
   state: SessionsUrlState,
   pageSize: number,
@@ -137,23 +118,6 @@ export const buildListParams = (
     reason: isEnded ? (state.reason ?? undefined) : undefined,
     "sort-column": state.sort_column,
     "sort-direction": state.sort_direction,
-  };
-};
-
-export const getTabChange = (
-  state: SessionsUrlState,
-  tab: SessionsTab,
-): Partial<SessionsUrlState> => {
-  const isSortShown = TAB_SORT_COLUMNS[tab].includes(state.sort_column);
-  return {
-    tab,
-    page: 0,
-    ...(isSortShown
-      ? {}
-      : {
-          sort_column: DEFAULT_SORT_COLUMN,
-          sort_direction: DEFAULT_SORT_DIRECTION,
-        }),
   };
 };
 

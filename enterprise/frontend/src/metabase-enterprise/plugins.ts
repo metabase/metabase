@@ -35,6 +35,7 @@ import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeMonitorApiKeyUsage } from "./monitor/api-key-usage";
 import { initializePlugin as initializeMonitorContentDiagnostics } from "./monitor/content-diagnostics";
 import { initializePlugin as initializeMonitorDependencyDiagnostics } from "./monitor/dependency-diagnostics";
+import { initializePlugin as initializeMonitorOAuthClientManagement } from "./monitor/oauth-client-management";
 import { initializePlugin as initializeMonitorSessionManagement } from "./monitor/session-management";
 import { initializePlugin as initializeTools } from "./monitor/tools";
 import { initializePlugin as initializeMultiFactorAuth } from "./multi_factor_auth";
@@ -93,6 +94,7 @@ export function initializePlugins() {
   initializeMonitorApiKeyUsage();
   initializeMonitorContentDiagnostics();
   initializeMonitorDependencyDiagnostics();
+  initializeMonitorOAuthClientManagement();
   initializeMonitorSessionManagement();
   initializeMultiFactorAuth();
   initializeRemoteSync();

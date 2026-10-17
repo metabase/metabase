@@ -12,7 +12,8 @@
                         :sandbox-origin?-fn #'mcp/sandbox-origin?}
    :oauth-bearer       {:extract-token     #'oauth-server/extract-bearer-token
                         :resolve-token     #'oauth-server/resolve-access-token
-                        :full-access-scope oauth-server/full-access-scope}
+                        :full-access-scope oauth-server/full-access-scope
+                        :touch-client      #'oauth-server/touch-client-if-due!}
    :mcp-ui-credentials {:on-surface?        #'mcp/ui-credential-on-surface?
                         :resolve-credential #'mcp/resolve-ui-credential
                         :scope-satisfied?   #'mcp/ui-credential-scope-satisfied?}})

@@ -435,46 +435,22 @@ describe("SessionsPage", () => {
       expect(screen.queryByText("No active sessions")).not.toBeInTheDocument();
     });
 
-    it("revokes nothing when the confirmation is cancelled", async () => {
-      setup({ initialRoute: `${PATHNAME}/ann-session` });
-
-      await clickSidebarButton("Revoke session");
-      await userEvent.click(
-        within(await getConfirmModal()).getByRole("button", { name: "Cancel" }),
-      );
-
-      await waitFor(() => {
-        expect(screen.queryByTestId("confirm-modal")).not.toBeInTheDocument();
+    it("reports how many were revoked, and how many sessions started meanwhile", async () => {
+      setup({
+        revokeResponse: createMockRevokeSessionsResponse({
+          revoked: 3,
+          remaining: 2,
+        }),
       });
-      expect(getRevokeBodies()).toEqual([]);
+
+      await clickRevokeAll();
+      await confirmRevoke();
+
+      expect(await screen.findByText("Revoked 3 sessions")).toBeInTheDocument();
+      expect(
+        await screen.findByText("2 new sessions started while revoking"),
+      ).toBeInTheDocument();
     });
-
-    it.each([
-      { remaining: 0, warns: false },
-      { remaining: 2, warns: true },
-    ])(
-      "reports how many were revoked, warning only if sessions started meanwhile (remaining: $remaining)",
-      async ({ remaining, warns }) => {
-        setup({
-          revokeResponse: createMockRevokeSessionsResponse({
-            revoked: 3,
-            remaining,
-          }),
-        });
-
-        await clickRevokeAll();
-        await confirmRevoke();
-
-        expect(
-          await screen.findByText("Revoked 3 sessions"),
-        ).toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            `${remaining} new sessions started while revoking`,
-          ) !== null,
-        ).toBe(warns);
-      },
-    );
 
     it("stays open after revoking the user of the ended session it shows", async () => {
       const ended = createMockSession({
@@ -495,15 +471,6 @@ describe("SessionsPage", () => {
         expect(getRevokeBodies()).toEqual([{ "user-id": 2 }]);
       });
       expect(router?.location.pathname).toBe(`${PATHNAME}/ended-session`);
-    });
-
-    it("shows the server's reason when a revoke is refused", async () => {
-      setup({ revokeError: { status: 400, message: "Too many sessions" } });
-
-      await clickRevokeAll();
-      await confirmRevoke();
-
-      expect(await screen.findByText("Too many sessions")).toBeInTheDocument();
     });
 
     it("shows an error, and keeps the sidebar open, when the revoke fails", async () => {

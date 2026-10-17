@@ -1,6 +1,7 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { lazyLoaders } from "__support__/lazy-routes";
-import { createMockSettingsState, createMockState } from "__support__/state";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
@@ -19,6 +20,7 @@ type MonitorGuard =
   | "CanAccessContentDiagnostics"
   | "CanAccessMonitoringTools"
   | "CanAccessAlertsManagement"
+  | "CanAccessSessionManagement"
   | "CanAccessAiAuditing";
 
 /**
@@ -46,13 +48,10 @@ jest.mock("./route-guards", () => {
     CanAccessContentDiagnostics: stubGuard("CanAccessContentDiagnostics"),
     CanAccessMonitoringTools: stubGuard("CanAccessMonitoringTools"),
     CanAccessAlertsManagement: stubGuard("CanAccessAlertsManagement"),
+    CanAccessSessionManagement: stubGuard("CanAccessSessionManagement"),
     CanAccessAiAuditing: stubGuard("CanAccessAiAuditing"),
   };
 });
-
-jest.mock("metabase-enterprise/settings", () => ({
-  hasPremiumFeature: jest.fn().mockReturnValue(true),
-}));
 
 jest.mock("./components/MonitorLayout", () => {
   const { Outlet } = jest.requireActual("metabase/router");
@@ -92,6 +91,20 @@ jest.mock("metabase-enterprise/monitor/dependency-diagnostics/pages", () => ({
 jest.mock("metabase-enterprise/monitor/content-diagnostics/pages", () => ({
   StaleContentPage: () => <div>{"Stale content page"}</div>,
 }));
+jest.mock(
+  "metabase-enterprise/monitor/session-management/SessionsPage",
+  () => ({
+    SessionsPage: () => <div data-testid="sessions-page">{"Sessions"}</div>,
+  }),
+);
+jest.mock(
+  "metabase-enterprise/monitor/oauth-client-management/OAuthClientsPage",
+  () => ({
+    OAuthClientsPage: () => (
+      <div data-testid="oauth-clients-page">{"OAuth clients"}</div>
+    ),
+  }),
+);
 
 jest.mock("metabase/monitor/tools/components/Logs", () => {
   const { Outlet } = jest.requireActual("metabase/router");
@@ -160,6 +173,13 @@ const UPSELL_TITLE =
 const CONTENT_DIAGNOSTICS_UPSELL_TITLE =
   "Find and clean up stale content without hunting it down";
 
+const MONITOR_PLUGINS = [
+  "monitor_dependency_diagnostics",
+  "monitor_content_diagnostics",
+  "monitor_session_management",
+  "monitor_oauth_client_management",
+] as const;
+
 type SetupOpts = {
   initialRoute: string;
   user?: ReturnType<typeof createMockUser>;
@@ -176,6 +196,12 @@ const setup = ({
 }: SetupOpts) => {
   deny.forEach((guard) => mockDeniedGuards.add(guard));
 
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures(tokenFeatures),
+  });
+  // Each plugin checks its own token feature, so this has to follow `mockSettings`
+  MONITOR_PLUGINS.forEach((plugin) => setupEnterpriseOnlyPlugin(plugin));
+
   return renderWithProviders(
     <Route path="/">
       {getMonitorRedirects()}
@@ -184,12 +210,7 @@ const setup = ({
     {
       withRouter: true,
       initialRoute,
-      storeInitialState: createMockState({
-        currentUser: user,
-        settings: createMockSettingsState({
-          "token-features": createMockTokenFeatures(tokenFeatures),
-        }),
-      }),
+      storeInitialState: createMockState({ currentUser: user, settings }),
     },
   );
 };
@@ -217,7 +238,7 @@ describe("monitor routes", () => {
   it("resolves every lazy page", async () => {
     const loaders = lazyLoaders(getMonitorRoutes());
 
-    expect(loaders).toHaveLength(19);
+    expect(loaders).toHaveLength(21);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
@@ -261,9 +282,10 @@ describe("monitor routes", () => {
 
     describe("EE (Dependency Diagnostics enabled)", () => {
       it("renders the diagnostics section and child routes instead of the upsell", async () => {
-        setupEnterpriseOnlyPlugin("monitor_dependency_diagnostics");
-
-        setup({ initialRoute: "/monitor/dependency-diagnostics/broken" });
+        setup({
+          initialRoute: "/monitor/dependency-diagnostics/broken",
+          tokenFeatures: { dependencies: true },
+        });
 
         expect(
           await screen.findByTestId("diagnostics-section"),
@@ -273,9 +295,10 @@ describe("monitor routes", () => {
       });
 
       it("redirects the diagnostics index to the broken route", async () => {
-        setupEnterpriseOnlyPlugin("monitor_dependency_diagnostics");
-
-        setup({ initialRoute: "/monitor/dependency-diagnostics" });
+        setup({
+          initialRoute: "/monitor/dependency-diagnostics",
+          tokenFeatures: { dependencies: true },
+        });
 
         expect(await screen.findByText("Broken page")).toBeInTheDocument();
       });
@@ -283,9 +306,10 @@ describe("monitor routes", () => {
 
     describe("EE (Content Diagnostics enabled)", () => {
       it("renders the content diagnostics section and child routes instead of the upsell", async () => {
-        setupEnterpriseOnlyPlugin("monitor_content_diagnostics");
-
-        setup({ initialRoute: "/monitor/content-diagnostics/stale" });
+        setup({
+          initialRoute: "/monitor/content-diagnostics/stale",
+          tokenFeatures: { content_diagnostics: true },
+        });
 
         expect(
           await screen.findByTestId("content-diagnostics-section"),
@@ -297,9 +321,10 @@ describe("monitor routes", () => {
       });
 
       it("redirects the content diagnostics index to the stale route", async () => {
-        setupEnterpriseOnlyPlugin("monitor_content_diagnostics");
-
-        setup({ initialRoute: "/monitor/content-diagnostics" });
+        setup({
+          initialRoute: "/monitor/content-diagnostics",
+          tokenFeatures: { content_diagnostics: true },
+        });
 
         expect(
           await screen.findByText("Stale content page"),
@@ -471,6 +496,57 @@ describe("monitor routes", () => {
         expect(
           await screen.findByTestId("notifications-page"),
         ).toBeInTheDocument();
+      },
+    );
+  });
+
+  describe.each([
+    {
+      section: "Session management",
+      path: "/monitor/sessions",
+      pageTestId: "sessions-page",
+      upsellText: /^See who is signed in/,
+    },
+    {
+      section: "OAuth clients",
+      path: "/monitor/oauth-clients",
+      pageTestId: "oauth-clients-page",
+      upsellText: "See which programs can act as your users, and cut one off",
+    },
+  ])("$section", ({ path, pageTestId, upsellText }) => {
+    it("renders the upsell without the session-management feature", async () => {
+      setup({ initialRoute: path });
+
+      expect(await screen.findByText(upsellText)).toBeInTheDocument();
+      expect(screen.queryByTestId(pageTestId)).not.toBeInTheDocument();
+    });
+
+    it.each([path, `${path}/some-id`])(
+      "renders the page at %s with the session-management feature",
+      async (initialRoute) => {
+        setup({
+          initialRoute,
+          tokenFeatures: { "session-management": true },
+        });
+
+        expect(await screen.findByTestId(pageTestId)).toBeInTheDocument();
+      },
+    );
+
+    it.each([false, true])(
+      "keeps the page and its upsell behind the session-management guard (feature: %p)",
+      async (hasFeature) => {
+        setup({
+          initialRoute: path,
+          deny: ["CanAccessSessionManagement"],
+          tokenFeatures: { "session-management": hasFeature },
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId(pageTestId)).not.toBeInTheDocument();
+        expect(screen.queryByText(upsellText)).not.toBeInTheDocument();
       },
     );
   });

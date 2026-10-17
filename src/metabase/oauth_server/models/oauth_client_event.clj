@@ -4,7 +4,8 @@
    A `registered` event is recorded when a client registers via `POST /oauth/register` (which is
    unauthenticated, so it has no `user_id`). A separate `approved` or `denied` event is recorded for
    each decision a user makes via `POST /oauth/authorize/decision`, stamped with the deciding user's
-   `user_id`."
+   `user_id`. A `revoked` event is recorded when an admin revokes the client, stamped with that
+   admin's `user_id`."
   (:require
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.util.log :as log]
@@ -41,3 +42,12 @@
                                            :user_id         user-id
                                            :event_type      (if approved? "approved" "denied")})
     (log/warnf "Cannot record OAuth decision event: no client found for client_id %s" client-id)))
+
+(defn record-revocation!
+  "Record a `revoked` event for the OAuthClient with primary key `oauth-client-id`, revoked by `user-id`."
+  ;; the primary key rather than the `client_id` its siblings take: the revocation primitive has just read the rows
+  ;; and would otherwise look each one up again
+  [oauth-client-id user-id]
+  (oauth-server.db/insert-client-event! {:oauth_client_id oauth-client-id
+                                         :user_id         user-id
+                                         :event_type      "revoked"}))

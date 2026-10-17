@@ -71,8 +71,25 @@
    [:client_type                    {:optional true} [:maybe [:or :keyword :string]]]
    [:application_type               {:optional true} [:maybe [:or :keyword :string]]]
    [:registration_access_token_hash {:optional true} [:maybe :string]]
+   [:last_used_at                   {:optional true} [:maybe ms/TemporalInstant]]
+   [:revoked_at                     {:optional true} [:maybe ms/TemporalInstant]]
+   [:revoked_by_user_id             {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at                     {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                     {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::client-revocation
+  "What [[metabase.oauth-server.db/revoke-clients!]] reports about a revoke: one `:clients` entry per client it
+  revoked, with the tokens stamped for that client and the users who held them, plus the totals."
+  [:map {:closed true}
+   [:revoked        ms/IntGreaterThanOrEqualToZero]
+   [:tokens-revoked ms/IntGreaterThanOrEqualToZero]
+   [:user-ids       [:sequential ::lib.schema.id/user]]
+   [:clients        [:sequential [:map {:closed true}
+                                  [:id             ms/PositiveInt]
+                                  [:client-id      :string]
+                                  [:client-name    [:maybe :string]]
+                                  [:tokens-revoked ms/IntGreaterThanOrEqualToZero]
+                                  [:user-ids       [:sequential ::lib.schema.id/user]]]]]])
 
 (mr/def ::oauth-client-event
   "A OAuthClientEvent as selected from the app DB: every column of `:oauth_client_event`."

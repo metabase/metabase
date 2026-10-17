@@ -154,6 +154,7 @@ describe("MonitorLayout", () => {
       ["Application logs", Urls.monitorLogs()],
       ["Model persistence log", Urls.monitorModelPersistenceLog()],
       ["Session management", Urls.monitorSessions()],
+      ["OAuth clients", Urls.monitorOAuthClients()],
       ["API key usage", Urls.monitorApiKeyUsage()],
     ];
 
@@ -243,6 +244,44 @@ describe("MonitorLayout", () => {
       expect(trackMonitorSectionClicked).toHaveBeenCalledWith(section);
     },
   );
+
+  describe("OAuth clients", () => {
+    it("is gated without the session-management feature", async () => {
+      setup({ tokenFeatures: { "session-management": false } });
+
+      const tab = await screen.findByRole("link", { name: "OAuth clients" });
+      expect(within(tab).getByTestId("upsell-gem")).toBeInTheDocument();
+    });
+
+    it("is ungated once the feature is present", async () => {
+      setup({ tokenFeatures: { "session-management": true } });
+
+      const tab = await screen.findByRole("link", { name: "OAuth clients" });
+      expect(within(tab).queryByTestId("upsell-gem")).not.toBeInTheDocument();
+    });
+
+    it("tracks opening the section", async () => {
+      trackMonitorSectionClicked.mockClear();
+      setup({ tokenFeatures: { "session-management": true } });
+
+      await userEvent.click(
+        await screen.findByRole("link", { name: "OAuth clients" }),
+      );
+
+      expect(trackMonitorSectionClicked).toHaveBeenCalledWith("oauth-clients");
+    });
+
+    it("marks itself the current page on its own route", async () => {
+      setup({
+        tokenFeatures: { "session-management": true },
+        initialRoute: Urls.monitorOAuthClients(),
+      });
+
+      const tab = await screen.findByRole("link", { name: "OAuth clients" });
+      expect(tab).toHaveAttribute("aria-current", "page");
+      expect(screen.getAllByRole("link", { current: "page" })).toEqual([tab]);
+    });
+  });
 
   const AI_AUDITING_SECTION_CASES = [
     {

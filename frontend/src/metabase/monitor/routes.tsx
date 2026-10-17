@@ -116,6 +116,13 @@ const sessionManagementUpsellPage = () =>
     Component: SessionManagementUpsellPage,
   }));
 
+const oauthClientsUpsellPage = () =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/oauth-client-management/OAuthClientsUpsellPage"
+  ).then(({ OAuthClientsUpsellPage }) => ({
+    Component: OAuthClientsUpsellPage,
+  }));
+
 // The log levels modal renders a code editor, which nothing else on the logs
 // page needs. Its parent route is already lazy, but a modal declared with
 // `modalRoute` holds its component eagerly.
@@ -214,6 +221,17 @@ export function getMonitorRoutes() {
             <Route path="sessions">
               <Route index lazy={sessionManagementUpsellPage} />
               <Route path="*" lazy={sessionManagementUpsellPage} />
+            </Route>
+          )}
+
+          {PLUGIN_MONITOR.isOAuthClientManagementEnabled ? (
+            <Route path="oauth-clients">
+              {PLUGIN_MONITOR.getOAuthClientManagementRoutes()}
+            </Route>
+          ) : (
+            <Route path="oauth-clients">
+              <Route index lazy={oauthClientsUpsellPage} />
+              <Route path="*" lazy={oauthClientsUpsellPage} />
             </Route>
           )}
         </Route>

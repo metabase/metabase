@@ -102,7 +102,7 @@
         #'mw.auth/verify-slack-request               ; looks for requests from slack and assocs a :slack/validated? on the request if valid
         #'mw.body-limit/wrap-limit-request-body      ; bounds unauthenticated request body sizes; must be inside wrap-current-user-info and outside everything that reads the body
         #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
-        #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
+        #(#'mw.session/reset-session-timeout % options) ; Records activity and resets the timeout cookie for it to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
         #'mw.data-app-scope/wrap-data-app-scope      ; narrows a data-app request (X-Metabase-Client: data-app) to the `data-app` scope (runs after current-user-info so it sees any resolved token scopes)
         #(#'mw.session/wrap-current-user-info % options) ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
@@ -169,6 +169,7 @@
     (doseq [varr  (concat [#'middleware
                            #'mw.exceptions/catch-api-exceptions
                            #'mw.security/add-security-headers
+                           #'mw.session/reset-session-timeout
                            #'mw.session/wrap-current-user-info
                            options]
                           (middleware (current-options options)))

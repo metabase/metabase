@@ -1,6 +1,10 @@
-export * from "./constants";
-export * from "./DetailsRow";
-export * from "./DetailsTable";
-export * from "./SidebarNavButton";
-export * from "./SidebarSection";
-export type * from "./types";
+export { SIDEBAR_WIDTH } from "./constants";
+export { DetailSidebarHeader } from "./DetailSidebarHeader";
+export { DetailSidebarShell } from "./DetailSidebarShell";
+export { DetailSidebarTitle } from "./DetailSidebarTitle";
+export { DetailsRow } from "./DetailsRow";
+export { DetailsTable } from "./DetailsTable";
+export { SidebarFooter } from "./SidebarFooter";
+export { SidebarNavButton } from "./SidebarNavButton";
+export { SidebarSection } from "./SidebarSection";
+export { useDetailSidebarRouting } from "./use-detail-sidebar-routing";
