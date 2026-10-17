@@ -21,7 +21,7 @@ import {
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
 
-const timestamp = "2021-06-03T19:46:52.128";
+const timestamp = "2021-06-03T19:46:52.128Z";
 
 function getCollectionItem({
   id = 1,

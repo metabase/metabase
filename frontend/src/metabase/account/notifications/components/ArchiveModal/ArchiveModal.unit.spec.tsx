@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { dayjs } from "metabase/dayjs";
 import {
   createMockAlert,
   createMockChannel,
@@ -9,11 +10,14 @@ import { createMockUser } from "metabase-types/api/mocks/user";
 
 import { ArchiveNotificationModal } from "./ArchiveModal";
 
+const CREATED_AT = "2021-05-08T18:02:07.441-08:00";
+const CREATED_AT_DAY = dayjs(CREATED_AT).format("MMMM D, YYYY");
+
 describe("ArchiveNotificationModal", () => {
   it("should render an email alert", () => {
     const alert = createMockAlert({
       id: getNextId(),
-      created_at: "2021-05-08T02:02:07.441Z",
+      created_at: CREATED_AT,
       channels: [
         createMockChannel({
           channel_id: getNextId(),
@@ -37,7 +41,7 @@ describe("ArchiveNotificationModal", () => {
     expect(screen.getByText("Delete this alert?")).toBeInTheDocument();
     expect(screen.getByText("Yes, delete this alert")).toBeInTheDocument();
     expect(
-      screen.getByText("You created this alert on May 8, 2021", {
+      screen.getByText(`You created this alert on ${CREATED_AT_DAY}`, {
         exact: false,
       }),
     ).toBeInTheDocument();
@@ -51,7 +55,7 @@ describe("ArchiveNotificationModal", () => {
   it("should render an email pulse", () => {
     const pulse = createMockDashboardSubscription({
       id: getNextId(),
-      created_at: "2021-05-08T02:02:07.441Z",
+      created_at: CREATED_AT,
       channels: [
         createMockChannel({
           channel_id: getNextId(),
@@ -77,7 +81,7 @@ describe("ArchiveNotificationModal", () => {
       screen.getByText("Yes, delete this subscription"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("May 8, 2021", { exact: false }),
+      screen.getByText(CREATED_AT_DAY, { exact: false }),
     ).toBeInTheDocument();
     expect(
       screen.getByText("It's currently being sent to 1 email.", {
