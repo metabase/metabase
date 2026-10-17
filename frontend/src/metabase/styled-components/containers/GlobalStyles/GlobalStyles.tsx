@@ -3,7 +3,7 @@ import { Global, css } from "@emotion/react";
 import { useMemo } from "react";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import "metabase/css/core/fonts.css";
+import "fonts.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   isPublicEmbedding,

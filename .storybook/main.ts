@@ -6,7 +6,13 @@ import remarkGfm from "remark-gfm";
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const webpack = require("webpack");
 
+const VirtualModulesPlugin = require("webpack-virtual-modules");
+
 const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
+const {
+  FONT_FACES_RULE,
+  FONT_FACES_VIRTUAL_MODULE,
+} = require("../frontend/build/shared/rspack/fonts");
 const {
   SIDE_EFFECT_FREE_RULE,
 } = require("../frontend/build/shared/rspack/side-effect-free-modules");
@@ -105,11 +111,15 @@ const config: StorybookConfig = {
         new webpack.EnvironmentPlugin({
           IS_EMBEDDING_SDK: "false",
         }),
+        // `import "fonts.css"` resolves here, and FONT_FACES_RULE fills it in. Stories then see
+        // the same bundled faces the app ships, which is what the visual tests measure against.
+        new VirtualModulesPlugin(FONT_FACES_VIRTUAL_MODULE),
       ],
       module: {
         ...config.module,
         rules: [
           SIDE_EFFECT_FREE_RULE,
+          FONT_FACES_RULE,
           ...(config.module?.rules ?? []).filter(
             (rule) => !isCSSRule(rule) && !isSvgRule(rule),
           ),
