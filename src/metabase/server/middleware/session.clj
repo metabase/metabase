@@ -169,12 +169,22 @@
               (dissoc :api-key)))))))
 
 (mr/def ::oauth-bearer
-  "Fns that authenticate a request by its OAuth bearer token, and the scope that grants full access."
+  "Fns that authenticate a request by its OAuth bearer token, the scope that grants full access, and the request
+  paths where a bearer token is the only credential accepted."
   [:map
    {:closed true}
    [:extract-token     ifn?]
    [:resolve-token     ifn?]
-   [:full-access-scope ms/NonBlankString]])
+   [:full-access-scope ms/NonBlankString]
+   [:bearer-only-paths [:set [:re #"^/"]]]])
+
+(defn- bearer-only-path?
+  "Whether request `path` is one of `bearer-only-paths` or below one. Compares paths, never a host, and follows segment
+  boundaries, so `/api/mcpfoo` is not below `/api/mcp`."
+  [bearer-only-paths path]
+  (boolean (and path
+                (some #(or (= path %) (str/starts-with? path (str % "/")))
+                      bearer-only-paths))))
 
 (mr/def ::mcp-ui-credentials
   "Fns that authenticate a request by the credential an MCP App UI carries."
@@ -261,25 +271,52 @@
                      :mcp-ui-credential claims)))))
 
 (defn- auth-method
-  [session-info api-key-info oauth-info mcp-ui-info embedding-route]
-  (or ({"guest-embed" "guest"} embedding-route embedding-route)
-      (cond session-info (or (:auth-provider session-info) "session")
-            api-key-info "api-key"
-            oauth-info   "oauth"
-            mcp-ui-info  "mcp-ui")))
+  [session-info api-key-info oauth-info mcp-ui-info]
+  (cond
+    (= "guest-embed" (analytics/get-route))
+    "guest"
 
-(defn- merge-current-user-info
+    (analytics/get-route)
+    (analytics/get-route)
+
+    session-info
+    (or (:auth-provider session-info) "session")
+
+    api-key-info
+    "api-key"
+
+    oauth-info
+    "oauth"
+
+    mcp-ui-info
+    "mcp-ui"))
+
+(defn- bearer-only-credentials
+  "The credential a request on a bearer-only path authenticates with: its OAuth bearer token, and nothing else."
+  [{:keys [oauth-bearer]} request]
+  {:oauth-info (current-user-info-for-oauth-token oauth-bearer request)})
+
+(defn- credentials
+  "The first credential on `request` that authenticates: session, then API key, then OAuth bearer token, then MCP UI
+  credential."
   [{:keys [oauth-bearer mcp-ui-credentials]}
-   {:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
+   {:keys [metabase-session-key anti-csrf-token], {:strs [x-api-key]} :headers, :as request}]
   (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
         api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
         ;; Bearer and MCP UI credentials are consulted only when no normal session/API key authenticated.
         oauth-info   (when-not (or session-info api-key-info)
                        (current-user-info-for-oauth-token oauth-bearer request))
         mcp-ui-info  (when-not (or session-info api-key-info oauth-info)
-                       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))
-        embedding-route (analytics/get-route)
-        auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info embedding-route)]
+                       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))]
+    {:session-info session-info, :api-key-info api-key-info, :oauth-info oauth-info, :mcp-ui-info mcp-ui-info}))
+
+(defn- merge-current-user-info
+  [{:keys [oauth-bearer] :as options} {:keys [uri], {:strs [x-metabase-locale]} :headers, :as request}]
+  (let [{:keys [session-info api-key-info oauth-info mcp-ui-info]}
+        (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
+          (bearer-only-credentials options request)
+          (credentials options request))
+        auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info)]
     (merge
      request
      ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
@@ -302,7 +339,7 @@
   token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
   `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
   Bearer tokens and MCP UI credentials authenticate only when `options` supplies their `:oauth-bearer` and
-  `:mcp-ui-credentials` fns.
+  `:mcp-ui-credentials` fns. On a path in `:bearer-only-paths`, or below one, only a bearer token authenticates.
 
   `:metabase/authed-session-key-hash` is set only when it was the session that authenticated the request, and carries
   the `key_hashed` value of the one that did."
