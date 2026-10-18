@@ -131,14 +131,20 @@
                             seq))))
       (testing "the same files always pack to the same bytes, so the hash is stable across imports"
         (is (= (seq (import files)) (seq (import files)))))))
-  (testing "the resource files are the manifest, the JavaScript, and the assets the manifest names, read as bytes"
+  (testing "the resource files are the manifest, the JavaScript, and the icon the manifest names, read as bytes"
     (let [ingested  {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]}
           read-text (fn [path]
                       (when (= path "metabase-plugin.json")
-                        (json/encode {:name "my-viz" :icon "icon.svg" :assets ["icon.svg" "font.woff2" "../x"]})))]
-      (is (= ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg" "dist/assets/font.woff2"]
+                        (json/encode {:name "my-viz" :icon "icon.svg"})))]
+      (is (= ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg"]
              (serdes/resource-paths ingested read-text)))
       (is (true? (serdes/binary-resources? ingested))))
+    (testing "an icon the instance would not serve is not a resource"
+      (doseq [icon ["../x" "icon.exe"]]
+        (is (= ["metabase-plugin.json" "dist/index.js"]
+               (serdes/resource-paths {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]}
+                                      (constantly (json/encode {:name "my-viz" :icon icon}))))
+            icon)))
     (testing "without a readable manifest, the fixed files"
       (is (= ["metabase-plugin.json" "dist/index.js"]
              (serdes/resource-paths {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]} (constantly nil))))

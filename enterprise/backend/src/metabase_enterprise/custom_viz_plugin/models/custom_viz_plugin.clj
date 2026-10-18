@@ -64,7 +64,7 @@
 
 ;; A plugin serializes as `custom_viz_plugins/<identifier>/custom_viz_plugin.yaml` with its bundle unpacked beside it,
 ;; laid out as `npx @metabase/custom-viz pack` archives it: `metabase-plugin.json` at the root, `dist/index.js`, and
-;; the assets the manifest names under `dist/assets/`. The YAML holds only what the bundle can't derive. An import
+;; the icon the manifest names under `dist/assets/`. The YAML holds only what the bundle can't derive. An import
 ;; packs those files back into an archive, so a plugin's files are what a repository reviews and what an instance
 ;; stores.
 
@@ -183,10 +183,10 @@
    {:label "custom_viz_plugin"}])
 
 (defmethod serdes/resource-paths "CustomVizPlugin" [_ingested read-text]
-  ;; the files `pack` would archive: the manifest, the JavaScript, and the assets the manifest names
+  ;; the files an instance serves: the manifest, the JavaScript, and the icon the manifest names
   (into [(manifest/manifest-path) index-file]
         (map asset-file)
-        (manifest/packed-asset-names (some-> (read-text (manifest/manifest-path)) manifest/parse-manifest))))
+        (manifest/asset-paths (some-> (read-text (manifest/manifest-path)) manifest/parse-manifest))))
 
 (defmethod serdes/binary-resources? "CustomVizPlugin" [_ingested]
   true)
