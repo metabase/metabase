@@ -122,12 +122,12 @@
                     "dist/assets/icon.svg" (byte-array [0 (int 0x80) (int 0xff)])}
           bundle   (cv.tu/make-tgz-bytes files)]
       (is (= (update-vals files seq) (update-vals (export bundle) seq)))
-      (is (= (update-vals files seq) (update-vals (cache/bundle-files (import files)) seq)))
+      (is (= (update-vals files seq) (update-vals (cache/bundle->files (import files)) seq)))
       (is (= ::serdes/skip (export nil)))
       (is (= ::serdes/skip (export (.getBytes "not a tgz" "UTF-8"))) "a stored archive that can't be read is left out")
       (testing "a file that isn't there is left out of the archive"
         (is (= {"dist/index.js" (seq (get files "dist/index.js"))}
-               (update-vals (cache/bundle-files (import (assoc files "metabase-plugin.json" nil "dist/assets/icon.svg" nil)))
+               (update-vals (cache/bundle->files (import (assoc files "metabase-plugin.json" nil "dist/assets/icon.svg" nil)))
                             seq))))
       (testing "the same files always pack to the same bytes, so the hash is stable across imports"
         (is (= (seq (import files)) (seq (import files)))))))
@@ -158,7 +158,7 @@
   (merge {:serdes/meta      [{:model "CustomVizPlugin" :id identifier :label identifier}]
           :serdes/directory identifier
           :serdes/resources (when bundle
-                              (try (cache/bundle-files bundle)
+                              (try (cache/bundle->files bundle)
                                    ;; not an archive: pass the bytes off as the JavaScript, so the import packs them
                                    (catch Exception _ {"dist/index.js" bundle})))
           :identifier       identifier
@@ -169,7 +169,7 @@
 (defn- repacked-hash
   "The `bundle_hash` an import of `bundle`'s files stores: the hash of the archive it packs them back into."
   [^bytes bundle]
-  (cv.tu/bundle-hash (cache/files->bundle (cache/bundle-files bundle))))
+  (cv.tu/bundle-hash (cache/files->bundle (cache/bundle->files bundle))))
 
 (defn- active-plugin-row
   "Columns of an active, enabled plugin `identifier` backed by `bundle`, for `mt/with-temp`."

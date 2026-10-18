@@ -128,7 +128,7 @@
                   (t2/select-one :model/CustomVizPlugin :identifier "thumbs"))))
         (testing "the stored bundle is an archive of the files, and serves the icon's bytes"
           (let [plugin (t2/select-one :model/CustomVizPlugin :identifier "thumbs")]
-            (is (= (update-vals files seq) (update-vals (cache/bundle-files (:bundle plugin)) seq)))
+            (is (= (update-vals files seq) (update-vals (cache/bundle->files (:bundle plugin)) seq)))
             (is (= (seq icon-bytes) (seq (cache/get-asset plugin "icon.png"))))))))))
 
 (deftest import-without-a-manifest-makes-an-error-plugin-test
@@ -166,7 +166,7 @@
         (import! dump-dir)
         (let [plugin (t2/select-one :model/CustomVizPlugin :identifier "thumbs")]
           (is (= :active (:status plugin)))
-          (is (= (update-vals files seq) (update-vals (cache/bundle-files (:bundle plugin)) seq))
+          (is (= (update-vals files seq) (update-vals (cache/bundle->files (:bundle plugin)) seq))
               "only the files pack would archive are in the bundle"))))))
 
 (deftest round-trip-keeps-the-files-and-settles-the-hash-test
@@ -180,7 +180,7 @@
         (let [imported-hash (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :identifier "thumbs")]
           (testing "the imported bundle holds the exported files"
             (is (= (update-vals files seq)
-                   (update-vals (cache/bundle-files (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier "thumbs")) seq))))
+                   (update-vals (cache/bundle->files (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier "thumbs")) seq))))
           (testing "exporting and importing again changes nothing"
             (ts/with-random-dump-dir [dump-dir-2 "custom-viz-round-trip-"]
               (export! dump-dir-2)

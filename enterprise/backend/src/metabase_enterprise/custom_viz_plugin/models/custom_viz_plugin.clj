@@ -89,7 +89,7 @@
                             :export (fn [bundle]
                                       (if bundle
                                         (try
-                                          (cache/bundle-files bundle)
+                                          (cache/bundle->files bundle)
                                           (catch Exception e
                                             ;; a stored archive that can't be read exports as the YAML alone, so one
                                             ;; broken plugin doesn't fail the export; it imports as an error plugin
