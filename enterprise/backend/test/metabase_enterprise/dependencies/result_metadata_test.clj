@@ -196,6 +196,11 @@
                        (t2/select-one :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id)
                        60)))
 
+(defn- store-run-metadata!
+  "Store `metadata` as the result metadata of the Card with `card-id`, as a run of the card does."
+  [card-id metadata]
+  (t2/update! :model/Card card-id {:result_metadata metadata :updated_at :updated_at}))
+
 (defn- once!
   "A function running `f` the first time it is called and doing nothing after."
   [f]
@@ -225,7 +230,7 @@
           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
             (is (= :processed (rederive-during-inference!
                                :table (mt/id :orders)
-                               (once! #(dependencies.db/set-card-result-metadata! card-id run-metadata)))))
+                               (once! #(store-run-metadata! card-id run-metadata)))))
             (is (= "Order total" (:display_name (column card-id "TOTAL"))))
             (is (= {:global {:distinct-count 7}} (:fingerprint (column card-id "ID"))))))))))
 
@@ -438,7 +443,7 @@
         (do-with-inference (fn [infer query card]
                              (u/prog1 (rename-column (infer query card) "TOTAL" "Changed")
                                (when (= orders-card-id (:id card))
-                                 (dependencies.db/set-card-result-metadata!
+                                 (store-run-metadata!
                                   orders-card-id
                                   (rename-column (:result_metadata card) "TOTAL" (str (random-uuid)))))))
                            #(is (true? (#'task.result-metadata/update-result-metadata!))))
@@ -451,9 +456,9 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (deps.result-metadata-status/mark-stale! {:table #{(mt/id :orders)}})
-        (let [store  (mt/original-fn #'dependencies.db/set-card-result-metadata!)
+        (let [store  (mt/original-fn #'dependencies.db/set-unchanged-card-result-metadata!)
               marked (atom nil)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/set-card-result-metadata!
+          (mt/with-dynamic-fn-redefs [dependencies.db/set-unchanged-card-result-metadata!
                                       (fn [& args]
                                         (reset! marked (deref (future (t2/update! :model/ResultMetadataStatus
                                                                                   :entity_type :table
@@ -484,3 +489,26 @@
         (is (= ["Changed" "Changed"] (mapv #(:display_name (column % "NAME")) [first-id last-id])))
         (is (=? {:stale true :fail_count 1}
                 (t2/select-one :model/ResultMetadataStatus :entity_type :table :entity_id (mt/id :venues))))))))
+
+(deftest store-updates-parameters-using-dropped-columns-test
+  (testing "storing a re-derived card resets the parameters taking values from a column it no longer has"
+    (with-clean-statuses
+      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}
+                     :model/Card {card-id :id}   {:dataset_query (table-query :venues)
+                                                  :parameters    [{:id                   "price"
+                                                                   :type                 :category
+                                                                   :name                 "Price"
+                                                                   :slug                 "price"
+                                                                   :values_source_type   :card
+                                                                   :values_source_config {:card_id     source-id
+                                                                                          :value_field [:field (mt/id :venues :price) nil]}}]}]
+        (run-jobs!)
+        (deps.result-metadata-status/mark-stale! {:table #{(mt/id :venues)}})
+        (do-with-inference (fn [infer query card]
+                             (cond->> (infer query card)
+                               (= source-id (:id card)) (into [] (remove #(= "PRICE" (:name %))))))
+                           #(mt/with-premium-features #{:dependencies}
+                              (deps.result-metadata/update-result-metadata! 1000 60)))
+        (is (nil? (column source-id "PRICE")))
+        (is (=? [{:id "price" :values_source_type nil}]
+                (t2/select-one-fn :parameters :model/Card :id card-id)))))))

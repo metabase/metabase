@@ -1002,18 +1002,27 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pks-set [:model/Card :id] :id [:in card-ids] :query_type :native))
 
-(mu/defn locked-card-result-metadata
-  "The `updated_at` and `result_metadata` of the Card with `card-id`, locked for update until the current transaction
-  ends, or nil when it doesn't exist."
+(mu/defn card-stored-result-metadata
+  "The `updated_at` and the stored, unparsed `result_metadata` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :updated_at :result_metadata] :id card-id {:for :update}))
+  (t2/query-one {:select [:updated_at :result_metadata]
+                 :from   [(t2/table-name :model/Card)]
+                 :where  [:= :id card-id]}))
 
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id` without touching `updated_at`, returning the number updated."
+(mu/defn set-unchanged-card-result-metadata!
+  "Set the result metadata of the Card with `card-id` without touching `updated_at` or running the Card model's hooks,
+  unless its `updated_at` and stored `result_metadata` are no longer `stored`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
+   stored          :- [:map {:closed true}
+                       [:updated_at      ms/TemporalInstant]
+                       [:result_metadata [:maybe :string]]]
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata
-                                   :updated_at      :updated_at}))
+  (t2/query-one {:update (t2/table-name :model/Card)
+                 :set    {:result_metadata ((:in mi/transform-result-metadata) result-metadata)}
+                 :where  [:and
+                          [:= :id card-id]
+                          [:= :updated_at (:updated_at stored)]
+                          [:= :result_metadata (:result_metadata stored)]]}))
 
 ;;; ------------------------------------------------ Analysis findings ------------------------------------------------
 
