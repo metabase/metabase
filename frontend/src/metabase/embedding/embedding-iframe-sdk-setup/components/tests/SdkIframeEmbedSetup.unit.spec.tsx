@@ -5,6 +5,7 @@ import {
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, screen, waitFor } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
 import * as Analytics from "metabase/analytics";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
@@ -49,36 +50,42 @@ describe("Embed flow > enabling embedding from the Guest option", () => {
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => false;
   });
 
-  it("states the modular embedding terms on EE with a license", () => {
+  it("states the modular embedding terms on EE with a license", async () => {
     guestSetup({
       hasLicense: true,
       modularEmbeddingEnabled: false,
       showModularEmbedTerms: true,
     });
 
+    await waitForRequestsToSettle();
+
     expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
       "To continue, enable modular embedding and agree to the usage conditions.",
     );
   });
 
-  it("only asks to enable on EE with a license once the terms are accepted", () => {
+  it("only asks to enable on EE with a license once the terms are accepted", async () => {
     guestSetup({
       hasLicense: true,
       modularEmbeddingEnabled: false,
       showModularEmbedTerms: false,
     });
 
+    await waitForRequestsToSettle();
+
     expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
       "Enable modular embedding to get started.",
     );
   });
 
-  it("states the guest embedding terms on EE without a license", () => {
+  it("states the guest embedding terms on EE without a license", async () => {
     guestSetup({
       hasLicense: false,
       modularEmbeddingEnabled: false,
       showStaticEmbedTerms: true,
     });
+
+    await waitForRequestsToSettle();
 
     expect(screen.getByTestId("enable-embedding-card")).toHaveTextContent(
       "To continue, enable embedding and agree to the usage conditions.",
