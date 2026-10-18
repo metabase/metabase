@@ -143,19 +143,18 @@
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/AnalysisFinding]
-          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
-            (testing "card has no analysis finding initially"
-              (is (not (t2/exists? :model/AnalysisFinding
-                                   :analyzed_entity_type :card
-                                   :analyzed_entity_id card-id))))
-            (testing "analyze-batch! creates analysis for the card"
-              (lib-be/with-metadata-provider-cache
-                (is (pos? (deps.analysis-finding/analyze-batch! :card 10)))))
-            (testing "card now has an analysis finding"
-              (is (t2/exists? :model/AnalysisFinding
-                              :analyzed_entity_type :card
-                              :analyzed_entity_id card-id)))))))))
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
+          (testing "card has no analysis finding initially"
+            (is (not (t2/exists? :model/AnalysisFinding
+                                 :analyzed_entity_type :card
+                                 :analyzed_entity_id card-id))))
+          (testing "analyze-batch! creates analysis for the card"
+            (lib-be/with-metadata-provider-cache
+              (is (pos? (deps.analysis-finding/analyze-batch! :card 10)))))
+          (testing "card now has an analysis finding"
+            (is (t2/exists? :model/AnalysisFinding
+                            :analyzed_entity_type :card
+                            :analyzed_entity_id card-id))))))))
 
 (deftest ^:synchronized failed-analysis-waits-for-a-change-test
   (testing "an entity whose analysis throws records a failed finding of its version, and is not analyzed again"
@@ -163,7 +162,7 @@
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-model-cleanup [:model/AnalysisFindingError]
           (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
             (with-redefs-fn {#'deps.analysis-finding/instance-db-id (fn [_] (throw (ex-info "Broken" {})))}
               (fn []
@@ -177,20 +176,19 @@
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingStatus]
-          (mt/with-temp [:model/Card {gp-id :id} {:dataset_query (lib/query mp products)}
-                         :model/Card {p-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp gp-id))}
-                         :model/Card {c-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp p-id))}
-                         :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
-                                              :to_entity_type :card :to_entity_id gp-id}
-                         :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
-                                              :to_entity_type :card :to_entity_id p-id}]
-            (let [analyzed (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100))]
-              (is (= [p-id c-id] (filter #{gp-id p-id c-id} (sort analyzed))))
-              (is (= (count analyzed) (count (distinct analyzed)))))
-            (testing "and not again while nothing changed"
-              (is (empty? (filter #{gp-id p-id c-id}
-                                  (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100))))))))))))
+        (mt/with-temp [:model/Card {gp-id :id} {:dataset_query (lib/query mp products)}
+                       :model/Card {p-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp gp-id))}
+                       :model/Card {c-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp p-id))}
+                       :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
+                                            :to_entity_type :card :to_entity_id gp-id}
+                       :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
+                                            :to_entity_type :card :to_entity_id p-id}]
+          (let [analyzed (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100))]
+            (is (= [p-id c-id] (filter #{gp-id p-id c-id} (sort analyzed))))
+            (is (= (count analyzed) (count (distinct analyzed)))))
+          (testing "and not again while nothing changed"
+            (is (empty? (filter #{gp-id p-id c-id}
+                                (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100)))))))))))
 
 (deftest ^:synchronized check-entities-re-analyzes-a-changed-subtree-test
   (testing "after an entity changes, the analysis finding job re-analyzes it and its whole transitive subtree"
@@ -199,18 +197,17 @@
           products (lib.metadata/table mp (mt/id :products))]
       (mt/test-helpers-set-global-values!
         (mt/with-premium-features #{:dependencies}
-          (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingStatus]
-            (mt/with-temp [:model/Card {gp-id :id} {:dataset_query (lib/query mp products)}
-                           :model/Card {p-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp gp-id))}
-                           :model/Card {c-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp p-id))}
-                           :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
-                                                :to_entity_type :card :to_entity_id gp-id}
-                           :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
-                                                :to_entity_type :card :to_entity_id p-id}]
-              (#'task.analysis-finding/check-entities!)
-              (t2/update! :model/Card gp-id {:name "Renamed"})
-              (is (= #{gp-id p-id c-id}
-                     (set (filter #{gp-id p-id c-id} (analyzed-ids! #(#'task.analysis-finding/check-entities!)))))))))))))
+          (mt/with-temp [:model/Card {gp-id :id} {:dataset_query (lib/query mp products)}
+                         :model/Card {p-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp gp-id))}
+                         :model/Card {c-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp p-id))}
+                         :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
+                                              :to_entity_type :card :to_entity_id gp-id}
+                         :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
+                                              :to_entity_type :card :to_entity_id p-id}]
+            (#'task.analysis-finding/check-entities!)
+            (t2/update! :model/Card gp-id {:name "Renamed"})
+            (is (= #{gp-id p-id c-id}
+                   (set (filter #{gp-id p-id c-id} (analyzed-ids! #(#'task.analysis-finding/check-entities!))))))))))))
 
 (deftest ^:synchronized transitive-analysis-through-non-analyzable-entity-test
   (testing "the dependents of a changed entity are reached beyond non-analyzable intermediaries (e.g., tables)"
@@ -218,19 +215,18 @@
           products    (lib.metadata/table mp (mt/id :products))
           products-id (mt/id :products)]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingStatus]
-          ;; Chain: card → (depends on) table → (depends on) transform.
-          (mt/with-temp [:model/Transform {transform-id :id}
-                         {:source {:type :query :query (lib/query mp products)}
-                          :name "test_transitive_transform"
-                          :target {:schema "public" :name "transitive_test_table" :type :table}}
-                         :model/Card {card-id :id} {:dataset_query (lib/query mp products)}
-                         :model/Dependency _ {:from_entity_type :table :from_entity_id products-id
-                                              :to_entity_type :transform :to_entity_id transform-id}
-                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
-                                              :to_entity_type :table :to_entity_id products-id}]
-            (deps.test/record-current-version! :model/AnalysisFindingStatus :table products-id)
-            (is (some #{card-id} (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100))))))))))
+        ;; Chain: card → (depends on) table → (depends on) transform.
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:source {:type :query :query (lib/query mp products)}
+                        :name "test_transitive_transform"
+                        :target {:schema "public" :name "transitive_test_table" :type :table}}
+                       :model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                       :model/Dependency _ {:from_entity_type :table :from_entity_id products-id
+                                            :to_entity_type :transform :to_entity_id transform-id}
+                       :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
+                                            :to_entity_type :table :to_entity_id products-id}]
+          (deps.test/record-current-version! :model/AnalysisFindingStatus :table products-id)
+          (is (some #{card-id} (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100)))))))))
 
 (deftest ^:synchronized cyclic-dependency-drain-terminates-test
   (testing "check-entities! terminates on a cyclic dependency graph"
@@ -238,23 +234,22 @@
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingStatus]
-          (mt/with-temp [:model/Card {a-id :id} {:dataset_query (lib/query mp products)}
-                         :model/Card {b-id :id} {:dataset_query (lib/query mp products)}
-                         ;; cycle: a depends on b, and b depends on a
-                         :model/Dependency _ {:from_entity_type :card :from_entity_id a-id
-                                              :to_entity_type :card :to_entity_id b-id}
-                         :model/Dependency _ {:from_entity_type :card :from_entity_id b-id
-                                              :to_entity_type :card :to_entity_id a-id}]
-            (let [done (future (#'task.analysis-finding/check-entities!))]
-              (is (not= ::timeout (deref done 30000 ::timeout))
-                  "check-entities! must terminate on a cyclic graph")
-              (is (false? @done) "and leave nothing to do"))))))))
+        (mt/with-temp [:model/Card {a-id :id} {:dataset_query (lib/query mp products)}
+                       :model/Card {b-id :id} {:dataset_query (lib/query mp products)}
+                       ;; cycle: a depends on b, and b depends on a
+                       :model/Dependency _ {:from_entity_type :card :from_entity_id a-id
+                                            :to_entity_type :card :to_entity_id b-id}
+                       :model/Dependency _ {:from_entity_type :card :from_entity_id b-id
+                                            :to_entity_type :card :to_entity_id a-id}]
+          (let [done (future (#'task.analysis-finding/check-entities!))]
+            (is (not= ::timeout (deref done 30000 ::timeout))
+                "check-entities! must terminate on a cyclic graph")
+            (is (false? @done) "and leave nothing to do")))))))
 
 (deftest ^:synchronized python-transform-records-clean-finding-test
   (testing "GHY-3584: a Python transform has no query, so upsert-analysis! resolves its database from source_database_id and records a clean finding"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+      (mt/with-model-cleanup [:model/AnalysisFindingError]
         (mt/with-temp [:model/Transform {transform-id :id} {:source {:type            :python
                                                                      :source-database (mt/id)
                                                                      :source-tables   []
@@ -268,7 +263,7 @@
 (deftest ^:synchronized unanalyzable-entity-records-error-test
   (testing "an entity whose database can't be resolved records an error finding instead of no-oping forever"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+      (mt/with-model-cleanup [:model/AnalysisFindingError]
         (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT 1"})
                                          :database_id   (mt/id)}]
           (let [cid (:id card)]
@@ -284,7 +279,7 @@
 (deftest ^:synchronized unanalyzable-entity-rechecks-when-database-resolvable-again-test
   (testing "after a no-database error, the entity is analyzed normally once its database resolves again"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+      (mt/with-model-cleanup [:model/AnalysisFindingError]
         (let [mp       (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))]
           (mt/with-temp [:model/Card card {:dataset_query (lib/query mp products)}]

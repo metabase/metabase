@@ -22,11 +22,9 @@
   (mt/test-helpers-set-global-values!
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingStatus :model/DependencyStatus
-                                :model/ResultMetadataStatus]
-          (lib-be/with-metadata-provider-cache
-            (let [mp (mt/metadata-provider)]
-              (thunk mp))))))))
+        (lib-be/with-metadata-provider-cache
+          (let [mp (mt/metadata-provider)]
+            (thunk mp)))))))
 
 (defn- dependencies-pending?
   "Whether the dependencies of the entity `entity-type` `entity-id` were not computed from its current version."

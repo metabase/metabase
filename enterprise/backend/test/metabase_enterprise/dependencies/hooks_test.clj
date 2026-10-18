@@ -27,7 +27,7 @@
   [entity-type entity-id]
   (boolean (some #(= entity-id (:id %))
                  (dependencies.db/entities-for-dependency-calculation
-                  entity-type 100000 models.dependency/current-dependency-analysis-version))))
+                  entity-type 100000 models.dependency/current-dependency-analysis-version true))))
 
 (defn- computed!
   "Record that the dependencies of the entity `entity-type` `entity-id` were computed from its current version."
@@ -65,79 +65,76 @@
 (deftest card-version-test
   (testing "any update of a card changes its version"
     (mt/test-helpers-set-global-values!
-      (mt/with-model-cleanup [:model/DependencyStatus]
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
-          (computed! :card card-id)
-          (is (not (pending? :card card-id)))
-          (t2/update! :model/Card card-id {:name "Renamed"})
-          (is (pending? :card card-id)))))))
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
+        (computed! :card card-id)
+        (is (not (pending? :card card-id)))
+        (t2/update! :model/Card card-id {:name "Renamed"})
+        (is (pending? :card card-id))))))
 
 (deftest dashboard-version-test
   (testing "inserting, updating and deleting a dashboard card, a series or a tab changes the dashboard's version"
     (mt/test-helpers-set-global-values!
-      (mt/with-model-cleanup [:model/DependencyStatus]
-        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                       :model/Card      {card-id :id}      {:dataset_query (table-query :products)}
-                       :model/Card      {other-id :id}     {:dataset_query (table-query :orders)}]
-          (let [changes? (fn [write!]
-                           (computed! :dashboard dashboard-id)
-                           (write!)
-                           (pending? :dashboard dashboard-id))
-                dashcard (atom nil)]
-            (testing "inserting a dashboard card"
-              (is (changes? #(reset! dashcard (t2/insert-returning-pk! :model/DashboardCard
-                                                                       {:dashboard_id dashboard-id :card_id card-id
-                                                                        :row 0 :col 0 :size_x 4 :size_y 4})))))
-            (testing "pointing a dashboard card at another card"
-              (is (changes? #(t2/update! :model/DashboardCard @dashcard {:card_id other-id}))))
-            (testing "adding a series"
-              (is (changes? #(t2/insert! :model/DashboardCardSeries {:dashboardcard_id @dashcard :card_id card-id
-                                                                     :position 0}))))
-            (testing "removing a series"
-              (is (changes? #(t2/delete! :model/DashboardCardSeries :dashboardcard_id @dashcard))))
-            (testing "adding and removing a tab"
-              (let [tab-id (atom nil)]
-                (is (changes? #(reset! tab-id (t2/insert-returning-pk! :model/DashboardTab
-                                                                       {:dashboard_id dashboard-id :name "Tab"
-                                                                        :position 0}))))
-                (is (changes? #(t2/delete! :model/DashboardTab :id @tab-id)))))
-            (testing "removing a dashboard card"
-              (is (changes? #(t2/delete! :model/DashboardCard :id @dashcard))))
-            (testing "nothing else"
-              (computed! :dashboard dashboard-id)
-              (is (not (pending? :dashboard dashboard-id))))))))))
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                     :model/Card      {card-id :id}      {:dataset_query (table-query :products)}
+                     :model/Card      {other-id :id}     {:dataset_query (table-query :orders)}]
+        (let [changes? (fn [write!]
+                         (computed! :dashboard dashboard-id)
+                         (write!)
+                         (pending? :dashboard dashboard-id))
+              dashcard (atom nil)]
+          (testing "inserting a dashboard card"
+            (is (changes? #(reset! dashcard (t2/insert-returning-pk! :model/DashboardCard
+                                                                     {:dashboard_id dashboard-id :card_id card-id
+                                                                      :row 0 :col 0 :size_x 4 :size_y 4})))))
+          (testing "pointing a dashboard card at another card"
+            (is (changes? #(t2/update! :model/DashboardCard @dashcard {:card_id other-id}))))
+          (testing "adding a series"
+            (is (changes? #(t2/insert! :model/DashboardCardSeries {:dashboardcard_id @dashcard :card_id card-id
+                                                                   :position 0}))))
+          (testing "removing a series"
+            (is (changes? #(t2/delete! :model/DashboardCardSeries :dashboardcard_id @dashcard))))
+          (testing "adding and removing a tab"
+            (let [tab-id (atom nil)]
+              (is (changes? #(reset! tab-id (t2/insert-returning-pk! :model/DashboardTab
+                                                                     {:dashboard_id dashboard-id :name "Tab"
+                                                                      :position 0}))))
+              (is (changes? #(t2/delete! :model/DashboardTab :id @tab-id)))))
+          (testing "removing a dashboard card"
+            (is (changes? #(t2/delete! :model/DashboardCard :id @dashcard))))
+          (testing "nothing else"
+            (computed! :dashboard dashboard-id)
+            (is (not (pending? :dashboard dashboard-id)))))))))
 
 (deftest table-version-test
   (testing "a write of a table, of one of its fields, field user settings or dimensions, changes its version"
     (mt/test-helpers-set-global-values!
       (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/ResultMetadataStatus]
-          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
-            (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
-                                           :to_entity_type   :table :to_entity_id (mt/id :venues)})
-            (let [table-id (mt/id :venues)
-                  field-id (mt/id :venues :price)
-                  changes? (fn [write!]
-                             (doseq [{:keys [entity_id status_id status_updated_at version_updated_at version_count]}
-                                     (dependencies.db/entities-with-changed-version :model/ResultMetadataStatus
-                                                                                    :table 100000)
-                                     :when (= table-id entity_id)]
-                               (dependencies.db/record-status-version! :model/ResultMetadataStatus :table table-id
-                                                                       status_id status_updated_at
-                                                                       version_updated_at version_count))
-                             (write!)
-                             (deps.test/result-metadata-pending? :table table-id))]
-              (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
-                (is (changes? #(t2/update! :model/Table table-id {:display_name "Places"}))))
-              (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}
-                (is (changes? #(t2/update! :model/Field field-id {:display_name "Cost"}))))
-              (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :display_name "Cost"}]
-                (is (changes? (fn [] (t2/update! :model/FieldUserSettings :field_id field-id {:display_name "Price"})))))
-              (let [dimension-id (atom nil)]
-                (is (changes? #(reset! dimension-id (t2/insert-returning-pk! :model/Dimension
-                                                                             {:field_id field-id :name "Price"
-                                                                              :type :internal}))))
-                (is (changes? #(t2/delete! :model/Dimension :id @dimension-id)))))))))))
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+          (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
+                                         :to_entity_type   :table :to_entity_id (mt/id :venues)})
+          (let [table-id (mt/id :venues)
+                field-id (mt/id :venues :price)
+                changes? (fn [write!]
+                           (doseq [{:keys [entity_id status_id status_updated_at version_updated_at version_count]}
+                                   (dependencies.db/entities-with-changed-version :model/ResultMetadataStatus
+                                                                                  :table 100000)
+                                   :when (= table-id entity_id)]
+                             (dependencies.db/record-status-version! :model/ResultMetadataStatus :table table-id
+                                                                     status_id status_updated_at
+                                                                     version_updated_at version_count))
+                           (write!)
+                           (deps.test/result-metadata-pending? :table table-id))]
+            (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
+              (is (changes? #(t2/update! :model/Table table-id {:display_name "Places"}))))
+            (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}
+              (is (changes? #(t2/update! :model/Field field-id {:display_name "Cost"}))))
+            (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :display_name "Cost"}]
+              (is (changes? (fn [] (t2/update! :model/FieldUserSettings :field_id field-id {:display_name "Price"})))))
+            (let [dimension-id (atom nil)]
+              (is (changes? #(reset! dimension-id (t2/insert-returning-pk! :model/Dimension
+                                                                           {:field_id field-id :name "Price"
+                                                                            :type :internal}))))
+              (is (changes? #(t2/delete! :model/Dimension :id @dimension-id))))))))))
 
 (deftest entity-delete-test
   (testing "the dependency job drops the dependencies and status of a deleted entity"
@@ -154,7 +151,7 @@
 (deftest concurrent-saves-of-dependent-cards-commit-test
   (testing "saving a card and then its dependent in one transaction, while another request saves the dependent, commits both"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+      (mt/with-model-cleanup [:model/Card]
         (let [insert-card! (fn [query]
                              (t2/insert-returning-pk! :model/Card {:name                   (mt/random-name)
                                                                    :display                :table

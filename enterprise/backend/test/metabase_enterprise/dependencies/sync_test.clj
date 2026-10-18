@@ -29,36 +29,34 @@
 (defn- with-syncable-db! [thunk]
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/Dependency :model/AnalysisFinding :model/AnalysisFindingStatus
-                              :model/ResultMetadataStatus]
-        (one-off-dbs/with-blank-db
-          (doseq [statement ["CREATE TABLE \"test_table\" (\"id\" INTEGER PRIMARY KEY, \"filter_col\" VARCHAR);"
-                             "INSERT INTO \"test_table\" (\"id\", \"filter_col\") VALUES (1, 'value1'), (2, 'value2');"]]
-            (jdbc/execute! one-off-dbs/*conn* [statement]))
-          (sync/sync-database! (mt/db))
-          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_table")
-                filter-field-id (t2/select-one-fn :id :model/Field :table_id table-id :name "filter_col")
-                mp              (lib-be/application-database-metadata-provider (mt/id))
-                query           (-> (lib/query mp (lib.metadata/table mp table-id))
-                                    (lib/filter (lib/= (lib.metadata/field mp filter-field-id) "value1")))]
-            (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
-                                                      :database_id   (mt/id)}]
-              (t2/insert! :model/Dependency {:from_entity_type :card
-                                             :from_entity_id   card-id
-                                             :to_entity_type   :table
-                                             :to_entity_id     table-id})
-              ;; NOTE: The metadata provider caches must be small here - if the cache spans a sync it will see
-              ;; old values after the sync!
-              (lib-be/with-metadata-provider-cache
-                (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Card card-id)))
-              (testing "Initial analysis succeeds"
-                (is (true? (t2/select-one-fn :result :model/AnalysisFinding
-                                             :analyzed_entity_type :card :analyzed_entity_id card-id)))
-                (is (empty? (deps.analysis-finding-error/errors-for-entity :card card-id))))
-              (record-table-versions! table-id)
-              (thunk {:card-id         card-id
-                      :table-id        table-id
-                      :filter-field-id filter-field-id}))))))))
+      (one-off-dbs/with-blank-db
+        (doseq [statement ["CREATE TABLE \"test_table\" (\"id\" INTEGER PRIMARY KEY, \"filter_col\" VARCHAR);"
+                           "INSERT INTO \"test_table\" (\"id\", \"filter_col\") VALUES (1, 'value1'), (2, 'value2');"]]
+          (jdbc/execute! one-off-dbs/*conn* [statement]))
+        (sync/sync-database! (mt/db))
+        (let [table-id        (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_table")
+              filter-field-id (t2/select-one-fn :id :model/Field :table_id table-id :name "filter_col")
+              mp              (lib-be/application-database-metadata-provider (mt/id))
+              query           (-> (lib/query mp (lib.metadata/table mp table-id))
+                                  (lib/filter (lib/= (lib.metadata/field mp filter-field-id) "value1")))]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
+                                                    :database_id   (mt/id)}]
+            (t2/insert! :model/Dependency {:from_entity_type :card
+                                           :from_entity_id   card-id
+                                           :to_entity_type   :table
+                                           :to_entity_id     table-id})
+            ;; NOTE: The metadata provider caches must be small here - if the cache spans a sync it will see
+            ;; old values after the sync!
+            (lib-be/with-metadata-provider-cache
+              (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Card card-id)))
+            (testing "Initial analysis succeeds"
+              (is (true? (t2/select-one-fn :result :model/AnalysisFinding
+                                           :analyzed_entity_type :card :analyzed_entity_id card-id)))
+              (is (empty? (deps.analysis-finding-error/errors-for-entity :card card-id))))
+            (record-table-versions! table-id)
+            (thunk {:card-id         card-id
+                    :table-id        table-id
+                    :filter-field-id filter-field-id})))))))
 
 (deftest ^:synchronized sync-removed-column-triggers-reanalysis-test
   (testing "when sync deactivates a column, the cards on its table are re-analyzed and show the missing column"

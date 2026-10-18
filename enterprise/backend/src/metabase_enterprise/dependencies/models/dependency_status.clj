@@ -56,7 +56,7 @@
   analyses."
   [entity-type batch-size]
   (let [rows      (dependencies.db/entities-for-dependency-calculation
-                   entity-type batch-size models.dependency/current-dependency-analysis-version)
+                   entity-type batch-size models.dependency/current-dependency-analysis-version true)
         instances (when (seq rows)
                     (m/index-by :id (dependencies.db/instances entity-type (into #{} (map :id) rows))))]
     (into []
@@ -66,12 +66,13 @@
           rows)))
 
 (defn has-pending-entities?
-  "Returns true if there are any entities needing dependency calculation, or deleted entities whose status the
-  dependency job has yet to clean up. Defined in terms of [[instances-for-dependency-calculation]] so it stays consistent with what
-  the dependency job processes."
+  "Returns true if there are any entities whose dependencies were not computed from their current version by the
+  current analysis, or deleted entities whose status the dependency job has yet to clean up. The recheck of entities
+  naming tables that match nothing, which any table write starts, doesn't count."
   []
   (boolean
    (some (fn [entity-type]
-           (or (seq (instances-for-dependency-calculation entity-type 1))
+           (or (seq (dependencies.db/entities-for-dependency-calculation
+                     entity-type 1 models.dependency/current-dependency-analysis-version false))
                (seq (dependencies.db/deleted-entity-ids entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))

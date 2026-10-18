@@ -68,8 +68,7 @@
   [& body]
   `(mt/test-helpers-set-global-values!
      (mt/with-premium-features #{:dependencies}
-       (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding
-                               :model/AnalysisFindingStatus :model/ResultMetadataStatus]
+       (do
          ~@body))))
 
 (defn- reprocess!
@@ -363,25 +362,24 @@
 
 (deftest record-version-guard-test
   (testing "a version is not recorded over a status cleared meanwhile, nor over one created meanwhile"
-    (mt/with-model-cleanup [:model/ResultMetadataStatus]
-      (let [card-id Integer/MAX_VALUE
-            version (t/offset-date-time)
-            status  #(t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id card-id)]
+    (let [card-id Integer/MAX_VALUE
+          version (t/offset-date-time)
+          status  #(t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id card-id)]
+      (dependencies.db/clear-status-version! :model/ResultMetadataStatus :card card-id)
+      (let [{:keys [id updated_at]} (status)]
+        (Thread/sleep 5)
         (dependencies.db/clear-status-version! :model/ResultMetadataStatus :card card-id)
-        (let [{:keys [id updated_at]} (status)]
-          (Thread/sleep 5)
-          (dependencies.db/clear-status-version! :model/ResultMetadataStatus :card card-id)
-          (is (zero? (dependencies.db/record-status-version! :model/ResultMetadataStatus :card card-id
-                                                             id updated_at version 0)))
-          (is (nil? (:seen_updated_at (status)))))
-        (let [{:keys [id updated_at]} (status)]
-          (is (= 1 (dependencies.db/record-status-version! :model/ResultMetadataStatus :card card-id
+        (is (zero? (dependencies.db/record-status-version! :model/ResultMetadataStatus :card card-id
                                                            id updated_at version 0)))
-          (is (some? (:seen_updated_at (status)))))
-        (testing "a status created by another writer is kept"
-          (dependencies.db/clear-status-version! :model/ResultMetadataStatus :card card-id)
-          (dependencies.db/record-status-version! :model/ResultMetadataStatus :card card-id nil nil version 0)
-          (is (nil? (:seen_updated_at (status)))))))))
+        (is (nil? (:seen_updated_at (status)))))
+      (let [{:keys [id updated_at]} (status)]
+        (is (= 1 (dependencies.db/record-status-version! :model/ResultMetadataStatus :card card-id
+                                                         id updated_at version 0)))
+        (is (some? (:seen_updated_at (status)))))
+      (testing "a status created by another writer is kept"
+        (dependencies.db/clear-status-version! :model/ResultMetadataStatus :card card-id)
+        (dependencies.db/record-status-version! :model/ResultMetadataStatus :card card-id nil nil version 0)
+        (is (nil? (:seen_updated_at (status))))))))
 
 (deftest sandboxed-creator-ignored-test
   (testing "a card is re-derived as no user, like a save through the Card model, whatever its creator's sandbox hides"

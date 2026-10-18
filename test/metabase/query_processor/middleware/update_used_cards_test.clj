@@ -36,9 +36,12 @@
   (t2/select-one-fn :updated_at :model/Card card-id))
 
 (defn do-test!
-  "Check if `last_used_at` of `card-id` is nil, then execute `f`, then check that `last_used_at` is non nil."
+  "Run `thunk` once, so a first run's result metadata is stored, then set `last_used_at` of `card-id` back, run it
+  again, and check that `last_used_at` moved and `updated_at` didn't."
   [card-id thunk]
   (assert (fn? thunk))
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (thunk))
   (t2/update! (t2/table-name :model/Card) card-id {:last_used_at #t "2025-05-16T12:40:00-07:00"
                                                    :updated_at   #t "2025-05-16T12:40:00-07:00"})
   (let [original-last-used-at (card-last-used-at card-id)

@@ -845,12 +845,13 @@
                                                               [:id                 ms/PositiveInt]
                                                               [:version_updated_at ms/TemporalInstant]
                                                               [:version_count      :int]]]
-  "The IDs and versions of up to `batch-size` entities of the type `entity-type` without a DependencyStatus, whose
-  status records a version other than theirs or an analysis below `current-version`, or that name tables matching
-  nothing while a table changed since; outdated ones last."
-  [entity-type     :- ::deps.dependency-types/dependency-types
-   batch-size      :- ms/PositiveInt
-   current-version :- ms/PositiveInt]
+  "The IDs and versions of up to `batch-size` entities of the type `entity-type` without a DependencyStatus, or whose
+  status records a version other than theirs or an analysis below `current-version`, and with `recheck-unresolved?`
+  also those that name tables matching nothing while a table changed since; outdated ones last."
+  [entity-type         :- ::deps.dependency-types/dependency-types
+   batch-size          :- ms/PositiveInt
+   current-version     :- ms/PositiveInt
+   recheck-unresolved? :- :boolean]
   (let [model          (deps.dependency-types/dependency-type->model entity-type)
         table-name     (t2/table-name model)
         id-field       (keyword (name table-name) "id")
@@ -864,15 +865,17 @@
                      :left-join [:dependency_status [:and
                                                      [:= :dependency_status.entity_id id-field]
                                                      [:= :dependency_status.entity_type (name entity-type)]]]
-                     :where     [:or
-                                 [:= :dependency_status.id nil]
-                                 changed
-                                 [:< :dependency_status.dependency_analysis_version current-version]
-                                 [:and
-                                  [:= :dependency_status.unresolved_tables true]
-                                  [:< :dependency_status.updated_at
-                                   ^:allow-subquery {:select [[[:max :updated_at]]]
-                                                     :from   [(warehouse-schema-overlay/table-query {:user-settings? false})]}]]]
+                     :where     (cond-> [:or
+                                         [:= :dependency_status.id nil]
+                                         changed
+                                         [:< :dependency_status.dependency_analysis_version current-version]]
+                                  recheck-unresolved?
+                                  (conj [:and
+                                         [:= :dependency_status.unresolved_tables true]
+                                         [:< :dependency_status.updated_at
+                                          ^:allow-subquery {:select [[[:max :updated_at]]]
+                                                            :from   [(warehouse-schema-overlay/table-query
+                                                                      {:user-settings? false})]}]]))
                      :order-by  [[[:case [:< :dependency_status.dependency_analysis_version current-version] [:inline 1]
                                    :else [:inline 0]]]]
                      :limit     batch-size}))))
