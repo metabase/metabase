@@ -96,13 +96,13 @@
 
 (defn- store-result-metadata!
   "Store the re-derived result metadata `metadata` of `card`, updating the parameters taking values from the columns it
-  drops first, as a save of the card does, unless the card's `updated_at` and stored result metadata are no longer
-  `stored`, returning whether it stored it. Storing it moves the card's `updated_at`, so its own dependents follow."
-  [{:keys [id] :as card} stored metadata]
+  drops first, as a save of the card does, unless the card's `updated_at` changed since it was read, returning whether
+  it stored it."
+  [{:keys [id updated_at] :as card} metadata]
   (try
     (t2/with-transaction [_]
       (queries/update-parameters-using-card-result-metadata! card metadata)
-      (when (zero? (dependencies.db/set-unchanged-card-result-metadata! id stored metadata))
+      (when (zero? (dependencies.db/update-unchanged-card-result-metadata! id updated_at metadata))
         (throw (ex-info "The card changed since it was read" {::conflict true})))
       true)
     (catch clojure.lang.ExceptionInfo e
@@ -114,14 +114,13 @@
   "Re-derive and store the result metadata of the Card with `card-id` when it is an MBQL card, returning `:changed`,
   `:unchanged`, or `:conflict` without storing it when the card changed since it was read."
   [card-id]
-  (let [stored   (dependencies.db/card-stored-result-metadata card-id)
-        card     (dependencies.db/card card-id)
-        metadata (when (and stored card (not= :native (:query_type card)) (seq (:dataset_query card)))
+  (let [card     (dependencies.db/card card-id)
+        metadata (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
                    (rederived-result-metadata card))]
     (cond
-      (nil? metadata)                               :unchanged
-      (store-result-metadata! card stored metadata) :changed
-      :else                                         :conflict)))
+      (nil? metadata)                         :unchanged
+      (store-result-metadata! card metadata) :changed
+      :else                                   :conflict)))
 
 (def ^:private conflict-attempts
   "How many times a card that keeps changing while it is re-derived is re-derived before it counts as failed."

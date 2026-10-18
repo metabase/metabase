@@ -221,8 +221,6 @@
    :variance-minutes deps.settings/dependency-backfill-variance-minutes
    :run-batch!       #'run-batch!})
 
-(task.util/register-job! job)
-
 (defn trigger-dependency-job!
   "Trigger the UpdateDependencies job, unless MB_DEPENDENCY_BACKFILL_BATCH_SIZE=0 disables it."
   []

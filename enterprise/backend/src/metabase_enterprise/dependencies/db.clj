@@ -649,9 +649,7 @@
 (mu/defn touch-transforms-of-source-database!
   "Move the `updated_at` of the Transforms reading from the Database with `db-id`, returning the number updated."
   [db-id :- ::lib.schema.id/database]
-  (t2/query-one {:update (t2/table-name :model/Transform)
-                 :set    {:updated_at (mi/now)}
-                 :where  [:= :source_database_id db-id]}))
+  (t2/update! :model/Transform :source_database_id db-id {:updated_at (mi/now)}))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -939,17 +937,13 @@
   [status-model :- DependentsStatusModel
    nodes        :- [:sequential [:tuple EntityType ms/PositiveInt]]
    since        :- ms/TemporalInstant]
-  (if (seq nodes)
-    (t2/query-one {:update (t2/table-name status-model)
-                   :set    {:seen_updated_at nil :seen_count nil :updated_at (mi/now)}
-                   :where  [:and
-                            [:>= :updated_at since]
-                            (into [:or]
-                                  (for [[entity-type typed-nodes] (group-by first nodes)]
-                                    [:and
-                                     [:= :entity_type (name entity-type)]
-                                     [:in :entity_id (mapv second typed-nodes)]]))]})
-    0))
+  (reduce + 0
+          (for [[entity-type typed-nodes] (group-by first nodes)]
+            (t2/update! status-model
+                        :entity_type entity-type
+                        :entity_id   [:in (mapv second typed-nodes)]
+                        :updated_at  [:>= since]
+                        {:seen_updated_at nil :seen_count nil :updated_at (mi/now)}))))
 
 (mu/defn record-status-version!
   "Record that the dependents of `entity-type` `entity-id` were processed from its version `seen-updated-at`
@@ -1001,28 +995,13 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pks-set [:model/Card :id] :id [:in card-ids] :query_type :native))
 
-(mu/defn card-stored-result-metadata
-  "The `updated_at` and the stored, unparsed `result_metadata` of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/query-one {:select [:updated_at :result_metadata]
-                 :from   [(t2/table-name :model/Card)]
-                 :where  [:= :id card-id]}))
-
-(mu/defn set-unchanged-card-result-metadata!
-  "Set the result metadata of the Card with `card-id` without running the Card model's hooks, unless its `updated_at`
-  and stored `result_metadata` are no longer `stored`, returning the number updated."
+(mu/defn update-unchanged-card-result-metadata!
+  "Set the result metadata of the Card with `card-id` to `result-metadata` unless its `updated_at` is no longer
+  `updated-at`, returning the number updated."
   [card-id         :- ::lib.schema.id/card
-   stored          :- [:map {:closed true}
-                       [:updated_at      ms/TemporalInstant]
-                       [:result_metadata [:maybe :string]]]
+   updated-at      :- ms/TemporalInstant
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/query-one {:update (t2/table-name :model/Card)
-                 :set    {:result_metadata ((:in mi/transform-result-metadata) result-metadata)
-                          :updated_at      (mi/now)}
-                 :where  [:and
-                          [:= :id card-id]
-                          [:= :updated_at (:updated_at stored)]
-                          [:= :result_metadata (:result_metadata stored)]]}))
+  (t2/update! :model/Card :id card-id :updated_at updated-at {:result_metadata result-metadata}))
 
 ;;; ------------------------------------------------ Analysis findings ------------------------------------------------
 

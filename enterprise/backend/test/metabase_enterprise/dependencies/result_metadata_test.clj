@@ -5,9 +5,9 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
-   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.test :as met]
+   [metabase.batch-processing.core :as grouper]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.core :as queries]
@@ -361,16 +361,21 @@
         (run-jobs!)
         (is (nil? (#'task.result-metadata/run-batch!)))))))
 
-(deftest storing-a-card-triggers-every-job-test
-  (testing "a run that re-derives cards triggers every job, since its stores move updated_at without any hook"
+(deftest storing-a-card-triggers-the-jobs-test
+  (testing "the job stores a re-derived card through the Card model, so its hooks trigger the jobs and it moves updated_at"
     (with-clean-statuses
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
-                     :model/Card _               {:dataset_query (card-query source-id)}]
+                     :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (deps.test/synchronously-run-dependency-job!)
-        (let [triggered (atom #{})]
-          (mt/with-dynamic-fn-redefs [task.util/trigger-run! (fn [job] (swap! triggered conj (:job-name job)))]
-            (#'task.result-metadata/run-batch!))
-          (is (contains? @triggered "Update Dependencies")))))))
+        (let [submitted (atom [])
+              before    (t2/select-one-fn :updated_at :model/Card :id card-id)]
+          (t2/update! :model/Card source-id {:dataset_query (add-grand-total (table-query :orders))})
+          (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
+            (mt/with-premium-features #{:dependencies}
+              (deps.result-metadata/update-result-metadata! 1000)))
+          (is (some? (column card-id "Grand total")))
+          (is (not= before (t2/select-one-fn :updated_at :model/Card :id card-id)))
+          (is (seq @submitted)))))))
 
 (deftest record-version-guard-test
   (testing "a version is not recorded over a status cleared meanwhile, nor over one created meanwhile"
@@ -494,9 +499,9 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (reprocess! :table (mt/id :orders))
-        (let [store  (mt/original-fn #'dependencies.db/set-unchanged-card-result-metadata!)
+        (let [store  (mt/original-fn #'dependencies.db/update-unchanged-card-result-metadata!)
               marked (atom nil)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/set-unchanged-card-result-metadata!
+          (mt/with-dynamic-fn-redefs [dependencies.db/update-unchanged-card-result-metadata!
                                       (fn [& args]
                                         (reset! marked (deref (future (t2/update! :model/ResultMetadataStatus
                                                                                   :entity_type :table
