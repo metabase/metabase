@@ -23,5 +23,6 @@
   ;; code more generic right now - so it's carried over as data rather than implied.
   {:copy      [:position]
    :skip      []
-   :transform {:dashboardcard_id (serdes/parent-ref)
+   :transform {:created_at       (serdes/date)
+               :dashboardcard_id (serdes/parent-ref)
                :card_id          (serdes/fk :model/Card)}})

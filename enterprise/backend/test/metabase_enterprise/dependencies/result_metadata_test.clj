@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
@@ -359,6 +360,17 @@
         (is (= 1 (#'task.result-metadata/run-batch!)))
         (run-jobs!)
         (is (nil? (#'task.result-metadata/run-batch!)))))))
+
+(deftest storing-a-card-triggers-every-job-test
+  (testing "a run that re-derives cards triggers every job, since its stores move updated_at without any hook"
+    (with-clean-statuses
+      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
+                     :model/Card _               {:dataset_query (card-query source-id)}]
+        (deps.test/synchronously-run-dependency-job!)
+        (let [triggered (atom #{})]
+          (mt/with-dynamic-fn-redefs [task.util/trigger-run! (fn [job] (swap! triggered conj (:job-name job)))]
+            (#'task.result-metadata/run-batch!))
+          (is (contains? @triggered "Update Dependencies")))))))
 
 (deftest record-version-guard-test
   (testing "a version is not recorded over a status cleared meanwhile, nor over one created meanwhile"

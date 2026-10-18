@@ -70,6 +70,8 @@
    :variance-minutes deps.settings/dependency-entity-check-variance-minutes
    :run-batch!       #'run-batch!})
 
+(task.util/register-job! job)
+
 (defmethod task/init! ::UpdateAnalysisFindings [_]
   (task.util/init-job! job))
 

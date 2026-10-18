@@ -4,7 +4,6 @@
   (:require
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.settings :as deps.settings]
-   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -16,15 +15,15 @@
 (declare ^:private job)
 
 (defn- run-batch!
-  "Process a batch of changed entities, having the analysis finding job see the cards it re-derived, returning when to
-  run again: right away when it took any, since a card it stored is changed in turn, or nil."
+  "Process a batch of changed entities, having every job see the cards it re-derived, whose stores fire no hooks,
+  returning when to run again: right away when it took any, since a card it stored is changed in turn, or nil."
   []
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-result-metadata-batch-size)
           taken      (if (pos? batch-size) (deps.result-metadata/update-result-metadata! batch-size) 0)]
       (when (pos? taken)
         (log/info "Took" taken "entities for result metadata.")
-        (task.analysis-finding/trigger-analysis-finding-job!))
+        (task.util/trigger-all-jobs!))
       (when (pos? taken)
         1))))
 
@@ -45,6 +44,8 @@
    :delay-minutes    deps.settings/dependency-result-metadata-delay-minutes
    :variance-minutes deps.settings/dependency-result-metadata-variance-minutes
    :run-batch!       #'run-batch!})
+
+(task.util/register-job! job)
 
 (defn trigger-result-metadata-job!
   "Trigger the UpdateResultMetadata job, unless MB_DEPENDENCY_RESULT_METADATA_BATCH_SIZE=0 disables it."

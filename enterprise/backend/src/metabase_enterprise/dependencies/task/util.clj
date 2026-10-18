@@ -85,6 +85,20 @@
   (when (pos? (batch-size))
     (schedule-run! (task/scheduler) job 1)))
 
+(defonce ^:private registered-jobs
+  (atom {}))
+
+(defn register-job!
+  "Register `job`, so that [[trigger-all-jobs!]] triggers it."
+  [{:keys [job-key] :as job}]
+  (swap! registered-jobs assoc job-key job)
+  nil)
+
+(defn trigger-all-jobs!
+  "Trigger every registered job, for a run whose writes may have changed what any of them processes."
+  []
+  (run! trigger-run! (vals @registered-jobs)))
+
 (defn init-job!
   "Schedule the first run of `job` after startup, at a random time within its variance."
   [{:keys [batch-size variance-minutes job-name] :as job}]
