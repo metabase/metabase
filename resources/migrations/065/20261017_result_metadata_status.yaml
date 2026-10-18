@@ -31,11 +31,11 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: seen_updated_at
+                  name: analyzed_updated_at
                   type: ${timestamp_type}
                   remarks: The latest updated_at of the entity and the rows it is made of when its dependents were re-derived, or null to re-derive them again
               - column:
-                  name: seen_count
+                  name: analyzed_count
                   type: int
                   remarks: The number of rows the entity is made of when its dependents were re-derived
               - column:

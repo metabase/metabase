@@ -99,36 +99,36 @@ databaseChangeLog:
   - changeSet:
       id: v65.3xftdb
       author: ranquild
-      comment: Add dependency_status.seen_updated_at
+      comment: Add dependency_status.analyzed_updated_at
       changes:
         - addColumn:
             tableName: dependency_status
             columns:
               - column:
-                  name: seen_updated_at
+                  name: analyzed_updated_at
                   type: ${timestamp_type}
                   remarks: The latest updated_at of the entity and the rows it is made of when its dependencies were computed, or null to compute them again
       rollback:
         - dropColumn:
             tableName: dependency_status
-            columnName: seen_updated_at
+            columnName: analyzed_updated_at
 
   - changeSet:
       id: v65.8km8x7
       author: ranquild
-      comment: Add dependency_status.seen_count
+      comment: Add dependency_status.analyzed_count
       changes:
         - addColumn:
             tableName: dependency_status
             columns:
               - column:
-                  name: seen_count
+                  name: analyzed_count
                   type: int
                   remarks: The number of rows the entity is made of when its dependencies were computed
       rollback:
         - dropColumn:
             tableName: dependency_status
-            columnName: seen_count
+            columnName: analyzed_count
 
   - changeSet:
       id: v65.62kjla
@@ -329,36 +329,36 @@ databaseChangeLog:
   - changeSet:
       id: v65.dd3wgm
       author: ranquild
-      comment: Add analysis_finding.seen_updated_at
+      comment: Add analysis_finding.analyzed_updated_at
       changes:
         - addColumn:
             tableName: analysis_finding
             columns:
               - column:
-                  name: seen_updated_at
+                  name: analyzed_updated_at
                   type: ${timestamp_type}
                   remarks: The latest updated_at of the entity and the rows it is made of when it was analyzed, or null to analyze it again
       rollback:
         - dropColumn:
             tableName: analysis_finding
-            columnName: seen_updated_at
+            columnName: analyzed_updated_at
 
   - changeSet:
       id: v65.6auo21
       author: ranquild
-      comment: Add analysis_finding.seen_count
+      comment: Add analysis_finding.analyzed_count
       changes:
         - addColumn:
             tableName: analysis_finding
             columns:
               - column:
-                  name: seen_count
+                  name: analyzed_count
                   type: int
                   remarks: The number of rows the entity is made of when it was analyzed
       rollback:
         - dropColumn:
             tableName: analysis_finding
-            columnName: seen_count
+            columnName: analyzed_count
 
   - changeSet:
       id: v65.320dcb
@@ -389,11 +389,11 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: seen_updated_at
+                  name: analyzed_updated_at
                   type: ${timestamp_type}
                   remarks: The latest updated_at of the entity and the rows it is made of when its dependents were analyzed, or null to analyze them again
               - column:
-                  name: seen_count
+                  name: analyzed_count
                   type: int
                   remarks: The number of rows the entity is made of when its dependents were analyzed
               - column:

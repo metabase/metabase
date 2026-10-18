@@ -55,7 +55,7 @@
 
 (defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db, recording `version`, the
-  `:seen_updated_at` and `:seen_count` of the entity analyzed, unless it is nil.
+  `:analyzed_updated_at` and `:analyzed_count` of the entity analyzed, unless it is nil.
    Also writes individual errors to the analysis_finding_error table with source information."
   [type instance-id result finding-details version]
   (t2/with-transaction [_conn]
@@ -76,7 +76,7 @@
 (defn instances-for-analysis
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` whose AnalysisFinding is missing, was
   analyzed from another version of them, or by an older analysis, as `[instance version]` pairs, each version the
-  `:seen_updated_at` and `:seen_count` to record. Prioritizes changed entities over outdated analyses."
+  `:analyzed_updated_at` and `:analyzed_count` to record. Prioritizes changed entities over outdated analyses."
   [entity-type batch-size]
   (let [rows      (dependencies.db/entities-for-analysis entity-type batch-size *current-analysis-finding-version*)
         instances (when (seq rows)
@@ -84,5 +84,5 @@
     (into []
           (keep (fn [{:keys [id version_updated_at version_count]}]
                   (when-let [instance (get instances id)]
-                    [instance {:seen_updated_at version_updated_at :seen_count version_count}])))
+                    [instance {:analyzed_updated_at version_updated_at :analyzed_count version_count}])))
           rows)))

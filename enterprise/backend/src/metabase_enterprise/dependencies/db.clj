@@ -781,9 +781,9 @@
   [status {:keys [updated-at count]}]
   (let [column #(keyword (name status) (name %))]
     [:or
-     [:= (column :seen_updated_at) nil]
-     [:not= (column :seen_updated_at) updated-at]
-     [:not= (column :seen_count) count]]))
+     [:= (column :analyzed_updated_at) nil]
+     [:not= (column :analyzed_updated_at) updated-at]
+     [:not= (column :analyzed_count) count]]))
 
 (mu/defn dependency-status
   "The DependencyStatus of the entity `entity-type` `entity-id`, or nil."
@@ -818,25 +818,25 @@
    entity-id   :- ms/PositiveInt]
   (mdb/update-or-insert! :model/DependencyStatus
                          {:entity_type entity-type :entity_id entity-id}
-                         (constantly {:seen_updated_at nil :seen_count nil :updated_at (mi/now)})))
+                         (constantly {:analyzed_updated_at nil :analyzed_count nil :updated_at (mi/now)})))
 
 (mu/defn upsert-dependency-status!
-  "Record that the dependencies of `entity-type` `entity-id` were computed from its version `seen-updated-at`
-  `seen-count` by the analysis of `current-version`, and whether it names tables that match nothing."
-  [entity-type        :- EntityType
-   entity-id          :- ms/PositiveInt
-   current-version    :- ms/PositiveInt
-   unresolved-tables? :- :boolean
-   seen-updated-at    :- ms/TemporalInstant
-   seen-count         :- :int]
+  "Record that the dependencies of `entity-type` `entity-id` were computed from its version `analyzed-updated-at`
+  `analyzed-count` by the analysis of `current-version`, and whether it names tables that match nothing."
+  [entity-type         :- EntityType
+   entity-id           :- ms/PositiveInt
+   current-version     :- ms/PositiveInt
+   unresolved-tables?  :- :boolean
+   analyzed-updated-at :- ms/TemporalInstant
+   analyzed-count      :- :int]
   (mdb/update-or-insert!
    :model/DependencyStatus
    {:entity_type entity-type :entity_id entity-id}
    (fn [_existing]
      {:dependency_analysis_version current-version
       :unresolved_tables           unresolved-tables?
-      :seen_updated_at             seen-updated-at
-      :seen_count                  seen-count
+      :analyzed_updated_at         analyzed-updated-at
+      :analyzed_count              analyzed-count
       :updated_at                  (mi/now)})))
 
 (mu/defn entities-for-dependency-calculation :- [:sequential [:map {:closed true}
@@ -928,7 +928,7 @@
    entity-id    :- ms/PositiveInt]
   (mdb/update-or-insert! status-model
                          {:entity_type entity-type :entity_id entity-id}
-                         (constantly {:seen_updated_at nil :seen_count nil :updated_at (mi/now)})))
+                         (constantly {:analyzed_updated_at nil :analyzed_count nil :updated_at (mi/now)})))
 
 (mu/defn clear-status-versions-recorded-since!
   "Clear the versions the `status-model` rows of the entities `nodes`, `[[entity-type entity-id]]`, record when they
@@ -943,20 +943,20 @@
                         :entity_type entity-type
                         :entity_id   [:in (mapv second typed-nodes)]
                         :updated_at  [:>= since]
-                        {:seen_updated_at nil :seen_count nil :updated_at (mi/now)}))))
+                        {:analyzed_updated_at nil :analyzed_count nil :updated_at (mi/now)}))))
 
 (mu/defn record-status-version!
-  "Record that the dependents of `entity-type` `entity-id` were processed from its version `seen-updated-at`
-  `seen-count`, on the `status-model` row with `status-id` unless its `updated_at` is no longer `status-updated-at`, or
-  on a new row unless one was created meanwhile."
-  [status-model      :- DependentsStatusModel
-   entity-type       :- EntityType
-   entity-id         :- ms/PositiveInt
-   status-id         :- [:maybe ms/PositiveInt]
-   status-updated-at :- [:maybe ms/TemporalInstant]
-   seen-updated-at   :- ms/TemporalInstant
-   seen-count        :- :int]
-  (let [version {:seen_updated_at seen-updated-at :seen_count seen-count :updated_at (mi/now)}]
+  "Record that the dependents of `entity-type` `entity-id` were processed from its version `analyzed-updated-at`
+  `analyzed-count`, on the `status-model` row with `status-id` unless its `updated_at` is no longer
+  `status-updated-at`, or on a new row unless one was created meanwhile."
+  [status-model        :- DependentsStatusModel
+   entity-type         :- EntityType
+   entity-id           :- ms/PositiveInt
+   status-id           :- [:maybe ms/PositiveInt]
+   status-updated-at   :- [:maybe ms/TemporalInstant]
+   analyzed-updated-at :- ms/TemporalInstant
+   analyzed-count      :- :int]
+  (let [version {:analyzed_updated_at analyzed-updated-at :analyzed_count analyzed-count :updated_at (mi/now)}]
     (if status-id
       (t2/update! status-model :id status-id :updated_at status-updated-at version)
       (try
@@ -1020,8 +1020,8 @@
            [:analyzed_at          {:optional true} [:maybe ms/TemporalInstant]]
            [:analysis_version     {:optional true} ms/PositiveInt]
            [:result               {:optional true} :boolean]
-           [:seen_updated_at      {:optional true} [:maybe ms/TemporalInstant]]
-           [:seen_count           {:optional true} [:maybe :int]]
+           [:analyzed_updated_at  {:optional true} [:maybe ms/TemporalInstant]]
+           [:analyzed_count       {:optional true} [:maybe :int]]
            [:analyzed_entity_type {:optional true} [:maybe [:or :keyword :string]]]
            [:analyzed_entity_id   {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/insert! :model/AnalysisFinding row))
@@ -1030,7 +1030,7 @@
   "Apply `changes` to the AnalysisFinding with `finding-id`, returning the number updated."
   [finding-id :- ms/PositiveInt
    changes    :- (mut/select-keys ::dependencies.schema/analysis-finding.update
-                                  [:analyzed_at :analysis_version :result :seen_updated_at :seen_count])]
+                                  [:analyzed_at :analysis_version :result :analyzed_updated_at :analyzed_count])]
   (t2/update! :model/AnalysisFinding finding-id changes))
 
 (mu/defn entities-for-analysis :- [:sequential [:map {:closed true}

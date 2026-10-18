@@ -49,7 +49,7 @@
 
 (defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`, recording `version`,
-  the `:seen_updated_at` and `:seen_count` of the entity analyzed, unless it is nil.
+  the `:analyzed_updated_at` and `:analyzed_count` of the entity analyzed, unless it is nil.
 
   If any row exists already, it is replaced. If it does not exist, it is created."
   ([toucan-instance]

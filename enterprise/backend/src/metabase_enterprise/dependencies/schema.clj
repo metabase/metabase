@@ -34,8 +34,8 @@
    [:analysis_version     {:optional true} [:maybe :int]]
    [:analyzed_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:result               {:optional true} [:maybe :boolean]]
-   [:seen_updated_at      {:optional true} [:maybe ms/TemporalInstant]]
-   [:seen_count           {:optional true} [:maybe :int]]])
+   [:analyzed_updated_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:analyzed_count       {:optional true} [:maybe :int]]])
 
 (mr/def ::analysis-finding-error
   "A AnalysisFindingError as selected from the app DB: every column of `:analysis_finding_error`."
@@ -83,7 +83,7 @@
    [:entity_id                   {:optional true} [:maybe ms/PositiveInt]]
    [:dependency_analysis_version {:optional true} [:maybe :int]]
    [:unresolved_tables           {:optional true} [:maybe :boolean]]
-   [:seen_updated_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:seen_count                  {:optional true} [:maybe :int]]
+   [:analyzed_updated_at         {:optional true} [:maybe ms/TemporalInstant]]
+   [:analyzed_count              {:optional true} [:maybe :int]]
    [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                  {:optional true} [:maybe ms/TemporalInstant]]])
