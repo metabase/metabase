@@ -255,22 +255,18 @@
                       (tree-children tree-walk)))))))
           []))))
 
-(defn read-bytes
+(defn read-file
   "Reads the contents of a specific file from the git snapshot.
 
   Takes a GitSnapshot containing a :git Git instance and :version specifying which commit to read from, and a path
   string indicating the relative path to the file from the repository root.
 
-  Returns the file contents as a byte array, or nil if the file does not exist at the specified path."
-  ^bytes [{:keys [^Git git ^String version]} ^String path]
+  Returns the file contents as a UTF-8 string, or nil if the file does not exist at the specified path."
+  [{:keys [^Git git ^String version]} ^String path]
   (let [repo (.getRepository git)]
     (when-let [object-id (.resolve repo (str version ":" path))]
-      (.getBytes (.open repo object-id)))))
-
-(defn read-file
-  "[[read-bytes]] decoded as a UTF-8 string, or nil if the file does not exist at the specified path."
-  [snapshot ^String path]
-  (some-> (read-bytes snapshot path) (String. "UTF-8")))
+      (let [loader (.open repo object-id)]
+        (String. (.getBytes loader) "UTF-8")))))
 
 (defn changed-files
   "Paths whose blob differs between commit `from-version` and this snapshot's `version`, classified into
@@ -558,9 +554,6 @@
 
   (read-file [this path]
     (read-file this path))
-
-  (read-bytes [this path]
-    (read-bytes this path))
 
   (open-commit [this]
     (open-commit* this))

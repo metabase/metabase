@@ -100,13 +100,6 @@
 
     Returns the file contents as a string, or nil if the file doesn't exist.")
 
-  (read-bytes [snapshot path]
-    "Reads the contents of a file from the snapshot as bytes, for a resource file that isn't UTF-8 text.
-
-    Takes a SourceSnapshot instance implementing this protocol and a path (the relative path to the file to read).
-
-    Returns the file contents as a byte array, or nil if the file doesn't exist.")
-
   (open-commit [snapshot]
     "Begin building one commit incrementally; returns a CommitBuilder.")
 

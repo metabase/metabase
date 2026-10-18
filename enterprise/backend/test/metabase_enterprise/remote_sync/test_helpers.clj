@@ -199,9 +199,6 @@ width: fixed
       ;; git read-file contract).
       (get-in @files-atom [branch path])))
 
-  (read-bytes [this path]
-    (some-> ^String (source.p/read-file this path) (.getBytes "UTF-8")))
-
   (open-commit [_this]
     (let [upserts      (atom [])
           deletes      (atom #{})
@@ -321,7 +318,6 @@ width: fixed
                         (list-dir [_ path]
                           (source/paths->children (keys (get-in @state [:trees version] {})) path))
                         (read-file [_ path] (get-in @state [:trees version path]))
-                        (read-bytes [_ path] (some-> ^String (get-in @state [:trees version path]) (.getBytes "UTF-8")))
                         (open-commit [_]
                           (let [staged-upserts (atom [])
                                 staged-deletes (atom #{})

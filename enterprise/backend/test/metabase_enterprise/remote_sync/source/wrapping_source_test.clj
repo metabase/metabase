@@ -17,9 +17,6 @@
   (read-file [_ path]
     (get files path))
 
-  (read-bytes [_ path]
-    (some-> ^String (get files path) (.getBytes "UTF-8")))
-
   (open-commit [_]
     (throw (UnsupportedOperationException. "open-commit not implemented in this test mock")))
 
