@@ -60,11 +60,9 @@ export function getDataStudioActionRoutes() {
       <Route path=":actionId/fields" lazy={actionFieldsPage} />
       <Route path=":actionId/fields/:fieldId" lazy={actionFieldsPage} />
       <Route path=":actionId/run" lazy={actionRunPage} />
-      {PLUGIN_DEPENDENCIES.isEnabled && (
-        <Route path=":actionId/dependencies" lazy={actionDependenciesPage}>
-          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
-        </Route>
-      )}
+      <Route path=":actionId/dependencies" lazy={actionDependenciesPage}>
+        <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+      </Route>
       <Route path=":actionId/settings" lazy={actionSettingsPage} />
     </Route>
   );
