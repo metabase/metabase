@@ -149,9 +149,9 @@
                  (throw (ex-info (format "Archive exceeds max entries (%d)" max-entries)
                                  {:status-code 400 :max-entries max-entries})))
                (if (.isFile e)
-                 (let [out        (ByteArrayOutputStream.)
+                 (let [_          (check-entry-name! entry-name)
+                       out        (ByteArrayOutputStream.)
                        next-total (copy-tar-entry! tar out total-bytes max-uncompressed-bytes)]
-                   (check-entry-name! entry-name)
                    (recur (assoc files entry-name (.toByteArray out)) next-count next-total))
                  (recur files next-count total-bytes)))))
          files)))))
