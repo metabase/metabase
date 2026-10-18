@@ -409,7 +409,7 @@
   state or drop captured dirty markers (see [[import-merged!]])."
   [snapshot report sync-timestamp & {:keys [finalize!]}]
   (report 0.05 {:force? true})
-  (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+  (let [path-filters        (mapv #(re-pattern (str % "/.*")) serialization/remote-synced-top-level-paths)
         base-ingestable     (source.p/->ingestable snapshot {:path-filters path-filters})
         has-transforms?     (snapshot-has-transforms? base-ingestable)
         ingestable-snapshot (source.ingestable/wrap-progress-ingestable report [0.05 0.7] base-ingestable)
@@ -457,11 +457,11 @@
   #{"Collection" "DataApp" "Transform" "TransformTag" "PythonLibrary" "NativeQuerySnippet"})
 
 (defn- managed-path?
-  "True for a file under a managed directory."
+  "True for a file under a directory remote sync manages."
   [^String path]
   (and (not (str/starts-with? path "."))
        (when-let [i (str/index-of path "/")]
-         (contains? serialization/legal-top-level-paths (subs path 0 i)))))
+         (contains? serialization/remote-synced-top-level-paths (subs path 0 i)))))
 
 (defn- legal-yaml-path?
   "True for a managed-directory `.yaml` entity file — the only changed paths the importer acts on."
@@ -659,7 +659,7 @@
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
             finalize!             (fn [] (remote-sync.task/set-version! task-id snapshot-version))
             report                (import-progress-reporter task-id)
-            path-filters          (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+            path-filters          (mapv #(re-pattern (str % "/.*")) serialization/remote-synced-top-level-paths)
             ;; First-import conflicts only block the first import; deletion conflicts block every import (an
             ;; already-configured instance must not silently delete unsynced transforms). The get-conflicts tree scan
             ;; is itself deferred so it only runs when one of the gates is open (e.g. a forced import with

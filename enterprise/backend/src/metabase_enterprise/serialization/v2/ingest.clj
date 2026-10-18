@@ -118,13 +118,22 @@
   "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
   source code, to the name of the entity files in them."
   {"data_apps"          "data_app.yaml"
-   ;; a plugin's directory holds only files serialization owns, but remote sync does not export plugins, so a full
-   ;; remote-sync export would otherwise delete every plugin from the repository
+   ;; the representation format keeps the other files under a plugin's directory, such as its source, out of the import
    "custom_viz_plugins" "custom_viz_plugin.yaml"})
 
+(def unsynced-top-level-paths
+  "The [[legal-top-level-paths]] remote sync leaves alone: it neither imports nor exports their entities, so their
+  files are the repository's own and travel only by serialization export and import. A custom viz plugin is
+  installed on an instance by an admin, not synced."
+  #{"custom_viz_plugins"})
+
+(def remote-synced-top-level-paths
+  "The [[legal-top-level-paths]] remote sync imports from and exports to."
+  (apply disj legal-top-level-paths unsynced-top-level-paths))
+
 (def replaced-top-level-paths
-  "The [[legal-top-level-paths]] a full export may replace wholesale."
-  (apply disj legal-top-level-paths (keys shared-top-level-paths)))
+  "The [[remote-synced-top-level-paths]] a full export may replace wholesale."
+  (apply disj remote-synced-top-level-paths (keys shared-top-level-paths)))
 
 (defn entity-file-path?
   "Whether the `/`-separated relative `path` names an entity YAML file: a `.yaml` file that isn't a dotfile under one

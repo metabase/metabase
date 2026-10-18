@@ -1,6 +1,6 @@
 (ns metabase-enterprise.remote-sync.custom-viz-plugins-test
   "Remote sync does not carry custom viz plugins, so a repository's `custom_viz_plugins/` directory is left alone:
-  a full export replaces only the directories serialization owns outright."
+  an import does not load it, and a full export keeps every file in it."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.impl :as impl]
@@ -26,9 +26,26 @@
                           "custom_viz_plugins/README.md"                     "# plugins"}
             mock         (test-helpers/create-mock-source :initial-files {"main" plugin-files})
             task         (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export"
-                                                                         :initiated_by   (mt/user->id :rasta)})
-            result       (impl/export! (source.p/snapshot mock) task "export")]
-        (impl/handle-task-result! result task)
-        (is (= :success (:status result)))
-        (is (= plugin-files
-               (select-keys (get @(:files-atom mock) "main") (keys plugin-files))))))))
+                                                                         :initiated_by   (mt/user->id :rasta)})]
+        (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true :location "/"}]
+          (testing "a full export, which replaces the managed directories wholesale, keeps the plugin's files"
+            (let [result (impl/export! (source.p/snapshot mock) task "export" :force? true)]
+              (impl/handle-task-result! result task)
+              (is (= :success (:status result)))
+              (is (= plugin-files
+                     (select-keys (get @(:files-atom mock) "main") (keys plugin-files)))))))))))
+
+(deftest import-does-not-load-the-plugins-in-the-repository-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (search.tu/with-index-disabled
+      (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true]
+        (let [mock   (test-helpers/create-mock-source
+                      :initial-files {"main" {"custom_viz_plugins/thumbs/custom_viz_plugin.yaml" "identifier: thumbs\nenabled: true\nserdes/meta:\n- model: CustomVizPlugin\n"
+                                              "custom_viz_plugins/thumbs/metabase-plugin.json"   "{\"name\": \"thumbs\"}"
+                                              "custom_viz_plugins/thumbs/dist/index.js"          "console.log('hi')"}})
+              task   (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import"
+                                                                     :initiated_by   (mt/user->id :rasta)})
+              result (impl/import! (source.p/snapshot mock) task)]
+          (impl/handle-task-result! result task)
+          (is (= :success (:status result)))
+          (is (nil? (t2/select-one :model/CustomVizPlugin :identifier "thumbs"))))))))
