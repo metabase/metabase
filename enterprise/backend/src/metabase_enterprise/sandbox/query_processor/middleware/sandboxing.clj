@@ -37,6 +37,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
@@ -51,6 +52,8 @@
    [:table_id             ::lib.schema.id/table]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
    [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]
+   [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:attribute_remappings {:optional true} [:maybe
                                             [:map-of
                                              #_attribute-name ::lib.schema.common/non-blank-string

@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.result-metadata
-  "Re-derives the result metadata of the MBQL cards that depend on entities whose result columns changed, marking each
-  card or measure whose columns change in turn so the change reaches its own dependents, without re-deriving or passing
-  native cards, whose result metadata comes from running them."
+  "Re-derives the result metadata of the transitive MBQL dependents of entities that changed since their dependents
+  were last re-derived, without re-deriving or passing native cards, whose result metadata comes from running them."
   (:require
    [clojure.walk :as walk]
    [malli.error :as me]
@@ -98,7 +97,7 @@
 (defn- store-result-metadata!
   "Store the re-derived result metadata `metadata` of `card`, updating the parameters taking values from the columns it
   drops first, as a save of the card does, unless the card's `updated_at` and stored result metadata are no longer
-  `stored`, returning whether it stored it."
+  `stored`, returning whether it stored it. Storing it moves the card's `updated_at`, so its own dependents follow."
   [{:keys [id] :as card} stored metadata]
   (try
     (t2/with-transaction [_]
@@ -128,65 +127,57 @@
   "How many times a card that keeps changing while it is re-derived is re-derived before it counts as failed."
   3)
 
-(defn- rederive-card-changed?
-  "Re-derive the Card with `card-id`, again while it changed as it was re-derived, returning whether its result
-  metadata changed, or throwing when it kept changing."
+(defn- rederive-card-retrying!
+  "Re-derive the Card with `card-id`, again while it changed as it was re-derived, throwing when it kept changing."
   [card-id]
   (loop [attempt 1]
-    (case (rederive-card! card-id)
-      :changed   true
-      :unchanged false
-      :conflict  (if (< attempt conflict-attempts)
-                   (recur (inc attempt))
-                   (throw (ex-info "The card kept changing while it was re-derived" {:card-id card-id}))))))
+    (when (= :conflict (lib-be/with-metadata-provider-cache (rederive-card! card-id)))
+      (if (< attempt conflict-attempts)
+        (recur (inc attempt))
+        (throw (ex-info "The card kept changing while it was re-derived" {:card-id card-id}))))))
 
-(defn- process-dependent!
-  "Re-derive the MBQL card or pass on the change of the measure `entity-type` `entity-id`, marking it stale when what
-  its own dependents see changed, and returning whether it succeeded, logging a failure."
+(defn- transitive-mbql-dependents
+  "The transitive MBQL dependents of the entities `nodes`, `[[entity-type entity-id]]`, breadth first and each once,
+  including those of `nodes` that depend on others."
+  [nodes]
+  (loop [frontier nodes, seen #{}, ordered []]
+    (let [next-nodes (into [] (comp (mapcat #(apply mbql-dependents %)) (distinct) (remove seen)) frontier)]
+      (if (empty? next-nodes)
+        ordered
+        (recur next-nodes (into seen next-nodes) (into ordered next-nodes))))))
+
+(defn- rederive-dependent!
+  "Re-derive the MBQL card `entity-type` `entity-id`, measures needing nothing, logging a failure."
   [[entity-type entity-id]]
-  (try
-    (when (or (not= entity-type :card) (rederive-card-changed? entity-id))
-      (deps.result-metadata-status/mark-stale! {entity-type #{entity-id}}))
-    true
-    (catch Exception e
-      (log/warnf "Failed to re-derive the result metadata of %s %s: %s" (name entity-type) entity-id (ex-message e))
-      false)))
+  (when (= entity-type :card)
+    (try
+      (rederive-card-retrying! entity-id)
+      (catch Exception e
+        (log/warnf "Failed to re-derive the result metadata of card %s: %s" entity-id (ex-message e))))))
 
-(defn- process-status!
-  "Re-derive the MBQL cards that directly depend on the entity of the stale `status`, then clear the status unless it
-  was marked again, throwing and leaving it stale when one of those cards failed."
-  [{:keys [entity_type entity_id] :as status}]
-  (when-not (every? true? (mapv process-dependent! (mbql-dependents entity_type entity_id)))
-    (throw (ex-info "Could not re-derive the result metadata of every card depending on it"
-                    {:entity-type entity_type :entity-id entity_id})))
-  (deps.result-metadata-status/clear-stale-if-unchanged! status))
-
-(defn- process-status-or-record-failure!
-  "Process the stale entity `status`, recording a failure, and rethrowing it unless it is an Exception."
-  [status]
-  (try
-    (process-status! status)
-    (catch Throwable e
-      (log/warnf "Failed to re-derive the result metadata of the cards depending on %s %s: %s"
-                 (name (:entity_type status)) (:entity_id status) (ex-message e))
-      (try
-        (deps.result-metadata-status/record-failure! status)
-        (catch Exception record-e
-          (log/warnf "Failed to record the failure for %s %s: %s"
-                     (name (:entity_type status)) (:entity_id status) (ex-message record-e))))
-      (when-not (instance? Exception e)
-        (throw e)))))
+(defn- changed-entities
+  "Up to `batch-size` entities whose dependents were not re-derived from their current version, as
+  `[[entity-type entity-id]]` with their version and status."
+  [batch-size]
+  (into []
+        (comp (mapcat (fn [entity-type]
+                        (map #(assoc % :entity_type entity-type)
+                             (dependencies.db/entities-with-changed-version
+                              :model/ResultMetadataStatus entity-type batch-size))))
+              (take batch-size))
+        deps.result-metadata-status/entity-types))
 
 (defn update-result-metadata!
-  "Process up to `batch-size` stale entities, re-deriving the result metadata of the MBQL cards depending on them,
-  returning how many it took."
+  "Re-derive the transitive MBQL dependents of up to `batch-size` entities that changed since their dependents were
+  last re-derived, each once, then record the versions they were re-derived from, returning how many entities it took."
   [batch-size]
-  (deps.result-metadata-status/remove-deleted!)
-  (loop [remaining batch-size]
-    (let [statuses (when (pos? remaining)
-                     (deps.result-metadata-status/statuses-to-process remaining))]
-      (if (empty? statuses)
-        (- batch-size remaining)
-        (do (lib-be/with-metadata-provider-cache
-              (run! process-status-or-record-failure! statuses))
-            (recur (- remaining (count statuses))))))))
+  (doseq [entity-type deps.result-metadata-status/entity-types]
+    (when-let [ids (not-empty (dependencies.db/deleted-status-entity-ids :model/ResultMetadataStatus entity-type
+                                                                         batch-size))]
+      (dependencies.db/delete-statuses! :model/ResultMetadataStatus entity-type ids)))
+  (let [entities (changed-entities batch-size)]
+    (run! rederive-dependent! (transitive-mbql-dependents (map (juxt :entity_type :entity_id) entities)))
+    (doseq [{:keys [entity_type entity_id status_id status_updated_at version_updated_at version_count]} entities]
+      (dependencies.db/record-status-version! :model/ResultMetadataStatus entity_type entity_id
+                                              status_id status_updated_at version_updated_at version_count))
+    (count entities)))

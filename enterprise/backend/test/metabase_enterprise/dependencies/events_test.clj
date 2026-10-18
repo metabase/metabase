@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.events-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
@@ -16,25 +15,47 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defn- run-with-dependencies-setup! [thunk]
-  (mt/with-test-user :rasta
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-model-cleanup [:model/AnalysisFinding :model/DependencyStatus]
-        (lib-be/with-metadata-provider-cache
-          (let [mp (mt/metadata-provider)]
-            (thunk mp)))))))
+(defn- run-with-dependencies-setup!
+  "Run `thunk` with the dependencies feature, each write committing on its own so that `updated_at` moves between
+  them as it does between real requests."
+  [thunk]
+  (mt/test-helpers-set-global-values!
+    (mt/with-test-user :rasta
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingStatus :model/DependencyStatus
+                                :model/ResultMetadataStatus]
+          (lib-be/with-metadata-provider-cache
+            (let [mp (mt/metadata-provider)]
+              (thunk mp))))))))
 
-(defn- assert-stale
-  "Assert that the given entity is marked stale in dependency_status."
+(defn- dependencies-pending?
+  "Whether the dependencies of the entity `entity-type` `entity-id` were not computed from its current version."
   [entity-type entity-id]
-  (is (t2/exists? :model/DependencyStatus :entity_type entity-type :entity_id entity-id :stale true)
-      (str "Expected " (name entity-type) " " entity-id " to be marked stale")))
+  (boolean (some #(= entity-id (:id (first %)))
+                 (deps.dependency-status/instances-for-dependency-calculation entity-type 100000))))
 
 (defn- assert-pending
-  "Assert that the given entity awaits the dependency job, having no dependency_status row or a stale one."
+  "Assert that the dependencies of the given entity were not computed from its current version."
   [entity-type entity-id]
-  (is (not (t2/exists? :model/DependencyStatus :entity_type entity-type :entity_id entity-id :stale false))
+  (is (dependencies-pending? entity-type entity-id)
       (str "Expected " (name entity-type) " " entity-id " to be pending")))
+
+(defn- analyzed-by-job!
+  "The entities, as `[entity-type entity-id]`, that running the analysis finding job now analyzes."
+  []
+  (let [analyzed (atom #{})
+        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analysis!)]
+    (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analysis!
+                                (fn [entity-type entity-id & args]
+                                  (swap! analyzed conj [entity-type entity-id])
+                                  (apply upsert! entity-type entity-id args))]
+      (#'task.analysis-finding/check-entities!))
+    @analyzed))
+
+(defn- analyzed-among!
+  "Which of the entities `nodes`, `[entity-type entity-id]`, running the analysis finding job now analyzes."
+  [& nodes]
+  (into #{} (filter (set nodes)) (analyzed-by-job!)))
 
 (deftest dashboard-update-sets-correct-dependencies
   (run-with-dependencies-setup!
@@ -237,7 +258,7 @@
          (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))
 
 (deftest card-marks-pending-on-create-and-stale-on-update-test
-  (testing "A created card is pending for the dependency job, and changing its query marks it stale in dependency_status"
+  (testing "a created card is pending for the dependency job, and any update makes it pending again"
     (run-with-dependencies-setup!
      (fn [mp]
        (let [products (lib.metadata/table mp (mt/id :products))
@@ -247,12 +268,9 @@
            (deps.test/synchronously-run-dependency-job!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                            :to_entity_type :table :to_entity_id (mt/id :products)))
-           (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale false))
-           (testing "a change to a column the dependencies do not come from leaves it up to date"
-             (t2/update! :model/Card card-id {:name "renamed"})
-             (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale false)))
+           (is (not (dependencies-pending? :card card-id)))
            (t2/update! :model/Card card-id {:dataset_query (lib/query mp orders)})
-           (assert-stale :card card-id)))))))
+           (assert-pending :card card-id)))))))
 
 (deftest metric-dimensions-update-marks-stale-and-includes-mapped-table-test
   (testing "a metric dimension write marks the metric card stale and recomputes deps, including mapped-dimension tables"
@@ -270,7 +288,7 @@
                                               :dimension-id "550e8400-e29b-41d4-a716-446655440000"
                                               :table-id     (mt/id :categories)
                                               :target       [:field {} (mt/id :categories :name)]}]})
-           (assert-stale :card card-id)
+           (assert-pending :card card-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                            :to_entity_type :table :to_entity_id (mt/id :categories))
@@ -280,31 +298,16 @@
                "the query's own table remains a dependency")))))))
 
 (deftest snippet-marks-pending-on-create-and-stale-on-update-test
-  (testing "A created snippet is pending for the dependency job, and changing its content marks it stale in dependency_status"
+  (testing "a created snippet is pending for the dependency job, and changing its content makes it pending again"
     (run-with-dependencies-setup!
      (fn [_]
        (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "test snippet"
                                                                   :content "SELECT 1"}]
          (assert-pending :snippet snippet-id)
          (deps.test/synchronously-run-dependency-job!)
-         (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id snippet-id :stale false))
+         (is (not (dependencies-pending? :snippet snippet-id)))
          (t2/update! :model/NativeQuerySnippet snippet-id {:content "SELECT 2"})
-         (assert-stale :snippet snippet-id))))))
-
-(deftest mark-stale-failure-fails-the-write-test
-  (testing "When mark-stale! throws, the update fails and the card keeps its query"
-    (run-with-dependencies-setup!
-     (fn [mp]
-       (let [products (lib.metadata/table mp (mt/id :products))
-             orders   (lib.metadata/table mp (mt/id :orders))]
-         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
-           (deps.test/synchronously-run-dependency-job!)
-           (mt/with-dynamic-fn-redefs [deps.dependency-status/mark-stale!
-                                       (fn [_] (throw (ex-info "Simulated DB failure" {})))]
-             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated DB failure"
-                                   (t2/update! :model/Card card-id {:dataset_query (lib/query mp orders)}))))
-           (is (=? {:stages [{:source-table (mt/id :products)}]}
-                   (t2/select-one-fn :dataset_query :model/Card card-id)))))))))
+         (assert-pending :snippet snippet-id))))))
 
 (deftest ^:synchronized native-transform-create-sets-dependencies-test
   (testing "a created native transform is picked up by the dependency calculation"
@@ -372,29 +375,18 @@
                       :model/AnalysisFinding _ {:analyzed_entity_type :transform
                                                 :analyzed_entity_id transform-id
                                                 :result true
-                                                :stale false
                                                 :analysis_version models.analysis-finding/*current-analysis-finding-version*
                                                 :analyzed_at :%now}]
-         (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                       :analyzed_entity_type :transform
-                                       :analyzed_entity_id transform-id))
-             "baseline: existing finding is fresh")
          (t2/delete! :model/Database db-id)
          (is (nil? (t2/select-one :model/Database db-id))
              "the Database row is actually gone")
-         (assert-stale :transform transform-id)
+         (assert-pending :transform transform-id)
          (deps.test/synchronously-run-dependency-job!)
-         (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                      :analyzed_entity_type :transform
-                                      :analyzed_entity_id transform-id))
-             "after db-delete the backfill marks the transform's finding stale")
-         (testing "and re-running the analysis finding job flips :result false so the transform shows on broken-diagnostics"
+         (testing "and the analysis finding job flips :result false so the transform shows on broken-diagnostics"
            (#'task.analysis-finding/check-entities!)
-           (let [{:keys [stale result]} (t2/select-one :model/AnalysisFinding
-                                                       :analyzed_entity_type :transform
-                                                       :analyzed_entity_id transform-id)]
-             (is (false? stale))
-             (is (false? result)))
+           (is (false? (t2/select-one-fn :result :model/AnalysisFinding
+                                         :analyzed_entity_type :transform
+                                         :analyzed_entity_id transform-id)))
            (testing "an analysis_finding_error row points the transform at itself so the diagnostics page (`/graph/breaking`) surfaces it"
              (is (=? {:source_entity_type :transform
                       :source_entity_id   transform-id
@@ -444,7 +436,7 @@
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "keeping target"
              (t2/update! :model/Transform transform-id {:source (update source :body str "\n")})
-             (assert-stale :transform transform-id)
+             (assert-pending :transform transform-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
@@ -476,7 +468,7 @@
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "keeping target"
              (t2/update! :model/Transform transform-id {:source (assoc source :query (lib/native-query mp "select * from orders limit 10"))})
-             (assert-stale :transform transform-id)
+             (assert-pending :transform transform-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
                        :from_entity_id table-id,
@@ -508,7 +500,7 @@
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
            (t2/update! :model/Segment segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
-           (assert-stale :segment segment-id)
+           (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
                      :from_entity_id segment-id
@@ -569,7 +561,7 @@
            (testing "updating measure definition recalculates dependencies"
              (t2/update! :model/Measure measure-id {:definition (-> (lib/query mp orders)
                                                                     (lib/aggregate (lib/sum subtotal)))})
-             (assert-stale :measure measure-id)
+             (assert-pending :measure measure-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{{:from_entity_type :measure
                        :from_entity_id measure-id
@@ -594,13 +586,13 @@
                                             :database_id   (mt/id)
                                             :dataset_query (sql-query "venues")}]
          (testing "creating an action creates dependencies on the tables its query reads"
-           (assert-stale :action action-id)
+           (assert-pending :action action-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:table (mt/id :venues)]}
                   (action-deps action-id))))
          (testing "updating an action's query recalculates its dependencies"
            (t2/update! :model/QueryAction action-id {:dataset_query (sql-query "checkins")})
-           (assert-stale :action action-id)
+           (assert-pending :action action-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:table (mt/id :checkins)]}
                   (action-deps action-id))))
@@ -754,122 +746,69 @@
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
            (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
-           ;; No analysis record should exist yet - mark-entity-stale! is a no-op for never-analyzed entities
            (assert-has-analyses
             {:card {parent-card-id nil}})
            (is (nil? (t2/select-one-fn :analysis_version :model/AnalysisFinding
                                        :analyzed_entity_type :card
                                        :analyzed_entity_id child-card-id))
-               "entities without analysis findings should not be marked: no fake analysis record should be created")))))))
+               "an update writes no analysis record")))))))
 
 (deftest ^:synchronized card-update-updates-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card updates should mark the card stale, then the job re-analyzes and propagates"
-       (let [products-id (mt/id :products)
-             orders-id (mt/id :orders)
-             products (lib.metadata/table mp products-id)
-             orders (lib.metadata/table mp orders-id)
-             old-version models.analysis-finding/*current-analysis-finding-version*]
-         (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
-                        :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
-                        :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+     (testing "changing a card's query has the job re-analyze it and its dependents"
+       (let [products (lib.metadata/table mp (mt/id :products))
+             orders   (lib.metadata/table mp (mt/id :orders))]
+         (mt/with-temp [:model/Card {parent-card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Card {child-card-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
                         :model/Dependency _ {:from_entity_type :card
                                              :from_entity_id child-card-id
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
-           (deps.findings/upsert-analysis! parent-card)
-           (deps.findings/upsert-analysis! child-card)
-           (deps.findings/upsert-analysis! other-card)
-           (deps.dependency-status/upsert-status! :card child-card-id false)
-           (deps.dependency-status/upsert-status! :card other-card-id false)
-           (testing "Checking that the initial analyses exist"
-             (assert-has-analyses
-              {:card {parent-card-id old-version
-                      child-card-id old-version
-                      other-card-id old-version}}))
-           (testing "changing the card query marks its finding and its dependents' stale, not unrelated ones"
-             (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp orders)})
-             (deps.test/synchronously-run-dependency-job!)
-             (assert-has-analyses
-              {:card {parent-card-id old-version
-                      child-card-id -1
-                      other-card-id old-version}})
-             (is (= {parent-card-id true child-card-id true other-card-id false}
-                    (t2/select-fn->fn :analyzed_entity_id :stale :model/AnalysisFinding :analyzed_entity_type :card
-                                      :analyzed_entity_id [:in [parent-card-id child-card-id other-card-id]]))))
-           (testing "If the version changes, the job picks up only the stale cards"
-             (binding [models.analysis-finding/*current-analysis-finding-version* (inc old-version)]
-               (assert-has-analyses
-                {:card {parent-card-id old-version
-                        child-card-id -1
-                        other-card-id old-version}})))))))))
+           (analyzed-by-job!)
+           (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp orders)})
+           (deps.test/synchronously-run-dependency-job!)
+           (is (= #{[:card parent-card-id] [:card child-card-id]}
+                  (analyzed-among! [:card parent-card-id] [:card child-card-id])))))))))
 
 ;;; ------------------------------------------------ Analysis propagation tests ------------------------------------------------
 
 (deftest ^:synchronized card-update-triggers-native-cards-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card update marks the card and its transitive dependents stale, and the analysis finding job re-analyzes them"
-       (mt/with-temp [:model/Card {parent-id :id :as parent} {:dataset_query (lib/native-query mp "select * from products")}
-                      :model/Card {child-id :id :as child} {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))}
+     (testing "a native card's update has the job re-analyze it and its transitive dependents"
+       (mt/with-temp [:model/Card {parent-id :id} {:dataset_query (lib/native-query mp "select * from products")}
+                      :model/Card {child-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))}
                       :model/Dependency _ {:from_entity_type :card :from_entity_id child-id
                                            :to_entity_type :card :to_entity_id parent-id}]
-         (deps.findings/upsert-analysis! parent)
-         (deps.findings/upsert-analysis! child)
-         (deps.dependency-status/upsert-status! :card child-id false)
+         (analyzed-by-job!)
          (t2/update! :model/Card parent-id {:dataset_query (lib/native-query mp "select * from orders")})
          (deps.test/synchronously-run-dependency-job!)
-         (testing "Parent card should be marked stale"
-           (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                        :analyzed_entity_type :card
-                                        :analyzed_entity_id parent-id))))
-         ;; Run analysis finding job to process stale entities
-         (#'task.analysis-finding/check-entities!)
-         (testing "Parent should be re-analyzed"
-           (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                         :analyzed_entity_type :card
-                                         :analyzed_entity_id parent-id))))
-         (testing "Child should have been re-analyzed (it was marked stale up front as a transitive dependent)"
-           (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                         :analyzed_entity_type :card
-                                         :analyzed_entity_id child-id)))))))))
+         (is (= #{[:card parent-id] [:card child-id]}
+                (analyzed-among! [:card parent-id] [:card child-id]))))))))
 
 (deftest ^:synchronized card-update-stops-on-transforms-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Card update marks the card and its transitive dependents (including transforms) stale up front"
+     (testing "a card update has the job re-analyze its transitive dependents, transforms included"
        (let [products (lib.metadata/table mp (mt/id :products))
-             orders (lib.metadata/table mp (mt/id :orders))
-             old-version models.analysis-finding/*current-analysis-finding-version*]
-         (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
-                        :model/Transform {transform-id :id :as transform} {:source {:type :query
-                                                                                    :query (lib/query mp products)}
-                                                                           :name "transform_sample"
-                                                                           :target {:schema "public"
-                                                                                    :name "sample"
-                                                                                    :type :table}}
-                        :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp orders)}
+             orders   (lib.metadata/table mp (mt/id :orders))]
+         (mt/with-temp [:model/Card {parent-card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Transform {transform-id :id} {:source {:type :query
+                                                                      :query (lib/query mp products)}
+                                                             :name "transform_sample"
+                                                             :target {:schema "public"
+                                                                      :name "sample"
+                                                                      :type :table}}
+                        :model/Card {child-card-id :id} {:dataset_query (lib/query mp orders)}
                         :model/Dependency _ {:from_entity_type :transform :from_entity_id transform-id
                                              :to_entity_type :card :to_entity_id parent-card-id}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id child-card-id
                                              :to_entity_type :transform :to_entity_id transform-id}]
-           (deps.findings/upsert-analysis! parent-card)
-           (deps.findings/upsert-analysis! transform)
-           (deps.findings/upsert-analysis! child-card)
-           (assert-has-analyses
-            {:card {parent-card-id old-version child-card-id old-version}
-             :transform {transform-id old-version}})
+           (analyzed-by-job!)
            (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp orders)})
-           ;; Run analysis finding job to drain the stale entities
-           (#'task.analysis-finding/check-entities!)
-           (testing "All entities should be re-analyzed after the drain"
-             (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                           :analyzed_entity_type :card :analyzed_entity_id parent-card-id)))
-             (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                           :analyzed_entity_type :transform :analyzed_entity_id transform-id)))
-             (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                           :analyzed_entity_type :card :analyzed_entity_id child-card-id))))))))))
+           (is (= #{[:card parent-card-id] [:transform transform-id] [:card child-card-id]}
+                  (analyzed-among! [:card parent-card-id] [:transform transform-id] [:card child-card-id])))))))))
 
 (deftest ^:synchronized transform-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
@@ -889,29 +828,18 @@
 (deftest ^:synchronized transform-update-updates-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Transform update marks entity stale, analysis finding job re-analyzes it"
-       (let [products (lib.metadata/table mp (mt/id :products))
-             old-version models.analysis-finding/*current-analysis-finding-version*]
-         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source {:type :query
-                                                                                    :query (lib/query mp products)}
-                                                                           :name "transform_sample"
-                                                                           :target {:schema "public"
-                                                                                    :name "sample"
-                                                                                    :type :table}}]
-           (deps.findings/upsert-analysis! transform)
-           (assert-has-analyses {:transform {transform-id old-version}})
+     (testing "a transform update has the job re-analyze it"
+       (let [products (lib.metadata/table mp (mt/id :products))]
+         (mt/with-temp [:model/Transform {transform-id :id} {:source {:type :query
+                                                                      :query (lib/query mp products)}
+                                                             :name "transform_sample"
+                                                             :target {:schema "public"
+                                                                      :name "sample"
+                                                                      :type :table}}]
+           (analyzed-by-job!)
            (t2/update! :model/Transform transform-id {:source {:type :query
                                                                :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})
-           (deps.test/synchronously-run-dependency-job!)
-           (testing "Transform should be marked stale"
-             (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                          :analyzed_entity_type :transform
-                                          :analyzed_entity_id transform-id))))
-           (#'task.analysis-finding/check-entities!)
-           (testing "Transform should be re-analyzed"
-             (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                           :analyzed_entity_type :transform
-                                           :analyzed_entity_id transform-id))))))))))
+           (is (= #{[:transform transform-id]} (analyzed-among! [:transform transform-id])))))))))
 
 (deftest ^:synchronized transform-update-triggers-native-transforms-test
   (run-with-dependencies-setup!
@@ -943,29 +871,20 @@
 (deftest ^:synchronized transform-run-marks-dependents-stale-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Transform run marks immediate dependents stale"
+     (testing "a transform run has the job re-analyze the transform's dependents, not the transform or unrelated cards"
        (let [products (lib.metadata/table mp (mt/id :products))
-             orders (lib.metadata/table mp (mt/id :orders))]
-         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
-                        :model/Transform {transform-id :id :as transform} {:source {:type :query :query (lib/query mp products)}
-                                                                           :name "transform_sample"
-                                                                           :target {:schema "public" :name "sample" :type :table}}
-                        :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+             orders   (lib.metadata/table mp (mt/id :orders))]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Transform {transform-id :id} {:source {:type :query :query (lib/query mp products)}
+                                                             :name "transform_sample"
+                                                             :target {:schema "public" :name "sample" :type :table}}
+                        :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :transform :to_entity_id transform-id}]
-           (deps.findings/upsert-analysis! card)
-           (deps.findings/upsert-analysis! transform)
-           (deps.findings/upsert-analysis! other-card)
+           (analyzed-by-job!)
            (deps.hooks/after-transform-run transform-id nil)
-           (testing "Dependent card should be marked stale"
-             (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                          :analyzed_entity_type :card :analyzed_entity_id card-id))))
-           (testing "Other card should be unchanged"
-             (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                           :analyzed_entity_type :card :analyzed_entity_id other-card-id))))
-           (testing "Transform should be unchanged"
-             (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                           :analyzed_entity_type :transform :analyzed_entity_id transform-id))))))))))
+           (is (= #{[:card card-id]}
+                  (analyzed-among! [:card card-id] [:transform transform-id] [:card other-card-id])))))))))
 
 (deftest ^:synchronized segment-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
@@ -981,55 +900,34 @@
 (deftest ^:synchronized segment-update-updates-analyses-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Segment update marks entity stale, analysis finding job re-analyzes and propagates"
-       (let [products-id (mt/id :products)
+     (testing "a segment update has the job re-analyze it and the cards depending on it"
+       (let [products-id    (mt/id :products)
              price-field-id (mt/id :products :price)
-             products (lib.metadata/table mp products-id)
-             old-version models.analysis-finding/*current-analysis-finding-version*]
-         (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
-                                                                     :definition {:filter [:> [:field price-field-id nil] 50]}}
-                        :model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+             products       (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Segment {segment-id :id} {:table_id products-id
+                                                         :definition {:filter [:> [:field price-field-id nil] 50]}}
+                        :model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :segment :to_entity_id segment-id}]
-           (deps.findings/upsert-analysis! segment)
-           (deps.findings/upsert-analysis! card)
-           (deps.dependency-status/upsert-status! :card card-id false)
-           (assert-has-analyses {:card {card-id old-version} :segment {segment-id old-version}})
+           (analyzed-by-job!)
            (t2/update! :model/Segment segment-id {:definition {:filter [:< [:field price-field-id nil] 50]}})
-           (deps.test/synchronously-run-dependency-job!)
-           (testing "Segment should be marked stale"
-             (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                          :analyzed_entity_type :segment :analyzed_entity_id segment-id))))
-           (#'task.analysis-finding/check-entities!)
-           (testing "Both segment and dependent card should be re-analyzed"
-             (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                           :analyzed_entity_type :segment :analyzed_entity_id segment-id)))
-             (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                           :analyzed_entity_type :card :analyzed_entity_id card-id))))))))))
+           (is (= #{[:segment segment-id] [:card card-id]}
+                  (analyzed-among! [:segment segment-id] [:card card-id])))))))))
 
 (deftest ^:synchronized table-metadata-update-triggers-dependent-analysis-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Table metadata update marks immediate dependents stale"
+     (testing "a table metadata update has the job re-analyze the table's dependents, not unrelated cards"
        (let [products-id (mt/id :products)
-             orders (lib.metadata/table mp (mt/id :orders))
-             products (lib.metadata/table mp products-id)
-             old-version models.analysis-finding/*current-analysis-finding-version*]
-         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
-                        :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+             orders      (lib.metadata/table mp (mt/id :orders))
+             products    (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
-           (deps.findings/upsert-analysis! card)
-           (deps.findings/upsert-analysis! other-card)
-           (assert-has-analyses {:card {card-id old-version other-card-id old-version}})
-           (deps.test/do-with-immediate-hook-writes
-            #(mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
-               (testing "Card depending on updated table should be marked stale"
-                 (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                              :analyzed_entity_type :card :analyzed_entity_id card-id))))
-               (testing "Card not depending on updated table should not be stale"
-                 (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                               :analyzed_entity_type :card :analyzed_entity_id other-card-id))))))))))))
+           (analyzed-by-job!)
+           (mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
+             (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id]))))))))))
 
 (deftest ^:synchronized table-metadata-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
@@ -1046,26 +944,18 @@
 (deftest ^:synchronized field-metadata-update-triggers-dependent-analysis-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "Field metadata update marks dependents of the field's table stale"
+     (testing "a field metadata update has the job re-analyze the dependents of the field's table"
        (let [products-id (mt/id :products)
-             orders (lib.metadata/table mp (mt/id :orders))
-             products (lib.metadata/table mp products-id)
-             old-version models.analysis-finding/*current-analysis-finding-version*]
-         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
-                        :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+             orders      (lib.metadata/table mp (mt/id :orders))
+             products    (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
-           (deps.findings/upsert-analysis! card)
-           (deps.findings/upsert-analysis! other-card)
-           (assert-has-analyses {:card {card-id old-version other-card-id old-version}})
-           (deps.test/do-with-immediate-hook-writes
-            #(mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category) :display_name "Category renamed"}]
-               (testing "Card depending on the table whose field was updated should be stale"
-                 (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
-                                              :analyzed_entity_type :card :analyzed_entity_id card-id))))
-               (testing "Card not depending on that table should not be stale"
-                 (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
-                                               :analyzed_entity_type :card :analyzed_entity_id other-card-id))))))))))))
+           (analyzed-by-job!)
+           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category)
+                                                      :display_name "Category renamed"}]
+             (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id]))))))))))
 
 (deftest ^:synchronized field-metadata-update-works-with-no-analyses-test
   (run-with-dependencies-setup!
@@ -1086,22 +976,17 @@
        (let [card-deps #(t2/select-fn-set (juxt :to_entity_type :to_entity_id)
                                           :model/Dependency :from_entity_type :card :from_entity_id %)
              query     #(lib/query mp (lib.metadata/table mp (mt/id %)))
-             processed #(t2/exists? :model/DependencyStatus :entity_type :card :entity_id % :stale false)
              load!     #(serdes/with-cache
                           (serdes.load/load-metabase! (ts/ingestion-in-memory %) :reindex? false))]
          (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (query :products)}
                         :model/Card {other-id :id}         {:dataset_query (query :products)}]
            (let [exported (serdes/extract-one "Card" {} card)]
              (t2/update! :model/Card card-id {:dataset_query (query :orders)})
-             (deps.dependency-status/mark-stale! {:card #{card-id other-id}})
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{[:table (mt/id :orders)]} (card-deps card-id)))
              (load! [exported])
-             (testing "only the changed card is marked stale"
-               (assert-stale :card card-id)
-               (is (processed other-id)))
+             (testing "only the changed card is pending"
+               (assert-pending :card card-id)
+               (is (not (dependencies-pending? :card other-id))))
              (deps.test/synchronously-run-dependency-job!)
-             (is (= #{[:table (mt/id :products)]} (card-deps card-id)))
-             (testing "reloading it unchanged marks nothing"
-               (load! [exported])
-               (is (processed card-id))))))))))
+             (is (= #{[:table (mt/id :products)]} (card-deps card-id))))))))))

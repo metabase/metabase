@@ -51,4 +51,6 @@
    [:group_id             {:optional true} [:maybe ms/PositiveInt]]
    [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
-   [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]])
+   [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]
+   [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]])

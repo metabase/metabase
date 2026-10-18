@@ -24,6 +24,8 @@
    :card_id              true
    :table_id             true
    :group_id             true
+   :created_at           true
+   :updated_at           true
    :attribute_remappings {:foo 1}})
 
 (defmacro ^:private with-gtap-cleanup!

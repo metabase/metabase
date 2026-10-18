@@ -9,6 +9,7 @@
 
 (doto :model/DashboardCardSeries
   (derive :metabase/model)
+  (derive :hook/timestamped?)
   (derive :hook/dependencies))
 
 ;; Serialization

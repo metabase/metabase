@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.task.analysis-finding
   (:require
-   [metabase-enterprise.dependencies.findings :as deps.findings]
-   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
+   [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.premium-features.core :as premium-features]
@@ -10,40 +9,48 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private max-rounds
+  "How many batches a run takes at most before it leaves the rest to its next run."
+  20)
+
 (defn- process-one-batch!
-  "Process one batch of entities. Returns true if the full batch was used."
+  "Analyze a batch of entities whose own findings are outdated, then a batch of the dependents of changed entities,
+  returning how many entities it took."
   []
-  (-> (reduce (fn [batch-size entity-type]
-                (if (< batch-size 1)
-                  (reduced 0)
-                  (let [processed (deps.findings/analyze-batch! entity-type batch-size)]
-                    (when (pos? processed)
-                      (log/info "Updated" processed "entities of type" entity-type))
-                    (- batch-size processed))))
-              (deps.settings/dependency-entity-check-batch-size)
-              deps.findings/analyzable-entities)
-      (< 1)))
+  (let [batch-size (deps.settings/dependency-entity-check-batch-size)
+        own        (reduce (fn [taken entity-type]
+                             (let [analyzed (deps.analysis-finding/analyze-batch! entity-type batch-size)]
+                               (when (pos? analyzed)
+                                 (log/info "Analyzed" analyzed "entities of type" entity-type))
+                               (+ taken analyzed)))
+                           0
+                           deps.analysis-finding/analyzable-entities)
+        dependents (deps.analysis-finding/analyze-dependents-batch! batch-size)]
+    (when (pos? dependents)
+      (log/info "Analyzed the dependents of" dependents "entities"))
+    (+ own dependents)))
 
 (defn- check-entities!
-  "Analyze stale entities in batches until none are left or a pass stops reducing their count."
+  "Analyze batches until one takes nothing, or up to [[max-rounds]] of them, returning whether the last one took
+  anything."
   []
-  (when (premium-features/has-feature? :dependencies)
-    (loop [prev-stale nil]
-      (process-one-batch!)
-      (let [stale (deps.analysis-finding/stale-entity-count)]
-        (when (and (pos? stale)
-                   (or (nil? prev-stale) (< stale prev-stale)))
-          (recur stale))))))
+  (when (and (premium-features/has-feature? :dependencies)
+             (pos? (deps.settings/dependency-entity-check-batch-size)))
+    (loop [round 1]
+      (let [took? (pos? (process-one-batch!))]
+        (if (and took? (< round max-rounds))
+          (recur (inc round))
+          took?)))))
 
 (declare ^:private job)
 
 (defn- run-batch!
-  "Analyze the stale entities, returning when to run again: after the delay, unless the dependencies feature is
-  revoked."
+  "Analyze what changed, returning when to run again: right away when work is left, otherwise after the delay, unless
+  the dependencies feature is revoked."
   []
-  (check-entities!)
-  (when (task.util/feature-not-revoked?)
-    (task.util/next-run-delay job)))
+  (cond
+    (check-entities!)                  1
+    (task.util/feature-not-revoked?)   (task.util/next-run-delay job)))
 
 (task/defjob UpdateAnalysisFindings
   "Re-analyze the stale entities."
@@ -61,7 +68,7 @@
    :batch-size       deps.settings/dependency-entity-check-batch-size
    :delay-minutes    deps.settings/dependency-entity-check-delay-minutes
    :variance-minutes deps.settings/dependency-entity-check-variance-minutes
-   :run!             #'run-batch!})
+   :run-batch!       #'run-batch!})
 
 (defmethod task/init! ::UpdateAnalysisFindings [_]
   (task.util/init-job! job))

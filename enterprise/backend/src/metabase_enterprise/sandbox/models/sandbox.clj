@@ -40,6 +40,7 @@
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser)
+  (derive :hook/timestamped?)
   (derive :hook/dependencies))
 
 (t2/deftransforms :model/Sandbox

@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.api :as deps.api]
-   [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
@@ -128,7 +128,7 @@
   "Run analysis for a specific card to detect broken references.
    Must be called within lib-be/with-metadata-provider-cache."
   [card-id]
-  (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
+  (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Card :id card-id)))
 
 (deftest graph-test
   (testing "GET /api/ee/dependencies/graph"

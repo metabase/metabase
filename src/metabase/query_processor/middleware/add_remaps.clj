@@ -663,7 +663,7 @@
    cols                                                                          :- [:maybe ::qp.schema/result-metadata.columns]]
   (if (or disable-remaps? (empty? cols))
     cols
-    (:cols (add-remapped-to-and-from-metadata {:cols cols} external-remaps (cols-internal-columns-info cols)))))
+    (vec (:cols (add-remapped-to-and-from-metadata {:cols cols} external-remaps (cols-internal-columns-info cols))))))
 
 (defn disable-remaps
   "Sets the value of the disable-remaps? option in this query."

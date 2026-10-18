@@ -1,5 +1,5 @@
 (ns metabase.dependencies.hooks
-  "Hooks that keep the dependency graph current as content is written, implemented by the enterprise module."
+  "Hooks that have the dependency graph brought up to date as content is written, implemented by the enterprise module."
   (:require
    [metabase.premium-features.defenterprise :refer [defenterprise]]))
 
@@ -23,8 +23,7 @@
   nil)
 
 (defenterprise after-serdes-load
-  "Hook for after a serdes load, during which the hooks mark what the load changes without triggering the jobs. The
-  OSS implementation is a no-op."
+  "Hook for after a serdes load, during which the other hooks trigger no jobs. The OSS implementation is a no-op."
   metabase-enterprise.dependencies.hooks
   []
   nil)

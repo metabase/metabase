@@ -2,8 +2,9 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.findings :as deps.findings]
+   [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -13,143 +14,109 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [toucan2.core :as t2]))
 
-(defn- with-syncable-db! [thunk]
-  (mt/with-premium-features #{:dependencies}
-    (one-off-dbs/with-blank-db
-      ;; Step 1: Create a table with two columns
-      (doseq [statement ["CREATE TABLE \"test_table\" (\"id\" INTEGER PRIMARY KEY, \"filter_col\" VARCHAR);"
-                         "INSERT INTO \"test_table\" (\"id\", \"filter_col\") VALUES (1, 'value1'), (2, 'value2');"]]
-        (jdbc/execute! one-off-dbs/*conn* [statement]))
-      ;; Sync the database to pick up the new table
-      (sync/sync-database! (mt/db))
-      (let [table-id        (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_table")
-            filter-field-id (t2/select-one-fn :id :model/Field :table_id table-id :name "filter_col")
-            ;; Step 2: Create a card with a filter on filter_col
-            mp              (lib-be/application-database-metadata-provider (mt/id))
-            table           (lib.metadata/table mp table-id)
-            filter-field    (lib.metadata/field mp filter-field-id)
-            query           (-> (lib/query mp table)
-                                (lib/filter (lib/= filter-field "value1")))]
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
-                                                  :database_id (mt/id)}]
-          ;; Create the dependency manually
-          (t2/insert! :model/Dependency {:from_entity_type :card
-                                         :from_entity_id card-id
-                                         :to_entity_type :table
-                                         :to_entity_id table-id})
-          ;; Step 3: Run analysis - should succeed with no errors
-          (let [card (t2/select-one :model/Card card-id)]
-            ;; NOTE: The metadata provider caches must be small here - if the cache spans a sync it will see
-            ;; old values after the sync!
-            (lib-be/with-metadata-provider-cache
-              (deps.findings/upsert-analysis! card)))
-          (testing "Initial analysis succeeds"
-            (is (true?
-                 (t2/select-one-fn :result :model/AnalysisFinding
-                                   :analyzed_entity_type :card
-                                   :analyzed_entity_id card-id)))
-            (is (empty? (deps.analysis-finding-error/errors-for-entity :card card-id))))
-          (t2/delete! :model/ResultMetadataStatus :entity_type :table :entity_id table-id)
-          (deps.test/do-with-immediate-hook-writes
-           #(thunk {:card-id         card-id
-                    :table-id        table-id
-                    :filter-field-id filter-field-id})))))))
+(defn- pending?
+  "Whether the dependents of the Table with `table-id` are to be re-analyzed and re-derived."
+  [table-id]
+  (and (deps.test/dependents-pending? :model/AnalysisFindingStatus :table table-id)
+       (deps.test/result-metadata-pending? :table table-id)))
 
-;; Integration test that a real DB sync triggers re-analysis of an updated table.
+(defn- record-table-versions!
+  "Record that the dependents of the Table with `table-id` were re-analyzed and re-derived from its current version."
+  [table-id]
+  (deps.test/record-current-version! :model/AnalysisFindingStatus :table table-id)
+  (deps.test/record-current-version! :model/ResultMetadataStatus :table table-id))
+
+(defn- with-syncable-db! [thunk]
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency :model/AnalysisFinding :model/AnalysisFindingStatus
+                              :model/ResultMetadataStatus]
+        (one-off-dbs/with-blank-db
+          (doseq [statement ["CREATE TABLE \"test_table\" (\"id\" INTEGER PRIMARY KEY, \"filter_col\" VARCHAR);"
+                             "INSERT INTO \"test_table\" (\"id\", \"filter_col\") VALUES (1, 'value1'), (2, 'value2');"]]
+            (jdbc/execute! one-off-dbs/*conn* [statement]))
+          (sync/sync-database! (mt/db))
+          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_table")
+                filter-field-id (t2/select-one-fn :id :model/Field :table_id table-id :name "filter_col")
+                mp              (lib-be/application-database-metadata-provider (mt/id))
+                query           (-> (lib/query mp (lib.metadata/table mp table-id))
+                                    (lib/filter (lib/= (lib.metadata/field mp filter-field-id) "value1")))]
+            (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
+                                                      :database_id   (mt/id)}]
+              (t2/insert! :model/Dependency {:from_entity_type :card
+                                             :from_entity_id   card-id
+                                             :to_entity_type   :table
+                                             :to_entity_id     table-id})
+              ;; NOTE: The metadata provider caches must be small here - if the cache spans a sync it will see
+              ;; old values after the sync!
+              (lib-be/with-metadata-provider-cache
+                (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Card card-id)))
+              (testing "Initial analysis succeeds"
+                (is (true? (t2/select-one-fn :result :model/AnalysisFinding
+                                             :analyzed_entity_type :card :analyzed_entity_id card-id)))
+                (is (empty? (deps.analysis-finding-error/errors-for-entity :card card-id))))
+              (record-table-versions! table-id)
+              (thunk {:card-id         card-id
+                      :table-id        table-id
+                      :filter-field-id filter-field-id}))))))))
+
 (deftest ^:synchronized sync-removed-column-triggers-reanalysis-test
-  (testing "When sync detects a removed column, re-analyzing the card shows errors"
+  (testing "when sync deactivates a column, the cards on its table are re-analyzed and show the missing column"
     (with-syncable-db!
       (fn [{:keys [card-id filter-field-id table-id]}]
-        (let [initial-analysis-time (t2/select-one-fn :analyzed_at :model/AnalysisFinding
-                                                      :analyzed_entity_type :card
-                                                      :analyzed_entity_id card-id)]
-          ;; Step 4: Remove the column used in the filter
-          (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
-          ;; Step 5: Re-sync the database. Deactivating the field marks its table, and so the card for re-analysis.
-          (sync/sync-database! (mt/db))
-          ;; Verify the field is now inactive
-          (testing "Field is marked inactive after sync"
-            (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id))))
-          (testing "The table has a result metadata status for re-deriving the result metadata of the cards depending on it"
-            (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id)))
-          ;; Step 6 & 7: The field's hook marks dependents as stale and triggers the job.
-          ;; Due to race conditions, the entity may be either stale (job hasn't run yet)
-          ;; or already reanalyzed (job ran). Check for either valid outcome.
-          (let [finding (t2/select-one :model/AnalysisFinding
-                                       :analyzed_entity_type :card
-                                       :analyzed_entity_id card-id)]
-            (is (some? finding) "Analysis finding should exist")
-            (if (:stale finding)
-              ;; Job hasn't run yet - sync marked it stale, that's the expected behavior
-              (testing "Entity is marked stale for re-analysis"
-                (is (true? (:stale finding))))
-              ;; Job already ran - verify the reanalysis detected the missing column
-              (testing "Re-analysis detects the missing column"
-                (is (false? (:result finding)) "Analysis should fail")
-                (is (not= initial-analysis-time (:analyzed_at finding))
-                    "Analysis should have been re-run")
-                (let [errors (deps.analysis-finding-error/errors-for-entity :card card-id)]
-                  (is (seq errors) "Should have analysis errors")
-                  (is (some #(= :missing-column (:error_type %)) errors)
-                      "Should have a missing-column error"))))))))))
+        (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
+        (sync/sync-database! (mt/db))
+        (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id)))
+        (is (pending? table-id))
+        (#'task.analysis-finding/check-entities!)
+        (is (false? (t2/select-one-fn :result :model/AnalysisFinding
+                                      :analyzed_entity_type :card :analyzed_entity_id card-id)))
+        (is (some #(= :missing-column (:error_type %))
+                  (deps.analysis-finding-error/errors-for-entity :card card-id)))
+        (is (not (deps.test/dependents-pending? :model/AnalysisFindingStatus :table table-id)))))))
 
 (deftest ^:synchronized scheduled-metadata-sync-triggers-reanalysis-test
-  (testing "The metadata sync the scheduled sync task runs marks the dependents of a changed table for re-analysis"
+  (testing "the metadata sync the scheduled sync task runs changes the version of a table it changes"
     (with-syncable-db!
-      (fn [{:keys [card-id]}]
-        (let [initial-analysis-time (t2/select-one-fn :analyzed_at :model/AnalysisFinding
-                                                      :analyzed_entity_type :card
-                                                      :analyzed_entity_id card-id)]
-          (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
-          (sync/sync-db-metadata! (mt/db))
-          (let [finding (t2/select-one :model/AnalysisFinding :analyzed_entity_type :card :analyzed_entity_id card-id)]
-            (is (or (:stale finding)
-                    (not= initial-analysis-time (:analyzed_at finding))))))))))
+      (fn [{:keys [table-id]}]
+        (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
+        (sync/sync-db-metadata! (mt/db))
+        (is (pending? table-id))))))
 
-;; Integration test that a DB sync which doesn't change anything about a table does not trigger re-analysis of all
-;; cards which depend on that table.
 (deftest ^:synchronized sync-without-changes-does-not-trigger-reanalysis-test
-  (testing "When sync makes no changes to a table or its fields, nothing is marked and the card is not re-analyzed"
+  (testing "a sync that changes nothing about a table or its fields leaves its version"
     (with-syncable-db!
-      (fn [{:keys [card-id filter-field-id table-id]}]
-        (let [initial-analysis-time (t2/select-one-fn :analyzed_at :model/AnalysisFinding
-                                                      :analyzed_entity_type :card
-                                                      :analyzed_entity_id card-id)
-              table-before          (into {} (t2/select-one :model/Table :id table-id))
-              filter-field-before   (into {} (t2/select-one :model/Field :id filter-field-id))]
+      (fn [{:keys [filter-field-id table-id]}]
+        (let [table-before        (into {} (t2/select-one :model/Table :id table-id))
+              filter-field-before (into {} (t2/select-one :model/Field :id filter-field-id))]
           (sync/sync-database! (mt/db))
-          (testing "sync doesn't update tables or fields that haven't changed"
-            (is (= table-before (into {} (t2/select-one :model/Table :id table-id))))
-            (is (= filter-field-before (into {} (t2/select-one :model/Field :id filter-field-id)))))
-          (testing "the table is not marked for re-deriving the cards on it"
-            (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id))))
-          (testing "No re-analysis was done"
-            (let [finding (t2/select-one :model/AnalysisFinding
-                                         :analyzed_entity_type :card
-                                         :analyzed_entity_id card-id)]
-              (is (=? {:result true :stale false} finding))
-              (is (= initial-analysis-time (:analyzed_at finding))))))))))
+          (is (= table-before (into {} (t2/select-one :model/Table :id table-id))))
+          (is (= filter-field-before (into {} (t2/select-one :model/Field :id filter-field-id))))
+          (is (not (deps.test/dependents-pending? :model/AnalysisFindingStatus :table table-id)))
+          (is (not (deps.test/result-metadata-pending? :table table-id))))))))
 
 (deftest ^:synchronized table-sync-marks-a-changed-table-test
-  (testing "a sync of one table, like after an upload or a transform run, marks it only when it changes the table"
+  (testing "a sync of one table, like after an upload or a transform run, changes its version only when it changes it"
     (with-syncable-db!
       (fn [{:keys [table-id]}]
         (sync/sync-table! (t2/select-one :model/Table :id table-id))
-        (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id)))
+        (is (not (pending? table-id)))
         (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" ADD COLUMN \"new_col\" VARCHAR;"])
         (sync/sync-table! (t2/select-one :model/Table :id table-id))
-        (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id :stale true))))))
+        (is (pending? table-id))))))
 
 (deftest ^:synchronized sync-discovered-fk-marks-its-table-test
-  (testing "a foreign key a sync discovers marks the table of its field, like any other field change"
+  (testing "a foreign key a sync discovers changes the version of the table of its field"
     (with-syncable-db!
-      (fn [_]
+      (fn [{:keys [card-id]}]
         (jdbc/execute! one-off-dbs/*conn* ["CREATE TABLE \"ref_table\" (\"id\" INTEGER PRIMARY KEY, \"test_id\" INTEGER);"])
         (sync/sync-database! (mt/db))
         (let [ref-table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "ref_table")
               ref-field-id (t2/select-one-fn :id :model/Field :table_id ref-table-id :name "test_id")]
-          (t2/delete! :model/ResultMetadataStatus :entity_type :table :entity_id ref-table-id)
+          (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
+                                         :to_entity_type   :table :to_entity_id ref-table-id})
+          (record-table-versions! ref-table-id)
           (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"ref_table\" ADD FOREIGN KEY (\"test_id\") REFERENCES \"test_table\"(\"id\");"])
           (sync/sync-database! (mt/db))
           (is (some? (t2/select-one-fn :fk_target_field_id :model/Field :id ref-field-id)))
-          (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id ref-table-id :stale true)))))))
+          (is (pending? ref-table-id)))))))

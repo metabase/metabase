@@ -40,6 +40,7 @@
     :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
+    :model/AnalysisFindingStatus
     :model/ApiKey
     :model/ApiKeyUsageLog
     :model/AuthIdentity

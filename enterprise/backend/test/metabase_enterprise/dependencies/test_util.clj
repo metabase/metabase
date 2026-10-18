@@ -1,19 +1,18 @@
 (ns metabase-enterprise.dependencies.test-util
   (:require
    [medley.core :as m]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase.app-db.core :as mdb]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (defn synchronously-run-dependency-job!
-  "Run the dependency job synchronously, processing all stale/outdated entities
-  until there is nothing left to process. Use this in tests after operations that mark
-  entities stale (create/update events) and before asserting on dependency data."
+  "Run the dependency job synchronously, processing every changed or outdated entity until there is nothing left to
+  process. Use this in tests after writes and before asserting on dependency data."
   []
   (mt/with-premium-features #{:dependencies}
     (while (#'task.dependency/update-dependencies!))))
@@ -30,10 +29,27 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/card mp card-id))))
 
-(defn result-metadata-stale?
-  "Whether the entity `entity-type` `entity-id` has a stale ResultMetadataStatus."
+(defn dependents-pending?
+  "Whether the dependents of the entity `entity-type` `entity-id` were not processed, as `status-model` records, from
+  its current version."
+  [status-model entity-type entity-id]
+  (boolean (some #(= entity-id (:entity_id %))
+                 (dependencies.db/entities-with-changed-version status-model entity-type 100000))))
+
+(defn record-current-version!
+  "Record, as `status-model` does, that the dependents of the entity `entity-type` `entity-id` were processed from its
+  current version."
+  [status-model entity-type entity-id]
+  (doseq [{:keys [entity_id status_id status_updated_at version_updated_at version_count]}
+          (dependencies.db/entities-with-changed-version status-model entity-type 100000)
+          :when (= entity-id entity_id)]
+    (dependencies.db/record-status-version! status-model entity-type entity-id
+                                            status_id status_updated_at version_updated_at version_count)))
+
+(defn result-metadata-pending?
+  "Whether the dependents of the entity `entity-type` `entity-id` were not re-derived from its current version."
   [entity-type entity-id]
-  (t2/exists? :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id :stale true))
+  (dependents-pending? :model/ResultMetadataStatus entity-type entity-id))
 
 (defn do-with-immediate-hook-writes
   "Run `thunk` with the work the dependency hooks defer until commit done at once, since a test's transaction never

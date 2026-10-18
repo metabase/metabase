@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
+   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
@@ -47,43 +48,44 @@
 
 (deftest ^:synchronized card-deps-maintenance-test-1-new-card
   (testing "upstream deps of a card are updated correctly"
-    (mt/dataset test-data
-      (mt/with-temp [:model/User user {:email "me@wherever.com"}]
-        (mt/with-premium-features #{:dependencies}
-          (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
-            (let [card1 (card/create-card! (basic-orders) user)]
-              (deps.test/synchronously-run-dependency-job!)
-              (is (integer? (:id card1)))
-              (testing "when creating a new card"
-                (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
-                        (upstream-of :card (:id card1))))
-                (testing "that depends on another card"
-                  (let [card2 (card/create-card! (wrap-card card1) user)]
+    (mt/test-helpers-set-global-values!
+      (mt/dataset test-data
+        (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+          (mt/with-premium-features #{:dependencies}
+            (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+              (let [card1 (card/create-card! (basic-orders) user)]
+                (deps.test/synchronously-run-dependency-job!)
+                (is (integer? (:id card1)))
+                (testing "when creating a new card"
+                  (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
+                          (upstream-of :card (:id card1))))
+                  (testing "that depends on another card"
+                    (let [card2 (card/create-card! (wrap-card card1) user)]
+                      (deps.test/synchronously-run-dependency-job!)
+                      (is (=? #{(depends-on-> :card (:id card2) :card (:id card1))}
+                              (upstream-of :card (:id card2))))
+                      (testing "but that doesn't affect the upstream deps of the inner card"
+                        (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
+                                (upstream-of :card (:id card1))))))))
+                (testing "when updating an existing card"
+                  (testing "to add a new table dep"
+                    (card/update-card! {:card-before-update card1
+                                        :card-updates
+                                        {:dataset_query (mt/mbql-query orders
+                                                          {:joins [{:alias "Products"
+                                                                    :source-table (mt/id :products)
+                                                                    :condition [:= $id &Products.$products.id]}]})}})
                     (deps.test/synchronously-run-dependency-job!)
-                    (is (=? #{(depends-on-> :card (:id card2) :card (:id card1))}
-                            (upstream-of :card (:id card2))))
-                    (testing "but that doesn't affect the upstream deps of the inner card"
-                      (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))}
-                              (upstream-of :card (:id card1))))))))
-              (testing "when updating an existing card"
-                (testing "to add a new table dep"
-                  (card/update-card! {:card-before-update card1
-                                      :card-updates
-                                      {:dataset_query (mt/mbql-query orders
-                                                        {:joins [{:alias "Products"
-                                                                  :source-table (mt/id :products)
-                                                                  :condition [:= $id &Products.$products.id]}]})}})
-                  (deps.test/synchronously-run-dependency-job!)
-                  (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
-                            (depends-on-> :card (:id card1) :table (mt/id :products))}
-                          (upstream-of :card (:id card1)))))
-                (testing "to remove a table dep"
-                  (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))
-                                      :card-updates
-                                      {:dataset_query (mt/mbql-query products)}})
-                  (deps.test/synchronously-run-dependency-job!)
-                  (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
-                          (upstream-of :card (:id card1)))))))))))))
+                    (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :orders))
+                              (depends-on-> :card (:id card1) :table (mt/id :products))}
+                            (upstream-of :card (:id card1)))))
+                  (testing "to remove a table dep"
+                    (card/update-card! {:card-before-update (t2/select-one :model/Card :id (:id card1))
+                                        :card-updates
+                                        {:dataset_query (mt/mbql-query products)}})
+                    (deps.test/synchronously-run-dependency-job!)
+                    (is (=? #{(depends-on-> :card (:id card1) :table (mt/id :products))}
+                            (upstream-of :card (:id card1))))))))))))))
 
 (deftest ^:synchronized card-deps-graph-test-1-mbql-card-chain
   (testing "deps graph is connected properly for a chain of MBQL cards"
@@ -182,36 +184,43 @@
                           (depends-on-> :card (:id question-card) :card (:id metric-card))}
                         (upstream-of :card (:id question-card))))))))))))
 
-(deftest dependency-status-marked-stale-test
-  (testing "dependency_status is marked stale when entities are updated, and not touched when they are created"
-    (mt/with-model-cleanup [:model/DependencyStatus]
-      (testing "cards"
-        (mt/with-model-cleanup [:model/Dependency]
-          (mt/with-temp [:model/Card card {}]
-            (mt/with-premium-features #{:dependencies}
+(defn- pending?
+  "Whether the dependencies of the entity `entity-type` `entity-id` were not computed from its current version."
+  [entity-type entity-id]
+  (boolean (some #(= entity-id (:id (first %)))
+                 (deps.dependency-status/instances-for-dependency-calculation entity-type 100000))))
+
+(defn- computed!
+  "Record that the dependencies of the entity `entity-type` `entity-id` were computed from its current version."
+  [entity-type entity-id]
+  (doseq [[instance version] (deps.dependency-status/instances-for-dependency-calculation entity-type 100000)
+          :when              (= entity-id (:id instance))]
+    (deps.dependency-status/upsert-status! entity-type entity-id version false)))
+
+(deftest ^:synchronized dependency-status-version-test
+  (testing "updating an entity changes the version its dependencies are computed from, and creating one writes no status"
+    (mt/test-helpers-set-global-values!
+      (mt/with-model-cleanup [:model/DependencyStatus :model/Dependency]
+        (mt/with-premium-features #{:dependencies}
+          (testing "cards"
+            (mt/with-temp [:model/Card card {}]
+              (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card))))
+              (computed! :card (:id card))
               (card/update-card! {:card-before-update card
-                                  :card-updates {:dataset_query (mt/mbql-query orders)}}))
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card) :stale true)))))
-      (testing "transforms create"
-        (mt/with-premium-features #{:dependencies}
-          (mt/with-temp [:model/Transform transform]
-            (is (not (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform)))))))
-      (testing "transforms update"
-        (mt/with-premium-features #{}
-          (mt/with-temp [:model/Transform transform]
-            (mt/with-premium-features #{:dependencies}
-              (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}}))
-            (is (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform) :stale true)))))
-      (testing "snippets create"
-        (mt/with-premium-features #{:dependencies}
-          (mt/with-temp [:model/NativeQuerySnippet snippet]
-            (is (not (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet)))))))
-      (testing "snippets update"
-        (mt/with-premium-features #{}
-          (mt/with-temp [:model/NativeQuerySnippet snippet]
-            (mt/with-premium-features #{:dependencies}
-              (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"}))
-            (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet) :stale true))))))))
+                                  :card-updates       {:dataset_query (mt/mbql-query orders)}})
+              (is (pending? :card (:id card)))))
+          (testing "transforms"
+            (mt/with-temp [:model/Transform transform]
+              (is (not (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform))))
+              (computed! :transform (:id transform))
+              (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}})
+              (is (pending? :transform (:id transform)))))
+          (testing "snippets"
+            (mt/with-temp [:model/NativeQuerySnippet snippet]
+              (is (not (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet))))
+              (computed! :snippet (:id snippet))
+              (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"})
+              (is (pending? :snippet (:id snippet))))))))))
 
 (deftest dependency-status-absent-until-backfill-on-card-create-test
   (testing "a created card has no dependency_status row until the dependency job processes it"
@@ -221,7 +230,8 @@
           (let [card (card/create-card! (basic-orders) user)]
             (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card))))
             (deps.test/synchronously-run-dependency-job!)
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card) :stale false))))))))
+            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card)))
+            (is (not (pending? :card (:id card))))))))))
 
 (deftest filtered-graph-dependencies-test
   (testing "filtered-graph-dependencies respects filter clause"

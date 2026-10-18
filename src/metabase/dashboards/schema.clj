@@ -139,7 +139,9 @@
   [:map {:closed true}
    [:dashboardcard_id {:optional true} [:maybe ::lib.schema.id/dashcard]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
-   [:position         {:optional true} [:maybe :int]]])
+   [:position         {:optional true} [:maybe :int]]
+   [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::dashboard-tab
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."

@@ -1,5 +1,5 @@
-## Tracks the entities whose result columns changed, so the dependencies module re-derives the result metadata of
-## the MBQL cards depending on them, analogous to dependency_status.
+## Records, for each entity whose result columns MBQL cards read, the version of the entity its dependents were last
+## re-derived from, so the dependencies module re-derives them when the entity changes, analogous to dependency_status.
 
 databaseChangeLog:
   - changeSet:
@@ -9,7 +9,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: result_metadata_status
-            remarks: Tracks the entities whose result columns changed, so the MBQL cards depending on them re-derive their result metadata, analogous to dependency_status
+            remarks: The version of each entity the MBQL cards depending on it were last re-derived from, analogous to dependency_status
             columns:
               - column:
                   name: id
@@ -31,19 +31,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: stale
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: True when the entity changed, so the MBQL cards depending on it need re-deriving
-                  constraints:
-                    nullable: false
+                  name: seen_updated_at
+                  type: ${timestamp_type}
+                  remarks: The latest updated_at of the entity and the rows it is made of when its dependents were re-derived, or null to re-derive them again
               - column:
-                  name: terminal
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: True when re-deriving the cards depending on the entity failed, so it is not processed again until the entity changes again
-                  constraints:
-                    nullable: false
+                  name: seen_count
+                  type: int
+                  remarks: The number of rows the entity is made of when its dependents were re-derived
               - column:
                   name: created_at
                   type: ${timestamp_type}
@@ -55,7 +49,7 @@ databaseChangeLog:
                   name: updated_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
-                  remarks: When the row was last marked, cleared or failed, which guards changing a row marked again meanwhile
+                  remarks: When the row was last written, which guards recording a version over a row written again meanwhile
                   constraints:
                     nullable: false
       rollback:
@@ -75,19 +69,3 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: result_metadata_status
             constraintName: idx_unique_result_metadata_status
-
-  - changeSet:
-      id: v65.1605lz
-      author: ranquild
-      comment: Add an index on result_metadata_status.stale (partial on Postgres) for efficient polling
-      changes:
-        - sql:
-            dbms: postgresql
-            sql: CREATE INDEX idx_result_metadata_status_stale ON result_metadata_status(stale) WHERE stale = true
-        - sql:
-            dbms: mysql,mariadb,h2
-            sql: CREATE INDEX idx_result_metadata_status_stale ON result_metadata_status(stale)
-      rollback:
-        - dropIndex:
-            tableName: result_metadata_status
-            indexName: idx_result_metadata_status_stale

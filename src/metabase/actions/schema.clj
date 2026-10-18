@@ -215,7 +215,9 @@
    [:action_id     ::lib.schema.id/action]
    [:database_id   ::lib.schema.id/database]
    [:dataset_query ::query-action.dataset-query]
-   [:legacy_query  [:maybe :string]]])
+   [:legacy_query  [:maybe :string]]
+   [:created_at    {:optional true} ms/TemporalInstant]
+   [:updated_at    {:optional true} ms/TemporalInstant]])
 
 (mr/def ::query-action.update
   "What an update (or insert) of a QueryAction accepts: every column of `:query_action` except `id`, all optional."
@@ -223,7 +225,9 @@
    [:action_id     {:optional true} [:maybe ::lib.schema.id/action]]
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:dataset_query {:optional true} [:maybe ::query-action.dataset-query]]
-   [:legacy_query  {:optional true} [:maybe :string]]])
+   [:legacy_query  {:optional true} [:maybe :string]]
+   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::execution.row-diff
   "One effect recorded against the `:effects` key of [[::execution-context]]: the before/after state of a row a

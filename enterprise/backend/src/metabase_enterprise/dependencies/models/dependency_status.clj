@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.models.dependency-status
   (:require
+   [medley.core :as m]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -14,20 +15,20 @@
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})
 
-(defn mark-stale!
-  "Mark the entities in `type->ids`, `{entity-type ids}`, stale for dependency recalculation, creating their statuses
-  if they don't exist and clearing a failure so a failed entity is computed again."
+(defn clear-version!
+  "Clear the version the statuses of the entities in `type->ids`, `{entity-type ids}`, record, so their dependencies
+  are computed again."
   [type->ids]
   (doseq [[entity-type ids] type->ids
           id                ids]
-    (dependencies.db/mark-dependency-status-stale! entity-type id)))
+    (dependencies.db/clear-dependency-status-version! entity-type id)))
 
 (defn upsert-status!
-  "Upsert a dependency_status entry, setting stale=false, version to current, and whether the entity names tables that
-  match nothing."
-  [entity-type entity-id unresolved-tables?]
+  "Record that the dependencies of the entity `entity-type` `entity-id` were computed from its version, a
+  `{:updated-at :count}` map, by the current analysis, and whether it names tables that match nothing."
+  [entity-type entity-id {:keys [updated-at count]} unresolved-tables?]
   (dependencies.db/upsert-dependency-status!
-   entity-type entity-id models.dependency/current-dependency-analysis-version unresolved-tables?))
+   entity-type entity-id models.dependency/current-dependency-analysis-version unresolved-tables? updated-at count))
 
 (defmulti hydrate-for-deps
   "Hydrate a batch of instances with data needed for dependency calculation.
@@ -49,18 +50,24 @@
           instances)))
 
 (defn instances-for-dependency-calculation
-  "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
-  dependency calculation: no status row yet, stale=true, OR version < current, and not terminal.
-  Returns full entity objects. Prioritizes stale over outdated."
+  "Find a batch of instances of type `entity-type` and maximum size `batch-size` whose dependencies were not computed
+  from their current version by the current analysis, or that name tables matching nothing while a table changed since,
+  as `[instance version]` pairs, each version a `{:updated-at :count}` map. Prioritizes changed entities over outdated
+  analyses."
   [entity-type batch-size]
-  (dependencies.db/instances-for-dependency-calculation entity-type
-                                                        batch-size
-                                                        models.dependency/current-dependency-analysis-version))
+  (let [rows      (dependencies.db/entities-for-dependency-calculation
+                   entity-type batch-size models.dependency/current-dependency-analysis-version)
+        instances (when (seq rows)
+                    (m/index-by :id (dependencies.db/instances entity-type (into #{} (map :id) rows))))]
+    (into []
+          (keep (fn [{:keys [id version_updated_at version_count]}]
+                  (when-let [instance (get instances id)]
+                    [instance {:updated-at version_updated_at :count version_count}])))
+          rows)))
 
 (defn has-stale-or-outdated?
-  "Returns true if there are any entities needing dependency calculation: no status row yet,
-  stale=true, OR version < current (not terminal), or deleted entities whose status the dependency
-  job has yet to clean up. Defined in terms of [[instances-for-dependency-calculation]] so it stays consistent with what
+  "Returns true if there are any entities needing dependency calculation, or deleted entities whose status the
+  dependency job has yet to clean up. Defined in terms of [[instances-for-dependency-calculation]] so it stays consistent with what
   the dependency job processes."
   []
   (boolean
@@ -68,9 +75,3 @@
            (or (seq (instances-for-dependency-calculation entity-type 1))
                (seq (dependencies.db/deleted-entity-ids entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))
-
-(defn record-failure!
-  "Mark the entity `entity-type` `entity-id` terminal after its dependency calculation failed, so it is not computed
-  again until it is marked stale."
-  [entity-type entity-id]
-  (dependencies.db/mark-dependency-status-terminal! entity-type entity-id))

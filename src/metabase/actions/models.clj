@@ -49,6 +49,7 @@
 
 (doto :model/QueryAction
   (derive :hook/search-index)
+  (derive :hook/timestamped?)
   (derive :hook/dependencies))
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
@@ -356,7 +357,7 @@
     (let [query-actions (actions.db/query-actions (map :id actions))
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
-        (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
+        (merge action (-> action :id action-id->query-actions (dissoc :action_id :created_at :updated_at)))))))
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)

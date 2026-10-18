@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
+   [medley.core :as m]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
@@ -53,13 +54,14 @@
    :source-entity-id    (:source-entity-id error)})
 
 (defn upsert-analysis!
-  "Given the details of an AnalysisFinding row, upsert the data into the actual db.
+  "Given the details of an AnalysisFinding row, upsert the data into the actual db, recording `version`, the
+  `:seen_updated_at` and `:seen_count` of the entity analyzed, unless it is nil.
    Also writes individual errors to the analysis_finding_error table with source information."
-  [type instance-id result finding-details]
+  [type instance-id result finding-details version]
   (t2/with-transaction [_conn]
-    (let [update {:analysis_version *current-analysis-finding-version*
-                  :result result
-                  :stale false}
+    (let [update (merge {:analysis_version *current-analysis-finding-version*
+                         :result result}
+                        version)
           existing-id (dependencies.db/finding-id type instance-id)]
       (if existing-id
         (dependencies.db/update-finding! existing-id update)
@@ -71,32 +73,16 @@
        instance-id
        (map error->finding-error-row finding-details)))))
 
-(def ^:private mark-stale-batch-size
-  "Maximum number of entity IDs to process in a single query to avoid parameter limits."
-  1000)
-
-(defn mark-stale!
-  "Mark the existing findings of the entities in `type->ids`, `{entity-type ids}`, stale for re-analysis. Entities
-  without findings are ignored - they'll be picked up by the normal job flow."
-  [type->ids]
-  (doseq [[entity-type ids] type->ids
-          batch             (partition-all mark-stale-batch-size ids)]
-    (dependencies.db/mark-findings-stale! entity-type batch)))
-
-(defn has-stale-entities?
-  "Check if there are any stale analysis records."
-  []
-  (dependencies.db/stale-finding-exists?))
-
-(defn stale-entity-count
-  "Number of analysis findings currently marked stale, across all entity types. Used by the analysis finding job's
-  drain loop to detect whether it is still making progress."
-  []
-  (dependencies.db/stale-finding-count))
-
 (defn instances-for-analysis
-  "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,
-  or stale AnalysisFindings.
-  Prioritizes stale entities (stale=true) over outdated version entities."
+  "Find a batch of instances of type `entity-type` and maximum size `batch-size` whose AnalysisFinding is missing, was
+  analyzed from another version of them, or by an older analysis, as `[instance version]` pairs, each version the
+  `:seen_updated_at` and `:seen_count` to record. Prioritizes changed entities over outdated analyses."
   [entity-type batch-size]
-  (dependencies.db/instances-for-analysis entity-type batch-size *current-analysis-finding-version*))
+  (let [rows      (dependencies.db/entities-for-analysis entity-type batch-size *current-analysis-finding-version*)
+        instances (when (seq rows)
+                    (m/index-by :id (dependencies.db/instances entity-type (into #{} (map :id) rows))))]
+    (into []
+          (keep (fn [{:keys [id version_updated_at version_count]}]
+                  (when-let [instance (get instances id)]
+                    [instance {:seen_updated_at version_updated_at :seen_count version_count}])))
+          rows)))

@@ -1,8 +1,8 @@
 (ns metabase-enterprise.dependencies.task.util
   "The scheduling the dependencies module's self-rescheduling jobs share. Each job is described by a map of its
   `:job-type`, `:job-key`, `:trigger-key` and `:job-name`, the getters of its `:batch-size`, `:delay-minutes` and
-  `:variance-minutes` settings, and `:run!`, which processes a batch and returns how many seconds from now to run
-  again, or nil to stop."
+  `:variance-minutes` settings, and `:run-batch!`, which processes a batch and returns how many seconds from now to
+  run again, or nil to stop."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -69,9 +69,9 @@
 (defn run-and-reschedule!
   "Run a batch of `job`, then schedule its next run when the batch asks for one, and after [[next-run-delay]] when it
   throws, before rethrowing, since nothing else restarts a job that stopped."
-  [scheduler {:keys [run! job-name] :as job}]
+  [scheduler {:keys [run-batch! job-name] :as job}]
   (try
-    (if-some [delay-in-seconds (run!)]
+    (if-some [delay-in-seconds (run-batch!)]
       (schedule-run! scheduler job delay-in-seconds)
       (log/info "Job" job-name "has nothing more to do, stopping."))
     (catch Throwable e

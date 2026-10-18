@@ -62,11 +62,10 @@
   (t2/insert! :model/QueryExecution rows))
 
 (mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id` without touching `updated_at`."
+  "Set the result metadata of the Card with `card-id`, which moves its `updated_at`, so what depends on it follows."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata
-                                   :updated_at      :updated_at}))
+  (t2/update! :model/Card card-id {:result_metadata result-metadata}))
 
 (mu/defn update-cards-last-used-at!
   "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."
