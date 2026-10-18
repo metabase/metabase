@@ -742,9 +742,10 @@
 
 (api.macros/defendpoint :get "/backfill-status" :- [:map
                                                     [:complete :boolean]]
-  "Returns whether the dependency backfill has pending work.
+  "Returns whether the dependency backfill has pending work, for superusers.
   `complete` is true when no entity awaits the computation of its dependencies."
   [_route-params _query-params]
+  (api/check-superuser)
   {:complete (not (deps.dependency-status/has-pending-entities?))})
 
 (def ^{:arglists '([request respond raise])} routes
