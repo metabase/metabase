@@ -45,7 +45,7 @@
     (with-open [tar (-> (io/output-stream archive)
                         (GzipCompressorOutputStream.)
                         (TarArchiveOutputStream. 512 "UTF-8"))]
-      (let [entry (doto (TarArchiveEntry. ^String entry-name)
+      (let [entry (doto (TarArchiveEntry. ^String entry-name true)
                     (.setSize (alength content)))]
         (.putArchiveEntry tar entry)
         (.write tar content)
@@ -127,6 +127,15 @@
                               (u.compress/tgz-bytes {path (.getBytes "x" "UTF-8")})))))))
 
 (deftest untgz-files-test
+  (testing "dot segments in file names are normalized"
+    (doseq [path ["./dist/index.js" "././dist/./index.js"]]
+      (let [content (.getBytes "script" "UTF-8")
+            archive (create-tgz path content)]
+        (try
+          (is (= {"dist/index.js" (seq content)}
+                 (update-vals (u.compress/untgz-files archive) seq)))
+          (finally
+            (io/delete-file archive true))))))
   (testing "only regular files are read, hidden entries are skipped, and the limits of untgz apply"
     (let [content (.getBytes (apply str (repeat 1024 \a)) "UTF-8")
           archive (create-multi-entry-tgz 10 content)]
@@ -145,7 +154,7 @@
         (finally
           (io/delete-file archive true)))))
   (testing "an entry whose path could leave a directory is refused"
-    (doseq [file-name ["../../etc/foo" "foo/../../escape"]]
+    (doseq [file-name ["../../etc/foo" "foo/../../escape" "foo/../bar" "./../escape" "/etc/foo" "a//b" "a\\b"]]
       (let [archive (create-tgz file-name (.getBytes "content" "UTF-8"))]
         (try
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid path"

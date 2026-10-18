@@ -133,7 +133,7 @@
 (defn untgz-files
   "The regular files in tar+gzip `archive` as a map of entry path to bytes. `archive` can be anything
   `io/input-stream` coerces. Hidden entries are skipped as [[untgz]] skips them, and an entry whose path could leave
-  a directory is refused. Takes the same `opts` as [[untgz]]."
+  a directory is refused. Dot segments are removed from file paths. Takes the same `opts` as [[untgz]]."
   ([archive]
    (untgz-files archive nil))
   ([archive {:keys [max-uncompressed-bytes max-entries]}]
@@ -149,7 +149,8 @@
                  (throw (ex-info (format "Archive exceeds max entries (%d)" max-entries)
                                  {:status-code 400 :max-entries max-entries})))
                (if (.isFile e)
-                 (let [_          (check-entry-name! entry-name)
+                 (let [entry-name (str/join "/" (remove #{"."} (str/split entry-name #"/" -1)))
+                       _          (check-entry-name! entry-name)
                        out        (ByteArrayOutputStream.)
                        next-total (copy-tar-entry! tar out total-bytes max-uncompressed-bytes)]
                    (recur (assoc files entry-name (.toByteArray out)) next-count next-total))

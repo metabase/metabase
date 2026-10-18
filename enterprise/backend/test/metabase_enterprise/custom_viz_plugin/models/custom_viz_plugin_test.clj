@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
@@ -13,6 +14,33 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest dot-path-bundle-round-trip-test
+  (let [identifier "dot-path-viz"
+        files      {"metabase-plugin.json" (.getBytes ^String (json/encode {:name identifier :icon "./icon.png"}) "UTF-8")
+                    "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
+                    "dist/assets/icon.png" (byte-array [0 (int 0x80) (int 0xff)])}
+        bundle     (cv.tu/make-tgz-bytes (map (fn [[path content]] [(str "./" path) content]) files))
+        export     (get-in (serdes/make-spec "CustomVizPlugin" {}) [:transform :bundle :export])]
+    (is (some? (cache/validate-bundle! bundle)))
+    (let [exported (export bundle)]
+      (is (= (update-vals files seq) (when (map? exported) (update-vals exported seq))))
+      (when (map? exported)
+        (let [ingested (ingest/read-resources
+                        {:serdes/meta [{:model "CustomVizPlugin" :id identifier}]
+                         :identifier identifier :enabled true}
+                        identifier
+                        (fn [path] (when-let [^bytes content (get exported path)] (String. content "UTF-8")))
+                        exported)]
+          (is (= (set (keys files)) (set (keys (:serdes/resources ingested)))))
+          (mt/with-temp [:model/CustomVizPlugin {id :id :as plugin} {:identifier   identifier
+                                                                     :display_name identifier
+                                                                     :status       :active
+                                                                     :bundle       bundle}]
+            (serdes/load-one! ingested plugin)
+            (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :id id)))
+            (is (= (update-vals files seq)
+                   (update-vals (cache/bundle->files (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)) seq)))))))))
 
 (deftest table-name-test
   (is (= :custom_viz_plugin (t2/table-name :model/CustomVizPlugin))))
