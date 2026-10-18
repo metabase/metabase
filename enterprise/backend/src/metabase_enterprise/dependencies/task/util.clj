@@ -49,22 +49,23 @@
   (Object.))
 
 (defn schedule-run!
-  "Schedule a run of `job` `delay-in-seconds` from now on `scheduler`, unless a run is already pending before then."
+  "Schedule a run of `job` `delay-in-seconds` from now on `scheduler`, or at the run already pending before then, or a
+  second from now when that pending run is past due, since Quartz can leave a trigger past due for minutes."
   [scheduler {:keys [job-type job-key trigger-key job-name]} delay-in-seconds]
   (locking schedule-lock
-    (let [start-at (-> (t/instant)
-                       (t/+ (t/duration delay-in-seconds :seconds))
-                       Date/from)
-          pending  (next-fire-time scheduler trigger-key)]
-      (if (and pending (not (.after pending start-at)))
-        (log/debug "Keeping the run of job" job-name "already pending at" pending)
-        (let [trigger (triggers/build
-                       (triggers/with-identity (triggers/key trigger-key))
-                       (triggers/for-job job-key)
-                       (triggers/start-at start-at))
-              job     (jobs/build (jobs/of-type job-type) (jobs/with-identity job-key))]
-          (log/info "Scheduling next run of job" job-name "at" start-at)
-          (task/schedule-task! scheduler job trigger))))))
+    (let [now      (t/instant)
+          start-at (t/+ now (t/duration delay-in-seconds :seconds))
+          pending  (some-> (next-fire-time scheduler trigger-key) .toInstant)
+          start-at (Date/from (if (and pending (not (t/after? pending start-at)))
+                                (t/max pending (t/+ now (t/duration 1 :seconds)))
+                                start-at))
+          trigger  (triggers/build
+                    (triggers/with-identity (triggers/key trigger-key))
+                    (triggers/for-job job-key)
+                    (triggers/start-at start-at))
+          job      (jobs/build (jobs/of-type job-type) (jobs/with-identity job-key))]
+      (log/info "Scheduling next run of job" job-name "at" start-at)
+      (task/schedule-task! scheduler job trigger))))
 
 (defn run-and-reschedule!
   "Run a batch of `job`, then schedule its next run when the batch asks for one, and after [[next-run-delay]] when it

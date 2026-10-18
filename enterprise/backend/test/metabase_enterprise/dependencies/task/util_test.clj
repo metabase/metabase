@@ -25,3 +25,10 @@
       (is (< (seconds-until-next-run) 61))
       (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 3600)
       (is (< (seconds-until-next-run) 61)))))
+
+(deftest schedule-run-moves-a-past-due-run-test
+  (testing "scheduling a run moves a run pending in the past, which Quartz may not fire for minutes, to a second from now"
+    (mt/with-temp-scheduler!
+      (mt/with-dynamic-fn-redefs [task.util/next-fire-time (constantly (Date. (- (.getTime (Date.)) (* 20 60 1000))))]
+        (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 3600))
+      (is (<= 0 (seconds-until-next-run) 1)))))
