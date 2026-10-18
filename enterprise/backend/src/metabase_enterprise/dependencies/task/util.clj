@@ -38,20 +38,25 @@
   ^Date [^Scheduler scheduler trigger-key]
   (some-> scheduler (.getTrigger (triggers/key trigger-key)) .getNextFireTime))
 
+(def ^:private schedule-lock
+  "The lock that makes reading and replacing a job's pending trigger one step for this instance."
+  (Object.))
+
 (defn schedule-run!
   "Schedule a run of the job of `job-type`, keyed by `job-key` and `trigger-key` and logged as `job-name`,
   `delay-in-seconds` from now on `scheduler`, unless a run is already pending before then."
   [scheduler {:keys [job-type job-key trigger-key job-name]} delay-in-seconds]
-  (let [start-at (-> (t/instant)
-                     (t/+ (t/duration delay-in-seconds :seconds))
-                     Date/from)
-        pending  (next-fire-time scheduler trigger-key)]
-    (if (and pending (not (.after pending start-at)))
-      (log/debug "Keeping the run of job" job-name "already pending at" pending)
-      (let [trigger (triggers/build
-                     (triggers/with-identity (triggers/key trigger-key))
-                     (triggers/for-job job-key)
-                     (triggers/start-at start-at))
-            job     (jobs/build (jobs/of-type job-type) (jobs/with-identity job-key))]
-        (log/info "Scheduling next run of job" job-name "at" start-at)
-        (task/schedule-task! scheduler job trigger)))))
+  (locking schedule-lock
+    (let [start-at (-> (t/instant)
+                       (t/+ (t/duration delay-in-seconds :seconds))
+                       Date/from)
+          pending  (next-fire-time scheduler trigger-key)]
+      (if (and pending (not (.after pending start-at)))
+        (log/debug "Keeping the run of job" job-name "already pending at" pending)
+        (let [trigger (triggers/build
+                       (triggers/with-identity (triggers/key trigger-key))
+                       (triggers/for-job job-key)
+                       (triggers/start-at start-at))
+              job     (jobs/build (jobs/of-type job-type) (jobs/with-identity job-key))]
+          (log/info "Scheduling next run of job" job-name "at" start-at)
+          (task/schedule-task! scheduler job trigger))))))

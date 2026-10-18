@@ -55,7 +55,7 @@
 
 (defn- measured-by-a-run?
   "Whether the stored column `stored-col` holds what a run measured for the inferred column `col`: they have types of
-  the same root, and the column's source type is unchanged."
+  the same root, and the column's source type is unchanged or unknown."
   [stored-col col]
   (and (same-root-type? (:base_type stored-col) (:base_type col))
        (or (nil? (:database_type col))
@@ -119,24 +119,38 @@
       (store-result-metadata! card metadata) :changed
       :else                                  :conflict)))
 
+(def ^:private conflict-attempts
+  "How many times a card that changed while it was re-derived is re-derived again right away."
+  3)
+
 (defn- process-dependent!
   "Re-derive the MBQL card or pass on the change of the measure `entity-type` `entity-id`, marking it stale when what
-  its own dependents see changed, and returning `:changed`, `:unchanged` or `:conflict`."
+  its own dependents see changed, and returning `:changed`, `:unchanged`, `:conflict` or `:failed`, logging a failure."
   [[entity-type entity-id]]
-  (let [result (if (= entity-type :card) (rederive-card! entity-id) :changed)]
-    (when (= :changed result)
-      (deps.result-metadata-status/mark-stale! {entity-type #{entity-id}}))
-    result))
+  (try
+    (let [result (if (= entity-type :card)
+                   (or (some #(when (not= :conflict %) %) (repeatedly conflict-attempts #(rederive-card! entity-id)))
+                       :conflict)
+                   :changed)]
+      (when (= :changed result)
+        (deps.result-metadata-status/mark-stale! {entity-type #{entity-id}}))
+      result)
+    (catch Exception e
+      (log/warnf "Failed to re-derive the result metadata of %s %s: %s" (name entity-type) entity-id (ex-message e))
+      :failed)))
 
 (defn- process-status!
   "Re-derive the MBQL cards that directly depend on the entity of the stale `status`, then clear the status unless it
-  was marked again, returning `:conflict` without clearing it when one of those cards changed since it was read."
+  was marked again, returning `:processed`, `:conflict` when one of those cards kept changing while it was re-derived,
+  or throwing when one of them failed, leaving the status stale either way."
   [{:keys [entity_type entity_id] :as status}]
-  (let [results (mapv process-dependent! (mbql-dependents entity_type entity_id))]
-    (if (some #{:conflict} results)
-      :conflict
-      (do (deps.result-metadata-status/clear-stale-if-unchanged! status)
-          :processed))))
+  (let [results (into #{} (map process-dependent!) (mbql-dependents entity_type entity_id))]
+    (cond
+      (results :failed)   (throw (ex-info "Could not re-derive the result metadata of every card depending on it"
+                                          {:entity-type entity_type :entity-id entity_id}))
+      (results :conflict) :conflict
+      :else               (do (deps.result-metadata-status/clear-stale-if-unchanged! status)
+                              :processed))))
 
 (defn- process-status-or-record-failure!
   "Process the stale entity `status`, recording an Exception as a failure and rethrowing any other Throwable after
@@ -145,7 +159,7 @@
   (try
     (process-status! status)
     (catch Throwable e
-      (log/warnf "Failed to re-derive the result metadata of %s %s: %s"
+      (log/warnf "Failed to re-derive the result metadata of the cards depending on %s %s: %s"
                  (name (:entity_type status)) (:entity_id status) (ex-message e))
       (try
         (deps.result-metadata-status/record-failure! status max-retries retry-delay-minutes)

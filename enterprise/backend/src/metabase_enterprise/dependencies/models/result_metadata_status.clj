@@ -22,26 +22,18 @@
   MBQL ones are re-derived, and measures, which pass a change on."
   #{:card :measure})
 
-(def ^:private batch-size
-  "The number of statuses marked per query, below the bind-parameter limits of every app DB."
-  1000)
-
 (defn mark-stale!
   "Mark the entities in `type->ids`, `{entity-type ids}`, changed, so the MBQL cards depending on them are re-derived,
-  resetting their retry state."
+  resetting their retry state, one status per statement so this never holds two status locks at once."
   [type->ids]
   (doseq [[entity-type ids] type->ids
-          batch             (partition-all batch-size ids)
-          :let              [batch (vec batch)]]
-    (dependencies.db/mark-result-metadata-statuses-stale! entity-type batch)
-    (let [existing (set (dependencies.db/result-metadata-status-entity-ids entity-type batch))]
-      (doseq [entity-id batch
-              :when     (not (existing entity-id))]
-        (dependencies.db/mark-result-metadata-status-stale! entity-type entity-id)))))
+          entity-id         ids]
+    (when (zero? (dependencies.db/mark-result-metadata-status-stale! entity-type entity-id))
+      (dependencies.db/insert-result-metadata-status! entity-type entity-id))))
 
 (defn statuses-to-process
   "Up to `batch-size` stale statuses other than those with `excluded-ids` whose upstream entities have no processable
-  status, or any of them when none does, which only a cycle causes."
+  status, or any of them when none does, which a cycle or a conflicting upstream status causes."
   [batch-size excluded-ids]
   (let [now (t/offset-date-time)]
     (or (not-empty (dependencies.db/ready-result-metadata-statuses batch-size now excluded-ids))

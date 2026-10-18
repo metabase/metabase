@@ -269,6 +269,19 @@
                     {:status-code 400, :id id})))
   id)
 
+(defn new-dependencies
+  "The dependencies in `dependencies-by-type` that the entity of type `entity-type` with id `entity-id` doesn't have
+  yet, as `[[entity-type entity-id]]`."
+  [entity-type entity-id dependencies-by-type]
+  (let [current (into #{}
+                      (map (juxt :to_entity_type :to_entity_id))
+                      (dependencies.db/dependencies-from entity-type entity-id))]
+    (for [[to-entity-type ids] dependencies-by-type
+          to-entity-id         ids
+          :let                 [node [to-entity-type (ensure-entity-id to-entity-id)]]
+          :when                (not (current node))]
+      node)))
+
 (defn replace-dependencies!
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with the ones specified in
   `dependencies-by-type`, returning the added ones as `[[entity-type entity-id]]`."

@@ -91,8 +91,8 @@
     (changed? card #{:type :dataset_query})))
 
 (def ^:private model-job-columns
-  "For each model, the columns whose update makes each job recompute its entity, or a predicate of the updated
-  instance, by job, see [[job-triggers]]."
+  "For each model, by job, the columns whose update marks its entity for that job, or a predicate of the updated
+  instance, see [[job-triggers]]."
   {:model/Action             {:dependencies      #{:model_id :type}}
    :model/Card               {:dependencies      #{:type :dataset_query :dimension_mappings :parameters}
                               :analysis-findings #{:dataset_query}
@@ -196,8 +196,8 @@
     (submit-after-commit! {:table-id table-id :jobs #{:analysis-findings :result-metadata}})))
 
 (defn- mark-unresolved-table-entities!
-  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, which a new or
-  renamed Table may match now."
+  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, which a new,
+  renamed or reactivated Table may match now."
   [database-id]
   (when database-id
     (doseq [[entity-type entity-ids] (dependencies.db/unresolved-table-entity-ids database-id)
@@ -239,41 +239,18 @@
   [_model field]
   (mark-table-changed! (:table_id field)))
 
-(defmethod before-insert* :model/TableUserSettings
-  [_model settings]
-  (mark-table-changed! (:table_id settings)))
-
-(defmethod before-update* :model/TableUserSettings
-  [_model settings]
-  (mark-table-changed! (:table_id settings)))
-
-(defmethod before-delete* :model/TableUserSettings
-  [_model settings]
-  (mark-table-changed! (:table_id settings)))
-
-(defmethod before-insert* :model/FieldUserSettings
-  [_model settings]
-  (mark-table-changed! (dependencies.db/field-table-id (:field_id settings))))
-
-(defmethod before-update* :model/FieldUserSettings
-  [_model settings]
-  (mark-table-changed! (dependencies.db/field-table-id (:field_id settings))))
-
-(defmethod before-delete* :model/FieldUserSettings
-  [_model settings]
-  (mark-table-changed! (dependencies.db/field-table-id (:field_id settings))))
-
-(defmethod before-insert* :model/Dimension
-  [_model dimension]
-  (mark-table-changed! (dependencies.db/field-table-id (:field_id dimension))))
-
-(defmethod before-update* :model/Dimension
-  [_model dimension]
-  (mark-table-changed! (dependencies.db/field-table-id (:field_id dimension))))
-
-(defmethod before-delete* :model/Dimension
-  [_model dimension]
-  (mark-table-changed! (dependencies.db/field-table-id (:field_id dimension))))
+(doseq [[model table-id] {:model/TableUserSettings :table_id
+                          :model/FieldUserSettings (comp dependencies.db/field-table-id :field_id)
+                          :model/Dimension         (comp dependencies.db/field-table-id :field_id)}]
+  (defmethod before-insert* model
+    [_model instance]
+    (mark-table-changed! (table-id instance)))
+  (defmethod before-update* model
+    [_model instance]
+    (mark-table-changed! (table-id instance)))
+  (defmethod before-delete* model
+    [_model instance]
+    (mark-table-changed! (table-id instance))))
 
 (defmethod before-delete* :model/Database
   [_model database]

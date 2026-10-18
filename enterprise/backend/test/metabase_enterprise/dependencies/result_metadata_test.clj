@@ -17,13 +17,18 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- table-query [table]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/table mp (mt/id table)))))
+(def ^:private table-query deps.test/table-query)
 
-(defn- card-query [card-id]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/card mp card-id))))
+(def ^:private card-query deps.test/card-query)
+
+(def ^:private stale? deps.test/result-metadata-stale?)
+
+(defn- do-with-inference
+  "Run `thunk` with the job's inference of a card done by `f`, called with the real inference, the query and the card."
+  [f thunk]
+  (let [infer (mt/original-fn #'queries/infer-metadata-with-model-overrides)]
+    (mt/with-dynamic-fn-redefs [queries/infer-metadata-with-model-overrides (fn [query card] (f infer query card))]
+      (thunk))))
 
 (defn- measure-query [measure-id]
   (let [mp (mt/metadata-provider)]
@@ -49,9 +54,6 @@
 (defn- column [card-id column-name]
   (some #(when (= column-name (:name %)) %)
         (t2/select-one-fn :result_metadata :model/Card :id card-id)))
-
-(defn- stale? [entity-type entity-id]
-  (t2/exists? :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id :stale true))
 
 (defn- rename-column [metadata column-name display-name]
   (mapv #(cond-> % (= column-name (:name %)) (assoc :display_name display-name)) metadata))
@@ -187,40 +189,45 @@
   "Process the stale status of the entity `entity-type` `entity-id` while `write!` runs in the middle of the inference
   of a card depending on it, returning the result."
   [entity-type entity-id write!]
-  (let [infer (mt/original-fn #'queries/infer-metadata-with-model-overrides)]
-    (mt/with-dynamic-fn-redefs [queries/infer-metadata-with-model-overrides
-                                (fn [& args]
-                                  (write!)
-                                  (apply infer args))]
-      (#'deps.result-metadata/process-status-or-record-failure!
-       (t2/select-one :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id)
-       60))))
+  (do-with-inference (fn [infer query card]
+                       (write!)
+                       (infer query card))
+                     #(#'deps.result-metadata/process-status-or-record-failure!
+                       (t2/select-one :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id)
+                       60)))
+
+(defn- once!
+  "A function running `f` the first time it is called and doing nothing after."
+  [f]
+  (let [called (atom false)]
+    (fn [] (when (compare-and-set! called false true) (f)))))
 
 (deftest user-save-during-rederive-test
-  (testing "a user's save of a card during its re-derive wins, and the change is retried without a failure"
+  (testing "a user's save of a card during its re-derive is kept, and the card is re-derived again from it right away"
     (with-clean-statuses
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
-        (let [stored (t2/select-one-fn :result_metadata :model/Card :id card-id)]
-          (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
-            (is (= :conflict (rederive-during-inference! :table (mt/id :orders)
-                                                         #(t2/update! :model/Card card-id {:name "Renamed"}))))
-            (is (= "Renamed" (t2/select-one-fn :name :model/Card :id card-id)))
-            (is (= stored (t2/select-one-fn :result_metadata :model/Card :id card-id)))
-            (is (=? {:stale true :fail_count 0}
-                    (t2/select-one :model/ResultMetadataStatus :entity_type :table :entity_id (mt/id :orders))))))))))
+        (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
+          (is (= :processed (rederive-during-inference! :table (mt/id :orders)
+                                                        (once! #(t2/update! :model/Card card-id {:name "Renamed"})))))
+          (is (= "Renamed" (t2/select-one-fn :name :model/Card :id card-id)))
+          (is (= "Order total" (:display_name (column card-id "TOTAL"))))
+          (is (not (stale? :table (mt/id :orders)))))))))
 
 (deftest run-write-during-rederive-test
-  (testing "a run storing a card's metadata during its re-derive wins"
+  (testing "a run storing a card's metadata during its re-derive is kept, and the card is re-derived again from it"
     (with-clean-statuses
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
-        (let [run-metadata (rename-column (t2/select-one-fn :result_metadata :model/Card :id card-id) "TOTAL" "Run total")]
+        (let [run-metadata (-> (t2/select-one-fn :result_metadata :model/Card :id card-id)
+                               (rename-column "TOTAL" "Run total")
+                               (->> (mapv #(cond-> % (= "ID" (:name %)) (assoc :fingerprint {:global {:distinct-count 7}})))))]
           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
-            (is (= :conflict (rederive-during-inference!
-                              :table (mt/id :orders)
-                              #(dependencies.db/set-card-result-metadata! card-id run-metadata))))
-            (is (= "Run total" (:display_name (column card-id "TOTAL"))))))))))
+            (is (= :processed (rederive-during-inference!
+                               :table (mt/id :orders)
+                               (once! #(dependencies.db/set-card-result-metadata! card-id run-metadata)))))
+            (is (= "Order total" (:display_name (column card-id "TOTAL"))))
+            (is (= {:global {:distinct-count 7}} (:fingerprint (column card-id "ID"))))))))))
 
 (deftest parameters-update-marks-no-result-metadata-test
   (testing "a write of a card's parameters alone, like the cleanup a column removal causes, re-derives nothing"
@@ -289,7 +296,7 @@
         (is (some? (column card-id "Grand total")))
         (is (not (stale? :card source-id)))))))
 
-(deftest job-before-dependency-job-test
+(deftest result-metadata-job-before-dependency-job-test
   (testing "a card whose dependencies the dependency job computes after its upstream changed is re-derived once it does"
     (with-clean-statuses
       (mt/with-model-cleanup [:model/Card]
@@ -331,7 +338,7 @@
           (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :card :entity_id card-id)))
           (is (not (deps.result-metadata-status/has-pending-retries?))))))))
 
-(deftest sandboxed-creator-test
+(deftest sandboxed-creator-ignored-test
   (testing "a card is re-derived as no user, like a save through the Card model, whatever its creator's sandbox hides"
     (met/with-gtaps! {:gtaps {:venues {:query (let [mp (mt/metadata-provider)]
                                                 (lib/with-fields (table-query :venues)
@@ -369,13 +376,11 @@
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (run-jobs!)
         (t2/update! :model/Card source-id {:dataset_query (add-grand-total (table-query :orders))})
-        (let [inferred (atom #{})
-              infer    (mt/original-fn #'queries/infer-metadata-with-model-overrides)]
-          (mt/with-dynamic-fn-redefs [queries/infer-metadata-with-model-overrides
-                                      (fn [query card]
-                                        (swap! inferred conj (:id card))
-                                        (infer query card))]
-            (run-jobs!))
+        (let [inferred (atom #{})]
+          (do-with-inference (fn [infer query card]
+                               (swap! inferred conj (:id card))
+                               (infer query card))
+                             run-jobs!)
           (is (= #{card-id} @inferred))
           (is (some? (column card-id "Grand total"))))))))
 
@@ -423,19 +428,20 @@
           (is (nil? (#'deps.result-metadata/rederived-result-metadata card))))))))
 
 (deftest conflict-reruns-test
-  (testing "a card changed during its re-derive leaves its upstream stale, other upstreams proceed, and the job reruns"
+  (testing "a card that keeps changing during its re-derive leaves its upstream stale, other upstreams proceed, and the
+           job reruns"
     (with-clean-statuses
       (mt/with-temp [:model/Card {orders-card-id :id} {:dataset_query (table-query :orders)}
                      :model/Card _                    {:dataset_query (table-query :products)}]
         (run-jobs!)
         (deps.result-metadata-status/mark-stale! {:table #{(mt/id :orders) (mt/id :products)}})
-        (let [infer (mt/original-fn #'queries/infer-metadata-with-model-overrides)]
-          (mt/with-dynamic-fn-redefs [queries/infer-metadata-with-model-overrides
-                                      (fn [query card]
-                                        (u/prog1 (rename-column (infer query card) "TOTAL" "Changed")
-                                          (when (= orders-card-id (:id card))
-                                            (t2/update! :model/Card orders-card-id {:name "Renamed"}))))]
-            (is (true? (#'task.result-metadata/update-result-metadata!)))))
+        (do-with-inference (fn [infer query card]
+                             (u/prog1 (rename-column (infer query card) "TOTAL" "Changed")
+                               (when (= orders-card-id (:id card))
+                                 (dependencies.db/set-card-result-metadata!
+                                  orders-card-id
+                                  (rename-column (:result_metadata card) "TOTAL" (str (random-uuid)))))))
+                           #(is (true? (#'task.result-metadata/update-result-metadata!))))
         (is (stale? :table (mt/id :orders)))
         (is (not (stale? :table (mt/id :products))))))))
 
@@ -454,11 +460,27 @@
                                                                                   :entity_id (mt/id :orders)
                                                                                   {:fail_count 0}))
                                                               5000 :timed-out))
-                                        (apply store args))
-                                      queries/infer-metadata-with-model-overrides
-                                      (let [infer (mt/original-fn #'queries/infer-metadata-with-model-overrides)]
-                                        (fn [query card] (rename-column (infer query card) "TOTAL" "Changed")))]
-            (mt/with-premium-features #{:dependencies}
-              (deps.result-metadata/update-result-metadata! 1000 60)))
+                                        (apply store args))]
+            (do-with-inference (fn [infer query card] (rename-column (infer query card) "TOTAL" "Changed"))
+                               #(mt/with-premium-features #{:dependencies}
+                                  (deps.result-metadata/update-result-metadata! 1000 60))))
           (is (= 1 @marked))
           (is (= "Changed" (:display_name (column card-id "TOTAL")))))))))
+
+(deftest failing-dependent-test
+  (testing "a card whose re-derive fails leaves its upstream stale for a retry without keeping its siblings stale"
+    (with-clean-statuses
+      (mt/with-temp [:model/Card {first-id :id}  {:dataset_query (table-query :venues)}
+                     :model/Card {failing-id :id} {:dataset_query (table-query :venues)}
+                     :model/Card {last-id :id}   {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (deps.result-metadata-status/mark-stale! {:table #{(mt/id :venues)}})
+        (do-with-inference (fn [infer query card]
+                             (if (= failing-id (:id card))
+                               (throw (ex-info "Inference failed" {}))
+                               (rename-column (infer query card) "NAME" "Changed")))
+                           #(mt/with-premium-features #{:dependencies}
+                              (deps.result-metadata/update-result-metadata! 1000 60)))
+        (is (= ["Changed" "Changed"] (mapv #(:display_name (column % "NAME")) [first-id last-id])))
+        (is (=? {:stale true :fail_count 1}
+                (t2/select-one :model/ResultMetadataStatus :entity_type :table :entity_id (mt/id :venues))))))))

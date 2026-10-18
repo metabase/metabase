@@ -139,3 +139,17 @@
         (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" ADD COLUMN \"new_col\" VARCHAR;"])
         (sync/sync-table! (t2/select-one :model/Table :id table-id))
         (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id :stale true))))))
+
+(deftest ^:synchronized sync-discovered-fk-marks-its-table-test
+  (testing "a foreign key a sync discovers marks the table of its field, like any other field change"
+    (with-syncable-db!
+      (fn [_]
+        (jdbc/execute! one-off-dbs/*conn* ["CREATE TABLE \"ref_table\" (\"id\" INTEGER PRIMARY KEY, \"test_id\" INTEGER);"])
+        (sync/sync-database! (mt/db))
+        (let [ref-table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "ref_table")
+              ref-field-id (t2/select-one-fn :id :model/Field :table_id ref-table-id :name "test_id")]
+          (t2/delete! :model/ResultMetadataStatus :entity_type :table :entity_id ref-table-id)
+          (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"ref_table\" ADD FOREIGN KEY (\"test_id\") REFERENCES \"test_table\"(\"id\");"])
+          (sync/sync-database! (mt/db))
+          (is (some? (t2/select-one-fn :fk_target_field_id :model/Field :id ref-field-id)))
+          (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id ref-table-id :stale true)))))))

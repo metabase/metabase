@@ -872,18 +872,18 @@
   "The changes that make a ResultMetadataStatus processable again, without the `updated_at` they also need."
   {:stale true :fail_count 0 :next_retry_at nil :terminal false})
 
-(mu/defn mark-result-metadata-statuses-stale!
-  "Mark the existing ResultMetadataStatuses of `entity-type` `entity-ids` stale and reset their retry state, returning
-  the number updated."
+(mu/defn mark-result-metadata-status-stale!
+  "Mark the existing ResultMetadataStatus of `entity-type` `entity-id` stale and reset its retry state, returning the
+  number updated."
   [entity-type :- EntityType
-   entity-ids  :- [:sequential ms/PositiveInt]]
+   entity-id   :- ms/PositiveInt]
   (t2/update! :model/ResultMetadataStatus
-              :entity_type entity-type :entity_id [:in entity-ids]
+              :entity_type entity-type :entity_id entity-id
               (assoc reset-retries :updated_at (mi/now))))
 
-(mu/defn mark-result-metadata-status-stale!
-  "Mark the ResultMetadataStatus of `entity-type` `entity-id` stale, creating it if it doesn't exist, and reset its
-  retry state."
+(mu/defn insert-result-metadata-status!
+  "Insert a stale ResultMetadataStatus of `entity-type` `entity-id`, or mark the existing one stale and reset its retry
+  state when a concurrent write inserted it first."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
   (mdb/update-or-insert! :model/ResultMetadataStatus
@@ -891,15 +891,9 @@
                          (fn [_existing]
                            (assoc reset-retries :updated_at (mi/now)))))
 
-(mu/defn result-metadata-status-entity-ids
-  "The IDs of the entities of `entity-type` among `entity-ids` that have a ResultMetadataStatus."
-  [entity-type :- EntityType
-   entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :entity_id :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids]))
-
 (mu/defn result-metadata-statuses-changed-since
-  "The entities among `nodes`, `[[entity-type entity-id]]`, whose ResultMetadataStatus was marked or cleared at or after
-  `since`, as `[:entity_type :entity_id]` instances."
+  "The entities among `nodes`, `[[entity-type entity-id]]`, whose ResultMetadataStatus was marked, cleared or failed at
+  or after `since`, as `[:entity_type :entity_id]` instances."
   [nodes :- [:sequential [:tuple EntityType ms/PositiveInt]]
    since :- ms/TemporalInstant]
   (when (seq nodes)

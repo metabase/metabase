@@ -10,7 +10,6 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.batch-processing.core :as grouper]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -21,13 +20,9 @@
 (defn- stale? [entity-type entity-id]
   (t2/exists? :model/DependencyStatus :entity_type entity-type :entity_id entity-id :stale true))
 
-(defn- table-query [table]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/table mp (mt/id table)))))
+(def ^:private table-query deps.test/table-query)
 
-(defn- card-query [card-id]
-  (let [mp (mt/metadata-provider)]
-    (lib/query mp (lib.metadata/card mp card-id))))
+(def ^:private card-query deps.test/card-query)
 
 (deftest card-update-test
   (testing "updating a card marks it stale only when a column its dependencies come from changes"
@@ -219,9 +214,6 @@
                   (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))
             (is (not (stale? :dashboard dashboard-id)))))))))
 
-(defn- result-metadata-stale? [entity-type entity-id]
-  (t2/exists? :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id :stale true))
-
 (deftest field-write-marks-its-table-test
   (testing "a write of a Field column that cards see marks its Table for re-deriving them, and a fingerprint doesn't"
     (mt/with-premium-features #{:dependencies}
@@ -232,10 +224,10 @@
            (let [field-id (mt/id :venues :price)]
              (mt/with-temp-vals-in-db :model/Field field-id {:fingerprint_version 0}
                (t2/update! :model/Field field-id {:fingerprint_version 1})
-               (is (not (result-metadata-stale? :table (mt/id :venues)))))
+               (is (not (deps.test/result-metadata-stale? :table (mt/id :venues)))))
              (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}
                (t2/update! :model/Field field-id {:display_name "Cost"})
-               (is (result-metadata-stale? :table (mt/id :venues)))))))))))
+               (is (deps.test/result-metadata-stale? :table (mt/id :venues)))))))))))
 
 (deftest table-write-marks-it-test
   (testing "a write of a Table column that cards see marks it for re-deriving them, and another column doesn't"
@@ -246,6 +238,6 @@
            (t2/delete! :model/ResultMetadataStatus :entity_type :table :entity_id (mt/id :venues))
            (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:points_of_interest nil :display_name "Venues"}
              (t2/update! :model/Table (mt/id :venues) {:points_of_interest "Nothing"})
-             (is (not (result-metadata-stale? :table (mt/id :venues))))
+             (is (not (deps.test/result-metadata-stale? :table (mt/id :venues))))
              (t2/update! :model/Table (mt/id :venues) {:display_name "Places"})
-             (is (result-metadata-stale? :table (mt/id :venues))))))))))
+             (is (deps.test/result-metadata-stale? :table (mt/id :venues))))))))))

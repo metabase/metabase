@@ -91,9 +91,9 @@
 
 (defn- compute-deps-for-entity!
   "Mark the dependents of an entity that a write marked stale for re-analysis, and those that expand it for
-  recalculation, then compute and store its dependencies and update its dependency_status, flagging the tables it
-  names that match nothing, and mark again the entities it newly depends on whose result columns changed after it was
-  saved, so it is re-derived too. Entities are expected to be pre-hydrated by
+  recalculation, mark again the entities it is about to depend on newly whose result columns changed after it was
+  saved, so it is re-derived too, then compute and store its dependencies and update its dependency_status, flagging
+  the tables it names that match nothing. Entities are expected to be pre-hydrated by
   [[deps.dependency-status/hydrate-for-deps]]."
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
@@ -101,20 +101,20 @@
     (deps.findings/mark-transitive-dependents-stale! {entity-type #{(:id entity)}})
     (when (expanded-into-dependents entity-type)
       (mark-expanding-entities-stale! entity-type (:id entity))))
-  (let [added (t2/with-transaction [_]
-                (let [deps  (deps.calculation/calculate-deps entity-type entity)
-                      added (models.dependency/replace-dependencies! entity-type (:id entity)
-                                                                     (dissoc deps :unresolved-table))]
-                  (post-deps-cleanup! entity-type entity)
-                  (deps.dependency-status/upsert-status! entity-type (:id entity) (contains? deps :unresolved-table))
-                  added))]
+  (let [deps (deps.calculation/calculate-deps entity-type entity)]
     (when-let [changed (and (contains? deps.result-metadata-status/derived-types entity-type)
                             (:updated_at entity)
-                            (not-empty (dependencies.db/result-metadata-statuses-changed-since added
-                                                                                               (:updated_at entity))))]
+                            (not-empty (dependencies.db/result-metadata-statuses-changed-since
+                                        (models.dependency/new-dependencies entity-type (:id entity)
+                                                                            (dissoc deps :unresolved-table))
+                                        (:updated_at entity))))]
       (deps.result-metadata-status/mark-stale!
        (models.dependency/group-nodes (map (juxt :entity_type :entity_id) changed)))
-      (task.result-metadata/trigger-result-metadata-job!))))
+      (task.result-metadata/trigger-result-metadata-job!))
+    (t2/with-transaction [_]
+      (models.dependency/replace-dependencies! entity-type (:id entity) (dissoc deps :unresolved-table))
+      (post-deps-cleanup! entity-type entity)
+      (deps.dependency-status/upsert-status! entity-type (:id entity) (contains? deps :unresolved-table)))))
 
 (defn- remove-deleted-entity-batch!
   "Mark the dependents of up to `batch-size` deleted entities of `entity-type` for re-analysis and drop their
@@ -244,7 +244,7 @@
 (def ^:private trigger-key "metabase.task.dependency-backfill.trigger")
 
 (defn- schedule-run!
-  "Schedule a run of the dependency job `delay-in-seconds` from now."
+  "Schedule a run of the dependency job `delay-in-seconds` from now, unless one is already pending sooner."
   [scheduler delay-in-seconds]
   (task.util/schedule-run! scheduler
                            {:job-type    UpdateDependencies

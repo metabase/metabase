@@ -95,7 +95,7 @@
             (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)}]}]
                     (group-access/permission-warnings app)))))))))
 
-(deftest group-permission-warnings-include-table-synced-after-analysis-test
+(deftest group-permission-warnings-include-table-created-after-analysis-test
   (testing "a table created after the app's card was analyzed enters the warnings once the jobs run"
     (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
       (mt/with-no-data-perms-for-all-users!

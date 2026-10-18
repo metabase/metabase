@@ -625,7 +625,7 @@
           (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                           :to_entity_type :card :to_entity_id orders-id)))))))
 
-(deftest ^:synchronized backfill-records-table-sync-finds-later-test
+(deftest ^:synchronized backfill-records-table-created-later-test
   (testing "a table a native query names before it exists gets its dependency once the table is created"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{:dependencies}

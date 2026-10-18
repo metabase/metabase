@@ -7,7 +7,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn synchronously-run-dependency-job!
   "Run the dependency job synchronously, processing all stale/outdated entities
@@ -16,6 +17,23 @@
   []
   (mt/with-premium-features #{:dependencies}
     (while (#'task.dependency/update-dependencies!))))
+
+(defn table-query
+  "A query of the test data Table named `table`."
+  [table]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table)))))
+
+(defn card-query
+  "A query of the Card with `card-id`."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/card mp card-id))))
+
+(defn result-metadata-stale?
+  "Whether the entity `entity-type` `entity-id` has a stale ResultMetadataStatus."
+  [entity-type entity-id]
+  (t2/exists? :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id :stale true))
 
 (defn do-with-immediate-hook-writes
   "Run `thunk` with the work the dependency hooks defer until commit done at once, since a test's transaction never

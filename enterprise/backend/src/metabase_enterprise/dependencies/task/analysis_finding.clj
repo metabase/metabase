@@ -60,7 +60,7 @@
 (def ^:private trigger-key "metabase.dependencies.task.entity-check.trigger")
 
 (defn- schedule-run!
-  "Schedule a run of the analysis finding job `delay-in-seconds` from now."
+  "Schedule a run of the analysis finding job `delay-in-seconds` from now, unless one is already pending sooner."
   [scheduler delay-in-seconds]
   (task.util/schedule-run! scheduler
                            {:job-type    UpdateAnalysisFindings
