@@ -232,10 +232,13 @@
                     group-nodes)]
     (into {}
           (mapcat (fn [[node-type ids]]
-                    (mapv (fn [entity]
-                            [[node-type (:id entity)]
-                             (is-native-entity? node-type entity)])
-                          (dependencies.db/instances node-type ids))))
+                    (if (= node-type :card)
+                      (let [native (set (dependencies.db/native-card-ids ids))]
+                        (map (fn [id] [[:card id] (contains? native id)]) ids))
+                      (mapv (fn [entity]
+                              [[node-type (:id entity)]
+                               (is-native-entity? node-type entity)])
+                            (dependencies.db/instances node-type ids)))))
           grouped)))
 
 (defn transitive-mbql-dependents

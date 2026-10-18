@@ -1,5 +1,5 @@
-## Tracks the entities whose result columns changed and the MBQL cards depending on them, so the dependencies module
-## re-derives the result metadata of those cards, analogous to dependency_status.
+## Tracks the entities whose result columns changed, so the dependencies module re-derives the result metadata of
+## the MBQL cards depending on them, analogous to dependency_status.
 
 databaseChangeLog:
   - changeSet:
@@ -9,7 +9,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: result_metadata_status
-            remarks: Tracks entities whose result columns changed and the cards whose result metadata needs re-deriving, analogous to dependency_status
+            remarks: Tracks the entities whose result columns changed, so the MBQL cards depending on them re-derive their result metadata, analogous to dependency_status
             columns:
               - column:
                   name: id
@@ -34,7 +34,7 @@ databaseChangeLog:
                   name: stale
                   type: ${boolean.type}
                   defaultValueBoolean: false
-                  remarks: True when the entity changed, so its dependent cards and, for a card, its own result metadata need re-deriving
+                  remarks: True when the entity changed, so the MBQL cards depending on it need re-deriving
                   constraints:
                     nullable: false
               - column:
@@ -66,7 +66,7 @@ databaseChangeLog:
                   name: updated_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
-                  remarks: When the row was last marked or cleared, which guards clearing a row marked again meanwhile
+                  remarks: When the row was last marked, cleared or failed, which guards changing a row marked again meanwhile
                   constraints:
                     nullable: false
       rollback:

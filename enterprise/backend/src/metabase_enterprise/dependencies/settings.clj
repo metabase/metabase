@@ -72,9 +72,8 @@
   :export?    false)
 
 (defsetting dependency-result-metadata-variance-minutes
-  "The variation in when the result metadata job will run.  The actual delay between runs will be a random value
-  between `dependency-result-metadata-delay-minutes - dependency-result-metadata-variance-minutes` and
-  `dependency-result-metadata-delay-minutes + dependency-result-metadata-variance-minutes`."
+  "The variation of the result metadata job's delay while retries are pending, which is a random value within this many
+  minutes of `dependency-result-metadata-delay-minutes`, and the longest random delay of its first run after startup."
   :visibility :internal
   :type       :integer
   :default    30

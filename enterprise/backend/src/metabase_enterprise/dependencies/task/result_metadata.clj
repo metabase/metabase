@@ -5,7 +5,7 @@
    [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.settings :as deps.settings]
-   [metabase-enterprise.dependencies.task-util :as deps.task-util]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -14,16 +14,17 @@
 (set! *warn-on-reflection* true)
 
 (defn- update-result-metadata!
-  "Process a batch of stale entities, returning true if the full batch was used."
+  "Process a batch of stale entities, returning true if more are ready now: the full batch was taken, or a card changed
+  while it was re-derived."
   []
   (when (premium-features/has-feature? :dependencies)
-    (let [batch-size (deps.settings/dependency-result-metadata-batch-size)
-          processed  (deps.result-metadata/update-result-metadata!
-                      batch-size
-                      (deps.settings/dependency-result-metadata-delay-minutes))]
-      (when (pos? processed)
-        (log/info "Processed" processed "entities for result metadata."))
-      (and (pos? batch-size) (>= processed batch-size)))))
+    (let [batch-size                 (deps.settings/dependency-result-metadata-batch-size)
+          {:keys [taken conflicts?]} (deps.result-metadata/update-result-metadata!
+                                      batch-size
+                                      (deps.settings/dependency-result-metadata-delay-minutes))]
+      (when (pos? taken)
+        (log/info "Took" taken "entities for result metadata."))
+      (and (pos? batch-size) (or conflicts? (>= taken batch-size))))))
 
 (defn- has-pending-retries?
   "Whether any entity is in retry backoff that this instance can act on, failing open on an indeterminate token
@@ -35,12 +36,12 @@
 (declare schedule-run!)
 
 (defn- next-run-delay []
-  (deps.task-util/job-delay
+  (task.util/job-delay
    (deps.settings/dependency-result-metadata-delay-minutes)
    (deps.settings/dependency-result-metadata-variance-minutes)))
 
 (defn- run-and-reschedule!
-  "Process a batch, then run again right away when it was full, or after the delay when retries are pending,
+  "Process a batch, then run again right away when more are ready, or after the delay when retries are pending,
   rescheduling on the way out of a failure too."
   [scheduler]
   (try
@@ -66,12 +67,12 @@
 (defn- schedule-run!
   "Schedule a run of the result metadata job `delay-in-seconds` from now."
   [scheduler delay-in-seconds]
-  (deps.task-util/schedule-run! scheduler
-                                {:job-type    UpdateResultMetadata
-                                 :job-key     job-key
-                                 :trigger-key trigger-key
-                                 :job-name    "Update Result Metadata"}
-                                delay-in-seconds))
+  (task.util/schedule-run! scheduler
+                           {:job-type    UpdateResultMetadata
+                            :job-key     job-key
+                            :trigger-key trigger-key
+                            :job-name    "Update Result Metadata"}
+                           delay-in-seconds))
 
 (defn trigger-result-metadata-job!
   "Trigger the UpdateResultMetadata job to run after a brief delay, unless a MB_DEPENDENCY_RESULT_METADATA_BATCH_SIZE
@@ -85,5 +86,5 @@
     (log/info "Dependency result metadata batch size is not positive; the job will run but process nothing"))
   (schedule-run!
    (task/scheduler)
-   (deps.task-util/job-initial-delay
+   (task.util/job-initial-delay
     (deps.settings/dependency-result-metadata-variance-minutes))))

@@ -626,7 +626,7 @@
                           :to_entity_type :card :to_entity_id orders-id)))))))
 
 (deftest ^:synchronized backfill-records-table-sync-finds-later-test
-  (testing "a table a native query names before sync finds it gets its dependency once a sync of the database finds it"
+  (testing "a table a native query names before it exists gets its dependency once the table is created"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
@@ -638,7 +638,6 @@
         (is (true? (t2/select-one-fn :unresolved_tables :model/DependencyStatus :entity_type :card :entity_id card-id)))
         (is (false? (t2/select-one-fn :unresolved_tables :model/DependencyStatus :entity_type :card :entity_id known-id)))
         (mt/with-temp [:model/Table {late-id :id} {:db_id (mt/id) :schema "PUBLIC" :name "BIRDS_LATE" :active true}]
-          (dependencies.hooks/after-database-sync (mt/id))
           (backfill-all-existing-entities!)
           (is (= #{late-id} (table-dependency-ids :card card-id)))
           (is (false? (t2/select-one-fn :unresolved_tables :model/DependencyStatus

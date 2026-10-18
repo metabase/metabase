@@ -868,16 +868,9 @@
 
 ;;; --------------------------------------------- Result metadata status ---------------------------------------------
 
-(mu/defn mark-result-metadata-status-stale!
-  "Mark the ResultMetadataStatus of `entity-type` `entity-id` stale, creating it if it doesn't exist, and reset its
-  retry state."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (mdb/update-or-insert!
-   :model/ResultMetadataStatus
-   {:entity_type entity-type :entity_id entity-id}
-   (fn [_existing]
-     {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)})))
+(def ^:private reset-retries
+  "The changes that make a ResultMetadataStatus processable again, without the `updated_at` they also need."
+  {:stale true :fail_count 0 :next_retry_at nil :terminal false})
 
 (mu/defn mark-result-metadata-statuses-stale!
   "Mark the existing ResultMetadataStatuses of `entity-type` `entity-ids` stale and reset their retry state, returning
@@ -886,17 +879,17 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/update! :model/ResultMetadataStatus
               :entity_type entity-type :entity_id [:in entity-ids]
-              {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}))
+              (assoc reset-retries :updated_at (mi/now))))
 
-(mu/defn mark-dependent-result-metadata-statuses-stale!
-  "Mark the ResultMetadataStatuses of `entity-type` `entity-ids` that are not stale, or are terminal, stale with their
-  retry state reset, returning the number updated."
+(mu/defn mark-result-metadata-status-stale!
+  "Mark the ResultMetadataStatus of `entity-type` `entity-id` stale, creating it if it doesn't exist, and reset its
+  retry state."
   [entity-type :- EntityType
-   entity-ids  :- [:sequential ms/PositiveInt]]
-  (let [changes {:stale true :fail_count 0 :next_retry_at nil :terminal false :updated_at (mi/now)}]
-    (+ (t2/update! :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids] :stale false changes)
-       (t2/update! :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids] :terminal true
-                   changes))))
+   entity-id   :- ms/PositiveInt]
+  (mdb/update-or-insert! :model/ResultMetadataStatus
+                         {:entity_type entity-type :entity_id entity-id}
+                         (fn [_existing]
+                           (assoc reset-retries :updated_at (mi/now)))))
 
 (mu/defn result-metadata-status-entity-ids
   "The IDs of the entities of `entity-type` among `entity-ids` that have a ResultMetadataStatus."
@@ -904,29 +897,20 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :entity_id :model/ResultMetadataStatus :entity_type entity-type :entity_id [:in entity-ids]))
 
-(mu/defn insert-stale-result-metadata-status!
-  "Insert a stale ResultMetadataStatus for the entity `entity-type` `entity-id`, or mark the existing one stale when a
-  concurrent write inserted it first."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (mdb/update-or-insert!
-   :model/ResultMetadataStatus
-   {:entity_type entity-type :entity_id entity-id}
-   (fn [existing]
-     (when-not (:stale existing)
-       {:stale true :updated_at (mi/now)}))))
-
-(mu/defn result-metadata-status-exists?
-  "Whether any of the entities `nodes`, `[[entity-type entity-id]]`, has a ResultMetadataStatus."
-  [nodes :- [:sequential [:tuple EntityType ms/PositiveInt]]]
-  (boolean
-   (when (seq nodes)
-     (t2/exists? :model/ResultMetadataStatus
-                 {:where (into [:or]
-                               (for [[entity-type typed-nodes] (group-by first nodes)]
-                                 [:and
-                                  [:= :entity_type (name entity-type)]
-                                  [:in :entity_id (mapv second typed-nodes)]]))}))))
+(mu/defn result-metadata-statuses-changed-since
+  "The entities among `nodes`, `[[entity-type entity-id]]`, whose ResultMetadataStatus was marked or cleared at or after
+  `since`, as `[:entity_type :entity_id]` instances."
+  [nodes :- [:sequential [:tuple EntityType ms/PositiveInt]]
+   since :- ms/TemporalInstant]
+  (when (seq nodes)
+    (t2/select [:model/ResultMetadataStatus :entity_type :entity_id]
+               {:where [:and
+                        [:>= :updated_at since]
+                        (into [:or]
+                              (for [[entity-type typed-nodes] (group-by first nodes)]
+                                [:and
+                                 [:= :entity_type (name entity-type)]
+                                 [:in :entity_id (mapv second typed-nodes)]]))]})))
 
 (defn- processable-result-metadata-status-expr
   "The condition of a stale ResultMetadataStatus aliased `alias` that is not terminal and whose retry time has passed
@@ -940,30 +924,36 @@
       [:= (column :next_retry_at) nil]
       [:<= (column :next_retry_at) now]]]))
 
-(mu/defn stale-result-metadata-statuses
-  "The `:entity_type` and `:entity_id` of the stale ResultMetadataStatuses that are not terminal and whose retry time
-  has passed at `now`."
-  [now :- ms/TemporalInstant]
-  (t2/select [:model/ResultMetadataStatus :entity_type :entity_id]
-             {:where (processable-result-metadata-status-expr :result_metadata_status now)}))
+(defn- excluded-ids-expr
+  "The condition of a ResultMetadataStatus whose ID is not one of `excluded-ids`, or nil when there are none."
+  [excluded-ids]
+  (when (seq excluded-ids)
+    [:not-in :result_metadata_status.id excluded-ids]))
 
 (mu/defn stale-result-metadata-statuses-batch
-  "Up to `batch-size` stale ResultMetadataStatuses that are not terminal and whose retry time has passed at `now`."
-  [batch-size :- ms/PositiveInt
-   now        :- ms/TemporalInstant]
+  "Up to `batch-size` stale ResultMetadataStatuses that are not terminal, whose retry time has passed at `now`, and
+  whose ID is not one of `excluded-ids`."
+  [batch-size   :- ms/PositiveInt
+   now          :- ms/TemporalInstant
+   excluded-ids :- [:set ms/PositiveInt]]
   (t2/select :model/ResultMetadataStatus
-             {:where    (processable-result-metadata-status-expr :result_metadata_status now)
+             {:where    [:and
+                         (processable-result-metadata-status-expr :result_metadata_status now)
+                         (excluded-ids-expr excluded-ids)]
               :order-by [[:updated_at :asc] [:id :asc]]
               :limit    batch-size}))
 
 (mu/defn ready-result-metadata-statuses
-  "Up to `batch-size` stale ResultMetadataStatuses that are not terminal and whose retry time has passed at `now`,
-  of entities that depend on no entity whose ResultMetadataStatus is processable too."
-  [batch-size :- ms/PositiveInt
-   now        :- ms/TemporalInstant]
+  "Up to `batch-size` stale ResultMetadataStatuses that are not terminal, whose retry time has passed at `now`, whose ID
+  is not one of `excluded-ids`, and of entities that depend on no entity whose ResultMetadataStatus is processable
+  too."
+  [batch-size   :- ms/PositiveInt
+   now          :- ms/TemporalInstant
+   excluded-ids :- [:set ms/PositiveInt]]
   (t2/select :model/ResultMetadataStatus
              {:where    [:and
                          (processable-result-metadata-status-expr :result_metadata_status now)
+                         (excluded-ids-expr excluded-ids)
                          [:not [:exists ^:allow-subquery
                                 {:select [1]
                                  :from   [[(t2/table-name :model/Dependency) :dep]]
@@ -979,8 +969,8 @@
               :limit    batch-size}))
 
 (mu/defn clear-unchanged-result-metadata-status!
-  "Clear the stale flag and retry state of the ResultMetadataStatus with `status-id` unless its `updated_at` is no
-  longer `updated-at`, returning the number updated."
+  "Clear the ResultMetadataStatus with `status-id` unless its `updated_at` is no longer `updated-at`, returning the
+  number updated."
   [status-id  :- ms/PositiveInt
    updated-at :- ms/TemporalInstant]
   (t2/update! :model/ResultMetadataStatus
@@ -1013,16 +1003,16 @@
   []
   (t2/exists? :model/ResultMetadataStatus :stale true :terminal false :next_retry_at [:not= nil]))
 
-(mu/defn lock-result-metadata-status
-  "The ResultMetadataStatus with `status-id`, locked for update until the current transaction ends, or nil."
-  [status-id :- ms/PositiveInt]
-  (t2/select-one :model/ResultMetadataStatus :id status-id {:for :update}))
+(mu/defn native-card-ids
+  "The IDs of the native Cards among `card-ids`."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-pks-set [:model/Card :id] :id [:in card-ids] :query_type :native))
 
-(mu/defn lock-card!
-  "Lock the Card with `card-id` for update until the current transaction ends, returning its ID, or nil when it
-  doesn't exist."
+(mu/defn locked-card-result-metadata
+  "The `updated_at` and `result_metadata` of the Card with `card-id`, locked for update until the current transaction
+  ends, or nil when it doesn't exist."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-pk [:model/Card :id] :id card-id {:for :update}))
+  (t2/select-one [:model/Card :updated_at :result_metadata] :id card-id {:for :update}))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id` without touching `updated_at`, returning the number updated."
@@ -1102,43 +1092,6 @@
                 :order-by  [[[:case [:= :analysis_finding.stale true] [:inline 0] :else [:inline 1]]]
                             [:analysis_finding.analyzed_at :asc]]
                 :limit     batch-size})))
-
-(mu/defn table-ids-with-outdated-findings
-  "The IDs of the Tables of the Database with `db-id` whose dependents were analyzed before the Table, one of its
-  Fields, or one of its Fields' user settings last changed."
-  [db-id :- ::lib.schema.id/database]
-  (t2/select-fn-set :table_id :model/AnalysisFinding
-                    {:select     [:field_updates/table_id]
-                     :from       [[^:allow-subquery {:select    [[:table/id :table_id]
-                                                                 [:table/updated_at :last_table_update]
-                                                                 [[:max [:case
-                                                                         [:>= :field/updated_at
-                                                                          [:coalesce :field_settings/updated_at :field/updated_at]]
-                                                                         :field/updated_at
-                                                                         :else :field_settings/updated_at]]
-                                                                  :last_field_update]]
-                                                     :from      [(warehouse-schema-overlay/table-query {:alias :table})]
-                                                     :left-join [(warehouse-schema-overlay/field-query {:alias :field})
-                                                                 [:= :field/table_id :table/id]
-                                                                 [(t2/table-name :model/FieldUserSettings) :field_settings]
-                                                                 [:= :field_settings/field_id :field/id]]
-                                                     :where     [:= :table/db_id db-id]
-                                                     :group-by  [:table/id
-                                                                 :table/updated_at]}
-                                   :field_updates]]
-                     :inner-join [[(t2/table-name :model/Dependency) :dep]
-                                  [:and
-                                   [:= :dep/to_entity_type "table"]
-                                   [:= :field_updates/table_id :dep/to_entity_id]]
-                                  [(t2/table-name :model/AnalysisFinding) :finding]
-                                  [:and
-                                   [:= :finding/analyzed_entity_type :dep/from_entity_type]
-                                   [:= :finding/analyzed_entity_id   :dep/from_entity_id]]]
-                     :where      [:and
-                                  [:!= :finding/analyzed_entity_id nil]
-                                  [:or
-                                   [:< :finding/analyzed_at :field_updates/last_table_update]
-                                   [:< :finding/analyzed_at :field_updates/last_field_update]]]}))
 
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
 

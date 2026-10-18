@@ -1,6 +1,5 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
@@ -17,7 +16,7 @@
 
 (t2/define-before-insert :model/AnalysisFinding
   [finding]
-  (merge {:analyzed_at (t/offset-date-time)} finding))
+  (merge {:analyzed_at (mi/now)} finding))
 
 (t2/define-before-update :model/AnalysisFinding
   [finding]
@@ -54,14 +53,13 @@
    :source-entity-id    (:source-entity-id error)})
 
 (defn upsert-analysis!
-  "Given the details of an AnalysisFinding row, upsert the data into the actual db, analyzed now even when the result
-   is unchanged. Also writes individual errors to the analysis_finding_error table with source information."
+  "Given the details of an AnalysisFinding row, upsert the data into the actual db.
+   Also writes individual errors to the analysis_finding_error table with source information."
   [type instance-id result finding-details]
   (t2/with-transaction [_conn]
     (let [update {:analysis_version *current-analysis-finding-version*
                   :result result
-                  :stale false
-                  :analyzed_at (t/offset-date-time)}
+                  :stale false}
           existing-id (dependencies.db/finding-id type instance-id)]
       (if existing-id
         (dependencies.db/update-finding! existing-id update)
@@ -91,8 +89,8 @@
   (dependencies.db/stale-finding-exists?))
 
 (defn stale-entity-count
-  "Number of analysis findings currently marked stale, across all entity types. Used by the entity-check drain loop to
-  detect whether it is still making progress."
+  "Number of analysis findings currently marked stale, across all entity types. Used by the analysis finding job's
+  drain loop to detect whether it is still making progress."
   []
   (dependencies.db/stale-finding-count))
 

@@ -2834,7 +2834,6 @@
            app-db
            audit-app
            database-routing
-           dependencies
            driver
            events
            interestingness

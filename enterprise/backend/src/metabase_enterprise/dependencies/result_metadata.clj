@@ -1,7 +1,7 @@
 (ns metabase-enterprise.dependencies.result-metadata
-  "Re-derives the result metadata of the MBQL cards that transitively depend on entities whose result columns changed,
-  marking the stale entities' dependents up front and processing each after its upstream entities, without re-deriving
-  or passing native cards, whose result metadata comes from running them."
+  "Re-derives the result metadata of the MBQL cards that depend on entities whose result columns changed, marking each
+  card or measure whose columns change in turn so the change reaches its own dependents, without re-deriving or passing
+  native cards, whose result metadata comes from running them."
   (:require
    [clojure.walk :as walk]
    [malli.error :as me]
@@ -28,9 +28,9 @@
   [:name :display_name :description :semantic_type :fk_target_field_id :id :settings :visibility_type
    :base_type :effective_type :unit :inherited_temporal_unit])
 
-(def ^:private type-column-keys
-  "The result metadata column keys a run of the card refines within the type that inference gets right."
-  [:base_type :effective_type :database_type])
+(def ^:private measured-column-keys
+  "The result metadata column keys a run of the card measures, within the type that inference gets right."
+  [:base_type :effective_type :database_type :fingerprint])
 
 (defn- normalize-column
   "The result metadata column `col` with its unqualified keys in snake_case."
@@ -53,97 +53,90 @@
   [x y]
   (and x y (not= :type/* (types/most-specific-common-ancestor (keyword x) (keyword y)))))
 
+(defn- measured-by-a-run?
+  "Whether the stored column `stored-col` holds what a run measured for the inferred column `col`: they have types of
+  the same root, and the column's source type is unchanged."
+  [stored-col col]
+  (and (same-root-type? (:base_type stored-col) (:base_type col))
+       (or (nil? (:database_type col))
+           (= (:database_type col) (:database_type stored-col)))))
+
 (defn- patch-result-metadata
-  "The inferred result metadata `inferred`, each column keeping the fingerprint of the stored column of `stored` it
-  stands for, and its types too when they share a root type with the inferred ones, since a run measures those."
+  "The inferred result metadata `inferred`, each column keeping the [[measured-column-keys]] of the stored column of
+  `stored` it stands for when a run measured them."
   [stored inferred]
-  (let [stored-column (lib/stored-column-matcher stored)]
-    (mapv (fn [col]
-            (if-let [stored-col (stored-column col)]
-              (cond-> col
-                (some? (:fingerprint stored-col))
-                (assoc :fingerprint (:fingerprint stored-col))
+  (mapv (fn [col stored-col]
+          (cond-> col
+            (and stored-col (measured-by-a-run? stored-col col))
+            (merge (select-keys stored-col measured-column-keys))))
+        inferred
+        (lib/match-stored-columns stored inferred)))
 
-                (same-root-type? (:base_type stored-col) (:base_type col))
-                (merge (select-keys stored-col type-column-keys)))
-              col))
-          inferred)))
-
-(def ^:private query-batch-size
-  "The number of entities read or walked per query, below the bind-parameter limits of every app DB."
-  1000)
-
-(defn- native-card?
-  "Whether `card` has a native stage, so its result metadata comes from running it."
-  [card]
-  (boolean (some-> card :dataset_query not-empty lib/any-native-stage?)))
-
-(defn- native-card-ids
-  "The IDs of the native cards among `card-ids`."
-  [card-ids]
-  (into #{}
-        (comp (mapcat #(dependencies.db/instances :card (set %)))
-              (filter native-card?)
-              (map :id))
-        (partition-all query-batch-size card-ids)))
-
-(defn- mbql-dependents-graph
-  "The graph of the dependents of entities through MBQL cards and measures, queried in batches."
-  []
-  (let [dependents (models.dependency/filtered-graph-dependents {:types deps.result-metadata-status/derived-types})]
-    (reify graph/Graph
-      (children-of [_ key-seq]
-        (let [children (into {} (map #(graph/children-of dependents %)) (partition-all query-batch-size key-seq))
-              native   (native-card-ids (for [[_ nodes] children
-                                              [entity-type id] nodes
-                                              :when (= entity-type :card)]
-                                          id))]
-          (update-vals children (fn [nodes]
-                                  (into #{} (remove (fn [[entity-type id]] (and (= entity-type :card) (native id))))
-                                        nodes))))))))
-
-(defn- mark-transitive-dependents-stale!
-  "Mark as stale the MBQL cards and measures that transitively depend on stale entities, without passing native
-  cards."
-  []
-  (when-let [stale (not-empty (deps.result-metadata-status/stale-statuses))]
-    (deps.result-metadata-status/mark-dependents-stale!
-     (models.dependency/group-nodes
-      (graph/transitive (mbql-dependents-graph) (mapv (juxt :entity_type :entity_id) stale))))))
+(defn- mbql-dependents
+  "The MBQL cards and measures that directly depend on the entity `entity-type` `entity-id`, as
+  `[[entity-type entity-id]]`."
+  [entity-type entity-id]
+  (let [node     [entity-type entity-id]
+        graph    (models.dependency/filtered-graph-dependents {:types deps.result-metadata-status/derived-types})
+        nodes    (get (graph/children-of graph [node]) node)
+        card-ids (into #{} (keep (fn [[node-type id]] (when (= node-type :card) id))) nodes)
+        native   (set (when (seq card-ids) (dependencies.db/native-card-ids card-ids)))]
+    (remove (fn [[node-type id]] (and (= node-type :card) (native id))) nodes)))
 
 (defn- rederived-result-metadata
-  "The re-derived result metadata of the MBQL `card`, inferred as its creator so their sandboxes apply, or nil when
-  what the queries using it see is unchanged."
-  [{query :dataset_query, stored :result_metadata, :keys [id creator_id], :as card}]
+  "The re-derived result metadata of the MBQL `card`, inferred like a save through the Card model, or nil when what the
+  queries using it see is unchanged, apart from the remapped columns a run adds and inference leaves out."
+  [{query :dataset_query, stored :result_metadata, :keys [id], :as card}]
   (let [stored   (mapv normalize-column stored)
         metadata (patch-result-metadata
                   stored
-                  (or (queries/infer-metadata-with-model-overrides query card creator_id)
+                  (or (queries/infer-metadata-with-model-overrides query card)
                       (throw (ex-info "Could not infer the result metadata of the card" {:card-id id}))))]
-    (when (not= (comparable-metadata stored) (comparable-metadata metadata))
+    (when (not= (comparable-metadata (remove :remapped_from stored)) (comparable-metadata metadata))
       (when-let [error (me/humanize (mr/explain ::lib.schema.metadata/card.result-metadata metadata))]
         (throw (ex-info "Invalid re-derived result metadata" {:card-id id :error error})))
       metadata)))
 
-(defn- process-status!
-  "Re-derive the result metadata of the stale entity `status` when it is an MBQL card, then, with the status and the
-  card locked, store it and clear the status unless it was marked again, returning `:conflict` without doing either
-  when the card changed since it was read."
-  [{:keys [id entity_type entity_id] :as status}]
-  (let [card     (when (= entity_type :card) (dependencies.db/card entity_id))
-        metadata (when (and card (not (native-card? card)) (seq (:dataset_query card)))
+(defn- store-result-metadata!
+  "Store the re-derived result metadata `metadata` of `card` under the card's lock alone, unless the card changed since
+  it was read, returning whether it stored it."
+  [{:keys [id] :as card} metadata]
+  (t2/with-transaction [_]
+    (when (= (select-keys card [:updated_at :result_metadata])
+             (dependencies.db/locked-card-result-metadata id))
+      (dependencies.db/set-card-result-metadata! id metadata)
+      true)))
+
+(defn- rederive-card!
+  "Re-derive and store the result metadata of the Card with `card-id` when it is an MBQL card, returning `:changed`,
+  `:unchanged`, or `:conflict` without storing it when the card changed since it was read."
+  [card-id]
+  (let [card     (dependencies.db/card card-id)
+        metadata (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
                    (rederived-result-metadata card))]
-    (t2/with-transaction [_]
-      (dependencies.db/lock-result-metadata-status id)
-      (if (and card (not= (select-keys card [:updated_at :result_metadata])
-                          (when (dependencies.db/lock-card! entity_id)
-                            (select-keys (dependencies.db/card entity_id) [:updated_at :result_metadata]))))
-        :conflict
-        (do
-          (when metadata
-            (dependencies.db/set-card-result-metadata! entity_id metadata))
-          (deps.result-metadata-status/clear-stale-if-unchanged! status)
-          :processed)))))
+    (cond
+      (nil? metadata)                        :unchanged
+      (store-result-metadata! card metadata) :changed
+      :else                                  :conflict)))
+
+(defn- process-dependent!
+  "Re-derive the MBQL card or pass on the change of the measure `entity-type` `entity-id`, marking it stale when what
+  its own dependents see changed, and returning `:changed`, `:unchanged` or `:conflict`."
+  [[entity-type entity-id]]
+  (let [result (if (= entity-type :card) (rederive-card! entity-id) :changed)]
+    (when (= :changed result)
+      (deps.result-metadata-status/mark-stale! {entity-type #{entity-id}}))
+    result))
+
+(defn- process-status!
+  "Re-derive the MBQL cards that directly depend on the entity of the stale `status`, then clear the status unless it
+  was marked again, returning `:conflict` without clearing it when one of those cards changed since it was read."
+  [{:keys [entity_type entity_id] :as status}]
+  (let [results (mapv process-dependent! (mbql-dependents entity_type entity_id))]
+    (if (some #{:conflict} results)
+      :conflict
+      (do (deps.result-metadata-status/clear-stale-if-unchanged! status)
+          :processed))))
 
 (defn- process-status-or-record-failure!
   "Process the stale entity `status`, recording an Exception as a failure and rethrowing any other Throwable after
@@ -164,16 +157,15 @@
       :failed)))
 
 (defn update-result-metadata!
-  "Process up to `batch-size` stale entities, re-deriving the result metadata of the MBQL cards among them, and return
-  how many were processed, leaving the ones whose card changed meanwhile for the next run."
+  "Process up to `batch-size` stale entities, re-deriving the result metadata of the MBQL cards depending on them,
+  returning how many it took and whether any of those cards changed meanwhile, as `{:taken n :conflicts? bool}`."
   [batch-size retry-delay-minutes]
   (deps.result-metadata-status/remove-deleted!)
   (loop [remaining batch-size, conflicts #{}]
     (let [statuses (when (pos? remaining)
-                     (mark-transitive-dependents-stale!)
-                     (remove (comp conflicts :id) (deps.result-metadata-status/statuses-to-process remaining)))]
+                     (deps.result-metadata-status/statuses-to-process remaining conflicts))]
       (if (empty? statuses)
-        (- batch-size remaining)
+        {:taken (- batch-size remaining) :conflicts? (boolean (seq conflicts))}
         (let [results (lib-be/with-metadata-provider-cache
                         (mapv #(process-status-or-record-failure! % retry-delay-minutes) statuses))]
           (recur (- remaining (count statuses))

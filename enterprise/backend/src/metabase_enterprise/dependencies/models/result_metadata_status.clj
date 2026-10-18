@@ -19,19 +19,19 @@
 
 (def derived-types
   "The entity types whose result columns are derived from those of the entities they depend on: cards, of which the
-  MBQL ones are re-derived, and measures, which pass the changes on."
+  MBQL ones are re-derived, and measures, which pass a change on."
   #{:card :measure})
 
-(def ^:private mark-stale-batch-size
+(def ^:private batch-size
   "The number of statuses marked per query, below the bind-parameter limits of every app DB."
   1000)
 
 (defn mark-stale!
-  "Mark the entities in `type->ids`, `{entity-type ids}`, changed for the result metadata of the cards depending on
-  them to be re-derived, resetting their retry state."
+  "Mark the entities in `type->ids`, `{entity-type ids}`, changed, so the MBQL cards depending on them are re-derived,
+  resetting their retry state."
   [type->ids]
   (doseq [[entity-type ids] type->ids
-          batch             (partition-all mark-stale-batch-size ids)
+          batch             (partition-all batch-size ids)
           :let              [batch (vec batch)]]
     (dependencies.db/mark-result-metadata-statuses-stale! entity-type batch)
     (let [existing (set (dependencies.db/result-metadata-status-entity-ids entity-type batch))]
@@ -39,31 +39,13 @@
               :when     (not (existing entity-id))]
         (dependencies.db/mark-result-metadata-status-stale! entity-type entity-id)))))
 
-(defn mark-dependents-stale!
-  "Mark the dependents in `type->ids`, `{entity-type ids}`, stale, resetting the ones that reached the retry limit but
-  not the backoff of the ones that are stale already, so a dependent that keeps failing still backs off."
-  [type->ids]
-  (doseq [[entity-type ids] type->ids
-          batch             (partition-all mark-stale-batch-size ids)
-          :let              [batch (vec batch)]]
-    (dependencies.db/mark-dependent-result-metadata-statuses-stale! entity-type batch)
-    (let [existing (set (dependencies.db/result-metadata-status-entity-ids entity-type batch))]
-      (doseq [entity-id batch
-              :when     (not (existing entity-id))]
-        (dependencies.db/insert-stale-result-metadata-status! entity-type entity-id)))))
-
-(defn stale-statuses
-  "The stale statuses that are not terminal and whose retry time has passed."
-  []
-  (dependencies.db/stale-result-metadata-statuses (t/offset-date-time)))
-
 (defn statuses-to-process
-  "Up to `batch-size` stale statuses whose upstream entities have no processable status, or any of them when none
-  does, which only a cycle causes."
-  [batch-size]
+  "Up to `batch-size` stale statuses other than those with `excluded-ids` whose upstream entities have no processable
+  status, or any of them when none does, which only a cycle causes."
+  [batch-size excluded-ids]
   (let [now (t/offset-date-time)]
-    (or (not-empty (dependencies.db/ready-result-metadata-statuses batch-size now))
-        (dependencies.db/stale-result-metadata-statuses-batch batch-size now))))
+    (or (not-empty (dependencies.db/ready-result-metadata-statuses batch-size now excluded-ids))
+        (dependencies.db/stale-result-metadata-statuses-batch batch-size now excluded-ids))))
 
 (defn clear-stale-if-unchanged!
   "Clear the stale status `status`, unless it was marked again since it was read."

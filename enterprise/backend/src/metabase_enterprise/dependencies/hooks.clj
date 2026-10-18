@@ -13,6 +13,7 @@
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
@@ -39,7 +40,7 @@
     (try
       ((job-triggers job))
       (catch Throwable e
-        (log/warnf "Failed to trigger the dependency %s job: %s" (name job) (ex-message e))))))
+        (log/warnf "Failed to trigger the %s job: %s" (name job) (ex-message e))))))
 
 (defn- process-writes!
   "Mark the dependents of the Tables changed by `writes` for re-analysis, then trigger the jobs the `writes` need."
@@ -81,12 +82,21 @@
   (let [changes (t2/changes instance)]
     (some #(contains? changes %) columns)))
 
+(defn- card-result-columns-changed?
+  "Whether the update of the Card `card` changes the result columns of the cards depending on it: the query or type of
+  an MBQL card, or the non-empty result metadata of a native card, which only a run or a save with it knows."
+  [card]
+  (if (some-> (:dataset_query card) not-empty lib/native-only-query?)
+    (and (changed? card #{:result_metadata}) (seq (:result_metadata card)))
+    (changed? card #{:type :dataset_query})))
+
 (def ^:private model-job-columns
-  "For each model, the columns whose update makes each job recompute its entity, by job, see [[job-triggers]]."
+  "For each model, the columns whose update makes each job recompute its entity, or a predicate of the updated
+  instance, by job, see [[job-triggers]]."
   {:model/Action             {:dependencies      #{:model_id :type}}
    :model/Card               {:dependencies      #{:type :dataset_query :dimension_mappings :parameters}
                               :analysis-findings #{:dataset_query}
-                              :result-metadata   #{:type :dataset_query}}
+                              :result-metadata   card-result-columns-changed?}
    :model/Dashboard          {:dependencies      #{:parameters}}
    :model/Document           {:dependencies      #{:content_type :document}}
    :model/Measure            {:dependencies      #{:definition :table_id}
@@ -126,7 +136,11 @@
   (defmethod before-update* model
     [_model instance]
     (mark-changed! entity-type (:id instance) (into #{}
-                                                    (keep (fn [[job columns]] (when (changed? instance columns) job)))
+                                                    (keep (fn [[job columns]]
+                                                            (when (if (fn? columns)
+                                                                    (columns instance)
+                                                                    (changed? instance columns))
+                                                              job)))
                                                     job-columns)))
   (defmethod before-delete* model
     [_model instance]
@@ -180,6 +194,50 @@
   (when table-id
     (deps.result-metadata-status/mark-stale! {:table #{table-id}})
     (submit-after-commit! {:table-id table-id :jobs #{:analysis-findings :result-metadata}})))
+
+(defn- mark-unresolved-table-entities!
+  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, which a new or
+  renamed Table may match now."
+  [database-id]
+  (when database-id
+    (doseq [[entity-type entity-ids] (dependencies.db/unresolved-table-entity-ids database-id)
+            entity-id                entity-ids]
+      (mark-changed! entity-type entity-id (cond-> #{:dependencies}
+                                             (contains? deps.findings/analyzable-entities entity-type)
+                                             (conj :analysis-findings))))))
+
+(def ^:private table-columns
+  "The Table columns whose update changes the result columns of the cards using the Table."
+  #{:name :display_name :description :active :visibility_type})
+
+(def ^:private field-columns
+  "The Field columns whose update changes the result columns of the cards using the Field's Table."
+  #{:name :display_name :description :active :visibility_type :settings :base_type :effective_type :database_type
+    :semantic_type :coercion_strategy :fk_target_field_id})
+
+(defmethod before-insert* :model/Table
+  [_model table]
+  (mark-unresolved-table-entities! (:db_id table)))
+
+(defmethod before-update* :model/Table
+  [_model table]
+  (when (changed? table table-columns)
+    (mark-table-changed! (:id table)))
+  (when (changed? table #{:name :schema :active})
+    (mark-unresolved-table-entities! (:db_id table))))
+
+(defmethod before-insert* :model/Field
+  [_model field]
+  (mark-table-changed! (:table_id field)))
+
+(defmethod before-update* :model/Field
+  [_model field]
+  (when (changed? field field-columns)
+    (mark-table-changed! (:table_id field))))
+
+(defmethod before-delete* :model/Field
+  [_model field]
+  (mark-table-changed! (:table_id field)))
 
 (defmethod before-insert* :model/TableUserSettings
   [_model settings]
@@ -240,46 +298,13 @@
   [model instance]
   (before-delete* model instance))
 
-(defn- mark-unresolved-table-entities!
-  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, which a sync may
-  have found now."
-  [database-id]
-  (doseq [[entity-type entity-ids] (dependencies.db/unresolved-table-entity-ids database-id)
-          entity-id                entity-ids]
-    (mark-changed! entity-type entity-id (cond-> #{:dependencies}
-                                           (contains? deps.findings/analyzable-entities entity-type)
-                                           (conj :analysis-findings)))))
-
-(defenterprise after-database-sync
-  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, and its Tables
-  changed since their dependents were analyzed, for re-deriving the result metadata of the cards depending on them and
-  for re-analyzing their dependents."
-  :feature :dependencies
-  [database-id]
-  (mark-unresolved-table-entities! database-id)
-  (when-let [table-ids (not-empty (dependencies.db/table-ids-with-outdated-findings database-id))]
-    (deps.result-metadata-status/mark-stale! {:table table-ids})
-    (deps.findings/mark-transitive-dependents-stale! {:table table-ids})
-    (trigger-jobs! #{:analysis-findings :result-metadata})))
-
-(defenterprise after-table-sync
-  "Mark the entities reading from the Database with `database-id` that name tables matching nothing, and the Table with
-  `table-id` it synced alone, for re-deriving the result metadata of the cards depending on it and for re-analyzing its
-  dependents."
-  :feature :dependencies
-  [database-id table-id]
-  (mark-unresolved-table-entities! database-id)
-  (mark-table-changed! table-id))
-
 (defenterprise after-transform-run
-  "Make the output Table with `table-id` depend on the transform with `transform-id`, mark it for re-deriving the
-  result metadata of the cards depending on it, and mark the transform's dependents for re-analysis."
+  "Make the output Table with `table-id` depend on the transform with `transform-id`, and mark the transform's
+  dependents for re-analysis."
   :feature :dependencies
   [transform-id table-id]
   (when table-id
-    (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}})
-    (deps.result-metadata-status/mark-stale! {:table #{table-id}})
-    (trigger-jobs! #{:result-metadata}))
+    (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))
   (when (deps.findings/mark-transitive-dependents-stale! {:transform #{transform-id}})
     (trigger-jobs! #{:analysis-findings})))
 

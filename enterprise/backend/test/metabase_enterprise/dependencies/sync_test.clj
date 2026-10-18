@@ -2,19 +2,15 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
-   [java-time.api :as t]
-   [metabase-enterprise.dependencies.db :as deps.db]
    [metabase-enterprise.dependencies.findings :as deps.findings]
-   [metabase-enterprise.dependencies.hooks :as dependencies.hooks]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
-   [metabase.dependencies.hooks :as oss.dependencies.hooks]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- with-syncable-db! [thunk]
@@ -53,24 +49,11 @@
                                    :analyzed_entity_type :card
                                    :analyzed_entity_id card-id)))
             (is (empty? (deps.analysis-finding-error/errors-for-entity :card card-id))))
-          ;; Backdate the analysis timestamp and table/field updated_at so
-          ;; synced-db->direct-dependents-of-changed-tables will detect it as stale (analyzed_at < field.updated_at)
-          ;; after a new sync makes an edit.
-          ;; This is necessary because within a transaction, now() returns the same value, so the initial analysis and
-          ;; the field update from sync would have identical timestamps.
-          (let [old-time (t/minus (t/offset-date-time) (t/hours 1))]
-            (t2/update! :model/AnalysisFinding
-                        {:analyzed_entity_type :card :analyzed_entity_id card-id}
-                        {:analyzed_at old-time})
-            (t2/update! :model/Field :table_id table-id
-                        {:updated_at old-time})
-            (t2/update! :model/Table :id table-id
-                        {:updated_at old-time}))
-          ;; Setup complete: Now call the thunk for the actual test run.
-          (thunk {:db-id           (:id (mt/db))
-                  :card-id         card-id
-                  :table-id        table-id
-                  :filter-field-id filter-field-id}))))))
+          (t2/delete! :model/ResultMetadataStatus :entity_type :table :entity_id table-id)
+          (deps.test/do-with-immediate-hook-writes
+           #(thunk {:card-id         card-id
+                    :table-id        table-id
+                    :filter-field-id filter-field-id})))))))
 
 ;; Integration test that a real DB sync triggers re-analysis of an updated table.
 (deftest ^:synchronized sync-removed-column-triggers-reanalysis-test
@@ -82,15 +65,14 @@
                                                       :analyzed_entity_id card-id)]
           ;; Step 4: Remove the column used in the filter
           (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
-          ;; Step 5: Re-sync the database. The sync-end event will detect the stale analysis
-          ;; (because analyzed_at < field.updated_at) and mark it for re-analysis.
+          ;; Step 5: Re-sync the database. Deactivating the field marks its table, and so the card for re-analysis.
           (sync/sync-database! (mt/db))
           ;; Verify the field is now inactive
           (testing "Field is marked inactive after sync"
             (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id))))
           (testing "The table has a result metadata status for re-deriving the result metadata of the cards depending on it"
             (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id)))
-          ;; Step 6 & 7: The sync-end event marks dependents as stale and triggers the job.
+          ;; Step 6 & 7: The field's hook marks dependents as stale and triggers the job.
           ;; Due to race conditions, the entity may be either stale (job hasn't run yet)
           ;; or already reanalyzed (job ran). Check for either valid outcome.
           (let [finding (t2/select-one :model/AnalysisFinding
@@ -127,64 +109,33 @@
 ;; Integration test that a DB sync which doesn't change anything about a table does not trigger re-analysis of all
 ;; cards which depend on that table.
 (deftest ^:synchronized sync-without-changes-does-not-trigger-reanalysis-test
-  (testing "When sync makes no changes to a table or its fields, the card is not re-analyzed"
+  (testing "When sync makes no changes to a table or its fields, nothing is marked and the card is not re-analyzed"
     (with-syncable-db!
-      (fn [{:keys [card-id db-id filter-field-id table-id]}]
+      (fn [{:keys [card-id filter-field-id table-id]}]
         (let [initial-analysis-time (t2/select-one-fn :analyzed_at :model/AnalysisFinding
                                                       :analyzed_entity_type :card
                                                       :analyzed_entity_id card-id)
-              db-deps-checked       (atom [])
-              original-deps-check   (mt/original-fn #'deps.db/table-ids-with-outdated-findings)
               table-before          (into {} (t2/select-one :model/Table :id table-id))
               filter-field-before   (into {} (t2/select-one :model/Field :id filter-field-id))]
-          ;; Re-sync the database, having made no changes to it.
-          (mt/with-dynamic-fn-redefs [deps.db/table-ids-with-outdated-findings
-                                      (fn [db-id]
-                                        (u/prog1 (original-deps-check db-id)
-                                          (swap! db-deps-checked conj [db-id <>])))]
-            (sync/sync-database! (mt/db)))
+          (sync/sync-database! (mt/db))
           (testing "sync doesn't update tables or fields that haven't changed"
-            (let [table-after        (into {} (t2/select-one :model/Table :id table-id))
-                  filter-field-after (into {} (t2/select-one :model/Field :id filter-field-id))]
-              (is (= table-before table-after))
-              (is (= filter-field-before filter-field-after))))
-          (testing "the DB is were checked for tables that need deps updates, but none were found"
-            (is (=? [[db-id empty?]]
-                    @db-deps-checked)))
-          (testing "No re-analysis was done, the analysis for the card is ~1 hour ago"
+            (is (= table-before (into {} (t2/select-one :model/Table :id table-id))))
+            (is (= filter-field-before (into {} (t2/select-one :model/Field :id filter-field-id)))))
+          (testing "the table is not marked for re-deriving the cards on it"
+            (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id))))
+          (testing "No re-analysis was done"
             (let [finding (t2/select-one :model/AnalysisFinding
                                          :analyzed_entity_type :card
                                          :analyzed_entity_id card-id)]
-              (is (some? finding) "Analysis finding should exist")
-              (is (true? (:result finding)) "Analysis should be a success")
-              (is (= initial-analysis-time (:analyzed_at finding))
-                  "Analysis should not have been re-run"))))))))
+              (is (=? {:result true :stale false} finding))
+              (is (= initial-analysis-time (:analyzed_at finding))))))))))
 
-(deftest ^:synchronized unchanged-sync-after-reanalysis-marks-nothing-test
-  (testing "once a field change is re-analyzed with an unchanged result, the next sync no longer finds the table outdated"
-    (with-syncable-db!
-      (fn [{:keys [db-id filter-field-id table-id]}]
-        (t2/insert! :model/FieldUserSettings {:field_id filter-field-id :display_name "Filter column"})
-        (dependencies.hooks/after-database-sync db-id)
-        (is (= #{table-id} (deps.db/table-ids-with-outdated-findings db-id)))
-        (lib-be/with-metadata-provider-cache
-          (deps.findings/analyze-batch! :card 100))
-        (is (empty? (deps.db/table-ids-with-outdated-findings db-id)))))))
-
-(deftest ^:synchronized table-sync-marks-the-table-test
-  (testing "a sync of one table, like after an upload or a transform run, marks it for re-deriving the cards on it, and
-           a full database sync doesn't run the table sync hook"
+(deftest ^:synchronized table-sync-marks-a-changed-table-test
+  (testing "a sync of one table, like after an upload or a transform run, marks it only when it changes the table"
     (with-syncable-db!
       (fn [{:keys [table-id]}]
-        (let [table-syncs (atom 0)
-              table-sync  (mt/original-fn #'oss.dependencies.hooks/after-table-sync)]
-          (mt/with-dynamic-fn-redefs [oss.dependencies.hooks/after-table-sync (fn [& args]
-                                                                                (swap! table-syncs inc)
-                                                                                (apply table-sync args))]
-            (sync/sync-database! (mt/db))
-            (is (zero? @table-syncs))
-            (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id :stale true)))
-            (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" ADD COLUMN \"new_col\" VARCHAR;"])
-            (sync/sync-table! (t2/select-one :model/Table :id table-id))
-            (is (= 1 @table-syncs))
-            (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id :stale true))))))))
+        (sync/sync-table! (t2/select-one :model/Table :id table-id))
+        (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id)))
+        (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" ADD COLUMN \"new_col\" VARCHAR;"])
+        (sync/sync-table! (t2/select-one :model/Table :id table-id))
+        (is (t2/exists? :model/ResultMetadataStatus :entity_type :table :entity_id table-id :stale true))))))

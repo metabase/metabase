@@ -558,14 +558,15 @@
                   (lib.normalize/normalize :metabase.query-processor.schema/result-metadata.column)))
      :cljs (lib.normalize/normalize ::lib.schema.metadata/column col)))
 
-(defn stored-column-matcher
-  "A function returning the column of the stored result metadata `stored-cols` that a newly computed column stands
-  for: the one with the same desired column alias, or else the one with the same name when either has no alias."
-  [stored-cols]
+(defn match-stored-columns
+  "For each of the newly computed columns `cols`, the column of the stored result metadata `stored-cols` it stands for,
+  or nil: the one with the same desired column alias, or else the one with the same name when either has no alias."
+  [stored-cols cols]
   (let [by-alias (m/index-by :lib/desired-column-alias (filter :lib/desired-column-alias stored-cols))
         by-name  (m/index-by :name stored-cols)]
-    (fn [col]
-      (or (get by-alias (:lib/desired-column-alias col))
-          (let [stored-col (get by-name (:name col))]
-            (when (not-every? :lib/desired-column-alias [col stored-col])
-              stored-col))))))
+    (mapv (fn [col]
+            (or (get by-alias (:lib/desired-column-alias col))
+                (let [stored-col (get by-name (:name col))]
+                  (when (not-every? :lib/desired-column-alias [col stored-col])
+                    stored-col))))
+          cols)))

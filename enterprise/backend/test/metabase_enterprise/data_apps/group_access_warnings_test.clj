@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.dependencies.test-util :as deps.test]
-   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
@@ -97,7 +96,7 @@
                     (group-access/permission-warnings app)))))))))
 
 (deftest group-permission-warnings-include-table-synced-after-analysis-test
-  (testing "a table that sync finds after the app's card was analyzed enters the warnings once the jobs run"
+  (testing "a table created after the app's card was analyzed enters the warnings once the jobs run"
     (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
       (mt/with-no-data-perms-for-all-users!
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding]
@@ -111,7 +110,6 @@
             (group-access/add-groups! app [(:id group)])
             (deps.test/synchronously-run-dependency-job!)
             (mt/with-temp [:model/Table {late-id :id} {:db_id (mt/id) :schema "PUBLIC" :name "BIRDS_LATE" :active true}]
-              (dependencies.hooks/after-database-sync (mt/id))
               (deps.test/synchronously-run-dependency-job!)
               (is (=? [{:group_id (:id group) :missing_tables [{:id late-id}]}]
                       (group-access/permission-warnings app))))))))))

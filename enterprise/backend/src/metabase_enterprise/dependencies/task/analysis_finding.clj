@@ -3,7 +3,7 @@
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]
-   [metabase-enterprise.dependencies.task-util :as deps.task-util]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
@@ -43,12 +43,12 @@
   (if (false? (premium-features/canonically-has-feature? :dependencies))
     (log/debug "Not rescheduling job Update Analysis Findings: the dependencies feature is not enabled")
     (schedule-run! scheduler
-                   (deps.task-util/job-delay
+                   (task.util/job-delay
                     (deps.settings/dependency-entity-check-delay-minutes)
                     (deps.settings/dependency-entity-check-variance-minutes)))))
 
 (task/defjob UpdateAnalysisFindings
-  "Check all entities for validity"
+  "Re-analyze the stale entities."
   {:saved-class "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
    :concurrent? false}
   [ctx]
@@ -62,19 +62,19 @@
 (defn- schedule-run!
   "Schedule a run of the analysis finding job `delay-in-seconds` from now."
   [scheduler delay-in-seconds]
-  (deps.task-util/schedule-run! scheduler
-                                {:job-type    UpdateAnalysisFindings
-                                 :job-key     job-key
-                                 :trigger-key trigger-key
-                                 :job-name    "Update Analysis Findings"}
-                                delay-in-seconds))
+  (task.util/schedule-run! scheduler
+                           {:job-type    UpdateAnalysisFindings
+                            :job-key     job-key
+                            :trigger-key trigger-key
+                            :job-name    "Update Analysis Findings"}
+                           delay-in-seconds))
 
 (defmethod task/init! ::UpdateAnalysisFindings [_]
   (when-not (pos? (deps.settings/dependency-entity-check-batch-size))
-    (log/info "Dependency entity check batch size is not positive; the job will run but process nothing"))
+    (log/info "Analysis finding job batch size is not positive; the job will run but process nothing"))
   (schedule-run!
    (task/scheduler)
-   (deps.task-util/job-initial-delay
+   (task.util/job-initial-delay
     (deps.settings/dependency-entity-check-variance-minutes))))
 
 (defn trigger-analysis-finding-job!

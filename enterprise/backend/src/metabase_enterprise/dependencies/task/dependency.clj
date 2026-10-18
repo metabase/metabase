@@ -17,9 +17,9 @@
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
-   [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
@@ -37,11 +37,11 @@
   #{:snippet})
 
 (def ^:private entity-types
-  "The list of entity types to backfill, those expanded into their dependents first, so that the dependents they mark
-  are recomputed in the same run.
+  "The list of entity types whose dependencies the job computes, those expanded into their dependents first, so that
+  the dependents they mark are recomputed in the same run.
 
-  This is not the same as deps.dependency-types/dependency-types, because tables shouldn't be backfilled.  Instead, links
-  involving tables are found via analysis of the other side of the relation."
+  This is not the same as deps.dependency-types/dependency-types, because tables have no dependencies of their
+  own. Instead, links involving tables are found via analysis of the other side of the relation."
   (vec (sort-by (complement expanded-into-dependents) deps.dependency-types/backfillable-dependency-types)))
 
 (def ^:private max-retries 5)
@@ -92,23 +92,29 @@
 (defn- compute-deps-for-entity!
   "Mark the dependents of an entity that a write marked stale for re-analysis, and those that expand it for
   recalculation, then compute and store its dependencies and update its dependency_status, flagging the tables it
-  names that match nothing, and mark it for re-deriving its result metadata when it newly depends on entities whose
-  result metadata changed. Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
+  names that match nothing, and mark again the entities it newly depends on whose result columns changed after it was
+  saved, so it is re-derived too. Entities are expected to be pre-hydrated by
+  [[deps.dependency-status/hydrate-for-deps]]."
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (when (:stale (dependencies.db/dependency-status entity-type (:id entity)))
     (deps.findings/mark-transitive-dependents-stale! {entity-type #{(:id entity)}})
     (when (expanded-into-dependents entity-type)
       (mark-expanding-entities-stale! entity-type (:id entity))))
-  (t2/with-transaction [_]
-    (let [deps  (deps.calculation/calculate-deps entity-type entity)
-          added (models.dependency/replace-dependencies! entity-type (:id entity) (dissoc deps :unresolved-table))]
-      (when (and (contains? deps.result-metadata-status/derived-types entity-type)
-                 (dependencies.db/result-metadata-status-exists? added))
-        (deps.result-metadata-status/mark-stale! {entity-type #{(:id entity)}})
-        (task.result-metadata/trigger-result-metadata-job!))
-      (post-deps-cleanup! entity-type entity)
-      (deps.dependency-status/upsert-status! entity-type (:id entity) (contains? deps :unresolved-table)))))
+  (let [added (t2/with-transaction [_]
+                (let [deps  (deps.calculation/calculate-deps entity-type entity)
+                      added (models.dependency/replace-dependencies! entity-type (:id entity)
+                                                                     (dissoc deps :unresolved-table))]
+                  (post-deps-cleanup! entity-type entity)
+                  (deps.dependency-status/upsert-status! entity-type (:id entity) (contains? deps :unresolved-table))
+                  added))]
+    (when-let [changed (and (contains? deps.result-metadata-status/derived-types entity-type)
+                            (:updated_at entity)
+                            (not-empty (dependencies.db/result-metadata-statuses-changed-since added
+                                                                                               (:updated_at entity))))]
+      (deps.result-metadata-status/mark-stale!
+       (models.dependency/group-nodes (map (juxt :entity_type :entity_id) changed)))
+      (task.result-metadata/trigger-result-metadata-job!))))
 
 (defn- remove-deleted-entity-batch!
   "Mark the dependents of up to `batch-size` deleted entities of `entity-type` for re-analysis and drop their
@@ -195,7 +201,7 @@
 (declare schedule-run!)
 
 (defn- next-run-delay []
-  (deps.task-util/job-delay
+  (task.util/job-delay
    (deps.settings/dependency-backfill-delay-minutes)
    (deps.settings/dependency-backfill-variance-minutes)))
 
@@ -240,12 +246,12 @@
 (defn- schedule-run!
   "Schedule a run of the dependency job `delay-in-seconds` from now."
   [scheduler delay-in-seconds]
-  (deps.task-util/schedule-run! scheduler
-                                {:job-type    UpdateDependencies
-                                 :job-key     job-key
-                                 :trigger-key trigger-key
-                                 :job-name    "Update Dependencies"}
-                                delay-in-seconds))
+  (task.util/schedule-run! scheduler
+                           {:job-type    UpdateDependencies
+                            :job-key     job-key
+                            :trigger-key trigger-key
+                            :job-name    "Update Dependencies"}
+                           delay-in-seconds))
 
 (defn trigger-dependency-job!
   "Trigger the UpdateDependencies job to run after a brief delay, unless the batch size disables it.
@@ -261,8 +267,8 @@
 
 (defmethod task/init! ::UpdateDependencies [_]
   (when-not (pos? (deps.settings/dependency-backfill-batch-size))
-    (log/info "Dependency backfill batch size is not positive; the job will run but process nothing"))
+    (log/info "Dependency job batch size is not positive; the job will run but process nothing"))
   (schedule-run!
    (task/scheduler)
-   (deps.task-util/job-initial-delay
+   (task.util/job-initial-delay
     (deps.settings/dependency-backfill-variance-minutes))))
