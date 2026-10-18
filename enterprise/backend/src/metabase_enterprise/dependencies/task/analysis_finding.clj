@@ -53,7 +53,7 @@
     (task.util/feature-not-revoked?)   (task.util/next-run-delay job)))
 
 (task/defjob UpdateAnalysisFindings
-  "Re-analyze the stale entities."
+  "Re-analyze the changed entities and the dependents of changed entities."
   {:saved-class "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
    :concurrent? false}
   [ctx]

@@ -743,9 +743,9 @@
 (api.macros/defendpoint :get "/backfill-status" :- [:map
                                                     [:complete :boolean]]
   "Returns whether the dependency backfill has pending work.
-  `complete` is true when there are no stale or outdated entities awaiting processing."
+  `complete` is true when no entity awaits the computation of its dependencies."
   [_route-params _query-params]
-  {:complete (not (deps.dependency-status/has-stale-or-outdated?))})
+  {:complete (not (deps.dependency-status/has-pending-entities?))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

@@ -300,7 +300,7 @@
         ;; Bad card's failure is recorded, so it is not computed again until it changes
         (is (not (pending? :card bad-card-id)))))))
 
-(deftest ^:synchronized backfill-terminal-failure-test
+(deftest ^:synchronized backfill-failure-waits-for-a-change-test
   (testing "An entity whose calculation fails is not processed again until it changes again"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
@@ -380,21 +380,21 @@
         (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                         :to_entity_type :table :to_entity_id (mt/id :orders)))))))
 
-(deftest ^:synchronized has-stale-or-outdated?-counts-no-status-row-test
-  (testing "has-stale-or-outdated? (backing /backfill-status) stays consistent with what the dependency job processes"
+(deftest ^:synchronized has-pending-entities?-counts-no-status-row-test
+  (testing "has-pending-entities? (backing /backfill-status) stays consistent with what the dependency job processes"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       ;; Clean slate: nothing left to process.
-      (is (false? (deps.dependency-status/has-stale-or-outdated?))
+      (is (false? (deps.dependency-status/has-pending-entities?))
           "Expected no pending work after backfilling all existing entities")
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         ;; A card with no status row is pending work, even though no DependencyStatus row exists.
         (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id)))
-        (is (true? (deps.dependency-status/has-stale-or-outdated?))
+        (is (true? (deps.dependency-status/has-pending-entities?))
             "Expected pending work: a card with no status row still needs calculation")
         (backfill-dependencies-single-trigger!)
         (assert-processed :card card-id)
-        (is (false? (deps.dependency-status/has-stale-or-outdated?))
+        (is (false? (deps.dependency-status/has-pending-entities?))
             "Expected no pending work once the card has been processed")))))
 
 (deftest ^:synchronized batch-size-zero-suppresses-event-triggers-but-stays-warm-test

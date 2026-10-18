@@ -11,7 +11,8 @@
   :export?    false)
 
 (defsetting dependency-backfill-delay-minutes
-  "The average delay between when the dependency job will run."
+  "The average delay before the dependency job runs again after a run that failed, or while its batch size disables
+  it."
   :visibility :internal
   :type       :integer
   :default    60
@@ -37,7 +38,7 @@
   :export?    false)
 
 (defsetting dependency-entity-check-delay-minutes
-  "The average delay between when the analysis finding job will run."
+  "The average delay between the periodic runs of the analysis finding job, also used after a run that failed."
   :visibility :internal
   :type       :integer
   :default    60

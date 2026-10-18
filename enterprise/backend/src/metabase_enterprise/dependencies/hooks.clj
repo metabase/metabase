@@ -4,7 +4,6 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
@@ -54,14 +53,12 @@
   (trigger-jobs!))
 
 (defenterprise before-delete
-  "Trigger the jobs for deleting the `model` row `instance`, having the dependencies and findings of the transforms
-  reading from a deleted Database computed again, since deleting it changes nothing of theirs."
+  "Trigger the jobs for deleting the `model` row `instance`, moving the `updated_at` of the transforms reading from a
+  deleted Database, whose rows the delete changes without it."
   :feature :dependencies
   [model instance]
   (when (= model :model/Database)
-    (let [transform-ids (dependencies.db/transform-ids-of-source-database (:id instance))]
-      (deps.dependency-status/clear-version! {:transform transform-ids})
-      (dependencies.db/clear-finding-versions! :transform (set transform-ids))))
+    (dependencies.db/touch-transforms-of-source-database! (:id instance)))
   (trigger-jobs!))
 
 (defenterprise after-transform-run

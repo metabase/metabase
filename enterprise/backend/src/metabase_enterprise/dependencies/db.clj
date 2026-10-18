@@ -646,10 +646,12 @@
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select [:model/Transform :id :source] :id [:in transform-ids]))
 
-(mu/defn transform-ids-of-source-database
-  "The IDs of the Transforms reading from the Database with `db-id`."
+(mu/defn touch-transforms-of-source-database!
+  "Move the `updated_at` of the Transforms reading from the Database with `db-id`, returning the number updated."
   [db-id :- ::lib.schema.id/database]
-  (t2/select-pks-set :model/Transform :source_database_id db-id))
+  (t2/query-one {:update (t2/table-name :model/Transform)
+                 :set    {:updated_at (mi/now)}
+                 :where  [:= :source_database_id db-id]}))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -927,6 +929,25 @@
                          {:entity_type entity-type :entity_id entity-id}
                          (constantly {:seen_updated_at nil :seen_count nil :updated_at (mi/now)})))
 
+(mu/defn clear-status-versions-recorded-since!
+  "Clear the versions the `status-model` rows of the entities `nodes`, `[[entity-type entity-id]]`, record when they
+  were written at or after `since`, so the dependents of those entities are processed again, returning the number
+  updated."
+  [status-model :- DependentsStatusModel
+   nodes        :- [:sequential [:tuple EntityType ms/PositiveInt]]
+   since        :- ms/TemporalInstant]
+  (if (seq nodes)
+    (t2/query-one {:update (t2/table-name status-model)
+                   :set    {:seen_updated_at nil :seen_count nil :updated_at (mi/now)}
+                   :where  [:and
+                            [:>= :updated_at since]
+                            (into [:or]
+                                  (for [[entity-type typed-nodes] (group-by first nodes)]
+                                    [:and
+                                     [:= :entity_type (name entity-type)]
+                                     [:in :entity_id (mapv second typed-nodes)]]))]})
+    0))
+
 (mu/defn record-status-version!
   "Record that the dependents of `entity-type` `entity-id` were processed from its version `seen-updated-at`
   `seen-count`, on the `status-model` row with `status-id` unless its `updated_at` is no longer `status-updated-at`, or
@@ -1022,17 +1043,6 @@
            [:analyzed_entity_type {:optional true} [:maybe [:or :keyword :string]]]
            [:analyzed_entity_id   {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/insert! :model/AnalysisFinding row))
-
-(mu/defn clear-finding-versions!
-  "Clear the versions the AnalysisFindings of the entities `entity-type` `entity-ids` record, so they are analyzed
-  again, returning the number updated."
-  [entity-type :- EntityType
-   entity-ids  :- [:set ms/PositiveInt]]
-  (if (seq entity-ids)
-    (t2/update! :model/AnalysisFinding
-                :analyzed_entity_type entity-type :analyzed_entity_id [:in entity-ids]
-                {:seen_updated_at nil :seen_count nil})
-    0))
 
 (mu/defn update-finding!
   "Apply `changes` to the AnalysisFinding with `finding-id`, returning the number updated."

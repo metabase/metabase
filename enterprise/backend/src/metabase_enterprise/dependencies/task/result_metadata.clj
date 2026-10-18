@@ -17,7 +17,7 @@
 
 (defn- run-batch!
   "Process a batch of changed entities, having the analysis finding job see the cards it re-derived, returning when to
-  run again: right away when the batch was full, or nil."
+  run again: right away when it took any, since a card it stored is changed in turn, or nil."
   []
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-result-metadata-batch-size)
@@ -25,7 +25,7 @@
       (when (pos? taken)
         (log/info "Took" taken "entities for result metadata.")
         (task.analysis-finding/trigger-analysis-finding-job!))
-      (when (and (pos? batch-size) (>= taken batch-size))
+      (when (pos? taken)
         1))))
 
 (task/defjob UpdateResultMetadata

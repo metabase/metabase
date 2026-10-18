@@ -136,7 +136,7 @@
         (recur (inc attempt))
         (throw (ex-info "The card kept changing while it was re-derived" {:card-id card-id}))))))
 
-(defn- transitive-mbql-dependents
+(defn- dependents-breadth-first
   "The transitive MBQL dependents of the entities `nodes`, `[[entity-type entity-id]]`, breadth first and each once,
   including those of `nodes` that depend on others."
   [nodes]
@@ -176,7 +176,7 @@
                                                                          batch-size))]
       (dependencies.db/delete-statuses! :model/ResultMetadataStatus entity-type ids)))
   (let [entities (changed-entities batch-size)]
-    (run! rederive-dependent! (transitive-mbql-dependents (map (juxt :entity_type :entity_id) entities)))
+    (run! rederive-dependent! (dependents-breadth-first (map (juxt :entity_type :entity_id) entities)))
     (doseq [{:keys [entity_type entity_id status_id status_updated_at version_updated_at version_count]} entities]
       (dependencies.db/record-status-version! :model/ResultMetadataStatus entity_type entity_id
                                               status_id status_updated_at version_updated_at version_count))

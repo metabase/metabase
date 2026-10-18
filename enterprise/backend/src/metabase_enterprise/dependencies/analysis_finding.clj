@@ -80,12 +80,20 @@
           version))))))
 
 (defn- analyze-instance!
-  "Analyze `instance`, recording `version` unless it is nil, logging a failure."
+  "Analyze `instance`, recording `version` unless it is nil, and recording a failure as a failed finding of `version`
+  so the entity is not analyzed again until it changes."
   [instance version]
   (try (upsert-analysis! instance version)
        (catch Exception e
          (log/errorf "Analyzing entity %s %s failed: %s"
-                     (t2/model instance) (:id instance) (ex-message e)))))
+                     (t2/model instance) (:id instance) (ex-message e))
+         (try
+           (models.analysis-finding/upsert-analysis!
+            (deps.dependency-types/model->dependency-type (t2/model instance)) (:id instance) false
+            [(lib/validation-exception-error (ex-message e))] version)
+           (catch Exception record-e
+             (log/errorf "Recording the failure of entity %s %s failed: %s"
+                         (t2/model instance) (:id instance) (ex-message record-e)))))))
 
 (def analyzable-entities
   "Entities for which we can compute analysis findings."

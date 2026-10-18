@@ -36,7 +36,7 @@
 
 (def ^:private entity-types
   "The list of entity types whose dependencies the job computes, those expanded into their dependents first, so that
-  the dependents they mark are recomputed in the same run.
+  the dependents they have computed again are computed in the same run.
 
   This is not the same as deps.dependency-types/dependency-types, because tables have no dependencies of their
   own. Instead, links involving tables are found via analysis of the other side of the relation."
@@ -90,14 +90,16 @@
     (deps.dependency-status/clear-version! (apply dissoc type->ids expanded-into-dependents))))
 
 (defn- reprocess-dependents-of!
-  "Clear the dependents status versions of the entities `nodes`, `[[entity-type entity-id]]`, which an entity now
-  depends on, so their dependents, now including it, are re-derived and re-analyzed."
-  [nodes]
-  (when (seq nodes)
-    (doseq [[entity-type entity-id] nodes]
-      (dependencies.db/clear-status-version! :model/AnalysisFindingStatus entity-type entity-id)
-      (when (some #{entity-type} deps.result-metadata-status/entity-types)
-        (dependencies.db/clear-status-version! :model/ResultMetadataStatus entity-type entity-id)))
+  "Have the dependents of the entities `nodes`, `[[entity-type entity-id]]`, which an entity saved at `since` now
+  depends on, re-derived and re-analyzed when a job processed them at or after `since`, possibly before the entity's
+  dependencies existed; their dependents processed before that saw what the entity's save saw."
+  [nodes since]
+  (when (and (seq nodes) since
+             (pos? (+ (dependencies.db/clear-status-versions-recorded-since! :model/AnalysisFindingStatus nodes since)
+                      (dependencies.db/clear-status-versions-recorded-since!
+                       :model/ResultMetadataStatus
+                       (filterv (comp (set deps.result-metadata-status/entity-types) first) nodes)
+                       since))))
     (task.result-metadata/trigger-result-metadata-job!)
     (task.analysis-finding/trigger-analysis-finding-job!)))
 
@@ -117,7 +119,7 @@
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       (post-deps-cleanup! entity-type entity)
       (deps.dependency-status/upsert-status! entity-type (:id entity) version (contains? all-deps :unresolved-table)))
-    (reprocess-dependents-of! upstream)))
+    (reprocess-dependents-of! upstream (:updated_at entity))))
 
 (defn- remove-deleted-entity-batch!
   "Drop the dependencies and status of up to `batch-size` deleted entities of `entity-type`, returning how many were
@@ -184,10 +186,13 @@
 (declare ^:private job)
 
 (defn- run-batch!
-  "Process a batch, returning when to run again: after the delay when the batch was full, or nil."
+  "Process a batch, returning when to run again: right away when the batch was full, after the delay when the batch
+  size disables the job, or nil."
   []
   (when (update-dependencies!)
-    (task.util/next-run-delay job)))
+    (if (pos? (deps.settings/dependency-backfill-batch-size))
+      1
+      (task.util/next-run-delay job))))
 
 (defn- log-job-start
   [^JobExecutionContext ctx]

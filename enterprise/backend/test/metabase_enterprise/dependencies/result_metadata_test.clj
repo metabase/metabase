@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
+   [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
@@ -331,6 +332,34 @@
             (is (nil? (column card-id "Grand total")))
             (run-jobs!)
             (is (some? (column card-id "Grand total")))))))))
+
+(deftest new-edge-to-an-upstream-processed-before-the-save-test
+  (testing "a new dependency on an entity processed before the dependent was saved has nothing processed again"
+    (with-clean-statuses
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
+                       :model/Card _               {:dataset_query (card-query source-id)}]
+          (run-jobs!)
+          (is (not (stale? :card source-id)))
+          (Thread/sleep 5)
+          (t2/insert! :model/Card {:name                   "Dependent"
+                                   :display                :table
+                                   :visualization_settings {}
+                                   :creator_id             (mt/user->id :rasta)
+                                   :database_id            (mt/id)
+                                   :dataset_query          (card-query source-id)})
+          (deps.test/synchronously-run-dependency-job!)
+          (is (not (stale? :card source-id))))))))
+
+(deftest job-reruns-while-it-takes-entities-test
+  (testing "the job runs again right away while it took entities, since a card it stored changed in turn"
+    (with-clean-statuses
+      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
+                     :model/Card _               {:dataset_query (card-query source-id)}]
+        (deps.test/synchronously-run-dependency-job!)
+        (is (= 1 (#'task.result-metadata/run-batch!)))
+        (run-jobs!)
+        (is (nil? (#'task.result-metadata/run-batch!)))))))
 
 (deftest record-version-guard-test
   (testing "a version is not recorded over a status cleared meanwhile, nor over one created meanwhile"

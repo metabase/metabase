@@ -157,6 +157,21 @@
                               :analyzed_entity_type :card
                               :analyzed_entity_id card-id)))))))))
 
+(deftest ^:synchronized failed-analysis-waits-for-a-change-test
+  (testing "an entity whose analysis throws records a failed finding of its version, and is not analyzed again"
+    (backfill-all-entity-analyses!)
+    (let [mp       (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
+            (with-redefs-fn {#'deps.analysis-finding/instance-db-id (fn [_] (throw (ex-info "Broken" {})))}
+              (fn []
+                (deps.analysis-finding/analyze-batch! :card 100000)))
+            (is (false? (t2/select-one-fn :result :model/AnalysisFinding
+                                          :analyzed_entity_type :card :analyzed_entity_id card-id)))
+            (is (empty? (filter #{card-id} (analyzed-ids! #(deps.analysis-finding/analyze-batch! :card 100)))))))))))
+
 (deftest ^:synchronized analyze-dependents-batch-test
   (testing "the dependents of changed entities are re-analyzed transitively, each once, not the entities themselves"
     (let [mp       (mt/metadata-provider)

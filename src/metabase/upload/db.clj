@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
@@ -72,7 +73,8 @@
                                                 [[:= [:lower :name] n]
                                                  [:case
                                                   [:= :display_name (humanization/name->human-readable-name n)] display-name
-                                                  :else                                                       :display_name]]))}
+                                                  :else                                                       :display_name]]))
+                          :updated_at   (mi/now)}
                  :where  [:and
                           [:= :table_id table-id]
                           [:in [:lower :name] (keys name->display-name)]]}))))

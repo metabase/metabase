@@ -65,7 +65,7 @@
                     [instance {:updated-at version_updated_at :count version_count}])))
           rows)))
 
-(defn has-stale-or-outdated?
+(defn has-pending-entities?
   "Returns true if there are any entities needing dependency calculation, or deleted entities whose status the
   dependency job has yet to clean up. Defined in terms of [[instances-for-dependency-calculation]] so it stays consistent with what
   the dependency job processes."
