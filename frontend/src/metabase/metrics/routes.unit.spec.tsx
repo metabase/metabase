@@ -6,7 +6,7 @@ describe("metrics routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getMetricRoutes());
 
-    expect(loaders).toHaveLength(6);
+    expect(loaders).toHaveLength(7);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
