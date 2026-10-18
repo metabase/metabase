@@ -53,8 +53,8 @@
   (trigger-jobs!))
 
 (defenterprise before-delete
-  "Trigger the jobs for deleting the `model` row `instance`, moving the `updated_at` of the transforms reading from a
-  deleted Database, whose rows the delete changes without it."
+  "Trigger the jobs for deleting the `model` row `instance`, and for a Database, move the `updated_at` of the transforms
+  reading from it, since the delete clears their source database without a write through their model."
   :feature :dependencies
   [model instance]
   (when (= model :model/Database)

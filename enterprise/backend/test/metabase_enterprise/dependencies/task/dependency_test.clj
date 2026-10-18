@@ -33,7 +33,7 @@
   (mt/with-premium-features #{:dependencies}
     (#'task.dependency/update-dependencies!)))
 
-(defn- mark-stale!
+(defn- clear-version!
   "Have the dependencies of an entity computed again, as if it changed."
   [entity-type entity-id]
   (deps.dependency-status/clear-version! {entity-type #{entity-id}}))
@@ -61,7 +61,7 @@
       (str "Expected " (name entity-type) " " entity-id " to be processed")))
 
 (deftest ^:synchronized backfill-dependency-analysis-test
-  (testing "Test that the dependency job correctly processes stale entities"
+  (testing "Test that the dependency job processes the pending entities in batches"
     (backfill-all-existing-entities!)
     (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "2")]
       (let [query (mt/mbql-query orders)]
@@ -69,21 +69,20 @@
           (mt/with-temp [:model/Card {card1-id :id} {:dataset_query query}
                          :model/Card {card2-id :id} {:dataset_query query}
                          :model/Card {card3-id :id} {:dataset_query query}]
-            ;; Mark all three cards as stale
-            (mark-stale! :card card1-id)
-            (mark-stale! :card card2-id)
-            (mark-stale! :card card3-id)
-            (let [stale-count (fn [] (count (filter #(pending? :card %) [card1-id card2-id card3-id])))]
-              (is (= 3 (stale-count)))
+            (clear-version! :card card1-id)
+            (clear-version! :card card2-id)
+            (clear-version! :card card3-id)
+            (let [pending-count (fn [] (count (filter #(pending? :card %) [card1-id card2-id card3-id])))]
+              (is (= 3 (pending-count)))
               ;; first run, should process 2 cards
               (is (true? (backfill-dependencies-single-trigger!)))
-              (is (= 1 (stale-count)))
+              (is (= 1 (pending-count)))
               ;; second run, should process the last card
               (is (false? (backfill-dependencies-single-trigger!)))
-              (is (= 0 (stale-count)))
+              (is (= 0 (pending-count)))
               ;; third run, should not process anything
               (is (false? (backfill-dependencies-single-trigger!)))
-              (is (= 0 (stale-count))))))))))
+              (is (= 0 (pending-count))))))))))
 
 (deftest ^:synchronized backfill-transform-test
   (testing "Test that transforms are correctly backfilled"
@@ -96,9 +95,8 @@
                                                                      :query (mt/mbql-query nil
                                                                               {:source-table (str "card__" card-id)})}
                                                             :target {:type "table" :name (mt/random-name)}}]
-          ;; Mark both as stale
-          (mark-stale! :card card-id)
-          (mark-stale! :transform transform-id)
+          (clear-version! :card card-id)
+          (clear-version! :transform transform-id)
           (is (false? (t2/exists? :model/Dependency :from_entity_type :card      :from_entity_id card-id)))
           (is (false? (t2/exists? :model/Dependency :from_entity_type :transform :from_entity_id transform-id)))
           (backfill-dependencies-single-trigger!)
@@ -129,9 +127,8 @@
                                                                              :type :snippet
                                                                              :snippet-name "my_snippet"
                                                                              :snippet-id snippet-id}}}}}]
-          ;; Mark both as stale
-          (mark-stale! :card card-id)
-          (mark-stale! :snippet snippet-id)
+          (clear-version! :card card-id)
+          (clear-version! :snippet snippet-id)
           (is (false? (t2/exists? :model/Dependency
                                   :from_entity_type :card :from_entity_id card-id
                                   :to_entity_type :snippet :to_entity_id snippet-id)))
@@ -148,8 +145,8 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner_snip" :content "1 = 1"}
                      :model/NativeQuerySnippet {outer-id :id} {:name "outer_snip" :content "SELECT * WHERE {{snippet: inner_snip}}"}]
-        (mark-stale! :snippet inner-id)
-        (mark-stale! :snippet outer-id)
+        (clear-version! :snippet inner-id)
+        (clear-version! :snippet outer-id)
         (is (false? (t2/exists? :model/Dependency
                                 :from_entity_type :snippet :from_entity_id outer-id
                                 :to_entity_type :snippet :to_entity_id inner-id)))
@@ -167,8 +164,8 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
                      :model/NativeQuerySnippet {snippet-id :id} {:name "card_ref_snip"
                                                                  :content (format "SELECT * FROM {{#%d}}" card-id)}]
-        (mark-stale! :card card-id)
-        (mark-stale! :snippet snippet-id)
+        (clear-version! :card card-id)
+        (clear-version! :snippet snippet-id)
         (is (false? (t2/exists? :model/Dependency
                                 :from_entity_type :snippet :from_entity_id snippet-id
                                 :to_entity_type :card :to_entity_id card-id)))
@@ -184,7 +181,7 @@
     (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "1")]
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-          (mark-stale! :card card-id)
+          (clear-version! :card card-id)
           (is (false? (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                                   :to_entity_type :table :to_entity_id (mt/id :orders))))
           ;; First run
@@ -218,8 +215,8 @@
             (mt/with-premium-features #{}
               (mt/with-temp [:model/Card {card1-id :id} card-data
                              :model/Card {card2-id :id} card-data]
-                (mark-stale! :card card1-id)
-                (mark-stale! :card card2-id)
+                (clear-version! :card card1-id)
+                (clear-version! :card card2-id)
                 (let [both-processed? #(every? (partial processed? :card) [card1-id card2-id])]
                   (is (not (both-processed?)))
                   (mt/with-premium-features #{:dependencies}
@@ -264,7 +261,7 @@
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-        (mark-stale! :card card-id)
+        (clear-version! :card card-id)
         (with-redefs [env/env (assoc env/env
                                      :mb-dependency-backfill-delay-minutes "0"
                                      :mb-dependency-backfill-variance-minutes "0")
@@ -273,7 +270,6 @@
           (backfill-dependencies-single-trigger!))
         ;; No dependencies should have been created
         (is (empty? (t2/select :model/Dependency :from_entity_type :card :from_entity_id card-id)))
-        ;; Failure recorded as computed from this version
         (is (not (pending? :card card-id)))))))
 
 (deftest ^:synchronized backfill-partial-batch-failure-test
@@ -282,8 +278,8 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {good-card-id :id} {:dataset_query (mt/mbql-query orders)}
                      :model/Card {bad-card-id :id} {:dataset_query (mt/mbql-query products)}]
-        (mark-stale! :card good-card-id)
-        (mark-stale! :card bad-card-id)
+        (clear-version! :card good-card-id)
+        (clear-version! :card bad-card-id)
         (let [original-calculate-deps deps.calculation/calculate-deps]
           (with-redefs [env/env (assoc env/env
                                        :mb-dependency-backfill-delay-minutes "0"
@@ -297,7 +293,6 @@
         ;; Good card should be processed successfully
         (assert-processed :card good-card-id)
         (is (seq (t2/select :model/Dependency :from_entity_type :card :from_entity_id good-card-id)))
-        ;; Bad card's failure is recorded, so it is not computed again until it changes
         (is (not (pending? :card bad-card-id)))))))
 
 (deftest ^:synchronized backfill-failure-waits-for-a-change-test
@@ -305,13 +300,13 @@
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-        (mark-stale! :card card-id)
+        (clear-version! :card card-id)
         (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps
                                     (fn [_ _] (throw (ex-info "Simulated computation error" {:card-id card-id})))]
           (backfill-dependencies-single-trigger!))
         (is (not (pending? :card card-id)))
         (is (empty? (t2/select :model/Dependency :from_entity_type :card :from_entity_id card-id)))
-        (mark-stale! :card card-id)
+        (clear-version! :card card-id)
         (backfill-dependencies-single-trigger!)
         (assert-processed :card card-id)))))
 
@@ -320,7 +315,7 @@
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{:dependencies :audit-app}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-        (mark-stale! :card card-id)
+        (clear-version! :card card-id)
         (let [revision-count-before (t2/count :model/Revision :model "Card" :model_id card-id)
               deps-before (t2/count :model/Dependency :from_entity_type :card :from_entity_id card-id)]
           (is (= 0 revision-count-before))
@@ -340,13 +335,11 @@
         (mt/with-temp [:model/Card {card1-id :id} {:dataset_query query}
                        :model/Card {card2-id :id} {:dataset_query query}
                        :model/Card {card3-id :id} {:dataset_query query}]
-          ;; Mark all as stale
-          (mark-stale! :card card1-id)
-          (mark-stale! :card card2-id)
-          (mark-stale! :card card3-id)
+          (clear-version! :card card1-id)
+          (clear-version! :card card2-id)
+          (clear-version! :card card3-id)
           ;; token update triggers the async job, not synchronous processing
           (dependencies.hooks/after-premium-token-update)
-          ;; entities are still pending (job hasn't run yet in this test)
           (is (every? #(pending? :card %) [card1-id card2-id card3-id]))
           ;; manually run the backfill to verify it processes them
           (backfill-all-existing-entities!)
@@ -357,7 +350,6 @@
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-        ;; Create a dependency_status entry computed from the card's version by an outdated analysis
         (backfill-dependencies-single-trigger!)
         (t2/update! :model/DependencyStatus :entity_type :card :entity_id card-id {:dependency_analysis_version 0})
         (backfill-dependencies-single-trigger!)
@@ -397,11 +389,8 @@
         (is (false? (deps.dependency-status/has-pending-entities?))
             "Expected no pending work once the card has been processed")))))
 
-(deftest ^:synchronized batch-size-zero-suppresses-event-triggers-but-stays-warm-test
-  (testing "A non-positive batch size stops the job doing work, but leaves it on its slow periodic schedule so it
-           resumes if the setting ever becomes positive. What it must not do is keep firing the 1-second event-driven
-           trigger, which is what made a disabled job wake roughly once a second on a busy instance -- entity changes
-           fire it, and it never consulted the batch size."
+(deftest ^:synchronized batch-size-zero-disables-the-job-test
+  (testing "a batch size that isn't positive keeps the job from being scheduled by writes or at startup"
     (let [scheduled    (atom [])
           scheduled-by (fn [thunk]
                          (reset! scheduled [])
@@ -412,14 +401,9 @@
                                                           (swap! scheduled conj args))
                                                         nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
-          (testing "the 1-second event-driven trigger is suppressed"
-            (is (zero? (scheduled-by task.dependency/trigger-dependency-job!))))
-          (testing "but task/init! still puts the job on its periodic schedule"
-            (is (= 1 (scheduled-by #(task/init! ::task.dependency/UpdateDependencies)))))
-          (testing "and a run keeps the chain going rather than stopping"
-            (mt/with-premium-features #{:dependencies}
-              (is (= 1 (scheduled-by #(task.util/run-and-reschedule! nil @#'task.dependency/job)))))))
-        (testing "a positive batch size schedules from the event trigger too"
+          (is (zero? (scheduled-by task.dependency/trigger-dependency-job!)))
+          (is (zero? (scheduled-by #(task/init! ::task.dependency/UpdateDependencies)))))
+        (testing "a positive batch size schedules from the event trigger"
           (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "5")]
             (is (= 1 (scheduled-by task.dependency/trigger-dependency-job!)))))))))
 
@@ -435,8 +419,8 @@
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
                        :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
-          (mark-stale! :card card1-id)
-          (mark-stale! :card card2-id)
+          (clear-version! :card card1-id)
+          (clear-version! :card card2-id)
           (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps
                                       (fn [entity-type entity]
                                         (when-let [mp (:lib/metadata (:dataset_query entity))]
@@ -458,7 +442,7 @@
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-        (mark-stale! :card card-id)
+        (clear-version! :card card-id)
         (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps (fn [& _] (throw (Error. "simulated fatal error")))]
           (testing "the Error propagates instead of being swallowed, failing the job"
             (is (thrown-with-msg? Error #"simulated fatal error"

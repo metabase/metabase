@@ -3,8 +3,10 @@
   were last re-derived, without re-deriving or passing native cards, whose result metadata comes from running them."
   (:require
    [clojure.walk :as walk]
+   [java-time.api :as t]
    [malli.error :as me]
    [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.dependents :as deps.dependents]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
    [metabase.graph.core :as graph]
@@ -51,10 +53,11 @@
   (and x y (not= :type/* (types/most-specific-common-ancestor (keyword x) (keyword y)))))
 
 (defn- measured-by-a-run?
-  "Whether the stored column `stored-col` holds what a run measured for the inferred column `col`: they have types of
-  the same root, and the column's source type is unchanged or unknown."
+  "Whether the stored column `stored-col` holds what a run measured for the inferred column `col`: a run stored its
+  source type, they have types of the same root, and the column's source type is unchanged or unknown."
   [stored-col col]
-  (and (same-root-type? (:base_type stored-col) (:base_type col))
+  (and (some? (:database_type stored-col))
+       (same-root-type? (:base_type stored-col) (:base_type col))
        (or (nil? (:database_type col))
            (= (:database_type col) (:database_type stored-col)))))
 
@@ -95,20 +98,14 @@
       metadata)))
 
 (defn- store-result-metadata!
-  "Store the re-derived result metadata `metadata` of `card`, updating the parameters taking values from the columns it
-  drops first, as a save of the card does, unless the card's `updated_at` changed since it was read, returning whether
+  "Store the re-derived result metadata `metadata` of `card` through the Card model, whose hooks update the parameters
+  taking values from the columns it drops, unless the card's `updated_at` changed since it was read, returning whether
   it stored it."
-  [{:keys [id updated_at] :as card} metadata]
-  (try
-    (t2/with-transaction [_]
-      (queries/update-parameters-using-card-result-metadata! card metadata)
-      (when (zero? (dependencies.db/update-unchanged-card-result-metadata! id updated_at metadata))
-        (throw (ex-info "The card changed since it was read" {::conflict true})))
-      true)
-    (catch clojure.lang.ExceptionInfo e
-      (if (::conflict (ex-data e))
-        false
-        (throw e)))))
+  [{:keys [id updated_at]} metadata]
+  (t2/with-transaction [_]
+    (when (some-> (dependencies.db/locked-card-updated-at id) t/instant (= (t/instant updated_at)))
+      (dependencies.db/update-card-result-metadata! id metadata)
+      true)))
 
 (defn- rederive-card!
   "Re-derive and store the result metadata of the Card with `card-id` when it is an MBQL card, returning `:changed`,
@@ -145,7 +142,7 @@
         ordered
         (recur next-nodes (into seen next-nodes) (into ordered next-nodes))))))
 
-(defn- rederive-dependent!
+(defn rederive-dependent!
   "Re-derive the MBQL card `entity-type` `entity-id`, measures needing nothing, logging a failure."
   [[entity-type entity-id]]
   (when (= entity-type :card)
@@ -154,29 +151,11 @@
       (catch Exception e
         (log/warnf "Failed to re-derive the result metadata of card %s: %s" entity-id (ex-message e))))))
 
-(defn- changed-entities
-  "Up to `batch-size` entities whose dependents were not re-derived from their current version, as
-  `[[entity-type entity-id]]` with their version and status."
-  [batch-size]
-  (into []
-        (comp (mapcat (fn [entity-type]
-                        (map #(assoc % :entity_type entity-type)
-                             (dependencies.db/entities-with-changed-version
-                              :model/ResultMetadataStatus entity-type batch-size))))
-              (take batch-size))
-        deps.result-metadata-status/entity-types))
-
 (defn update-result-metadata!
   "Re-derive the transitive MBQL dependents of up to `batch-size` entities that changed since their dependents were
   last re-derived, each once, then record the versions they were re-derived from, returning how many entities it took."
   [batch-size]
-  (doseq [entity-type deps.result-metadata-status/entity-types]
-    (when-let [ids (not-empty (dependencies.db/deleted-status-entity-ids :model/ResultMetadataStatus entity-type
-                                                                         batch-size))]
-      (dependencies.db/delete-statuses! :model/ResultMetadataStatus entity-type ids)))
-  (let [entities (changed-entities batch-size)]
-    (run! rederive-dependent! (dependents-breadth-first (map (juxt :entity_type :entity_id) entities)))
-    (doseq [{:keys [entity_type entity_id status_id status_updated_at version_updated_at version_count]} entities]
-      (dependencies.db/record-status-version! :model/ResultMetadataStatus entity_type entity_id
-                                              status_id status_updated_at version_updated_at version_count))
-    (count entities)))
+  (deps.dependents/process-changed-dependents!
+   :model/ResultMetadataStatus deps.result-metadata-status/entity-types batch-size
+   (fn [_deleted nodes]
+     (run! rederive-dependent! (dependents-breadth-first nodes)))))

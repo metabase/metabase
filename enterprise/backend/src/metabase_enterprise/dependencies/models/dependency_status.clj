@@ -21,7 +21,7 @@
   [type->ids]
   (doseq [[entity-type ids] type->ids
           id                ids]
-    (dependencies.db/clear-dependency-status-version! entity-type id)))
+    (dependencies.db/clear-status-version! :model/DependencyStatus entity-type id)))
 
 (defn upsert-status!
   "Record that the dependencies of the entity `entity-type` `entity-id` were computed from its version, a
@@ -74,5 +74,5 @@
    (some (fn [entity-type]
            (or (seq (dependencies.db/entities-for-dependency-calculation
                      entity-type 1 models.dependency/current-dependency-analysis-version false))
-               (seq (dependencies.db/deleted-entity-ids entity-type 1))))
+               (seq (dependencies.db/deleted-status-entity-ids :model/DependencyStatus entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))

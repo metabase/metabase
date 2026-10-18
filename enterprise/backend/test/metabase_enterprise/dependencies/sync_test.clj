@@ -4,7 +4,6 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
-   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -66,7 +65,7 @@
         (sync/sync-database! (mt/db))
         (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id)))
         (is (pending? table-id))
-        (#'task.analysis-finding/check-entities!)
+        (deps.test/run-analysis-finding-job!)
         (is (false? (t2/select-one-fn :result :model/AnalysisFinding
                                       :analyzed_entity_type :card :analyzed_entity_id card-id)))
         (is (some #(= :missing-column (:error_type %))
@@ -93,7 +92,7 @@
           (is (not (deps.test/dependents-pending? :model/AnalysisFindingStatus :table table-id)))
           (is (not (deps.test/result-metadata-pending? :table table-id))))))))
 
-(deftest ^:synchronized table-sync-marks-a-changed-table-test
+(deftest ^:synchronized table-sync-makes-a-changed-table-pending-test
   (testing "a sync of one table, like after an upload or a transform run, changes its version only when it changes it"
     (with-syncable-db!
       (fn [{:keys [table-id]}]
@@ -103,7 +102,7 @@
         (sync/sync-table! (t2/select-one :model/Table :id table-id))
         (is (pending? table-id))))))
 
-(deftest ^:synchronized sync-discovered-fk-marks-its-table-test
+(deftest ^:synchronized sync-discovered-fk-makes-its-table-pending-test
   (testing "a foreign key a sync discovers changes the version of the table of its field"
     (with-syncable-db!
       (fn [{:keys [card-id]}]

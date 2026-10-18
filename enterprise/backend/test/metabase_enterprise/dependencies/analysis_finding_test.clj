@@ -6,7 +6,6 @@
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
-   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -204,10 +203,10 @@
                                               :to_entity_type :card :to_entity_id gp-id}
                          :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
                                               :to_entity_type :card :to_entity_id p-id}]
-            (#'task.analysis-finding/check-entities!)
+            (deps.test/run-analysis-finding-job!)
             (t2/update! :model/Card gp-id {:name "Renamed"})
             (is (= #{gp-id p-id c-id}
-                   (set (filter #{gp-id p-id c-id} (analyzed-ids! #(#'task.analysis-finding/check-entities!))))))))))))
+                   (set (filter #{gp-id p-id c-id} (analyzed-ids! #(deps.test/run-analysis-finding-job!))))))))))))
 
 (deftest ^:synchronized transitive-analysis-through-non-analyzable-entity-test
   (testing "the dependents of a changed entity are reached beyond non-analyzable intermediaries (e.g., tables)"
@@ -229,7 +228,7 @@
           (is (some #{card-id} (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100)))))))))
 
 (deftest ^:synchronized cyclic-dependency-drain-terminates-test
-  (testing "check-entities! terminates on a cyclic dependency graph"
+  (testing "the analysis finding job terminates on a cyclic dependency graph"
     (backfill-all-entity-analyses!)
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
@@ -241,9 +240,9 @@
                                             :to_entity_type :card :to_entity_id b-id}
                        :model/Dependency _ {:from_entity_type :card :from_entity_id b-id
                                             :to_entity_type :card :to_entity_id a-id}]
-          (let [done (future (#'task.analysis-finding/check-entities!))]
+          (let [done (future (deps.test/run-analysis-finding-job!))]
             (is (not= ::timeout (deref done 30000 ::timeout))
-                "check-entities! must terminate on a cyclic graph")
+                "the analysis finding job must terminate on a cyclic graph")
             (is (false? @done) "and leave nothing to do")))))))
 
 (deftest ^:synchronized python-transform-records-clean-finding-test

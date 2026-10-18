@@ -115,13 +115,7 @@
           (let [table-id (mt/id :venues)
                 field-id (mt/id :venues :price)
                 changes? (fn [write!]
-                           (doseq [{:keys [entity_id status_id status_updated_at version_updated_at version_count]}
-                                   (dependencies.db/entities-with-changed-version :model/ResultMetadataStatus
-                                                                                  :table 100000)
-                                   :when (= table-id entity_id)]
-                             (dependencies.db/record-status-version! :model/ResultMetadataStatus :table table-id
-                                                                     status_id status_updated_at
-                                                                     version_updated_at version_count))
+                           (deps.test/record-current-version! :model/ResultMetadataStatus :table table-id)
                            (write!)
                            (deps.test/result-metadata-pending? :table table-id))]
             (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}

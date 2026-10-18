@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase.app-db.core :as mdb]
    [metabase.lib.convert :as lib.convert]
@@ -16,6 +17,16 @@
   []
   (mt/with-premium-features #{:dependencies}
     (while (#'task.dependency/update-dependencies!))))
+
+(defn run-analysis-finding-job!
+  "Run batches of the analysis finding job until one takes nothing, or up to 20 of them, as its reruns would, returning
+  whether the last one took anything."
+  []
+  (loop [runs 1]
+    (let [took? (some? (#'task.analysis-finding/run-batch!))]
+      (if (and took? (< runs 20))
+        (recur (inc runs))
+        took?))))
 
 (defn table-query
   "A query of the test data Table named `table`."
@@ -33,16 +44,16 @@
   "Whether the dependents of the entity `entity-type` `entity-id` were not processed, as `status-model` records, from
   its current version."
   [status-model entity-type entity-id]
-  (boolean (some #(= entity-id (:entity_id %))
+  (boolean (some #(= entity-id (:id %))
                  (dependencies.db/entities-with-changed-version status-model entity-type 100000))))
 
 (defn record-current-version!
   "Record, as `status-model` does, that the dependents of the entity `entity-type` `entity-id` were processed from its
   current version."
   [status-model entity-type entity-id]
-  (doseq [{:keys [entity_id status_id status_updated_at version_updated_at version_count]}
+  (doseq [{:keys [id status_id status_updated_at version_updated_at version_count]}
           (dependencies.db/entities-with-changed-version status-model entity-type 100000)
-          :when (= entity-id entity_id)]
+          :when (= entity-id id)]
     (dependencies.db/record-status-version! status-model entity-type entity-id
                                             status_id status_updated_at version_updated_at version_count)))
 

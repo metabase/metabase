@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dependencies.task.result-metadata
-  "Implements a task that re-derives the result metadata of the MBQL cards depending on entities whose result columns
-  changed, see [[metabase-enterprise.dependencies.result-metadata]]."
+  "Implements a task that re-derives the result metadata of the MBQL cards depending on changed entities, see
+  [[metabase-enterprise.dependencies.result-metadata]]."
   (:require
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.settings :as deps.settings]
@@ -22,7 +22,7 @@
     (let [batch-size (deps.settings/dependency-result-metadata-batch-size)
           taken      (if (pos? batch-size) (deps.result-metadata/update-result-metadata! batch-size) 0)]
       (when (pos? taken)
-        (log/info "Took" taken "entities for result metadata."))
+        (log/info "Re-derived the MBQL dependents of" taken "changed entities"))
       (when (pos? taken)
         1))))
 

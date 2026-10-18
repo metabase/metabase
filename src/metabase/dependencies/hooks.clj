@@ -1,5 +1,5 @@
 (ns metabase.dependencies.hooks
-  "Hooks that have the dependency graph brought up to date as content is written, implemented by the enterprise module."
+  "Hooks that have the dependency jobs triggered as content is written, implemented by the enterprise module."
   (:require
    [metabase.premium-features.defenterprise :refer [defenterprise]]))
 
@@ -10,8 +10,7 @@
   nil)
 
 (defenterprise before-update
-  "Hook for the `model` row `instance` before it is updated, whose Toucan changes say what changes. The OSS
-  implementation is a no-op."
+  "Hook for the `model` row `instance` before it is updated. The OSS implementation is a no-op."
   metabase-enterprise.dependencies.hooks
   [_model _instance]
   nil)

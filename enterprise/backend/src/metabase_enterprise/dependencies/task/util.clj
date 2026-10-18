@@ -7,7 +7,6 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
@@ -33,12 +32,6 @@
   [{:keys [delay-minutes variance-minutes]}]
   (job-delay (delay-minutes) (variance-minutes)))
 
-(defn feature-not-revoked?
-  "Whether the dependencies feature is enabled or its status is unknown, so that a token check failing, which
-  `has-feature?` cannot tell from an unlicensed instance, never stops a job for good."
-  []
-  (not (false? (premium-features/canonically-has-feature? :dependencies))))
-
 (defn- next-fire-time
   "When the trigger with `trigger-key` fires next on `scheduler`, or nil when it is not pending."
   ^Date [^Scheduler scheduler trigger-key]
@@ -56,9 +49,10 @@
     (let [now      (t/instant)
           start-at (t/+ now (t/duration delay-in-seconds :seconds))
           pending  (some-> (next-fire-time scheduler trigger-key) .toInstant)
-          start-at (Date/from (if (and pending (not (t/after? pending start-at)))
-                                (t/max pending (t/+ now (t/duration 1 :seconds)))
-                                start-at))
+          start-at (Date/from (cond
+                                (or (nil? pending) (t/after? pending start-at)) start-at
+                                (t/after? pending now)                          pending
+                                :else                                           (t/+ now (t/duration 1 :seconds))))
           trigger  (triggers/build
                     (triggers/with-identity (triggers/key trigger-key))
                     (triggers/for-job job-key)
@@ -80,15 +74,15 @@
       (throw e))))
 
 (defn trigger-run!
-  "Schedule a run of `job` a second from now, once the triggering write has committed, unless a batch size that isn't
-  positive disables it."
+  "Schedule a run of `job` a second from now, unless a batch size that isn't positive disables it."
   [{:keys [batch-size] :as job}]
   (when (pos? (batch-size))
     (schedule-run! (task/scheduler) job 1)))
 
 (defn init-job!
-  "Schedule the first run of `job` after startup, at a random time within its variance."
+  "Schedule the first run of `job` after startup, at a random time within its variance, unless a batch size that isn't
+  positive disables it."
   [{:keys [batch-size variance-minutes job-name] :as job}]
-  (when-not (pos? (batch-size))
-    (log/info "The batch size of job" job-name "is not positive; the job will run but process nothing"))
-  (schedule-run! (task/scheduler) job (rand-int (.toSeconds (t/duration (variance-minutes) :minutes)))))
+  (if (pos? (batch-size))
+    (schedule-run! (task/scheduler) job (rand-int (.toSeconds (t/duration (variance-minutes) :minutes))))
+    (log/info "The batch size of job" job-name "is not positive; the job is disabled")))

@@ -11,8 +11,7 @@
   :export?    false)
 
 (defsetting dependency-backfill-delay-minutes
-  "The average delay before the dependency job runs again after a run that failed, or while its batch size disables
-  it."
+  "The average delay before the dependency job runs again after a run that failed."
   :visibility :internal
   :type       :integer
   :default    60
@@ -20,9 +19,8 @@
   :export?    false)
 
 (defsetting dependency-backfill-variance-minutes
-  "The variation in when the dependency job will run.  The actual delay between runs will be a random value
-  between `dependency-backfill-delay-minutes - dependency-backfill-variance-minutes` and
-  `dependency-backfill-delay-minutes + dependency-backfill-variance-minutes`."
+  "The variation of the dependency job's delay after a failed run, which is a random value within this many minutes of
+  `dependency-backfill-delay-minutes`, and the longest random delay of its first run after startup."
   :visibility :internal
   :type       :integer
   :default    30
@@ -38,7 +36,7 @@
   :export?    false)
 
 (defsetting dependency-entity-check-delay-minutes
-  "The average delay between the periodic runs of the analysis finding job, also used after a run that failed."
+  "The average delay before the analysis finding job runs again after a run that failed."
   :visibility :internal
   :type       :integer
   :default    60
@@ -46,9 +44,8 @@
   :export?    false)
 
 (defsetting dependency-entity-check-variance-minutes
-  "The variation in when the analysis finding job will run.  The actual delay between runs will be a random value
-  between `dependency-entity-check-delay-minutes - dependency-entity-check-variance-minutes` and
-  `dependency-entity-check-delay-minutes + dependency-entity-check-variance-minutes`."
+  "The variation of the analysis finding job's delay after a failed run, which is a random value within this many
+  minutes of `dependency-entity-check-delay-minutes`, and the longest random delay of its first run after startup."
   :visibility :internal
   :type       :integer
   :default    30

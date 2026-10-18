@@ -63,7 +63,6 @@
   starting-card-schema-version
   timeline-events-supported-display?
   update-card!
-  update-parameters-using-card-result-metadata!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata
   infer-metadata-with-model-overrides

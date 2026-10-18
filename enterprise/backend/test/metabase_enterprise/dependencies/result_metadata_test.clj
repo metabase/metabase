@@ -23,7 +23,7 @@
 
 (def ^:private card-query deps.test/card-query)
 
-(def ^:private stale? deps.test/result-metadata-pending?)
+(def ^:private pending? deps.test/result-metadata-pending?)
 
 (defn- do-with-inference
   "Run `thunk` with the job's inference of a card done by `f`, called with the real inference, the query and the card."
@@ -65,12 +65,11 @@
 
 (defmacro ^:private with-clean-statuses
   "Run `body` with the dependencies feature, each write committing on its own so that `updated_at` moves between
-  them as it does between real requests, and the module's tables cleaned up after."
+  them as it does between real requests."
   [& body]
   `(mt/test-helpers-set-global-values!
      (mt/with-premium-features #{:dependencies}
-       (do
-         ~@body))))
+       ~@body)))
 
 (defn- reprocess!
   "Have the dependents of the entity `entity-type` `entity-id` re-derived again, as if it changed."
@@ -91,13 +90,13 @@
         (run-jobs!)
         (is (nil? (column question-id "Grand total")))
         (t2/update! :model/Card model-id {:dataset_query (add-grand-total (table-query :orders))})
-        (is (stale? :card model-id))
+        (is (pending? :card model-id))
         (run-jobs!)
         (is (some? (column question-id "Grand total")))
         (is (some? (column nested-id "Grand total")))
         (testing "the card depending on the native card is left alone"
           (is (nil? (column after-native-id "Grand total"))))
-        (is (not-any? #(stale? :card %) [model-id question-id nested-id]))
+        (is (not-any? #(pending? :card %) [model-id question-id nested-id]))
         (testing "a column no longer inferred is removed"
           (t2/update! :model/Card model-id {:dataset_query (table-query :orders)})
           (run-jobs!)
@@ -150,7 +149,7 @@
         (t2/update! :model/Card model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
                                                                                             :id model-id)
                                                                           "TOTAL" "Grand total")})
-        (is (stale? :card model-id))
+        (is (pending? :card model-id))
         (run-jobs!)
         (is (= "Grand total" (:display_name (column card-id "TOTAL"))))))))
 
@@ -163,9 +162,9 @@
                                                                                             :id model-id)
                                                                           "TOTAL" "Grand total")})
         (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
-          (is (stale? :table (mt/id :orders)))
+          (is (pending? :table (mt/id :orders)))
           (run-jobs!)
-          (is (not (stale? :table (mt/id :orders))))
+          (is (not (pending? :table (mt/id :orders))))
           (is (= "Grand total" (:display_name (column model-id "TOTAL")))))))))
 
 (deftest field-user-settings-test
@@ -174,10 +173,10 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Grand total"}]
-          (is (stale? :table (mt/id :orders)))
+          (is (pending? :table (mt/id :orders)))
           (run-jobs!)
           (is (= "Grand total" (:display_name (column card-id "TOTAL"))))
-          (is (not (stale? :table (mt/id :orders)))))))))
+          (is (not (pending? :table (mt/id :orders)))))))))
 
 (deftest measure-chain-test
   (testing "changing a measure's definition re-derives a card using it through another measure"
@@ -198,7 +197,7 @@
                       {:definition (-> (table-query :orders)
                                        (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
                                                                                    (mt/id :orders :total)))))})
-          (is (stale? :measure inner-id))
+          (is (pending? :measure inner-id))
           (run-jobs!)
           (is (= "avg" (column-name))))))))
 
@@ -234,7 +233,7 @@
                                                (once! #(t2/update! :model/Card card-id {:name "Renamed"})))))
           (is (= "Renamed" (t2/select-one-fn :name :model/Card :id card-id)))
           (is (= "Order total" (:display_name (column card-id "TOTAL"))))
-          (is (not (stale? :table (mt/id :orders)))))))))
+          (is (not (pending? :table (mt/id :orders)))))))))
 
 (deftest run-write-during-rederive-test
   (testing "a run storing a card's metadata during its re-derive is kept, and the card is re-derived again from it"
@@ -277,13 +276,24 @@
           (is (isa? (:base_type (column card-id "X")) :type/Number))
           (t2/update! :model/Card source-id {:dataset_query (with (lib/concat total "!"))})
           (run-jobs!)
-          (is (= :type/Text (:base_type (column card-id "X")))))))))
+          (is (= :type/Text (:base_type (column card-id "X"))))
+          (testing "within one root type too, since no run measured the card's types"
+            (t2/update! :model/Card source-id {:dataset_query (with (lib/+ (lib.metadata/field (mt/metadata-provider)
+                                                                                               (mt/id :orders :quantity))
+                                                                           1))})
+            (run-jobs!)
+            (is (= :type/Integer (:base_type (column card-id "X"))))
+            (t2/update! :model/Card source-id {:dataset_query (with (lib/* total 1.5))})
+            (run-jobs!)
+            (is (= :type/Float (:base_type (column card-id "X"))))))))))
 
 (deftest alias-less-stored-metadata-test
   (testing "stored columns without aliases are matched by name, so an alias equal to another column's name merges
            nothing"
-    (let [stored   [{:name "CREATED_AT" :id 36 :base_type "type/DateTime" :fingerprint {:global {:distinct-count 1}}}
-                    {:name "CREATED_AT_2" :id 14 :base_type "type/DateTime" :fingerprint {:global {:distinct-count 2}}}]
+    (let [stored   [{:name "CREATED_AT" :id 36 :base_type "type/DateTime" :database_type "TIMESTAMP"
+                     :fingerprint {:global {:distinct-count 1}}}
+                    {:name "CREATED_AT_2" :id 14 :base_type "type/DateTime" :database_type "TIMESTAMP"
+                     :fingerprint {:global {:distinct-count 2}}}]
           inferred [{:name "CREATED_AT" :id 36 :base_type :type/DateTime
                      :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CREATED_AT"}
                     {:name "CREATED_AT_2" :id 14 :base_type :type/DateTime :lib/desired-column-alias "CREATED_AT"}]]
@@ -307,7 +317,7 @@
         (do-with-inference (fn [_infer _query _card] (throw (ex-info "Inference failed" {})))
                            run-jobs!)
         (is (nil? (column card-id "Grand total")))
-        (is (not (stale? :card source-id)))
+        (is (not (pending? :card source-id)))
         (run-jobs!)
         (is (nil? (column card-id "Grand total")))
         (t2/update! :model/Card source-id {:name "Renamed"})
@@ -340,7 +350,7 @@
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                        :model/Card _               {:dataset_query (card-query source-id)}]
           (run-jobs!)
-          (is (not (stale? :card source-id)))
+          (is (not (pending? :card source-id)))
           (Thread/sleep 5)
           (t2/insert! :model/Card {:name                   "Dependent"
                                    :display                :table
@@ -349,7 +359,27 @@
                                    :database_id            (mt/id)
                                    :dataset_query          (card-query source-id)})
           (deps.test/synchronously-run-dependency-job!)
-          (is (not (stale? :card source-id))))))))
+          (is (not (pending? :card source-id))))))))
+
+(deftest new-dependent-of-an-upstream-processed-before-its-edges-test
+  (testing "a card whose upstream changed and was processed before the card's dependencies existed is re-derived when
+           they are computed, even when the card was saved again meanwhile"
+    (with-clean-statuses
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}]
+          (run-jobs!)
+          (let [card-id (t2/insert-returning-pk! :model/Card {:name                   "Dependent"
+                                                              :display                :table
+                                                              :visualization_settings {}
+                                                              :creator_id             (mt/user->id :rasta)
+                                                              :database_id            (mt/id)
+                                                              :dataset_query          (card-query source-id)})]
+            (t2/update! :model/Card source-id {:dataset_query (add-grand-total (table-query :orders))})
+            (deps.result-metadata/update-result-metadata! 1000)
+            (t2/update! :model/Card card-id {:name "Renamed"})
+            (is (nil? (column card-id "Grand total")))
+            (deps.test/synchronously-run-dependency-job!)
+            (is (some? (column card-id "Grand total")))))))))
 
 (deftest job-reruns-while-it-takes-entities-test
   (testing "the job runs again right away while it took entities, since a card it stored changed in turn"
@@ -447,10 +477,10 @@
         (run-jobs!)
         (is (nil? (column card-id "PRICE")))
         (store-run-metadata! native-id (native-run-metadata "SELECT ID, NAME, PRICE FROM VENUES"))
-        (is (stale? :card native-id))
+        (is (pending? :card native-id))
         (run-jobs!)
         (is (some? (column card-id "PRICE")))
-        (is (not (stale? :card native-id)))))))
+        (is (not (pending? :card native-id)))))))
 
 (deftest measured-keys-test
   (testing "a re-derived column keeps what a run measured only while its root type and source type are unchanged"
@@ -494,14 +524,14 @@
         (is (= "Changed" (:display_name (column other-card-id "TOTAL"))))))))
 
 (deftest store-holds-only-the-card-lock-test
-  (testing "storing a re-derived card holds no status lock, so a write marking statuses meanwhile doesn't wait for it"
+  (testing "storing a re-derived card holds no status lock, so a write of a status meanwhile doesn't wait for it"
     (with-clean-statuses
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (reprocess! :table (mt/id :orders))
-        (let [store  (mt/original-fn #'dependencies.db/update-unchanged-card-result-metadata!)
+        (let [store  (mt/original-fn #'dependencies.db/update-card-result-metadata!)
               marked (atom nil)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/update-unchanged-card-result-metadata!
+          (mt/with-dynamic-fn-redefs [dependencies.db/update-card-result-metadata!
                                       (fn [& args]
                                         (reset! marked (deref (future (t2/update! :model/ResultMetadataStatus
                                                                                   :entity_type :table
@@ -513,6 +543,26 @@
                                #(mt/with-premium-features #{:dependencies}
                                   (deps.result-metadata/update-result-metadata! 1000))))
           (is (= 1 @marked))
+          (is (= "Changed" (:display_name (column card-id "TOTAL")))))))))
+
+(deftest store-waits-for-a-save-in-flight-test
+  (testing "a save of the card holding its row lock while the job stores makes the job re-derive it after the save"
+    (with-clean-statuses
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
+        (run-jobs!)
+        (reprocess! :table (mt/id :orders))
+        (let [locked (promise)
+              save   (future
+                       (t2/with-transaction [_]
+                         (t2/update! :model/Card card-id {:name "Saved"})
+                         (deliver locked true)
+                         (Thread/sleep 1000)))]
+          @locked
+          (do-with-inference (fn [infer query card] (rename-column (infer query card) "TOTAL" "Changed"))
+                             #(mt/with-premium-features #{:dependencies}
+                                (deps.result-metadata/update-result-metadata! 1000)))
+          @save
+          (is (= "Saved" (t2/select-one-fn :name :model/Card :id card-id)))
           (is (= "Changed" (:display_name (column card-id "TOTAL")))))))))
 
 (deftest failing-dependent-test
@@ -530,7 +580,7 @@
                            #(mt/with-premium-features #{:dependencies}
                               (deps.result-metadata/update-result-metadata! 1000)))
         (is (= ["Changed" "Changed"] (mapv #(:display_name (column % "NAME")) [first-id last-id])))
-        (is (not (stale? :table (mt/id :venues))))))))
+        (is (not (pending? :table (mt/id :venues))))))))
 
 (deftest store-updates-parameters-using-dropped-columns-test
   (testing "storing a re-derived card resets the parameters taking values from a column it no longer has"

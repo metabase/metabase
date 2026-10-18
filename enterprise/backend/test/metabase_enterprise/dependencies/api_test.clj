@@ -5,7 +5,6 @@
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.api :as deps.api]
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
-   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
@@ -504,7 +503,7 @@
                                                     :table_id    (mt/id :orders)}]
                                  :body            "def transform(orders):\n    return orders"}}]
           (deps.test/synchronously-run-dependency-job!)
-          (#'task.analysis-finding/check-entities!)
+          (deps.test/run-analysis-finding-job!)
           (let [dependent-ids (fn [broken?]
                                 (set (map :id (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
                                                                     :type "table"
@@ -2910,3 +2909,11 @@
             (testing "a search for the data-actions root name finds the action"
               (is (matches? "Data actions"))
               (is (not (matches? "Our analytics"))))))))))
+
+(deftest backfill-status-requires-superuser-test
+  (testing "GET /api/ee/dependencies/backfill-status scans every entity, so only superusers can call it"
+    (mt/with-premium-features #{:dependencies}
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "ee/dependencies/backfill-status")))
+      (is (=? {:complete boolean?}
+              (mt/user-http-request :crowberto :get 200 "ee/dependencies/backfill-status"))))))

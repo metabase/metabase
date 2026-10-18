@@ -3,9 +3,9 @@
   (see [[metabase-enterprise.dependencies.models.dependency]]) up to date, that is, makes sure
   the dependency table contains fresh entries.
 
-  This is done by querying the dependency_status table for entities whose dependencies were not computed from their
-  current version (their latest `updated_at` and number of parts) or by the current dependency_analysis_version. The
-  dependency job computes dependencies and records that version in the dependency_status table."
+  It selects the entities whose dependency_status records another version of them (their latest `updated_at` and
+  number of parts), an older dependency_analysis_version, or no row, computes their dependencies, and records the
+  version it computed them from."
   (:require
    [clojurewerkz.quartzite.scheduler :as qs]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
@@ -13,10 +13,9 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
+   [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
-   [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
@@ -89,25 +88,19 @@
         type->ids (models.dependency/group-nodes (graph/transitive graph [[entity-type entity-id]]))]
     (deps.dependency-status/clear-version! (apply dissoc type->ids expanded-into-dependents))))
 
-(defn- reprocess-dependents-of!
-  "Have the dependents of the entities `nodes`, `[[entity-type entity-id]]`, which an entity saved at `since` now
-  depends on, re-derived and re-analyzed when a job processed them at or after `since`, possibly before the entity's
-  dependencies existed; their dependents processed before that saw what the entity's save saw."
-  [nodes since]
-  (when (and (seq nodes) since
-             (pos? (+ (dependencies.db/clear-status-versions-recorded-since! :model/AnalysisFindingStatus nodes since)
-                      (dependencies.db/clear-status-versions-recorded-since!
-                       :model/ResultMetadataStatus
-                       (filterv (comp (set deps.result-metadata-status/entity-types) first) nodes)
-                       since))))
-    (task.result-metadata/trigger-result-metadata-job!)
-    (task.analysis-finding/trigger-analysis-finding-job!)))
+(defn- reprocess-new-dependent!
+  "Re-analyze the entity `entity-type` `entity-id`, and re-derive it when it is a card, since the jobs may have
+  processed the entities it newly depends on before its dependencies existed."
+  [entity-type entity-id]
+  (dependencies.db/clear-finding-version! entity-type entity-id)
+  (when (= :card entity-type)
+    (deps.result-metadata/rederive-dependent! [entity-type entity-id]))
+  (task.analysis-finding/trigger-analysis-finding-job!))
 
 (defn- compute-deps-for-entity!
   "Compute and store the dependencies of an entity and record the version they were computed from, flagging the tables
   it names that match nothing; for an entity that native SQL expands, have those that expand it computed again, and
-  have the dependents of the entities it newly depends on processed again, recording `version` as the one they were
-  computed from. Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
+  have it processed again when it newly depends on an entity, recording `version` as the one they were computed from. Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
   [entity-type entity version]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (when (expanded-into-dependents entity-type)
@@ -119,17 +112,18 @@
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       (post-deps-cleanup! entity-type entity)
       (deps.dependency-status/upsert-status! entity-type (:id entity) version (contains? all-deps :unresolved-table)))
-    (reprocess-dependents-of! upstream (:updated_at entity))))
+    (when (seq upstream)
+      (reprocess-new-dependent! entity-type (:id entity)))))
 
 (defn- remove-deleted-entity-batch!
   "Drop the dependencies and status of up to `batch-size` deleted entities of `entity-type`, returning how many were
   removed."
   [entity-type batch-size]
-  (let [entity-ids (dependencies.db/deleted-entity-ids entity-type batch-size)]
+  (let [entity-ids (dependencies.db/deleted-status-entity-ids :model/DependencyStatus entity-type batch-size)]
     (when (seq entity-ids)
       (t2/with-transaction [_]
         (dependencies.db/delete-dependencies-from! entity-type entity-ids)
-        (dependencies.db/delete-dependency-statuses! entity-type entity-ids)))
+        (dependencies.db/delete-statuses! :model/DependencyStatus entity-type entity-ids)))
     (count entity-ids)))
 
 (defn- update-entity-batch!
@@ -186,13 +180,10 @@
 (declare ^:private job)
 
 (defn- run-batch!
-  "Process a batch, returning when to run again: right away when the batch was full, after the delay when the batch
-  size disables the job, or nil."
+  "Process a batch, returning when to run again: right away when the batch was full, or nil."
   []
   (when (update-dependencies!)
-    (if (pos? (deps.settings/dependency-backfill-batch-size))
-      1
-      (task.util/next-run-delay job))))
+    1))
 
 (defn- log-job-start
   [^JobExecutionContext ctx]

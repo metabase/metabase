@@ -607,12 +607,6 @@
       (pre-update-check-sandbox-constraints card changes)
       (assert-valid-type card))))
 
-(defn update-parameters-using-card-result-metadata!
-  "Update the parameters of the Dashboards and Cards taking values from the Card `card` that its new result metadata
-  `result-metadata` has no column for any more, as a save of that metadata through the Card model does."
-  [card result-metadata]
-  (update-parameters-using-card-as-values-source card {:result_metadata result-metadata}))
-
 (defn- metadata-provider-fetch?
   "Whether `card` was selected as one of the lib metadata-provider models (`:metadata/card`, `:metadata/metric`, ...)
   rather than as `:model/Card`. Those models `derive` from `:model/Card`, so this after-select runs for them too."

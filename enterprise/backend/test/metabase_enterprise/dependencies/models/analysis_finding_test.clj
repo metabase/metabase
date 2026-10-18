@@ -2,9 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CyclicBarrier TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -40,3 +43,20 @@
                         (dec models.analysis-finding/*current-analysis-finding-version*)]
                 (models.analysis-finding/upsert-analysis! :card outdated true [] (version-of outdated)))
               (is (= [unanalyzed outdated] (selected))))))))))
+
+(deftest ^:synchronized concurrent-upserts-test
+  (testing "two analyses of an entity inserting its finding at once leave the finding they found, not an insert error"
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+          (mt/with-temp [:model/Card {card-id :id} {}]
+            (let [barrier (CyclicBarrier. 2)
+                  insert! (mt/original-fn #'dependencies.db/insert-finding!)]
+              (mt/with-dynamic-fn-redefs [dependencies.db/insert-finding! (fn [row]
+                                                                            (.await barrier 10 TimeUnit/SECONDS)
+                                                                            (insert! row))]
+                (let [upserts (repeatedly 2 #(future (models.analysis-finding/upsert-analysis! :card card-id true [] nil)))]
+                  (run! deref (doall upserts))))
+              (is (=? {:result true} (finding card-id)))
+              (is (zero? (t2/count :model/AnalysisFindingError :analyzed_entity_type "card"
+                                   :analyzed_entity_id card-id))))))))))

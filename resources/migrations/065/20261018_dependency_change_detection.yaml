@@ -1,6 +1,6 @@
 ## The dependency jobs find changed entities by comparing their updated_at with the version their status row last
 ## recorded, instead of reading stale flags that every write had to set. The status rows lose the flag and the retry
-## state, and the rows a dependency's version is made of get the timestamps they lacked.
+## state, and the rows an entity's version is made of get the timestamps they lacked.
 
 databaseChangeLog:
   - changeSet:
@@ -42,7 +42,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.brqkb7
       author: ranquild
-      comment: Drop dependency_status.fail_count, which change detection from updated_at replaces
+      comment: Drop dependency_status.fail_count, which the jobs no longer use since they don't retry
       changes:
         - dropColumn:
             tableName: dependency_status
@@ -62,7 +62,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.drkztr
       author: ranquild
-      comment: Drop dependency_status.next_retry_at, which change detection from updated_at replaces
+      comment: Drop dependency_status.next_retry_at, which the jobs no longer use since they don't retry
       changes:
         - dropColumn:
             tableName: dependency_status
@@ -79,7 +79,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.mhlfsd
       author: ranquild
-      comment: Drop dependency_status.terminal, which change detection from updated_at replaces
+      comment: Drop dependency_status.terminal, which the jobs no longer use since they don't retry
       changes:
         - dropColumn:
             tableName: dependency_status

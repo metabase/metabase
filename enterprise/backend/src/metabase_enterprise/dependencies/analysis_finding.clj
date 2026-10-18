@@ -3,6 +3,7 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.dependents :as deps.dependents]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.lib-be.core :as lib-be]
@@ -71,17 +72,13 @@
                               [(lib/validation-exception-error (.getMessage e))]))
                success (empty? results)]
            (models.analysis-finding/upsert-analysis! entity-type instance-id success results version))
-         ;; No resolvable database, and no pre-analysis error explaining it: record an error so the entity gets a
-         ;; finding instead of no-oping forever and being re-selected on every run. It re-checks normally if its
-         ;; database later becomes resolvable.
          (models.analysis-finding/upsert-analysis!
           entity-type instance-id false
           [(lib/validation-exception-error "Could not resolve a database for this entity.")]
           version))))))
 
 (defn- analyze-instance!
-  "Analyze `instance`, recording `version` unless it is nil, and recording a failure as a failed finding of `version`
-  so the entity is not analyzed again until it changes."
+  "Analyze `instance`, recording `version` unless it is nil, and recording a failure as a failed finding."
   [instance version]
   (try (upsert-analysis! instance version)
        (catch Exception e
@@ -135,23 +132,7 @@
   current version, or that were deleted, then record their versions, returning how many entities it took."
   [batch-size :- pos-int?]
   (lib-be/with-metadata-provider-cache
-    (let [deleted  (into {}
-                         (keep (fn [entity-type]
-                                 (when-let [ids (not-empty (dependencies.db/deleted-status-entity-ids
-                                                            :model/AnalysisFindingStatus entity-type batch-size))]
-                                   [entity-type ids])))
-                         deps.dependency-types/dependency-types)
-          changed  (into []
-                         (mapcat (fn [entity-type]
-                                   (map #(assoc % :entity_type entity-type)
-                                        (dependencies.db/entities-with-changed-version
-                                         :model/AnalysisFindingStatus entity-type batch-size))))
-                         deps.dependency-types/dependency-types)]
-      (analyze-transitive-dependents!
-       (merge-with into deleted (update-vals (group-by :entity_type changed) #(mapv :entity_id %))))
-      (doseq [[entity-type ids] deleted]
-        (dependencies.db/delete-statuses! :model/AnalysisFindingStatus entity-type ids))
-      (doseq [{:keys [entity_type entity_id status_id status_updated_at version_updated_at version_count]} changed]
-        (dependencies.db/record-status-version! :model/AnalysisFindingStatus entity_type entity_id
-                                                status_id status_updated_at version_updated_at version_count))
-      (+ (count changed) (reduce + 0 (map count (vals deleted)))))))
+    (deps.dependents/process-changed-dependents!
+     :model/AnalysisFindingStatus deps.dependency-types/dependency-types batch-size
+     (fn [deleted nodes]
+       (analyze-transitive-dependents! (merge-with into deleted (models.dependency/group-nodes nodes)))))))

@@ -4,7 +4,6 @@
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
@@ -47,7 +46,7 @@
                                 (fn [entity-type entity-id & args]
                                   (swap! analyzed conj [entity-type entity-id])
                                   (apply upsert! entity-type entity-id args))]
-      (#'task.analysis-finding/check-entities!))
+      (deps.test/run-analysis-finding-job!))
     @analyzed))
 
 (defn- analyzed-among!
@@ -381,7 +380,7 @@
          (assert-pending :transform transform-id)
          (deps.test/synchronously-run-dependency-job!)
          (testing "and the analysis finding job flips :result false so the transform shows on broken-diagnostics"
-           (#'task.analysis-finding/check-entities!)
+           (deps.test/run-analysis-finding-job!)
            (is (false? (t2/select-one-fn :result :model/AnalysisFinding
                                          :analyzed_entity_type :transform
                                          :analyzed_entity_id transform-id)))

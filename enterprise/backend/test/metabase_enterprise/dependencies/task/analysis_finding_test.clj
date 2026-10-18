@@ -5,7 +5,6 @@
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.dependencies.hooks :as dependencies.hooks]
-   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt])
   (:import
@@ -13,11 +12,8 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:synchronized batch-size-zero-suppresses-event-triggers-but-stays-warm-test
-  (testing "A non-positive batch size stops the job doing work, but leaves it on its slow periodic schedule so it
-           resumes if the setting ever becomes positive. What it must not do is keep firing the 1-second event-driven
-           trigger: entity changes fire it, and it never consulted the batch size, so a disabled job woke roughly once
-           a second on a busy instance."
+(deftest ^:synchronized batch-size-zero-disables-the-job-test
+  (testing "a batch size that isn't positive keeps the job from being scheduled by writes or at startup"
     (let [scheduled    (atom [])
           scheduled-by (fn [thunk]
                          (reset! scheduled [])
@@ -25,44 +21,24 @@
                          (count @scheduled))]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "0")]
-          (testing "the 1-second event-driven trigger is suppressed"
-            (is (zero? (scheduled-by task.analysis-finding/trigger-analysis-finding-job!))))
-          (testing "but task/init! still puts the job on its periodic schedule"
-            (is (= 1 (scheduled-by #(task/init! ::task.analysis-finding/UpdateAnalysisFindings)))))
-          (testing "and a run keeps the periodic chain going"
-            (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly true)]
-              (is (= 1 (scheduled-by #(task.util/run-and-reschedule! nil @#'task.analysis-finding/job)))))))
-        (testing "a positive batch size schedules from the event trigger too"
+          (is (zero? (scheduled-by task.analysis-finding/trigger-analysis-finding-job!)))
+          (is (zero? (scheduled-by #(task/init! ::task.analysis-finding/UpdateAnalysisFindings)))))
+        (testing "a positive batch size schedules from the event trigger"
           (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "5")]
             (is (= 1 (scheduled-by task.analysis-finding/trigger-analysis-finding-job!)))))))))
 
-(deftest ^:synchronized post-run-reschedule-licence-states-test
-  (testing "The analysis finding job is a periodic checker with no terminal state, so it always queues another run. That
-           is right while licensed, but check-entities! is gated on :dependencies, so without the feature the job
-           rescheduled itself every 30-90 minutes forever to do nothing at all.
-
-           Scheduling resolves the licence with canonically-has-feature?, not has-feature?, so it can distinguish
-           'definitively unlicensed' from 'could not tell'. has-feature? collapses both to false, and since nothing
-           re-fires when a failed token check later succeeds, reading a blip as unlicensed would end the chain for
-           good. Only a definitive false stops it."
-    (let [scheduled (atom [])
-          scheduled-by (fn [licence]
-                         (reset! scheduled [])
-                         (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly licence)]
-                           (task.util/run-and-reschedule! nil @#'task.analysis-finding/job))
-                         (count @scheduled))]
+(deftest ^:synchronized run-stops-without-the-feature-test
+  (testing "a run without the dependencies feature schedules no next run, since the next write or token update triggers one"
+    (let [scheduled (atom [])]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
-        (testing "licensed: keeps itself scheduled"
-          (is (= 1 (scheduled-by true))))
-        (testing "indeterminate: keeps the chain alive rather than ending it on a transient failure"
-          (is (= 1 (scheduled-by nil))))
-        (testing "definitively unlicensed: stops"
-          (is (zero? (scheduled-by false))))))))
+        (mt/with-premium-features #{}
+          (task.util/run-and-reschedule! nil @#'task.analysis-finding/job))
+        (is (empty? @scheduled))))))
 
 (def ^:private job-key "metabase.dependencies.task.entity-check.job")
 
 (defn- scheduled-job-names
-  "Job names from captured [[task/schedule-task!]] calls, since a token update schedules both dependency jobs."
+  "Job names from captured [[task/schedule-task!]] calls, since a token update schedules every dependency job."
   [calls]
   (into #{} (map (fn [args] (.getName (.getKey ^JobDetail (nth args 1))))) calls))
 

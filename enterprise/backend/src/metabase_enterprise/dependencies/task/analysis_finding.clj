@@ -9,48 +9,26 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-rounds
-  "How many batches a run takes at most before it leaves the rest to its next run."
-  20)
-
-(defn- process-one-batch!
+(defn- run-batch!
   "Analyze a batch of entities whose own findings are outdated, then a batch of the dependents of changed entities,
-  returning how many entities it took."
+  returning when to run again: right away when it took any, or nil."
   []
-  (let [batch-size (deps.settings/dependency-entity-check-batch-size)
-        own        (reduce (fn [taken entity-type]
-                             (let [analyzed (deps.analysis-finding/analyze-batch! entity-type batch-size)]
-                               (when (pos? analyzed)
-                                 (log/info "Analyzed" analyzed "entities of type" entity-type))
-                               (+ taken analyzed)))
-                           0
-                           deps.analysis-finding/analyzable-entities)
-        dependents (deps.analysis-finding/analyze-dependents-batch! batch-size)]
-    (when (pos? dependents)
-      (log/info "Analyzed the dependents of" dependents "entities"))
-    (+ own dependents)))
-
-(defn- check-entities!
-  "Analyze batches until one takes nothing, or up to [[max-rounds]] of them, returning whether the last one took
-  anything."
-  []
-  (when (and (premium-features/has-feature? :dependencies)
-             (pos? (deps.settings/dependency-entity-check-batch-size)))
-    (loop [round 1]
-      (let [took? (pos? (process-one-batch!))]
-        (if (and took? (< round max-rounds))
-          (recur (inc round))
-          took?)))))
+  (when (premium-features/has-feature? :dependencies)
+    (let [batch-size (deps.settings/dependency-entity-check-batch-size)
+          own        (reduce (fn [taken entity-type]
+                               (let [analyzed (deps.analysis-finding/analyze-batch! entity-type batch-size)]
+                                 (when (pos? analyzed)
+                                   (log/info "Analyzed" analyzed "entities of type" entity-type))
+                                 (+ taken analyzed)))
+                             0
+                             deps.analysis-finding/analyzable-entities)
+          dependents (deps.analysis-finding/analyze-dependents-batch! batch-size)]
+      (when (pos? dependents)
+        (log/info "Analyzed the dependents of" dependents "entities"))
+      (when (pos? (+ own dependents))
+        1))))
 
 (declare ^:private job)
-
-(defn- run-batch!
-  "Analyze what changed, returning when to run again: right away when work is left, otherwise after the delay, unless
-  the dependencies feature is revoked."
-  []
-  (cond
-    (check-entities!)                  1
-    (task.util/feature-not-revoked?)   (task.util/next-run-delay job)))
 
 (task/defjob UpdateAnalysisFindings
   "Re-analyze the changed entities and the dependents of changed entities."
