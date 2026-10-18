@@ -38,21 +38,10 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: fail_count
-                  type: int
-                  defaultValueNumeric: 0
-                  remarks: Number of consecutive failed attempts
-                  constraints:
-                    nullable: false
-              - column:
-                  name: next_retry_at
-                  type: ${timestamp_type}
-                  remarks: Earliest time at which a failed entity can be retried (null means immediately processable)
-              - column:
                   name: terminal
                   type: ${boolean.type}
                   defaultValueBoolean: false
-                  remarks: True when the entity failed more than the max retries and is not retried until it or an upstream entity changes again
+                  remarks: True when re-deriving the cards depending on the entity failed, so it is not processed again until the entity changes again
                   constraints:
                     nullable: false
               - column:

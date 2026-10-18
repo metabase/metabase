@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.task.core :as task]
    [metabase.test :as mt])
   (:import
@@ -18,9 +19,9 @@
 (deftest schedule-run-keeps-the-earlier-run-test
   (testing "scheduling a later run keeps a run already pending earlier, and an earlier run replaces a later one"
     (mt/with-temp-scheduler!
-      (#'task.result-metadata/schedule-run! (task/scheduler) 3600)
+      (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 3600)
       (is (< 3000 (seconds-until-next-run)))
-      (#'task.result-metadata/schedule-run! (task/scheduler) 60)
+      (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 60)
       (is (< (seconds-until-next-run) 61))
-      (#'task.result-metadata/schedule-run! (task/scheduler) 3600)
+      (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 3600)
       (is (< (seconds-until-next-run) 61)))))

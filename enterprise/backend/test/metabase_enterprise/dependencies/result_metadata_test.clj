@@ -4,7 +4,6 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.result-metadata-status :as deps.result-metadata-status]
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
-   [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.test :as met]
    [metabase.lib.core :as lib]
@@ -49,7 +48,7 @@
   []
   (deps.test/synchronously-run-dependency-job!)
   (mt/with-premium-features #{:dependencies}
-    (deps.result-metadata/update-result-metadata! 1000 60)))
+    (deps.result-metadata/update-result-metadata! 1000)))
 
 (defn- column [card-id column-name]
   (some #(when (= column-name (:name %)) %)
@@ -187,14 +186,13 @@
 
 (defn- rederive-during-inference!
   "Process the stale status of the entity `entity-type` `entity-id` while `write!` runs in the middle of the inference
-  of a card depending on it, returning the result."
+  of a card depending on it, returning how many statuses it cleared."
   [entity-type entity-id write!]
   (do-with-inference (fn [infer query card]
                        (write!)
                        (infer query card))
-                     #(#'deps.result-metadata/process-status-or-record-failure!
-                       (t2/select-one :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id)
-                       60)))
+                     #(#'deps.result-metadata/process-status!
+                       (t2/select-one :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id))))
 
 (defn- store-run-metadata!
   "Store `metadata` as the result metadata of the Card with `card-id`, as a run of the card does."
@@ -213,8 +211,8 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
-          (is (= :processed (rederive-during-inference! :table (mt/id :orders)
-                                                        (once! #(t2/update! :model/Card card-id {:name "Renamed"})))))
+          (is (= 1 (rederive-during-inference! :table (mt/id :orders)
+                                               (once! #(t2/update! :model/Card card-id {:name "Renamed"})))))
           (is (= "Renamed" (t2/select-one-fn :name :model/Card :id card-id)))
           (is (= "Order total" (:display_name (column card-id "TOTAL"))))
           (is (not (stale? :table (mt/id :orders)))))))))
@@ -228,9 +226,9 @@
                                (rename-column "TOTAL" "Run total")
                                (->> (mapv #(cond-> % (= "ID" (:name %)) (assoc :fingerprint {:global {:distinct-count 7}})))))]
           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
-            (is (= :processed (rederive-during-inference!
-                               :table (mt/id :orders)
-                               (once! #(store-run-metadata! card-id run-metadata)))))
+            (is (= 1 (rederive-during-inference!
+                      :table (mt/id :orders)
+                      (once! #(store-run-metadata! card-id run-metadata)))))
             (is (= "Order total" (:display_name (column card-id "TOTAL"))))
             (is (= {:global {:distinct-count 7}} (:fingerprint (column card-id "ID"))))))))))
 
@@ -289,13 +287,12 @@
             (mapv #'deps.result-metadata/normalize-column [{:semantic-type :type/FK :fk-target-field-id 29}]))))))
 
 (deftest terminal-status-test
-  (testing "an entity whose dependents reached the retry limit has them re-derived again when it changes again"
+  (testing "an entity whose dependents failed has them re-derived again when it changes again"
     (with-clean-statuses
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (run-jobs!)
-        (t2/insert! :model/ResultMetadataStatus {:entity_type :card :entity_id source-id :stale true
-                                                 :fail_count 6 :terminal true})
+        (t2/insert! :model/ResultMetadataStatus {:entity_type :card :entity_id source-id :stale true :terminal true})
         (t2/update! :model/Card source-id {:dataset_query (add-grand-total (table-query :orders))})
         (run-jobs!)
         (is (some? (column card-id "Grand total")))
@@ -315,7 +312,7 @@
                                                               :dataset_query          (card-query source-id)})]
             (t2/update! :model/Card source-id {:dataset_query (add-grand-total (table-query :orders))})
             (mt/with-premium-features #{:dependencies}
-              (deps.result-metadata/update-result-metadata! 1000 60))
+              (deps.result-metadata/update-result-metadata! 1000))
             (is (nil? (column card-id "Grand total")))
             (run-jobs!)
             (is (some? (column card-id "Grand total")))))))))
@@ -328,20 +325,19 @@
         (let [status (t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id card-id)]
           (Thread/sleep 5)
           (deps.result-metadata-status/mark-stale! {:card #{card-id}})
-          (is (zero? (deps.result-metadata-status/record-failure! status 5 60)))
-          (is (=? {:stale true :fail_count 0 :next_retry_at nil}
+          (is (zero? (deps.result-metadata-status/record-failure! status)))
+          (is (=? {:stale true :terminal false}
                   (t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id card-id))))))))
 
 (deftest failure-without-status-test
-  (testing "a failure of a status deleted meanwhile leaves no row waiting for a retry"
+  (testing "a failure of a status deleted meanwhile leaves no row"
     (mt/with-model-cleanup [:model/ResultMetadataStatus]
       (let [card-id Integer/MAX_VALUE]
         (deps.result-metadata-status/mark-stale! {:card #{card-id}})
         (let [status (t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id card-id)]
           (t2/delete! :model/ResultMetadataStatus :id (:id status))
-          (deps.result-metadata-status/record-failure! status 5 60)
-          (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :card :entity_id card-id)))
-          (is (not (deps.result-metadata-status/has-pending-retries?))))))))
+          (deps.result-metadata-status/record-failure! status)
+          (is (not (t2/exists? :model/ResultMetadataStatus :entity_type :card :entity_id card-id))))))))
 
 (deftest sandboxed-creator-ignored-test
   (testing "a card is re-derived as no user, like a save through the Card model, whatever its creator's sandbox hides"
@@ -357,7 +353,7 @@
           (deps.test/synchronously-run-dependency-job!)
           (deps.result-metadata-status/mark-stale! {:table #{(mt/id :venues)}})
           (mt/with-premium-features #{:dependencies :sandboxes}
-            (deps.result-metadata/update-result-metadata! 1000 60))
+            (deps.result-metadata/update-result-metadata! 1000))
           (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
                  (mapv :name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
 
@@ -424,7 +420,7 @@
                (patch {:name "X" :base_type :type/Decimal :database_type "DECIMAL"})))))))
 
 (deftest remapped-column-test
-  (testing "a card whose stored metadata has the remapped column a run adds, which inference leaves out, is not rewritten"
+  (testing "a card storing the metadata of a run with remapped columns is not rewritten, since inference adds them too"
     (mt/with-column-remappings [orders.product_id products.title]
       (let [query (table-query :orders)
             run   (get-in (qp/process-query query) [:data :results_metadata :columns])]
@@ -432,9 +428,8 @@
         (mt/with-temp [:model/Card card {:dataset_query query :result_metadata run}]
           (is (nil? (#'deps.result-metadata/rederived-result-metadata card))))))))
 
-(deftest conflict-reruns-test
-  (testing "a card that keeps changing during its re-derive leaves its upstream stale, other upstreams proceed, and the
-           job reruns"
+(deftest conflict-fails-test
+  (testing "a card that keeps changing during its re-derive fails its upstream, and other upstreams proceed"
     (with-clean-statuses
       (mt/with-temp [:model/Card {orders-card-id :id} {:dataset_query (table-query :orders)}
                      :model/Card _                    {:dataset_query (table-query :products)}]
@@ -446,8 +441,10 @@
                                  (store-run-metadata!
                                   orders-card-id
                                   (rename-column (:result_metadata card) "TOTAL" (str (random-uuid)))))))
-                           #(is (true? (#'task.result-metadata/update-result-metadata!))))
-        (is (stale? :table (mt/id :orders)))
+                           #(mt/with-premium-features #{:dependencies}
+                              (deps.result-metadata/update-result-metadata! 1000)))
+        (is (=? {:stale true :terminal true}
+                (t2/select-one :model/ResultMetadataStatus :entity_type :table :entity_id (mt/id :orders))))
         (is (not (stale? :table (mt/id :products))))))))
 
 (deftest store-holds-only-the-card-lock-test
@@ -463,17 +460,17 @@
                                         (reset! marked (deref (future (t2/update! :model/ResultMetadataStatus
                                                                                   :entity_type :table
                                                                                   :entity_id (mt/id :orders)
-                                                                                  {:fail_count 0}))
+                                                                                  {:terminal false}))
                                                               5000 :timed-out))
                                         (apply store args))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "TOTAL" "Changed"))
                                #(mt/with-premium-features #{:dependencies}
-                                  (deps.result-metadata/update-result-metadata! 1000 60))))
+                                  (deps.result-metadata/update-result-metadata! 1000))))
           (is (= 1 @marked))
           (is (= "Changed" (:display_name (column card-id "TOTAL")))))))))
 
 (deftest failing-dependent-test
-  (testing "a card whose re-derive fails leaves its upstream stale for a retry without keeping its siblings stale"
+  (testing "a card whose re-derive fails leaves its upstream stale and terminal, and its siblings are still re-derived"
     (with-clean-statuses
       (mt/with-temp [:model/Card {first-id :id}  {:dataset_query (table-query :venues)}
                      :model/Card {failing-id :id} {:dataset_query (table-query :venues)}
@@ -485,9 +482,9 @@
                                (throw (ex-info "Inference failed" {}))
                                (rename-column (infer query card) "NAME" "Changed")))
                            #(mt/with-premium-features #{:dependencies}
-                              (deps.result-metadata/update-result-metadata! 1000 60)))
+                              (deps.result-metadata/update-result-metadata! 1000)))
         (is (= ["Changed" "Changed"] (mapv #(:display_name (column % "NAME")) [first-id last-id])))
-        (is (=? {:stale true :fail_count 1}
+        (is (=? {:stale true :terminal true}
                 (t2/select-one :model/ResultMetadataStatus :entity_type :table :entity_id (mt/id :venues))))))))
 
 (deftest store-updates-parameters-using-dropped-columns-test
@@ -508,7 +505,7 @@
                              (cond->> (infer query card)
                                (= source-id (:id card)) (into [] (remove #(= "PRICE" (:name %))))))
                            #(mt/with-premium-features #{:dependencies}
-                              (deps.result-metadata/update-result-metadata! 1000 60)))
+                              (deps.result-metadata/update-result-metadata! 1000)))
         (is (nil? (column source-id "PRICE")))
         (is (=? [{:id "price" :values_source_type nil}]
                 (t2/select-one-fn :parameters :model/Card :id card-id)))))))

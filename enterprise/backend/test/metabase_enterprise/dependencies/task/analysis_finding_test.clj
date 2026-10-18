@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [environ.core :as env]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -30,7 +31,7 @@
             (is (= 1 (scheduled-by #(task/init! ::task.analysis-finding/UpdateAnalysisFindings)))))
           (testing "and a run keeps the periodic chain going"
             (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly true)]
-              (is (= 1 (scheduled-by #(#'task.analysis-finding/reschedule-after-run! nil)))))))
+              (is (= 1 (scheduled-by #(task.util/run-and-reschedule! nil @#'task.analysis-finding/job)))))))
         (testing "a positive batch size schedules from the event trigger too"
           (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "5")]
             (is (= 1 (scheduled-by task.analysis-finding/trigger-analysis-finding-job!)))))))))
@@ -48,7 +49,7 @@
           scheduled-by (fn [licence]
                          (reset! scheduled [])
                          (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly licence)]
-                           (#'task.analysis-finding/reschedule-after-run! nil))
+                           (task.util/run-and-reschedule! nil @#'task.analysis-finding/job))
                          (count @scheduled))]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (testing "licensed: keeps itself scheduled"

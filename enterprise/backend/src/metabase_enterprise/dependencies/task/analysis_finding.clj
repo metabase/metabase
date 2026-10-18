@@ -35,17 +35,15 @@
                    (or (nil? prev-stale) (< stale prev-stale)))
           (recur stale))))))
 
-(declare schedule-run!)
+(declare ^:private job)
 
-(defn- reschedule-after-run!
-  "Schedule the next run of the analysis finding job unless the `:dependencies` feature is definitively absent."
-  [scheduler]
-  (if (false? (premium-features/canonically-has-feature? :dependencies))
-    (log/debug "Not rescheduling job Update Analysis Findings: the dependencies feature is not enabled")
-    (schedule-run! scheduler
-                   (task.util/job-delay
-                    (deps.settings/dependency-entity-check-delay-minutes)
-                    (deps.settings/dependency-entity-check-variance-minutes)))))
+(defn- run-batch!
+  "Analyze the stale entities, returning when to run again: after the delay, unless the dependencies feature is
+  revoked."
+  []
+  (check-entities!)
+  (when (task.util/feature-not-revoked?)
+    (task.util/next-run-delay job)))
 
 (task/defjob UpdateAnalysisFindings
   "Re-analyze the stale entities."
@@ -53,38 +51,22 @@
    :concurrent? false}
   [ctx]
   (log/info "Executing UpdateAnalysisFindings job...")
-  (check-entities!)
-  (reschedule-after-run! (.getScheduler ctx)))
+  (task.util/run-and-reschedule! (.getScheduler ctx) job))
 
-(def ^:private job-key     "metabase.dependencies.task.entity-check.job")
-(def ^:private trigger-key "metabase.dependencies.task.entity-check.trigger")
-
-(defn- schedule-run!
-  "Schedule a run of the analysis finding job `delay-in-seconds` from now, unless one is already pending sooner."
-  [scheduler delay-in-seconds]
-  (task.util/schedule-run! scheduler
-                           {:job-type    UpdateAnalysisFindings
-                            :job-key     job-key
-                            :trigger-key trigger-key
-                            :job-name    "Update Analysis Findings"}
-                           delay-in-seconds))
+(def ^:private job
+  {:job-type         UpdateAnalysisFindings
+   :job-key          "metabase.dependencies.task.entity-check.job"
+   :trigger-key      "metabase.dependencies.task.entity-check.trigger"
+   :job-name         "Update Analysis Findings"
+   :batch-size       deps.settings/dependency-entity-check-batch-size
+   :delay-minutes    deps.settings/dependency-entity-check-delay-minutes
+   :variance-minutes deps.settings/dependency-entity-check-variance-minutes
+   :run!             #'run-batch!})
 
 (defmethod task/init! ::UpdateAnalysisFindings [_]
-  (when-not (pos? (deps.settings/dependency-entity-check-batch-size))
-    (log/info "Analysis finding job batch size is not positive; the job will run but process nothing"))
-  (schedule-run!
-   (task/scheduler)
-   (task.util/job-initial-delay
-    (deps.settings/dependency-entity-check-variance-minutes))))
+  (task.util/init-job! job))
 
 (defn trigger-analysis-finding-job!
-  "Trigger the UpdateAnalysisFindings job to run after a brief delay, unless the batch size disables it.
-
-  The 1-second delay ensures the calling transaction has committed before the job checks for stale entities. Entity
-  changes fire this, so leaving it ungated is what made a disabled job wake roughly once a second; the job's own
-  periodic schedule is left alone so it still resumes if the batch size becomes positive.
-
-  Disable with MB_DEPENDENCY_ENTITY_CHECK_BATCH_SIZE=0"
+  "Trigger the UpdateAnalysisFindings job, unless MB_DEPENDENCY_ENTITY_CHECK_BATCH_SIZE=0 disables it."
   []
-  (when (pos? (deps.settings/dependency-entity-check-batch-size))
-    (schedule-run! (task/scheduler) 1)))
+  (task.util/trigger-run! job))

@@ -21,8 +21,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-retries 5)
-
 (def ^:private compared-column-keys
   "The result metadata column keys that the queries using a card as a source see."
   [:name :display_name :description :semantic_type :fk_target_field_id :id :settings :visibility_type
@@ -85,14 +83,14 @@
 
 (defn- rederived-result-metadata
   "The re-derived result metadata of the MBQL `card`, inferred like a save through the Card model, or nil when what the
-  queries using it see is unchanged, apart from the remapped columns a run adds and inference leaves out."
+  queries using it see is unchanged."
   [{query :dataset_query, stored :result_metadata, :keys [id], :as card}]
   (let [stored   (mapv normalize-column stored)
         metadata (patch-result-metadata
                   stored
                   (or (queries/infer-metadata-with-model-overrides query card)
                       (throw (ex-info "Could not infer the result metadata of the card" {:card-id id}))))]
-    (when (not= (comparable-metadata (remove :remapped_from stored)) (comparable-metadata metadata))
+    (when (not= (comparable-metadata stored) (comparable-metadata metadata))
       (when-let [error (me/humanize (mr/explain ::lib.schema.metadata/card.result-metadata metadata))]
         (throw (ex-info "Invalid re-derived result metadata" {:card-id id :error error})))
       metadata)))
@@ -127,69 +125,68 @@
       :else                                         :conflict)))
 
 (def ^:private conflict-attempts
-  "How many times a card that changed while it was re-derived is re-derived again right away."
+  "How many times a card that keeps changing while it is re-derived is re-derived before it counts as failed."
   3)
+
+(defn- rederive-card-changed?
+  "Re-derive the Card with `card-id`, again while it changed as it was re-derived, returning whether its result
+  metadata changed, or throwing when it kept changing."
+  [card-id]
+  (loop [attempt 1]
+    (case (rederive-card! card-id)
+      :changed   true
+      :unchanged false
+      :conflict  (if (< attempt conflict-attempts)
+                   (recur (inc attempt))
+                   (throw (ex-info "The card kept changing while it was re-derived" {:card-id card-id}))))))
 
 (defn- process-dependent!
   "Re-derive the MBQL card or pass on the change of the measure `entity-type` `entity-id`, marking it stale when what
-  its own dependents see changed, and returning `:changed`, `:unchanged`, `:conflict` or `:failed`, logging a failure."
+  its own dependents see changed, and returning whether it succeeded, logging a failure."
   [[entity-type entity-id]]
   (try
-    (let [result (if (= entity-type :card)
-                   (or (some #(when (not= :conflict %) %) (repeatedly conflict-attempts #(rederive-card! entity-id)))
-                       :conflict)
-                   :changed)]
-      (when (= :changed result)
-        (deps.result-metadata-status/mark-stale! {entity-type #{entity-id}}))
-      result)
+    (when (or (not= entity-type :card) (rederive-card-changed? entity-id))
+      (deps.result-metadata-status/mark-stale! {entity-type #{entity-id}}))
+    true
     (catch Exception e
       (log/warnf "Failed to re-derive the result metadata of %s %s: %s" (name entity-type) entity-id (ex-message e))
-      :failed)))
+      false)))
 
 (defn- process-status!
   "Re-derive the MBQL cards that directly depend on the entity of the stale `status`, then clear the status unless it
-  was marked again, returning `:processed`, `:conflict` when one of those cards kept changing while it was re-derived,
-  or throwing when one of them failed, leaving the status stale either way."
+  was marked again, throwing and leaving it stale when one of those cards failed."
   [{:keys [entity_type entity_id] :as status}]
-  (let [results (into #{} (map process-dependent!) (mbql-dependents entity_type entity_id))]
-    (cond
-      (results :failed)   (throw (ex-info "Could not re-derive the result metadata of every card depending on it"
-                                          {:entity-type entity_type :entity-id entity_id}))
-      (results :conflict) :conflict
-      :else               (do (deps.result-metadata-status/clear-stale-if-unchanged! status)
-                              :processed))))
+  (when-not (every? true? (mapv process-dependent! (mbql-dependents entity_type entity_id)))
+    (throw (ex-info "Could not re-derive the result metadata of every card depending on it"
+                    {:entity-type entity_type :entity-id entity_id})))
+  (deps.result-metadata-status/clear-stale-if-unchanged! status))
 
 (defn- process-status-or-record-failure!
-  "Process the stale entity `status`, recording an Exception as a failure and rethrowing any other Throwable after
-  recording it, returning `:conflict`, `:processed` or `:failed`."
-  [status retry-delay-minutes]
+  "Process the stale entity `status`, recording a failure, and rethrowing it unless it is an Exception."
+  [status]
   (try
     (process-status! status)
     (catch Throwable e
       (log/warnf "Failed to re-derive the result metadata of the cards depending on %s %s: %s"
                  (name (:entity_type status)) (:entity_id status) (ex-message e))
       (try
-        (deps.result-metadata-status/record-failure! status max-retries retry-delay-minutes)
+        (deps.result-metadata-status/record-failure! status)
         (catch Exception record-e
           (log/warnf "Failed to record the failure for %s %s: %s"
                      (name (:entity_type status)) (:entity_id status) (ex-message record-e))))
       (when-not (instance? Exception e)
-        (throw e))
-      :failed)))
+        (throw e)))))
 
 (defn update-result-metadata!
   "Process up to `batch-size` stale entities, re-deriving the result metadata of the MBQL cards depending on them,
-  returning how many it took and whether any of those cards changed meanwhile, as `{:taken n :conflicts? bool}`."
-  [batch-size retry-delay-minutes]
+  returning how many it took."
+  [batch-size]
   (deps.result-metadata-status/remove-deleted!)
-  (loop [remaining batch-size, conflicts #{}]
+  (loop [remaining batch-size]
     (let [statuses (when (pos? remaining)
-                     (deps.result-metadata-status/statuses-to-process remaining conflicts))]
+                     (deps.result-metadata-status/statuses-to-process remaining))]
       (if (empty? statuses)
-        {:taken (- batch-size remaining) :conflicts? (boolean (seq conflicts))}
-        (let [results (lib-be/with-metadata-provider-cache
-                        (mapv #(process-status-or-record-failure! % retry-delay-minutes) statuses))]
-          (recur (- remaining (count statuses))
-                 (into conflicts
-                       (keep (fn [[status result]] (when (= :conflict result) (:id status))))
-                       (map vector statuses results))))))))
+        (- batch-size remaining)
+        (do (lib-be/with-metadata-provider-cache
+              (run! process-status-or-record-failure! statuses))
+            (recur (- remaining (count statuses))))))))

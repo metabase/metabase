@@ -63,8 +63,7 @@
   :export?    false)
 
 (defsetting dependency-result-metadata-delay-minutes
-  "The average delay between runs of the result metadata job when it has retries pending, and the backoff per failure
-  of an entity it retries."
+  "The average delay before the result metadata job runs again after a run that failed."
   :visibility :internal
   :type       :integer
   :default    60
@@ -72,7 +71,7 @@
   :export?    false)
 
 (defsetting dependency-result-metadata-variance-minutes
-  "The variation of the result metadata job's delay while retries are pending, which is a random value within this many
+  "The variation of the result metadata job's delay after a failed run, which is a random value within this many
   minutes of `dependency-result-metadata-delay-minutes`, and the longest random delay of its first run after startup."
   :visibility :internal
   :type       :integer

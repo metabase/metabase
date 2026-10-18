@@ -1,6 +1,5 @@
 (ns metabase-enterprise.dependencies.models.dependency-status
   (:require
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -17,15 +16,15 @@
 
 (defn mark-stale!
   "Mark the entities in `type->ids`, `{entity-type ids}`, stale for dependency recalculation, creating their statuses
-  if they don't exist and resetting their retry state so previously-failed entities get a fresh chance."
+  if they don't exist and clearing a failure so a failed entity is computed again."
   [type->ids]
   (doseq [[entity-type ids] type->ids
           id                ids]
     (dependencies.db/mark-dependency-status-stale! entity-type id)))
 
 (defn upsert-status!
-  "Upsert a dependency_status entry, setting stale=false, version to current, whether the entity names tables that
-  match nothing, and clearing any failure state."
+  "Upsert a dependency_status entry, setting stale=false, version to current, and whether the entity names tables that
+  match nothing."
   [entity-type entity-id unresolved-tables?]
   (dependencies.db/upsert-dependency-status!
    entity-type entity-id models.dependency/current-dependency-analysis-version unresolved-tables?))
@@ -51,24 +50,16 @@
 
 (defn instances-for-dependency-calculation
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
-  dependency calculation: no status row yet, stale=true, OR version < current.
-  Excludes terminal entities and entities whose retry delay hasn't elapsed.
-  Returns full entity objects. Prioritizes stale over outdated.
-  Uses Java time (not DB time) so tests with [[mt/with-clock]] work correctly."
+  dependency calculation: no status row yet, stale=true, OR version < current, and not terminal.
+  Returns full entity objects. Prioritizes stale over outdated."
   [entity-type batch-size]
   (dependencies.db/instances-for-dependency-calculation entity-type
                                                         batch-size
-                                                        models.dependency/current-dependency-analysis-version
-                                                        (t/offset-date-time)))
-
-(defn has-pending-retries?
-  "Returns true if there are any entities waiting to be retried (not terminal, with a set retry time)."
-  []
-  (dependencies.db/pending-retry-exists?))
+                                                        models.dependency/current-dependency-analysis-version))
 
 (defn has-stale-or-outdated?
   "Returns true if there are any entities needing dependency calculation: no status row yet,
-  stale=true, OR version < current (not terminal, retry delay elapsed), or deleted entities whose status the dependency
+  stale=true, OR version < current (not terminal), or deleted entities whose status the dependency
   job has yet to clean up. Defined in terms of [[instances-for-dependency-calculation]] so it stays consistent with what
   the dependency job processes."
   []
@@ -79,24 +70,7 @@
          deps.dependency-types/backfillable-dependency-types)))
 
 (defn record-failure!
-  "Record a failed dependency calculation attempt for an entity.
-  Increments fail_count and sets next_retry_at based on exponential backoff.
-  If max retries exceeded, marks the entity as terminal.
-  Creates the entry if it doesn't exist, since entities with no row yet are exactly the ones
-  [[instances-for-dependency-calculation]] picks up first."
-  [entity-type entity-id max-retries delay-minutes]
-  (dependencies.db/record-dependency-status-failure!
-   entity-type entity-id
-   (fn [existing]
-     ;; An inserted row takes the column defaults for `stale` (false) and `dependency_analysis_version` (0). 0 is
-     ;; below `current-dependency-analysis-version`, which is what keeps the entity eligible for the retry once
-     ;; `next_retry_at` has elapsed.
-     (let [new-fail-count (inc (:fail_count existing 0))]
-       (if (> new-fail-count max-retries)
-         {:fail_count new-fail-count
-          :terminal true
-          :next_retry_at nil}
-         (let [retry-minutes (* new-fail-count delay-minutes)]
-           {:fail_count new-fail-count
-            :next_retry_at (when (pos? retry-minutes)
-                             (t/plus (t/offset-date-time) (t/minutes retry-minutes)))}))))))
+  "Mark the entity `entity-type` `entity-id` terminal after its dependency calculation failed, so it is not computed
+  again until it is marked stale."
+  [entity-type entity-id]
+  (dependencies.db/mark-dependency-status-terminal! entity-type entity-id))

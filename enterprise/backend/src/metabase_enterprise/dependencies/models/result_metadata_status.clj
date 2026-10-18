@@ -1,6 +1,5 @@
 (ns metabase-enterprise.dependencies.models.result-metadata-status
   (:require
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -24,7 +23,7 @@
 
 (defn mark-stale!
   "Mark the entities in `type->ids`, `{entity-type ids}`, changed, so the MBQL cards depending on them are re-derived,
-  resetting their retry state, one status per statement so this never holds two status locks at once."
+  even when their statuses are terminal, one status per statement so this never holds two status locks at once."
   [type->ids]
   (doseq [[entity-type ids] type->ids
           entity-id         ids]
@@ -32,12 +31,9 @@
       (dependencies.db/insert-result-metadata-status! entity-type entity-id))))
 
 (defn statuses-to-process
-  "Up to `batch-size` stale statuses other than those with `excluded-ids` whose upstream entities have no processable
-  status, or any of them when none does, which a cycle or a conflicting upstream status causes."
-  [batch-size excluded-ids]
-  (let [now (t/offset-date-time)]
-    (or (not-empty (dependencies.db/ready-result-metadata-statuses batch-size now excluded-ids))
-        (dependencies.db/stale-result-metadata-statuses-batch batch-size now excluded-ids))))
+  "Up to `batch-size` stale statuses that are not terminal, the longest stale first."
+  [batch-size]
+  (dependencies.db/stale-result-metadata-statuses-batch batch-size))
 
 (defn clear-stale-if-unchanged!
   "Clear the stale status `status`, unless it was marked again since it was read."
@@ -50,21 +46,8 @@
   (doseq [entity-type entity-types]
     (dependencies.db/delete-deleted-result-metadata-statuses! entity-type)))
 
-(defn has-pending-retries?
-  "Whether any stale status is waiting for a retry."
-  []
-  (dependencies.db/result-metadata-pending-retry-exists?))
-
 (defn record-failure!
-  "Record a failed attempt for the stale status `status`, backing off by `delay-minutes` per failure and marking it
-  terminal once it failed more than `max-retries` times, unless it was marked again since it was read."
-  [{:keys [id updated_at fail_count]} max-retries delay-minutes]
-  (let [new-fail-count (inc (or fail_count 0))
-        retry-minutes  (* new-fail-count delay-minutes)]
-    (dependencies.db/update-unchanged-result-metadata-status!
-     id updated_at
-     (if (> new-fail-count max-retries)
-       {:fail_count new-fail-count :terminal true :next_retry_at nil}
-       {:fail_count    new-fail-count
-        :next_retry_at (when (pos? retry-minutes)
-                         (t/plus (t/offset-date-time) (t/minutes retry-minutes)))}))))
+  "Mark the stale status `status` terminal, so it is not processed again until its entity changes again, unless it was
+  marked again since it was read."
+  [{:keys [id updated_at]}]
+  (dependencies.db/set-unchanged-result-metadata-status-terminal! id updated_at))

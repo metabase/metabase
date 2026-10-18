@@ -4,16 +4,15 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
+   [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -240,7 +239,7 @@
                       true)]
         (mt/with-temp-scheduler!
           ;; Start the job immediately.
-          (#'task.dependency/schedule-run! (task/scheduler) 0)
+          (task.util/schedule-run! (task/scheduler) @#'task.dependency/job 0)
           (is (true? (deref job-started 1000 :timeout))
               "UpdateDependencies job did not start within 1s")
           (let [scheduler (task/scheduler)
@@ -274,8 +273,7 @@
         ;; No dependencies should have been created
         (is (empty? (t2/select :model/Dependency :from_entity_type :card :from_entity_id card-id)))
         ;; Failure recorded in table
-        (is (= 1 (t2/select-one-fn :fail_count :model/DependencyStatus
-                                   :entity_type :card :entity_id card-id)))))))
+        (is (t2/select-one-fn :terminal :model/DependencyStatus :entity_type :card :entity_id card-id))))))
 
 (deftest ^:synchronized backfill-partial-batch-failure-test
   (testing "A failure on one entity doesn't prevent other entities from being processed"
@@ -300,65 +298,23 @@
         (is (seq (t2/select :model/Dependency :from_entity_type :card :from_entity_id good-card-id)))
         ;; Bad card should remain stale with failure recorded
         (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id bad-card-id :stale true))
-        (is (= 1 (t2/select-one-fn :fail_count :model/DependencyStatus
-                                   :entity_type :card :entity_id bad-card-id)))))))
+        (is (t2/select-one-fn :terminal :model/DependencyStatus :entity_type :card :entity_id bad-card-id))))))
 
 (deftest ^:synchronized backfill-terminal-failure-test
-  (testing "Entities should be marked as terminally broken after MAX_RETRIES failures"
+  (testing "An entity whose calculation fails is not processed again until it is marked stale again"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         (mark-stale! :card card-id)
-        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-        (let [compute-attempts (volatile! 0)
-              failures (inc @#'task.dependency/max-retries)]
-          (with-redefs [env/env (assoc env/env
-                                       :mb-dependency-backfill-delay-minutes "0"
-                                       :mb-dependency-backfill-variance-minutes "0")
-                        ;; Make compute-deps-for-entity! throw
-                        deps.calculation/calculate-deps
-                        (fn [_ _]
-                          (vswap! compute-attempts inc)
-                          (throw (ex-info "Simulated computation error" {:card-id card-id})))]
-            ;; fail MAX_RETRIES + 1 times
-            (while (< @compute-attempts failures)
-              (backfill-dependencies-single-trigger!))))
-        ;; verify card is still stale (not processed)
-        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-        ;; verify subsequent runs don't process it
+        (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps
+                                    (fn [_ _] (throw (ex-info "Simulated computation error" {:card-id card-id})))]
+          (backfill-dependencies-single-trigger!))
+        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true :terminal true))
         (backfill-dependencies-single-trigger!)
-        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))))))
-
-(deftest ^:synchronized backfill-delayed-retry-test
-  (testing "Failed entities should be retried after their delay period expires"
-    (backfill-all-existing-entities!)
-    (let [compute-attempts (volatile! 0)]
-      (mt/with-premium-features #{}
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-          (mark-stale! :card card-id)
-          (with-redefs [env/env (assoc env/env
-                                       :mb-dependency-backfill-delay-minutes "1")
-                        deps.calculation/calculate-deps
-                        (fn [_ _entity]
-                          (if (zero? @compute-attempts)
-                            (do
-                              (vswap! compute-attempts inc)
-                              (throw (ex-info "Simulated computation error" {:card-id card-id})))
-                            ;; Return valid deps on subsequent attempts
-                            {:table #{(mt/id :orders)}}))]
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-            ;; first failure - should be put into retry state
-            (while (zero? @compute-attempts)
-              (backfill-dependencies-single-trigger!))
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-            ;; advance time by less than retry delay - should NOT be processed
-            (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 10 :seconds))
-              (backfill-dependencies-single-trigger!))
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
-            ;; advance time by more than retry delay - should be processed
-            (mt/with-clock (t/plus (t/zoned-date-time) (t/duration 2 :minutes))
-              (backfill-dependencies-single-trigger!))
-            (assert-processed :card card-id)))))))
+        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true :terminal true))
+        (mark-stale! :card card-id)
+        (backfill-dependencies-single-trigger!)
+        (assert-processed :card card-id)))))
 
 (deftest backfill-card-does-not-cause-revision-test
   (testing "backfilling a card does not create a new revision or audit log entry"
@@ -472,7 +428,7 @@
             (is (= 1 (scheduled-by #(task/init! ::task.dependency/UpdateDependencies)))))
           (testing "and a run keeps the chain going rather than stopping"
             (mt/with-premium-features #{:dependencies}
-              (is (= 1 (scheduled-by #(#'task.dependency/run-and-reschedule! nil)))))))
+              (is (= 1 (scheduled-by #(task.util/run-and-reschedule! nil @#'task.dependency/job)))))))
         (testing "a positive batch size schedules from the event trigger too"
           (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "5")]
             (is (= 1 (scheduled-by task.dependency/trigger-dependency-job!)))))))))
@@ -507,8 +463,8 @@
 (deftest ^:synchronized backfill-records-failure-for-fatal-error-test
   (testing "GHY-4251: a fatal Error must record the entity's failure before propagating. Only Exception was caught,
            so an OutOfMemoryError escaped without recording anything and the next run selected the identical batch --
-           a crash loop that never made progress. Recording first means the entity backs off and eventually goes
-           terminal, so the batch drains even if one entity always kills the process."
+           a crash loop that never made progress. Recording first makes the entity terminal, so the batch drains even if
+           one entity always kills the process."
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
@@ -517,41 +473,8 @@
           (testing "the Error propagates instead of being swallowed, failing the job"
             (is (thrown-with-msg? Error #"simulated fatal error"
                                   (backfill-dependencies-single-trigger!)))))
-        (testing "and the failure was recorded first, so the next run backs off instead of replaying the batch"
-          (let [{:keys [fail_count next_retry_at terminal]}
-                (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)]
-            (is (= 1 fail_count))
-            (is (some? next_retry_at))
-            (is (false? terminal))))))))
-
-(deftest ^:synchronized pending-retries-licence-states-test
-  (testing "A pending retry keeps the dependency job scheduled, but only when the licence permits acting on it. A retry
-           marker is cleared by processing the entity -- on success via upsert-status!, or by going terminal past
-           max-retries -- and both are gated on the feature, so without it the job could never resolve the condition
-           keeping it awake and rescheduled hourly forever.
-
-           The licence is resolved with canonically-has-feature? rather than has-feature?, which collapses 'no licence'
-           and 'could not check' into the same false. Both inputs to the job's reschedule decision consult the licence,
-           so a transient token failure would take the job down permanently -- nothing re-fires when the check
-           recovers, because the token never changed."
-    (backfill-all-existing-entities!)
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-      (mark-stale! :card card-id)
-      (backfill-dependencies-single-trigger!)
-      (deps.dependency-status/record-failure! :card card-id 5 60)
-      (is (t2/exists? :model/DependencyStatus
-                      :entity_type :card :entity_id card-id
-                      :terminal false :next_retry_at [:not= nil])
-          "test setup: the card must be in retry backoff")
-      (let [actionable? (fn [licence]
-                          (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly licence)]
-                            (#'task.dependency/has-pending-retries?)))]
-        (testing "licensed: the pending retry keeps the job scheduled"
-          (is (true? (actionable? true))))
-        (testing "indeterminate: treated as actionable, so a blip cannot end the chain"
-          (is (true? (actionable? nil))))
-        (testing "definitively unlicensed: not actionable"
-          (is (false? (actionable? false))))))))
+        (testing "and the failure was recorded first, so the next run skips the entity instead of replaying the batch"
+          (is (t2/select-one-fn :terminal :model/DependencyStatus :entity_type :card :entity_id card-id)))))))
 
 (deftest ^:synchronized backfill-records-failure-for-never-processed-entity-test
   (testing "An entity with no dependency_status row yet must still get a failure recorded when it fails. Such entities
@@ -566,11 +489,8 @@
             "test setup: the card must have no status row, which is what makes it eligible")
         (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps (fn [& _] (throw (ex-info "boom" {})))]
           (backfill-dependencies-single-trigger!))
-        (testing "the failure is recorded, so the entity backs off instead of being reselected unchanged"
-          (let [{:keys [fail_count next_retry_at]}
-                (t2/select-one :model/DependencyStatus :entity_type :card :entity_id card-id)]
-            (is (= 1 fail_count))
-            (is (some? next_retry_at))))))))
+        (testing "the failure is recorded, so the entity is not reselected unchanged"
+          (is (t2/select-one-fn :terminal :model/DependencyStatus :entity_type :card :entity_id card-id)))))))
 
 (deftest ^:synchronized fatal-error-still-reschedules-test
   (testing "A failure must not leave the job unscheduled. The job is one-shot self-rescheduling with no cron
@@ -584,7 +504,7 @@
                                   (fn [& _] (throw (Error. "simulated fatal error")))]
         (testing "the Error still propagates"
           (is (thrown-with-msg? Error #"simulated fatal error"
-                                (#'task.dependency/run-and-reschedule! nil))))
+                                (task.util/run-and-reschedule! nil @#'task.dependency/job))))
         (testing "and the next run was scheduled anyway"
           (is (= 1 (count @scheduled))))))))
 
