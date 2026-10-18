@@ -84,6 +84,7 @@
                :display_name :icon :manifest :metabase_version :bundle_hash :status :error_message
                ;; dev-only plugins are never served from another instance
                :dev_bundle_url]
+   ;; a plugin is enabled unless the file says otherwise, as an upload enables it; the column defaults the same way
    :defaults  {:enabled true}
    :transform {:bundle     {:as     :serdes/resources
                             :export (fn [bundle]
@@ -155,12 +156,11 @@
 
 (defmethod serdes/load-insert! "CustomVizPlugin"
   [_model-name ingested]
-  ;; `enabled` absent from the file means disabled, whatever the column's default
-  (custom-viz-plugin.db/insert-plugin! (merge {:enabled false} ingested (bundle-columns ingested))))
+  (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns ingested))))
 
 (defmethod serdes/load-update! "CustomVizPlugin"
   [_model-name ingested {:keys [id]}]
-  (custom-viz-plugin.db/update-plugin! id (merge {:enabled false} ingested (bundle-columns ingested)))
+  (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns ingested)))
   (cache/purge-plugin-cache! {:id id})
   (custom-viz-plugin.db/non-blob-plugin id))
 

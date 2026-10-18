@@ -1,4 +1,3 @@
 identifier: test-plugin
-enabled: true
 serdes/meta:
 - model: CustomVizPlugin

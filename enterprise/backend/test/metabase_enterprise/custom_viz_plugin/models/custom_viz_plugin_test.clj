@@ -138,7 +138,7 @@
       (is (= #{:identifier :enabled} (set (:copy spec))))
       (is (= #{:display_name :icon :manifest :metabase_version :bundle_hash :status :error_message :dev_bundle_url}
              (set (:skip spec))))
-      (is (nil? (:defaults spec)) "enabled is always written, so absent can mean false")
+      (is (= {:enabled true} (:defaults spec)) "enabled is written only when false; absent means enabled, as on upload")
       (is (= :serdes/resources (get-in spec [:transform :bundle :as])))))
   (testing "the bundle exports as its files and imports back as an archive of them"
     (let [spec     (serdes/make-spec "CustomVizPlugin" {})
@@ -242,14 +242,18 @@
 
 (deftest load-enabled-is-owned-by-the-file-test
   (let [bundle (cv.tu/valid-bundle-bytes "toggled-viz")]
-    (testing "a file without `enabled` loads a disabled plugin, whatever the column's default"
+    (testing "a file without `enabled` loads an enabled plugin, as an upload does"
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (serdes/load-one! (dissoc (ingested-plugin "toggled-viz" bundle) :enabled) nil)
+        (is (true? (t2/select-one-fn :enabled :model/CustomVizPlugin :identifier "toggled-viz")))))
+    (testing "a file that disables the plugin disables it"
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        (serdes/load-one! (ingested-plugin "toggled-viz" bundle :enabled false) nil)
         (is (false? (t2/select-one-fn :enabled :model/CustomVizPlugin :identifier "toggled-viz")))))
     (testing "the file's `enabled` replaces what an admin set on this instance"
-      (mt/with-temp [:model/CustomVizPlugin {id :id} (assoc (active-plugin-row "toggled-viz" bundle) :enabled false)]
-        (serdes/load-one! (ingested-plugin "toggled-viz" bundle :enabled true) (t2/select-one :model/CustomVizPlugin :id id))
-        (is (true? (t2/select-one-fn :enabled :model/CustomVizPlugin :id id)))))))
+      (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "toggled-viz" bundle)]
+        (serdes/load-one! (ingested-plugin "toggled-viz" bundle :enabled false) (t2/select-one :model/CustomVizPlugin :id id))
+        (is (false? (t2/select-one-fn :enabled :model/CustomVizPlugin :id id)))))))
 
 (deftest load-checks-the-directory-name-test
   (testing "a plugin read from a directory not named by its identifier fails the import, naming the directory"

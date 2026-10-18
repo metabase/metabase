@@ -2677,13 +2677,14 @@
           (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
             (is (=? {:serdes/meta      [{:model "CustomVizPlugin"
                                          :id    "test-plugin"}]
-                     :identifier       "test-plugin"
-                     :enabled          true}
+                     :identifier       "test-plugin"}
                     ser))
+            (testing "an enabled plugin writes no `enabled`: it is the default, as on upload"
+              (is (not (contains? ser :enabled))))
             (testing "the bundle's files are the resource files beside the YAML"
               (is (= (update-vals files seq) (update-vals (:serdes/resources ser) seq))))
             (testing "the file holds nothing the bundle derives"
-              (is (= #{:serdes/meta :identifier :enabled :serdes/resources} (set (keys ser)))))
+              (is (= #{:serdes/meta :identifier :serdes/resources} (set (keys ser)))))
             (testing "has no dependencies"
               (is (empty? (serdes/deserialization-dependencies ser))))))))))
 
