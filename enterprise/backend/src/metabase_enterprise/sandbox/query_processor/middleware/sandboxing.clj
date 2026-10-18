@@ -51,8 +51,8 @@
    [:table_id             ::lib.schema.id/table]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
    [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]
-   [:created_at           {:optional true} any?]
-   [:updated_at           {:optional true} any?]
+   [:created_at           {:optional true} [:maybe :metabase.lib.schema.literal/datetime]]
+   [:updated_at           {:optional true} [:maybe :metabase.lib.schema.literal/datetime]]
    [:attribute_remappings {:optional true} [:maybe
                                             [:map-of
                                              #_attribute-name ::lib.schema.common/non-blank-string

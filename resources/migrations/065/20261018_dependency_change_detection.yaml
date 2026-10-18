@@ -4,7 +4,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.k3vq8d
+      id: v65.nuaq4b
       author: ranquild
       comment: Drop the index on dependency_status.stale, which the jobs no longer read
       changes:
@@ -20,21 +20,13 @@ databaseChangeLog:
             sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale)
 
   - changeSet:
-      id: v65.r7mw2x
+      id: v65.dngxhg
       author: ranquild
-      comment: Drop the stale flag and the retry state of dependency_status
+      comment: Drop dependency_status.stale, which change detection from updated_at replaces
       changes:
         - dropColumn:
             tableName: dependency_status
-            columns:
-              - column:
-                  name: stale
-              - column:
-                  name: fail_count
-              - column:
-                  name: next_retry_at
-              - column:
-                  name: terminal
+            columnName: stale
       rollback:
         - addColumn:
             tableName: dependency_status
@@ -46,6 +38,19 @@ databaseChangeLog:
                   remarks: True when the entity needs dependency recalculation
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v65.brqkb7
+      author: ranquild
+      comment: Drop dependency_status.fail_count, which change detection from updated_at replaces
+      changes:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: fail_count
+      rollback:
+        - addColumn:
+            tableName: dependency_status
+            columns:
               - column:
                   name: fail_count
                   type: int
@@ -53,10 +58,36 @@ databaseChangeLog:
                   remarks: Number of consecutive failed dependency calculation attempts
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v65.drkztr
+      author: ranquild
+      comment: Drop dependency_status.next_retry_at, which change detection from updated_at replaces
+      changes:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: next_retry_at
+      rollback:
+        - addColumn:
+            tableName: dependency_status
+            columns:
               - column:
                   name: next_retry_at
                   type: ${timestamp_type}
                   remarks: Earliest time at which a failed entity can be retried (null means immediately processable)
+
+  - changeSet:
+      id: v65.mhlfsd
+      author: ranquild
+      comment: Drop dependency_status.terminal, which change detection from updated_at replaces
+      changes:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: terminal
+      rollback:
+        - addColumn:
+            tableName: dependency_status
+            columns:
               - column:
                   name: terminal
                   type: ${boolean.type}
@@ -66,9 +97,9 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v65.b5tn0e
+      id: v65.3xftdb
       author: ranquild
-      comment: Record the version of the entity that dependency_status was computed from, and when
+      comment: Add dependency_status.seen_updated_at
       changes:
         - addColumn:
             tableName: dependency_status
@@ -77,10 +108,36 @@ databaseChangeLog:
                   name: seen_updated_at
                   type: ${timestamp_type}
                   remarks: The latest updated_at of the entity and the rows it is made of when its dependencies were computed, or null to compute them again
+      rollback:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: seen_updated_at
+
+  - changeSet:
+      id: v65.8km8x7
+      author: ranquild
+      comment: Add dependency_status.seen_count
+      changes:
+        - addColumn:
+            tableName: dependency_status
+            columns:
               - column:
                   name: seen_count
                   type: int
                   remarks: The number of rows the entity is made of when its dependencies were computed
+      rollback:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: seen_count
+
+  - changeSet:
+      id: v65.62kjla
+      author: ranquild
+      comment: Add dependency_status.created_at
+      changes:
+        - addColumn:
+            tableName: dependency_status
+            columns:
               - column:
                   name: created_at
                   type: ${timestamp_type}
@@ -88,6 +145,19 @@ databaseChangeLog:
                   remarks: When the row was created
                   constraints:
                     nullable: false
+      rollback:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: created_at
+
+  - changeSet:
+      id: v65.3s0sav
+      author: ranquild
+      comment: Add dependency_status.updated_at
+      changes:
+        - addColumn:
+            tableName: dependency_status
+            columns:
               - column:
                   name: updated_at
                   type: ${timestamp_type}
@@ -98,20 +168,12 @@ databaseChangeLog:
       rollback:
         - dropColumn:
             tableName: dependency_status
-            columns:
-              - column:
-                  name: seen_updated_at
-              - column:
-                  name: seen_count
-              - column:
-                  name: created_at
-              - column:
-                  name: updated_at
+            columnName: updated_at
 
   - changeSet:
-      id: v65.p9cx4h
+      id: v65.mlaukk
       author: ranquild
-      comment: Add created_at and updated_at to dashboardcard_series
+      comment: Add dashboardcard_series.created_at
       changes:
         - addColumn:
             tableName: dashboardcard_series
@@ -123,6 +185,19 @@ databaseChangeLog:
                   remarks: When the row was created
                   constraints:
                     nullable: false
+      rollback:
+        - dropColumn:
+            tableName: dashboardcard_series
+            columnName: created_at
+
+  - changeSet:
+      id: v65.0e9f98
+      author: ranquild
+      comment: Add dashboardcard_series.updated_at
+      changes:
+        - addColumn:
+            tableName: dashboardcard_series
+            columns:
               - column:
                   name: updated_at
                   type: ${timestamp_type}
@@ -133,16 +208,12 @@ databaseChangeLog:
       rollback:
         - dropColumn:
             tableName: dashboardcard_series
-            columns:
-              - column:
-                  name: created_at
-              - column:
-                  name: updated_at
+            columnName: updated_at
 
   - changeSet:
-      id: v65.w2fj6s
+      id: v65.9ri9ot
       author: ranquild
-      comment: Add created_at and updated_at to query_action
+      comment: Add query_action.created_at
       changes:
         - addColumn:
             tableName: query_action
@@ -154,6 +225,19 @@ databaseChangeLog:
                   remarks: When the row was created
                   constraints:
                     nullable: false
+      rollback:
+        - dropColumn:
+            tableName: query_action
+            columnName: created_at
+
+  - changeSet:
+      id: v65.cqbc46
+      author: ranquild
+      comment: Add query_action.updated_at
+      changes:
+        - addColumn:
+            tableName: query_action
+            columns:
               - column:
                   name: updated_at
                   type: ${timestamp_type}
@@ -164,16 +248,12 @@ databaseChangeLog:
       rollback:
         - dropColumn:
             tableName: query_action
-            columns:
-              - column:
-                  name: created_at
-              - column:
-                  name: updated_at
+            columnName: updated_at
 
   - changeSet:
-      id: v65.g8ld1u
+      id: v65.eqlbau
       author: ranquild
-      comment: Add created_at and updated_at to sandboxes
+      comment: Add sandboxes.created_at
       changes:
         - addColumn:
             tableName: sandboxes
@@ -185,6 +265,19 @@ databaseChangeLog:
                   remarks: When the row was created
                   constraints:
                     nullable: false
+      rollback:
+        - dropColumn:
+            tableName: sandboxes
+            columnName: created_at
+
+  - changeSet:
+      id: v65.kz5g0p
+      author: ranquild
+      comment: Add sandboxes.updated_at
+      changes:
+        - addColumn:
+            tableName: sandboxes
+            columns:
               - column:
                   name: updated_at
                   type: ${timestamp_type}
@@ -195,16 +288,12 @@ databaseChangeLog:
       rollback:
         - dropColumn:
             tableName: sandboxes
-            columns:
-              - column:
-                  name: created_at
-              - column:
-                  name: updated_at
+            columnName: updated_at
 
   - changeSet:
-      id: v65.t4hz9n
+      id: v65.1suf0c
       author: ranquild
-      comment: Drop the index on analysis_finding.stale, which the analysis finding job no longer reads
+      comment: Drop the index on analysis_finding.stale, which the jobs no longer read
       changes:
         - dropIndex:
             tableName: analysis_finding
@@ -218,32 +307,14 @@ databaseChangeLog:
             sql: CREATE INDEX idx_analysis_finding_stale ON analysis_finding(stale)
 
   - changeSet:
-      id: v65.c6ue3m
+      id: v65.d291qd
       author: ranquild
-      comment: Replace analysis_finding.stale with the version of the entity the finding was analyzed from
+      comment: Drop analysis_finding.stale, which change detection from updated_at replaces
       changes:
         - dropColumn:
             tableName: analysis_finding
             columnName: stale
-        - addColumn:
-            tableName: analysis_finding
-            columns:
-              - column:
-                  name: seen_updated_at
-                  type: ${timestamp_type}
-                  remarks: The latest updated_at of the entity and the rows it is made of when it was analyzed, or null to analyze it again
-              - column:
-                  name: seen_count
-                  type: int
-                  remarks: The number of rows the entity is made of when it was analyzed
       rollback:
-        - dropColumn:
-            tableName: analysis_finding
-            columns:
-              - column:
-                  name: seen_updated_at
-              - column:
-                  name: seen_count
         - addColumn:
             tableName: analysis_finding
             columns:
@@ -256,7 +327,41 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v65.y1ra7q
+      id: v65.dd3wgm
+      author: ranquild
+      comment: Add analysis_finding.seen_updated_at
+      changes:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: seen_updated_at
+                  type: ${timestamp_type}
+                  remarks: The latest updated_at of the entity and the rows it is made of when it was analyzed, or null to analyze it again
+      rollback:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: seen_updated_at
+
+  - changeSet:
+      id: v65.6auo21
+      author: ranquild
+      comment: Add analysis_finding.seen_count
+      changes:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: seen_count
+                  type: int
+                  remarks: The number of rows the entity is made of when it was analyzed
+      rollback:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: seen_count
+
+  - changeSet:
+      id: v65.320dcb
       author: ranquild
       comment: Create analysis_finding_status for re-analyzing the dependents of changed entities
       changes:
@@ -310,7 +415,7 @@ databaseChangeLog:
             tableName: analysis_finding_status
 
   - changeSet:
-      id: v65.e0vk5w
+      id: v65.fn007h
       author: ranquild
       comment: Unique constraint to prevent duplicate analysis_finding_status entries
       changes:
