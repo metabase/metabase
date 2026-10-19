@@ -273,7 +273,7 @@ only_unreleased_changesets() {
     fi
     status=$(awk -v id="$id" '$1 == id {print $2}' <<<"$pending")
     case "$status" in
-      awaiting-release|awaiting-backport)
+      recent|overdue)
         warn "$id is on master, but the latest v${major} release does not have it yet ($status)" ;;
       *)
         return 1 ;;

@@ -111,7 +111,7 @@ jobs:
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
 
-      - name: Notify Slack about master commits that need a backport or a release
+      - name: Notify Slack about migrations that need a backport or a release
         if: >-
           steps.run-test.outputs.skipped == 'true' &&
           matrix.target == needs.generate-test-matrix.outputs.oldest-target &&
@@ -124,12 +124,10 @@ jobs:
         with:
           script: | # js
             const { findSlackMessage, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
-            const { downgradeMajors, notifyReleaseNeeded } = require('${{ github.workspace }}/.github/scripts/notify-unreleased-migrations');
+            const { downgradeMajors, notifyOverdueChangesets } = require('${{ github.workspace }}/.github/scripts/notify-unreleased-migrations');
 
-            await notifyReleaseNeeded({
-              github,
+            await notifyOverdueChangesets({
               context,
-              core,
               majors: downgradeMajors({
                 target: '${{ matrix.target }}',
                 currentVersion: Number(process.env.CURRENT_VERSION),

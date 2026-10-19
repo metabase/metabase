@@ -10,28 +10,26 @@
 # Usage:
 #   ./pending-changesets.sh MAJOR
 #
-# The script compares the vMAJOR changesets on master with the latest vMAJOR release tag and with
-# release-x.MAJOR.x. For each changeset that the release does not have, it prints "<id> <state> <file>".
-# <file> is the migration file on master, so that the Slack notification can find the master commit that
-# added it.
+# The script compares the vMAJOR changesets on master with the latest vMAJOR release tag. For each
+# changeset that the release does not have, it prints "<id> <state> <file>". <file> is the migration
+# file on master. The state comes from the time that the changeset has been on master:
 #
-#   awaiting-release   The release branch has it. The next release will have it too.
-#   awaiting-backport  The release branch does not have it, and it was added to master in the grace period.
-#   missing            The release branch does not have it, and it was added to master before the grace period.
+#   recent    Less than PENDING_NOTIFY_DAYS (default: 2).
+#   overdue   PENDING_NOTIFY_DAYS or more, but less than PENDING_FAIL_DAYS (default: 3).
+#   expired   PENDING_FAIL_DAYS or more.
 #
-# The grace period gives the backport PR time to merge. PENDING_BACKPORT_GRACE_DAYS sets it (default: 3).
-# The script gets the master history for that time span and uses `git log -S <id>` to find the commit
-# that added the changeset. If no commit in that span added it, the changeset has been on master for
-# longer than the grace period without a backport, so the state is "missing". test.sh skips the test for
-# awaiting-release and awaiting-backport, and fails it for missing. This way a changeset that nobody
-# backports cannot be skipped forever.
+# The script gets the master history for PENDING_FAIL_DAYS and uses `git log -S <id>` to find the commit
+# that added the changeset. If no commit in that span added it, the state is "expired". test.sh skips the
+# test for recent and overdue, and fails it for expired. cross-version.yml sends a Slack message for
+# overdue. This way a changeset that no release has cannot be skipped forever.
 #
-# RELEASE_TAG and RELEASE_BRANCH override the release tag and branch, to test the script.
+# RELEASE_TAG overrides the release tag, to test the script.
 
 set -euo pipefail
 
 major="${1:?Usage: $0 MAJOR}"
-grace_days="${PENDING_BACKPORT_GRACE_DAYS:-3}"
+notify_days="${PENDING_NOTIFY_DAYS:-2}"
+fail_days="${PENDING_FAIL_DAYS:-3}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 git_() { git -C "$repo_root" "$@"; }
@@ -53,26 +51,32 @@ if [[ -z "$tag" ]]; then
   exit 1
 fi
 
-git_ fetch -q --depth=1 --no-tags origin \
-  "+refs/tags/${tag}:refs/cross-version/release" \
-  "+refs/heads/${RELEASE_BRANCH:-release-x.${major}.x}:refs/cross-version/branch"
+release_depth=() master_depth=()
+if [[ "$(git_ rev-parse --is-shallow-repository)" == "true" ]]; then
+  release_depth=(--depth=1)
+  master_depth=(--shallow-since="${fail_days} days ago")
+fi
+
+git_ fetch -q ${release_depth[@]+"${release_depth[@]}"} --no-tags origin "+refs/tags/${tag}:refs/cross-version/release"
 
 pending=$(comm -23 <(changeset_ids) <(changeset_ids refs/cross-version/release))
 [[ -z "$pending" ]] && exit 0
 
-on_branch=$(changeset_ids refs/cross-version/branch)
+git_ fetch -q ${master_depth[@]+"${master_depth[@]}"} --no-tags origin "+refs/heads/master:refs/cross-version/master"
+if [[ ${#master_depth[@]} -gt 0 ]]; then
+  git_ fetch -q --deepen=1 --no-tags origin "+refs/heads/master:refs/cross-version/master"
+fi
 
-git_ fetch -q --no-tags --shallow-since="${grace_days} days ago" origin \
-  "+refs/heads/master:refs/cross-version/master" 2>/dev/null || true
-
+now=$(date +%s)
 while IFS= read -r id; do
   file=$(git_ grep -lE "^[[:space:]]*id:[[:space:]]*['\"]?${id//./\\.}['\"]?[[:space:]]*$" -- resources/migrations | head -1 || true)
-  if grep -qxF "$id" <<<"$on_branch"; then
-    state=awaiting-release
-  elif [[ -n "$(git_ log --since="${grace_days} days ago" -S "$id" --format=%H refs/cross-version/master -- resources/migrations 2>/dev/null)" ]]; then
-    state=awaiting-backport
+  added=$(git_ -c log.showRoot=false log --since="${fail_days} days ago" -S "$id" --format=%ct refs/cross-version/master -- resources/migrations 2>/dev/null | tail -1 || true)
+  if [[ -z "$added" ]]; then
+    state=expired
+  elif (( now - added >= notify_days * 86400 )); then
+    state=overdue
   else
-    state=missing
+    state=recent
   fi
   echo "$id $state $file"
 done <<<"$pending"
