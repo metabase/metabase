@@ -33,6 +33,14 @@ async function connect(target) {
       pending.delete(msg.id);
     } else if (msg.method === "Debugger.paused" && conn.onPaused) {
       conn.onPaused(msg.params);
+    } else if (msg.method === "Runtime.consoleAPICalled") {
+      // Lines logged by the Cypress command listener in component-cypress.js.
+      const text = msg.params.args
+        .map((a) => a.value ?? a.description)
+        .join(" ");
+      if (text.startsWith("[cy-cmd]")) {
+        log(text);
+      }
     }
   };
   ws.onclose = () => connections.delete(target.id);
@@ -46,6 +54,7 @@ async function connect(target) {
   }
   // Must happen while the page is healthy: a frozen page cannot process it.
   await withTimeout(conn.send("Debugger.enable"), ANSWER_TIMEOUT_MS);
+  await withTimeout(conn.send("Runtime.enable"), ANSWER_TIMEOUT_MS);
   connections.set(target.id, conn);
   return conn;
 }
