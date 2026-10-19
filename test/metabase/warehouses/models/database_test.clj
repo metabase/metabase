@@ -608,7 +608,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"The engine on a sample database cannot be changed."
-           (t2/update! :model/Database id {:engine :sqlite}))))
+           (t2/update! :model/Database id {:engine :sqlite})))
+      (testing "is refused before the details are validated against the new driver"
+        (mt/with-dynamic-fn-redefs [driver.u/validate-connection-parameters! (fn [& _]
+                                                                               (throw (ex-info "validated" {})))]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"The engine on a sample database cannot be changed."
+               (t2/update! :model/Database id {:engine :postgres}))))))
     (testing " updating other attributes of a sample database is allowed"
       (t2/update! :model/Database id {:name "My New Name"})
       (is (= "My New Name" (t2/select-one-fn :name :model/Database :id id))))))
