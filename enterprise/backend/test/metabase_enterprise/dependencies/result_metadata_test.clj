@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.test :as met]
    [metabase.batch-processing.core :as grouper]
+   [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.core :as queries]
@@ -144,6 +145,19 @@
             (t2/update! :model/Card model-id {:dataset_query (add-grand-total (table-query :orders))})
             (run-jobs!)
             (is (some? (column joined-id "Grand total")))))))))
+
+(deftest internal-card-test
+  (testing "the job leaves the result metadata of cards Metabase created itself, such as Usage Analytics, alone"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {model-id :id}    {:type :model :dataset_query (table-query :orders)}
+                     :model/Card {card-id :id}     {:dataset_query (card-query model-id)}
+                     :model/Card {internal-id :id} {:dataset_query (card-query model-id)
+                                                    :creator_id    config/internal-mb-user-id}]
+        (run-jobs!)
+        (t2/update! :model/Card model-id {:dataset_query (add-grand-total (table-query :orders))})
+        (run-jobs!)
+        (is (some? (column card-id "Grand total")))
+        (is (nil? (column internal-id "Grand total")))))))
 
 (deftest metadata-edit-test
   (testing "editing a model's column overrides re-derives the cards on the model, which take them"

@@ -833,15 +833,15 @@
 
 (mu/defn- pending-entity-ids :- [:sequential ms/PositiveInt]
   "The IDs of up to `batch-size` entities of `entity-type` without a row in `status-model`, or whose row is stale or
-  records a version of the job's logic below `current-version`, those last; `mbql-only?` narrows cards to MBQL ones,
-  and `dependency-version` to the entities whose dependencies are current."
+  records a version of the job's logic below `current-version`, those last; `user-mbql-only?` narrows cards to MBQL
+  ones that Metabase did not create itself, and `dependency-version` to the entities whose dependencies are current."
   [entity-type     :- ::deps.dependency-types/dependency-types
    status-model    :- StatusModel
    batch-size      :- ms/PositiveInt
    current-version :- ms/PositiveInt
-   {:keys [mbql-only? dependency-version]} :- [:map {:closed true}
-                                               [:mbql-only?         {:optional true} :boolean]
-                                               [:dependency-version {:optional true} ms/PositiveInt]]]
+   {:keys [user-mbql-only? dependency-version]} :- [:map {:closed true}
+                                                    [:user-mbql-only?    {:optional true} :boolean]
+                                                    [:dependency-version {:optional true} ms/PositiveInt]]]
   (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))
         id-field   (u/qualified-key table-name :id)
         outdated   [:< :status.analysis_version current-version]]
@@ -852,8 +852,10 @@
                                                                     [:= :status.entity_type (name entity-type)]
                                                                     [:= :status.entity_id id-field]]]
                 :where     (cond-> [:and [:or [:= :status.id nil] [:= :status.stale true] outdated]]
-                             mbql-only?         (conj [:or [:= :report_card.query_type nil]
-                                                       [:not= :report_card.query_type "native"]])
+                             user-mbql-only?    (conj [:or [:= :report_card.query_type nil]
+                                                       [:not= :report_card.query_type "native"]]
+                                                      (mi/exclude-internal-content-hsql :model/Card
+                                                                                        :table-alias :report_card))
                              dependency-version (conj (current-dependencies-clause
                                                        entity-type id-field dependency-version)))
                 :order-by  [[[:case outdated [:inline 1] :else [:inline 0]]]]
@@ -907,14 +909,14 @@
 ;;; ------------------------------------------- Result metadata job -------------------------------------------
 
 (mu/defn result-metadata-pending-card-ids :- [:sequential ::lib.schema.id/card]
-  "The IDs of up to `batch-size` MBQL cards without a ResultMetadataStatus, or whose status is stale or records a
-  version of the logic below `current-version`, and whose dependencies the dependency logic of `dependency-version` computed;
-  outdated ones last."
+  "The IDs of up to `batch-size` MBQL cards Metabase did not create itself without a ResultMetadataStatus, or whose
+  status is stale or records a version of the logic below `current-version`, and whose dependencies the dependency
+  logic of `dependency-version` computed; outdated ones last."
   [batch-size         :- ms/PositiveInt
    current-version    :- ms/PositiveInt
    dependency-version :- ms/PositiveInt]
   (pending-entity-ids :card :model/ResultMetadataStatus batch-size current-version
-                      {:mbql-only?         true
+                      {:user-mbql-only?    true
                        :dependency-version dependency-version}))
 
 (mu/defn claim-result-metadata-statuses!
