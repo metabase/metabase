@@ -1,5 +1,5 @@
 (ns metabase.query-processor.pivot.common
-  (:refer-clojure :exclude [empty?])
+  (:refer-clojure :exclude [empty? some])
   (:require
    [clojure.math :as math]
    [medley.core :as m]
@@ -10,7 +10,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [empty?]]))
+   [metabase.util.performance :refer [empty? some]]))
 
 (set! *warn-on-reflection* true)
 
