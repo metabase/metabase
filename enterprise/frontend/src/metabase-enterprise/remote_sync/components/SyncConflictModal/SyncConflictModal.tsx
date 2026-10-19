@@ -196,13 +196,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
       withCloseButton={false}
     >
       <Stack gap="xl">
-        {variant === "setup" ? (
-          <SetupConflictInfo />
-        ) : conflicts && conflicts.length > 0 ? (
-          <ConflictingChangesList conflicts={conflicts} />
-        ) : (
-          <ChangesLists />
-        )}
+        <ConflictSummary variant={variant} conflicts={conflicts} />
 
         <OutOfSyncOptions
           currentBranch={currentBranch}
@@ -263,3 +257,20 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     </Modal>
   );
 };
+
+interface ConflictSummaryProps {
+  variant: RemoteSyncConflictVariant;
+  conflicts?: string[];
+}
+
+function ConflictSummary({ variant, conflicts }: ConflictSummaryProps) {
+  if (variant === "setup") {
+    return <SetupConflictInfo />;
+  }
+
+  if (conflicts && conflicts.length > 0) {
+    return <ConflictingChangesList conflicts={conflicts} />;
+  }
+
+  return <ChangesLists />;
+}
