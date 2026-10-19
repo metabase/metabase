@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 
 import {
   fireEvent,
+  mockTextOverflow,
   render,
   renderWithProviders,
   screen,
@@ -272,22 +273,60 @@ describe("Scalar", () => {
     expect(screen.getByText("null")).toBeInTheDocument();
   });
 
-  it("should not apply text-overflow ellipsis to the container", () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        series={series(1234567)}
-        rawSeries={series(1234567)}
-        settings={settings}
-        visualizationIsClickable={() => false}
-        width={230}
-      />,
-    );
-    const container = screen.getByTestId("scalar-container");
-    const styles = window.getComputedStyle(container);
-    // The container should not have text-overflow: ellipsis
-    // as the ScalarValue component handles sizing to fit
-    expect(styles.textOverflow).not.toBe("ellipsis");
+  describe("values wider than the card", () => {
+    const TOKEN = "0d79f0c276571a3c7fd2b5b6db30c1a9";
+    const textSeries = () =>
+      // Unjustified type cast. FIXME
+      [
+        {
+          card: createMockCard({ display: "scalar" }),
+          data: {
+            rows: [[TOKEN]],
+            cols: [createMockColumn({ name: "count", base_type: "type/Text" })],
+          },
+        },
+      ] as Series;
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should show the full value in a tooltip when the value is truncated", async () => {
+      mockTextOverflow();
+      renderWithProviders(
+        <Scalar
+          {...mockedProps}
+          series={textSeries()}
+          rawSeries={textSeries()}
+          settings={settings}
+          visualizationIsClickable={() => false}
+          width={230}
+        />,
+      );
+
+      await userEvent.hover(screen.getByTestId("scalar-value"));
+
+      expect(
+        within(await screen.findByRole("tooltip")).getByText(TOKEN),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show a tooltip for a value that fits", async () => {
+      renderWithProviders(
+        <Scalar
+          {...mockedProps}
+          series={textSeries()}
+          rawSeries={textSeries()}
+          settings={settings}
+          visualizationIsClickable={() => false}
+          width={230}
+        />,
+      );
+
+      await userEvent.hover(screen.getByTestId("scalar-value"));
+
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
   });
 
   it("lets Unicode subscript descenders render past the line box (metabase#72443)", () => {
