@@ -13,6 +13,7 @@
   (:require
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
@@ -62,14 +63,18 @@
   [e]
   ;; `:is-curated` is a flag that signals whether the error message in `e` was approved by product
   ;; to be shown to the user. It is used by FE.
-  (let [{error-type :type, is-curated :is-curated, :as data} (ex-data e)]
+  (let [{error-type :type, is-curated :is-curated, :as data} (ex-data e)
+        response-data (response-ex-data data)]
+    (when-let [dropped (and config/is-dev?
+                            (not-empty (apply dissoc data (keys response-data))))]
+      (log/debugf "Query error response leaves out ex-data: %s" (pr-str dropped)))
     (merge
      ((get-method format-exception Throwable) e)
      (when (qp.error-type/known-error-type? error-type)
        {:error_type error-type})
      (when is-curated
        {:error_is_curated is-curated})
-     (when-let [response-data (response-ex-data data)]
+     (when response-data
        ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
        {:ex-data response-data}))))
 
@@ -171,13 +176,16 @@
 
 (defn- log-context
   "The ex-data entries each exception in `e`'s chain lists under `:log/keys`, for the error log line. An inner
-  exception's entries win over an outer one's."
+  exception's entries win over an outer one's. Empty when a `:log/keys` is malformed, so that it can't mask `e`."
   [e]
-  (into {}
-        (map (fn [ex]
-               (let [data (ex-data ex)]
-                 (select-keys data (:log/keys data)))))
-        (u/full-exception-chain e)))
+  (try
+    (into {}
+          (map (fn [ex]
+                 (let [data (ex-data ex)]
+                   (select-keys data (:log/keys data)))))
+          (u/full-exception-chain e))
+    (catch Throwable _
+      {})))
 
 (mu/defn catch-exceptions :- ::qp.schema/qp
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards

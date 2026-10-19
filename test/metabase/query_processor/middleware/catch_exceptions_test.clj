@@ -3,6 +3,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.catch-exceptions-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -184,6 +185,24 @@
       (is (= {:error-code "inner"} (:ex-data result)))
       (is (= [nil] (map :ex-data (:via result)))))))
 
+(deftest ^:synchronized dropped-ex-data-debug-log-test
+  (with-redefs [config/is-dev? true]
+    (testing "in dev mode, the ex-data entries left out of the response are logged at debug level, for debugging"
+      (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :debug]]
+        (catch-exceptions (fn [] (throw (ex-info "boom" {:status-code 400, :card-id 2}))))
+        (is (=? [{:level :debug, :message #"(?s).*:card-id 2.*"}]
+                (filter (comp #{:debug} :level) (messages))))
+        (is (not (re-find #"status-code" (pr-str (messages)))))))
+    (testing "nothing is logged when no entries are left out"
+      (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :debug]]
+        (catch-exceptions (fn [] (throw (ex-info "boom" {:status-code 400}))))
+        (is (empty? (filter (comp #{:debug} :level) (messages)))))))
+  (with-redefs [config/is-dev? false]
+    (testing "outside dev mode, nothing is logged"
+      (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :debug]]
+        (catch-exceptions (fn [] (throw (ex-info "boom" {:status-code 400, :card-id 2}))))
+        (is (empty? (filter (comp #{:debug} :level) (messages))))))))
+
 (deftest ^:synchronized log-ex-data-test
   (testing "the ex-data keys listed under `:log/keys` go to the error log line's context, from anywhere in the chain, and not to the response"
     (let [contexts (atom [])]
@@ -201,7 +220,13 @@
             (is (contains? (set @contexts) {:card-id 2, :field-id 1, :field-name "PASSWORD"}))
             (is (not (re-find #"hunter2" (pr-str @contexts))))
             (is (not (re-find #"PASSWORD|field-id|card-id" (pr-str (dissoc result :stacktrace :via)))))
-            (is (not-any? :ex-data (:via result)))))))))
+            (is (not-any? :ex-data (:via result))))))))
+  (testing "a malformed `:log/keys` doesn't mask the original error"
+    (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+      (is (=? {:status :failed, :error "boom"}
+              (catch-exceptions (fn [] (throw (ex-info "boom" {:field-id 1, :log/keys :field-id}))))))
+      (is (=? [{:level :error, :message "Error processing query: boom"}]
+              (messages))))))
 
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
