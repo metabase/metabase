@@ -9,8 +9,6 @@ import {
   setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
 import { screen, within } from "__support__/ui";
-import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs/SdkBreadcrumbsProvider";
-import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
@@ -207,15 +205,8 @@ function setup() {
     readOnly: false,
   };
 
-  renderWithSDKProviders(
-    <SdkInternalNavigationProvider keepChildrenMounted>
-      <SdkBreadcrumbsProvider>
-        <MetabaseBrowser settings={settings} />
-      </SdkBreadcrumbsProvider>
-    </SdkInternalNavigationProvider>,
-    {
-      componentProviderProps: { authConfig: createMockSdkConfig() },
-      storeInitialState: state,
-    },
-  );
+  renderWithSDKProviders(<MetabaseBrowser settings={settings} />, {
+    componentProviderProps: { authConfig: createMockSdkConfig() },
+    storeInitialState: state,
+  });
 }

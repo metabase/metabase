@@ -37,7 +37,8 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
           },
         });
 
-        cy.signIn("nocollection");
+        cy.signOut();
+        mockAuthProviderAndJwtSignIn(USERS.nocollection);
 
         setupEmbed(`
           <metabase-browser
@@ -77,7 +78,8 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
           collection_id: collection.id,
         });
 
-        cy.signIn("nocollection");
+        cy.signOut();
+        mockAuthProviderAndJwtSignIn(USERS.nocollection);
 
         setupEmbed(`
           <metabase-browser
