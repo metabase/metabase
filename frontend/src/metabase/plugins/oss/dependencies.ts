@@ -2,6 +2,7 @@ import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
 import { NotFoundPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { PluginRoute } from "metabase/plugins/types";
 import type { GetDependencyGraphRequest } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
@@ -14,6 +15,8 @@ export type DependencyGraphPageContextType = {
 
 type DependenciesPlugin = {
   isEnabled: boolean;
+  /** The section page over the dependency routes; a plugin fills it in. */
+  dependenciesSectionPage?: PluginRoute;
   getDataStudioDependencyRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;

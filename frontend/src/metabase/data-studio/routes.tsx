@@ -52,7 +52,7 @@ const transformsSectionLayout = () =>
     Component: TransformsSectionLayout,
   }));
 
-const dependenciesSectionLayout = () =>
+export const dependenciesSectionLayout = () =>
   import(
     /* webpackChunkName: "data-studio" */ "./app/pages/DependenciesSectionLayout"
   ).then(({ DependenciesSectionLayout }) => ({
@@ -64,7 +64,7 @@ const gitSyncSectionLayout = () =>
     /* webpackChunkName: "data-studio" */ "./app/pages/GitSyncSectionLayout"
   ).then(({ GitSyncSectionLayout }) => ({ Component: GitSyncSectionLayout }));
 
-const dependenciesUpsellPage = () =>
+export const dependenciesUpsellPage = () =>
   import(
     /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/DependenciesUpsellPage"
   ).then(({ DependenciesUpsellPage }) => ({
@@ -78,7 +78,7 @@ export const libraryUpsellPage = () =>
     Component: LibraryUpsellPage,
   }));
 
-const schemaViewerUpsellPage = () =>
+export const schemaViewerUpsellPage = () =>
   import(
     /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/SchemaViewerUpsellPage"
   ).then(({ SchemaViewerUpsellPage }) => ({
@@ -91,6 +91,10 @@ const getDataStudioLibraryUpsellRoutes = (_IsAdmin: unknown) => (
 
 const getDataStudioDashboardUpsellRoutes = () => (
   <Route path="dashboards" lazy={libraryUpsellPage} />
+);
+
+const getSchemaViewerUpsellRoutes = () => (
+  <Route index lazy={schemaViewerUpsellPage} />
 );
 
 export function getDataStudioRoutes(IsAdmin: RouteComponent) {
@@ -129,20 +133,21 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
             PLUGIN_LIBRARY.getDataStudioDashboardRoutes ??
             getDataStudioDashboardUpsellRoutes
           )()}
-          {PLUGIN_DEPENDENCIES.isEnabled ? (
-            <Route path="dependencies" lazy={dependenciesSectionLayout}>
-              {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
-            </Route>
-          ) : (
-            <Route path="dependencies" lazy={dependenciesUpsellPage} />
-          )}
-          {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
-            <Route path="schema-viewer">
-              {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
-            </Route>
-          ) : (
-            <Route path="schema-viewer" lazy={schemaViewerUpsellPage} />
-          )}
+          <Route
+            path="dependencies"
+            lazy={
+              PLUGIN_DEPENDENCIES.dependenciesSectionPage ??
+              dependenciesUpsellPage
+            }
+          >
+            {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
+          </Route>
+          <Route path="schema-viewer">
+            {(
+              PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes ??
+              getSchemaViewerUpsellRoutes
+            )()}
+          </Route>
           <Route path="git-sync" lazy={gitSyncSectionLayout} />
 
           <Route path="*" element={<NotFound />} />

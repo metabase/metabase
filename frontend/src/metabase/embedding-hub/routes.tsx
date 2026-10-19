@@ -10,61 +10,79 @@ import { CanAccessEmbeddingHub } from "./route-guards";
  * decide before there is anything to show.
  */
 const embeddingHubLayout = () =>
-  import("./components/EmbeddingHubLayout").then(({ EmbeddingHubLayout }) => ({
+  import(
+    /* webpackChunkName: "embedding-hub" */ "./components/EmbeddingHubLayout"
+  ).then(({ EmbeddingHubLayout }) => ({
     Component: EmbeddingHubLayout,
   }));
 
 const embeddingHubGetStartedPage = () =>
-  import("./pages").then(({ EmbeddingHubGetStartedPage }) => ({
-    Component: EmbeddingHubGetStartedPage,
-  }));
+  import(/* webpackChunkName: "embedding-hub" */ "./pages").then(
+    ({ EmbeddingHubGetStartedPage }) => ({
+      Component: EmbeddingHubGetStartedPage,
+    }),
+  );
 
 const embeddingHubSecurityPage = () =>
-  import("./pages").then(({ EmbeddingHubSecurityPage }) => ({
-    Component: EmbeddingHubSecurityPage,
-  }));
+  import(/* webpackChunkName: "embedding-hub" */ "./pages").then(
+    ({ EmbeddingHubSecurityPage }) => ({
+      Component: EmbeddingHubSecurityPage,
+    }),
+  );
 
 const embeddingHubAuthenticationPage = () =>
-  import("./pages").then(({ EmbeddingHubAuthenticationPage }) => ({
-    Component: EmbeddingHubAuthenticationPage,
-  }));
+  import(/* webpackChunkName: "embedding-hub" */ "./pages").then(
+    ({ EmbeddingHubAuthenticationPage }) => ({
+      Component: EmbeddingHubAuthenticationPage,
+    }),
+  );
 
 const embeddingHubPermissionsPage = () =>
-  import("./pages").then(({ EmbeddingHubPermissionsPage }) => ({
-    Component: EmbeddingHubPermissionsPage,
-  }));
+  import(/* webpackChunkName: "embedding-hub" */ "./pages").then(
+    ({ EmbeddingHubPermissionsPage }) => ({
+      Component: EmbeddingHubPermissionsPage,
+    }),
+  );
 
 const embeddingHubTenancyPage = () =>
-  import("./pages").then(({ EmbeddingHubTenancyPage }) => ({
-    Component: EmbeddingHubTenancyPage,
-  }));
+  import(/* webpackChunkName: "embedding-hub" */ "./pages").then(
+    ({ EmbeddingHubTenancyPage }) => ({
+      Component: EmbeddingHubTenancyPage,
+    }),
+  );
 
 const embeddingHubAppearancePage = () =>
-  import("./pages").then(({ EmbeddingHubAppearancePage }) => ({
-    Component: EmbeddingHubAppearancePage,
-  }));
+  import(/* webpackChunkName: "embedding-hub" */ "./pages").then(
+    ({ EmbeddingHubAppearancePage }) => ({
+      Component: EmbeddingHubAppearancePage,
+    }),
+  );
 
 const embeddingHubThemeEditorPage = () =>
-  import("./pages/EmbeddingHubThemeEditorPage").then(
-    ({ EmbeddingHubThemeEditorPage }) => ({
-      Component: EmbeddingHubThemeEditorPage,
-    }),
-  );
-
-const embeddingHubLocalizationPage = () =>
-  import("./pages").then(({ EmbeddingHubLocalizationPage }) => ({
-    Component: EmbeddingHubLocalizationPage,
+  import(
+    /* webpackChunkName: "embedding-hub" */ "./pages/EmbeddingHubThemeEditorPage"
+  ).then(({ EmbeddingHubThemeEditorPage }) => ({
+    Component: EmbeddingHubThemeEditorPage,
   }));
 
-const setupPermissionsAndTenantsPage = () =>
-  import("metabase/embedding/setup-guide").then(
-    ({ SetupPermissionsAndTenantsPage }) => ({
-      Component: SetupPermissionsAndTenantsPage,
+const embeddingHubLocalizationPage = () =>
+  import(/* webpackChunkName: "embedding-hub" */ "./pages").then(
+    ({ EmbeddingHubLocalizationPage }) => ({
+      Component: EmbeddingHubLocalizationPage,
     }),
   );
 
+const setupPermissionsAndTenantsPage = () =>
+  import(
+    /* webpackChunkName: "embedding-hub" */ "metabase/embedding/setup-guide"
+  ).then(({ SetupPermissionsAndTenantsPage }) => ({
+    Component: SetupPermissionsAndTenantsPage,
+  }));
+
 const setupSsoPage = () =>
-  import("metabase/embedding/setup-guide").then(({ SetupSsoPage }) => ({
+  import(
+    /* webpackChunkName: "embedding-hub" */ "metabase/embedding/setup-guide"
+  ).then(({ SetupSsoPage }) => ({
     Component: SetupSsoPage,
   }));
 
