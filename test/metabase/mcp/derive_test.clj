@@ -351,17 +351,23 @@
             bin   (fn [q n]
                     (let [col (some #(when (= n (:name %)) %) (lib/breakoutable-columns q))]
                       (lib/breakout q (lib/with-binning col (first (lib/available-binning-strategies q col))))))
-            query (-> base (bin "LATITUDE") (bin "LONGITUDE"))
-            point {:column "count" :value 3 :dimensions [{:column "LATITUDE" :value 30.0}
-                                                         {:column "LONGITUDE" :value -100.0}]}
-            {:keys [status body]} (derive! query {:operations [{:type    "drill-thru" :drill "zoom-in.geographic"
-                                                                :context point}]})]
-        (is (= 200 status))
-        (is (=? [[:>= {} [:field {} (mt/id :people :latitude)] 30.0]
-                 [:< {} [:field {} (mt/id :people :latitude)] number?]
-                 [:>= {} [:field {} (mt/id :people :longitude)] -100.0]
-                 [:< {} [:field {} (mt/id :people :longitude)] number?]]
-                (some->> (:handle body) (stored-query :rasta) lib/filters)))))))
+            lat-lon-filters [[:>= {} [:field {} (mt/id :people :latitude)] 30.0]
+                             [:< {} [:field {} (mt/id :people :latitude)] number?]
+                             [:>= {} [:field {} (mt/id :people :longitude)] -100.0]
+                             [:< {} [:field {} (mt/id :people :longitude)] number?]]
+            zoom! (fn [query dimensions]
+                    (derive! query {:operations [{:type    "drill-thru" :drill "zoom-in.geographic"
+                                                  :context {:column "count" :value 3 :dimensions dimensions}}]}))
+            lat-lon [{:column "LATITUDE" :value 30.0} {:column "LONGITUDE" :value -100.0}]]
+        (let [{:keys [status body]} (zoom! (-> base (bin "LATITUDE") (bin "LONGITUDE")) lat-lon)]
+          (is (= 200 status))
+          (is (=? lat-lon-filters (some->> (:handle body) (stored-query :rasta) lib/filters))))
+        (testing "and it is still the one applied when the click also offers a zoom on a state"
+          (let [state (some #(when (= "STATE" (:name %)) %) (lib/breakoutable-columns base))
+                {:keys [status body]} (zoom! (-> base (lib/breakout state) (bin "LATITUDE") (bin "LONGITUDE"))
+                                             (into [{:column "STATE" :value "TX"}] lat-lon))]
+            (is (= 200 status))
+            (is (=? lat-lon-filters (some->> (:handle body) (stored-query :rasta) lib/filters)))))))))
 
 (deftest zoom-in-geographic-zooms-the-dimension-clicked-test
   (testing "a point with a state and a city dimension offers one geographic zoom per dimension"

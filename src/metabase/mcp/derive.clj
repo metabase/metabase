@@ -194,13 +194,16 @@
     []))
 
 (defn- select-drill
-  "The one drill among `drills` of the operation's type, narrowed to the operation's `dimension` when it names one.
-   Throws a 400 when there is none, or more than one and no `dimension` to choose between them."
+  "The one drill among `drills` of the operation's type: the one on the operation's `dimension` when it names one, else
+   the only one, or the one on no column when there are several. Throws a 400 when that leaves none, or more than one."
   [drills {drill-name :drill :keys [dimension]}]
   (let [drill-type (keyword "drill-thru" drill-name)
         of-type    (filter #(= drill-type (:type %)) drills)
-        matching   (cond->> of-type
-                     dimension (filter #(= dimension (get-in % [:column :lib/deduplicated-name]))))]
+        named      #(get-in % [:column :lib/deduplicated-name])
+        matching   (cond
+                     dimension      (filter #(= dimension (named %)) of-type)
+                     (next of-type) (remove named of-type)
+                     :else          of-type)]
     (cond
       (empty? matching)
       (throw (bad-request (if dimension
