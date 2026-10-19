@@ -12,6 +12,7 @@ import { SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS } from "metabase/viz-core";
 
 import { LegendActions } from "./LegendActions";
 import { LegendLabel } from "./LegendLabel";
+import { LEGEND_LABEL_FONT_SIZE } from "./constants";
 
 function shouldHideDescription(width: number | undefined) {
   const HIDE_DESCRIPTION_THRESHOLD = 100;
@@ -96,6 +97,7 @@ export const LegendCaption = ({
       <Ellipsified
         data-testid="legend-caption-title"
         className={SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS}
+        fz={LEGEND_LABEL_FONT_SIZE}
       >
         {tc(title)}
       </Ellipsified>
