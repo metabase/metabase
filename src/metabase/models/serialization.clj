@@ -280,8 +280,8 @@
   "Return specification for serialization, should be a map of:
 
   - `:copy`: a vector of field names, to directly copy from db into output and ingest back with no changes.
-  - `:skip`: a vector of field names, used it tests to check if all fields were specified (`:id` is always skipped, no
-    need to mention it; list `:created_at` and `:updated_at`, which are local to each instance, here).
+  - `:skip`: a vector of field names, used in tests to check if all fields were specified (`:id`, `:created_at` and
+    `:updated_at` are always skipped, no need to mention them).
   - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
     on `extract-one` and `xform-one`. There are a number of transformers, see this field for `fk` and similar.
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.

@@ -56,7 +56,6 @@
 
 (defmethod serdes/make-spec "Glossary" [_model-name _opts]
   {:copy      [:entity_id :term :definition]
-   :skip [:created_at :updated_at]
    :transform {:creator_id (serdes/fk :model/User)}})
 
 (defmethod serdes/storage-path "Glossary" [item _]

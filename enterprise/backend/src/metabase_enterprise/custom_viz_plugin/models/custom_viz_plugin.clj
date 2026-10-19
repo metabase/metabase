@@ -70,8 +70,7 @@
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
   {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
-   :skip      [:created_at :updated_at
-               ;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
+   :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
                :status :error_message
                ;; dev-only plugins are never served from another instance
                :dev_bundle_url]

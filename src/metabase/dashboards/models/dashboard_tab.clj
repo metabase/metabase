@@ -57,7 +57,7 @@
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
   {:copy      [:entity_id :name :position]
-   :skip [:created_at :updated_at]
+   :skip      []
    :transform {:dashboard_id (serdes/parent-ref)}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------

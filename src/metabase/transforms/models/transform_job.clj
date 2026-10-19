@@ -201,7 +201,7 @@
 (defmethod serdes/make-spec "TransformJob"
   [_model-name opts]
   {:copy [:entity_id :built_in_type :schedule :ui_display_type :active]
-   :skip [:created_at :updated_at]
+   :skip []
    :defaults {:active true}
    :transform {:name {:export str :import identity}
                :description {:export str :import identity}

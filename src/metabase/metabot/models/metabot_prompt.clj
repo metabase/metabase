@@ -31,7 +31,6 @@
 
 (defmethod serdes/make-spec "MetabotPrompt" [_model-name _opts]
   {:copy      [:entity_id :prompt]
-   :skip [:created_at :updated_at]
    :transform {:model      (serdes/kw)
                :card_id    (serdes/fk :model/Card)
                :metabot_id (serdes/parent-ref)}})

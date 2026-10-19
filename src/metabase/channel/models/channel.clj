@@ -110,7 +110,6 @@
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
   {:copy           [:name :description :type :details :active]
-   :skip [:created_at :updated_at]
    :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;

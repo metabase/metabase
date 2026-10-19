@@ -408,7 +408,7 @@
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip      [:created_at :updated_at :initially_published_at
+   :skip      [:initially_published_at
                ;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated

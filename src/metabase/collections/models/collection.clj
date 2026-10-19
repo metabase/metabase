@@ -2288,7 +2288,7 @@
           :namespace
           :slug
           :type]
-   :skip [:created_at]
+   :skip []
    :transform {;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
                                              (serdes/compose

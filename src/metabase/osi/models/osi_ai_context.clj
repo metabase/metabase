@@ -157,7 +157,6 @@
 ;; verbatim. The key columns are exported so [[serdes/ingested-path]] can rebuild the path, and imported from that path.
 (defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
   {:copy      [:ai_context]
-   :skip [:created_at :updated_at]
    :transform {:entity_type     {:export identity
                                  :import-with-context
                                  (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}

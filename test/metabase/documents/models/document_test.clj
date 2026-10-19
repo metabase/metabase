@@ -434,9 +434,7 @@
     (let [spec (serdes/make-spec "Document" {})]
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
              (:copy spec)))
-      (is (= [:created_at :updated_at :view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id
-              :exploration_id :is_placeholder]
-             (:skip spec)))
+      (is (= [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder] (:skip spec)))
       (is (not (contains? (:transform spec) :created_at)))
       (is (contains? (:transform spec) :document))
       (is (not (contains? (:transform spec) :updated_at)))

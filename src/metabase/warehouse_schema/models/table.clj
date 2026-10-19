@@ -617,7 +617,7 @@
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
                :data_source :owner_email :owner_user_id :is_published]
-   :skip      [:estimated_row_count :view_count :transform_target :created_at :updated_at]
+   :skip      [:estimated_row_count :view_count :transform_target]
    :transform {:archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)

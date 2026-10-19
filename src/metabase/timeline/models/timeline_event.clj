@@ -107,7 +107,7 @@
 
 (defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
   {:copy      [:archived :description :entity_id :icon :name :time_matters :timezone]
-   :skip [:created_at :updated_at]
+   :skip      []
    :transform {:creator_id  (serdes/fk :model/User)
                :timeline_id (serdes/parent-ref)
                :timestamp   (serdes/date)}

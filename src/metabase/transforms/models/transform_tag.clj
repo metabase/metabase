@@ -98,7 +98,6 @@
 (defmethod serdes/make-spec "TransformTag"
   [_model-name _opts]
   {:copy [:entity_id :built_in_type]
-   :skip [:created_at :updated_at]
    :transform {:name {:export str :import identity}}})
 
 (defmethod serdes/storage-path "TransformTag" [tt _ctx]

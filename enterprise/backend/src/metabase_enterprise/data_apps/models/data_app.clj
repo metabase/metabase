@@ -152,8 +152,7 @@
 (defmethod serdes/make-spec "DataApp"
   [_model-name _opts]
   {:copy      [:entity_id :description :version :allowed_hosts]
-   :skip      [:created_at :updated_at
-               ;; admin-owned state of this instance
+   :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
                :bundle_hash]

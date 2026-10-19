@@ -475,7 +475,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies :created_at :updated_at]
+   :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)

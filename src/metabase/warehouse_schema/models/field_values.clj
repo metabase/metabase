@@ -710,7 +710,7 @@
 
 (defmethod serdes/make-spec "FieldValues" [_model-name _opts]
   {:copy      [:values :human_readable_values :has_more_values :hash_key]
-   :skip [:created_at :last_used_at :updated_at]
+   :skip [:last_used_at]
    :transform {:type         (serdes/kw)
                :field_id     {::serdes/fk true
                               :export     #(serdes/*export-field-fk* %)

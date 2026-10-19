@@ -47,24 +47,14 @@
                (set (map name (keys models.resolution/model->namespace)))))))))
 
 (deftest ^:parallel timestamps-are-skipped-test
-  (testing "Serialized models skip the created_at and updated_at their timestamp hooks set, so an entity serializes the
-           same way on every instance"
+  (testing "No serialized model exports or loads created_at or updated_at, so an entity serializes the same way on every
+           instance"
     (doseq [m      (-> (methods serdes/make-spec) (dissoc :default) keys)
-            :let   [model  (keyword "model" m)
-                    skip   (set (:skip (serdes/make-spec m nil)))
-                    hooked (cond-> #{}
-                             (isa? model :hook/timestamped?)            (conj :created_at :updated_at)
-                             (isa? model :hook/created-at-timestamped?) (conj :created_at)
-                             (isa? model :hook/updated-at-timestamped?) (conj :updated_at))]
-            column hooked]
-      (testing (format "%s.%s" m (name column))
-        (is (contains? skip column)))))
-  (testing "No serialized model exports or loads created_at or updated_at"
-    (doseq [m    (-> (methods serdes/make-spec) (dissoc :default) keys)
-            :let [{:keys [copy transform]} (serdes/make-spec m nil)]
+            :let   [{:keys [copy skip transform]} (serdes/make-spec m nil)]
             column [:created_at :updated_at]]
       (testing (format "%s.%s" m (name column))
         (is (not (some #{column} copy)))
+        (is (not (some #{column} skip)) "always skipped, so leave it out of :skip")
         (is (not (contains? transform column)))))))
 
 (defn- entity-id-collation
@@ -102,7 +92,7 @@
               fields (u.conn/app-db-column-types (mdb/app-db) t)
               spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
                                 (zipmap (:skip spec) (repeat :skip))
-                                (zipmap [:id :updated_at] (repeat :skip)) ; always skipped
+                                (zipmap [:id :created_at :updated_at] (repeat :skip)) ; always skipped
                                 (:transform spec))
                          ;; `nil`s are mostly fields which differ on `opts`
                          (dissoc nil))]
