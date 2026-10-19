@@ -57,7 +57,7 @@ export function stripRemarks(error: string | undefined): string {
     return "";
   }
   return error.replace(
-    /-- Metabase:: userID: \d+ queryType: native queryHash: \w+\n/,
+    /-- Metabase:: userID: \d+ queryType: native queryHash: \w+[^\n]*\n/,
     "",
   );
 }

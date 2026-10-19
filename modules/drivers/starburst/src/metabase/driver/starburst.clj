@@ -87,20 +87,6 @@
   [_driver]
   true)
 
-(defn- format-field
-  [name value]
-  (if (nil? value)
-    ""
-    (str " " name ": " value)))
-
-(defmethod driver-api/query->remark :starburst
-  [_ {{:keys [card-id dashboard-id]} :info, :as query}]
-  (str
-   (driver-api/default-query->remark query)
-   (format-field "accountID" (driver-api/site-uuid))
-   (format-field "dashboardID" dashboard-id)
-   (format-field "cardID" card-id)))
-
 (defn- handle-execution-error-details
   [^Exception e details]
   (let [message (.getMessage e)

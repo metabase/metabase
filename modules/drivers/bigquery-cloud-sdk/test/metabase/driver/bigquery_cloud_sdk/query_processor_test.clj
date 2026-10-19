@@ -23,6 +23,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync.core :as sync]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.impl :as data.impl]
@@ -257,7 +258,9 @@
                   " `v4_test_data.venues`.`price` AS `price` "
                   "FROM `v4_test_data.venues` "
                   "LIMIT 1"
-                  "\n\n-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304"))
+                  (format "\n\n-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304 accountID: %s databaseID: %d"
+                          (system/site-uuid)
+                          (mt/id))))
            (query->native
             {:database (mt/id)
              :type     :query

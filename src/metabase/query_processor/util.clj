@@ -9,6 +9,7 @@
    [metabase.lib-be.core]
    [metabase.lib.core :as lib]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [select-keys get-in]]
@@ -25,10 +26,17 @@
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved
 ;; to [[metabase.legacy-mbql.util]]
 
+(defn- remark-field
+  [field-name value]
+  (when (some? value)
+    (str " " field-name ": " (if (keyword? value) (name value) value))))
+
 (mu/defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
    can access the default value."
-  [{{:keys [executed-by query-hash], :as _info} :info, :as query} :- ::qp.schema/any-query]
+  [{{:keys [executed-by query-hash card-id dashboard-id pulse-id context], :as _info} :info
+    database-id :database
+    :as query} :- ::qp.schema/any-query]
   (let [query-type (if (:lib/type query)
                      (case (keyword (:lib/type (lib/query-stage query -1)))
                        :mbql.stage/mbql   "MBQL"
@@ -41,7 +49,13 @@
                       (format ":: userID: %s queryType: %s queryHash: %s"
                               executed-by
                               query-type
-                              (codecs/bytes->hex query-hash))))))
+                              (codecs/bytes->hex query-hash)))
+         (remark-field "accountID" (system/site-uuid))
+         (remark-field "dashboardID" dashboard-id)
+         (remark-field "cardID" card-id)
+         (remark-field "pulseID" pulse-id)
+         (remark-field "context" context)
+         (remark-field "databaseID" database-id))))
 
 (defmulti query->remark
   "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query

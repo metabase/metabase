@@ -17,6 +17,10 @@ title: Driver interface changelog
   that matches no synced table or transform target. Dependency tracking recomputes such a query once sync finds the
   table. Drivers built on `:sql` get this from `metabase.sql-tools.core/referenced-tables`.
 
+- `driver-api/default-query->remark` now adds these fields after the user ID, query type, and query hash, when they
+  are set: `accountID` (the instance UUID), `dashboardID`, `cardID`, `pulseID`, `context`, and `databaseID`. Drivers
+  that override `driver-api/query->remark` and add some of these fields to the default remark should remove them.
+
 ## Metabase 0.64.0
 
 - Date and time functions that depended on the `start-of-week` setting now take a `time-config` map as their first
