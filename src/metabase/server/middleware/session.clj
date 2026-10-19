@@ -280,7 +280,7 @@
    ;; order of authentication sources is important, bearer and mcp ui credentials last
    (or (current-user-info-for-session metabase-session-key anti-csrf-token)
        (current-user-info-for-api-key x-api-key)
-       ;; oauth also carries `:token-scopes`
+       ;; bearer tokens below also carry `:token-scopes`
        (current-user-info-for-oauth-token oauth-bearer request)
        (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))
    (when x-metabase-locale
