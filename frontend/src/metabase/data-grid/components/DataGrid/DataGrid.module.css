@@ -89,7 +89,7 @@
   &.striped {
     background-color: var(
       --data-grid-striped-bg-color,
-      var(--mb-color-background-hover)
+      var(--mb-color-background_surface-hover)
     );
   }
 

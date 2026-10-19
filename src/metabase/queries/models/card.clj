@@ -70,7 +70,7 @@
   This value is used when loading old revision records that predate the schema versioning system."
   20)
 
-(def ^:private current-schema-version
+(def current-card-schema-version
   "Latest schema version number. This is an increasing integer stored in each card's `:card_schema` column.
   It is used to guide `after-select` logic in how to modernize a card correctly.
 
@@ -84,13 +84,13 @@
     version.
 
   The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
-  and including [[current-schema-version]]."
+  and including [[current-card-schema-version]]."
   24)
 
 (defmulti ^:private upgrade-card-schema-to
   "Upgrades a card on read, so that it fits the given schema version number.
 
-  The number is the **target** revision - if we read a row with `:card_schema` 22 and the [[current-schema-version]]
+  The number is the **target** revision - if we read a row with `:card_schema` 22 and the [[current-card-schema-version]]
   is 25, then the `after-select` logic will effectively call
 
       (-> card
@@ -136,7 +136,8 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defn- parent-document-id
   "The `document_id` of `card`, or `::not-adjudicable` when the instance carries neither the column
@@ -461,7 +462,7 @@
   (let [card     (lib/normalize ::queries.schema/card card)
         defaults {:parameters         []
                   :parameter_mappings []
-                  :card_schema        current-schema-version}
+                  :card_schema        current-card-schema-version}
         card     (maybe-check-dashboard-internal-card
                   (merge defaults card))]
     (u/prog1 card
@@ -760,7 +761,7 @@
           :else
           (loop [card card]
             ;; Use >= to allow for downgrades.
-            (if (>= (:card_schema card) current-schema-version)
+            (if (>= (:card_schema card) current-card-schema-version)
               card
               (let [new-version (inc (:card_schema card))]
                 (recur (assoc (upgrade-card-schema-to card new-version)
@@ -782,7 +783,7 @@
   (let [stored-schema (:card_schema original)]
     (if-not (and stored-schema
                  ;; Use < to leave downgraded rows alone, matching [[upgrade-card-schema-to-latest]].
-                 (< stored-schema current-schema-version)
+                 (< stored-schema current-card-schema-version)
                  (some #(contains? changes %) card-schema/schema-upgrade-triggers))
       card
       ;; Force the `update-baseline-select?` flag to false, since this runs inside the `t2/before-update` process.
@@ -799,7 +800,7 @@
             relevant (when (seq columns)
                        (select-keys upgraded columns))]
         (-> (merge card relevant)
-            (assoc :card_schema current-schema-version))))))
+            (assoc :card_schema current-card-schema-version))))))
 
 (defonce ^:private unique-cards-with-blank-dataset-query
   (atom #{}))
@@ -850,7 +851,7 @@
   ;; +===============================================================================================+
   ;; |   DO NOT EDIT THIS FUNCTION DIRECTLY!                                                         |
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |
-  ;; |   See [[current-schema-version]] for details on the schema versioning.                        |
+  ;; |   See [[current-card-schema-version]] for details on the schema versioning.                        |
   ;; +===============================================================================================+
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
@@ -1022,32 +1023,13 @@
                              (str/join ", " (sort outside)))
                         {:status-code 400}))))))
 
-(defn data-app-card-reader
-  "The ID of a card in the data app's collection `collection-id` that reads the card with `card-id`, if one does."
-  [collection-id card-id]
-  (when (and (some? collection-id)
-             (perms/data-app-collection? collection-id))
-    (some (fn [other]
-            (when (some #(= {:model "Card" :id card-id} (select-keys (last %) [:model :id]))
-                        (serdes/serialization-dependencies "Card" other))
-              (:id other)))
-          (queries.db/other-cards-in-collection collection-id card-id))))
-
-(defn- check-data-app-card-stays
-  "Throws when the card with `id` leaves the data app's collection `from` while another card there reads it."
-  [id from]
-  ;; the next export would write the reader into a file every pull refuses
-  (when-let [reader (data-app-card-reader from id)]
-    (throw (ex-info (tru "Card {0} in the data app''s collection reads this card, so it can''t leave the collection." reader)
-                    {:status-code 400}))))
-
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-visibility-permissions! card *copy-source-card*)
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string
-               :card_schema current-schema-version)
+               :card_schema current-card-schema-version)
         normalize-card
         ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
         ;; since we're removing `:ident`s; we can probably remove this now.
@@ -1129,8 +1111,6 @@
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
     (check-allowed-content card changes)
-    (when (contains? changes :collection_id)
-      (check-data-app-card-stays (:id card) (:collection_id original)))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)

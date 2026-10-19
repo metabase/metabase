@@ -20,6 +20,7 @@ import type {
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   TimeSeriesXAxisModel,
+  WaterfallXAxisModel,
   YAxisModel,
 } from "../model/types";
 
@@ -117,6 +118,7 @@ export const getDimensionTicksDefaultOption = (
   return {
     ...getTicksDefaultOption(renderingContext),
     show: !!settings["graph.x_axis.axis_enabled"],
+    showMinLabel: true,
     rotate: getRotateAngle(settings),
   };
 };
@@ -285,13 +287,13 @@ export const buildNumericDimensionAxis = (
 };
 
 export const buildTimeSeriesDimensionAxis = (
-  xAxisModel: TimeSeriesXAxisModel,
+  xAxisModel: TimeSeriesXAxisModel & Pick<WaterfallXAxisModel, "totalXValue">,
   hasTimelineEvents: boolean,
   settings: ComputedVisualizationSettings,
   chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): XAXisOption => {
-  const { formatter, maxInterval, minInterval, canRender, xDomainPadded } =
+  const { formatter, minInterval, customValues, canRender, xDomainPadded } =
     getTicksOptions(xAxisModel, chartLayout);
 
   return {
@@ -302,6 +304,7 @@ export const buildTimeSeriesDimensionAxis = (
         ? CHART_STYLE.timelineEvents.height
         : renderingContext.theme.cartesian.ticks.marginX,
       ...getDimensionTicksDefaultOption(settings, renderingContext),
+      customValues,
       formatter: (rawValue: number) => {
         const value = xAxisModel.fromEChartsAxisValue(rawValue);
         if (canRender(value)) {
@@ -315,7 +318,6 @@ export const buildTimeSeriesDimensionAxis = (
     min: xDomainPadded[0],
     max: xDomainPadded[1],
     minInterval,
-    maxInterval,
   };
 };
 

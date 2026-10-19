@@ -72,6 +72,7 @@
                   :slug          "sales-ops"
                   :name          "Sales Ops"
                   :description   "Pipeline health"
+                  :version       1
                   :path          "dist/index.js"
                   :allowed_hosts ["https://api.example.com"]
                   :collection    (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))}

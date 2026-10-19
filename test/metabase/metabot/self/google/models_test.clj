@@ -10,6 +10,7 @@
     (is (true?  (models/reasoning-model? "google/gemini-3.5-flash")))
     (is (true?  (models/reasoning-model? "google/gemini-3.6-flash")))
     (is (true?  (models/reasoning-model? "google/gemini-3.7-flash")))
+    (is (true?  (models/reasoning-model? "google/gemini-3.8-flash")))
     (is (false? (models/reasoning-model? "google/gemini-2.5-flash")))
     (is (false? (models/reasoning-model? "gemini-3.5-flash")))
     (is (false? (models/reasoning-model? nil)))))
@@ -29,3 +30,8 @@
     (doseq [[model {:keys [context-window]}] models/catalog]
       (testing model
         (is (pos-int? context-window))))))
+
+(deftest ^:parallel gemini-3-8-flash-row-test
+  (testing "the 3.8 row records only its context window: its 65,536 max output is a comment, not a data field"
+    (is (= {:context-window 1048576}
+           (get models/catalog "google/gemini-3.8-flash")))))

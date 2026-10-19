@@ -31,7 +31,7 @@ import type {
   SettingsExtra,
   VisualizationSettingsDefinitions,
 } from "../../types";
-import { getNameForCard } from "../series";
+import { getNameForCard, isRowChartSeries } from "../series";
 
 import { type NestedSettingsOptions, nestedSettings } from "./nested";
 
@@ -114,6 +114,8 @@ export function seriesSetting({
       getHidden: (single, settings, _extra) =>
         !["line", "area", "bar", "combo"].includes(single.card.display ?? "") ||
         settings["stackable.stack_type"] != null,
+      // Row charts only draw bars; ignore a display saved as another chart type.
+      isValid: (_single, _settings, extra) => !isRowChartSeries(extra?.series),
       getDefault: (single, _settings, extra) => {
         const { series = [] } = extra ?? {};
         if (keyForSingleSeries(single) === OTHER_DATA_KEY) {
@@ -237,9 +239,11 @@ export function seriesSetting({
         return t`Y-axis position`;
       },
       widget: "segmentedControl",
-      getHidden: (single, _seriesSettings, extra) =>
-        single.card.display === "row" ||
+      getHidden: (_single, _seriesSettings, extra) =>
+        isRowChartSeries(extra?.series) ||
         extra?.settings?.["graph.split_panels"] === true,
+      // Row charts have a single metric axis; ignore a saved position.
+      isValid: (_single, _settings, extra) => !isRowChartSeries(extra?.series),
       getDefault: (_single, _seriesSettings, extra) =>
         extra?.settings?.["graph.split_panels"] === true ? "left" : null,
       getProps: () => ({
@@ -289,7 +293,7 @@ export function seriesSetting({
           ];
         return seriesColor != null
           ? deriveChartShadeColor(seriesColor)
-          : color("brand");
+          : color("core-brand");
       },
       readDependencies: [
         "color",

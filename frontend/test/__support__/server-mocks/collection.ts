@@ -232,6 +232,12 @@ export function setupCollectionItemsEndpoint({
   collectionItems: CollectionItem[];
   models?: string[];
 }) {
+  const itemsName = `collection-${collection.id}-items`;
+  const metadataName = `collection-${collection.id}-items-metadata`;
+  fetchMock.removeRoutes({
+    names: [itemsName, metadataName],
+    includeFallback: false,
+  });
   fetchMock.get(
     `path:/api/collection/${collection.id}/items`,
     (call) => {
@@ -241,12 +247,12 @@ export function setupCollectionItemsEndpoint({
         modelsParam,
       });
     },
-    { name: `collection-${collection.id}-items` },
+    { name: itemsName },
   );
   fetchMock.get(
     `path:/api/collection/${collection.id}/items/metadata`,
     (call) => collectionItemsMetadata(call, collectionItems),
-    { name: `collection-${collection.id}-items-metadata` },
+    { name: metadataName },
   );
 }
 

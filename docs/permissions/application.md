@@ -27,6 +27,8 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Appearance](../configuring-metabase/appearance.md)
 - [Public sharing](../embedding/public-links.md)
 
+Embedding settings aren't included. They live in the **Embedding hub**, which only admins can open.
+
 ## Monitoring access
 
 People in groups with Monitoring access can view:

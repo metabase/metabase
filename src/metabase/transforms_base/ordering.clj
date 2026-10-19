@@ -35,7 +35,7 @@
                    lib.metadata/database
                    :engine)]
     (if (lib/native-only-query? query)
-      (driver/native-query-deps driver query)
+      (into #{} (remove :unresolved-table) (driver/native-query-deps driver query))
       (into #{}
             (map (fn [table-id]
                    {:table table-id}))

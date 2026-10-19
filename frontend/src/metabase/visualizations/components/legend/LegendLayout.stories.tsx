@@ -53,7 +53,7 @@ const Card = ({
     w={width}
     h={height}
     p="0.5rem 1rem"
-    bd="1px solid var(--mb-color-border)"
+    bd="1px solid var(--mb-color-border-neutral)"
     style={{ borderRadius: "0.75rem", display: "flex" }}
   >
     <LegendLayout

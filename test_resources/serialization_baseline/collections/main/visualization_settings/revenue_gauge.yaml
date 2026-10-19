@@ -39,7 +39,6 @@ result_metadata:
   lib/source: source/aggregations
   lib/source-column-alias: sum
 visualization_settings:
-  column_settings: null
   gauge.segments:
   - color: '#ED6E6E'
     label: Low

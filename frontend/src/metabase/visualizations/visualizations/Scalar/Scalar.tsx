@@ -7,6 +7,8 @@ import {
   ScalarCardShell,
   useScalarCardShell,
 } from "metabase/visualizations/components/ScalarValue/ScalarCardShell";
+import { ScalarDescription } from "metabase/visualizations/components/ScalarValue/ScalarDescription";
+import { ScalarLabel } from "metabase/visualizations/components/ScalarValue/ScalarLabel";
 import { ScalarValue } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import {
@@ -63,14 +65,14 @@ function ScalarComponent(
   const sublabel = settings["scalar.sublabel"];
   const isMetricsViewer = label !== undefined;
 
-  const {
-    tier,
-    availableWidth,
-    title,
-    titleElement,
-    showsTitleTooltip,
-    innerTooltipHoverHandlers,
-  } = useScalarCardShell(props, { hideTitle: isMetricsViewer });
+  const { tier, availableWidth, titleElement, description } =
+    useScalarCardShell(props, {
+      hideTitle: isMetricsViewer,
+    });
+  const descriptionFooter =
+    tier.size === 100 && description ? (
+      <ScalarDescription description={description} />
+    ) : null;
 
   if (rawSeries.length > 1) {
     return (
@@ -131,18 +133,13 @@ function ScalarComponent(
     }
   };
 
-  const hasValueTooltip =
-    fullScalarValue !== displayValue || tooltipContent != null;
-
   return (
     <ScalarCardShell
       tier={tier}
-      title={title}
-      showsTitleTooltip={showsTitleTooltip}
       actionButtons={actionButtons}
-      innerTooltipHoverHandlers={innerTooltipHoverHandlers}
+      footer={descriptionFooter}
     >
-      <Box maw="100%" {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}>
+      <Box maw="100%">
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
           tooltip={fullScalarValue}
@@ -178,7 +175,11 @@ function ScalarComponent(
           </Tooltip>
         </ScalarValueContainer>
       </Box>
-      {titleElement}
+      {titleElement && (
+        <ScalarLabel description={descriptionFooter ? null : description}>
+          {titleElement}
+        </ScalarLabel>
+      )}
     </ScalarCardShell>
   );
 }

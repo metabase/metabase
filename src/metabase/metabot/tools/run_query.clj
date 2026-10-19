@@ -328,7 +328,8 @@
         :multiple-statements "It holds more than one statement."
         :not-a-select        "It is not a SELECT."
         :writes-or-locks     "It writes, takes a lock, or advances a sequence."
-        :session-function    (str "It calls " detail ", which takes a lock, waits, or changes the session.")
+        :session-function    (str "It calls " detail ", which takes a lock, waits, changes the session, or acts outside"
+                                  " the database.")
         :sql-executing-function (str "It calls " detail ", which runs SQL passed to it as text that this check cannot"
                                      " see into.")
         :statement-word      (str "It uses the word " detail " outside quotes, which starts a new statement on"
@@ -439,13 +440,24 @@
          :checked-sql (when (or inline-sql? sql-card?)
                         (check-read-only-select! query-id serialized sql-card? allow-non-sql?))}))))
 
+(def ^:private query-timeout-ms
+  "How long one query may run."
+  ;; A query Metabot wrote can be far slower than expected, and nothing else ends it before the database query timeout.
+  (u/minutes->ms 3))
+
+(defn- run-options
+  "What may stop a query this tool runs: the chat request being canceled, and the time limit."
+  []
+  {:request-canceled-chan (shared/request-canceled-chan)
+   :timeout-ms            query-timeout-ms})
+
 (defn- execute-page!
   "Run `query` for one page of rows. With `checked-sql`, the driver runs only that SQL or other SQL that is itself a
    read-only SELECT: the QP compiles the query again, and a snippet or card it references may have changed since
    `checked-sql` was compiled from it."
   [query-id {:keys [query checked-sql sql-card?]} row-limit allow-non-sql?]
   (if-not checked-sql
-    (query-execution/execute-page! query row-limit :metabot)
+    (query-execution/execute-page! query row-limit :metabot (run-options))
     (let [execute qp.pipeline/*execute*
           ;; The driver and SQL the driver step refused, if it refused any.
           refused (atom nil)]
@@ -458,7 +470,7 @@
                                               (reset! refused [driver sql])
                                               (throw (ex-info "Not a read-only SELECT." {}))))
                                           (execute driver native-query respond))]
-          (query-execution/execute-page! query row-limit :metabot))
+          (query-execution/execute-page! query row-limit :metabot (run-options)))
         (catch Exception e
           ;; The QP reports an exception from the driver step as a failed run, which would reach the model as
           ;; quoted database error text instead of as this tool's refusal.

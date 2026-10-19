@@ -1,7 +1,9 @@
 (ns metabase.metabot.tools.run-query-test
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver.settings :as driver.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.scope :as scope]
@@ -563,7 +565,7 @@
       "It holds a U&\"...\" name, whose escapes this check cannot read. Write the name plainly."
       :postgres "SELECT U&\"pg_\\0073leep\"(10)"
 
-      "It calls pg_advisory_lock, which takes a lock, waits, or changes the session."
+      "It calls pg_advisory_lock, which takes a lock, waits, changes the session, or acts outside the database."
       :postgres "SELECT pg_advisory_lock(42)"
 
       "It calls query_to_xml, which runs SQL passed to it as text that this check cannot see into."
@@ -874,3 +876,22 @@
                     (call-sql-tool-in-conversation! {:state   {:queries {}}
                                                      :context {:user_is_viewing [{:type "question", :id card-id}]}}
                                                     {:query_id (str card-id)})))))))))
+
+(deftest run-query-follows-request-cancellation-test
+  (testing "a turn whose request is canceled runs nothing, and tells the model so in place of a query failure"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (=? {:output #"Query canceled.*"}
+              (call-tool-in-conversation! {:state                 {:queries {"q1" (venues-count)}}
+                                           :request-canceled-chan (doto (a/promise-chan) (a/>!! :canceled))}
+                                          {:query_id "q1"}))))))
+
+(deftest run-query-time-limit-test
+  (testing "a query that runs past the tool's time limit is stopped, and the model is told it timed out"
+    ;; The driver waits until its channel says to stop.
+    ;; The database timeout is shorter, so the run reads as timed out only if the tool passed its own limit.
+    (binding [qp.pipeline/*execute*              (fn [_driver _query _respond]
+                                                   (a/alts!! [qp.pipeline/*canceled-chan* (a/timeout 5000)])
+                                                   nil)
+              driver.settings/*query-timeout-ms* 200]
+      (is (=? {:output #"Query timed out.*"}
+              (run-tool! {"q1" (venues-count)} {:query_id "q1"}))))))
