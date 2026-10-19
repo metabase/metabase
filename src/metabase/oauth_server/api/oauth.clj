@@ -15,6 +15,7 @@
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.throttle :as u.throttle]
@@ -103,11 +104,9 @@
 
 (defn- scope-tokens
   "Split a space-separated OAuth `scope` value into its distinct scope strings, in first-seen order. Returns nil when
-   blank.
-
-   Deduplicating here is what keeps a repeated scope out of the granted token: the decision filters the grant from this
-   list, so a duplicate left in it would be stored twice."
+  blank."
   [scope-param]
+  ;; deduplicate to keep repeated scope out of granted token
   (some-> scope-param str str/trim not-empty (str/split #"\s+") distinct vec))
 
 (defn- requested-scope-descriptions
@@ -340,14 +339,13 @@
                 ;; - application_type defaults to "native" (not the RFC default "web") so
                 ;;   CLI tools and desktop apps can use HTTP loopback redirects.
                 ;; - scope defaults to every scope any surface advertises. That is a ceiling on
-                ;;   what the client may later request, not a grant (see
-                ;;   [[metabase.oauth-server.core/default-grant-scopes]]), and clients derive what
-                ;;   to request from discovery metadata rather than from this value.
+                ;;   what the client may later request, not a grant (RFC 7591), and clients derive
+                ;;   what to request from discovery metadata rather than from this value.
                 (let [body       (cond-> body
                                    (not (contains? body :application_type))
                                    (assoc :application_type "native")
                                    (not (contains? body :scope))
-                                   (assoc :scope (str/join " " (oauth-server/default-grant-scopes)))
+                                   (assoc :scope (str/join " " (oauth-server/supported-scopes)))
                                    ;; Remove client_credentials grant type — tokens issued without a
                                    ;; user context are unusable for MCP (validate-bearer-token requires
                                    ;; a valid user-id).
@@ -422,6 +420,69 @@
       (:error_description data)
       fallback))
 
+(def ^:private scheme-default-port
+  {"http" 80, "https" 443})
+
+(defn- canonical-resource-uri
+  "Canonical form of a resource identifier, for comparing indicators that clients spell differently.
+
+  Lowercases scheme and host, elides the scheme's default port, and trims a trailing slash. Query and fragment are
+  dropped: the canonical form has neither, and ignoring them can only cause narrowing, never widening. Returns nil for
+  anything that is not an absolute URI, which then matches nothing.
+
+  Per RFC 3986 the scheme and host are case-insensitive and the default port is elidable; the path is neither, so
+  `/API/v2` deliberately does not canonicalize to `/api/v2`."
+  [s]
+  (when s
+    (try
+      (let [^java.net.URI uri (java.net.URI. (str s))
+            scheme            (some-> (.getScheme uri) u/lower-case-en)
+            ;; `.getHost` is nil for a host java.net.URI considers non-conformant -- notably one with an
+            ;; underscore, which is routine for Docker Compose / k8s service names and which Metabase's own
+            ;; `u/url?` accepts. Reading the authority instead keeps those canonicalizing; a nil host here
+            ;; would return nil, match nothing, and disable narrowing instance-wide and silently.
+            authority         (some-> (.getAuthority uri) u/lower-case-en)
+            [host port]       (when authority
+                                (if-let [[_ h p] (re-matches #"(?:[^@]*@)?(.*?)(?::(\d+))?" authority)]
+                                  [h (some-> p parse-long)]
+                                  [authority nil]))
+            path              (or (.getPath uri) "")]
+        (when (and scheme (not-empty host))
+          (str scheme "://" host
+               (when-not (or (nil? port) (= port (scheme-default-port scheme)))
+                 (str ":" port))
+               (cond-> path
+                 (and (> (count path) 1) (str/ends-with? path "/"))
+                 (subs 0 (dec (count path)))))))
+      (catch java.net.URISyntaxException _ nil))))
+
+(defn narrow-scope-to-resource
+  "Narrow an OAuth `scope` string to what the requested `resources` accept.
+
+  Narrows MCP tokens to only MCP scopes, and all others to anything but MCP scopes. Mixed resources throw
+  invalid_scope. Returns nil if there are no scopes valid to the resource."
+  [resources scope]
+  (let [mcp-endpoints (into #{}
+                            (map #(canonical-resource-uri (str (system/site-url) %)))
+                            (mcp/mcp-endpoint-paths))
+        resources-by-type (group-by #(if (mcp-endpoints %) :resource/mcp :resource/rest)
+                                    (into #{}
+                                          (keep canonical-resource-uri)
+                                          (cond-> resources (string? resources) vector)))]
+    (cond
+      (and (seq (:resource/mcp  resources-by-type))
+           (seq (:resource/rest resources-by-type)))
+      (throw (ex-info "cannot mix mcp and rest resources in one token"
+                      {:oauth-error       "invalid_scope"
+                       :error-description "Request a token for MCP resources or for other resources, not both."
+                       :resource          resources}))
+
+      (seq (:resource/mcp  resources-by-type))
+      (not-empty (str/join " " (filter (set (mcp/v2-scopes)) (scope-tokens scope))))
+
+      :else
+      (not-empty (str/join " " (remove (set (mcp/v2-scopes)) (scope-tokens scope)))))))
+
 (defn- scope-to-grant
   "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
    then narrowed to the `resource` indicator it names. Throws `ex-info` carrying `:oauth-error` and
@@ -437,32 +498,25 @@
    scope. A blank offer would make an honest approval look like tampering."
   [parsed]
   {:post [(not (str/blank? %))]}
-  (let [;; A scope-less request would otherwise mint a token with no scopes.
-        _          (when (str/blank? (:scope parsed))
-                     (throw (ex-info "no scope was requested"
-                                     {:oauth-error       "invalid_scope"
-                                      :error-description (missing-scope-description)})))
-        ;; A client can hold an unregistered scope from before registration validated them, and `scope-matches?`
+  ;; A scope-less request would otherwise mint a token with no scopes.
+  (when (str/blank? (:scope parsed))
+    (throw (ex-info "no scope was requested"
+                    {:oauth-error       "invalid_scope"
+                     :error-description (missing-scope-description)})))
+  (let [;; A client can hold an unregistered scope from before registration validated them, and `scope-matches?`
         ;; would honor `*` or `agent:*` as a wildcard grant, so one must never survive. Dropping rather than
         ;; refusing (RFC 6749 section 3.3) keeps a client that still holds a since-deprecated scope able to
         ;; re-authorize, and the refusal would reach a browser tab rather than the client program. Filtered
         ;; before narrowing, so a request is treated the same with and without `resource`.
-        registered (oauth-server/registered-scopes-only (:scope parsed))
-        _          (when-not registered
-                     (throw (ex-info "no requested scope is a registered scope"
-                                     {:oauth-error       "invalid_scope"
-                                      :error-description (no-supported-scopes-description)})))
-        narrowed   (oauth-server/narrow-scope-to-resource (:resource parsed) registered)]
-    ;; Nothing surviving means the client asked exclusively for scopes this resource does not
-    ;; accept: dropping the parameter there renders a consent screen listing nothing and mints a
-    ;; zero-scope token, which looks like success while authorizing nothing on the resource the
-    ;; client named. RFC 6749 section 4.1.2.1 has an error for it.
-    (when-not narrowed
-      (throw (ex-info "no requested scope is accepted by the named resource"
-                      {:oauth-error       "invalid_scope"
-                       :error-description narrowed-away-scope-description
-                       :resource          (:resource parsed)})))
-    narrowed))
+        registered (or (oauth-server/registered-scopes-only (:scope parsed))
+                       (throw (ex-info "no requested scope is a registered scope"
+                                       {:oauth-error       "invalid_scope"
+                                        :error-description (no-supported-scopes-description)})))]
+    (or (narrow-scope-to-resource (:resource parsed) registered)
+        (throw (ex-info "no requested scope is accepted by the named resource"
+                        {:oauth-error       "invalid_scope"
+                         :error-description narrowed-away-scope-description
+                         :resource          (:resource parsed)})))))
 
 (defn- authorization-consent-response
   "Validate the authorization request `query-params` and return the consent page response, which sets the CSRF
