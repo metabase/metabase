@@ -260,14 +260,18 @@ migrate_down_step() {
 }
 
 only_unreleased_changesets() {
-  local ids id major status
+  local ids id major status checked_major="" pending=""
   ids=$(grep -o "not in the changelog file: .*" <<<"$1" | sed 's/.*: //' | tr ', ' '\n\n' | sed '/^$/d' | sort -u)
   [[ -z "$ids" ]] && return 1
 
   for id in $ids; do
     major=$(sed -nE 's/^v([0-9]+)\..*/\1/p' <<<"$id")
     [[ -z "$major" ]] && return 1
-    status=$("$SCRIPT_DIR/pending-changesets.sh" "$major" | awk -v id="$id" '$1 == id {print $2}')
+    if [[ "$major" != "$checked_major" ]]; then
+      pending=$("$SCRIPT_DIR/pending-changesets.sh" "$major")
+      checked_major=$major
+    fi
+    status=$(awk -v id="$id" '$1 == id {print $2}' <<<"$pending")
     case "$status" in
       awaiting-release|awaiting-backport)
         warn "$id is on master, but the latest v${major} release does not have it yet ($status)" ;;
@@ -283,6 +287,9 @@ skip_for_unreleased_changesets() {
   echo "::warning title=Cross-version test skipped::$message"
   if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     echo "⚠️ $message" >> "$GITHUB_STEP_SUMMARY"
+  fi
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "skipped=true" >> "$GITHUB_OUTPUT"
   fi
   exit 0
 }

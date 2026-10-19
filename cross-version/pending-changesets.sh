@@ -11,7 +11,9 @@
 #   ./pending-changesets.sh MAJOR
 #
 # The script compares the vMAJOR changesets on master with the latest vMAJOR release tag and with
-# release-x.MAJOR.x. For each changeset that the release does not have, it prints "<id> <state>":
+# release-x.MAJOR.x. For each changeset that the release does not have, it prints "<id> <state> <file>".
+# <file> is the migration file on master, so that the Slack notification can find the master commit that
+# added it.
 #
 #   awaiting-release   The release branch has it. The next release will have it too.
 #   awaiting-backport  The release branch does not have it, and it was added to master in the grace period.
@@ -64,11 +66,13 @@ git_ fetch -q --no-tags --shallow-since="${grace_days} days ago" origin \
   "+refs/heads/master:refs/cross-version/master" 2>/dev/null || true
 
 while IFS= read -r id; do
+  file=$(git_ grep -lE "^[[:space:]]*id:[[:space:]]*['\"]?${id//./\\.}['\"]?[[:space:]]*$" -- resources/migrations | head -1 || true)
   if grep -qxF "$id" <<<"$on_branch"; then
-    echo "$id awaiting-release"
+    state=awaiting-release
   elif [[ -n "$(git_ log --since="${grace_days} days ago" -S "$id" --format=%H refs/cross-version/master -- resources/migrations 2>/dev/null)" ]]; then
-    echo "$id awaiting-backport"
+    state=awaiting-backport
   else
-    echo "$id missing"
+    state=missing
   fi
+  echo "$id $state $file"
 done <<<"$pending"

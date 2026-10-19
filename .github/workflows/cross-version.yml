@@ -27,6 +27,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      oldest-target: ${{ steps.set-matrix.outputs.oldest-target }}
     steps:
       - name: Require HEAD digest
         if: inputs.digest == ''
@@ -61,6 +62,7 @@ jobs:
             const { config } = buildCrossVersionMatrix(supportedMajors);
             const matrix = JSON.stringify({ include: config });
             core.setOutput("matrix", matrix);
+            core.setOutput("oldest-target", `v1.${Math.min(...supportedMajors)}.x`);
             console.log("matrix:", matrix);
 
   test:
@@ -100,6 +102,7 @@ jobs:
         run: bun run build-pure:cljs
 
       - name: Run cross-version test
+        id: run-test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
           HEAD_DIGEST: ${{ inputs.digest }}
@@ -107,6 +110,34 @@ jobs:
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
+
+      - name: Notify Slack about master commits that need a backport or a release
+        if: >-
+          steps.run-test.outputs.skipped == 'true' &&
+          matrix.target == needs.generate-test-matrix.outputs.oldest-target &&
+          github.ref == 'refs/heads/master'
+        uses: actions/github-script@v9
+        env:
+          CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+        with:
+          script: | # js
+            const { findSlackMessage, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const { downgradeMajors, notifyReleaseNeeded } = require('${{ github.workspace }}/.github/scripts/notify-unreleased-migrations');
+
+            await notifyReleaseNeeded({
+              github,
+              context,
+              core,
+              majors: downgradeMajors({
+                target: '${{ matrix.target }}',
+                currentVersion: Number(process.env.CURRENT_VERSION),
+              }),
+              channelName: process.env.SLACK_RELEASE_CHANNEL,
+              findSlackMessage,
+              sendSlackMessage,
+            });
 
       - name: Upload Cypress Artifacts
         uses: actions/upload-artifact@v7
