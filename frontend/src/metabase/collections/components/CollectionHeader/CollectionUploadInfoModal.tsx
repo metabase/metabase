@@ -58,7 +58,7 @@ export const UploadInfoModal = ({
         </>
       ) : (
         <>
-          <Text c="text-secondary" ta="start">
+          <Text c="text-secondary">
             {t`You'll need to ask your admin to enable this feature to get started. Then, you'll be able to upload CSV files and work with them just like any other data source.`}
           </Text>
           <Modal.Footer>
