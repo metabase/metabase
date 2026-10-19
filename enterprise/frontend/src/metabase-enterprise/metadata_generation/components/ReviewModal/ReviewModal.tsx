@@ -535,7 +535,7 @@ function ReviewActions({
       <ConfirmModal
         opened={isDiscardConfirmOpen}
         title={t`Discard all suggestions?`}
-        message={t`This sets aside every suggestion of this run, including the ones you accepted or edited, and takes you back to generating metadata.`}
+        message={t`This sets aside every suggestion of this run, including the ones you accepted or edited.`}
         confirmButtonText={t`Discard`}
         onConfirm={handleDiscard}
         onClose={closeDiscardConfirm}
