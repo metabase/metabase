@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { PaneHeaderMenuButton } from "metabase/common/data-studio/components/PaneHeader";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Icon, Menu } from "metabase/ui";
@@ -29,7 +29,7 @@ export function TableMoreMenu({ table, onOpenModal }: TableMoreMenuProps) {
     >
       <Menu withinPortal>
         <Menu.Target>
-          <PaneHeaderMenuButton
+          <MoreMenuButton
             aria-label={t`Show table options`}
             onClick={(event) => {
               event.preventDefault();

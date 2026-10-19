@@ -8,7 +8,7 @@ import {
   useListNotificationsQuery,
 } from "metabase/api";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
-import { PaneHeaderMenuButton } from "metabase/common/data-studio/components/PaneHeader";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/current-user";
@@ -118,7 +118,7 @@ function MetricToolbarButtons({
   return (
     <Menu>
       <Menu.Target>
-        <PaneHeaderMenuButton aria-label={t`More options`} />
+        <MoreMenuButton aria-label={t`More options`} />
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item

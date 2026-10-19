@@ -1,7 +1,7 @@
 import { type MouseEvent, useState } from "react";
 import { t } from "ttag";
 
-import { PaneHeaderMenuButton } from "metabase/common/data-studio/components/PaneHeader";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
@@ -70,7 +70,7 @@ function TransformMenu({
   return (
     <Menu>
       <Menu.Target>
-        <PaneHeaderMenuButton
+        <MoreMenuButton
           aria-label={t`Transform options`}
           onClick={handleIconClick}
         />

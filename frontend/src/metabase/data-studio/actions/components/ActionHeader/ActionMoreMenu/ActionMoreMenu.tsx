@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateActionMutation } from "metabase/api";
-import { PaneHeaderMenuButton } from "metabase/common/data-studio/components/PaneHeader";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useNavigate } from "metabase/router";
@@ -48,7 +48,7 @@ export function ActionMoreMenu({ action }: ActionMoreMenuProps) {
     <>
       <Menu>
         <Menu.Target>
-          <PaneHeaderMenuButton aria-label={t`Action options`} />
+          <MoreMenuButton aria-label={t`Action options`} />
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item

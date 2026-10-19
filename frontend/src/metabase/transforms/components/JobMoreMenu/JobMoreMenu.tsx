@@ -2,7 +2,7 @@ import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import { useUpdateTransformJobMutation } from "metabase/api";
-import { PaneHeaderMenuButton } from "metabase/common/data-studio/components/PaneHeader";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
 import { Icon, Menu } from "metabase/ui";
@@ -67,10 +67,7 @@ function JobMenu({
   return (
     <Menu>
       <Menu.Target>
-        <PaneHeaderMenuButton
-          aria-label={t`Job options`}
-          onClick={handleIconClick}
-        />
+        <MoreMenuButton aria-label={t`Job options`} onClick={handleIconClick} />
       </Menu.Target>
       <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
         <Menu.Item

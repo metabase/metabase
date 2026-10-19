@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import { PaneHeaderMenuButton } from "metabase/common/data-studio/components/PaneHeader";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -78,7 +78,7 @@ function SnippetMenu({ onOpenModal, snippet }: SnippetMenuProps) {
   return (
     <Menu>
       <Menu.Target>
-        <PaneHeaderMenuButton aria-label={t`Snippet menu options`} />
+        <MoreMenuButton aria-label={t`Snippet menu options`} />
       </Menu.Target>
       <Menu.Dropdown>{menuItems}</Menu.Dropdown>
     </Menu>
