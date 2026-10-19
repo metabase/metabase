@@ -65,25 +65,23 @@
 
 ;;; -------------------------------------------------- replace-names --------------------------------------------------
 
-(defn- needs-quoting?
-  "Whether the identifier `ident` must be quoted: it holds a dash or a space, starts with a digit, or comes quoted."
+(defn- parse-identifier
+  "`ident` read as a column alias, `SELECT 1 AS <ident>`: the identifier node, nil when `ident` is empty, or the
+  exception when it does not parse."
   [ident dialect]
+  (when (seq ident)
+    (try
+      (ast/arg (first (ast/expressions (ast/parse-one (str "SELECT 1 AS " ident) dialect))) "alias")
+      (catch Exception e
+        e))))
+
+(defn- needs-quoting?
+  "Whether the identifier `ident` must be quoted because it holds a dash or a space, or starts with a digit."
+  [^String ident]
   (and (seq ident)
        (or (str/includes? ident "-")
            (str/includes? ident " ")
-           (Character/isDigit (.charAt ^String ident 0))
-           (ast/quoted? (ast/arg (first (ast/expressions (ast/parse-one (str "SELECT 1 AS " ident) dialect))) "alias")))))
-
-(defn- unquote-identifier
-  "`[name true]` when `ident` is a quoted identifier (`foo` in MySQL, \"foo\" in Postgres), else `[ident false]`."
-  [ident dialect]
-  (or (when (seq ident)
-        (try
-          (let [parsed (ast/arg (first (ast/expressions (ast/parse-one (str "SELECT 1 AS " ident) dialect))) "alias")]
-            (when (ast/quoted? parsed)
-              [(ast/node-name parsed) true]))
-          (catch Exception _ nil)))
-      [ident false]))
+           (Character/isDigit (.charAt ident 0)))))
 
 (defn- fold-keys
   "A case-insensitive view of `mapping`, whose keys are tuples of name parts. Keys that differ only in case and map
@@ -136,11 +134,15 @@
   "Set `arg` of `node` to the identifier `ident-name`: quoted if the identifier it replaces was, if `ident-name`
   comes quoted, or if it needs quoting."
   [node arg ident-name dialect]
-  (let [[raw-name was-quoted?] (unquote-identifier ident-name dialect)
-        quoted?                (or (ast/quoted? (ast/arg node arg))
-                                   was-quoted?
-                                   (needs-quoting? raw-name dialect))]
-    (ast/set-arg! node arg (ast/identifier raw-name quoted?))))
+  (let [parsed      (parse-identifier ident-name dialect)
+        was-quoted? (ast/quoted? parsed)
+        quoted?     (or (ast/quoted? (ast/arg node arg))
+                        was-quoted?
+                        (needs-quoting? ident-name)
+                        ;; A name that does not parse fails here, as the second parse in sql_tools.py does.
+                        (when (instance? Exception parsed)
+                          (throw parsed)))]
+    (ast/set-arg! node arg (ast/identifier (if was-quoted? (ast/node-name parsed) ident-name) quoted?))))
 
 (defn- replace-table!
   "Apply a table replacement to the name parts `node` keeps under `catalog`, `db` and `table-arg`. A string renames
