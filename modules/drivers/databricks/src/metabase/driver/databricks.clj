@@ -75,6 +75,13 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
+(defmethod driver/disallowed-connection-parameters :databricks
+  [driver]
+  ;; enable Unity Catalog volume operations, which read and write arbitrary local files. `StagingAllowedLocalPaths` is
+  ;; the older spelling of the same setting, and the client still honors it
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        ["VolumeOperationAllowedLocalPaths" "StagingAllowedLocalPaths"]))
+
 (defn- catalog-present?
   [jdbc-spec catalog]
   (let [sql "select 0 from `system`.`information_schema`.`catalogs` where catalog_name = ?"]

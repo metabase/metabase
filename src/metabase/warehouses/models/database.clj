@@ -387,9 +387,10 @@
   (and (:is_audit database)
        (every? #(empty? (get database %)) details-keys)))
 
-(defn- validate-connection-hosts!
-  "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
-  the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
+(defn- validate-connection-details!
+  "Refuse to store details pointing at a private/internal network address, or setting a connection parameter the driver
+  disallows (see [[driver/disallowed-connection-parameters]]). Enforcing this on the model, and not just on the
+  endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
   import, config-file provisioning, and destination databases.
 
   `keys-to-check` names which of [[details-keys]] to look at. An overlay is checked the way
@@ -403,28 +404,21 @@
       (doseq [k     keys-to-check
               :let  [details (get database k)]
               :when (map? details)]
-        (driver.u/validate-connection-hosts! engine (cond->> details
-                                                      (not= k :details) (merge (:details database))))))))
+        (let [details (cond->> details
+                        (not= k :details) (merge (:details database)))]
+          (driver.u/validate-connection-hosts! engine details)
+          (when (driver.impl/registered? engine)
+            (driver.u/validate-connection-parameters! engine details)))))))
 
 (t2/define-before-update :model/Database
   [database]
-  (let [changes  (t2/changes database)
-        original (t2/original database)]
-    ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
-    ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
-    ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
-    ;; it accompanies rather than on its own.
-    (validate-connection-hosts! (or (:engine changes) (:engine original))
-                                (merge original changes)
-                                (if (contains? changes :engine)
-                                  details-keys
-                                  (filterv #(contains? changes %) details-keys))))
   (let [changes                       (t2/changes database)
+        original                      (t2/original database)
         {new-engine        :engine
          new-settings      :settings} changes
         {is-sample?        :is_sample
          existing-settings :settings
-         existing-engine   :engine}   (t2/original database)
+         existing-engine   :engine}   original
         new-engine                    (some-> new-engine keyword)]
     (if (and is-sample?
              new-engine
@@ -433,26 +427,37 @@
                       {:status-code     400
                        :existing-engine existing-engine
                        :new-engine      new-engine}))
-      (u/prog1 (cond-> database
-                 ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
-                 (and (some? (:details changes))
-                      (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
-                 (update :details dissoc :json_unfolding)
+      (u/prog1 (do
+                 ;; An engine change can make existing detail keys acquire new meaning, so validate every details map
+                 ;; under the new driver. Otherwise validate only the ones being written, so an unrelated update to a
+                 ;; grandfathered database does not start failing. Either way the candidate is the merge, since an
+                 ;; overlay is resolved against the `:details` it accompanies rather than on its own. This runs after
+                 ;; the sample-database check so a refused engine change never loads the new driver.
+                 (validate-connection-details! (or (:engine changes) (:engine original))
+                                               (merge original changes)
+                                               (if (contains? changes :engine)
+                                                 details-keys
+                                                 (filterv #(contains? changes %) details-keys)))
+                 (cond-> database
+                   ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+                   (and (some? (:details changes))
+                        (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
+                   (update :details dissoc :json_unfolding)
 
-                 (or
-                  ;if there is any changes in user control setting
-                  (some? (get-in changes [:details :let-user-control-scheduling]))
-                  ;; if the let user control scheduling is already on, we should always try to re-infer it
-                  (get-in database [:details :let-user-control-scheduling])
-                  ;; if there is a changes in schedules, make sure it respects the settings
-                  (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
-                 infer-db-schedules
+                   (or
+                    ;if there is any changes in user control setting
+                    (some? (get-in changes [:details :let-user-control-scheduling]))
+                    ;; if the let user control scheduling is already on, we should always try to re-infer it
+                    (get-in database [:details :let-user-control-scheduling])
+                    ;; if there is a changes in schedules, make sure it respects the settings
+                    (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
+                   infer-db-schedules
 
-                 (some? (:details changes))
-                 secret/handle-incoming-client-secrets!
+                   (some? (:details changes))
+                   secret/handle-incoming-client-secrets!
 
-                 (:uploads_enabled changes)
-                 maybe-disable-uploads-for-all-dbs!)
+                   (:uploads_enabled changes)
+                   maybe-disable-uploads-for-all-dbs!))
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
@@ -479,7 +484,7 @@
 
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status engine], :as database}]
-  (validate-connection-hosts! engine database details-keys)
+  (validate-connection-details! engine database details-keys)
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)
