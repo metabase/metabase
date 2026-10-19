@@ -157,7 +157,7 @@ describe("Data Studio dashboard routes with the audit app plugin", () => {
     setupEnterpriseOnlyPlugin("audit_app");
   });
 
-  it("puts the Usage stats tab between Dependencies and Subscriptions", async () => {
+  it("puts the Usage stats tab between Dependencies and History", async () => {
     setup({ initialRoute: CONTENTS_PATH });
 
     const header = await screen.findByTestId("dashboard-pane-header");
@@ -174,6 +174,7 @@ describe("Data Studio dashboard routes with the audit app plugin", () => {
       "Contents",
       "Dependencies",
       "Usage stats",
+      "History",
       "Subscriptions",
     ]);
   });

@@ -3,6 +3,7 @@ import {
   dataStudioDashboard,
   dataStudioDashboardContents,
   dataStudioDashboardDependencies,
+  dataStudioDashboardHistory,
   dataStudioDashboardSubscriptions,
   dataStudioDashboardUsage,
   dataStudioDashboards,
@@ -136,6 +137,9 @@ describe("urls > data-studio", () => {
       );
       expect(dataStudioDashboardUsage(7)).toBe(
         "/data-studio/dashboards/7/usage",
+      );
+      expect(dataStudioDashboardHistory(7)).toBe(
+        "/data-studio/dashboards/7/history",
       );
       expect(dataStudioDashboardSubscriptions(7)).toBe(
         "/data-studio/dashboards/7/subscriptions",
