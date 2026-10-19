@@ -57,6 +57,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -1606,7 +1607,11 @@
           :type     :native
           :native   {:query "SELECT adsasdasd;"}})
         (catch Throwable e
-          (is (= "ERROR: column \"adsasdasd\" does not exist\n  Position: 20"
+          ;; The position counts the `-- <remark>\n` line that comes before the query.
+          (is (= (format "ERROR: column \"adsasdasd\" does not exist\n  Position: %d"
+                         (+ (count (format "-- Metabase accountID: %s databaseID: %d\n" (system/site-uuid) (mt/id)))
+                            (count "SELECT ")
+                            1))
                  (try
                    (-> e ex-cause ex-message)
                    (catch Throwable e
