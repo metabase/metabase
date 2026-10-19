@@ -3,18 +3,16 @@ import { t } from "ttag";
 import { Box, Button } from "metabase/ui";
 
 /**
- * Where an item's name starts, measured from the left of its row: past the expand toggle and the icon, plus the
- * indent the name container adds. Puts the label in the same column as the names above it.
+ * Where a top-level item's name starts: past the expand toggle and the icon, plus the indent the name container
+ * adds. Every level's button sits in this one column rather than following its own nesting.
  */
-const NAME_OFFSET = "42px";
+const FIRST_LEVEL_NAME_OFFSET = "42px";
 
 /** The end of a level the server cut short. Reads the next page when asked. */
 export function TreeLoadMore({
-  depth,
   isLoading,
   onLoadMore,
 }: {
-  depth: number;
   isLoading: boolean;
   onLoadMore: () => void;
 }) {
@@ -22,7 +20,7 @@ export function TreeLoadMore({
     <Box
       component="li"
       role="presentation"
-      style={{ paddingLeft: `calc(${depth}rem + ${NAME_OFFSET})` }}
+      pl={FIRST_LEVEL_NAME_OFFSET}
       data-testid="tree-load-more"
     >
       <Button

@@ -115,7 +115,6 @@ function BaseTreeNodeList<TData = unknown>({
       })}
       {hasMore && onLoadMore && (
         <TreeLoadMore
-          depth={depth}
           isLoading={loadingMoreIds?.has(loadMoreFor) ?? false}
           onLoadMore={() => onLoadMore(loadMoreFor)}
         />
