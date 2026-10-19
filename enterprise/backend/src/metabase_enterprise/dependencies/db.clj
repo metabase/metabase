@@ -758,63 +758,70 @@
                       :join   [[(t2/table-name :model/Field) :dim_f] [:= :dim_f.id :dim.field_id]]}]]})
 
 (defn- latest-clause
-  "The latest-clause of the timestamp `base` and the nullable timestamp expressions `others`, as Honey SQL."
+  "The latest of the timestamp `base` and the nullable timestamp expressions `others`, as Honey SQL."
   [base others]
   (if (seq others)
     (into [:greatest base] (for [other others] [:coalesce other base]))
     base))
 
 (defn- latest-per-entity-clause
-  "A left join, aliased `join-alias`, of the latest-clause `updated-at` per entity of the rows of `query`, whose `owner` column
-  holds the ID of the entity each belongs to, joined to the entity's `id-field`, as `{:join-alias :left-join}`."
+  "A left join, aliased `join-alias`, of the latest `updated-at` per entity of the rows of `query`, whose `owner` column
+  holds the ID of the entity each belongs to, joined to the entity's `id-field`; the join's `updated_at` column holds
+  that latest value."
   [join-alias {:keys [owner updated-at] :as query} id-field]
-  {:join-alias join-alias
-   :left-join  [[(merge ^:allow-subquery {:select   [[owner :entity_id] [[:max updated-at] :updated_at]]
-                                          :group-by [owner]}
-                        (select-keys query [:from :join :left-join :where]))
-                 join-alias]
-                [:= (u/qualified-key join-alias :entity_id) id-field]]})
+  [[(merge ^:allow-subquery {:select   [[owner :entity_id] [[:max updated-at] :updated_at]]
+                             :group-by [owner]}
+           (select-keys query [:from :join :left-join :where]))
+    join-alias]
+   [:= (u/qualified-key join-alias :entity_id) id-field]])
+
+(defn- left-joins-clause
+  "The left joins, each aliased by its key in `queries`, of the latest per entity of each query's rows, joined to the
+  `id-field` of the entities, and the expressions of each of those latest values, as `{:left-join :updated-ats}`."
+  [queries id-field]
+  {:left-join   (into [] (mapcat (fn [[join-alias query]] (latest-per-entity-clause join-alias query id-field))) queries)
+   :updated-ats (for [[join-alias] queries] (u/qualified-key join-alias :updated_at))})
 
 (defn- entity-version-clause
-  "The own version of the entities of `entity-type` in the table aliased `alias`, as `{:joins :updated-at}`: the left
-  joins of the latest-clause `updated_at` of the rows they are made of, and the latest-clause of those and of the entity's own; `ids`,
-  a subquery, narrows the rows read to the entities it selects."
+  "The own version of the entities of `entity-type` in the table aliased `alias`, as `{:left-join :updated-at}`: the
+  left joins of the latest `updated_at` of the rows they are made of, and the latest of those and of the entity's own;
+  `ids`, a subquery, narrows the rows read to the entities it selects."
   [entity-type alias ids]
-  (let [joins (for [[part-alias {[owner] :select :as query}] (get entity-parts entity-type)]
-                (latest-per-entity-clause (keyword (str "version_" (name part-alias)))
-                                          (cond-> (assoc query
-                                                         :owner      owner
-                                                         :updated-at (u/qualified-key part-alias :updated_at))
-                                            ids (update :where #(if % [:and % [:in owner ids]] [:in owner ids])))
-                                          (u/qualified-key alias :id)))]
-    {:joins      joins
-     :updated-at (latest-clause (u/qualified-key alias :updated_at)
-                                (for [{:keys [join-alias]} joins] (u/qualified-key join-alias :updated_at)))}))
+  (let [{:keys [left-join updated-ats]}
+        (left-joins-clause
+         (for [[part-alias {[owner] :select :as query}] (get entity-parts entity-type)]
+           [(keyword (str "version_" (name part-alias)))
+            (cond-> (assoc query :owner owner :updated-at (u/qualified-key part-alias :updated_at))
+              ids (update :where #(if % [:and % [:in owner ids]] [:in owner ids])))])
+         (u/qualified-key alias :id))]
+    {:left-join  left-join
+     :updated-at (latest-clause (u/qualified-key alias :updated_at) updated-ats)}))
 
 (defn- upstream-versions-clause
-  "The left joins of the latest-clause own version, per entity of `entity-type` in the table aliased `alias`, of the entities
-  of each type it directly depends on, leaving out segments, whose changes change neither the result metadata nor the
-  findings of the entities using them."
+  "The latest own version, per entity of `entity-type` in the table aliased `alias`, of the entities of each type it
+  directly depends on, as `{:left-join :updated-ats}`, leaving out segments, whose changes change neither the result
+  metadata nor the findings of the entities using them."
   [entity-type alias]
   (let [dependency (t2/table-name :model/Dependency)
         edges-to   (fn [edge-alias upstream-type]
                      [:and
                       [:= (u/qualified-key edge-alias :from_entity_type) (name entity-type)]
                       [:= (u/qualified-key edge-alias :to_entity_type) (name upstream-type)]])]
-    (for [upstream-type (sort (disj deps.dependency-types/dependency-types :segment))
-          :let [table   (t2/table-name (deps.dependency-types/dependency-type->model upstream-type))
-                version (entity-version-clause upstream-type table
-                                               ^:allow-subquery {:select [:ud.to_entity_id]
-                                                                 :from   [[dependency :ud]]
-                                                                 :where  (edges-to :ud upstream-type)})]]
-      (latest-per-entity-clause (keyword (str "upstream_" (name upstream-type)))
-                                {:owner      :d.from_entity_id
-                                 :updated-at (:updated-at version)
-                                 :from       [[dependency :d]]
-                                 :join       [table [:= (u/qualified-key table :id) :d.to_entity_id]]
-                                 :left-join  (into [] (mapcat :left-join) (:joins version))
-                                 :where      (edges-to :d upstream-type)}
-                                (u/qualified-key alias :id)))))
+    (left-joins-clause
+     (for [upstream-type (sort (disj deps.dependency-types/dependency-types :segment))
+           :let [table   (t2/table-name (deps.dependency-types/dependency-type->model upstream-type))
+                 version (entity-version-clause upstream-type table
+                                                ^:allow-subquery {:select [:ud.to_entity_id]
+                                                                  :from   [[dependency :ud]]
+                                                                  :where  (edges-to :ud upstream-type)})]]
+       [(keyword (str "upstream_" (name upstream-type)))
+        {:owner      :d.from_entity_id
+         :updated-at (:updated-at version)
+         :from       [[dependency :d]]
+         :join       [table [:= (u/qualified-key table :id) :d.to_entity_id]]
+         :left-join  (:left-join version)
+         :where      (edges-to :d upstream-type)}])
+     (u/qualified-key alias :id))))
 
 (def ^:private EntityInfo
   "An entity's ID and the version of it to record, the latest `updated_at` of it, its parts and its direct upstreams."
@@ -824,7 +831,7 @@
 
 (defn- changed-entities
   "The `:id` and version, `:updated_at`, of up to `batch-size` entities of `entity-type` whose row in the
-  `status` table records no `analyzed_updated_at` or an older one than their version, the latest-clause `updated_at` of the
+  `status` table records no `analyzed_updated_at` or an older one than their version, the latest `updated_at` of the
   entity, its parts and the entities it directly depends on, or that match `outdated`, those last. `status` is
   `{:table :type-column :id-column}`, and `where` narrows the entities."
   [entity-type {:keys [table type-column id-column]} batch-size & {:keys [where outdated]}]
@@ -832,14 +839,13 @@
         id-field   (u/qualified-key table-name :id)
         own        (entity-version-clause entity-type table-name nil)
         upstreams  (upstream-versions-clause entity-type table-name)
-        version    (latest-clause (:updated-at own)
-                                  (for [{:keys [join-alias]} upstreams] (u/qualified-key join-alias :updated_at)))
+        version    (latest-clause (:updated-at own) (:updated-ats upstreams))
         changed    (cond-> [:or [:= :status.analyzed_updated_at nil] [:< :status.analyzed_updated_at version]]
                      outdated (conj outdated))]
     (vec (t2/query
           (cond-> {:select    [[id-field :id] [version :updated_at]]
                    :from      [table-name]
-                   :left-join (into (into [] (mapcat :left-join) (concat (:joins own) upstreams))
+                   :left-join (into (into (:left-join own) (:left-join upstreams))
                                     [[table :status] [:and
                                                       [:= (u/qualified-key :status type-column) (name entity-type)]
                                                       [:= (u/qualified-key :status id-column) id-field]]])
