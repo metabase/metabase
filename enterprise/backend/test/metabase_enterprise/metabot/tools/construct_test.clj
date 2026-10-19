@@ -53,3 +53,6 @@
                               [:structured-output :query])]
             (is (= 1 (lib/stage-count built)))
             (is (= (mt/id :orders) (get-in built [:stages 0 :source-table])))))))))
+
+(deftest construct-tools-allow-invalid-sandbox-attribute-test
+  (check-sandbox-attribute-error {"cat" "a"} #"User attribute `cat` value `a` cannot be coerced"))

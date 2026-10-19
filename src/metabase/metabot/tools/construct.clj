@@ -827,7 +827,7 @@
 
 (defn- preprocessing-rejection-message
   [cause]
-  (if (contains? #{:invalid-query :invalid-parameter :unsupported-feature} (:type (ex-data cause)))
+  (if (contains? #{:invalid-query :unsupported-feature} (:type (ex-data cause)))
     (or (ex-message cause) "Invalid query.")
     (when (instance? clojure.lang.ExceptionInfo cause)
       (case (ex-message cause)
