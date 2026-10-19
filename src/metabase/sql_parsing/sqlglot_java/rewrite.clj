@@ -218,6 +218,13 @@
             (set-identifier! column "this" new-column dialect)))))
     (ast/sql stmt dialect)))
 
+(defn- required
+  "`(get m k)`, or the KeyError Python raises when `m` has no `k`."
+  [m k]
+  (if (contains? m k)
+    (get m k)
+    (throw (ast/python-error "KeyError" (str "'" k "'")))))
+
 (defn replace-names
   "`sql` with the schema, table and column names in `replacements` replaced:
 
@@ -235,10 +242,10 @@
                   :folded-schemas (fold-keys (map (fn [[k v]] [[k] v]) schemas))
                   ;; (db schema table) -> replacement; db is the catalog (BigQuery project, ClickHouse database)
                   :table-map      (into {} (for [[k new-name] tables]
-                                             [[(get k "db") (get k "schema") (get k "table")] new-name]))
+                                             [[(get k "db") (get k "schema") (required k "table")] new-name]))
                   ;; (schema table column) -> new name, in the order the keys came: the first matching key wins
                   :column-map     (ordered-entries (for [[k new-name] columns]
-                                                     [[(get k "schema") (get k "table") (get k "column")] new-name]))}
+                                                     [[(get k "schema") (get k "table") (required k "column")] new-name]))}
         rewritten (mapv #(rewrite-statement % context dialect) (references/statements sql dialect))]
     (if (seq rewritten)
       (str/join "; " rewritten)

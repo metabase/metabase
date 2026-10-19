@@ -6,8 +6,10 @@
   and maps, never a node: code that read the port's AST elsewhere would tie Metabase to its shape.
   `metabase.sql-parsing.sqlglot-java-test` checks both.
 
-  Every failure is a [[metabase.sql-parsing.common/call-failed-ex]]. Parse and optimize errors carry the name Python
-  would raise (`ParseError`, `OptimizeError`, ...), as do the errors `sql_tools.py` raises itself."
+  Every failure is a [[metabase.sql-parsing.common/call-failed-ex]]. Port errors keep their sqlglot name (`ParseError`,
+  `OptimizeError`, ...), the errors `sql_tools.py` raises itself carry the Python name (`ValueError`, `KeyError`,
+  `AssertionError`, `AttributeError`, `RecursionError`, `TypeError` for nil SQL), and any other JVM exception carries
+  its Java class name."
   (:require
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.protocol :as protocol]
@@ -25,21 +27,25 @@
 (set! *warn-on-reflection* true)
 
 (defn- error-type
-  "The name of the error Python raises for `e`."
+  "The error name `e` is reported under: the Python name where the shim knows it, else the Java class name."
   [^Throwable e]
   (cond
-    (instance? Parser$DialectError e) "ValueError"
-    (ast/python-error-type e)         (ast/python-error-type e)
-    :else                             (.getSimpleName (class e))))
+    (instance? Parser$DialectError e)    "ValueError"
+    (ast/python-error-type e)            (ast/python-error-type e)
+    ;; Python raises a TypeError for a None argument (nil SQL).
+    (instance? NullPointerException e)   "TypeError"
+    :else                                (.getSimpleName (class e))))
 
 (defn- call
-  "Call `f`, turning any failure into the exception every parser throws: its cause carries `ErrorType: message`,
-  as the GraalPy transport's does, so [[metabase.sql-parsing.core/parse-error-message]] reads both the same way."
+  "Call `f`, turning any failure into the exception every parser throws, whose message and cause read
+  `ErrorType: message` as the GraalPy transport's do, so [[metabase.sql-parsing.core/parse-error-message]] reads both
+  the same way. SQL nested too deeply for the stack is a RecursionError, with GraalPy's message."
   [f]
   (try
     (f)
-    (catch StackOverflowError _
-      (throw (common/call-failed-ex "RecursionError: SQL is too complex to analyze (maximum recursion depth exceeded)")))
+    (catch StackOverflowError e
+      (let [error "RecursionError: maximum recursion depth exceeded"]
+        (throw (common/call-failed-ex error (ex-info error {} e)))))
     (catch Exception e
       (let [error (str (error-type e) ": " (ex-message e))]
         (throw (common/call-failed-ex error (ex-info error {} e)))))))

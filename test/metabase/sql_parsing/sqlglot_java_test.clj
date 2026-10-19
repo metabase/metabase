@@ -147,3 +147,26 @@
       (testing "an ordinary name stays unquoted, and a quoted one keeps its quotes"
         (is (= "SELECT id FROM archived_orders" (rename "SELECT id FROM t" {:tables [[{:table "t"} "archived_orders"]]})))
         (is (= "SELECT id FROM \"Archived\"" (rename "SELECT id FROM t" {:tables [[{:table "t"} "\"Archived\""]]})))))))
+
+(defn- error-type-of
+  "The `:sql-parsing/python-error-type` that `thunk` fails with."
+  [thunk]
+  (try (thunk)
+       nil
+       (catch Exception e
+         (:sql-parsing/python-error-type (ex-data e)))))
+
+(deftest python-error-names-test
+  (let [java-parser (sqlglot-java/parser)]
+    (testing "a replacement key without its table or column is a KeyError, as in sql_tools.py"
+      (is (= "KeyError" (error-type-of #(protocol/replace-names java-parser "postgres" "SELECT id FROM t"
+                                                                {:tables [[{} "u"]]}))))
+      (is (= "KeyError" (error-type-of #(protocol/replace-names java-parser "postgres" "SELECT id FROM t"
+                                                                {:columns [[{:table "t"} "u"]]})))))
+    (testing "nil SQL is a TypeError"
+      (is (= "TypeError" (error-type-of #(protocol/referenced-tables java-parser "postgres" nil)))))
+    (testing "SQL nested past the stack is a RecursionError with GraalPy's message and a cause"
+      (let [sql   (str "SELECT " (apply str (repeat 5000 "(")) "1" (apply str (repeat 5000 ")")))
+            error (try (protocol/referenced-tables java-parser "postgres" sql) nil (catch Exception e e))]
+        (is (= "RecursionError" (:sql-parsing/python-error-type (ex-data error))))
+        (is (= "RecursionError: maximum recursion depth exceeded" (ex-message (ex-cause error))))))))
