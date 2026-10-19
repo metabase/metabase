@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
@@ -12,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.public-sharing.test-util :as public-sharing.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.fn :as mu.fn]
@@ -2134,6 +2136,77 @@
     (testing "Test that we get a 404 if the Document doesn't exist"
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "document/%d/public-link" Integer/MAX_VALUE)))))))
+
+(defn- embed-cards-in-document!
+  "Rewrite the Document with `document-id` so its content embeds each of `card-ids` inline. Done after the cards exist,
+  since a `cardEmbed` node carries the card's id."
+  [document-id card-ids]
+  (t2/update! :model/Document document-id
+              {:document (documents.test-util/cards->prose-mirror-ast card-ids)}))
+
+(deftest share-document-on-routed-database-test
+  (when config/ee-available?
+    (testing "POST /api/document/:id/public-link"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-premium-features #{:database-routing}
+          (testing "a Document embedding a question on a routed database that does not allow anonymous access cannot
+                 be shared"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document {}
+                           :model/Card           card     {:document_id (:id document)}]
+              (embed-cards-in-document! (:id document) [(:id card)])
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "document/%d/public-link" (:id document)))))
+              (is (not (t2/exists? :model/Document :id (:id document), :public_uuid [:not= nil])))))
+          (testing "once an admin allows anonymous access it can"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id              (mt/id)
+                                                           :user_attribute           "db_name"
+                                                           :anonymous_access_granted true}
+                           :model/Document       document {}
+                           :model/Card           card     {:document_id (:id document)}]
+              (embed-cards-in-document! (:id document) [(:id card)])
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "document/%d/public-link" (:id document)))))))
+          (testing "a question the Document owns but does not embed is served by no public route, so it does not refuse"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document {}
+                           :model/Card           _        {:document_id (:id document)}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "document/%d/public-link" (:id document)))))))
+          (testing "the permission check runs before the refusal, so a non-admin is refused generically and the
+                 explanation naming the database reaches only a viewer who could act on it"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document {}
+                           :model/Card           card     {:document_id (:id document)}]
+              (embed-cards-in-document! (:id document) [(:id card)])
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403
+                                           (format "document/%d/public-link" (:id document)))))))
+          (testing "an already-shared Document still returns its existing link, so a dead one stays deletable"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document (document-with-public-link {})
+                           :model/Card           card     {:document_id (:id document)}]
+              (embed-cards-in-document! (:id document) [(:id card)])
+              (is (= (:public_uuid document)
+                     (:uuid (mt/user-http-request :crowberto :post 200
+                                                  (format "document/%d/public-link" (:id document))))))))
+          (testing "a Document embedding nothing queries nothing, so it can"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Document       document {}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "document/%d/public-link" (:id document))))))))
+        (testing "without the database-routing feature nothing is refused: there is no routing to break"
+          (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                         :model/Document       document {}
+                         :model/Card           card     {:document_id (:id document)}]
+            (embed-cards-in-document! (:id document) [(:id card)])
+            (is (=? {:uuid string?}
+                    (mt/user-http-request :crowberto :post 200
+                                          (format "document/%d/public-link" (:id document)))))))))))
 
 (deftest delete-public-link-test
   (testing "DELETE /api/document/:id/public-link"
