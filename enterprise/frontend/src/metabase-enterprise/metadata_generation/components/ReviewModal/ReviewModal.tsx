@@ -1267,6 +1267,7 @@ function ProposedValue({ runId, suggestion, decide }: ProposedValueProps) {
       wrap="nowrap"
       align="flex-start"
       data-testid="metadata-generation-proposed"
+      onKeyDown={keepKeysInEditor}
     >
       <ValueInput
         suggestion={suggestion}
@@ -1286,6 +1287,16 @@ function ProposedValue({ runId, suggestion, decide }: ProposedValueProps) {
       )}
     </Group>
   );
+}
+
+/**
+ * The table's keyboard navigation handles Space, Enter and the arrows on its root, which would otherwise
+ * swallow them while typing in a proposal. Escape still bubbles so the editors and the modal see it.
+ */
+function keepKeysInEditor(event: KeyboardEvent<HTMLDivElement>) {
+  if (event.key !== "Escape") {
+    event.stopPropagation();
+  }
 }
 
 function EditedBadge({
