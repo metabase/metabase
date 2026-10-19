@@ -16,13 +16,14 @@
   min-height: 0;
 }
 
-/* The list sits on the secondary page background, where the default hover is invisible. */
+/* The list sits on the secondary page background, where the default hover is invisible:
+   hover uses the same colour as the selected item. */
 .tableLink:hover:not([data-active]) {
-  background-color: var(--mb-color-background_surface-secondary-hover);
+  background-color: var(--mantine-primary-color-light);
 }
 
-.tableLink:active:not([data-active]) {
-  background-color: var(--mb-color-background_surface-secondary-pressed);
+.tableLink:not([data-active]) .tableLinkDescription {
+  color: var(--mb-color-text-secondary);
 }
 
 /* The suggestions card with a grip over each vertical border. */
