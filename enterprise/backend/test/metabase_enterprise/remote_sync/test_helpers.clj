@@ -805,6 +805,8 @@ serdes/meta:
   (format "entity_id: %s
 name: %s
 serdes/meta:
-- model: TransformTag
+- id: %s
+  label: %s
+  model: TransformTag
 "
-          entity-id name))
+          entity-id name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))

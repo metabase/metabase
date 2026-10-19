@@ -402,7 +402,7 @@
 
 (deftest same-name-stable-filename-test
   (testing "Same-named entities in a folder get their filename de-dup suffixes (`foo.yaml`, `foo_2.yaml`) by entity_id
-           compared byte by byte, whatever the insertion order or the app DB's collation"
+           compared byte by byte, whatever the insertion order"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (mt/with-empty-h2-app-db!
         (ts/with-temp-dpc [:model/Collection coll {:name "My Collection"}
