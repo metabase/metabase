@@ -176,7 +176,7 @@ curl https://{your-metabase.example.com}/oauth/token \
   -d assertion={signed-jwt}
 ```
 
-Metabase checks the JWT the same way it does at SSO login, creates or updates the person's account, and returns an `access_token` for the MCP server.
+Metabase checks the JWT the same way it does at SSO login, creates or updates the person's account, and returns an `access_token` for the MCP server. The JWT also needs `exp` (expiration time) and `iat` (issued at) claims, and Metabase accepts it for at most three minutes after its `iat`.
 
 The token gets all the [permission scopes](#permission-scopes), unless you ask for fewer with a space-separated `scope` parameter. The token lasts an hour. To get a new one after the token expires, you'll need to sign a fresh JWT.
 

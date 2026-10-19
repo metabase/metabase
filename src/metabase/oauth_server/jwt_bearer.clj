@@ -57,7 +57,7 @@
 
 (def ^:private own-reason-errors
   "The `:error`s of a refused JWT login whose `:message` Metabase wrote for the caller."
-  #{:non-personal-user :missing-email :invalid-tenant})
+  #{:non-personal-user :missing-email :missing-exp-or-iat :future-iat :invalid-tenant})
 
 (defn- refusal-description
   "The `error_description` for a refused JWT login, or nil to leave the token endpoint's generic one.
@@ -75,14 +75,16 @@
 
 (defn- log-in!
   "Logs in the user that the JWT `assertion` names through JWT authentication, without a session, and returns them.
-  Throws `ex-info` carrying `invalid_grant` and the [[refusal-description]] when the login is refused."
+  The assertion must have `exp` and `iat` claims. Throws `ex-info` carrying `invalid_grant` and the
+  [[refusal-description]] when the login is refused."
   [assertion request]
   (let [{:keys [success? user message] :as result}
         (try
           (auth-identity/login! :provider/jwt (assoc request
-                                                     :token               assertion
-                                                     :session/skip?       true
-                                                     :user/personal-only? true))
+                                                     :token                    assertion
+                                                     :session/skip?            true
+                                                     :user/personal-only?      true
+                                                     :jwt/require-exp-and-iat? true))
           (catch ExceptionInfo e
             {:message     (ex-message e)
              :status-code (:status-code (ex-data e))}))]

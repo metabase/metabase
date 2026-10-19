@@ -224,6 +224,8 @@
        - :session/skip? - Optional; when true, the login creates no session
        - :user/personal-only? - Optional; when true, a user who is not a personal account is refused before any
          change is made to them
+       - :jwt/require-exp-and-iat? - Optional; when true, a JWT login refuses a JWT that lacks an `exp` or `iat`
+         claim, or whose `iat` is in the future
 
    Returns:
      Map with one of three result types:
@@ -295,6 +297,7 @@
    [:email {:optional true} [:maybe :string]]
    [:error {:optional true} [:maybe :keyword]]
    [:jwt-data {:optional true} [:maybe ms/JWTClaims]]
+   [:jwt/require-exp-and-iat? {:optional true} [:maybe :boolean]]
    [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
    [:oidc-nonce {:optional true} [:maybe :string]]
    [:oidc-provider {:optional true} [:maybe :keyword]]

@@ -26,9 +26,12 @@
        ~@body)))
 
 (defn- assertion
-  "A JWT carrying `claims`, issued now unless `claims` says otherwise, signed with the JWT authentication secret."
+  "A JWT carrying `claims`, signed with the JWT authentication secret.
+
+  Unless `claims` says otherwise, it's issued now and expires in a minute."
   [claims]
-  (jwt/sign (merge {:iat (buddy-util/now)} claims) sso.test-setup/default-jwt-secret))
+  (let [now (buddy-util/now)]
+    (jwt/sign (merge {:iat now, :exp (+ now 60)} claims) sso.test-setup/default-jwt-secret)))
 
 (defn- token-response
   "POST a JWT bearer grant request with `params` to the token endpoint and return the response, which must have
@@ -197,6 +200,23 @@
       (testing "no refusal provisions the user or issues a token"
         (is (not (t2/exists? :model/User :email email)))
         (is (not (t2/exists? :model/OAuthAccessToken :client_id "metabase-jwt-bearer")))))))
+
+(deftest exchange-assertion-times-test
+  (with-jwt-bearer-setup!
+    (let [email "jwt-bearer-times@metabase.com"
+          now   (buddy-util/now)
+          sign  #(jwt/sign (assoc % :email email) sso.test-setup/default-jwt-secret)]
+      (doseq [[description claims error-description]
+              [["no exp"               {:iat now}                           "The JWT must have exp and iat claims."]
+               ["no iat"               {:exp (+ now 60)}                    "The JWT must have exp and iat claims."]
+               ["an iat in the future" {:iat (+ now 120), :exp (+ now 180)} "The JWT has an iat claim in the future."]]]
+        (testing (str "an assertion with " description " is refused, and provisions nobody")
+          (is (= {:error "invalid_grant", :error_description error-description}
+                 (:body (token-response 400 {:assertion (sign claims)}))))
+          (is (not (t2/exists? :model/User :email email)))))
+      (testing "an iat less than a minute ahead of Metabase's clock is accepted"
+        (is (=? {:access_token string?}
+                (:body (token-response 200 {:assertion (sign {:iat (+ now 30), :exp (+ now 90)})}))))))))
 
 (deftest exchange-refusal-reason-test
   (testing "a refused login tells the caller why in error_description"
