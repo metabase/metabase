@@ -1333,7 +1333,9 @@
 (deftest rest-scopes-reach-no-mcp-tool-or-resource-test
   (testing "GHY-4940: REST scopes gate REST endpoints only. A token holding every scope that is not an MCP scope (every
             registered scope and every scope a REST endpoint declares) is refused by every MCP tool and every MCP data
-            resource. UI shells carry no data and are read by any token, so they are not checked."
+            resource. UI shells carry no data and are read by any token, so they are not checked.
+
+            GHY-4969: `mb:full` is in the set too. It gives the whole REST API, but it still gives nothing on MCP."
     (require 'metabase.api-routes.routes)
     (when config/ee-available?
       (require 'metabase-enterprise.api-routes.routes))
@@ -1342,11 +1344,11 @@
                                 :let             [scope (get-in form [:metadata :scope])]
                                 :when            (string? scope)]
                             scope)
-          ;; mb:full is left out: the session middleware expands it to the named MCP scopes.
           non-mcp-scopes  (into (sorted-set)
-                                (remove (conj v2.tu/all-scopes "mb:full"))
+                                (remove v2.tu/all-scopes)
                                 (concat endpoint-scopes (map :scope (api-scope/all-scopes))))]
       (is (seq non-mcp-scopes))
+      (is (contains? non-mcp-scopes "mb:full"))
       (v2.tu/do-with-bearer-token!
        non-mcp-scopes
        (fn [headers]

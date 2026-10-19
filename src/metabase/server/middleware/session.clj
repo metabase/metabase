@@ -14,6 +14,7 @@
   The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
   an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [malli.error :as me]
@@ -173,12 +174,14 @@
               (assoc :embedding/auth-method "api-key")))))))
 
 (mr/def ::oauth-bearer
-  "Fns that authenticate a request by its OAuth bearer token, and the scope that grants full access."
+  "Fns that authenticate a request by its OAuth bearer token, the scope that grants full access, and the scopes
+   that make a token an MCP token."
   [:map
    {:closed true}
    [:extract-token     ifn?]
    [:resolve-token     ifn?]
-   [:full-access-scope ms/NonBlankString]])
+   [:full-access-scope ms/NonBlankString]
+   [:mcp-scopes        [:set ms/NonBlankString]]])
 
 (mr/def ::mcp-ui-credentials
   "Fns that authenticate a request by the credential an MCP App UI carries."
@@ -196,19 +199,22 @@
   #{::scope/unrestricted})
 
 (defn- oauth-token->token-scopes
-  "Map the OAuth scopes granted to a bearer access token onto the `:token-scopes` value the API
-   scope middleware understands. A token carrying the full-access scope (`mb:full`) gets the
-   unrestricted sentinel — reachable across the whole REST API as the user — next to the other
-   scopes it was granted, which MCP gates on because it ignores the sentinel. Any narrower scope
-   set is passed through verbatim, so the token can reach only the agent endpoints that opt into
-   those scopes and is rejected elsewhere by `ensure-scopes-checked`.
+  "Map the OAuth scopes granted to a bearer access token onto the `:token-scopes` value the API scope middleware
+  understands.
 
-   This mapping is the single trust hinge for OAuth bearer auth on the general API; keep it here
-   and unit-test the two directions (full ⇒ unrestricted, narrow ⇒ passed through) so the
-   security invariant can't silently regress."
-  [full-access-scope granted-scopes]
-  (if (contains? granted-scopes full-access-scope)
+  Rules, in this order:
+  1. A token holding any of `mcp-scopes` is an MCP token and keeps only those.
+  2. A full-access scope is replaced by the unrestricted sentinel.
+  3. Anything else is unchanged."
+  [full-access-scope mcp-scopes granted-scopes]
+  (cond
+    (some mcp-scopes granted-scopes)
+    (set/intersection granted-scopes mcp-scopes)
+
+    (contains? granted-scopes full-access-scope)
     (into full-access-token-scopes (disj granted-scopes full-access-scope))
+
+    :else
     granted-scopes))
 
 (mu/defn- current-user-info-for-oauth-token :- [:maybe ::request.schema/current-user-info]
@@ -217,8 +223,8 @@
    merged request carries both the user identity and the access the token was granted, and marks it
    `:authenticated-via-oauth?`. A token with no scopes does not authenticate. This is the only place an
    OAuth access token authenticates a request to the general (`/api/*`) API."
-  [{:keys [extract-token resolve-token full-access-scope]} :- [:maybe ::oauth-bearer]
-   request                                                :- ::request.schema/request]
+  [{:keys [extract-token resolve-token full-access-scope mcp-scopes]} :- [:maybe ::oauth-bearer]
+   request                                                           :- ::request.schema/request]
   (when (and extract-token (init-status/complete?))
     (when-let [token (extract-token request)]
       (when-let [{:keys [user-id scopes]} (resolve-token token)]
@@ -226,7 +232,7 @@
         (when (seq scopes)
           (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
                   (m/update-existing :is-group-manager? boolean)
-                  (assoc :token-scopes             (oauth-token->token-scopes full-access-scope scopes)
+                  (assoc :token-scopes             (oauth-token->token-scopes full-access-scope mcp-scopes scopes)
                          :authenticated-via-oauth? true
                          :embedding/auth-method "oauth")))))))
 
