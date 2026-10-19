@@ -297,8 +297,16 @@ export function GenerateMetadataForm({
         </Alert>
       )}
 
-      <Stack gap="sm" align="flex-end">
-        <Group justify="flex-end" gap="sm">
+      <Group justify="space-between" gap="md" wrap="nowrap">
+        <EstimateSummary
+          isLoading={isEstimating}
+          error={estimateError}
+          hasRequest={request != null}
+          tableCount={estimate?.table_count}
+          fieldCount={estimate?.field_count}
+          totalTokens={estimate?.total_tokens}
+        />
+        <Group justify="flex-end" gap="sm" wrap="nowrap">
           <Button variant="default" onClick={onCancel}>{t`Cancel`}</Button>
           <Button
             variant="filled"
@@ -309,15 +317,7 @@ export function GenerateMetadataForm({
             {t`Start`}
           </Button>
         </Group>
-        <EstimateSummary
-          isLoading={isEstimating}
-          error={estimateError}
-          hasRequest={request != null}
-          tableCount={estimate?.table_count}
-          fieldCount={estimate?.field_count}
-          totalTokens={estimate?.total_tokens}
-        />
-      </Stack>
+      </Group>
     </Stack>
   );
 }
@@ -351,7 +351,7 @@ function EstimateSummary({
 }: EstimateSummaryProps) {
   if (!hasRequest) {
     return (
-      <Text size="sm" c="text-secondary" ta="right">
+      <Text size="sm" c="text-secondary" ta="left">
         {t`Pick what to generate and where.`}
       </Text>
     );
@@ -361,7 +361,7 @@ function EstimateSummary({
   }
   if (error != null) {
     return (
-      <Text size="sm" c="feedback-negative" ta="right">
+      <Text size="sm" c="feedback-negative" ta="left">
         {getErrorMessage(error)}
       </Text>
     );
@@ -373,7 +373,7 @@ function EstimateSummary({
     <Text
       size="sm"
       c="text-secondary"
-      ta="right"
+      ta="left"
       data-testid="generate-metadata-estimate"
     >
       {ngettext(msgid`${tableCount} table`, `${tableCount} tables`, tableCount)}
