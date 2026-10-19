@@ -64,6 +64,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Month").should("be.visible");
     });
 
+    // The popover closes on Escape only when the focus is in it
+    H.popover().find(":focus").should("exist");
     cy.realPress("Escape");
     H.popover({ skipVisibilityCheck: true }).should("not.exist");
     H.echartsTriggerBlur();
@@ -846,6 +848,8 @@ function assertSeriesDrills({ cardIndex, color, underlyingRecords }) {
     cy.findByText("See this year by quarter").should("be.visible");
     cy.findByText(underlyingRecords).should("be.visible");
   });
+  // The popover closes on Escape only when the focus is in it
+  H.popover().find(":focus").should("exist");
   cy.realPress("Escape");
   H.popover({ skipVisibilityCheck: true }).should("not.exist");
 }
