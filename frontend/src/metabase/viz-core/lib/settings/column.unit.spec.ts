@@ -9,6 +9,7 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
+import { registerSettingWidgets } from "../registry";
 import { getComputedSettings } from "../settings";
 import { getSettingsWidgets } from "../widgets";
 
@@ -157,6 +158,10 @@ describe("column settings", () => {
     });
 
     describe("widget visibility for currency columns", () => {
+      beforeAll(() => {
+        registerSettingWidgets({ select: () => null, radio: () => null });
+      });
+
       function getWidgetHiddenById(storedSettings: VisualizationSettings = {}) {
         const series = seriesWithColumn();
         const column = series[0].data.cols[0];
