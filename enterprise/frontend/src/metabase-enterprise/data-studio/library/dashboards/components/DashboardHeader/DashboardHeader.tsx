@@ -4,6 +4,8 @@ import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -31,7 +33,14 @@ export function DashboardHeader({ dashboard, tabsInfo }: DashboardHeaderProps) {
       {dashboard.archived && <DashboardArchivedBanner dashboard={dashboard} />}
       <PaneHeader
         data-testid="dashboard-pane-header"
-        title={<DashboardNameInput dashboard={dashboard} />}
+        title={
+          <Flex align="center" gap="sm">
+            <DashboardNameInput dashboard={dashboard} />
+            <PLUGIN_MODERATION.EntityModerationIcon
+              moderationReviews={dashboard.moderation_reviews}
+            />
+          </Flex>
+        }
         icon="dashboard"
         tabs={<DashboardTabs dashboardId={dashboard.id} tabsInfo={tabsInfo} />}
         actions={<DashboardHeaderActions dashboard={dashboard} />}

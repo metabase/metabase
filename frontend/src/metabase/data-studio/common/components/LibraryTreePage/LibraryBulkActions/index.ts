@@ -1,1 +1,1 @@
-export { LibraryBulkActions } from "./LibraryBulkActions";
+export { LibraryBulkActions, LibraryMoveModal } from "./LibraryBulkActions";

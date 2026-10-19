@@ -10,6 +10,8 @@ import type { Dashboard } from "metabase-types/api";
 import { trackDataStudioDashboardEditStarted } from "../../analytics";
 import { useCanEditDashboard } from "../../hooks/use-can-edit-dashboard";
 
+import { DashboardMoreMenu } from "./DashboardMoreMenu";
+
 type DashboardHeaderActionsProps = {
   dashboard: Dashboard;
 };
@@ -43,6 +45,7 @@ export function DashboardHeaderActions({
           {t`Edit`}
         </Button>
       )}
+      <DashboardMoreMenu dashboard={dashboard} />
     </Group>
   );
 }
