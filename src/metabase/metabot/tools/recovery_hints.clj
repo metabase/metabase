@@ -39,7 +39,7 @@
 
     (tru "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` or, via `source-card:`, a saved-card `portable_entity_id`.")))
 
-(defn structural-validation-hint
+(defn- structural-validation-hint
   "Describe the failing paths in a humanized structural explanation, or nil when it has no errors."
   [humanized]
   (let [paths (repr/humanized->paths humanized)]
