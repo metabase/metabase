@@ -149,7 +149,7 @@
 (def embed  "/embed index.html entrypoint."  (partial entrypoint "embed"  :embeddable))
 (def embed-sdk  "/embed/sdk/v1 index.html entrypoint."  (partial entrypoint "embed-sdk"  :embeddable))
 (def ^:private data-app-shell
-  "Raw `/embed/apps/:name` iframe HTML entrypoint, before feature gating."
+  "Shared data app iframe HTML entrypoint, before feature gating."
   (partial entrypoint "data-app" :embeddable))
 
 (defn- login-redirect
@@ -159,12 +159,14 @@
    sets it, and this is reached by signed-out visitors: `str` drops the nil, so the
    redirect is then relative."
   [{:keys [uri query-string]}]
-  (let [target (cond-> (str/replace-first uri #"^/embed/" "/")
+  (let [target (cond-> (if (request/embedded-data-app? {:uri uri})
+                         (str "/" request/data-app-url-segment (subs uri (count request/embedded-data-app-prefix)))
+                         (str/replace-first uri #"^/embed/" "/"))
                  (seq query-string) (str "?" query-string))]
     (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
 
 (defn data-app
-  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
+  "`/embed/apps/:name` and `/embed/embedded-apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
    instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
    data-app entrypoint rather than in the top-level route table. Internal views require a signed-in
@@ -173,7 +175,7 @@
   [request respond raise]
   (cond
     (not (premium-features/enable-data-apps?)) (respond nil)
-    (and (request/modular-data-app? request)
+    (and (request/embedded-data-app? request)
          (not (embedding/enable-embedding-modular))) (respond {:status 403 :body "Modular embedding is disabled."})
     (request/data-app-bootstrap? request)    (data-app-shell request respond raise)
     (nil? (:metabase-user-id request))         (respond (login-redirect request))

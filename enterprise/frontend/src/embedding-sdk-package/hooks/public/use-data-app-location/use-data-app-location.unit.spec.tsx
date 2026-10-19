@@ -6,6 +6,7 @@ import { useDataAppLocation } from "./use-data-app-location";
 // `pushState` fires no event: `navigate` has to notify subscribers itself, and
 // every consumer must hear about it.
 describe("useDataAppLocation", () => {
+  afterEach(() => window.history.replaceState(null, "", "/"));
   it("navigate() updates the sub-path and the iframe URL", () => {
     const { result } = renderHook(() => useDataAppLocation());
 
@@ -15,6 +16,21 @@ describe("useDataAppLocation", () => {
 
     expect(result.current.pathname).toBe("/orders/42");
     expect(window.location.pathname).toBe("/orders/42");
+  });
+
+  it.each([
+    "/embed/embedded-apps/sales",
+    "/mb/embed/embedded-apps/sales",
+    "/embed/apps/sales",
+    "/mb/embed/apps/sales",
+  ])("keeps navigation inside the runtime at %s", (prefix) => {
+    window.history.replaceState(null, "", `${prefix}/orders?active=true`);
+    const { result } = renderHook(() => useDataAppLocation());
+    expect(result.current.pathname).toBe("/orders");
+
+    act(() => result.current.navigate("/orders/42"));
+    expect(result.current.pathname).toBe("/orders/42");
+    expect(window.location.pathname).toBe(`${prefix}/orders/42`);
   });
 
   it("supports multiple consumers", () => {

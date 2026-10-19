@@ -1,3 +1,18 @@
+export const EMBEDDED_DATA_APP_PREFIX = "/embed/embedded-apps";
+
+/** Select embedded mode before the runtime starts, including subpath installs. */
+export function isEmbeddedDataAppPath({
+  pathname,
+  root = "/",
+}: {
+  pathname: string;
+  root?: string;
+}): boolean {
+  return pathname.startsWith(
+    `${root.replace(/\/+$/, "")}${EMBEDDED_DATA_APP_PREFIX}/`,
+  );
+}
+
 /** Use one relative form for both host settings and runtime URLs. */
 export function normalizeDataAppPath(path: string): string {
   return path.replace(/^\/+/, "");
@@ -40,9 +55,8 @@ export function getDataAppEmbedUrl(instanceUrl: string, path: string): URL {
   }
 
   const url = new URL(
-    `${instanceUrl.replace(/\/+$/, "")}/embed/apps/${normalizeDataAppPath(path)}`,
+    `${instanceUrl.replace(/\/+$/, "")}${EMBEDDED_DATA_APP_PREFIX}/${normalizeDataAppPath(path)}`,
   );
-  url.searchParams.set("modular", "true");
 
   return url;
 }

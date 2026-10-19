@@ -1,11 +1,11 @@
+import { EMBEDDED_DATA_APP_PREFIX } from "embedding-sdk-shared/lib/data-app-embed";
 import { api } from "metabase/api/client";
 
 /** Install the authorized app's CSP before any untrusted bundle runs. */
 export async function prepareEmbeddedDataApp(name: string) {
   const response = await api.fetch({
     method: "GET",
-    url: `/embed/apps/${encodeURIComponent(name)}`,
-    params: { modular: "true" },
+    url: `${EMBEDDED_DATA_APP_PREFIX}/${encodeURIComponent(name)}`,
     cache: "no-store",
   });
 

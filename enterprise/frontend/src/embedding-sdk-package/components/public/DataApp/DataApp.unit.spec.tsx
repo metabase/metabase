@@ -61,9 +61,8 @@ describe("DataApp", () => {
 
     const iframe = screen.getByTitle<HTMLIFrameElement>("Data app");
     const url = new URL(iframe.src);
-    expect(url.pathname).toBe("/mb/embed/apps/boba-hq/orders");
+    expect(url.pathname).toBe("/mb/embed/embedded-apps/boba-hq/orders");
     expect(url.searchParams.get("active")).toBe("true");
-    expect(url.searchParams.get("modular")).toBe("true");
     expect(iframe).toHaveStyle({ height: "480px" });
     expect(screen.getAllByTitle("Data app")).toHaveLength(1);
 

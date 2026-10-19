@@ -25,8 +25,7 @@ describe("prepareEmbeddedDataApp", () => {
 
     expect(fetch).toHaveBeenCalledWith({
       method: "GET",
-      url: "/embed/apps/sales",
-      params: { modular: "true" },
+      url: "/embed/embedded-apps/sales",
       cache: "no-store",
     });
     expect(

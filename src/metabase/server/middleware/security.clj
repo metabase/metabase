@@ -570,14 +570,14 @@
 
 (defn- data-app-iframe-request?
   [request]
-  (str/starts-with? (:uri request) (str request/data-app-embed-prefix "/")))
+  (boolean (request/data-app? request)))
 
 (def ^:private data-app-slug-regex
-  (re-pattern (str "/(?:embed/)?" request/data-app-url-segment "/([^/]+).*")))
+  (re-pattern (str "(?:/" request/data-app-url-segment "|" request/data-app-embed-prefix "|" request/embedded-data-app-prefix ")/([^/]+).*")))
 
 (defn- data-app-slug
   "Slug of the data-app document being served, parsed from the top-level
-   `/apps/<slug>` page or the internal `/embed/apps/<slug>` iframe (and
+   `/apps/<slug>` page, internal iframe, or SSO-embedded iframe (and
    any deeper sub-route), or nil. The top page needs it too: its `frame-src`
    governs what the iframe below it may navigate to."
   [request]
@@ -668,7 +668,7 @@
                  ;; Data apps choose their ancestor policy before the generic embed routes:
                  ;; configured SDK origins for modular embeds, same-origin for internal views.
                  :frame-ancestors             (cond
-                                                (request/modular-data-app? request)               :modular
+                                                (request/embedded-data-app? request)               :modular
                                                 (request/data-app? request)                       :self
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
@@ -698,7 +698,7 @@
                         "Access-Control-Allow-Headers" "*"
                         "Access-Control-Allow-Methods" "*"})]
     (cond-> (update response :headers #(merge %2 %1 cors-headers) headers)
-      (request/modular-data-app? request)
+      (request/embedded-data-app? request)
       (assoc-in [:headers "X-Metabase-Data-App-Policy"]
                 (if (request/data-app-bootstrap? request) "bootstrap" "authenticated")))))
 

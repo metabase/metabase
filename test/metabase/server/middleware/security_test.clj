@@ -155,7 +155,7 @@
   (mt/with-temporary-setting-values [enable-embedding-modular true
                                      embedding-app-origins-sdk "https://customer.example"]
     (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://private-api.example"])]
-      (let [request {:uri "/embed/apps/sales" :params {:modular "true"}}
+      (let [request {:uri "/embed/embedded-apps/sales"}
             bootstrap (headers-for-request request)
             authenticated (headers-for-request (assoc request :metabase-user-id 1
                                                       :headers {"x-metabase-session" "session"}))

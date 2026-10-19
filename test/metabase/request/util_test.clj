@@ -222,3 +222,19 @@
       (mt/with-dynamic-fn-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))
+
+(deftest ^:parallel embedded-data-app-route-test
+  (testing "the dedicated route selects embedded mode without query parameters"
+    (doseq [uri ["/embed/embedded-apps/sales" "/embed/embedded-apps/sales/orders"]]
+      (is (req.util/data-app? {:uri uri}))
+      (is (req.util/embedded-data-app? {:uri uri}))
+      (is (req.util/data-app-bootstrap? {:uri uri}))))
+  (testing "internal routes keep their authentication boundary even with the old flag"
+    (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/embed/embedded-apps/other" "/embed/embedded-apps-else/sales"]]
+      (let [request {:uri uri :params {:modular "true"}}]
+        (is (not (req.util/embedded-data-app? request)))
+        (is (not (req.util/data-app-bootstrap? request))))))
+  (testing "a session header selects the authenticated policy request"
+    (is (not (req.util/data-app-bootstrap? {:uri "/embed/embedded-apps/sales"
+                                            :headers {"x-metabase-session" "session"}}))))
+  (is (false? (req.util/embedded-data-app? {}))))

@@ -46,7 +46,7 @@ describe("DataAppEmbed", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    window.history.replaceState(null, "", "/embed/apps/sales?modular=true");
+    window.history.replaceState(null, "", "/embed/embedded-apps/sales");
     jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(true);
     setupSettings();
     jest.mocked(useSdkSelector).mockReturnValue({ status: "success" });

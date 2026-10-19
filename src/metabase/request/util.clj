@@ -51,25 +51,27 @@
   "URL prefix for the data app iframe runtime."
   (str "/embed/" data-app-url-segment))
 
+(def embedded-data-app-prefix
+  "URL prefix for the SSO-embedded data app runtime."
+  "/embed/embedded-apps")
+
 (def ^:private data-app-uri-regex
-  (re-pattern (str "^" data-app-embed-prefix "/.*$")))
+  (re-pattern (str "^(?:" data-app-embed-prefix "|" embedded-data-app-prefix ")/.*$")))
 
 (defn data-app?
-  "Is this request for a data app iframe document (`/embed/apps/...`)?"
+  "Is this request for an internal or SSO-embedded data app document?"
   [{:keys [uri]}]
-  (re-matches data-app-uri-regex uri))
+  (when uri (re-matches data-app-uri-regex uri)))
 
-(defn modular-data-app?
-  "Whether this is the SSO embedding entry point for a data app."
-  [request]
-  (and (:uri request)
-       (data-app? request)
-       (= "true" (get-in request [:params :modular]))))
+(defn embedded-data-app?
+  "Whether the request targets the dedicated SSO embedding route."
+  [{:keys [uri]}]
+  (boolean (and uri (str/starts-with? uri (str embedded-data-app-prefix "/")))))
 
 (defn data-app-bootstrap?
   "Whether the modular data app shell must establish its SSO session first."
   [request]
-  (and (modular-data-app? request)
+  (and (embedded-data-app? request)
        (not (get-in request [:headers "x-metabase-session"]))))
 
 (defn embed-sdk-eajs-entrypoint?

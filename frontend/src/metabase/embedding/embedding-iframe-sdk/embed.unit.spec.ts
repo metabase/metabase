@@ -57,7 +57,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
     const iframe = embed.querySelector("iframe")!;
     expect(iframe.src).toMatch(
-      /^https:\/\/example.com\/metabase\/embed\/apps\/123\?modular=true&embed-js-identifier=\d+$/,
+      /^https:\/\/example.com\/metabase\/embed\/embedded-apps\/123\?embed-js-identifier=\d+$/,
     );
 
     const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
@@ -87,7 +87,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       const iframe = embed.querySelector("iframe")!;
       expect(iframe).not.toBeNull();
       expect(new URL(iframe.src).pathname).toBe(
-        `/metabase/embed/apps${path.split("?")[0]}`,
+        `/metabase/embed/embedded-apps${path.split("?")[0]}`,
       );
 
       const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
@@ -103,7 +103,9 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       const rootIframe = embed.querySelector("iframe")!;
       embed.setAttribute("path", "/123");
       expect(embed.querySelector("iframe")).toBe(rootIframe);
-      expect(new URL(rootIframe.src).pathname).toBe("/metabase/embed/apps/123");
+      expect(new URL(rootIframe.src).pathname).toBe(
+        "/metabase/embed/embedded-apps/123",
+      );
     },
   );
 
@@ -118,9 +120,9 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     document.body.appendChild(embed);
 
     const url = new URL(embed.querySelector("iframe")!.src);
-    expect(url.pathname).toBe("/metabase/embed/apps/boba-ops/orders");
+    expect(url.pathname).toBe("/metabase/embed/embedded-apps/boba-ops/orders");
     expect(url.searchParams.get("active")).toBe("true");
-    expect(url.searchParams.getAll("modular")).toEqual(["true"]);
+    expect(url.searchParams.getAll("modular")).toEqual(["false"]);
     expect(url.hash).toBe("#details");
   });
 
@@ -180,7 +182,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     expect(nextIframe).not.toBe(firstIframe);
     expect(embed.querySelectorAll("iframe")).toHaveLength(1);
     expect(nextIframe.src).toContain(
-      "/embed/apps/sales/orders?active=true&modular=true&",
+      "/embed/embedded-apps/sales/orders?active=true&",
     );
 
     triggerIframeMessage(nextIframe, { type: "metabase.embed.iframeReady" });

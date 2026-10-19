@@ -59,7 +59,8 @@
   data-app-url-segment
   data-app?
   data-app-bootstrap?
-  modular-data-app?
+  embedded-data-app-prefix
+  embedded-data-app?
   device-info
   embed-sdk-eajs-entrypoint?
   embed?

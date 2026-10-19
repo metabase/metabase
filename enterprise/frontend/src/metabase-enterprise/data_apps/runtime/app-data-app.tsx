@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
+import { isEmbeddedDataAppPath } from "embedding-sdk-shared/lib/data-app-embed";
 import {
   EMBEDDING_SDK_CONFIG,
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
@@ -12,7 +13,7 @@ import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp
 import { readNameFromUrl } from "./lib/read-name-from-url";
 
 /**
- * Entry point loaded by `data-app.html` and served from `/embed/apps/:name`.
+ * Entry point loaded by `data-app.html` and served from the internal or SSO-embedded data app route.
  *
  * This script boots inside the iframe — separate from the host Metabase
  * app's React tree. It reads the data-app `:name` from the URL, fetches the
@@ -39,7 +40,12 @@ const init = async () => {
     return;
   }
 
-  if (new URLSearchParams(window.location.search).get("modular") === "true") {
+  if (
+    isEmbeddedDataAppPath({
+      pathname: window.location.pathname,
+      root: window.MetabaseRoot,
+    })
+  ) {
     EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
     EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-modular";
     EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";

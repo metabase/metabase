@@ -16,17 +16,23 @@ const setup = ({ pathname }: SetupOpts) => {
 };
 
 describe("DataAppLink", () => {
-  it("links to the app's page, so opening it in a new tab shows the app", () => {
-    const { link } = setup({ pathname: "/embed/apps/sales/orders" });
+  it.each(["/embed/apps/sales", "/embed/embedded-apps/sales"])(
+    "links from %s to the app page for opening in a new tab",
+    (prefix) => {
+      const { link } = setup({ pathname: `${prefix}/orders` });
 
-    expect(link).toHaveAttribute("href", "/apps/sales/customers/42");
-  });
+      expect(link).toHaveAttribute("href", "/apps/sales/customers/42");
+    },
+  );
 
-  it("keeps a subpath install's root in the link", () => {
-    const { link } = setup({ pathname: "/mb/embed/apps/sales/orders" });
+  it.each(["/mb/embed/apps/sales", "/mb/embed/embedded-apps/sales"])(
+    "keeps the install root in page links from %s",
+    (prefix) => {
+      const { link } = setup({ pathname: `${prefix}/orders` });
 
-    expect(link).toHaveAttribute("href", "/mb/apps/sales/customers/42");
-  });
+      expect(link).toHaveAttribute("href", "/mb/apps/sales/customers/42");
+    },
+  );
 
   it("links to the bare sub-path in the dev preview", () => {
     const { link } = setup({ pathname: "/orders" });
@@ -34,11 +40,16 @@ describe("DataAppLink", () => {
     expect(link).toHaveAttribute("href", "/customers/42");
   });
 
-  it("navigates within the app's frame on a plain click", async () => {
-    const { link } = setup({ pathname: "/embed/apps/sales/orders" });
+  it.each([
+    "/embed/apps/sales",
+    "/mb/embed/apps/sales",
+    "/embed/embedded-apps/sales",
+    "/mb/embed/embedded-apps/sales",
+  ])("keeps plain-click navigation inside %s", async (prefix) => {
+    const { link } = setup({ pathname: `${prefix}/orders` });
 
     await userEvent.click(link);
 
-    expect(window.location.pathname).toBe("/embed/apps/sales/customers/42");
+    expect(window.location.pathname).toBe(`${prefix}/customers/42`);
   });
 });
