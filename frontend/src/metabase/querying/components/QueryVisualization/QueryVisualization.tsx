@@ -72,7 +72,6 @@ export function QueryVisualization(props: QueryVisualizationProps) {
             className={S.spread}
             error={result.error}
             errorType={result.error_type}
-            via={result.via ?? []}
             question={question}
             duration={result.duration ?? 0}
           />
