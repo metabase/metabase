@@ -1780,9 +1780,9 @@
                              :conversation_id (str (random-uuid))
                              :state           {}}))))
 
-(defn- embedded-system-prompt-for!
-  "The system prompt the LLM receives for an `embedding_next` turn sent with `headers` and `context`."
-  [headers context]
+(defn- llm-request-for!
+  "The last LLM request of one `metabot/agent-streaming` turn for `profile-id`, sent with `headers` and `context`."
+  [profile-id headers context]
   (let [requests (atom [])]
     (with-captured-llm-requests!
       requests "ok"
@@ -1792,9 +1792,14 @@
                               {:message         "show me orders as SQL"
                                :context         context
                                :conversation_id (str (random-uuid))
-                               :profile_id      "embedding_next"
+                               :profile_id      profile-id
                                :state           {}})))
-    (:system (last @requests))))
+    (last @requests)))
+
+(defn- embedded-system-prompt-for!
+  "The system prompt the LLM receives for an `embedding_next` turn sent with `headers` and `context`."
+  [headers context]
+  (:system (llm-request-for! "embedding_next" headers context)))
 
 (deftest embedding-host-app-header-reaches-prompt-test
   (testing "SDK header: host-app Scope text, no hand-off"
@@ -1812,3 +1817,19 @@
                        "direct the user to the SQL editor"))
     (is (str/includes? (embedded-system-prompt-for! {"x-metabase-client" "embedding-sdk-react"} {:in_host_app false})
                        "Never write SQL"))))
+
+(deftest dialect-preload-gates-on-sql-tools-through-the-loop-test
+  (testing "the loop hands its tools to the history builder, so the dialect skill is preloaded only where a tool can write SQL"
+    (let [native-item {:type       "adhoc"
+                       :sql_engine "postgres"
+                       :query      {:database (mt/id) :type "native" :native {:query "SELECT 1"}}}
+          preloaded?  (fn [request]
+                        (boolean (some #(and (= :tool-input (:type %)) (= "load_skill" (:function %)))
+                                       (:input request))))]
+      (testing "the SQL profile with the write_sql_queries capability gets the preload"
+        (is (preloaded? (llm-request-for! "sql" {} {:user_is_viewing [native-item]
+                                                    :capabilities    ["permission:write_sql_queries"]}))))
+      (testing "the embedded profile with the same native item, as a full-app embed, does not"
+        (is (not (preloaded? (llm-request-for! "embedding_next"
+                                               {"x-metabase-client" "embedding-iframe-full-app"}
+                                               {:user_is_viewing [native-item]}))))))))
