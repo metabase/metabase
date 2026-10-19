@@ -7,11 +7,8 @@ import S from "./TimelineModalHeader.module.css";
 
 export interface TimelineModalHeaderProps {
   title: ReactNode;
-  /** Shown as "in <collection>" under the title */
   collectionName?: string;
-  /** Rendered before the close button */
   actions?: ReactNode;
-  /** Adds a back button before the title */
   onGoBack?: () => void;
 }
 
