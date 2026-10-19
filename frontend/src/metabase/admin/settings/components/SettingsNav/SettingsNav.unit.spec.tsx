@@ -1,13 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { setupSettingEndpoint } from "__support__/server-mocks";
-import { createMockSettingsState } from "__support__/state";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
-  createMockSettings,
   createMockTokenFeatures,
   createMockUser,
   createMockVersionInfo,
@@ -15,21 +17,25 @@ import {
 
 import { SettingsNav } from "./SettingsNav";
 
+type SetupOpts = {
+  initialRoute: string;
+  isAdmin?: boolean;
+  isHosted?: boolean;
+  customVizDevModeEnabled?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: ENTERPRISE_PLUGIN_NAME[];
+};
+
 const setup = async ({
   initialRoute,
   isAdmin = true,
   isHosted,
   customVizDevModeEnabled,
   tokenFeatures,
-}: {
-  initialRoute: string;
-  isAdmin?: boolean;
-  isHosted?: boolean;
-  customVizDevModeEnabled?: boolean;
-  tokenFeatures?: Partial<TokenFeatures>;
-}) => {
+  enterprisePlugins,
+}: SetupOpts) => {
   const versionInfo = createMockVersionInfo();
-  const settings = createMockSettings({
+  const settings = mockSettings({
     "version-info": versionInfo,
     "custom-viz-plugin-dev-mode-enabled": Boolean(customVizDevModeEnabled),
     "token-features": createMockTokenFeatures({
@@ -44,18 +50,23 @@ const setup = async ({
     settingKey: "version-info",
     settingValue: versionInfo,
   });
+  enterprisePlugins?.forEach(setupEnterpriseOnlyPlugin);
 
   renderWithProviders(<Route path="*" element={<SettingsNav />} />, {
     withRouter: true,
     initialRoute,
     storeInitialState: {
       currentUser: createMockUser({ is_superuser: isAdmin }),
-      settings: createMockSettingsState(settings),
+      settings,
     },
   });
 };
 
 describe("SettingsNav", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("should render the settings nav", async () => {
     await setup({ initialRoute: "/admin/settings/general" });
 
@@ -75,6 +86,21 @@ describe("SettingsNav", () => {
     expect(
       within(remoteSyncNavItem).getByTestId("upsell-gem"),
     ).toBeInTheDocument();
+  });
+
+  it("should show the Remote sync nav item without an upsell gem when remote sync is enabled", async () => {
+    await setup({
+      initialRoute: "/admin/settings/general",
+      tokenFeatures: { remote_sync: true },
+      enterprisePlugins: ["remote_sync"],
+    });
+
+    const remoteSyncNavItem = await screen.findByRole("link", {
+      name: /Remote sync/,
+    });
+    expect(
+      within(remoteSyncNavItem).queryByTestId("upsell-gem"),
+    ).not.toBeInTheDocument();
   });
 
   it("should highlight the active nav item", async () => {
