@@ -106,6 +106,17 @@ describe("AccountHeader", () => {
       ).not.toBeInTheDocument();
     });
 
+    it.each(["jwt", "saml"] as const)(
+      "should hide the tab for a %s user (metabase#23298)",
+      (ssoSource) => {
+        setup({ user: getUser({ sso_source: ssoSource }) });
+
+        expect(
+          screen.queryByRole("tab", { name: "Authentication" }),
+        ).not.toBeInTheDocument();
+      },
+    );
+
     it("should show the tab for an LDAP user when two-factor authentication is enabled for the instance", () => {
       setup({ user: getUser({ sso_source: "ldap" }), isMfaEnabled: true });
 
