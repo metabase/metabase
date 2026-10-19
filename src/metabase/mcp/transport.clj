@@ -766,8 +766,10 @@
            (respond @invalid-token)
 
            ;; Dispatch with the scope strings attached to an authenticated request. A cookie or API-key session
-           ;; carries none, so it reaches no scoped tool. An `mb:full` token carries the unrestricted sentinel next to
-           ;; its other granted scopes; the sentinel is not an MCP scope, so only those strings reach MCP.
+           ;; carries none, so it reaches no scoped tool. Any OAuth token can reach this endpoint, because the
+           ;; token's `resource` is not checked here. A REST token keeps no MCP scopes, and an `mb:full` token
+           ;; carries the unrestricted sentinel, which MCP does not honor. Dropping the sentinel here, and matching
+           ;; MCP scopes exactly in the gates, is what keeps a REST token from reaching any MCP tool.
            session-auth
            ;; An OAuth bearer request lands here too — the session middleware resolves the token and
            ;; attaches `:token-scopes`, so this branch is not "cookie sessions only".
