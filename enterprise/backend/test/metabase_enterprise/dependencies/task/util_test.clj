@@ -16,7 +16,7 @@
                                                  (TriggerKey. "metabase.dependencies.task.result-metadata.trigger")))]
     (quot (- (.getTime ^Date fire-time) (System/currentTimeMillis)) 1000)))
 
-(deftest schedule-run-keeps-the-earlier-run-test
+(deftest schedule-run-keeps-earlier-run-test
   (testing "scheduling a later run keeps a run already pending earlier, and an earlier run replaces a later one"
     (mt/with-temp-scheduler!
       (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 3600)
@@ -26,7 +26,7 @@
       (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 3600)
       (is (< (seconds-until-next-run) 61)))))
 
-(deftest schedule-run-moves-a-past-due-run-test
+(deftest schedule-run-moves-past-due-run-test
   (testing "scheduling a run moves a run pending in the past, which Quartz may not fire for minutes, to a second from now"
     (mt/with-temp-scheduler!
       (mt/with-dynamic-fn-redefs [task.util/next-fire-time (constantly (Date. (- (.getTime (Date.)) (* 20 60 1000))))]

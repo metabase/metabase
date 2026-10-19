@@ -103,7 +103,7 @@
                 :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY}}
              (triggers))))))
 
-(deftest reschedule-after-the-job-was-deleted-test
+(deftest reschedule-after-job-was-deleted-test
   (testing "rescheduling schedules the new trigger when the job and its trigger are deleted while it reschedules, as
            Quartz does when the last run of a one-shot trigger completes"
     (with-temp-scheduler-and-cleanup!

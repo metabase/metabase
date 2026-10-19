@@ -3,6 +3,7 @@
   find what changed from the `updated_at` of each entity, so a write records nothing for them."
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
@@ -52,23 +53,42 @@
   [_model _instance]
   (trigger-jobs!))
 
+(defn- part-owner
+  "The entity, as `[entity-type entity-id]`, that the `model` row `instance` is a part of, or nil."
+  [model instance]
+  (case model
+    (:model/DashboardCard :model/DashboardTab)    [:dashboard (:dashboard_id instance)]
+    :model/DashboardCardSeries                    [:dashboard (some-> (:dashboardcard_id instance)
+                                                                      dependencies.db/dashcard-dashboard-id)]
+    :model/QueryAction                            [:action (:action_id instance)]
+    (:model/Field :model/TableUserSettings)       [:table (:table_id instance)]
+    (:model/FieldUserSettings :model/Dimension)   [:table (some-> (:field_id instance) dependencies.db/field-table-id)]
+    nil))
+
 (defenterprise before-delete
-  "Trigger the jobs for deleting the `model` row `instance`, and for a Database, move the `updated_at` of the transforms
-  reading from it, since the delete clears their source database without a write through their model."
+  "Trigger the jobs for deleting the `model` row `instance`, having the entity it is a part of, or the transforms of a
+  deleted Database, and the entities directly depending on them processed again, since a delete moves no `updated_at`."
   :feature :dependencies
   [model instance]
-  (when (= model :model/Database)
-    (dependencies.db/touch-transforms-of-source-database! (:id instance)))
+  (let [[owner-type owner-id] (part-owner model instance)
+        entity-type           (deps.dependency-types/model->dependency-type model)]
+    (when owner-id
+      (dependencies.db/forget-entity-processing! owner-type owner-id)
+      (dependencies.db/forget-dependents-processing! owner-type owner-id))
+    (when entity-type
+      (dependencies.db/forget-dependents-processing! entity-type (:id instance)))
+    (when (= model :model/Database)
+      (doseq [transform-id (dependencies.db/source-database-transform-ids (:id instance))]
+        (dependencies.db/forget-entity-processing! :transform transform-id)
+        (dependencies.db/forget-dependents-processing! :transform transform-id))))
   (trigger-jobs!))
 
 (defenterprise after-transform-run
-  "Make the output Table with `table-id` depend on the transform with `transform-id`, and have the transform's
-  dependents re-analyzed, since the table may be one of them now."
+  "Make the output Table with `table-id` depend on the transform with `transform-id`."
   :feature :dependencies
   [transform-id table-id]
   (when table-id
     (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))
-  (dependencies.db/clear-status-version! :model/AnalysisFindingStatus :transform transform-id)
   (trigger-jobs!))
 
 (defenterprise after-serdes-load

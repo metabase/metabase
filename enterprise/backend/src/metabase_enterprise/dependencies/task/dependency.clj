@@ -3,9 +3,9 @@
   (see [[metabase-enterprise.dependencies.models.dependency]]) up to date, that is, makes sure
   the dependency table contains fresh entries.
 
-  It selects the entities whose dependency_status records another version of them (their latest `updated_at` and
-  number of parts), an older dependency_analysis_version, or no row, computes their dependencies, and records the
-  version it computed them from."
+  It selects the entities whose dependency_status records a version older than theirs (the latest `updated_at` of
+  them, their parts and the snippets they use), an older dependency_analysis_version, or no row, computes their
+  dependencies, and records the version it computed them from."
   (:require
    [clojurewerkz.quartzite.scheduler :as qs]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
@@ -13,11 +13,10 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
+   [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase-enterprise.dependencies.task.util :as task.util]
-   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -28,18 +27,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private expanded-into-dependents
-  "The entity types whose content a native query using them expands into its own SQL, so that a change to one changes
-  the table dependencies of the entities using it, which no graph edge carries."
-  #{:snippet})
-
 (def ^:private entity-types
-  "The list of entity types whose dependencies the job computes, those expanded into their dependents first, so that
-  the dependents they have computed again are computed in the same run.
+  "The list of entity types whose dependencies the job computes, snippets first, so that the snippets the entities
+  using them expand are known when those are computed.
 
   This is not the same as deps.dependency-types/dependency-types, because tables have no dependencies of their
   own. Instead, links involving tables are found via analysis of the other side of the relation."
-  (vec (sort-by (complement expanded-into-dependents) deps.dependency-types/backfillable-dependency-types)))
+  (vec (sort-by #(not= :snippet %) deps.dependency-types/backfillable-dependency-types)))
 
 ;;; ------------------------------ Post-deps cleanup multimethod ------------------------------
 
@@ -80,50 +74,26 @@
          (deps.dependency-status/hydrate-for-deps entity-type (mapv first pairs))
          (map second pairs))))
 
-(defn- recompute-expanding-entities!
-  "Clear the dependency status versions of the entities whose native SQL expands the `entity-type` entity `entity-id`,
-  directly or through the entities of the same kind that include it, so they are computed again."
-  [entity-type entity-id]
-  (let [graph     (models.dependency/filtered-graph-dependents nil {:types expanded-into-dependents})
-        type->ids (models.dependency/group-nodes (graph/transitive graph [[entity-type entity-id]]))]
-    (deps.dependency-status/clear-version! (apply dissoc type->ids expanded-into-dependents))))
-
-(defn- reprocess-new-dependent!
-  "Re-analyze the entity `entity-type` `entity-id`, and re-derive it when it is a card, since the jobs may have
-  processed the entities it newly depends on before its dependencies existed."
-  [entity-type entity-id]
-  (dependencies.db/clear-finding-version! entity-type entity-id)
-  (when (= :card entity-type)
-    (deps.result-metadata/rederive-dependent! [entity-type entity-id]))
-  (task.analysis-finding/trigger-analysis-finding-job!))
-
 (defn- compute-deps-for-entity!
-  "Compute and store the dependencies of an entity and record the version they were computed from, flagging the tables
-  it names that match nothing; for an entity that native SQL expands, have those that expand it computed again, and
-  have it processed again when it newly depends on an entity, recording `version` as the one they were computed from. Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
+  "Compute and store the dependencies of an entity and record the `version` they were computed from. Entities are
+  expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
   [entity-type entity version]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
-  (when (expanded-into-dependents entity-type)
-    (recompute-expanding-entities! entity-type (:id entity)))
-  (let [all-deps (deps.calculation/calculate-deps entity-type entity)
-        deps     (dissoc all-deps :unresolved-table)
-        upstream (models.dependency/new-dependencies entity-type (:id entity) deps)]
+  (let [deps (deps.calculation/calculate-deps entity-type entity)]
     (t2/with-transaction [_]
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       (post-deps-cleanup! entity-type entity)
-      (deps.dependency-status/upsert-status! entity-type (:id entity) version (contains? all-deps :unresolved-table)))
-    (when (seq upstream)
-      (reprocess-new-dependent! entity-type (:id entity)))))
+      (deps.dependency-status/upsert-status! entity-type (:id entity) version))))
 
 (defn- remove-deleted-entity-batch!
   "Drop the dependencies and status of up to `batch-size` deleted entities of `entity-type`, returning how many were
   removed."
   [entity-type batch-size]
-  (let [entity-ids (dependencies.db/deleted-status-entity-ids :model/DependencyStatus entity-type batch-size)]
+  (let [entity-ids (dependencies.db/dependency-deleted-entity-ids entity-type batch-size)]
     (when (seq entity-ids)
       (t2/with-transaction [_]
         (dependencies.db/delete-dependencies-from! entity-type entity-ids)
-        (dependencies.db/delete-statuses! :model/DependencyStatus entity-type entity-ids)))
+        (dependencies.db/delete-dependency-statuses! entity-type entity-ids)))
     (count entity-ids)))
 
 (defn- update-entity-batch!
@@ -141,7 +111,7 @@
                      (catch Throwable e ;; catch OOMs
                        (let [id (:id entity)]
                          (try
-                           (deps.dependency-status/upsert-status! entity-type id version false)
+                           (deps.dependency-status/upsert-status! entity-type id version)
                            (log/errorf "Entity %s %s failed, so its dependencies are computed again when it changes: %s"
                                        type-name id (ex-message e))
                            (catch Exception record-ex
@@ -156,8 +126,8 @@
               instances))))
 
 (defn- update-dependencies!
-  "Job to update the dependencies of all entities. Returns true if a full batch has been selected, nil or false
-  otherwise."
+  "Job to update the dependencies of all entities, triggering the jobs that read them when it processed any. Returns
+  true if a full batch has been selected, nil or false otherwise."
   []
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-backfill-batch-size)
@@ -174,7 +144,8 @@
                              batch-size
                              entity-types)]
       (when (< remaining batch-size)
-        (task.analysis-finding/trigger-analysis-finding-job!))
+        (task.analysis-finding/trigger-analysis-finding-job!)
+        (task.result-metadata/trigger-result-metadata-job!))
       (< remaining 1))))
 
 (declare ^:private job)

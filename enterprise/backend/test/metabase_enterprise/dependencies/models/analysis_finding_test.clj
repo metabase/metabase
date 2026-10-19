@@ -18,11 +18,11 @@
   (testing "upsert-analysis! records the version it is given, and keeps the recorded one when given none"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card {card-id :id} {}]
-        (let [version {:analyzed_updated_at (t/offset-date-time 2020 1 1 0 0 0 0 0) :analyzed_count 2}]
+        (let [version {:analyzed_updated_at (t/offset-date-time 2020 1 1 0 0 0 0 0)}]
           (models.analysis-finding/upsert-analysis! :card card-id true [] version)
-          (is (=? {:result true :analyzed_count 2 :analyzed_updated_at some?} (finding card-id)))
+          (is (=? {:result true :analyzed_updated_at some?} (finding card-id)))
           (models.analysis-finding/upsert-analysis! :card card-id false [] nil)
-          (is (=? {:result false :analyzed_count 2 :analyzed_updated_at some?} (finding card-id))))))))
+          (is (=? {:result false :analyzed_updated_at some?} (finding card-id))))))))
 
 (deftest ^:synchronized instances-for-analysis-test
   (testing "instances-for-analysis returns the entities without a finding, analyzed from another version, or by an

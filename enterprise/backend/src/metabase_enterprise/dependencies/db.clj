@@ -13,6 +13,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -71,7 +72,7 @@
   (into [:or]
         (keep (fn [[entity-type model]]
                 (let [table-name (t2/table-name model)
-                      id-column  (keyword (name table-name) "id")]
+                      id-column  (u/qualified-key table-name :id)]
                   (case model
                     :model/Sandbox
                     (when is-superuser?
@@ -101,10 +102,10 @@
                                    {:perms/create-queries :query-builder})]}]])
 
                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
-                    (let [archived-column (keyword (name table-name) "archived")
+                    (let [archived-column (u/qualified-key table-name :archived)
                           visible-in-root (fn [root-namespace]
                                             (collection/visible-collection-filter-clause
-                                             (keyword (name table-name) "collection_id")
+                                             (u/qualified-key table-name :collection_id)
                                              {:include-archived-items include-archived-items
                                               :root-namespace         root-namespace}
                                              {:current-user-id user-id
@@ -148,8 +149,8 @@
                                  {:perms/view-data :unrestricted :perms/create-queries :query-builder})]}]]
 
                     (:model/Segment :model/Measure)
-                    (let [archived-column (keyword (name table-name) "archived")
-                          table-id-column (keyword (name table-name) "table_id")]
+                    (let [archived-column (u/qualified-key table-name :archived)
+                          table-id-column (u/qualified-key table-name :table_id)]
                       [:and
                        [:= entity-type-field (name entity-type)]
                        [:in entity-id-field
@@ -646,10 +647,10 @@
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select [:model/Transform :id :source] :id [:in transform-ids]))
 
-(mu/defn touch-transforms-of-source-database!
-  "Move the `updated_at` of the Transforms reading from the Database with `db-id`, returning the number updated."
+(mu/defn source-database-transform-ids :- [:sequential ::lib.schema.id/transform]
+  "The IDs of the Transforms reading from the Database with `db-id`."
   [db-id :- ::lib.schema.id/database]
-  (t2/update! :model/Transform :source_database_id db-id {:updated_at (mi/now)}))
+  (vec (t2/select-pks-vec :model/Transform :source_database_id db-id)))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -736,7 +737,7 @@
               :to_entity_type   :transform
               :to_entity_id     transform-id))
 
-;;; ---------------------------------------------------- Statuses ----------------------------------------------------
+;;; ------------------------------------- Change detection, shared by the jobs -------------------------------------
 
 (def ^:private entity-parts
   "For each entity type made of rows of other tables, the alias of those rows and a query of them selecting the ID of
@@ -756,187 +757,206 @@
                       :from   [[(t2/table-name :model/Dimension) :dim]]
                       :join   [[(t2/table-name :model/Field) :dim_f] [:= :dim_f.id :dim.field_id]]}]]})
 
-(defn- entity-version
-  "The version of the entities of `entity-type` in the table aliased `alias`, as Honey SQL: `:left-join`, the joins it
-  needs, `:updated-at`, the latest `updated_at` of the entity and of the rows it is made of, and `:count`, the number
-  of those rows."
+(defn- latest-clause
+  "The latest-clause of the timestamp `base` and the nullable timestamp expressions `others`, as Honey SQL."
+  [base others]
+  (if (seq others)
+    (into [:greatest base] (for [other others] [:coalesce other base]))
+    base))
+
+(defn- latest-per-entity-clause
+  "A left join, aliased `join-alias`, of the latest-clause `updated-at` per entity of the rows of `query`, whose `owner` column
+  holds the ID of the entity each belongs to, joined to the entity's `id-field`, as `{:join-alias :left-join}`."
+  [join-alias {:keys [owner updated-at] :as query} id-field]
+  {:join-alias join-alias
+   :left-join  [[(merge ^:allow-subquery {:select   [[owner :entity_id] [[:max updated-at] :updated_at]]
+                                          :group-by [owner]}
+                        (select-keys query [:from :join :left-join :where]))
+                 join-alias]
+                [:= (u/qualified-key join-alias :entity_id) id-field]]})
+
+(defn- entity-version-clause
+  "The own version of the entities of `entity-type` in the table aliased `alias`, as `{:joins :updated-at}`: the left
+  joins of the latest-clause `updated_at` of the rows they are made of, and the latest-clause of those and of the entity's own; `ids`,
+  a subquery, narrows the rows read to the entities it selects."
+  [entity-type alias ids]
+  (let [joins (for [[part-alias {[owner] :select :as query}] (get entity-parts entity-type)]
+                (latest-per-entity-clause (keyword (str "version_" (name part-alias)))
+                                          (cond-> (assoc query
+                                                         :owner      owner
+                                                         :updated-at (u/qualified-key part-alias :updated_at))
+                                            ids (update :where #(if % [:and % [:in owner ids]] [:in owner ids])))
+                                          (u/qualified-key alias :id)))]
+    {:joins      joins
+     :updated-at (latest-clause (u/qualified-key alias :updated_at)
+                                (for [{:keys [join-alias]} joins] (u/qualified-key join-alias :updated_at)))}))
+
+(defn- upstream-versions-clause
+  "The left joins of the latest-clause own version, per entity of `entity-type` in the table aliased `alias`, of the entities
+  of each type it directly depends on, leaving out segments, whose changes change neither the result metadata nor the
+  findings of the entities using them."
   [entity-type alias]
-  (let [column     #(keyword (name alias) (name %))
-        updated-at (column :updated_at)
-        parts      (for [[part-alias {[entity-id] :select :as query}] (get entity-parts entity-type)
-                         :let [join-alias (keyword (str "version_" (name part-alias)))]]
-                     {:join-alias join-alias
-                      :query      (with-meta (assoc query
-                                                    :select   [[entity-id :entity_id]
-                                                               [[:max (keyword (name part-alias) "updated_at")] :updated_at]
-                                                               [[:count :*] :row_count]]
-                                                    :group-by [entity-id])
-                                             {:allow-subquery true})})
-        part       #(keyword (name %1) (name %2))]
-    {:left-join  (into [] (mapcat (fn [{:keys [join-alias query]}]
-                                    [[query join-alias] [:= (part join-alias :entity_id) (column :id)]]))
-                       parts)
-     :updated-at (if (seq parts)
-                   (into [:greatest updated-at]
-                         (for [{:keys [join-alias]} parts]
-                           [:coalesce (part join-alias :updated_at) updated-at]))
-                   updated-at)
-     :count      (if (seq parts)
-                   (into [:+]
-                         (for [{:keys [join-alias]} parts]
-                           [:coalesce (part join-alias :row_count) [:inline 0]]))
-                   [:inline 0])}))
+  (let [dependency (t2/table-name :model/Dependency)
+        edges-to   (fn [edge-alias upstream-type]
+                     [:and
+                      [:= (u/qualified-key edge-alias :from_entity_type) (name entity-type)]
+                      [:= (u/qualified-key edge-alias :to_entity_type) (name upstream-type)]])]
+    (for [upstream-type (sort (disj deps.dependency-types/dependency-types :segment))
+          :let [table   (t2/table-name (deps.dependency-types/dependency-type->model upstream-type))
+                version (entity-version-clause upstream-type table
+                                               ^:allow-subquery {:select [:ud.to_entity_id]
+                                                                 :from   [[dependency :ud]]
+                                                                 :where  (edges-to :ud upstream-type)})]]
+      (latest-per-entity-clause (keyword (str "upstream_" (name upstream-type)))
+                                {:owner      :d.from_entity_id
+                                 :updated-at (:updated-at version)
+                                 :from       [[dependency :d]]
+                                 :join       [table [:= (u/qualified-key table :id) :d.to_entity_id]]
+                                 :left-join  (into [] (mapcat :left-join) (:joins version))
+                                 :where      (edges-to :d upstream-type)}
+                                (u/qualified-key alias :id)))))
 
-(def ^:private StatusModel
-  "A model recording, for each entity, the version of it that a job last processed."
-  [:enum :model/DependencyStatus :model/ResultMetadataStatus :model/AnalysisFindingStatus])
+(def ^:private EntityInfo
+  "An entity's ID and the version of it to record, the latest `updated_at` of it, its parts and its direct upstreams."
+  [:map {:closed true}
+   [:id         ms/PositiveInt]
+   [:updated_at ms/TemporalInstant]])
 
-(def ^:private Versions
-  "Entities with their versions and, where selected, their status."
-  [:sequential [:map {:closed true}
-                [:id                 ms/PositiveInt]
-                [:version_updated_at ms/TemporalInstant]
-                [:version_count      :int]
-                [:status_id          {:optional true} [:maybe ms/PositiveInt]]
-                [:status_updated_at  {:optional true} [:maybe ms/TemporalInstant]]]])
-
-(defn- changed-entities-query
-  "A query of the `:id` and version of up to `batch-size` entities of `entity-type` whose row of `status-table`, aliased
-  `:status` and joined on its `type-column` and `id-column`, records a version other than theirs or none, or matches
-  one of `conditions`, those matching `last` last."
-  [entity-type status-table type-column id-column batch-size & {:keys [conditions last]}]
+(defn- changed-entities
+  "The `:id` and version, `:updated_at`, of up to `batch-size` entities of `entity-type` whose row in the
+  `status` table records no `analyzed_updated_at` or an older one than their version, the latest-clause `updated_at` of the
+  entity, its parts and the entities it directly depends on, or that match `outdated`, those last. `status` is
+  `{:table :type-column :id-column}`, and `where` narrows the entities."
+  [entity-type {:keys [table type-column id-column]} batch-size & {:keys [where outdated]}]
   (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))
-        id-field   (keyword (name table-name) "id")
-        {:keys [updated-at count] :as version} (entity-version entity-type table-name)]
-    (cond-> {:select    [[id-field :id] [updated-at :version_updated_at] [count :version_count]]
-             :from      [table-name]
-             :left-join (into (:left-join version)
-                              [[status-table :status] [:and
-                                                       [:= (keyword "status" (name type-column)) (name entity-type)]
-                                                       [:= (keyword "status" (name id-column)) id-field]]])
-             :where     (into [:or
-                               [:= :status.analyzed_updated_at nil]
-                               [:not= :status.analyzed_updated_at updated-at]
-                               [:not= :status.analyzed_count count]]
-                              (cond-> conditions last (conj last)))
-             :limit     batch-size}
-      last (assoc :order-by [[[:case last [:inline 1] :else [:inline 0]]]]))))
+        id-field   (u/qualified-key table-name :id)
+        own        (entity-version-clause entity-type table-name nil)
+        upstreams  (upstream-versions-clause entity-type table-name)
+        version    (latest-clause (:updated-at own)
+                                  (for [{:keys [join-alias]} upstreams] (u/qualified-key join-alias :updated_at)))
+        changed    (cond-> [:or [:= :status.analyzed_updated_at nil] [:< :status.analyzed_updated_at version]]
+                     outdated (conj outdated))]
+    (vec (t2/query
+          (cond-> {:select    [[id-field :id] [version :updated_at]]
+                   :from      [table-name]
+                   :left-join (into (into [] (mapcat :left-join) (concat (:joins own) upstreams))
+                                    [[table :status] [:and
+                                                      [:= (u/qualified-key :status type-column) (name entity-type)]
+                                                      [:= (u/qualified-key :status id-column) id-field]]])
+                   :where     (if where [:and where changed] changed)
+                   :limit     batch-size}
+            outdated (assoc :order-by [[[:case outdated [:inline 1] :else [:inline 0]]]]))))))
 
-(defn- select-versions
-  "Run the [[changed-entities-query]] `query`."
-  [query]
-  (mapv #(update % :version_count long) (t2/query query)))
+;;; ------------------------------------- Deletes, shared by the jobs -------------------------------------
+
+(defn- deleted-entity-ids-with-status
+  "Up to `batch-size` IDs of deleted entities of `entity-type` that still have a row in `status-table`."
+  [status-table entity-type batch-size]
+  (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))]
+    (vec (t2/query {:select [:status.entity_id]
+                    :from   [[status-table :status]]
+                    :where  [:and
+                             [:= :status.entity_type (name entity-type)]
+                             [:not [:exists ^:allow-subquery {:select [1]
+                                                              :from   [[table-name :entity]]
+                                                              :where  [:= :entity.id :status.entity_id]}]]]
+                    :limit  batch-size}))))
+
+(mu/defn forget-entity-processing!
+  "Delete the statuses and clear the finding version of the entity `entity-type` `entity-id`, so every job processes it
+  again."
+  [entity-type :- EntityType
+   entity-id   :- ms/PositiveInt]
+  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id entity-id)
+  (t2/delete! :model/ResultMetadataStatus :entity_type entity-type :entity_id entity-id)
+  (t2/update! :model/AnalysisFinding :analyzed_entity_type entity-type :analyzed_entity_id entity-id
+              {:analyzed_updated_at nil}))
+
+(defn- dependent-ids-clause
+  "A subquery of the IDs of the entities of `dependent-type` directly depending on the entity `entity-type`
+  `entity-id`."
+  [dependent-type entity-type entity-id]
+  ^:allow-subquery {:select [:d.from_entity_id]
+                    :from   [[(t2/table-name :model/Dependency) :d]]
+                    :where  [:and
+                             [:= :d.from_entity_type (name dependent-type)]
+                             [:= :d.to_entity_type (name entity-type)]
+                             [:= :d.to_entity_id entity-id]]})
+
+(mu/defn forget-dependents-processing!
+  "Delete the result metadata statuses and clear the finding versions of the entities directly depending on the entity
+  `entity-type` `entity-id`, so the jobs reading what they depend on process them again."
+  [entity-type :- EntityType
+   entity-id   :- ms/PositiveInt]
+  (doseq [dependent-type (t2/select-fn-set :from_entity_type :model/Dependency
+                                           :to_entity_type entity-type :to_entity_id entity-id)
+          :let           [ids (dependent-ids-clause dependent-type entity-type entity-id)]]
+    (t2/delete! :model/ResultMetadataStatus :entity_type dependent-type :entity_id [:in ids])
+    (t2/update! :model/AnalysisFinding :analyzed_entity_type dependent-type :analyzed_entity_id [:in ids]
+                {:analyzed_updated_at nil})))
+
+;;; ---------------------------------------------- Dependency job ----------------------------------------------
+
+(mu/defn dependency-deleted-entity-ids :- [:sequential ms/PositiveInt]
+  "Up to `batch-size` IDs of deleted entities of `entity-type` that still have a DependencyStatus."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   batch-size  :- ms/PositiveInt]
+  (mapv :entity_id (deleted-entity-ids-with-status :dependency_status entity-type batch-size)))
+
+(mu/defn delete-dependency-statuses!
+  "Delete the DependencyStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
+  [entity-type :- EntityType
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id [:in entity-ids]))
 
 (mu/defn upsert-dependency-status!
-  "Record that the dependencies of `entity-type` `entity-id` were computed from its version `analyzed-updated-at`
-  `analyzed-count` by the analysis of `current-version`, and whether it names tables that match nothing."
-  [entity-type         :- EntityType
-   entity-id           :- ms/PositiveInt
-   current-version     :- ms/PositiveInt
-   unresolved-tables?  :- :boolean
-   analyzed-updated-at :- ms/TemporalInstant
-   analyzed-count      :- :int]
+  "Record that the dependencies of `entity-type` `entity-id` were computed from its `version` by the analysis of
+  `current-version`."
+  [entity-type     :- EntityType
+   entity-id       :- ms/PositiveInt
+   current-version :- ms/PositiveInt
+   version         :- ms/TemporalInstant]
   (mdb/update-or-insert!
    :model/DependencyStatus
    {:entity_type entity-type :entity_id entity-id}
    (constantly {:dependency_analysis_version current-version
-                :unresolved_tables           unresolved-tables?
-                :analyzed_updated_at         analyzed-updated-at
-                :analyzed_count              analyzed-count
-                :updated_at                  (mi/now)})))
+                :analyzed_updated_at         version})))
 
-(mu/defn entities-for-dependency-calculation :- Versions
+(mu/defn dependency-pending-entities :- [:sequential EntityInfo]
   "The IDs and versions of up to `batch-size` entities of the type `entity-type` without a DependencyStatus, or whose
-  status records a version other than theirs or an analysis below `current-version`, and with `recheck-unresolved?`
-  also those that name tables matching nothing while a table changed since; outdated ones last."
-  [entity-type         :- ::deps.dependency-types/dependency-types
-   batch-size          :- ms/PositiveInt
-   current-version     :- ms/PositiveInt
-   recheck-unresolved? :- :boolean]
-  (select-versions
-   (changed-entities-query
-    entity-type :dependency_status :entity_type :entity_id batch-size
-    :last       [:< :status.dependency_analysis_version current-version]
-    :conditions (when recheck-unresolved?
-                  [[:and
-                    [:= :status.unresolved_tables true]
-                    [:< :status.updated_at ^:allow-subquery {:select [[[:max :updated_at]]]
-                                                             :from   [(warehouse-schema-overlay/table-query
-                                                                       {:user-settings? false})]}]]]))))
+  status records an older version or an analysis below `current-version`; outdated ones last."
+  [entity-type     :- ::deps.dependency-types/dependency-types
+   batch-size      :- ms/PositiveInt
+   current-version :- ms/PositiveInt]
+  (changed-entities entity-type {:table :dependency_status :type-column :entity_type :id-column :entity_id} batch-size
+                    :outdated [:< :status.dependency_analysis_version current-version]))
 
-(mu/defn entities-with-changed-version :- Versions
-  "Up to `batch-size` entities of `entity-type` that something depends on, without a `status-model` row or whose row
-  records a version other than theirs, with their version and status."
-  [status-model :- StatusModel
-   entity-type  :- ::deps.dependency-types/dependency-types
-   batch-size   :- ms/PositiveInt]
-  (let [id-field (keyword (name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))) "id")]
-    (select-versions
-     (-> (changed-entities-query entity-type (t2/table-name status-model) :entity_type :entity_id batch-size)
-         (update :select into [[:status.id :status_id] [:status.updated_at :status_updated_at]])
-         (update :where (fn [changed]
-                          [:and
-                           [:exists ^:allow-subquery {:select [1]
-                                                      :from   [[(t2/table-name :model/Dependency) :dep]]
-                                                      :where  [:and
-                                                               [:= :dep.to_entity_type (name entity-type)]
-                                                               [:= :dep.to_entity_id id-field]]}]
-                           changed]))))))
+;;; ------------------------------------------- Result metadata job -------------------------------------------
 
-(mu/defn clear-status-version!
-  "Clear the version the `status-model` row of `entity-type` `entity-id` records, creating it if it doesn't exist, so
-  the job processes the entity again."
-  [status-model :- StatusModel
-   entity-type  :- EntityType
-   entity-id    :- ms/PositiveInt]
-  (mdb/update-or-insert! status-model
-                         {:entity_type entity-type :entity_id entity-id}
-                         (constantly {:analyzed_updated_at nil :analyzed_count nil :updated_at (mi/now)})))
+(mu/defn result-metadata-pending-cards :- [:sequential EntityInfo]
+  "The IDs and versions of up to `batch-size` MBQL cards without a ResultMetadataStatus, or whose status records a
+  version older than theirs, which includes the versions of the entities they depend on."
+  [batch-size :- ms/PositiveInt]
+  (changed-entities :card {:table :result_metadata_status :type-column :entity_type :id-column :entity_id} batch-size
+                    :where      [:or [:= :report_card.query_type nil] [:not= :report_card.query_type "native"]]))
 
-(mu/defn record-status-version!
-  "Record that the dependents of `entity-type` `entity-id` were processed from its version `analyzed-updated-at`
-  `analyzed-count`, on the `status-model` row with `status-id` unless its `updated_at` is no longer
-  `status-updated-at`, or on a new row unless one was created meanwhile."
-  [status-model        :- StatusModel
-   entity-type         :- EntityType
-   entity-id           :- ms/PositiveInt
-   status-id           :- [:maybe ms/PositiveInt]
-   status-updated-at   :- [:maybe ms/TemporalInstant]
-   analyzed-updated-at :- ms/TemporalInstant
-   analyzed-count      :- :int]
-  (let [version {:analyzed_updated_at analyzed-updated-at :analyzed_count analyzed-count :updated_at (mi/now)}]
-    (if status-id
-      (t2/update! status-model :id status-id :updated_at status-updated-at version)
-      (try
-        (t2/insert! status-model (assoc version :entity_type entity-type :entity_id entity-id))
-        (catch Exception e
-          (when-not (t2/exists? status-model :entity_type entity-type :entity_id entity-id)
-            (throw e)))))))
+(mu/defn result-metadata-deleted-card-ids :- [:sequential ::lib.schema.id/card]
+  "Up to `batch-size` IDs of deleted Cards that still have a ResultMetadataStatus."
+  [batch-size :- ms/PositiveInt]
+  (mapv :entity_id (deleted-entity-ids-with-status :result_metadata_status :card batch-size)))
 
-(mu/defn deleted-status-entity-ids :- [:sequential ms/PositiveInt]
-  "Up to `batch-size` IDs of deleted entities of `entity-type` that still have a `status-model` row."
-  [status-model :- StatusModel
-   entity-type  :- ::deps.dependency-types/dependency-types
-   batch-size   :- ms/PositiveInt]
-  (let [status-table (t2/table-name status-model)
-        table-name   (t2/table-name (deps.dependency-types/dependency-type->model entity-type))]
-    (vec (t2/select-fn-vec :entity_id status-model
-                           {:where [:and
-                                    [:= (keyword (name status-table) "entity_type") (name entity-type)]
-                                    [:not [:exists ^:allow-subquery
-                                           {:select [1]
-                                            :from   [[table-name :entity]]
-                                            :where  [:= :entity.id (keyword (name status-table) "entity_id")]}]]]
-                            :limit batch-size}))))
+(mu/defn delete-result-metadata-statuses!
+  "Delete the ResultMetadataStatuses of the Cards with `card-ids`, returning the number deleted."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/delete! :model/ResultMetadataStatus :entity_type :card :entity_id [:in card-ids]))
 
-(mu/defn delete-statuses!
-  "Delete the `status-model` rows of the entities `entity-type` `entity-ids`, returning the number deleted."
-  [status-model :- StatusModel
-   entity-type  :- EntityType
-   entity-ids   :- [:sequential ms/PositiveInt]]
-  (t2/delete! status-model :entity_type entity-type :entity_id [:in entity-ids]))
-
-;;; --------------------------------------------- Result metadata ---------------------------------------------
+(mu/defn upsert-result-metadata-status!
+  "Record that the result metadata of the Card with `card-id` was re-derived from its `version`."
+  [card-id :- ::lib.schema.id/card
+   version :- ms/TemporalInstant]
+  (mdb/update-or-insert! :model/ResultMetadataStatus
+                         {:entity_type :card :entity_id card-id}
+                         (constantly {:analyzed_updated_at version})))
 
 (mu/defn native-card-ids
   "The IDs of the native Cards among `card-ids`."
@@ -954,7 +974,7 @@
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
   (t2/update! :model/Card card-id {:result_metadata result-metadata}))
 
-;;; ------------------------------------------------ Analysis findings ------------------------------------------------
+;;; ------------------------------------------- Analysis finding job -------------------------------------------
 
 (mu/defn finding-id
   "The ID of the AnalysisFinding of the entity `entity-type` `entity-id`, or nil."
@@ -972,7 +992,6 @@
            [:analysis_version     {:optional true} ms/PositiveInt]
            [:result               {:optional true} :boolean]
            [:analyzed_updated_at  {:optional true} [:maybe ms/TemporalInstant]]
-           [:analyzed_count       {:optional true} [:maybe :int]]
            [:analyzed_entity_type {:optional true} [:maybe [:or :keyword :string]]]
            [:analyzed_entity_id   {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/insert! :model/AnalysisFinding row))
@@ -981,26 +1000,20 @@
   "Apply `changes` to the AnalysisFinding with `finding-id`, returning the number updated."
   [finding-id :- ms/PositiveInt
    changes    :- (mut/select-keys ::dependencies.schema/analysis-finding.update
-                                  [:analyzed_at :analysis_version :result :analyzed_updated_at :analyzed_count])]
+                                  [:analyzed_at :analysis_version :result :analyzed_updated_at])]
   (t2/update! :model/AnalysisFinding finding-id changes))
 
-(mu/defn clear-finding-version!
-  "Clear the version the AnalysisFinding of `entity-type` `entity-id` records, so the entity is analyzed again,
-  returning the number updated."
-  [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/update! :model/AnalysisFinding :analyzed_entity_type entity-type :analyzed_entity_id entity-id
-              {:analyzed_updated_at nil}))
-
-(mu/defn entities-for-analysis :- Versions
+(mu/defn analysis-finding-pending-entities :- [:sequential EntityInfo]
   "The IDs and versions of up to `batch-size` entities of the type `entity-type` without an AnalysisFinding, or whose
-  finding records a version other than theirs or an analysis below `current-version`; outdated ones last."
+  finding records a version older than theirs, which includes the versions of the entities they depend on, or an
+  analysis below `current-version`; outdated ones last."
   [entity-type     :- ::deps.dependency-types/dependency-types
    batch-size      :- ms/PositiveInt
    current-version :- ms/PositiveInt]
-  (select-versions
-   (changed-entities-query entity-type :analysis_finding :analyzed_entity_type :analyzed_entity_id batch-size
-                           :last [:< :status.analysis_version current-version])))
+  (changed-entities entity-type
+                    {:table :analysis_finding :type-column :analyzed_entity_type :id-column :analyzed_entity_id}
+                    batch-size
+                    :outdated [:< :status.analysis_version current-version]))
 
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
 

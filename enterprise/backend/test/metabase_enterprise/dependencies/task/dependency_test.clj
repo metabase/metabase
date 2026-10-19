@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.dependency :as dependencies.model]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
@@ -36,7 +37,7 @@
 (defn- clear-version!
   "Have the dependencies of an entity computed again, as if it changed."
   [entity-type entity-id]
-  (deps.dependency-status/clear-version! {entity-type #{entity-id}}))
+  (dependencies.db/delete-dependency-statuses! entity-type [entity-id]))
 
 (defn- pending?
   "Whether the dependencies of the entity `entity-type` `entity-id` were not computed from its current version."
@@ -295,7 +296,7 @@
         (is (seq (t2/select :model/Dependency :from_entity_type :card :from_entity_id good-card-id)))
         (is (not (pending? :card bad-card-id)))))))
 
-(deftest ^:synchronized backfill-failure-waits-for-a-change-test
+(deftest ^:synchronized backfill-failure-waits-for-change-test
   (testing "An entity whose calculation fails is not processed again until it changes again"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
@@ -389,7 +390,7 @@
         (is (false? (deps.dependency-status/has-pending-entities?))
             "Expected no pending work once the card has been processed")))))
 
-(deftest ^:synchronized batch-size-zero-disables-the-job-test
+(deftest ^:synchronized batch-size-zero-disables-job-test
   (testing "a batch size that isn't positive keeps the job from being scheduled by writes or at startup"
     (let [scheduled    (atom [])
           scheduled-by (fn [thunk]
@@ -518,21 +519,3 @@
           (is (= #{(mt/id :products)} (table-dependency-ids :card card-id)))
           (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                           :to_entity_type :card :to_entity_id orders-id)))))))
-
-(deftest ^:synchronized backfill-records-table-created-later-test
-  (testing "a table a native query names before it exists gets its dependency once the table is created"
-    (backfill-all-existing-entities!)
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
-                                                                                 "SELECT * FROM PUBLIC.BIRDS_LATE")}
-                     :model/Card {known-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
-                                                                                  "SELECT * FROM VENUES")}]
-        (backfill-all-existing-entities!)
-        (is (empty? (table-dependency-ids :card card-id)))
-        (is (true? (t2/select-one-fn :unresolved_tables :model/DependencyStatus :entity_type :card :entity_id card-id)))
-        (is (false? (t2/select-one-fn :unresolved_tables :model/DependencyStatus :entity_type :card :entity_id known-id)))
-        (mt/with-temp [:model/Table {late-id :id} {:db_id (mt/id) :schema "PUBLIC" :name "BIRDS_LATE" :active true}]
-          (backfill-all-existing-entities!)
-          (is (= #{late-id} (table-dependency-ids :card card-id)))
-          (is (false? (t2/select-one-fn :unresolved_tables :model/DependencyStatus
-                                        :entity_type :card :entity_id card-id))))))))

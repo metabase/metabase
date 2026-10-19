@@ -12,7 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:synchronized batch-size-zero-disables-the-job-test
+(deftest ^:synchronized batch-size-zero-disables-job-test
   (testing "a batch size that isn't positive keeps the job from being scheduled by writes or at startup"
     (let [scheduled    (atom [])
           scheduled-by (fn [thunk]
@@ -27,7 +27,7 @@
           (with-redefs [env/env (assoc env/env :mb-dependency-entity-check-batch-size "5")]
             (is (= 1 (scheduled-by task.analysis-finding/trigger-analysis-finding-job!)))))))))
 
-(deftest ^:synchronized run-stops-without-the-feature-test
+(deftest ^:synchronized run-stops-without-feature-test
   (testing "a run without the dependencies feature schedules no next run, since the next write or token update triggers one"
     (let [scheduled (atom [])]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
@@ -42,7 +42,7 @@
   [calls]
   (into #{} (map (fn [args] (.getName (.getKey ^JobDetail (nth args 1))))) calls))
 
-(deftest ^:synchronized token-update-restarts-the-job-test
+(deftest ^:synchronized token-update-restarts-job-test
   (testing "Setting a premium token must restart the analysis finding job, or enabling the feature on an idle instance
            leaves the periodic checker dead until the next process restart."
     (let [scheduled (atom [])]

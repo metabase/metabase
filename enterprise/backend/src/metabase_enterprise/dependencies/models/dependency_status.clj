@@ -15,20 +15,12 @@
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})
 
-(defn clear-version!
-  "Clear the version the statuses of the entities in `type->ids`, `{entity-type ids}`, record, so their dependencies
-  are computed again."
-  [type->ids]
-  (doseq [[entity-type ids] type->ids
-          id                ids]
-    (dependencies.db/clear-status-version! :model/DependencyStatus entity-type id)))
-
 (defn upsert-status!
-  "Record that the dependencies of the entity `entity-type` `entity-id` were computed from its version, a
-  `{:updated-at :count}` map, by the current analysis, and whether it names tables that match nothing."
-  [entity-type entity-id {:keys [updated-at count]} unresolved-tables?]
+  "Record that the dependencies of the entity `entity-type` `entity-id` were computed from its `version` by the current
+  analysis."
+  [entity-type entity-id version]
   (dependencies.db/upsert-dependency-status!
-   entity-type entity-id models.dependency/current-dependency-analysis-version unresolved-tables? updated-at count))
+   entity-type entity-id models.dependency/current-dependency-analysis-version version))
 
 (defmulti hydrate-for-deps
   "Hydrate a batch of instances with data needed for dependency calculation.
@@ -51,28 +43,24 @@
 
 (defn instances-for-dependency-calculation
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` whose dependencies were not computed
-  from their current version by the current analysis, or that name tables matching nothing while a table changed since,
-  as `[instance version]` pairs, each version a `{:updated-at :count}` map. Prioritizes changed entities over outdated
-  analyses."
+  from their current version by the current analysis, as `[instance version]` pairs. Prioritizes changed entities over
+  outdated analyses."
   [entity-type batch-size]
-  (let [rows      (dependencies.db/entities-for-dependency-calculation
-                   entity-type batch-size models.dependency/current-dependency-analysis-version true)
+  (let [rows      (dependencies.db/dependency-pending-entities entity-type batch-size models.dependency/current-dependency-analysis-version)
         instances (when (seq rows)
                     (m/index-by :id (dependencies.db/instances entity-type (into #{} (map :id) rows))))]
     (into []
-          (keep (fn [{:keys [id version_updated_at version_count]}]
+          (keep (fn [{:keys [id updated_at]}]
                   (when-let [instance (get instances id)]
-                    [instance {:updated-at version_updated_at :count version_count}])))
+                    [instance updated_at])))
           rows)))
 
 (defn has-pending-entities?
   "Returns true if there are any entities whose dependencies were not computed from their current version by the
-  current analysis, or deleted entities whose status the dependency job has yet to clean up. The recheck of entities
-  naming tables that match nothing, which any table write starts, doesn't count."
+  current analysis, or deleted entities whose status the dependency job has yet to clean up."
   []
   (boolean
    (some (fn [entity-type]
-           (or (seq (dependencies.db/entities-for-dependency-calculation
-                     entity-type 1 models.dependency/current-dependency-analysis-version false))
-               (seq (dependencies.db/deleted-status-entity-ids :model/DependencyStatus entity-type 1))))
+           (or (seq (dependencies.db/dependency-pending-entities entity-type 1 models.dependency/current-dependency-analysis-version))
+               (seq (dependencies.db/dependency-deleted-entity-ids entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))

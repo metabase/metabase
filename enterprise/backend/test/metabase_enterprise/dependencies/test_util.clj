@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase.app-db.core :as mdb]
@@ -9,7 +10,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn synchronously-run-dependency-job!
   "Run the dependency job synchronously, processing every changed or outdated entity until there is nothing left to
@@ -40,27 +42,35 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/card mp card-id))))
 
-(defn dependents-pending?
-  "Whether the dependents of the entity `entity-type` `entity-id` were not processed, as `status-model` records, from
-  its current version."
-  [status-model entity-type entity-id]
-  (boolean (some #(= entity-id (:id %))
-                 (dependencies.db/entities-with-changed-version status-model entity-type 100000))))
-
-(defn record-current-version!
-  "Record, as `status-model` does, that the dependents of the entity `entity-type` `entity-id` were processed from its
-  current version."
-  [status-model entity-type entity-id]
-  (doseq [{:keys [id status_id status_updated_at version_updated_at version_count]}
-          (dependencies.db/entities-with-changed-version status-model entity-type 100000)
-          :when (= entity-id id)]
-    (dependencies.db/record-status-version! status-model entity-type entity-id
-                                            status_id status_updated_at version_updated_at version_count)))
-
 (defn result-metadata-pending?
-  "Whether the dependents of the entity `entity-type` `entity-id` were not re-derived from its current version."
+  "Whether the result metadata of the Card with `card-id` was not re-derived from its current version."
+  [card-id]
+  (boolean (some #(= card-id (:id %)) (dependencies.db/result-metadata-pending-cards 100000))))
+
+(defn record-result-metadata-version!
+  "Record, as the result metadata job does, that the result metadata of the Card with `card-id` was re-derived from its
+  current version."
+  [card-id]
+  (doseq [{:keys [id updated_at]} (dependencies.db/result-metadata-pending-cards 100000)
+          :when                (= card-id id)]
+    (dependencies.db/upsert-result-metadata-status! card-id updated_at)))
+
+(defn analysis-finding-pending?
+  "Whether the entity `entity-type` `entity-id` was not analyzed from its current version."
   [entity-type entity-id]
-  (dependents-pending? :model/ResultMetadataStatus entity-type entity-id))
+  (boolean (some #(= entity-id (:id %))
+                 (dependencies.db/analysis-finding-pending-entities
+                  entity-type 100000 models.analysis-finding/*current-analysis-finding-version*))))
+
+(defn record-analysis-finding-version!
+  "Record, as the analysis finding job does, that the existing finding of the entity `entity-type` `entity-id` was
+  analyzed from its current version."
+  [entity-type entity-id]
+  (doseq [{:keys [id updated_at]} (dependencies.db/analysis-finding-pending-entities
+                                   entity-type 100000 models.analysis-finding/*current-analysis-finding-version*)
+          :when                (= entity-id id)]
+    (t2/update! :model/AnalysisFinding :analyzed_entity_type entity-type :analyzed_entity_id entity-id
+                {:analyzed_updated_at updated_at})))
 
 (defn do-with-immediate-hook-writes
   "Run `thunk` with the work the dependency hooks defer until commit done at once, since a test's transaction never

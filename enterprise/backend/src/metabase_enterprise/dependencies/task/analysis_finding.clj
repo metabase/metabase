@@ -10,28 +10,25 @@
 (set! *warn-on-reflection* true)
 
 (defn- run-batch!
-  "Analyze a batch of entities whose own findings are outdated, then a batch of the dependents of changed entities,
-  returning when to run again: right away when it took any, or nil."
+  "Analyze a batch of entities whose findings are outdated, returning when to run again: right away when it took any,
+  or nil."
   []
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-entity-check-batch-size)
-          own        (reduce (fn [taken entity-type]
+          analyzed   (reduce (fn [taken entity-type]
                                (let [analyzed (deps.analysis-finding/analyze-batch! entity-type batch-size)]
                                  (when (pos? analyzed)
                                    (log/info "Analyzed" analyzed "entities of type" entity-type))
                                  (+ taken analyzed)))
                              0
-                             deps.analysis-finding/analyzable-entities)
-          dependents (deps.analysis-finding/analyze-dependents-batch! batch-size)]
-      (when (pos? dependents)
-        (log/info "Analyzed the dependents of" dependents "entities"))
-      (when (pos? (+ own dependents))
+                             deps.analysis-finding/analyzable-entities)]
+      (when (pos? analyzed)
         1))))
 
 (declare ^:private job)
 
 (task/defjob UpdateAnalysisFindings
-  "Re-analyze the changed entities and the dependents of changed entities."
+  "Re-analyze the entities that changed or whose upstreams changed."
   {:saved-class "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
    :concurrent? false}
   [ctx]

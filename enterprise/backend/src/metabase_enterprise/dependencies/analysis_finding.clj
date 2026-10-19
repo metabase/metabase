@@ -1,11 +1,8 @@
 (ns metabase-enterprise.dependencies.analysis-finding
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
-   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
-   [metabase-enterprise.dependencies.dependents :as deps.dependents]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.util.log :as log]
@@ -50,7 +47,7 @@
 
 (defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`, recording `version`,
-  the `:analyzed_updated_at` and `:analyzed_count` of the entity analyzed, unless it is nil.
+  the `:analyzed_updated_at` of the entity analyzed, unless it is nil.
 
   If any row exists already, it is replaced. If it does not exist, it is created."
   ([toucan-instance]
@@ -101,8 +98,8 @@
   (into [:enum] analyzable-entities))
 
 (mu/defn analyze-batch! :- nat-int?
-  "Analyze up to `batch-size` entities of `type` whose AnalysisFinding is missing, was analyzed from another version of
-  them, or by an older analysis, returning how many it analyzed."
+  "Analyze up to `batch-size` entities of `type` whose AnalysisFinding is missing, records a version older than theirs,
+  which includes the versions of the entities they depend on, or an older analysis, returning how many it analyzed."
   [type :- AnalyzableEntityType
    batch-size :- pos-int?]
   ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
@@ -113,26 +110,3 @@
       (doseq [[instance version] pairs]
         (analyze-instance! instance version))
       (count pairs))))
-
-(defn- analyze-transitive-dependents!
-  "Analyze the analyzable transitive dependents of each of the entities in `type->ids`, `{entity-type ids}`, each
-  dependent once, including those of the entities that depend on others."
-  [type->ids]
-  (let [dependents (apply merge-with into {}
-                          (for [[entity-type ids] type->ids
-                                id                ids]
-                            (models.dependency/transitive-dependents {entity-type [{:id id}]})))]
-    (doseq [[entity-type ids] dependents
-            :when             (and (analyzable-entities entity-type) (seq ids))
-            instance          (dependencies.db/instances entity-type (set ids))]
-      (analyze-instance! instance nil))))
-
-(mu/defn analyze-dependents-batch! :- nat-int?
-  "Analyze the transitive dependents of up to `batch-size` entities whose dependents were not analyzed from their
-  current version, or that were deleted, then record their versions, returning how many entities it took."
-  [batch-size :- pos-int?]
-  (lib-be/with-metadata-provider-cache
-    (deps.dependents/process-changed-dependents!
-     :model/AnalysisFindingStatus deps.dependency-types/dependency-types batch-size
-     (fn [deleted nodes]
-       (analyze-transitive-dependents! (merge-with into deleted (models.dependency/group-nodes nodes)))))))

@@ -77,41 +77,23 @@
 
 (deftest group-permission-warnings-follow-snippet-edit-test
   (testing "after a snippet edit and the jobs, the warnings list the tables of the snippet's new SQL"
-    (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
-      (mt/with-no-data-perms-for-all-users!
-        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding]
-          (mt/with-temp [:model/NativeQuerySnippet snippet {:name "birds source" :content "VENUES"}
-                         :model/DataApp {collection-id :resource_collection_id :as app}
-                         {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                         :model/Card _ {:collection_id collection-id
-                                        :dataset_query (lib/native-query (mt/metadata-provider)
-                                                                         "SELECT * FROM {{snippet: birds source}}")}
-                         :model/PermissionsGroup group {}]
-            (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-            (group-access/add-groups! app [(:id group)])
-            (deps.test/synchronously-run-dependency-job!)
-            (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "CHECKINS"})
-            (deps.test/synchronously-run-dependency-job!)
-            (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)}]}]
-                    (group-access/permission-warnings app)))))))))
-
-(deftest group-permission-warnings-include-table-created-after-analysis-test
-  (testing "a table created after the app's card was analyzed enters the warnings once the jobs run"
-    (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
-      (mt/with-no-data-perms-for-all-users!
-        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding]
-          (mt/with-temp [:model/DataApp {collection-id :resource_collection_id :as app}
-                         {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                         :model/Card _ {:collection_id collection-id
-                                        :dataset_query (lib/native-query (mt/metadata-provider)
-                                                                         "SELECT * FROM PUBLIC.BIRDS_LATE")}
-                         :model/PermissionsGroup group {}]
-            (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-            (group-access/add-groups! app [(:id group)])
-            (deps.test/synchronously-run-dependency-job!)
-            (mt/with-temp [:model/Table {late-id :id} {:db_id (mt/id) :schema "PUBLIC" :name "BIRDS_LATE" :active true}]
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding]
+            (mt/with-temp [:model/NativeQuerySnippet snippet {:name "birds source" :content "VENUES"}
+                           :model/DataApp {collection-id :resource_collection_id :as app}
+                           {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                           :model/Card _ {:collection_id collection-id
+                                          :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                           "SELECT * FROM {{snippet: birds source}}")}
+                           :model/PermissionsGroup group {}]
+              (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+              (group-access/add-groups! app [(:id group)])
               (deps.test/synchronously-run-dependency-job!)
-              (is (=? [{:group_id (:id group) :missing_tables [{:id late-id}]}]
+              (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "CHECKINS"})
+              (deps.test/synchronously-run-dependency-job!)
+              (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)}]}]
                       (group-access/permission-warnings app))))))))))
 
 (deftest group-permission-warnings-exclude-inactive-tables-test

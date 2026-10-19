@@ -195,7 +195,7 @@
   [entity-type entity-id]
   (doseq [[instance version] (deps.dependency-status/instances-for-dependency-calculation entity-type 100000)
           :when              (= entity-id (:id instance))]
-    (deps.dependency-status/upsert-status! entity-type entity-id version false)))
+    (deps.dependency-status/upsert-status! entity-type entity-id version)))
 
 (deftest ^:synchronized dependency-status-version-test
   (testing "updating an entity changes the version its dependencies are computed from, and creating one writes no status"

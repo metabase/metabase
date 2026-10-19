@@ -784,10 +784,10 @@
          (is (= #{[:card parent-id] [:card child-id]}
                 (analyzed-among! [:card parent-id] [:card child-id]))))))))
 
-(deftest ^:synchronized card-update-stops-on-transforms-test
+(deftest ^:synchronized card-update-analyzes-direct-dependents-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "a card update has the job re-analyze its transitive dependents, transforms included"
+     (testing "a card update has the job re-analyze the card and its direct dependents, transforms included"
        (let [products (lib.metadata/table mp (mt/id :products))
              orders   (lib.metadata/table mp (mt/id :orders))]
          (mt/with-temp [:model/Card {parent-card-id :id} {:dataset_query (lib/query mp products)}
@@ -804,7 +804,7 @@
                                              :to_entity_type :transform :to_entity_id transform-id}]
            (analyzed-by-job!)
            (t2/update! :model/Card parent-card-id {:dataset_query (lib/query mp orders)})
-           (is (= #{[:card parent-card-id] [:transform transform-id] [:card child-card-id]}
+           (is (= #{[:card parent-card-id] [:transform transform-id]}
                   (analyzed-among! [:card parent-card-id] [:transform transform-id] [:card child-card-id])))))))))
 
 (deftest ^:synchronized transform-update-works-with-no-analyses-test
@@ -865,10 +865,10 @@
                                              :to_entity_type :transform :to_entity_id transform-id}]
            (is (nil? (deps.hooks/after-transform-run transform-id nil)))))))))
 
-(deftest ^:synchronized transform-run-marks-dependents-stale-test
+(deftest ^:synchronized transform-run-without-table-analyzes-nothing-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "a transform run has the job re-analyze the transform's dependents, not the transform or unrelated cards"
+     (testing "a transform run re-analyzes nothing by itself, since the sync of its output table moves that table's version"
        (let [products (lib.metadata/table mp (mt/id :products))
              orders   (lib.metadata/table mp (mt/id :orders))]
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
@@ -880,7 +880,7 @@
                                              :to_entity_type :transform :to_entity_id transform-id}]
            (analyzed-by-job!)
            (deps.hooks/after-transform-run transform-id nil)
-           (is (= #{[:card card-id]}
+           (is (= #{}
                   (analyzed-among! [:card card-id] [:transform transform-id] [:card other-card-id])))))))))
 
 (deftest ^:synchronized segment-update-works-with-no-analyses-test
@@ -894,10 +894,10 @@
            (is (= 1 (t2/update! :model/Segment segment-id
                                 {:definition {:filter [:< [:field price-field-id nil] 50]}})))))))))
 
-(deftest ^:synchronized segment-update-updates-analyses-test
+(deftest ^:synchronized segment-update-analyzes-only-segment-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "a segment update has the job re-analyze it and the cards depending on it"
+     (testing "a segment update has the job re-analyze the segment, not the cards using it, whose findings it can't change"
        (let [products-id    (mt/id :products)
              price-field-id (mt/id :products :price)
              products       (lib.metadata/table mp products-id)]
@@ -908,7 +908,7 @@
                                              :to_entity_type :segment :to_entity_id segment-id}]
            (analyzed-by-job!)
            (t2/update! :model/Segment segment-id {:definition {:filter [:< [:field price-field-id nil] 50]}})
-           (is (= #{[:segment segment-id] [:card card-id]}
+           (is (= #{[:segment segment-id]}
                   (analyzed-among! [:segment segment-id] [:card card-id])))))))))
 
 (deftest ^:synchronized table-metadata-update-triggers-dependent-analysis-test

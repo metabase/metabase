@@ -14,10 +14,7 @@
    [:dashboard {:optional true} [:set ::lib.schema.id/dashboard]]
    [:document  {:optional true} [:set ::documents.schema/document.id]]
    [:sandbox   {:optional true} [:set ::lib.schema.id/sandbox]]
-   [:segment   {:optional true} [:set ::lib.schema.id/segment]]
-   [:unresolved-table {:optional true} [:set [:map
-                                              [:schema {:optional true} :string]
-                                              [:table :string]]]]])
+   [:segment   {:optional true} [:set ::lib.schema.id/segment]]])
 
 (mr/def ::analysis-finding
   "A AnalysisFinding as selected from the app DB: every column of `:analysis_finding`."
@@ -34,8 +31,7 @@
    [:analysis_version     {:optional true} [:maybe :int]]
    [:analyzed_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:result               {:optional true} [:maybe :boolean]]
-   [:analyzed_updated_at  {:optional true} [:maybe ms/TemporalInstant]]
-   [:analyzed_count       {:optional true} [:maybe :int]]])
+   [:analyzed_updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::analysis-finding-error
   "A AnalysisFindingError as selected from the app DB: every column of `:analysis_finding_error`."
@@ -82,8 +78,4 @@
    [:entity_type                 {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_id                   {:optional true} [:maybe ms/PositiveInt]]
    [:dependency_analysis_version {:optional true} [:maybe :int]]
-   [:unresolved_tables           {:optional true} [:maybe :boolean]]
-   [:analyzed_updated_at         {:optional true} [:maybe ms/TemporalInstant]]
-   [:analyzed_count              {:optional true} [:maybe :int]]
-   [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at                  {:optional true} [:maybe ms/TemporalInstant]]])
+   [:analyzed_updated_at         {:optional true} [:maybe ms/TemporalInstant]]])

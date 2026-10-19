@@ -67,7 +67,7 @@
   (let [driver (:engine (lib.metadata/database query))
         deps   (deps.native/native-query-deps driver query)]
     ;; The deps are in #{{:table 7} ...} form and need conversion to ::deps.schema/upstream-deps form.
-    (u/group-by ffirst (comp second first) conj #{} deps)))
+    (u/group-by ffirst (comp second first) conj #{} (remove :unresolved-table deps))))
 
 (mu/defn- upstream-deps:query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]

@@ -10,12 +10,3 @@
 
 (t2/deftransforms :model/ResultMetadataStatus
   {:entity_type mi/transform-keyword})
-
-(def entity-types
-  "The entity types whose result columns the result metadata of dependent MBQL cards is derived from."
-  [:card :measure :table])
-
-(def derived-types
-  "The entity types whose result columns are derived from those of the entities they depend on: cards, of which the
-  MBQL ones are re-derived, and measures, which pass a change on."
-  #{:card :measure})

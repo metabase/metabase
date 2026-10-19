@@ -1,8 +1,20 @@
-## The dependency jobs find changed entities by comparing their updated_at with the version their status row last
-## recorded, instead of reading stale flags that every write had to set. The status rows lose the flag and the retry
-## state, and the rows an entity's version is made of get the timestamps they lacked.
+## The dependency jobs find changed entities by comparing the latest updated_at of an entity, its parts and what it
+## depends on with the version its status row last recorded, instead of reading stale flags that every write had to
+## set. The status rows lose the flag and the retry state, and the rows an entity's version is made of get the
+## timestamps they lacked. result_metadata_status records the version each MBQL card's result metadata was last
+## re-derived from, analogous to dependency_status.
 
 databaseChangeLog:
+  - changeSet:
+      id: v65.k4w2ns
+      author: ranquild
+      comment: Delete the dependency_status rows marked stale, since an entity without a row is processed again
+      changes:
+        - delete:
+            tableName: dependency_status
+            where: stale = TRUE
+      rollback: # the deleted rows are recreated when the job processes their entities
+
   - changeSet:
       id: v65.nuaq4b
       author: ranquild
@@ -107,68 +119,24 @@ databaseChangeLog:
               - column:
                   name: analyzed_updated_at
                   type: ${timestamp_type}
-                  remarks: The latest updated_at of the entity and the rows it is made of when its dependencies were computed, or null to compute them again
+                  remarks: The latest updated_at of the entity, its parts and what it inlines when its dependencies were computed, or null to compute them again
       rollback:
         - dropColumn:
             tableName: dependency_status
             columnName: analyzed_updated_at
 
   - changeSet:
-      id: v65.8km8x7
+      id: v65.w7k2pd
       author: ranquild
-      comment: Add dependency_status.analyzed_count
+      comment: Record the time of the upgrade as the version the remaining dependency_status rows were computed from
       changes:
-        - addColumn:
+        - update:
             tableName: dependency_status
             columns:
               - column:
-                  name: analyzed_count
-                  type: int
-                  remarks: The number of rows the entity is made of when its dependencies were computed
-      rollback:
-        - dropColumn:
-            tableName: dependency_status
-            columnName: analyzed_count
-
-  - changeSet:
-      id: v65.62kjla
-      author: ranquild
-      comment: Add dependency_status.created_at
-      changes:
-        - addColumn:
-            tableName: dependency_status
-            columns:
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: When the row was created
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: dependency_status
-            columnName: created_at
-
-  - changeSet:
-      id: v65.3s0sav
-      author: ranquild
-      comment: Add dependency_status.updated_at
-      changes:
-        - addColumn:
-            tableName: dependency_status
-            columns:
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: When the row was last written
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: dependency_status
-            columnName: updated_at
+                  name: analyzed_updated_at
+                  valueComputed: current_timestamp
+      rollback: # the column is dropped by the rollback of the changeset adding it
 
   - changeSet:
       id: v65.mlaukk
@@ -291,6 +259,37 @@ databaseChangeLog:
             columnName: updated_at
 
   - changeSet:
+      id: v65.dd3wgm
+      author: ranquild
+      comment: Add analysis_finding.analyzed_updated_at
+      changes:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: analyzed_updated_at
+                  type: ${timestamp_type}
+                  remarks: The latest updated_at of the entity, its parts, the snippets it uses and the entities it depends on when it was analyzed, or null to analyze it again
+      rollback:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: analyzed_updated_at
+
+  - changeSet:
+      id: v65.r8c3yq
+      author: ranquild
+      comment: Record the analyzed_at of the findings not marked stale as the version they were analyzed from
+      changes:
+        - update:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: analyzed_updated_at
+                  valueComputed: analyzed_at
+            where: stale = FALSE
+      rollback: # the column is dropped by the rollback of the changeset adding it
+
+  - changeSet:
       id: v65.1suf0c
       author: ranquild
       comment: Drop the index on analysis_finding.stale, which the jobs no longer read
@@ -327,47 +326,13 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v65.dd3wgm
+      id: v65.upols4
       author: ranquild
-      comment: Add analysis_finding.analyzed_updated_at
-      changes:
-        - addColumn:
-            tableName: analysis_finding
-            columns:
-              - column:
-                  name: analyzed_updated_at
-                  type: ${timestamp_type}
-                  remarks: The latest updated_at of the entity and the rows it is made of when it was analyzed, or null to analyze it again
-      rollback:
-        - dropColumn:
-            tableName: analysis_finding
-            columnName: analyzed_updated_at
-
-  - changeSet:
-      id: v65.6auo21
-      author: ranquild
-      comment: Add analysis_finding.analyzed_count
-      changes:
-        - addColumn:
-            tableName: analysis_finding
-            columns:
-              - column:
-                  name: analyzed_count
-                  type: int
-                  remarks: The number of rows the entity is made of when it was analyzed
-      rollback:
-        - dropColumn:
-            tableName: analysis_finding
-            columnName: analyzed_count
-
-  - changeSet:
-      id: v65.320dcb
-      author: ranquild
-      comment: Create analysis_finding_status for re-analyzing the dependents of changed entities
+      comment: Create result_metadata_status for re-deriving the result metadata of MBQL cards
       changes:
         - createTable:
-            tableName: analysis_finding_status
-            remarks: The version of each entity the findings of its transitive dependents were last analyzed from
+            tableName: result_metadata_status
+            remarks: The version each MBQL card's result metadata was last re-derived from, analogous to dependency_status
             columns:
               - column:
                   name: id
@@ -379,7 +344,7 @@ databaseChangeLog:
               - column:
                   name: entity_type
                   type: varchar(254)
-                  remarks: The type of the entity
+                  remarks: The type of the entity (card)
                   constraints:
                     nullable: false
               - column:
@@ -391,39 +356,59 @@ databaseChangeLog:
               - column:
                   name: analyzed_updated_at
                   type: ${timestamp_type}
-                  remarks: The latest updated_at of the entity and the rows it is made of when its dependents were analyzed, or null to analyze them again
-              - column:
-                  name: analyzed_count
-                  type: int
-                  remarks: The number of rows the entity is made of when its dependents were analyzed
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: When the row was created
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: When the row was last written, which guards recording a version over a row written again meanwhile
-                  constraints:
-                    nullable: false
+                  remarks: The latest updated_at of the card, its parts, what it inlines and the entities it depends on when its result metadata was re-derived
       rollback:
         - dropTable:
-            tableName: analysis_finding_status
+            tableName: result_metadata_status
 
   - changeSet:
-      id: v65.fn007h
+      id: v65.2n6p0h
       author: ranquild
-      comment: Unique constraint to prevent duplicate analysis_finding_status entries
+      comment: Unique constraint to prevent duplicate result_metadata_status entries
       changes:
         - addUniqueConstraint:
-            tableName: analysis_finding_status
+            tableName: result_metadata_status
             columnNames: entity_type, entity_id
-            constraintName: idx_unique_analysis_finding_status
+            constraintName: idx_unique_result_metadata_status
       rollback:
         - dropUniqueConstraint:
-            tableName: analysis_finding_status
-            constraintName: idx_unique_analysis_finding_status
+            tableName: result_metadata_status
+            constraintName: idx_unique_result_metadata_status
+
+  - changeSet:
+      id: v65.f9t2xq
+      author: ranquild
+      comment: Index metabase_field by table_id and updated_at, so the latest updated_at of the fields of a table is read from the index
+      changes:
+        - createIndex:
+            tableName: metabase_field
+            indexName: idx_field_table_id_updated_at
+            columns:
+              - column:
+                  name: table_id
+              - column:
+                  name: updated_at
+      rollback:
+        - dropIndex:
+            tableName: metabase_field
+            indexName: idx_field_table_id_updated_at
+
+  - changeSet:
+      id: v65.u3r8zm
+      author: ranquild
+      comment: Drop dependency_status.unresolved_tables, since a table a native query names is recorded once the query changes again
+      changes:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: unresolved_tables
+      rollback:
+        - addColumn:
+            tableName: dependency_status
+            columns:
+              - column:
+                  name: unresolved_tables
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity names tables that match no synced table, recomputed after each sync
+                  constraints:
+                    nullable: false

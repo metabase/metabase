@@ -16,7 +16,6 @@
     :model/AgentApiCallLog                   metabase.agent-api.models.agent-api-call-log
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
-    :model/AnalysisFindingStatus             metabase-enterprise.dependencies.models.analysis-finding-status
     :model/ApiKey                            metabase.api-keys.models.api-key
     :model/ApiKeyUsageLog                    metabase.api-keys.models.api-key-usage-log
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision

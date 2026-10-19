@@ -155,7 +155,7 @@
                             :analyzed_entity_type :card
                             :analyzed_entity_id card-id))))))))
 
-(deftest ^:synchronized failed-analysis-waits-for-a-change-test
+(deftest ^:synchronized failed-analysis-waits-for-change-test
   (testing "an entity whose analysis throws records a failed finding of its version, and is not analyzed again"
     (backfill-all-entity-analyses!)
     (let [mp       (mt/metadata-provider)
@@ -170,27 +170,9 @@
                                           :analyzed_entity_type :card :analyzed_entity_id card-id)))
             (is (empty? (filter #{card-id} (analyzed-ids! #(deps.analysis-finding/analyze-batch! :card 100)))))))))))
 
-(deftest ^:synchronized analyze-dependents-batch-test
-  (testing "the dependents of changed entities are re-analyzed transitively, each once, not the entities themselves"
-    (let [mp       (mt/metadata-provider)
-          products (lib.metadata/table mp (mt/id :products))]
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {gp-id :id} {:dataset_query (lib/query mp products)}
-                       :model/Card {p-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp gp-id))}
-                       :model/Card {c-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp p-id))}
-                       :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
-                                            :to_entity_type :card :to_entity_id gp-id}
-                       :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
-                                            :to_entity_type :card :to_entity_id p-id}]
-          (let [analyzed (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100))]
-            (is (= [p-id c-id] (filter #{gp-id p-id c-id} (sort analyzed))))
-            (is (= (count analyzed) (count (distinct analyzed)))))
-          (testing "and not again while nothing changed"
-            (is (empty? (filter #{gp-id p-id c-id}
-                                (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100)))))))))))
-
-(deftest ^:synchronized check-entities-re-analyzes-a-changed-subtree-test
-  (testing "after an entity changes, the analysis finding job re-analyzes it and its whole transitive subtree"
+(deftest ^:synchronized analysis-re-analyzes-changed-entity-and-direct-dependents-test
+  (testing "after an entity changes, the analysis finding job re-analyzes it and the entities directly depending on it,
+           whose dependents follow when their own updated_at moves"
     (backfill-all-entity-analyses!)
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
@@ -205,27 +187,22 @@
                                               :to_entity_type :card :to_entity_id p-id}]
             (deps.test/run-analysis-finding-job!)
             (t2/update! :model/Card gp-id {:name "Renamed"})
-            (is (= #{gp-id p-id c-id}
+            (is (= #{gp-id p-id}
                    (set (filter #{gp-id p-id c-id} (analyzed-ids! #(deps.test/run-analysis-finding-job!))))))))))))
 
-(deftest ^:synchronized transitive-analysis-through-non-analyzable-entity-test
-  (testing "the dependents of a changed entity are reached beyond non-analyzable intermediaries (e.g., tables)"
-    (let [mp          (mt/metadata-provider)
-          products    (lib.metadata/table mp (mt/id :products))
-          products-id (mt/id :products)]
-      (mt/with-premium-features #{:dependencies}
-        ;; Chain: card → (depends on) table → (depends on) transform.
-        (mt/with-temp [:model/Transform {transform-id :id}
-                       {:source {:type :query :query (lib/query mp products)}
-                        :name "test_transitive_transform"
-                        :target {:schema "public" :name "transitive_test_table" :type :table}}
-                       :model/Card {card-id :id} {:dataset_query (lib/query mp products)}
-                       :model/Dependency _ {:from_entity_type :table :from_entity_id products-id
-                                            :to_entity_type :transform :to_entity_id transform-id}
-                       :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
-                                            :to_entity_type :table :to_entity_id products-id}]
-          (deps.test/record-current-version! :model/AnalysisFindingStatus :table products-id)
-          (is (some #{card-id} (analyzed-ids! #(deps.analysis-finding/analyze-dependents-batch! 100)))))))))
+(deftest ^:synchronized analysis-follows-table-field-write-test
+  (testing "a write of a field of a table re-analyzes the entities depending on the table"
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)]
+      (mt/test-helpers-set-global-values!
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
+                                              :to_entity_type :table :to_entity_id (mt/id :products)}]
+            (deps.test/run-analysis-finding-job!)
+            (is (not (deps.test/analysis-finding-pending? :card card-id)))
+            (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:description "Changed"}
+              (is (deps.test/analysis-finding-pending? :card card-id)))))))))
 
 (deftest ^:synchronized cyclic-dependency-drain-terminates-test
   (testing "the analysis finding job terminates on a cyclic dependency graph"
