@@ -6,6 +6,7 @@ import {
   useHasTokenFeature,
   useToast,
 } from "metabase/common/hooks";
+import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
 import { Link } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
@@ -21,6 +22,14 @@ type Props = {
 };
 
 export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
+  const openEmbedWizard = useOpenEmbedJsWizard({
+    initialState: {
+      resourceType: "data-app",
+      resourceId: app.name,
+      isGuest: false,
+      useExistingUserSession: false,
+    },
+  });
   const hasTenantsFeature = useHasTokenFeature("tenants");
   const isTenantsEnabled = useSetting("use-tenants");
 
@@ -93,6 +102,8 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
               {t`Manage tenant access`}
             </Menu.Item>
           )}
+
+          <Menu.Item onClick={() => openEmbedWizard({})}>{t`Embed`}</Menu.Item>
 
           <Menu.Item onClick={handleToggleEnabled}>
             {app.enabled ? t`Disable` : t`Re-enable`}

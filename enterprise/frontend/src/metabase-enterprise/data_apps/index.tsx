@@ -3,6 +3,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ManageDataAppGroupsPage } from "./admin/ManageDataAppGroupsPage";
 import { ManageDataAppsPage } from "./admin/ManageDataAppsPage";
+import { DataAppEmbedResourceCard } from "./admin/components/DataAppEmbedResourceCard";
 import { DataAppsNavbarSection } from "./navbar/DataAppsNavbarSection";
 import { getRoutes, registerDataAppsPagePrefetch } from "./routes";
 
@@ -16,6 +17,7 @@ import { getRoutes, registerDataAppsPagePrefetch } from "./routes";
 export function initializePlugin() {
   if (hasPremiumFeature("data-apps")) {
     PLUGIN_DATA_APPS.isEnabled = true;
+    PLUGIN_DATA_APPS.EmbedResourceCard = DataAppEmbedResourceCard;
     PLUGIN_DATA_APPS.getRoutes = getRoutes;
     PLUGIN_DATA_APPS.ManageDataAppsPage = ManageDataAppsPage;
     PLUGIN_DATA_APPS.ManageDataAppGroupsPage = ManageDataAppGroupsPage;

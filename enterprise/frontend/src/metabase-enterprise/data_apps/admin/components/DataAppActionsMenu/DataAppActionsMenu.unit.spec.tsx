@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { getEmbedSetupModal } from "metabase/embedding/store/embed-setup-modal";
 import {
   createMockDataApp,
   createMockTokenFeatures,
@@ -30,7 +31,7 @@ const setup = ({
     enabled,
     resource_collection_id: resourceCollectionId,
   });
-  renderWithProviders(
+  return renderWithProviders(
     <>
       <DataAppActionsMenu app={app} canRemove={canRemove} />
       {/* Mounts the toaster so failure toasts are assertable in the DOM. */}
@@ -67,9 +68,9 @@ describe("DataAppActionsMenu", () => {
     await openMenu();
 
     const menuItems = await screen.findAllByRole("menuitem");
-    expect(menuItems).toHaveLength(3);
+    expect(menuItems).toHaveLength(4);
 
-    const [viewResource, manageAccess, disable] = menuItems;
+    const [viewResource, manageAccess, embed, disable] = menuItems;
 
     expect(viewResource).toHaveTextContent("View resources");
     expect(viewResource).toHaveAttribute("href", "/collection/9");
@@ -80,6 +81,7 @@ describe("DataAppActionsMenu", () => {
       "/admin/settings/apps/sales/groups",
     );
 
+    expect(embed).toHaveTextContent("Embed");
     expect(disable).toHaveTextContent("Disable");
   });
 
@@ -173,3 +175,20 @@ it.each([
     ).not.toBeInTheDocument();
   },
 );
+
+it("opens the embed modal with the selected data app", async () => {
+  const { store } = setup();
+
+  await openMenu();
+  await userEvent.click(await screen.findByRole("menuitem", { name: "Embed" }));
+
+  expect(getEmbedSetupModal(store.getState())).toEqual({
+    modal: "embed-js-wizard",
+    initialState: {
+      resourceType: "data-app",
+      resourceId: "sales",
+      isGuest: false,
+      useExistingUserSession: false,
+    },
+  });
+});

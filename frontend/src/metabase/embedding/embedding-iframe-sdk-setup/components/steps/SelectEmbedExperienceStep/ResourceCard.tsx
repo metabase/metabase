@@ -9,10 +9,11 @@ import {
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { Button, Card, Icon, Stack, Text } from "metabase/ui";
 import type { CollectionId, IconName } from "metabase-types/api";
 
-import { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
+import type { EXPERIENCES_WITHOUT_RESOURCE_SELECTION } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
 import type {
   SdkIframeEmbedSetupRecentItem,
@@ -50,6 +51,17 @@ export const ResourceCard = () => {
       ? { id: selectedItemId }
       : skipToken,
   );
+
+  if (experience === "app") {
+    return (
+      <PLUGIN_DATA_APPS.EmbedResourceCard
+        value={
+          settings.componentName === "metabase-data-app" ? settings.path : null
+        }
+        onChange={(path) => updateSettings({ path })}
+      />
+    );
+  }
 
   if (!hasResourceSelectionStep(experience)) {
     return null;
@@ -214,7 +226,7 @@ export const ResourceCard = () => {
 
 type ResourceExperience = Exclude<
   SdkIframeEmbedSetupExperience,
-  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
+  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number] | "app"
 >;
 
 const getResourceCopy = (experience: ResourceExperience) =>
@@ -256,11 +268,7 @@ const COLLECTION_MODAL_OPTIONS = {
 
 const hasResourceSelectionStep = (
   experience: SdkIframeEmbedSetupExperience,
-): experience is Exclude<
-  SdkIframeEmbedSetupExperience,
-  (typeof EXPERIENCES_WITHOUT_RESOURCE_SELECTION)[number]
-> =>
-  // Unjustified type cast. FIXME
-  !(
-    EXPERIENCES_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
-  ).includes(experience);
+): experience is ResourceExperience =>
+  experience === "dashboard" ||
+  experience === "chart" ||
+  experience === "browser";
