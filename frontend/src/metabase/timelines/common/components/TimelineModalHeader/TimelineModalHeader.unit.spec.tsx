@@ -48,6 +48,9 @@ describe("TimelineModalHeader", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(onGoBack).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByRole("heading", { name: "Events" }));
+    expect(onGoBack).toHaveBeenCalledTimes(2);
   });
 
   it("should close the modal", async () => {

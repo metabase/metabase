@@ -12,3 +12,15 @@
     color: var(--mb-color-text-brand);
   }
 }
+
+.clickableTitle {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-text-brand);
+  }
+}
+
+.header:has(.clickableTitle:hover) .backButton {
+  color: var(--mb-color-text-brand);
+}
