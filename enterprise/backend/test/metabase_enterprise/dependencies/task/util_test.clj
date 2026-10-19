@@ -26,6 +26,16 @@
       (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 3600)
       (is (< (seconds-until-next-run) 61)))))
 
+(deftest schedule-run-leaves-earlier-run-alone-test
+  (testing "scheduling a later run while an earlier one is pending does not replace the pending trigger"
+    (mt/with-temp-scheduler!
+      (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 60)
+      (let [scheduled (atom 0)]
+        (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& _] (swap! scheduled inc))]
+          (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 60)
+          (task.util/schedule-run! (task/scheduler) @#'task.result-metadata/job 3600))
+        (is (zero? @scheduled))))))
+
 (deftest schedule-run-moves-past-due-run-test
   (testing "scheduling a run moves a run pending in the past, which Quartz may not fire for minutes, to a second from now"
     (mt/with-temp-scheduler!

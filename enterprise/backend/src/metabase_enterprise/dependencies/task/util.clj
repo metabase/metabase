@@ -42,24 +42,25 @@
   (Object.))
 
 (defn schedule-run!
-  "Schedule a run of `job` `delay-in-seconds` from now on `scheduler`, or at the run already pending before then, or a
-  second from now when that pending run is past due, since Quartz can leave a trigger past due for minutes."
+  "Schedule a run of `job` `delay-in-seconds` from now on `scheduler`, leaving a run already pending before then in
+  place, or a second from now when that pending run is past due, since Quartz can leave a trigger past due for
+  minutes."
   [scheduler {:keys [job-type job-key trigger-key job-name]} delay-in-seconds]
   (locking schedule-lock
     (let [now      (t/instant)
           start-at (t/+ now (t/duration delay-in-seconds :seconds))
-          pending  (some-> (next-fire-time scheduler trigger-key) .toInstant)
-          start-at (Date/from (cond
-                                (or (nil? pending) (t/after? pending start-at)) start-at
-                                (t/after? pending now)                          pending
-                                :else                                           (t/+ now (t/duration 1 :seconds))))
-          trigger  (triggers/build
-                    (triggers/with-identity (triggers/key trigger-key))
-                    (triggers/for-job job-key)
-                    (triggers/start-at start-at))
-          job      (jobs/build (jobs/of-type job-type) (jobs/with-identity job-key))]
-      (log/debug "Scheduling next run of job" job-name "at" start-at)
-      (task/schedule-task! scheduler job trigger))))
+          pending  (some-> (next-fire-time scheduler trigger-key) .toInstant)]
+      (when-not (and pending (t/after? pending now) (not (t/after? pending start-at)))
+        (let [start-at (Date/from (if (or (nil? pending) (t/after? pending start-at))
+                                    start-at
+                                    (t/+ now (t/duration 1 :seconds))))
+              trigger  (triggers/build
+                        (triggers/with-identity (triggers/key trigger-key))
+                        (triggers/for-job job-key)
+                        (triggers/start-at start-at))
+              job      (jobs/build (jobs/of-type job-type) (jobs/with-identity job-key))]
+          (log/debug "Scheduling next run of job" job-name "at" start-at)
+          (task/schedule-task! scheduler job trigger))))))
 
 (defn run-and-reschedule!
   "Run a batch of `job` unless a batch size that isn't positive disables it, then schedule its next run when the batch
