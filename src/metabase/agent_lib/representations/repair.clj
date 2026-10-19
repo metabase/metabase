@@ -974,6 +974,7 @@
 ;;; literal (resolve's `:invalid-temporal-literal` check still needs to see it). The `between`
 ;;; example drops the wrapper anyway: `day` on a date adds nothing, and the bound ends up as the
 ;;; query builder writes it.
+;;; Pass 2.96 expands day/default dates into ranges outside these stage keys.
 ;;;
 ;;; `::query` / `::stage` are `:closed false`, so a stray `filters:` on the query root or a join map
 ;;; sits in no stage: E7 names the clause, never the stray key, and the model's fix is dropped again.
@@ -1294,6 +1295,64 @@
                bucket-hoist-stage-keys)
        node))
    form))
+
+;;; ============================================================
+;;; Pass 2.96 -- expand whole-day comparisons outside filters and expressions.
+;;;
+;;; Date-only day/default bounds become ranges on the raw ref, with an exclusive next-day
+;;; upper bound. This counts whole days and lets the expression editor re-save the result:
+;;; dropping the unit loses the last day's times, and a day-bucketed ref prints as an unknown
+;;; column. Default timestamps only lose their wrapper. Negations stay for E7 because filters
+;;; and conditional aggregations handle NULLs differently. Pass 2.95 keeps its own scope.
+;;; ============================================================
+
+(defn- next-day [literal]
+  (str (u.date/add (u.date/parse literal) :day 1)))
+
+(defn- expand-day-comparison [[head opts ref & dates :as node]]
+  (cond
+    (= head "between")
+    ["and" opts [">=" {} ref (first dates)] ["<" {} ref (next-day (second dates))]]
+
+    (contains? #{"=" "in"} head)
+    (let [ranges (mapv (fn [date] ["and" {} [">=" {} ref date] ["<" {} ref (next-day date)]]) dates)]
+      (if (= 1 (count ranges))
+        (assoc (first ranges) 1 opts)
+        (into ["or" opts] ranges)))
+
+    (= 1 (count dates))
+    (case head
+      "<=" ["<" opts ref (next-day (first dates))]
+      ">"  [">=" opts ref (next-day (first dates))]
+      node)
+
+    :else node))
+
+(defn- repair-day-and-default-comparison [node]
+  (if (hoistable-comparison-node? node)
+    (let [literals (mapv redundant-bucket-literal (subvec node 3))]
+      (if (every? #(and % (re-matches date-only-pattern %)) literals)
+        (if (contains? #{"!=" "not-in"} (first node))
+          node
+          (expand-day-comparison (into (subvec node 0 3) literals)))
+        (into (subvec node 0 3)
+              (map (fn [operand literal]
+                     (if (and literal (not (re-matches date-only-pattern literal))) literal operand))
+                   (subvec node 3) literals))))
+    node))
+
+(defn- repair-day-and-default-comparisons*
+  "Expand day/default dates into ranges and unwrap default timestamps outside Pass 2.95's scope."
+  [form]
+  (if (and (map? form) (vector? (get form "stages")))
+    (letfn [(rewrite [node]
+              (if (map? node)
+                (reduce-kv (fn [result k v]
+                             (assoc result k (if (some #{k} bucket-hoist-stage-keys) v (rewrite v))))
+                           (empty node) node)
+                (walk/walk rewrite repair-day-and-default-comparison node)))]
+      (rewrite form))
+    form))
 
 ;;; ============================================================
 ;;; Pass 1.867 -- rewrite `temporal-extract` to the `get-*` clause that means the same thing.
@@ -3003,8 +3062,7 @@
          (not (parseable-temporal-literal? literal)))))
 
 (defn- unencodable-temporal-clause-error!
-  "Detect an `absolute-datetime`, `during` or unit-carrying `value` clause that Pass 2.95 could not
-  rewrite.
+  "Reject temporal clauses that cannot survive the round trip through the question link.
 
     [\"count-where\", {}, [\">\", {}, <col>, [\"absolute-datetime\", {}, \"2025-01-01\", \"month\"]]]
 
@@ -3016,8 +3074,9 @@
   `normalize-or-throw`'s `mu/defn` output check is compiled out -- `lib/query`'s
   `clean-stage-schema-errors` deletes the clause outright and the question silently answers something
   else. In `aggregation:` the legacy schema is permissive enough that nothing throws even in dev: the
-  clause is deleted silently in both. Pass 2.95 rewrites every shape it can rewrite without changing
-  the answer, so anything still standing here is broken either way.
+  clause is deleted silently in both. Pass 2.95 repairs comparisons in filters and expressions;
+  Pass 2.96 expands day/default dates into ranges and unwraps default timestamps elsewhere.
+  Anything still standing here cannot survive the hop.
 
   `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
   and are not listed. `temporal-extract`'s `::TemporalExtractUnit` has no decoder either, but Pass
@@ -3047,7 +3106,7 @@
                                            (some? (get (nth node 1) "unit")))
                   false))
        (throw (ex-info
-               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. The tool automatically expands date-only `day` / `default` comparisons into whole-day ranges outside `filters:` and `expressions:`, and unwraps `default` timestamps. Other temporal clauses, including date-only `!=` and `not-in` with different NULL behaviour in filters and aggregations, still need a rewrite. For date negations, exclude NULLs explicitly and compare outside the excluded day ranges. Write a range as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). In `filters:` and `expressions:` you can put the unit on the column with `temporal-unit` instead, except for `year` on an `expression` reference, which the query engine reads as a number."
                     (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause
@@ -3129,6 +3188,8 @@
     2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
        `absolute-datetime` literal and onto the ref it is compared to, for the same reason
        (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
+    2.96. outside `filters` and `expressions`, expand date-only `day` / `default` comparisons into
+       whole-day ranges on the raw ref; leave date negations for E7; unwrap `default` timestamps;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);
@@ -3200,6 +3261,7 @@
        resolve-aggregation-ref-indexes*
        split-post-agg-filters*
        hoist-temporal-buckets*
+       repair-day-and-default-comparisons*
        (resolve-source-field-join-alias* mp content-store)
        (resolve-implicit-joins* mp content-store)
        (infer-source-card-field-types* mp content-store)

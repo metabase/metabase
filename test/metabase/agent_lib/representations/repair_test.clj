@@ -1066,6 +1066,81 @@
     (let [once (repair-filter ["between" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-06-01" "month")])]
       (is (= once (repair-filter once))))))
 
+(deftest ^:parallel conditional-aggregations-with-temporal-buckets-test
+  (doseq [operator ["count-where" "sum-where" "distinct-where" "share"]
+          [start-unit end-unit] [["day" "day"] ["default" "default"] ["day" "default"] ["default" "day"]]]
+    (testing (str operator " with " start-unit "/" end-unit)
+      (let [args (cond-> [operator {}]
+                   (contains? #{"sum-where" "distinct-where"} operator)
+                   (conj ["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]))
+            input (conj args ["between" {} created-at (abs-dt "2026-01-01" start-unit) (abs-dt "2026-01-31" end-unit)])
+            expected (conj args ["and" {} [">=" {} created-at "2026-01-01"] ["<" {} created-at "2026-02-01"]])
+            stage (repair-in-stage {"aggregation" [input]})]
+        (is (= [expected] (get stage "aggregation")))
+        (is (= stage (repair-in-stage stage)))))))
+
+(deftest ^:parallel date-only-comparisons-use-whole-day-ranges-test
+  (doseq [unit ["day" "default"]
+          :let [date (fn [literal] (abs-dt literal unit))
+                jan31 ["and" {} [">=" {} created-at "2017-01-31"] ["<" {} created-at "2017-02-01"]]
+                leap-day ["and" {} [">=" {} created-at "2024-02-29"] ["<" {} created-at "2024-03-01"]]]
+          [input expected] [[["=" {} created-at (date "2017-01-31")] jan31]
+                            [["=" {} created-at (date "2017-01-31") (date "2024-02-29")] ["or" {} jan31 leap-day]]
+                            [["in" {} created-at (date "2017-01-31") (date "2024-02-29")] ["or" {} jan31 leap-day]]
+                            [["<=" {} created-at (date "2017-01-31")] ["<" {} created-at "2017-02-01"]]
+                            [[">" {} created-at (date "2017-12-31")] [">=" {} created-at "2018-01-01"]]
+                            [["<" {} created-at (date "2017-01-31")] ["<" {} created-at "2017-01-31"]]
+                            [[">=" {} created-at (date "2017-01-31")] [">=" {} created-at "2017-01-31"]]]]
+    (testing (pr-str input)
+      (let [stage (repair-in-stage {"aggregation" [["count-where" {} input]]})]
+        (is (= [["count-where" {} expected]] (get stage "aggregation")))
+        (is (= stage (repair-in-stage stage)))))))
+
+(deftest ^:parallel whole-day-ranges-in-order-by-and-joins-test
+  (let [predicate ["between" {} created-at (abs-dt "2017-01-01" "day") (abs-dt "2017-01-31" "default")]
+        expected ["and" {} [">=" {} created-at "2017-01-01"] ["<" {} created-at "2017-02-01"]]]
+    (testing "an inline order-by aggregation"
+      (let [stage (repair-in-stage {"order-by" [["desc" {} ["count-where" {} predicate]]]})]
+        (is (= ["count-where" {} expected] (get-in stage ["order-by" 0 2])))))
+    (testing "a join condition"
+      (let [stage (repair-in-stage
+                   {"joins" [{"lib/type" "mbql/join" "alias" "O2"
+                              "stages" [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                              "conditions" [predicate]}]})]
+        (is (= [expected] (get-in stage ["joins" 0 "conditions"])))))))
+
+(deftest ^:parallel default-timestamps-keep-their-time-test
+  (let [input ["between" {} created-at (abs-dt "2026-01-01T12:30:00" "default")
+               (abs-dt "2026-01-31T12:30:00" "default")]
+        expected ["between" {} created-at "2026-01-01T12:30:00" "2026-01-31T12:30:00"]]
+    (is (= [["count-where" {} expected]]
+           (get (repair-in-stage {"aggregation" [["count-where" {} input]]}) "aggregation")))))
+
+(deftest ^:parallel conditional-aggregations-with-refused-temporal-clauses-test
+  (doseq [predicate (concat
+                     (for [[literal units] [["2026-01-01" ["week" "month" "quarter" "year"]]
+                                            ["2026-01-01T10:00:00" ["hour" "minute" "second"]]]
+                           unit units]
+                       [">" {} created-at (abs-dt literal unit)])
+                     [["!=" {} created-at (abs-dt "2026-01-31" "day")]
+                      ["not-in" {} created-at (abs-dt "2026-01-30" "default") (abs-dt "2026-01-31" "day")]
+                      [">" {} created-at (abs-dt "2026-01-01T12:30:00" "day")]
+                      ["during" {} created-at "2026-01-01" "day"]
+                      ["between" {} created-at (abs-dt "2026-01-01" "day") (abs-dt "2026-01-31" "month")]
+                      ["between" {} created-at (abs-dt "2026-01-01" "default") (abs-dt "2026-01-31T23:59:59" "default")]
+                      ["between" {} created-at (abs-dt "2026-01-01T12:30:00" "default") (abs-dt "2026-01-31" "default")]
+                      ["=" {} (created-at-bucketed "day") (abs-dt "2026-01-01" "day")]
+                      ["=" {} (abs-dt "2026-01-01" "day") created-at]])]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"does not survive the round trip"
+         (repair-in-stage {"aggregation" [["count-where" {} predicate]]})))))
+
+(deftest ^:parallel standalone-temporal-literals-keep-their-type-test
+  (let [literal (abs-dt "2026-01-01" "day")]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"does not survive the round trip"
+         (repair-in-stage {"aggregation" [["min" {} literal]]})))))
+
 (deftest ^:parallel unencodable-temporal-clause-error-test
   (testing "a temporal clause the hoist pass could not move becomes a retryable agent error"
     (doseq [[label stage-kvs]
