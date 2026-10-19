@@ -2,8 +2,12 @@
   "The `:sqlglot-java` [[metabase.sql-parsing.protocol/SqlParser]]: `sql_tools.py` ported to Clojure over the Java port
   of sqlglot, with the same contract as the GraalPy parser.
 
-  The port's AST stays inside `metabase.sql-parsing.sqlglot-java.*`: every method returns strings, vectors and maps,
-  and every failure is a [[metabase.sql-parsing.common/call-failed-ex]] named for the error Python would raise."
+  Only the `metabase.sql-parsing.sqlglot-java.*` namespaces touch the port, and every method returns strings, vectors
+  and maps, never a node: code that read the port's AST elsewhere would tie Metabase to its shape.
+  `metabase.sql-parsing.sqlglot-java-test` checks both.
+
+  Every failure is a [[metabase.sql-parsing.common/call-failed-ex]]. Parse and optimize errors carry the name Python
+  would raise (`ParseError`, `OptimizeError`, ...), as do the errors `sql_tools.py` raises itself."
   (:require
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.protocol :as protocol]

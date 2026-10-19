@@ -1,7 +1,7 @@
 (ns metabase.sql-parsing.protocol
-  "The strongly-typed protocol implemented by the sqlglot SQL parsers (currently
-  [[metabase.sql-parsing.graal]] and [[metabase.sql-parsing.sqlglot-java]]). Callers go through [[metabase.sql-parsing.core]], which owns the
-  JVM-side pre/post-processing and invokes these methods on the implementation.")
+  "The strongly-typed protocol implemented by the sqlglot SQL parsers (currently [[metabase.sql-parsing.graal]] and
+  [[metabase.sql-parsing.sqlglot-java]]). Callers go through [[metabase.sql-parsing.core]], which owns the JVM-side
+  pre/post-processing and invokes these methods on the implementation.")
 
 (set! *warn-on-reflection* true)
 

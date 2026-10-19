@@ -33,7 +33,7 @@
 
 (defn parse-error?
   "True if `e` is a sqlglot ParseError — the SQL could not be parsed — regardless of which parser
-  backend threw it. Other Python-side failures (and non-sqlglot exceptions) are false."
+  backend threw it. Other parser failures (and non-sqlglot exceptions) are false."
   [e]
   (let [data (ex-data e)]
     (boolean (and (:sql-parsing/error data)

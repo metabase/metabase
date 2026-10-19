@@ -1,11 +1,11 @@
 (ns metabase.sql-parsing.sqlglot-java.ast
-  "Interop with the Java port of sqlglot (`com.metabase:sqlglot-core`).
+  "Wrappers for the common node operations of the Java port of sqlglot (`com.metabase:sqlglot-core`): parse,
+  generate, walk, read and set arguments, build nodes. Function names follow the sqlglot Python API they stand in for
+  (`sql_tools.py` is the reference).
 
-  Only the `metabase.sql-parsing.sqlglot-java.*` namespaces touch the port, and none of them hands a node, scope, or
-  token past [[metabase.sql-parsing.sqlglot-java/parser]]: callers get strings, vectors and maps. The AST is the
-  port's internal shape, and code that reads it outside this boundary would tie Metabase to that shape.
-
-  Function names follow the sqlglot Python API they stand in for (`sql_tools.py` is the reference)."
+  The other `metabase.sql-parsing.sqlglot-java.*` namespaces use these and also call the port's `Scope`, `Qualify`,
+  `Lineage` and expression classes directly. The boundary is that directory, as [[metabase.sql-parsing.sqlglot-java]]
+  describes."
   (:require
    [clojure.string :as str]
    [metabase.util :as u])
