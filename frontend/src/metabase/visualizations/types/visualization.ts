@@ -53,10 +53,6 @@ export interface VisualizationProps {
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
   card: SeriesCard;
-  /**
-   * Returns the URL for opening `nextCard` (the main card when omitted),
-   * or `undefined` when it can't be opened.
-   */
   getHref?: (nextCard?: SeriesCard) => string | undefined;
   data: DatasetData;
   rawSeries: RawSeries;

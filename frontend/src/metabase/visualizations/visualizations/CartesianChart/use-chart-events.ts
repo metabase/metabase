@@ -3,8 +3,8 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useStore } from "metabase/redux";
-import { canLinkLegendSeries } from "metabase/visualizations/components/legend/links";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -39,7 +39,10 @@ import type { CardId, SeriesCard } from "metabase-types/api";
 import type { CartesianHoveredObject } from "./types";
 import { useBrush } from "./use-brush";
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
-import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
+import {
+  doesSeriesAlwaysOpenQuestion,
+  getHoveredEChartsSeriesDataKeyAndIndex,
+} from "./utils";
 
 function getSplitPanelGrids(option: EChartsOption) {
   const { grid } = option;
@@ -415,17 +418,23 @@ export const useChartEvents = (
     chartInstance,
   );
 
+  const hasMultipleCards = rawSeries.length > 1;
+
   const onSelectSeries = useCallback(
     (event: React.MouseEvent, seriesIndex: number) => {
-      const areMultipleCards = rawSeries.length > 1;
       const seriesModel = chartModel.seriesModels[seriesIndex];
 
-      if (areMultipleCards) {
+      if (
+        doesSeriesAlwaysOpenQuestion(seriesModel, {
+          hasMultipleCards,
+          isDashboard,
+        })
+      ) {
         onOpenQuestion(seriesModel.cardId);
         return;
       }
 
-      const hasBreakout = "breakoutColumn" in seriesModel;
+      const hasBreakout = isBreakoutSeries(seriesModel);
       const dimensions = hasBreakout
         ? [
             {
@@ -450,7 +459,7 @@ export const useChartEvents = (
     },
     [
       chartModel.seriesModels,
-      rawSeries,
+      hasMultipleCards,
       settings,
       visualizationIsClickable,
       onVisualizationClick,
@@ -469,13 +478,19 @@ export const useChartEvents = (
     [chartModel.seriesModels, getHref, getQuestionCard],
   );
 
-  const canLinkSeries = canLinkLegendSeries({
-    getHref,
-    onChangeCardAndRun,
-    isDashboard,
-    hasMultipleCards: rawSeries.length > 1,
-    hasBreakout: chartModel.seriesModels.some(isBreakoutSeries),
-  });
+  // Legend titles are links only when clicking one always opens a question:
+  // breakout series can open drills instead. The Embedding SDK has no
+  // in-app routes to link to.
+  const canNavigate =
+    getHref !== undefined && onChangeCardAndRun != null && !isEmbeddingSdk();
+  const canLinkSeries =
+    canNavigate &&
+    chartModel.seriesModels.every((seriesModel) =>
+      doesSeriesAlwaysOpenQuestion(seriesModel, {
+        hasMultipleCards,
+        isDashboard,
+      }),
+    );
 
   return {
     onSelectSeries,

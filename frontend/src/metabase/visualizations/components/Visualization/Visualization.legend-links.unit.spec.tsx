@@ -4,6 +4,7 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import { delay } from "__support__/utils";
 import VisualizationComponent from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { OnChangeCardAndRunOpts } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import type { RawSeries, SeriesCard } from "metabase-types/api";
 import {
@@ -39,7 +40,7 @@ const setup = async ({ rawSeries }: SetupOpts) => {
   const getHref = jest.fn(
     (nextCard?: SeriesCard) => `/question/${nextCard?.id}`,
   );
-  const onChangeCardAndRun = jest.fn();
+  const onChangeCardAndRun = jest.fn<void, [OnChangeCardAndRunOpts]>();
 
   renderWithProviders(
     <VisualizationComponent
