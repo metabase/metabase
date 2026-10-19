@@ -18,7 +18,6 @@ import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { DashboardTab } from "metabase-types/api";
 
 import {
   getDashboard,
@@ -26,7 +25,7 @@ import {
   getTabs,
   getValuePopulatedParameters,
 } from "../selectors";
-import { createTabSlug, resolveTabId } from "../utils";
+import { createTabSlug, parseTabSlug } from "../utils";
 
 export function useDashboardUrlQuery(location: Location) {
   const dashboardId = useSelector((state) => getDashboard(state)?.id);
@@ -149,24 +148,17 @@ export function useDashboardUrlQuery(location: Location) {
         return;
       }
 
-      const currentTabId = parseTabId(location, tabs);
-      const nextTabId = parseTabId(nextLocation, tabs);
+      const currentTabId = parseTabSlug(location);
+      const nextTabId = parseTabSlug(nextLocation);
 
       if (nextTabId && currentTabId !== nextTabId) {
         dispatch(selectTab({ tabId: nextTabId }));
       }
     });
-  }, [location, selectedTab, tabs, dispatch]);
+  }, [location, selectedTab, dispatch]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "returnToEmbeddingSetupGuide"];
-
-function parseTabId(location: Location, tabs: DashboardTab[]) {
-  const slugs = new URLSearchParams(location.search).getAll("tab");
-  // A repeated `tab` is ambiguous, so treat it as no tab at all.
-  const slug = slugs.length === 1 ? slugs[0] : "";
-  return resolveTabId(slug, tabs);
-}
 
 function toLocationQuery(object: Record<string, any>) {
   return _.mapObject(object, (value) => (value == null ? "" : value));

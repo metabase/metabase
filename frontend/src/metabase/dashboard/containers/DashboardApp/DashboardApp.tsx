@@ -26,7 +26,6 @@ import {
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
-import { resolveTabId } from "metabase/dashboard/utils";
 import {
   usePageTitle,
   usePageTitleWithLoadingTime,
@@ -133,7 +132,7 @@ export const DashboardApp = () => {
         options = await extractHashOption("add", options);
         const searchParams = new URLSearchParams(window.location.search);
         const tabParam = searchParams.get("tab");
-        const tabId = resolveTabId(tabParam, dashboard.tabs);
+        const tabId = tabParam ? parseInt(tabParam, 10) : null;
 
         dispatch(
           addCardToDashboard({

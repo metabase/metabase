@@ -3,6 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
+import type { Location } from "metabase/router";
 import {
   isQuestionDashCard,
   isVirtualDashCard,
@@ -23,7 +24,6 @@ import {
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
-  BaseEntityId,
   CacheableDashboard,
   Card,
   CardId,
@@ -32,7 +32,6 @@ import type {
   DashCardDataMap,
   Dashboard,
   DashboardCard,
-  DashboardTabId,
   Database,
   Dataset,
   DatasetQuery,
@@ -43,7 +42,6 @@ import type {
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
-import { isBaseEntityID } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
@@ -420,6 +418,17 @@ export const isDashboardCacheable = (
   dashboard: Dashboard,
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
 
+export function parseTabSlug(location: Location) {
+  const slugs = new URLSearchParams(location.search).getAll("tab");
+  // A repeated `tab` is ambiguous, so treat it as no tab at all.
+  const slug = slugs.length === 1 ? slugs[0] : "";
+  if (slug.length > 0) {
+    const id = parseInt(slug, 10);
+    return Number.isSafeInteger(id) ? id : null;
+  }
+  return null;
+}
+
 export function createTabSlug({
   id,
   name,
@@ -431,32 +440,6 @@ export function createTabSlug({
     return "";
   }
   return [id, ...name.toLowerCase().split(" ")].join("-");
-}
-
-/**
- * Resolves a `?tab=` URL param to a numeric tab ID. The param can be a numeric
- * ID, an `<id>-<slug>` slug, or a tab `entity_id`. Entity IDs are resolved
- * client-side against the already-loaded tabs.
- */
-export function resolveTabId(
-  tabParam: string | null | undefined,
-  tabs: { id: DashboardTabId; entity_id?: BaseEntityId }[] | undefined,
-): DashboardTabId | null {
-  if (!tabParam) {
-    return null;
-  }
-  // A legacy `<id>-<slug>` such as `1-my-pizzas-dashboard` can be 21 chars and
-  // match the NanoID alphabet, so `isBaseEntityID` alone can't tell it apart
-  // from a real entity ID. Only treat the param as an entity ID when it
-  // actually matches a loaded tab; otherwise fall back to numeric parsing.
-  if (isBaseEntityID(tabParam)) {
-    const tabByEntityId = tabs?.find((tab) => tab.entity_id === tabParam);
-    if (tabByEntityId) {
-      return tabByEntityId.id;
-    }
-  }
-  const id = parseInt(tabParam, 10);
-  return Number.isSafeInteger(id) ? id : null;
 }
 
 export function canResetFilter(parameter: UiParameter): boolean {

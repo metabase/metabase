@@ -13,7 +13,6 @@ import type { Location } from "metabase/router";
 import { notifyLocationListeners, useIsNavigationHeld } from "metabase/router";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
-import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { useDashboardUrlQuery } from "./use-dashboard-url-query";
 
@@ -50,7 +49,7 @@ type SetupOptions = {
   dashboardId?: number | null;
   parameters?: ReturnType<typeof createMockParameter>[];
   parameterValues?: Record<string, ParameterValueOrArray | null | undefined>;
-  tabs?: { id: number; name: string; entity_id?: string }[];
+  tabs?: { id: number; name: string }[];
   selectedTabId?: number | null;
   pathname?: string;
   search?: string;
@@ -213,24 +212,6 @@ describe("useDashboardUrlQuery", () => {
       // selectTab is the only reducer that sets selectedTabId, so this pins that
       // selectTab({ tabId: 5 }) was dispatched by the subscription.
       expect(store.getState().dashboard.selectedTabId).toBe(5);
-    });
-
-    it("selects the tab when the tab query is an entity_id matching a loaded tab", () => {
-      const [eid1, eid2] = [createMockEntityId(), createMockEntityId()];
-      const { store, location } = setup({
-        tabs: [
-          { id: 1, name: "Tab 1", entity_id: eid1 },
-          { id: 2, name: "Tab 2", entity_id: eid2 },
-        ],
-      });
-
-      expect(store.getState().dashboard.selectedTabId).toBe(null);
-
-      act(() => {
-        notifyLocationListeners({ ...location, search: `?tab=${eid2}` });
-      });
-
-      expect(store.getState().dashboard.selectedTabId).toBe(2);
     });
 
     it("does nothing when the pathname changes", () => {

@@ -72,7 +72,6 @@ import {
   hasDatabaseActionsEnabled,
   hasInlineParameters,
   isDashcardInlineParameter,
-  resolveTabId,
 } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
@@ -760,7 +759,7 @@ function getInitialSelectedTabId(
     if (!isNavigationInProgress || !isWebApp) {
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get("tab");
-      const tabId = resolveTabId(tabParam, dashboard.tabs);
+      const tabId = tabParam ? parseInt(tabParam, 10) : null;
       const hasTab = dashboard.tabs?.some?.((tab) => tab.id === tabId);
       if (hasTab) {
         return tabId;

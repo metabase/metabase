@@ -40,7 +40,6 @@ import {
   createMockStructuredDatasetQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { SIDEBAR_NAME } from "./constants";
 
@@ -487,14 +486,8 @@ describe("getSelectedTabId", () => {
           [DASHBOARD_ID]: createMockStoreDashboard({
             id: DASHBOARD_ID,
             tabs: [
-              createMockDashboardTab({
-                id: 1,
-                entity_id: createMockEntityId("tabEntityId10________"),
-              }),
-              createMockDashboardTab({
-                id: 2,
-                entity_id: createMockEntityId("tabEntityId20________"),
-              }),
+              createMockDashboardTab({ id: 1 }),
+              createMockDashboardTab({ id: 2 }),
             ],
           }),
         },
@@ -528,44 +521,6 @@ describe("getSelectedTabId", () => {
 
   it("falls back to the first tab while navigating to another dashboard", () => {
     window.history.replaceState({}, "", "/dashboard/999?tab=2-second-tab");
-
-    const state = createTabbedState("http://localhost:3000");
-
-    expect(getSelectedTabId(state)).toBe(1);
-  });
-
-  it("selects the tab named by a tab entity_id param", () => {
-    window.history.replaceState(
-      {},
-      "",
-      "/dashboard/1?tab=tabEntityId20________",
-    );
-
-    const state = createTabbedState("http://localhost:3000");
-
-    expect(getSelectedTabId(state)).toBe(2);
-  });
-
-  it("falls back to the first tab when the entity_id matches no tab", () => {
-    window.history.replaceState(
-      {},
-      "",
-      "/dashboard/1?tab=unknownTabEid________",
-    );
-
-    const state = createTabbedState("http://localhost:3000");
-
-    expect(getSelectedTabId(state)).toBe(1);
-  });
-
-  it("treats a numeric `<id>-<slug>` that looks like an entity_id as a numeric tab id", () => {
-    // `1-my-pizzas-dashboard` is 21 chars and matches the NanoID alphabet, so
-    // it passes isBaseEntityID, but it names tab 1, not a tab entity_id.
-    window.history.replaceState(
-      {},
-      "",
-      "/dashboard/1?tab=1-my-pizzas-dashboard",
-    );
 
     const state = createTabbedState("http://localhost:3000");
 
