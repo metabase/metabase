@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -383,7 +384,7 @@ width: fixed
 
 (def ^:private builtin-python-library
   "The built-in PythonLibrary created by migration. Recreated by fixture after cleanup."
-  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id})
+  {:path "common.py" :source "" :entity_id transforms-python/builtin-entity-id :is_default true})
 
 (defn- ensure-builtin-python-library!
   "Ensures the built-in common.py PythonLibrary exists, creating it if missing."
@@ -417,10 +418,17 @@ width: fixed
         (when (seq old-ns-colls) (t2/insert! :model/Collection old-ns-colls))
         (ensure-builtin-python-library!)))))
 
+(defn reset-transforms-setting
+  "Test fixture that runs with remote-sync-transforms off, since a pull turns it on and nothing turns it off."
+  [f]
+  (mt/with-temporary-setting-values [remote-sync-transforms false]
+    (f)))
+
 (def clean-remote-sync-state
-  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, and optional feature
-  model tables (Transform, TransformTag, PythonLibrary) are clean."
-  (t/compose-fixtures clean-object (t/compose-fixtures clean-task-table clean-optional-feature-models)))
+  "Composed test fixture that ensures RemoteSyncObject, RemoteSyncTask, optional feature model tables (Transform,
+  TransformTag, PythonLibrary), and the remote-sync-transforms setting are clean."
+  (t/compose-fixtures (t/compose-fixtures reset-transforms-setting clean-object)
+                      (t/compose-fixtures clean-task-table clean-optional-feature-models)))
 
 (defn commit-with-temp
   "Test fixture (`:each`) that makes `with-temp` COMMIT its rows instead of wrapping the test body in a
