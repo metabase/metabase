@@ -1,9 +1,21 @@
-import type { TokenFeatures } from "metabase-types/api";
-import { tokenFeatures } from "metabase-types/api";
+import {
+  type TokenFeature,
+  type TokenFeatures,
+  tokenFeatures,
+} from "metabase-types/api";
 
 export type ProPlan = "pro-cloud" | "pro-cloud-with-dwh" | "pro-self-hosted";
 
 export type Plan = "oss" | "starter" | "starter-with-dwh" | ProPlan;
+
+// Every feature a Starter token can carry; any other enabled feature means Pro.
+const STARTER_FEATURES: readonly TokenFeature[] = [
+  "hosting",
+  "attached_dwh",
+  "config_text_file",
+  "offer-metabase-ai-managed",
+  "support-users",
+];
 
 export const isProPlan = (plan: Plan): plan is ProPlan =>
   plan.startsWith("pro-");
@@ -11,10 +23,7 @@ export const isProPlan = (plan: Plan): plan is ProPlan =>
 export const getPlan = (features?: TokenFeatures | null): Plan => {
   if (features) {
     const hasAnyProFeatures = tokenFeatures.some(
-      (feature) =>
-        feature !== "hosting" &&
-        feature !== "attached_dwh" &&
-        features[feature],
+      (feature) => !STARTER_FEATURES.includes(feature) && features[feature],
     );
 
     if (hasAnyProFeatures) {
