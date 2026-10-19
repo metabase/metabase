@@ -293,7 +293,7 @@
     (defmethod driver/disallowed-connection-parameters :mysql
       [driver]
       (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) [\"autoDeserialize\"]))"
-  {:added "0.65.0" :arglists '([driver])}
+  {:added "0.64.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
