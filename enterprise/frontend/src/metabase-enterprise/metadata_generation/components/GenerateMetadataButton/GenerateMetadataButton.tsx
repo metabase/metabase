@@ -104,6 +104,7 @@ function GenerateMetadataButtonContent({
       <GenerateMetadataModal
         databaseId={databaseId}
         runId={modalRunId}
+        onRunStarted={setStartedRunId}
         opened={isModalOpen}
         onClose={handleModalClose}
         onReview={handleReview}

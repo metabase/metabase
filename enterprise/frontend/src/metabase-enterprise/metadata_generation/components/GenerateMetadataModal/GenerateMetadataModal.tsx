@@ -55,11 +55,13 @@ type ScopeType = (typeof SCOPE_TYPES)[number];
 type GenerateMetadataModalProps = {
   databaseId: DatabaseId;
   initialTableIds?: ConcreteTableId[];
-  /** A run to show the progress of, instead of the form. */
+  /** A run to show the progress of, instead of the form. The owner keeps it, so it decides what reopening shows. */
   runId?: MetadataGenerationRunId | null;
   opened: boolean;
   onClose: () => void;
   onReview?: () => void;
+  /** Called with the run the form starts, or a retry starts. */
+  onRunStarted?: (runId: MetadataGenerationRunId) => void;
 };
 
 export function GenerateMetadataModal({
@@ -69,20 +71,14 @@ export function GenerateMetadataModal({
   opened,
   onClose,
   onReview,
+  onRunStarted,
 }: GenerateMetadataModalProps) {
-  const [startedRunId, setStartedRunId] =
-    useState<MetadataGenerationRunId | null>(null);
-  const runId = startedRunId ?? externalRunId ?? null;
+  const runId = externalRunId ?? null;
   const { data: run } = useGetMetadataGenerationRunQuery(runId ?? skipToken);
   const isRunView = runId != null;
   // Closing a running run only hides the window: the run continues, and the
   // database panel reopens it.
   const isMinimizable = isRunView && (run == null || isRunActive(run));
-
-  const handleClose = () => {
-    setStartedRunId(null);
-    onClose();
-  };
 
   return (
     <Modal
@@ -94,21 +90,21 @@ export function GenerateMetadataModal({
           ? { icon: <Icon name="minimize" />, "aria-label": t`Minimize` }
           : undefined
       }
-      onClose={handleClose}
+      onClose={onClose}
     >
       {isRunView ? (
         <RunProgress
           key={runId}
           runId={runId}
-          onRetry={(run) => setStartedRunId(run.id)}
+          onRetry={(run) => onRunStarted?.(run.id)}
           onReview={onReview}
         />
       ) : (
         <GenerateMetadataForm
           databaseId={databaseId}
           initialTableIds={initialTableIds}
-          onStarted={setStartedRunId}
-          onCancel={handleClose}
+          onStarted={(runId) => onRunStarted?.(runId)}
+          onCancel={onClose}
         />
       )}
     </Modal>
