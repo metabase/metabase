@@ -1,14 +1,17 @@
-import type { ReactNode } from "react";
+import { type ReactNode, forwardRef } from "react";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
+  ActionIcon,
+  type ActionIconProps,
   Box,
   Button,
   FixedSizeIcon,
   Flex,
   Group,
+  Icon,
   Stack,
   type StackProps,
   Tooltip,
@@ -69,6 +72,24 @@ export const PaneHeader = ({
     </Stack>
   );
 };
+
+type PaneHeaderMenuButtonProps = Omit<
+  ActionIconProps,
+  "variant" | "size" | "children"
+> & {
+  "aria-label": string;
+};
+
+export const PaneHeaderMenuButton = forwardRef<
+  HTMLButtonElement,
+  PaneHeaderMenuButtonProps
+>(function PaneHeaderMenuButton(props, ref) {
+  return (
+    <ActionIcon ref={ref} variant="subtle" size="md" {...props}>
+      <Icon name="ellipsis" />
+    </ActionIcon>
+  );
+});
 
 type PaneHeaderTitleProps = {
   children?: ReactNode;

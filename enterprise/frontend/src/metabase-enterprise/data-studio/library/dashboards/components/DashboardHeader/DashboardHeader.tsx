@@ -13,6 +13,7 @@ import type { DashboardTabsInfo } from "../../hooks/use-dashboard-tabs-info";
 
 import { DashboardArchivedBanner } from "./DashboardArchivedBanner";
 import { DashboardHeaderActions } from "./DashboardHeaderActions";
+import { DashboardMoreMenu } from "./DashboardMoreMenu";
 import { DashboardNameInput } from "./DashboardNameInput";
 import { DashboardTabs } from "./DashboardTabs";
 import { getDashboardFolders } from "./utils";
@@ -42,6 +43,7 @@ export function DashboardHeader({ dashboard, tabsInfo }: DashboardHeaderProps) {
           </Flex>
         }
         icon="dashboard"
+        menu={<DashboardMoreMenu dashboard={dashboard} />}
         tabs={<DashboardTabs dashboardId={dashboard.id} tabsInfo={tabsInfo} />}
         actions={<DashboardHeaderActions dashboard={dashboard} />}
         breadcrumbs={

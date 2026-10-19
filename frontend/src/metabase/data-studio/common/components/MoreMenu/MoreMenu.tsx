@@ -3,7 +3,8 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { PaneHeaderMenuButton } from "metabase/common/data-studio/components/PaneHeader";
+import { Icon, Menu } from "metabase/ui";
 
 type MoreMenuProps = {
   previewUrl?: string;
@@ -40,9 +41,7 @@ export function MoreMenu({
     <>
       <Menu>
         <Menu.Target>
-          <ActionIcon variant="subtle" aria-label={ariaLabel}>
-            <Icon name="ellipsis" />
-          </ActionIcon>
+          <PaneHeaderMenuButton aria-label={ariaLabel} />
         </Menu.Target>
         <Menu.Dropdown>
           {previewUrl && (

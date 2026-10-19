@@ -6,9 +6,10 @@ import {
   useDeleteBookmarkMutation,
   useListBookmarksQuery,
 } from "metabase/api";
+import { PaneHeaderMenuButton } from "metabase/common/data-studio/components/PaneHeader";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Dashboard } from "metabase-types/api";
 
@@ -52,11 +53,9 @@ function DashboardMenu({ dashboard, onOpenModal }: DashboardMenuProps) {
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   return (
-    <Menu position="bottom-end">
+    <Menu>
       <Menu.Target>
-        <ActionIcon size="lg" aria-label={t`More options`}>
-          <Icon name="ellipsis" />
-        </ActionIcon>
+        <PaneHeaderMenuButton aria-label={t`More options`} />
       </Menu.Target>
       <Menu.Dropdown>
         <BookmarkMenuItem dashboard={dashboard} />
