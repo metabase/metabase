@@ -4,6 +4,7 @@ import cx from "classnames";
 import {
   type KeyboardEvent,
   type ReactNode,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -41,6 +42,7 @@ import {
   Tooltip,
   TreeTable,
   type TreeTableColumnDef,
+  type TreeTableInstance,
   useTreeTableInstance,
 } from "metabase/ui";
 import {
@@ -76,7 +78,6 @@ import {
   getApplyFailureReasonLabel,
   getApplySummary,
   getFieldLabel,
-  getNotAcceptedCount,
   getRunTotals,
   getSuggestionStatusColor,
   getSuggestionStatusLabel,
@@ -640,9 +641,12 @@ function TableList({
 
 function getTableCountsLabel(table: MetadataGenerationRunTable): string {
   const { accepted, stale, applied } = table.counts;
-  const notAccepted = getNotAcceptedCount(table.counts);
   const parts = [
-    notAccepted > 0 && t`${notAccepted} not accepted`,
+    ngettext(
+      msgid`${table.total} suggestion`,
+      `${table.total} suggestions`,
+      table.total,
+    ),
     accepted > 0 && t`${accepted} accepted`,
     stale > 0 && t`${stale} stale`,
     applied > 0 && t`${applied} applied`,
@@ -742,7 +746,9 @@ function TableReview({
     data: nodes,
     columns,
     getNodeId: (node) => node.id,
+    enableRowPinning: true,
   });
+  useStickyGroupRow(instance, nodes);
 
   return (
     <Stack gap="sm" flex={1} miw={0} mih={0}>
@@ -793,6 +799,51 @@ function TableReview({
       </Card>
     </Stack>
   );
+}
+
+/**
+ * Keeps the header row of the field at the top of the viewport pinned there while its suggestions scroll
+ * by. Pinned rows leave the scrolling list and render under the column headers, so pinning the row the
+ * moment it reaches the top reads as a sticky header.
+ */
+function useStickyGroupRow(
+  instance: TreeTableInstance<SuggestionNode>,
+  nodes: SuggestionNode[],
+) {
+  const instanceRef = useRef(instance);
+  instanceRef.current = instance;
+
+  useEffect(() => {
+    const container = instanceRef.current.containerRef.current;
+    if (container == null) {
+      return;
+    }
+    const update = () => {
+      const { table, virtualizer, centerRows } = instanceRef.current;
+      const topItem = virtualizer.getVirtualItemForOffset(container.scrollTop);
+      const topIndex = topItem?.index ?? 0;
+      let candidate: string | null = null;
+      for (
+        let index = Math.min(topIndex, centerRows.length - 1);
+        index >= 0;
+        index--
+      ) {
+        if (centerRows[index].original.kind === "group") {
+          candidate = centerRows[index].id;
+          break;
+        }
+      }
+      const pinned = table.getState().rowPinning.top?.[0] ?? null;
+      if (candidate != null && candidate !== pinned) {
+        table.setRowPinning({ top: [candidate], bottom: [] });
+      } else if (candidate == null && pinned != null && nodes.length === 0) {
+        table.setRowPinning({ top: [], bottom: [] });
+      }
+    };
+    update();
+    container.addEventListener("scroll", update, { passive: true });
+    return () => container.removeEventListener("scroll", update);
+  }, [nodes]);
 }
 
 function hasFieldWithSeveralSuggestions(
