@@ -33,7 +33,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
 
@@ -828,7 +829,7 @@
 (defn- preprocessing-rejection-message
   [cause]
   (if (contains? #{:invalid-query :unsupported-feature} (:type (ex-data cause)))
-    (or (ex-message cause) "Invalid query.")
+    (quoting/quoted (u/truncate (or (ex-message cause) "Invalid query.") preprocessing-message-limit))
     (when (instance? clojure.lang.ExceptionInfo cause)
       (case (ex-message cause)
         "Incompatible metric"
@@ -855,7 +856,7 @@
                                 (instance? java.sql.SQLException %)
                                 (contains? (ex-data %) :toucan2/context-trace)) chain))
           (throw (ex-info (str "The query builds, but Metabase rejects it when preparing it to run: "
-                               (u/truncate message preprocessing-message-limit))
+                               message)
                           {:agent-error? true
                            :error        :query-preprocessing-failed
                            :status-code  400}

@@ -2199,23 +2199,30 @@
                 (is (not (str/includes? (pr-str result) "private"))))
               (is (= [e] (map :e (logs)))))))))))
 
-(deftest preprocessing-rejection-message-is-bounded-test
+(deftest preprocessing-rejections-quote-bounded-diagnostics-test
   (with-mp-and-stubs!
     (fn []
-      (let [diagnostic (str "Bad literal: " (apply str (repeat 400 "\u00e9")))
-            cause      (ex-info diagnostic {:type :invalid-query})
-            query      {:lib/type "mbql/query"
-                        :stages [{:lib/type "mbql.stage/mbql" :source-table ["Sample" "PUBLIC" "ORDERS"]}]}]
-        (mt/with-dynamic-fn-redefs [qp/preprocess (fn [_]
-                                                    (throw (ex-info "Error preprocessing query in middleware"
-                                                                    {:type :qp :fn #'qp/preprocess} cause)))]
-          (let [{:keys [class code text]}
-                (test-util/tool-failure construct/construct-notebook-query-tool {:query query})]
-            (is (= :recoverable class))
-            (is (= :metabase.metabot.tools.recoverable.pipeline/query-preprocessing-failed code))
-            (is (= (str "The query builds, but Metabase rejects it when preparing it to run: "
-                        (subs diagnostic 0 300) "\nFix that part of the query and retry.")
-                   text))))))))
+      (let [long-diagnostic (str "Bad literal: " (apply str (repeat 400 "\u00e9")))
+            boundary-prefix (apply str (repeat 299 "x"))
+            query {:lib/type "mbql/query"
+                   :stages [{:lib/type "mbql.stage/mbql" :source-table ["Sample" "PUBLIC" "ORDERS"]}]}]
+        (doseq [[diagnostic quoted-diagnostic]
+                [[long-diagnostic (str "\"" (subs long-diagnostic 0 300) "\"")]
+                 ["Bad literal:\n\"abc\"" "\"Bad literal:\\n\\\"abc\\\"\""]
+                 [(str boundary-prefix "\n\"tail") (str "\"" boundary-prefix "\\n\"")]]
+                error-type [:invalid-query :unsupported-feature]
+                tool [construct/construct-notebook-query-tool
+                      slackbot-query/slackbot-construct-notebook-query-tool]]
+          (mt/with-dynamic-fn-redefs [qp/preprocess (fn [_]
+                                                      (throw (ex-info "Error preprocessing query in middleware"
+                                                                      {:type :qp :fn #'qp/preprocess}
+                                                                      (ex-info diagnostic {:type error-type}))))]
+            (let [{:keys [class code text]} (test-util/tool-failure tool {:query query :reasoning "count orders"})]
+              (is (= :recoverable class))
+              (is (= :metabase.metabot.tools.recoverable.pipeline/query-preprocessing-failed code))
+              (is (= (str "The query builds, but Metabase rejects it when preparing it to run: "
+                          quoted-diagnostic "\nFix that part of the query and retry.")
+                     text)))))))))
 
 (deftest preprocessing-permission-failure-allows-construction-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -2241,12 +2248,12 @@
                     :source-table [(:name (mt/db)) "PUBLIC" "ORDERS"]}
                    {:lib/type "mbql.stage/mbql"
                     :aggregation [["metric" {} entity-id]]}]
-                  #"(?s).*metric is incompatible.*stage's source table and columns.*Fix that part.*"]
+                  #"(?s).*run: A metric is incompatible.*stage's source.*Fix that part.*"]
                  [[{:lib/type "mbql.stage/mbql"
                     :source-table [(:name (mt/db)) "PUBLIC" "PRODUCTS"]
                     :aggregation [["count" {}]]
                     :filters [[">" {} ["metric" {} entity-id] 100]]}]
-                  #"(?s).*could not expand a metric reference.*in an aggregation.*Fix that part.*"]]
+                  #"(?s).*run: Metabase could not expand a metric reference.*in an aggregation.*Fix that part.*"]]
                 tool [construct/construct-notebook-query-tool
                       slackbot-query/slackbot-construct-notebook-query-tool]]
           (is (=? {:class :recoverable
