@@ -173,6 +173,8 @@
               "stages[0].filters: invalid type"]
              [(stage-query {"filters" [{"op" ">"}]})
               (str "stages[0].filters[0]: " problem)]
+             [(stage-query {"filters" [{"op" ">"} {"op" "<"}]})
+              (str "stages[0].filters[0]: " problem "; stages[0].filters[1]: " problem)]
              [(stage-query {"filters" [[">" {} field 1] {"op" "<"} {"op" "="}]})
               (str "stages[0].filters[1]: " problem "; stages[0].filters[2]: " problem)]
              [(update base-query "stages" conj {"lib/type" "mbql.stage/mbql" "filters" [{"op" ">"}]})
@@ -214,13 +216,3 @@
     (testing "long explanations end with an ellipsis within the character budget"
       (is (= (str "filters: " (apply str (repeat 490 "x")) "\u2026")
              (repr/humanized->paths (humanized (apply str (repeat 1000 "x")))))))))
-
-(deftest ^:parallel multiple-invalid-filters-paths-test
-  (let [query {"lib/type" "mbql/query"
-               "stages" [{"lib/type" "mbql.stage/mbql"
-                          "filters" [{"op" ">"} {"op" "<"}]}]}
-        text  (str "stages[0].filters[0]: should be a vector, "
-                   "clause must be [operator-string, options-map, \u2026args]; "
-                   "stages[0].filters[1]: should be a vector, "
-                   "clause must be [operator-string, options-map, \u2026args]")]
-    (is (= text (repr/humanized->paths (:humanized (validate-query-error query)))))))
