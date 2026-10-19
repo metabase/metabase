@@ -15,7 +15,9 @@
   "`expr` qualified in place (`qualify.qualify`), with `opts` for the arguments `sql_tools.py` passes. `sql` is the
   text `expr` was parsed from, which an unresolved column's error highlights."
   [expr {:keys [db dialect schema infer-schema? validate? sql]}]
-  (Qualify/qualify expr schema dialect
+  (Qualify/qualify ^Expr expr schema ^String dialect
+                   ;; db catalog expand-alias-refs expand-stars infer-schema allow-partial-qualification
+                   ;; validate-columns quote-identifiers identify canonicalize-table-aliases
                    (Qualify$Options. db nil true true infer-schema? false (boolean validate?) true true false)
                    ^String sql))
 
@@ -99,5 +101,8 @@
                (throw (ast/python-error "AssertionError" "Ast does not represent a `Query`.")))
         qualified-sql (ast/sql stmt dialect)]
     (vec (for [select-name (.namedSelects ^Expr stmt)
+               ;; `lineage(column, sql, schema, sources, dialect, scope, trim_selects, copy)` as sql_tools.py calls it,
+               ;; then the port's two extras: a node callback (a Consumer) and Qualify$Options for the
+               ;; qualification `lineage` runs, both nil.
                :let [^Lineage$Node root (Lineage/lineage select-name qualified-sql nil nil dialect nil true true nil nil)]]
            [select-name (pure-column? root) (vec (leaf-columns root))]))))
