@@ -287,10 +287,11 @@
   (let [{:keys [query prompt]} (resolve-handle! session-id handle)
         ;; Before any column is read, so a user who lost access cannot learn which columns exist.
         _       (check-run-permissions! query)
+        ;; Serialization would drop them, and the derived query would return the rows they filter out.
+        _       (when (seq (:parameters query))
+                  (throw (ex-info (tru "A query with parameter values cannot be changed here.") {:status-code 400})))
         derived (mcp.derive/derive-query query operations)]
     (api/check-403 (group-policy-permits-derive? query derived))
-    ;; Serialization drops the base query's parameters, which target its columns; a drill to another table would
-    ;; leave them pointing at columns the derived query does not have.
     (let [encoded (-> (lib/prepare-for-serialization derived)
                       json/encode
                       u/encode-base64)]

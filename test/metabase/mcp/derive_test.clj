@@ -410,13 +410,13 @@
               (is (= 400 (:status response)))
               (is (re-find #"(?i)native" (str (:body response)))))))))))
 
-(deftest derived-queries-drop-parameters-test
-  (testing "A derived query carries no parameters: they target the base query's columns, and a drill to another table
-            would leave them pointing at columns its query does not have"
+(deftest handles-with-parameters-cannot-be-derived-test
+  (testing "A handle carrying bound parameters is a 400: serialization drops them from the derived query, which would
+            then silently return the rows they filtered out"
     (mt/with-full-data-perms-for-all-users!
       (mt/with-model-cleanup [:model/McpQueryHandle]
         (let [{:keys [user-id session-id] :as auth} (ui.tu/ui-auth! :rasta)
-              encoded (-> (lib/prepare-for-serialization (lib/limit (venues) 1))
+              encoded (-> (lib/prepare-for-serialization (venues))
                           (assoc :parameters [{:type   "number/="
                                                :value  [3]
                                                :target ["dimension" ["field" (mt/id :venues :price) nil]]}])
@@ -424,15 +424,11 @@
                           u/encode-base64)
               handle  (mcp.session/store-handle! session-id user-id encoded)
               {:keys [status body]} (ui.tu/ui-request! auth :post nil (str "embed-mcp/queries/" handle "/derive")
-                                                       {:operations [{:type    "drill-thru" :drill "fk-details"
-                                                                      :context {:column "CATEGORY_ID" :value 2
-                                                                                :row    [{:column "ID" :value 1}
-                                                                                         {:column "CATEGORY_ID"
-                                                                                          :value  2}]}}]})]
-          (is (= 200 status))
-          (is (not (contains? (ui.tu/decode-query (:query body)) :parameters)))
-          (is (= 202 (:status (ui.tu/ui-request! auth :post nil
-                                                 (str "embed-mcp/queries/" (:handle body) "/run") {})))))))))
+                                                       {:operations [{:type      "drill-thru" :drill "sort"
+                                                                      :context   {:column "PRICE"}
+                                                                      :direction "asc"}]})]
+          (is (= 400 status))
+          (is (re-find #"(?i)parameter" (str body))))))))
 
 (deftest derive-rechecks-card-permissions-test
   (testing "Derive refuses a handle whose source is a saved question the user can no longer read, before it reads any
