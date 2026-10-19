@@ -240,26 +240,12 @@
   {:team "UX West"
    :ns-prefix "metabase.internal-stats"
    :api #{metabase.internal-stats.core}
-   :uses #{app-db
-           models
-           premium-features
-           util
-           warehouse-schema-overlay}
-   :model-imports #{:model/Action
-                    :model/AiUsageLog
+   :uses #{app-db models util}
+   :model-imports #{:model/AiUsageLog
                     :model/Card
-                    :model/Collection
                     :model/Dashboard
-                    :model/Document
-                    :model/Glossary
-                    :model/Measure
                     :model/MetabotMessage
-                    :model/NativeQuerySnippet
                     :model/QueryExecution
-                    :model/Segment
-                    :model/Table
-                    :model/Timeline
-                    :model/Transform
                     :model/User}}
 
   api
@@ -3572,7 +3558,7 @@
   enterprise/analytics.internal-stats
   {:team "UX West"
    :ns-prefix "metabase-enterprise.internal-stats"
-   :uses #{premium-features settings enterprise/remote-sync}}
+   :uses #{premium-features settings}}
 
   enterprise/api
   {:team "UX West"
@@ -4267,8 +4253,7 @@
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
-           metabase-enterprise.remote-sync.init
-           metabase-enterprise.remote-sync.settings}
+           metabase-enterprise.remote-sync.init}
    :uses #{analytics.interface
            api
            app-db

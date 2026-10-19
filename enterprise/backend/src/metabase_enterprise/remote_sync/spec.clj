@@ -1341,9 +1341,9 @@
   "Models git sync walks through but never writes."
   #{"Table" "Field"})
 
-(defn exportable-entities
-  "What a full export would serialize: a map of {model-name [id ...]} — the export roots plus their transitive
-  `serdes/descendants`/`required` closure — or `{}` when there is no remote-syncable content."
+(defn traversed-entities
+  "What a full export walks, as a map of {model-name [id ...]}: the export roots plus their transitive
+  `serdes/descendants`/`required` closure, or `{}` when there is no remote-syncable content."
   []
   (let [root-targets (into []
                            (mapcat query-export-roots)
@@ -1351,7 +1351,12 @@
         targets (-> #{}
                     (into (keys (u/traverse root-targets #(serdes/descendants (first %) (second %) git-sync-extract-opts))))
                     (into (keys (u/traverse root-targets #(serdes/required (first %) (second %))))))]
-    (apply dissoc (u/group-by first second targets) models-traversed-but-not-stored)))
+    (u/group-by first second targets)))
+
+(defn exportable-entities
+  "What a full export would serialize: the [[traversed-entities]] minus the models git sync never writes."
+  []
+  (apply dissoc (traversed-entities) models-traversed-but-not-stored))
 
 (defn exportable-entity-count
   "Number of entities `targets` (a map as returned by [[exportable-entities]]) names. An upper bound on what

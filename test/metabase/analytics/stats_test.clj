@@ -725,3 +725,10 @@
                      :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 25))
                                             :transform_id (:id transform)}]
         (is (zero? (:transform_runs_last_24h (#'stats/transform-metrics))))))))
+
+(deftest remote-sync-metrics-test
+  (testing "every Git-synced content count is sent, zero without Git sync"
+    (mt/with-premium-features #{}
+      (let [metrics (#'stats/remote-sync-metrics)]
+        (is (= 16 (count metrics)))
+        (is (every? zero? (vals metrics)))))))

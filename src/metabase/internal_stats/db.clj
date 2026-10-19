@@ -7,95 +7,12 @@
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn enabled-data-app-count
   "The number of enabled data apps."
   []
   (t2/count :data_app :enabled true))
-
-(mu/defn remote-sync-card-counts
-  "Counts active synced cards, in total and by type."
-  []
-  (t2/query-one
-   {:select [[[:count :card.id] :card_count]
-             [(u/count-case [:= :card.type "model"]) :model_count]
-             [(u/count-case [:= :card.type "question"]) :question_count]
-             [(u/count-case [:= :card.type "metric"]) :metric_count]]
-    :from   [[(t2/table-name :model/Card) :card]]
-    :join   [[(t2/table-name :model/Collection) :collection] [:= :collection.id :card.collection_id]]
-    :where  [:and [:or [:= :collection.is_remote_synced true] [:= :collection.namespace "data-apps"]]
-             [:= :collection.archived false]
-             [:= :card.archived false]]}))
-
-(mu/defn remote-sync-collection-content-count
-  "Counts active content in active synced collections, excluding exploration summary documents."
-  [model :- [:enum :model/Dashboard :model/Document :model/Timeline]]
-  (t2/count model
-            {:from  [[(t2/table-name model) :content]]
-             :join  [[(t2/table-name :model/Collection) :collection] [:= :collection.id :content.collection_id]]
-             :where [:and [:= :content.archived false] [:= :collection.archived false]
-                     [:or [:= :collection.is_remote_synced true] [:= :collection.namespace "data-apps"]]
-                     (when (= model :model/Document) [:= :content.exploration_id nil])]}))
-
-(mu/defn remote-sync-library?
-  "Whether the active Library is configured for Git sync."
-  []
-  (t2/exists? :model/Collection :type "library" :is_remote_synced true :archived false))
-
-(mu/defn remote-sync-action-count
-  "Counts active synced actions, including model actions, data-app actions, and Library data actions."
-  [library-synced? :- :boolean]
-  (t2/count :model/Action
-            {:from      [[(t2/table-name :model/Action) :action]]
-             :left-join [[(t2/table-name :model/Collection) :collection] [:= :collection.id :action.collection_id]]
-             :where     [:and [:= :action.archived false]
-                         [:or [:= :action.collection_id nil] [:= :collection.archived false]]
-                         [:or [:= :collection.namespace "data-apps"]
-                          [:and [:not= :action.model_id nil] [:= :collection.is_remote_synced true]]
-                          (when library-synced?
-                            [:and [:= :action.model_id nil]
-                             [:or [:= :action.collection_id nil] [:= :collection.namespace "data-actions"]]])]]}))
-
-(mu/defn remote-sync-table-count
-  "Counts published, unarchived tables in active synced collections."
-  []
-  (t2/count :model/Table
-            {:from  [(warehouse-schema-overlay/table-query {:alias :table})]
-             :join  [[(t2/table-name :model/Collection) :collection] [:= :collection.id :table.collection_id]]
-             :where [:and [:= :table.is_published true] [:= :table.archived_at nil]
-                     [:= :collection.is_remote_synced true] [:= :collection.archived false]]}))
-
-(mu/defn remote-sync-table-content-count
-  "Counts active measures or segments belonging to published, unarchived tables in active synced collections."
-  [model :- [:enum :model/Measure :model/Segment]]
-  (t2/count model
-            {:from  [[(t2/table-name model) :content]]
-             :join  [(warehouse-schema-overlay/table-query {:alias :table}) [:= :table.id :content.table_id]
-                     [(t2/table-name :model/Collection) :collection] [:= :collection.id :table.collection_id]]
-             :where [:and [:= :content.archived false] [:= :table.is_published true] [:= :table.archived_at nil]
-                     [:= :collection.is_remote_synced true] [:= :collection.archived false]]}))
-
-(mu/defn transform-count
-  "Counts transforms."
-  []
-  (t2/count :model/Transform))
-
-(mu/defn active-snippet-count
-  "Counts unarchived SQL snippets."
-  []
-  (t2/count :model/NativeQuerySnippet :archived false))
-
-(mu/defn glossary-entry-count
-  "Counts glossary entries."
-  []
-  (t2/count :model/Glossary))
-
-(mu/defn data-app-count
-  "Counts data apps, including disabled apps whose definitions are still synced."
-  []
-  (t2/count :data_app))
 
 (mu/defn embedded-dashboard-count
   "The number of unarchived Dashboards with embedding enabled."
