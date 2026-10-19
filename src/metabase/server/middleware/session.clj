@@ -124,12 +124,6 @@
             (dissoc :auth-provider)
             ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
             (update :is-group-manager? boolean)
-            ;; `:metabase-session-key` is attached by [[wrap-session-key]] from an unvalidated cookie or header, so
-            ;; its presence says nothing about whether the session is the credential that authenticated this
-            ;; request.  `:metabase/authed-session-key-hash` identifies the session that did, and being namespaced
-            ;; it cannot arrive from anywhere a request has been: Ring keys are unqualified, so only this function
-            ;; can set it. It carries the `key_hashed` value rather than the key itself, since that is all anything
-            ;; downstream needs and the key is the credential.
             (assoc :metabase/authed-session-key-hash session-key-hash
                    :embedding/auth-method            (or auth-provider "session")))))))
 
