@@ -1,0 +1,21 @@
+.root {
+  background-color: var(--mb-color-background-secondary);
+  border-left: 1px solid var(--mb-color-border);
+  box-shadow: inset 8px 0 10px -10px var(--mb-color-shadow);
+}
+
+.section {
+  border: 1px dashed transparent;
+  border-radius: var(--mantine-radius-sm);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.section[data-drop-active="true"] {
+  border-color: var(--mb-color-border-brand);
+}
+
+.section[data-drop-over="true"] {
+  background-color: var(--mb-color-background-brand);
+}

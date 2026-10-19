@@ -6,11 +6,13 @@ import type { ProductAnalyticsNodeDefinition } from "metabase-types/api";
 import { isOneOf } from "../analyses/setting-helpers";
 import { type InsightAction, InsightsPanel } from "../components/InsightsPanel";
 import { SettingsList, hasPanelSettings } from "../components/SettingsPanel";
+import { SegmentPalette } from "../components/palette/SegmentPalette";
 import { getInsightBreakdownSettings } from "../insights/breakdown-settings";
 import { isFirstEventInsight } from "../insights/first-events";
 import { getInsightPathsSettings } from "../insights/paths-settings";
 import type { Insight } from "../insights/types";
 import { useFunnelInsights } from "../insights/use-funnel-insights";
+import { SegmentDragProvider } from "../segments/drag-context";
 
 import {
   ANALYSIS_PANEL_TABS,
@@ -19,13 +21,21 @@ import {
 } from "./AnalysisDocumentContext";
 import { useDocumentAnalysis } from "./use-document-analysis";
 
+const SETTINGS_WIDTH = 400;
+const PALETTE_WIDTH = 280;
+/** Shared by the settings and palette headers so their borders line up. */
+const HEADER_HEIGHT = "3.25rem";
+
 type AnalysisSidePanelProps = {
   nodeId: string;
   definition: ProductAnalyticsNodeDefinition;
   panelTab: AnalysisPanelTab;
 };
 
-/** Settings and insights for the analysis in edit mode, one tab at a time. */
+/**
+ * Settings and insights for the analysis in edit mode, one tab at a time.
+ * Beside the settings, the segment palette, whose segments drag onto them.
+ */
 export const AnalysisSidePanel = ({
   nodeId,
   definition,
@@ -41,6 +51,7 @@ export const AnalysisSidePanel = ({
     insights: hasInsights,
   };
   const tab = isTabShown[panelTab] ? panelTab : "setup";
+  const isPaletteOpen = tab !== "insights";
 
   const insights = useFunnelInsights({
     spec: analysis.spec,
@@ -84,49 +95,78 @@ export const AnalysisSidePanel = ({
   };
 
   return (
-    <Stack h="100%" gap={0} aria-label={t`Analysis settings`}>
-      <Group
-        justify="space-between"
-        wrap="nowrap"
-        px="lg"
-        pt="md"
-        style={{ borderBottom: "1px solid var(--mb-color-border)" }}
-      >
-        <Tabs value={tab} onChange={handleTabChange}>
-          <Tabs.List style={{ borderBottom: "none" }}>
-            <Tabs.Tab value="setup">{analysis.config.setupLabel}</Tabs.Tab>
-            {hasAdvanced && <Tabs.Tab value="advanced">{t`Advanced`}</Tabs.Tab>}
-            {hasInsights && <Tabs.Tab value="insights">{t`Insights`}</Tabs.Tab>}
-          </Tabs.List>
-        </Tabs>
-        <ActionIcon
-          variant="subtle"
-          aria-label={t`Close`}
-          onClick={() => analysisDocument.setPanelTab(null)}
+    <SegmentDragProvider isPaletteOpen={isPaletteOpen}>
+      <Group h="100%" gap={0} wrap="nowrap" align="stretch">
+        <Stack
+          w={SETTINGS_WIDTH}
+          h="100%"
+          gap={0}
+          aria-label={t`Analysis settings`}
         >
-          <Icon name="close" />
-        </ActionIcon>
-      </Group>
-      <Box
-        flex={1}
-        mih={0}
-        px="xl"
-        pt="xl"
-        pb="lg"
-        style={{ overflowY: "auto" }}
-      >
-        {tab === "insights" ? (
-          <InsightsPanel
-            state={insights.state}
-            action={insightAction}
-            getExploreSeries={insights.getExploreSeries}
-            transitionFilter={analysisDocument.insightsTransition ?? undefined}
-            onShowAll={() => analysisDocument.showInsights(nodeId)}
-          />
-        ) : (
-          <SettingsList panel={tab} widgets={analysis.widgets} />
+          <Group
+            h={HEADER_HEIGHT}
+            justify="space-between"
+            align="flex-end"
+            wrap="nowrap"
+            px="lg"
+            style={{
+              flexShrink: 0,
+              borderBottom: "1px solid var(--mb-color-border)",
+            }}
+          >
+            <Tabs value={tab} onChange={handleTabChange}>
+              <Tabs.List style={{ borderBottom: "none" }}>
+                <Tabs.Tab value="setup">{analysis.config.setupLabel}</Tabs.Tab>
+                {hasAdvanced && (
+                  <Tabs.Tab value="advanced">{t`Advanced`}</Tabs.Tab>
+                )}
+                {hasInsights && (
+                  <Tabs.Tab value="insights">{t`Insights`}</Tabs.Tab>
+                )}
+              </Tabs.List>
+            </Tabs>
+            <ActionIcon
+              variant="subtle"
+              aria-label={t`Close`}
+              style={{ alignSelf: "center" }}
+              onClick={() => analysisDocument.setPanelTab(null)}
+            >
+              <Icon name="close" />
+            </ActionIcon>
+          </Group>
+          <Box
+            flex={1}
+            mih={0}
+            px="xl"
+            pt="xl"
+            pb="lg"
+            style={{ overflowY: "auto" }}
+          >
+            {tab === "insights" ? (
+              <InsightsPanel
+                state={insights.state}
+                action={insightAction}
+                getExploreSeries={insights.getExploreSeries}
+                transitionFilter={
+                  analysisDocument.insightsTransition ?? undefined
+                }
+                onShowAll={() => analysisDocument.showInsights(nodeId)}
+              />
+            ) : (
+              <SettingsList panel={tab} widgets={analysis.widgets} />
+            )}
+          </Box>
+        </Stack>
+        {isPaletteOpen && (
+          <Box w={PALETTE_WIDTH} h="100%">
+            <SegmentPalette
+              table={analysis.table}
+              usersTable={analysis.context.usersTable}
+              headerHeight={HEADER_HEIGHT}
+            />
+          </Box>
         )}
-      </Box>
-    </Stack>
+      </Group>
+    </SegmentDragProvider>
   );
 };

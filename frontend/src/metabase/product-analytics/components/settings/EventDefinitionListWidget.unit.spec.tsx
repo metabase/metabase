@@ -11,6 +11,7 @@ import {
 
 import { createMockEventDefinition, totalAbove } from "../../events/mocks";
 import type { EventDefinition } from "../../events/types";
+import { SegmentDragProvider } from "../../segments/drag-context";
 
 import { EventDefinitionListWidget } from "./EventDefinitionListWidget";
 
@@ -41,12 +42,14 @@ const Harness = ({ initialValue, onChange }: HarnessProps) => {
   };
 
   return (
-    <EventDefinitionListWidget
-      id="events"
-      value={value}
-      table={createOrdersTable()}
-      onChange={handleChange}
-    />
+    <SegmentDragProvider isPaletteOpen>
+      <EventDefinitionListWidget
+        id="events"
+        value={value}
+        table={createOrdersTable()}
+        onChange={handleChange}
+      />
+    </SegmentDragProvider>
   );
 };
 
@@ -150,7 +153,9 @@ describe("EventDefinitionListWidget", () => {
       screen.getByTestId("event-definition-name"),
       "Any order",
     );
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Done" }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(document.body);
 

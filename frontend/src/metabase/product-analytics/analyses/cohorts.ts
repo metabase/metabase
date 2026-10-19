@@ -105,10 +105,7 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
     widget: EventDefinitionWidget,
     getDefault: () => null,
     isValid: (value) => isOptionalEventDefinition(value),
-    getProps: (context) => ({
-      ...getEventDefinitionProps(context),
-      placeholder: t`Pick an action`,
-    }),
+    getProps: getEventDefinitionProps,
   }),
   "cohorts.display": withWidgetProps({
     getTitle: () => t`What value do you want to see?`,

@@ -76,7 +76,9 @@ describe("EventDefinitionEditor", () => {
     await userEvent.tab();
 
     expect(getName()).toHaveValue("Big order");
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Done" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps a custom name when a condition is removed", async () => {
@@ -114,7 +116,9 @@ describe("EventDefinitionEditor", () => {
 
     await removeCondition(TOTAL_NAME);
 
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Done" }),
+    ).not.toBeInTheDocument();
   });
 
   it("submits the typed name on Enter", async () => {

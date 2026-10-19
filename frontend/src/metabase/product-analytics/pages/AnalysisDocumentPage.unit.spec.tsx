@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupDatabaseListEndpoint,
+  setupSegmentsEndpoints,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -42,6 +43,7 @@ const TABLE = createMockTable({
 const setup = () => {
   setupDatabaseListEndpoint([DATABASE]);
   setupTablesEndpoints([TABLE]);
+  setupSegmentsEndpoints([]);
 
   renderWithProviders(
     <Route path="/event-analysis/new" element={<AnalysisDocumentPage />} />,

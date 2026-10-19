@@ -43,7 +43,6 @@ import { useAnalysisDocumentState } from "../document/use-analysis-document-stat
 import { usePrototypeTable } from "../use-prototype-table";
 
 const DOCUMENT_MAX_WIDTH = 900;
-const SIDE_PANEL_WIDTH = 400;
 
 const parseDocumentId = (
   value: string | undefined,
@@ -275,7 +274,6 @@ const AnalysisDocumentEditor = ({
         </Box>
         {sidePanel !== null && (
           <Box
-            w={SIDE_PANEL_WIDTH}
             h="100%"
             style={{
               flexShrink: 0,
