@@ -351,19 +351,17 @@
                             "https:///badsite.com"]]
         (is
          (= "Invalid redirect URL"
-            (->
-             (client/client
-              :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
-              :return_to redirect-uri
-              :jwt
-              (jwt/sign
-               {:email      "rasta@metabase.com"
-                :first_name "Rasta"
-                :last_name  "Toucan"
-                :extra      "keypairs"
-                :are        "also present"}
-               default-jwt-secret))
-             :message)))))))
+            (client/client
+             :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
+             :return_to redirect-uri
+             :jwt
+             (jwt/sign
+              {:email      "rasta@metabase.com"
+               :first_name "Rasta"
+               :last_name  "Toucan"
+               :extra      "keypairs"
+               :are        "also present"}
+              default-jwt-secret))))))))
 
 (deftest expired-jwt-test
   (testing "Check an expired JWT"

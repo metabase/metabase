@@ -105,7 +105,8 @@
                                                                            :query-id "q1"}}}]
         failure  [{:type :tool-input :id "b" :function "edit_sql_query"}
                   {:type :tool-output :id "b" :result {:output "validation error"
-                                                       :instructions "fix it"}}]
+                                                       :error  {:class :validation
+                                                                :code  :invalid-arguments}}}]
         read     [{:type :tool-input :id "c" :function "read_resource"}
                   {:type :tool-output :id "c" :result {:output "<fields/>"}}]]
     (testing "a successful terminal-tool call ends the turn"
@@ -119,6 +120,17 @@
       (is (not (#'agent/terminal-tool-call? terminal read))))
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
       (is (not (#'agent/terminal-tool-call? #{} success))))
+    (testing (str "an unconverted tool's returned failure does not end the turn either. Every "
+                  "terminal tool catches its own exceptions and returns `{:output \"Query 3 not "
+                  "found\"}`, so there is no `:error` for the adapter to find — ending the turn on "
+                  "the absence of one would deliver that sentence to the user as the answer. The "
+                  "`:structured-output` it does not attach is what tells them apart until they are "
+                  "converted.")
+      (let [legacy-failure [{:type :tool-input :id "d" :function "edit_sql_query"}
+                            {:type :tool-output :id "d" :result {:output "Query 3 not found"}}]]
+        (is (not (#'agent/terminal-tool-call? terminal legacy-failure)))
+        (is (#'agent/should-continue? 0 20 terminal legacy-failure)
+            "the model gets another turn to fix the id")))
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
@@ -158,9 +170,9 @@
           (is (contains? tools "replace_sql_query")))))))
 
 (defn- run-query-offered-at-turn-start
-  "Whether the turn starts with `run_query` among its tools, and whether its system message says results can be read.
-   Reads them where the decision is made rather than running a turn. The bindings stand in for the ones the agent
-   loop makes."
+  "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
+   whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
+   running a turn. The bindings stand in for the ones the agent loop makes."
   [conversation-id capabilities]
   (let [{:keys [tools system-msg]}
         (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
@@ -169,8 +181,13 @@
                                :profile-id      :internal
                                :conversation-id conversation-id
                                :context         {:capabilities capabilities}}))]
-    {:tool?   (contains? tools "run_query")
-     :prompt? (str/includes? (pr-str system-msg) "You can see results only")}))
+    {:tool?       (contains? tools "run_query")
+     :prompt?     (str/includes? (pr-str system-msg) "You can see results only")
+     :show-chart? (-> (get tools "construct_notebook_query")
+                      :declaration
+                      deref
+                      (get-in [:parameters :properties])
+                      (contains? :show_chart))}))
 
 (deftest client-claimed-feature-capability-cannot-override-settings-test
   ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
@@ -191,15 +208,15 @@
                    :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
       (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
         (mt/with-current-user rasta
-          (testing "the user's own conversation offers run_query and says results can be read"
-            (is (= {:tool? true, :prompt? true} (offered own))))
-          (testing "a conversation other people can read offers neither"
+          (testing "the user's own conversation offers run_query, says results can be read, and declares show_chart"
+            (is (= {:tool? true, :prompt? true, :show-chart? true} (offered own))))
+          (testing "a conversation other people can read does none of them"
             (testing "a Slack thread"
-              (is (= {:tool? false, :prompt? false} (offered thread))))
+              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered thread))))
             (testing "a conversation someone else started"
-              (is (= {:tool? false, :prompt? false} (offered someone)))))
-          (testing "no conversation offers neither"
-            (is (= {:tool? false, :prompt? false} (offered nil)))))))))
+              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
+          (testing "no conversation does none of them"
+            (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
@@ -221,24 +238,41 @@
           (is (contains? tools "document_construct_sql_chart"))
           (is (contains? tools "document_schema_collect")))))))
 
+(defn- unrecoverable-part
+  [id user-message]
+  {:type   :tool-output
+   :id     id
+   :result (cond-> {:output "This call failed and the user was shown the error (:x). Don't retry it."
+                    :error  {:class :unrecoverable :code :x}}
+             user-message (assoc-in [:error :user-message] user-message))})
+
 (deftest terminal-error-message-test
   (let [denial [{:type :tool-input :id "a" :function "create_sql_query"}
-                {:type :tool-output :id "a" :result {:output "No native permission."
-                                                     :terminal-error? true}}]]
-    (testing "reads the message off a tool result marked terminal"
+                (unrecoverable-part "a" "No native permission.")]]
+    (testing "reads the user-facing message off an unrecoverable failure"
       (is (= "No native permission." (#'agent/terminal-error-message denial))))
-    (testing "an ordinary tool failure is not terminal"
+    (testing "a recoverable failure is not terminal — the model can still self-correct"
       (is (nil? (#'agent/terminal-error-message
-                 [{:type :tool-output :id "b" :result {:output "syntax error"}}]))))
-    (testing "a terminal marker with no message yields nil so no empty text part is emitted"
+                 [{:type :tool-output :id "b" :result {:output "syntax error"
+                                                       :error {:class :recoverable :code :x}}}]))))
+    (testing "and neither is a success"
       (is (nil? (#'agent/terminal-error-message
-                 [{:type :tool-output :id "c" :result {:output "" :terminal-error? true}}]))))
+                 [{:type :tool-output :id "b" :result {:output "fine"}}]))))
+    (testing "an unrecoverable failure with no :user-message gets the generic one, so the user is
+             always told something"
+      (is (= "Something went wrong."
+             (#'agent/terminal-error-message [(unrecoverable-part "c" nil)]))))
     (testing "the first denial wins when an iteration produces several"
       (is (= "first" (#'agent/terminal-error-message
-                      [{:type :tool-output :id "a" :result {:output "first" :terminal-error? true}}
-                       {:type :tool-output :id "b" :result {:output "second" :terminal-error? true}}]))))
+                      [(unrecoverable-part "a" "first")
+                       (unrecoverable-part "b" "second")]))))
     (testing "should-continue? is unaffected — the gate lives in loop-step, per profile"
       (is (#'agent/should-continue? 0 20 #{} denial)))))
+
+(deftest ^:parallel a-failed-call-shows-its-error-in-the-trace-summary-test
+  (is (= {:class :unrecoverable :code :x}
+         (-> (#'agent/summarize-tool-ios [(unrecoverable-part "a" nil)])
+             :tool-results first :error))))
 
 (defn- run-sql-denial-turn!
   "Run one turn whose first LLM response calls `create_sql_query` against `database-id`."
@@ -289,14 +323,19 @@
                 "the refusal is emitted as assistant text — a tool result is not rendered to the user")
             (is (some #(= :data (:type %)) parts)
                 "state data part still closes the turn")))
-        (testing ":internal lets the model explain the denial itself, so the loop continues"
+        (testing (str ":internal stops on the same denial. The class decides, not the profile: only "
+                      "the user can grant this permission, so there is nothing for the agent to do "
+                      "with the turn. This used to continue, and the model paraphrased the refusal "
+                      "in its own words — nicer wording, bought with an extra LLM call, a profile "
+                      "exception, and a model that might have said something else entirely.")
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal builder-db)]
-            (is (= 2 llm-calls))
-            (is (= :stop (:finish-reason (last parts))))
-            (is (not-any? #(and (= :text (:type %))
-                                (str/includes? (str (:text %)) "do not have permission"))
-                          parts)
-                "no canned text — the model's own wording is used")))
+            (is (= 1 llm-calls)
+                "one call, where the profile gate used to allow a second")
+            (is (= :terminal-error (:finish-reason (last parts))))
+            (is (some #(and (= :text (:type %))
+                            (str/includes? (:text %) "do not have permission"))
+                      parts)
+                "the tool's own `:user-message`, which is authored and specific")))
         (testing "a database the user cannot read at all stops the turn the same way"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
             (is (= 1 llm-calls)
@@ -1098,6 +1137,140 @@
         (is (=? [{:error {:error-code "ai_provider_unavailable" :message #"The AI provider is having problems .*"}}]
                 (mt/as-admin (error-parts "metabase/anthropic/claude-sonnet-4-6" claude-fn))))))))
 
+(defn- rethrown-api-error!
+  "What an adapter throws when `provider` answers with HTTP `status` and the JSON `body`."
+  [provider status body]
+  (mt/with-log-level [metabase.metabot.self.core :fatal]
+    (try
+      (self.core/rethrow-api-error! provider
+                                    (constantly "API error")
+                                    (ex-info "clj-http error"
+                                             {:status  status
+                                              :headers {"content-type" "application/json"}
+                                              :body    (json/encode body)}))
+      (catch clojure.lang.ExceptionInfo e
+        e))))
+
+(def ^:private context-full-copy
+  "This conversation has reached its maximum length and can't continue. Please start a new chat.")
+
+(defn- agent-loop-error-parts!
+  "The `:error` parts of an agent loop on `model-ref` whose provider call throws `e`."
+  [model-ref e]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider model-ref]
+    (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw e))
+                                claude/claude         (fn [_] (throw e))]
+      (mt/with-log-level [metabase.metabot.agent.core :fatal]
+        (filterv #(= :error (:type %))
+                 (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                  :state      {}
+                                  :profile-id :embedding_next
+                                  :context    {}}))))))
+
+(def ^:private openrouter-overflow-body
+  "OpenRouter's 400 body for a request over the window (probed 2026-10-09,
+  https://github.com/metabase/metabase/pull/83989)."
+  {:error {:message  (str "This endpoint's maximum context length is 200000 tokens. However, you requested about "
+                          "200001 tokens (1 of text input, 200000 in the output).")
+           :code     400
+           :metadata {:provider_name nil}}})
+
+(def ^:private openrouter-relayed-overflow-body
+  "OpenRouter's 400 body when every upstream refused a prompt over the window (probed 2026-10-13,
+  https://github.com/metabase/metabase/pull/83989). The overflow text is only in the upstream's own body, a JSON
+  string in `metadata.raw`."
+  {:error {:message  "Provider returned error"
+           :code     400
+           :metadata {:raw             (str "{\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\","
+                                            "\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"},"
+                                            "\"request_id\":\"req_011\"}")
+                      :provider_name   "Azure"
+                      :is_byok         false
+                      :previous_errors [{:code          400
+                                         :message       "Provider returned error"
+                                         :provider_name "Amazon Bedrock"
+                                         :raw           "{\"message\":\"prompt is too long: 250027 tokens > 200000 maximum\"}"}]}}})
+
+(deftest agent-loop-context-overflow-error-part-test
+  (testing "a 400 for a request over the window becomes a \"full\" error part with the web copy"
+    (doseq [[model-ref provider body]
+            [["openrouter/anthropic/claude-haiku-4.5" "openrouter" openrouter-overflow-body]
+             ["openrouter/anthropic/claude-haiku-4.5" "openrouter" openrouter-relayed-overflow-body]
+             ;; https://platform.claude.com/docs/en/build-with-claude/context-windows
+             ["anthropic/claude-sonnet-4-6" "anthropic"
+              {:type  "error"
+               :error {:type    "invalid_request_error"
+                       :message "prompt is too long: 208310 tokens > 200000 maximum"}}]]]
+      (testing provider
+        (let [e     (rethrown-api-error! provider 400 body)
+              parts [{:type  :error
+                      :error {:error-code "ai_provider_context_full" :message context-full-copy}}]]
+          (is (= parts (mt/as-admin (agent-loop-error-parts! model-ref e))))
+          (is (= parts (mt/with-current-user (mt/user->id :rasta)
+                         (agent-loop-error-parts! model-ref e)))))))))
+
+(defn- openrouter-midstream-error-chunks
+  "OpenRouter's documented mid-stream error event carrying `error`, after a first chunk of text.
+
+  The event is the Chat Completions example at https://openrouter.ai/docs/api_reference/errors-and-debugging, with
+  its `model`, `provider` and `error` values replaced."
+  [error]
+  [{:id      "gen-abc123"
+    :object  "chat.completion.chunk"
+    :created 1234567890
+    :model   "anthropic/claude-haiku-4.5"
+    :choices [{:index 0 :delta {:role "assistant" :content "Here's what I fou"} :finish_reason nil}]}
+   {:id       "gen-abc123"
+    :object   "chat.completion.chunk"
+    :created  1234567890
+    :model    "anthropic/claude-haiku-4.5"
+    :provider "Anthropic"
+    :error    error
+    :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}])
+
+(defn- agent-loop-streamed-error-parts!
+  "The `:error` parts of an agent loop on OpenRouter whose stream sends the raw Chat Completions `chunks`."
+  [chunks]
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "openrouter/anthropic/claude-haiku-4.5"]
+    (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                        (eduction (openrouter/openrouter->aisdk-chunks-xf) chunks))]
+      (filterv #(= :error (:type %))
+               (run-agent-loop {:messages   [{:role :user :content "Hi"}]
+                                :state      {}
+                                :profile-id :embedding_next
+                                :context    {}})))))
+
+(deftest agent-loop-streamed-context-overflow-error-part-test
+  (testing "an overflow OpenRouter streams after its 200 becomes a \"full\" error part with the web copy"
+    (let [chunks (openrouter-midstream-error-chunks {:code     400
+                                                     :message  "Provider returned error"
+                                                     :metadata {:error_type "context_length_exceeded"}})
+          errors [{:error-code "ai_provider_context_full" :message context-full-copy}]]
+      (is (= errors (map :error (mt/as-admin (agent-loop-streamed-error-parts! chunks)))))
+      (is (= errors (map :error (mt/with-current-user (mt/user->id :rasta)
+                                  (agent-loop-streamed-error-parts! chunks)))))))
+  (testing "any other streamed error keeps no error code"
+    (let [error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}]
+      (is (= [error]
+             (map :error (mt/as-admin (agent-loop-streamed-error-parts! (openrouter-midstream-error-chunks error)))))))))
+
+(deftest agent-loop-other-400s-keep-the-generic-error-part-test
+  (testing "a 400 that is not a context overflow keeps the generic error part"
+    (doseq [[model-ref provider body]
+            [["openrouter/anthropic/claude-haiku-4.5" "openrouter"
+              {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}]
+             ["openrouter/anthropic/claude-haiku-4.5" "openrouter"
+              {:error {:code 400 :message "Bad request"}}]]]
+      (testing (str provider " " (pr-str body))
+        (let [e (rethrown-api-error! provider 400 body)]
+          (is (= [{:type  :error
+                   :error {:message (ex-message e)
+                           :type    (str (type e))
+                           :data    (ex-data e)}}]
+                 (mt/as-admin (agent-loop-error-parts! model-ref e)))))))))
+
 ;;; ===================== Prometheus Metrics Tests =====================
 
 (deftest run-agent-loop-prometheus-test
@@ -1399,3 +1572,17 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))
+
+(deftest eval-only-profile-needs-an-eval-instance-test
+  (let [check!  #'agent/check-metabot-access!
+        sql-yes {:permission/metabot :yes :permission/metabot-sql-generation :yes}]
+    (testing "without the eval setting, internal-sql is refused as an unknown profile, even with every permission"
+      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Unknown profile$" (check! :internal-sql sql-yes)))]
+        (is (= {:status-code 400} (ex-data e)))))
+    (testing "on an eval instance it needs the SQL generation permission, as before"
+      (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+        (is (nil? (check! :internal-sql sql-yes)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                              (check! :internal-sql {:permission/metabot :yes :permission/metabot-sql-generation :no})))))
+    (testing "the setting changes nothing for a profile the product offers"
+      (is (nil? (check! :internal {:permission/metabot :yes}))))))

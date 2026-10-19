@@ -330,7 +330,7 @@
           (let [cid (:id card)]
             ;; seed a clean finding, mark it stale, then make its database unresolvable
             (models.analysis-finding/upsert-analysis! :card cid true [])
-            (models.analysis-finding/mark-stale! :card [cid])
+            (models.analysis-finding/mark-stale! {:card #{cid}})
             (with-redefs-fn {#'deps.findings/instance-db-id (constantly nil)}
               (fn []
                 (lib-be/with-metadata-provider-cache
@@ -363,7 +363,7 @@
                                             :analyzed_entity_type :card :analyzed_entity_id cid))
                   "phase 1: stale flag cleared")
               ;; phase 2: database resolvable again; re-trigger analysis (as an event/job would)
-              (models.analysis-finding/mark-stale! :card [cid])
+              (models.analysis-finding/mark-stale! {:card #{cid}})
               (lib-be/with-metadata-provider-cache
                 (deps.findings/upsert-analysis! (t2/instance :model/Card card)))
               (is (empty? (models.analysis-finding-error/errors-for-entity :card cid))

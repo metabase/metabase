@@ -1,6 +1,6 @@
-import { t } from "ttag";
 import _ from "underscore";
 
+import { getNonBlankNameAndDescription } from "metabase/common/utils/card";
 import type { Card, CardId, DocumentCardToCreate } from "metabase-types/api";
 
 /**
@@ -21,8 +21,7 @@ export function getDocumentCardToCreate(
       "result_metadata",
       "cache_ttl",
     ),
-    name: draftCard.name.trim() ? draftCard.name : t`Untitled question`,
-    description: draftCard.description?.trim() ? draftCard.description : null,
+    ...getNonBlankNameAndDescription(draftCard),
     source_card_id: sourceCardId,
   };
 }

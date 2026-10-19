@@ -49,14 +49,18 @@
         dataset   #(mcp.ui-surface/scope-satisfied? :post "/api/dataset" %)]
     (testing "a route off the surface is never satisfied"
       (is (nil? (mcp.ui-surface/scope-satisfied?
-                 :get "/api/user/current" {:token-scopes #{::scope/unrestricted}}))))
+                 :get "/api/user/current" {:token-scopes #{"agent:query:run"}}))))
     (testing "a route that costs no scope needs only a valid credential"
       (is (true? (bootstrap {:token-scopes #{}}))))
     (testing "a route that costs a scope needs the minting session to have held it"
       (is (false? (dataset {:token-scopes #{"agent:search"}})))
-      (is (true? (dataset {:token-scopes #{"agent:query:run"}})))
-      (is (true? (dataset {:token-scopes #{"agent:query:*"}})))
-      (is (true? (dataset {:token-scopes #{::scope/unrestricted}}))))
+      (is (true? (dataset {:token-scopes #{"agent:query:run"}}))))
+    (testing "GHY-4942: the unrestricted sentinel is not an MCP scope, so it satisfies no route that costs one"
+      (is (false? (dataset {:token-scopes #{::scope/unrestricted}}))))
+    (testing "GHY-4942: a wildcard covers no route; only the scope named exactly does"
+      (is (false? (dataset {:token-scopes #{"agent:query:*"}})))
+      (is (false? (dataset {:token-scopes #{"agent:*"}})))
+      (is (false? (dataset {:token-scopes #{"*"}}))))
     (testing "a v2 credential minted before the scope claim existed reaches only the free routes"
       (is (true? (bootstrap {})))
       (is (false? (dataset {}))))
@@ -104,7 +108,7 @@
                                                               session-id user-id scopes)
                                     "mcp-session-id" session-id}}}
                         {:encodedQuery "ZW5jb2RlZA=="}))]
-      (is (= 403 (:status (post! #{"agent:search"} 403))))
+      (is (= 403 (:status (post! #{"agent:content:read"} 403))))
       (is (= 200 (:status (post! #{"agent:query:run"} 200)))))))
 
 (deftest dataset-routes-cost-the-query-scope-test
@@ -123,7 +127,7 @@
                         {:request-options {:headers {"x-metabase-mcp-ui-auth" credential
                                                      "mcp-session-id" session-id}}}
                         query))]
-      (is (= 403 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:search"})
+      (is (= 403 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:content:read"})
                                  403))))
       (is (= 202 (:status (post! (mcp.session/issue-ui-credential session-id user-id #{"agent:query:run"})
                                  202)))))))

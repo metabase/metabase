@@ -24,6 +24,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import {
   type TimelineEventGroup,
   getLegendItems,
+  isRowChartSeries,
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
 } from "metabase/viz-core";
@@ -32,10 +33,7 @@ import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import { useTimelineEventsHover } from "./use-timeline-events-hover";
-import {
-  getDashboardAdjustedSettings,
-  getHoveredFromHighlighted,
-} from "./utils";
+import { getHoveredFromHighlighted, getSizeAdjustedSettings } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,7 +48,6 @@ function CartesianChartInner(props: VisualizationProps) {
     hideLegend,
     rawSeries,
     settings: originalSettings,
-    autoAdjustSettings = false,
     card,
     getHref,
     width: outerWidth,
@@ -64,6 +61,8 @@ function CartesianChartInner(props: VisualizationProps) {
     isQueryBuilder,
     isVisualizerCard,
     isFullscreen,
+    isMobile,
+    gridSize,
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
@@ -77,17 +76,21 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const settings = useMemo(
     () =>
-      autoAdjustSettings
-        ? getDashboardAdjustedSettings?.({
-            settings: originalSettings,
-            height: outerHeight,
-            width: outerWidth,
-          })
-        : originalSettings,
-    [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
+      getSizeAdjustedSettings({
+        settings: originalSettings,
+        height: outerHeight,
+        width: outerWidth,
+        gridSize: isMobile ? undefined : gridSize, // mobile doesn't use the grid layout
+      }),
+    [originalSettings, outerHeight, outerWidth, isMobile, gridSize],
   );
 
-  const { timelineEvents } = useTimelineEvents({ ...props, settings });
+  // Row charts don't offer timeline events (UXW-4833).
+  const { timelineEvents } = useTimelineEvents({
+    ...props,
+    settings,
+    skip: isRowChartSeries(rawSeries),
+  });
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
@@ -108,6 +111,7 @@ function CartesianChartInner(props: VisualizationProps) {
       timelineEvents,
     },
     containerRef,
+    { width: outerWidth, height: outerHeight },
   );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
@@ -242,11 +246,14 @@ function CartesianChartInner(props: VisualizationProps) {
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
+        alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!showTitle ? actionButtons : undefined}
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
+        fontFamily={renderingContext.fontFamily}
+        measureText={renderingContext.measureText}
         onSelectSeries={onSelectSeries}
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
@@ -254,6 +261,8 @@ function CartesianChartInner(props: VisualizationProps) {
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}
+        chartHeight={chartSize.height || undefined}
+        indent={chartLayout.padding.left - chartLayout.padding.right}
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}

@@ -36,14 +36,7 @@
   :feature :none
   [collection]
   (or (= (settings/remote-sync-type) :read-write)
-      (not (or (collections/remote-synced-collection? collection)
-               ;; a data app's collection is synced with the app; without remote sync nothing writes its files
-               (and (settings/remote-sync-enabled)
-                    (spec/data-apps-namespace-collection?
-                     {:namespace (if (and (map? collection) (contains? collection :namespace))
-                                   (:namespace collection)
-                                   ;; the root collection has no ID, and nothing in it is synced
-                                   (some-> (u/id collection) remote-sync.db/collection-namespace))}))))))
+      (not (collections/remote-synced-collection? collection))))
 
 (defenterprise table-editable?
   "Determines if a table's metadata should be editable.
