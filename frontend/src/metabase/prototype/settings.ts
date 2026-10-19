@@ -56,6 +56,15 @@ export const LIVE_FILTER_PREVIEW_ANIMATION_MS: NumberPrototypeSetting = {
   max: 3000,
 };
 
+export const LIVE_FILTER_PREVIEW_ONION_SKIN: BooleanPrototypeSetting = {
+  type: "boolean",
+  key: "live-filter-preview-onion-skin-current",
+  label: "Onion skin",
+  description:
+    "Show a grey ghost of the current result behind the preview. Only for bar, line, area, combo and scatter charts.",
+  defaultValue: false,
+};
+
 /**
  * The settings of the current prototype, in the order the prototype settings
  * submenu shows them. Each prototype branch lists its own settings here and
@@ -64,7 +73,8 @@ export const LIVE_FILTER_PREVIEW_ANIMATION_MS: NumberPrototypeSetting = {
 export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   LIVE_FILTER_PREVIEW_MODE,
   LIVE_FILTER_PREVIEW_DELAY_MS,
-  LIVE_FILTER_PREVIEW_SLOW_DATA,
+  LIVE_FILTER_PREVIEW_ONION_SKIN,
   LIVE_FILTER_PREVIEW_ANIMATION,
   LIVE_FILTER_PREVIEW_ANIMATION_MS,
+  LIVE_FILTER_PREVIEW_SLOW_DATA,
 ];

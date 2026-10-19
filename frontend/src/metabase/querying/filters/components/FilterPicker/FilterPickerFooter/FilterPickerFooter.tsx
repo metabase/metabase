@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { isValidElement, useContext } from "react";
 
-import { Box, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
 
 import { FilterFooterLabelContext } from "../FilterPreviewContext";
 import { FilterSubmitButton } from "../FilterSubmitButton";
@@ -38,7 +38,11 @@ export function FilterPickerFooter({
       justify="space-between"
       data-filter-picker-footer
     >
-      {isValidElement(children) ? children : (footerLabel ?? <Box />)}
+      {isValidElement(children) ? (
+        children
+      ) : (
+        <Flex align="center">{footerLabel}</Flex>
+      )}
 
       {withSubmitButton && (
         <FilterSubmitButton
