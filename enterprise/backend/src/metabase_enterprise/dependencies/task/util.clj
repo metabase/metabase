@@ -28,7 +28,7 @@
                toSeconds))))
 
 (defn next-run-delay
-  "A random delay in seconds before the next periodic run of `job`, within its variance of its delay."
+  "A random delay in seconds before `job` runs again after a failure, within its variance of its delay."
   [{:keys [delay-minutes variance-minutes]}]
   (job-delay (delay-minutes) (variance-minutes)))
 
@@ -62,16 +62,19 @@
       (task/schedule-task! scheduler job trigger))))
 
 (defn run-and-reschedule!
-  "Run a batch of `job`, then schedule its next run when the batch asks for one, and after [[next-run-delay]] when it
-  throws, before rethrowing, since nothing else restarts a job that stopped."
-  [scheduler {:keys [run-batch! job-name] :as job}]
-  (try
-    (if-some [delay-in-seconds (run-batch!)]
-      (schedule-run! scheduler job delay-in-seconds)
-      (log/debug "Job" job-name "has nothing more to do, stopping."))
-    (catch Throwable e
-      (schedule-run! scheduler job (next-run-delay job))
-      (throw e))))
+  "Run a batch of `job` unless a batch size that isn't positive disables it, then schedule its next run when the batch
+  asks for one, and after [[next-run-delay]] when it throws, before rethrowing, so a failure doesn't stop it until the
+  next write."
+  [scheduler {:keys [run-batch! job-name batch-size] :as job}]
+  (if (pos? (batch-size))
+    (try
+      (if-some [delay-in-seconds (run-batch!)]
+        (schedule-run! scheduler job delay-in-seconds)
+        (log/debug "Job" job-name "has nothing more to do, stopping."))
+      (catch Throwable e
+        (schedule-run! scheduler job (next-run-delay job))
+        (throw e)))
+    (log/debug "Job" job-name "has a batch size that isn't positive, stopping.")))
 
 (defn trigger-run!
   "Schedule a run of `job` a second from now, unless a batch size that isn't positive disables it."

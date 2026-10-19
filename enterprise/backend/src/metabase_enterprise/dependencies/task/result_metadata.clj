@@ -15,15 +15,12 @@
 (declare ^:private job)
 
 (defn- run-batch!
-  "Process a batch of changed entities, returning when to run again: right away when it took any, since a card it
-  stored is changed in turn, or nil."
+  "Re-derive a batch of stale cards, returning when to run again: a second from now when it took any, or nil."
   []
   (when (premium-features/has-feature? :dependencies)
-    (let [batch-size (deps.settings/dependency-result-metadata-batch-size)
-          taken      (if (pos? batch-size) (deps.result-metadata/update-result-metadata! batch-size) 0)]
+    (let [taken (deps.result-metadata/update-result-metadata! (deps.settings/dependency-result-metadata-batch-size))]
       (when (pos? taken)
-        (log/debug "Processed" taken "entities for result metadata"))
-      (when (pos? taken)
+        (log/debug "Processed" taken "entities for result metadata")
         1))))
 
 (task/defjob UpdateResultMetadata
@@ -45,7 +42,8 @@
    :run-batch!       #'run-batch!})
 
 (defn trigger-result-metadata-job!
-  "Trigger the UpdateResultMetadata job, unless MB_DEPENDENCY_RESULT_METADATA_BATCH_SIZE=0 disables it."
+  "Trigger the UpdateResultMetadata job, unless a MB_DEPENDENCY_RESULT_METADATA_BATCH_SIZE that isn't positive
+  disables it."
   []
   (task.util/trigger-run! job))
 

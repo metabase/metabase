@@ -35,8 +35,8 @@
     (while (#'task.dependency/update-dependencies!))))
 
 (defn run-analysis-finding-job!
-  "Run batches of the analysis finding job until one takes nothing, or up to 20 of them, as its reruns would, returning
-  whether the last one took anything."
+  "Run batches of the analysis finding job until one takes nothing, or up to 20 of them, returning whether the last one
+  took anything."
   []
   (loop [runs 1]
     (let [took? (some? (#'task.analysis-finding/run-batch!))]
@@ -79,7 +79,7 @@
   [card-id]
   (status-pending? :model/ResultMetadataStatus :card card-id))
 
-(defn record-result-metadata-version!
+(defn record-result-metadata-processed!
   "Record, as the result metadata job does when it claims it, that the result metadata of the Card with `card-id` is
   current."
   [card-id]
@@ -91,7 +91,7 @@
   [entity-type entity-id]
   (status-pending? :model/AnalysisFindingStatus entity-type entity-id))
 
-(defn record-analysis-finding-version!
+(defn record-analysis-finding-processed!
   "Record, as the analysis job does when it claims it, that the finding of the entity `entity-type` `entity-id` is
   current."
   [entity-type entity-id]

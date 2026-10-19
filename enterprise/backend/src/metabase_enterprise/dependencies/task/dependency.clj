@@ -71,12 +71,16 @@
    entity-type (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)))
 
 (defn- compute-deps-for-entity!
-  "Compute and store the dependencies of an entity. Entities are expected to be pre-hydrated by
-  [[deps.dependency-status/hydrate-for-deps]]."
+  "Compute and store the dependencies of an `entity` hydrated by [[deps.dependency-status/hydrate-for-deps]], marking
+  a card with a new upstream stale for its result metadata, which an upstream change made before the edge existed
+  never marked."
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (let [deps (deps.calculation/calculate-deps entity-type entity)]
     (t2/with-transaction [_]
+      (when (and (= :card entity-type)
+                 (seq (models.dependency/new-dependencies entity-type (:id entity) deps)))
+        (dependencies.db/mark-result-metadata-statuses-stale! {:card #{(:id entity)}}))
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       (post-deps-cleanup! entity-type entity))))
 
@@ -98,23 +102,19 @@
           instances (processable-instances entity-type batch-size)]
       (when (seq instances)
         (log/debugf "Processing a batch of %s %s(s)..." (count instances) type-name))
-      (reduce (fn [total entity]
-                (+ total
-                   (try
-                     (compute-deps-for-entity! entity-type entity)
-                     1
-                     (catch Throwable e ;; catch OOMs
-                       (log/errorf "Entity %s %s failed, so its dependencies are computed again when it changes: %s"
-                                   type-name (:id entity) (ex-message e))
-                       (when-not (instance? Exception e) ;; re-throw Errors
-                         (throw e))
-                       0))))
-              0
-              instances))))
+      (doseq [entity instances]
+        (try
+          (compute-deps-for-entity! entity-type entity)
+          (catch Throwable e ;; catch OOMs
+            (log/errorf "Entity %s %s failed, so its dependencies are computed again when it changes: %s"
+                        type-name (:id entity) (ex-message e))
+            (when-not (instance? Exception e) ;; re-throw Errors
+              (throw e)))))
+      (count instances))))
 
 (defn- update-dependencies!
-  "Job to update the dependencies of all entities, triggering the jobs that read them when it processed any. Returns
-  true if a full batch has been selected, nil or false otherwise."
+  "Update the dependencies of up to a batch of entities, triggering the jobs that read them, and return whether the
+  batch took any."
   []
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-backfill-batch-size)
@@ -132,13 +132,13 @@
                              entity-types)]
       (when (< remaining batch-size)
         (task.analysis-finding/trigger-analysis-finding-job!)
-        (task.result-metadata/trigger-result-metadata-job!))
-      (< remaining 1))))
+        (task.result-metadata/trigger-result-metadata-job!)
+        true))))
 
 (declare ^:private job)
 
 (defn- run-batch!
-  "Process a batch, returning when to run again: right away when the batch was full, or nil."
+  "Process a batch, returning when to run again: a second from now when it took any, or nil."
   []
   (when (update-dependencies!)
     1))
@@ -171,7 +171,8 @@
    :run-batch!       #'run-batch!})
 
 (defn trigger-dependency-job!
-  "Trigger the UpdateDependencies job, unless MB_DEPENDENCY_BACKFILL_BATCH_SIZE=0 disables it."
+  "Trigger the UpdateDependencies job, unless a MB_DEPENDENCY_BACKFILL_BATCH_SIZE that isn't positive
+  disables it."
   []
   (task.util/trigger-run! job))
 

@@ -9,6 +9,12 @@
   "Entities as `{entity-type ids}`."
   [:map-of :metabase-enterprise.dependencies.dependency-types/dependency-types [:set ms/PositiveInt]])
 
+(mr/def ::stored-card-columns
+  "A Card's `dataset_query` and `result_metadata` as the app DB stores them, before any decoding."
+  [:map {:closed true}
+   [:dataset_query   [:maybe :string]]
+   [:result_metadata [:maybe :string]]])
+
 (mr/def ::upstream-deps
   [:map
    [:card      {:optional true} [:set ::lib.schema.id/card]]

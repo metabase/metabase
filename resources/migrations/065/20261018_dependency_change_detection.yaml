@@ -97,6 +97,15 @@ databaseChangeLog:
             oldColumnName: analysis_version
             newColumnName: dependency_analysis_version
             columnDataType: smallint
+        - addNotNullConstraint:
+            tableName: dependency_status
+            columnName: dependency_analysis_version
+            columnDataType: smallint
+        - addDefaultValue:
+            tableName: dependency_status
+            columnName: dependency_analysis_version
+            columnDataType: smallint
+            defaultValueNumeric: 0
 
   - changeSet:
       id: v65.0mshmu
@@ -107,6 +116,18 @@ databaseChangeLog:
             tableName: dependency_status
             columnName: analysis_version
             columnDataType: smallint
+      rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.wlb1z1
+      author: ranquild
+      comment: Keep the default of dependency_status.analysis_version, which a rename on MySQL drops
+      changes:
+        - addDefaultValue:
+            tableName: dependency_status
+            columnName: analysis_version
+            columnDataType: smallint
+            defaultValueNumeric: 0
       rollback: # the rename's rollback restores the column
 
   - changeSet:
@@ -290,7 +311,15 @@ databaseChangeLog:
               - column:
                   name: analysis_version
                   type: int
+                  defaultValueNumeric: 0
                   remarks: The version of the analysis that was performed
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >-
+              UPDATE analysis_finding SET analysis_version = COALESCE((SELECT s.analysis_version
+              FROM analysis_finding_status s WHERE s.entity_type = analysis_finding.analyzed_entity_type
+              AND s.entity_id = analysis_finding.analyzed_entity_id), 0)
 
   - changeSet:
       id: v65.pxgfgg
@@ -308,6 +337,10 @@ databaseChangeLog:
             oldColumnName: entity_type
             newColumnName: analyzed_entity_type
             columnDataType: varchar(254)
+        - addNotNullConstraint:
+            tableName: analysis_finding
+            columnName: analyzed_entity_type
+            columnDataType: varchar(254)
 
   - changeSet:
       id: v65.2rxyyj
@@ -324,6 +357,10 @@ databaseChangeLog:
             tableName: analysis_finding
             oldColumnName: entity_id
             newColumnName: analyzed_entity_id
+            columnDataType: int
+        - addNotNullConstraint:
+            tableName: analysis_finding
+            columnName: analyzed_entity_id
             columnDataType: int
 
   - changeSet:

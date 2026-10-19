@@ -187,8 +187,9 @@
 
 (def ^:private computed! deps.test/record-dependencies-computed!)
 
-(deftest ^:synchronized dependency-status-version-test
-  (testing "updating an entity changes the version its dependencies are computed from, and creating one writes no status"
+(deftest ^:synchronized dependency-status-marks-test
+  (testing "updating what the dependency job reads of an entity marks its status stale, and creating one writes no
+           status"
     (mt/test-helpers-set-global-values!
       (mt/with-model-cleanup [:model/DependencyStatus :model/Dependency]
         (mt/with-premium-features #{:dependencies}

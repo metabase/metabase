@@ -10,12 +10,12 @@
 (set! *warn-on-reflection* true)
 
 (defn- run-batch!
-  "Analyze a batch of entities whose findings are outdated, returning when to run again: right away when it took any,
-  or nil."
+  "Analyze a batch of entities whose findings are outdated, returning when to run again: a second from now when it took
+  any, or nil."
   []
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-entity-check-batch-size)
-          taken      (if (pos? batch-size) (deps.analysis-finding/analyze-batch! batch-size) 0)]
+          taken      (deps.analysis-finding/analyze-batch! batch-size)]
       (when (pos? taken)
         (log/debug "Processed" taken "entities for analysis")
         1))))
@@ -44,6 +44,7 @@
   (task.util/init-job! job))
 
 (defn trigger-analysis-finding-job!
-  "Trigger the UpdateAnalysisFindings job, unless MB_DEPENDENCY_ENTITY_CHECK_BATCH_SIZE=0 disables it."
+  "Trigger the UpdateAnalysisFindings job, unless a MB_DEPENDENCY_ENTITY_CHECK_BATCH_SIZE that isn't positive
+  disables it."
   []
   (task.util/trigger-run! job))

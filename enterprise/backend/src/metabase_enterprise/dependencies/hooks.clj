@@ -83,17 +83,16 @@
 (def ^:private output-columns
   "For each model, the columns whose update changes what the entities directly depending on it read, so their result
   metadata is re-derived and they are analyzed again."
-  {:model/Card               #{:type :result_metadata}
+  {:model/Card               #{:name :type :result_metadata}
    :model/Measure            #{:definition :table_id}
    :model/NativeQuerySnippet #{:content :template_tags}
    :model/Segment            #{:definition :table_id}
-   :model/Transform          #{:source :target}
-   :model/Table              #{:name :display_name :description :active :visibility_type}})
+   :model/Table              #{:name :schema :display_name :active :visibility_type}})
 
 (def ^:private field-columns
   "The Field columns whose update changes what the entities using the Field's Table read."
   #{:name :display_name :description :active :visibility_type :settings :base_type :effective_type :database_type
-    :semantic_type :coercion_strategy :fk_target_field_id})
+    :semantic_type :coercion_strategy :fk_target_field_id :position})
 
 (mu/defn- part-owner :- Entity
   "The entity, as `[entity-type entity-id]`, that the `model` row `instance` is a part of, or nil."
@@ -115,8 +114,8 @@
    :model/DashboardTab        #{}
    :model/QueryAction         #{:dataset_query}
    :model/Field               field-columns
-   :model/TableUserSettings   :any
-   :model/FieldUserSettings   :any
+   :model/TableUserSettings   #{:display_name :visibility_type :data_layer :field_order}
+   :model/FieldUserSettings   (conj field-columns :custom_position :nfc_path :json_unfolding)
    :model/Dimension           :any})
 
 (mu/defn- mark-dependents!
@@ -128,9 +127,8 @@
   (dependencies.db/mark-dependents-analysis-findings-stale! entity-type entity-id))
 
 (mu/defn- mark-output-changed!
-  "Mark what reads the output of the entity `entity-type` `instance` stale: every transitive dependent of a measure,
-  which its dependents expand and nothing between them stores, the dependencies of every transitive dependent of a
-  snippet, whose tables are the dependencies of the cards expanding it, and otherwise the direct dependents."
+  "Mark what reads the output of the entity `entity-type` `instance` stale: the direct dependents, or every transitive
+  dependent of a measure or a snippet, which their dependents expand and nothing between them stores."
   [entity-type :- ::deps.dependency-types/dependency-types
    instance    :- Row]
   (case entity-type
@@ -151,21 +149,26 @@
       (mark-dependents! :table owner-id)
       (dependencies.db/mark-dependency-statuses-stale! {owner-type #{owner-id}}))))
 
-(mu/defn- mark-update!
+(mu/defn- mark-update! :- :boolean
   "Mark the statuses an update of the `model` row `instance` makes stale: the entity's own, by the columns each job
-  reads, and what reads its output when that changes."
+  reads, and what reads its output when that changes, returning whether it marked any."
   [model    :- :keyword
    instance :- Row]
   (let [entity-type (deps.dependency-types/model->dependency-type model)
-        own         {entity-type #{(:id instance)}}]
-    (when (changed? instance (dependency-columns model))
+        own         {entity-type #{(:id instance)}}
+        dependency? (changed? instance (dependency-columns model))
+        analysis?   (changed? instance (analysis-columns model))
+        output?     (changed? instance (output-columns model))
+        part?       (changed? instance (part-columns model))]
+    (when dependency?
       (dependencies.db/mark-dependency-statuses-stale! own))
-    (when (changed? instance (analysis-columns model))
+    (when analysis?
       (dependencies.db/mark-analysis-finding-statuses-stale! own))
-    (when (changed? instance (output-columns model))
+    (when output?
       (mark-output-changed! entity-type instance))
-    (when (changed? instance (part-columns model))
-      (run! mark-part-owner! (distinct [(part-owner model (t2/original instance)) (part-owner model instance)])))))
+    (when part?
+      (run! mark-part-owner! (distinct [(part-owner model (t2/original instance)) (part-owner model instance)])))
+    (or dependency? analysis? output? part?)))
 
 (defenterprise before-insert
   "Mark what inserting the `model` row `instance` changes, and trigger the jobs once it commits; a new entity has no
@@ -177,11 +180,11 @@
   (trigger-jobs!))
 
 (defenterprise before-update
-  "Mark what updating the `model` row `instance` changes, and trigger the jobs once it commits."
+  "Mark what updating the `model` row `instance` changes, and trigger the jobs once it commits when it marked any."
   :feature :dependencies
   [model instance]
-  (mark-update! model instance)
-  (trigger-jobs!))
+  (when (mark-update! model instance)
+    (trigger-jobs!)))
 
 (defenterprise before-delete
   "Mark what deleting the `model` row `instance` changes: the entity it is a part of, what reads a deleted entity, or
@@ -191,7 +194,7 @@
   (when (contains? part-columns model)
     (mark-part-owner! (part-owner model instance)))
   (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
-    (mark-dependents! entity-type (:id instance)))
+    (mark-output-changed! entity-type instance))
   (when (= model :model/Database)
     (when-let [transform-ids (not-empty (set (dependencies.db/source-database-transform-ids (:id instance))))]
       (dependencies.db/mark-dependency-statuses-stale! {:transform transform-ids})

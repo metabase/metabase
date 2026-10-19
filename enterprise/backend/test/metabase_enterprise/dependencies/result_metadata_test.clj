@@ -14,6 +14,7 @@
    [metabase.query-processor.db :as qp.db]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -28,7 +29,7 @@
   "Run `thunk` with the job's inference of a card done by `f`, called with the real inference, the query and the card."
   [f thunk]
   (let [infer (mt/original-fn #'queries/infer-metadata-with-model-overrides)]
-    (mt/with-dynamic-fn-redefs [queries/infer-metadata-with-model-overrides (fn [query card] (f infer query card))]
+    (mt/with-dynamic-fn-redefs [queries/infer-metadata-with-model-overrides (fn [query card & _] (f infer query card))]
       (thunk))))
 
 (defn- measure-query [measure-id]
@@ -62,7 +63,7 @@
 (defn- rename-column [metadata column-name display-name]
   (mapv #(cond-> % (= column-name (:name %)) (assoc :display_name display-name)) metadata))
 
-(defmacro ^:private with-clean-statuses
+(defmacro ^:private with-dependencies-feature
   "Run `body` with the dependencies feature, each write committing on its own as it does between real requests."
   [& body]
   `(mt/test-helpers-set-global-values!
@@ -85,7 +86,7 @@
 
 (deftest model-query-edit-test
   (testing "editing a model's query re-derives the MBQL cards depending on it transitively, but not past a native card"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {model-id :id}        {:type :model :dataset_query (table-query :orders)}
                      :model/Card {question-id :id}     {:dataset_query (card-query model-id)}
                      :model/Card {nested-id :id}       {:dataset_query (card-query question-id)}
@@ -109,7 +110,7 @@
 
 (deftest run-metadata-test
   (testing "re-deriving a card keeps the fingerprints and types its run stored for the columns it still has"
-    (with-clean-statuses
+    (with-dependencies-feature
       (let [mp    (mt/metadata-provider)
             query (-> (table-query :orders)
                       (lib/aggregate (lib/count))
@@ -128,7 +129,7 @@
 
 (deftest native-parent-test
   (testing "a card depending on a changed model directly is re-derived even when it also depends on a native card"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {model-id :id}  {:type :model :dataset_query (table-query :orders)}
                      :model/Card {native-id :id} {:dataset_query   (native-card-query model-id)
                                                   :result_metadata (t2/select-one-fn :result_metadata :model/Card
@@ -146,7 +147,7 @@
 
 (deftest metadata-edit-test
   (testing "editing a model's column overrides re-derives the cards on the model, which take them"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (table-query :orders)}
                      :model/Card {card-id :id}  {:dataset_query (card-query model-id)}]
         (run-jobs!)
@@ -159,7 +160,7 @@
 
 (deftest model-overrides-test
   (testing "re-deriving a model after its table changed keeps the model's column overrides"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (table-query :orders)}]
         (run-jobs!)
         (t2/update! :model/Card model-id {:result_metadata (rename-column (t2/select-one-fn :result_metadata :model/Card
@@ -173,7 +174,7 @@
 
 (deftest field-user-settings-test
   (testing "renaming a field re-derives the MBQL cards reading its table"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Grand total"}]
@@ -184,7 +185,7 @@
 
 (deftest measure-edit-test
   (testing "changing a measure's definition re-derives a card using it"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Measure"
                                                       :table_id   (mt/id :orders)
                                                       :creator_id (mt/user->id :rasta)
@@ -202,7 +203,7 @@
 
 (deftest measure-chain-edit-test
   (testing "changing a measure's definition re-derives a card using a measure built on it"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Measure {inner-id :id} {:name       "Inner"
                                                     :table_id   (mt/id :orders)
                                                     :creator_id (mt/user->id :rasta)
@@ -245,7 +246,7 @@
 
 (deftest user-save-during-rederive-test
   (testing "a user's save of a card's query during its re-derive is kept, and the card is re-derived again from it"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
@@ -261,7 +262,7 @@
 
 (deftest run-write-during-rederive-test
   (testing "a run storing a card's metadata during its re-derive is kept, and the card is re-derived again from it"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (let [run-metadata (-> (t2/select-one-fn :result_metadata :model/Card :id card-id)
@@ -275,7 +276,7 @@
 
 (deftest card-on-card-temporal-unit-test
   (testing "a card on a card takes the new temporal unit with the new display name"
-    (with-clean-statuses
+    (with-dependencies-feature
       (let [mp      (mt/metadata-provider)
             by-unit #(-> (table-query :orders)
                          (lib/aggregate (lib/count))
@@ -290,7 +291,7 @@
 
 (deftest card-on-card-type-test
   (testing "a card on a card takes the new type of a column whose type changed upstream"
-    (with-clean-statuses
+    (with-dependencies-feature
       (let [total (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total))
             with  #(lib/expression (table-query :orders) "X" %)]
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (with (lib/* total 2))}
@@ -332,7 +333,7 @@
 
 (deftest failure-waits-for-change-test
   (testing "a card whose re-derive failed is not re-derived again until it or an upstream changes again, and then is"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (run-jobs!)
@@ -349,7 +350,7 @@
 
 (deftest result-metadata-job-before-dependency-job-test
   (testing "a card whose dependencies the dependency job computes after its upstream changed is re-derived once it does"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}]
           (run-jobs!)
@@ -367,7 +368,7 @@
 
 (deftest new-edge-to-upstream-processed-before-save-test
   (testing "a new dependency on a card processed before the dependent was saved has the card itself not processed again"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                        :model/Card _               {:dataset_query (card-query source-id)}]
@@ -386,7 +387,7 @@
 (deftest new-dependent-of-upstream-processed-before-its-edges-test
   (testing "a card whose upstream changed and was processed before the card's dependencies existed is re-derived when
            they are computed, even when the card was saved again meanwhile"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}]
           (run-jobs!)
@@ -404,7 +405,7 @@
 
 (deftest job-reruns-while-it-takes-entities-test
   (testing "the job runs again right away while it took entities, since a card it stored changed in turn"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card _               {:dataset_query (card-query source-id)}]
         (deps.test/synchronously-run-dependency-job!)
@@ -415,7 +416,7 @@
 (deftest storing-card-triggers-jobs-test
   (testing "the job stores a re-derived card through the Card model, so its hooks trigger the jobs, and keeps its
            updated_at"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (deps.test/synchronously-run-dependency-job!)
@@ -430,14 +431,14 @@
           (is (= before (t2/select-one-fn :updated_at :model/Card :id card-id)))
           (is (seq @submitted)))))))
 
-(deftest sandboxed-creator-ignored-test
-  (testing "a card is re-derived as no user, like a save through the Card model, whatever its creator's sandbox hides"
+(deftest sandboxed-creator-test
+  (testing "a card is re-derived as its creator, as their own save would, so the columns their sandbox hides stay out"
     (met/with-gtaps! {:gtaps {:venues {:query (let [mp (mt/metadata-provider)]
                                                 (lib/with-fields (table-query :venues)
                                                   [(lib.metadata/field mp (mt/id :venues :id))
                                                    (lib.metadata/field mp (mt/id :venues :name))
                                                    (lib.metadata/field mp (mt/id :venues :category_id))]))}}}
-      (with-clean-statuses
+      (with-dependencies-feature
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)
                                                   :creator_id    (mt/user->id :rasta)
                                                   :result_metadata []}]
@@ -445,12 +446,57 @@
           (reprocess! card-id)
           (mt/with-premium-features #{:dependencies :sandboxes}
             (deps.result-metadata/update-result-metadata! 1000))
-          (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
+          (is (= ["ID" "NAME" "CATEGORY_ID"]
                  (mapv :name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
+
+(deftest legacy-stored-card-test
+  (testing "a card whose stored query is legacy MBQL with a filter is stored once and the job stops, though each read
+           gives the converted query new uuids"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+        (t2/update! (t2/table-name :model/Card) card-id
+                    {:dataset_query (json/encode {:database (mt/id)
+                                                  :type     :query
+                                                  :query    {:source-table (mt/id :venues)
+                                                             :filter       [:> [:field (mt/id :venues :price) nil] 1]}})
+                     :result_metadata (json/encode [])})
+        (run-jobs!)
+        (is (seq (column card-id "PRICE")))
+        (is (not (pending? card-id)))
+        (is (nil? (#'task.result-metadata/run-batch!)))))))
+
+(deftest new-upstream-changed-before-its-edge-test
+  (testing "a card changed to read a card that changes before the dependency job stores the new edge is re-derived
+           from the changed one"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
+                     :model/Card {card-id :id}   {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (t2/update! :model/Card card-id {:dataset_query (card-query source-id)})
+        (t2/update! :model/Card source-id {:dataset_query (add-grand-total (table-query :orders))})
+        (run-jobs!)
+        (is (some? (column card-id "Grand total")))))))
+
+(deftest failing-store-test
+  (testing "a store that throws doesn't stop the other cards of the batch"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {failing-id :id} {:dataset_query (table-query :venues)}
+                     :model/Card {other-id :id}   {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (reprocess! failing-id other-id)
+        (let [store (mt/original-fn #'dependencies.db/update-card-result-metadata!)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/update-card-result-metadata!
+                                      (fn [card-id metadata]
+                                        (if (= failing-id card-id)
+                                          (throw (ex-info "Store failed" {}))
+                                          (store card-id metadata)))]
+            (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed"))
+                               rederive!)))
+        (is (= "Changed" (:display_name (column other-id "NAME"))))))))
 
 (deftest own-edit-rederives-dependents-test
   (testing "editing a card's query re-derives the cards depending on it, not the card, whose save inferred it"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (run-jobs!)
@@ -468,7 +514,7 @@
 
 (deftest native-card-result-metadata-test
   (testing "a write of a native card's run metadata re-derives its dependents"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {native-id :id} {:dataset_query   (lib/native-query (mt/metadata-provider)
                                                                                      "SELECT ID, NAME FROM VENUES")
                                                   :result_metadata (native-run-metadata "SELECT ID, NAME FROM VENUES")}
@@ -509,7 +555,7 @@
 
 (deftest conflict-fails-test
   (testing "a card that keeps changing during its re-derive is left as the other writer stored it, and other cards proceed"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {orders-card-id :id}   {:dataset_query (table-query :orders)}
                      :model/Card {other-card-id :id}  {:dataset_query (table-query :orders)}]
         (run-jobs!)
@@ -526,7 +572,7 @@
 
 (deftest store-holds-only-card-lock-test
   (testing "storing a re-derived card holds no status lock, so a write of a status meanwhile doesn't wait for it"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {card-id :id}  {:dataset_query (table-query :orders)}
                      :model/Card {other-id :id} {:dataset_query (table-query :venues)}]
         (run-jobs!)
@@ -548,7 +594,7 @@
 
 (deftest store-waits-for-save-in-flight-test
   (testing "a save of the card holding its row lock while the job stores has the job re-derive it after the save"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (reprocess! card-id)
@@ -570,7 +616,7 @@
 
 (deftest failing-dependent-test
   (testing "a card whose re-derive fails doesn't stop its siblings, and is recorded as processed"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {first-id :id}  {:dataset_query (table-query :venues)}
                      :model/Card {failing-id :id} {:dataset_query (table-query :venues)}
                      :model/Card {last-id :id}   {:dataset_query (table-query :venues)}]
@@ -586,7 +632,7 @@
 
 (deftest store-updates-parameters-using-dropped-columns-test
   (testing "storing a re-derived card resets the parameters taking values from a column it no longer has"
-    (with-clean-statuses
+    (with-dependencies-feature
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}
                      :model/Card {card-id :id}   {:dataset_query (table-query :venues)
                                                   :parameters    [{:id                   "price"

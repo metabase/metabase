@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.hooks-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -46,6 +47,53 @@
             (deps.test/do-with-immediate-hook-writes
              #(t2/update! :model/Card card-id {:dataset_query (table-query :orders)})))
           (is (= [] @submitted)))))))
+
+(deftest update-marking-nothing-triggers-nothing-test
+  (testing "an update that marks nothing triggers no job, as a sync storing only a field's fingerprint"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :venues) :name "x"}]
+        (let [submitted (atom [])]
+          (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
+            (deps.test/do-with-immediate-hook-writes
+             #(t2/update! :model/Field field-id {:last_analyzed (t/offset-date-time)})))
+          (is (= [] @submitted)))))))
+
+(deftest output-columns-mark-dependents-test
+  (testing "a card rename, a field position and a table schema reach the cards reading them, a table caveat doesn't"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}
+                     :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
+        (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
+                                       :to_entity_type   :card :to_entity_id   source-id})
+        (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id source-id
+                                       :to_entity_type   :table :to_entity_id  (mt/id :venues)})
+        (let [marks? (fn [card write!]
+                       (deps.test/record-result-metadata-processed! card)
+                       (write!)
+                       (deps.test/result-metadata-pending? card))]
+          (is (marks? card-id #(t2/update! :model/Card source-id {:name "Renamed"})))
+          (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:position 5}
+            (is (marks? source-id #(t2/update! :model/Field (mt/id :venues :price) {:position 0}))))
+          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:schema "PUBLIC"}
+            (is (marks? source-id #(t2/update! :model/Table (mt/id :venues) {:schema "OTHER"}))))
+          (mt/with-temp [:model/TableUserSettings _ {:table_id (mt/id :venues)}]
+            (is (not (marks? source-id #(t2/update! :model/TableUserSettings (mt/id :venues)
+                                                    {:caveats "Careful"}))))))))))
+
+(deftest snippet-delete-marks-transitive-dependencies-test
+  (testing "deleting a snippet nested in another marks the dependencies of the cards expanding it"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner delete" :content "VENUES"}
+                     :model/NativeQuerySnippet {outer-id :id} {:name "outer delete" :content "{{snippet: inner delete}}"}
+                     :model/Card              {card-id :id}  {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                               "{{snippet: outer delete}}")}]
+        (t2/insert! :model/Dependency {:from_entity_type :snippet :from_entity_id outer-id
+                                       :to_entity_type   :snippet :to_entity_id   inner-id})
+        (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
+                                       :to_entity_type   :snippet :to_entity_id outer-id})
+        (computed! :card card-id)
+        (t2/delete! :model/NativeQuerySnippet :id inner-id)
+        (is (pending? :card card-id))))))
 
 (deftest card-marks-own-statuses-test
   (testing "an update of what a job reads of a card marks the card's own status for that job stale, and a rename marks
@@ -104,7 +152,7 @@
           (let [table-id (mt/id :venues)
                 field-id (mt/id :venues :price)
                 changes? (fn [write!]
-                           (deps.test/record-result-metadata-version! card-id)
+                           (deps.test/record-result-metadata-processed! card-id)
                            (write!)
                            (deps.test/result-metadata-pending? card-id))]
             (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}

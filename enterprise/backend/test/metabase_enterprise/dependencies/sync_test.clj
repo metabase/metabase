@@ -19,11 +19,11 @@
   (and (deps.test/analysis-finding-pending? :card card-id)
        (deps.test/result-metadata-pending? card-id)))
 
-(defn- record-versions!
+(defn- record-processed!
   "Record that the analysis and result metadata jobs processed the Card with `card-id`."
   [card-id]
-  (deps.test/record-analysis-finding-version! :card card-id)
-  (deps.test/record-result-metadata-version! card-id))
+  (deps.test/record-analysis-finding-processed! :card card-id)
+  (deps.test/record-result-metadata-processed! card-id))
 
 (defn- with-syncable-db! [thunk]
   (mt/test-helpers-set-global-values!
@@ -52,7 +52,7 @@
               (is (true? (t2/select-one-fn :result :model/AnalysisFinding
                                            :entity_type :card :entity_id card-id)))
               (is (empty? (deps.analysis-finding-error/errors-for-entity :card card-id))))
-            (record-versions! card-id)
+            (record-processed! card-id)
             (thunk {:card-id         card-id
                     :table-id        table-id
                     :filter-field-id filter-field-id})))))))
@@ -114,7 +114,7 @@
               ref-field-id (t2/select-one-fn :id :model/Field :table_id ref-table-id :name "test_id")]
           (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
                                          :to_entity_type   :table :to_entity_id ref-table-id})
-          (record-versions! card-id)
+          (record-processed! card-id)
           (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"ref_table\" ADD FOREIGN KEY (\"test_id\") REFERENCES \"test_table\"(\"id\");"])
           (sync/sync-database! (mt/db))
           (is (some? (t2/select-one-fn :fk_target_field_id :model/Field :id ref-field-id)))

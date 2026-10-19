@@ -234,13 +234,16 @@
        [:entity-ids [:or [:set ::deps.dependency-types/entity-id] [:sequential ::deps.dependency-types/entity-id]]]
        [:destination-restriction RestrictionSpec]
        [:source-restriction RestrictionSpec]]]
-  (t2/select :model/Dependency
-             {:where (into [:and
-                            [:= src-type (name entity-type)]
-                            [:in src-id entity-ids]]
-                           (keep identity)
-                           [(edge-restriction-expr dst-type dst-id destination-restriction)
-                            (edge-restriction-expr src-type src-id source-restriction)])}))
+  (into []
+        (mapcat (fn [batch]
+                  (t2/select :model/Dependency
+                             {:where (into [:and
+                                            [:= src-type (name entity-type)]
+                                            [:in src-id batch]]
+                                           (keep identity)
+                                           [(edge-restriction-expr dst-type dst-id destination-restriction)
+                                            (edge-restriction-expr src-type src-id source-restriction)])})))
+        (partition-all 1000 entity-ids)))
 
 (mu/defn finding-errors-from-sources
   "The AnalysisFindingErrors caused by any of the entities `source-entity-type` `source-entity-ids`, whose analyzed
@@ -737,64 +740,54 @@
               :to_entity_type   :transform
               :to_entity_id     transform-id))
 
-;;; ------------------------------------- Change detection, shared by the jobs -------------------------------------
+;;; ------------------------------------------- Status rows, shared by the jobs -------------------------------------------
 
 (def ^:private StatusModel
   "A job's status model."
   [:enum :model/DependencyStatus :model/ResultMetadataStatus :model/AnalysisFindingStatus])
 
-(def ^:private StatusTable
-  "A job's status table."
-  [:enum :dependency_status :result_metadata_status :analysis_finding_status])
-
 (mu/defn- mark-stale!
-  "Mark the rows of the status `model` of the entities `entity-ids` stale, leaving the stale ones alone; an entity
-  without a row is processed anyway."
+  "Mark the rows of the status `model` of the entities `entity-ids` stale, locking them, so a job claiming one waits for
+  the write; an entity without a row is processed anyway."
   [model      :- StatusModel
    entity-ids :- ::dependencies.schema/entity-ids]
   (doseq [[entity-type ids] entity-ids
           batch             (partition-all 1000 ids)]
-    (t2/update! model :entity_type entity-type :entity_id [:in batch] :stale false {:stale true})))
+    (t2/update! model :entity_type entity-type :entity_id [:in batch] {:stale true})))
 
 (mu/defn- mark-dependents-stale!
-  "Mark the rows of the status table `table` of the entities directly depending on the entity `entity-type`
-  `entity-id` stale, in one UPDATE leaving the stale ones alone."
-  [table       :- StatusTable
+  "Mark the rows of the status `model` of the entities directly depending on the entity `entity-type` `entity-id` stale
+  in one UPDATE, locking them, so a job claiming one waits for the write."
+  [model       :- StatusModel
    entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
-  (t2/query {:update table
-             :set    {:stale true}
-             :where  [:and
-                      [:= (u/qualified-key table :stale) false]
-                      [:exists ^:allow-subquery
-                       {:select [1]
-                        :from   [[(t2/table-name :model/Dependency) :d]]
-                        :where  [:and
-                                 [:= :d.to_entity_type (name entity-type)]
-                                 [:= :d.to_entity_id entity-id]
-                                 [:= :d.from_entity_type (u/qualified-key table :entity_type)]
-                                 [:= :d.from_entity_id (u/qualified-key table :entity_id)]]}]]}))
+  (let [table (t2/table-name model)]
+    (t2/query {:update table
+               :set    {:stale true}
+               :where  [:exists ^:allow-subquery
+                        {:select [1]
+                         :from   [[(t2/table-name :model/Dependency) :d]]
+                         :where  [:and
+                                  [:= :d.to_entity_type (name entity-type)]
+                                  [:= :d.to_entity_id entity-id]
+                                  [:= :d.from_entity_type (u/qualified-key table :entity_type)]
+                                  [:= :d.from_entity_id (u/qualified-key table :entity_id)]]}]})))
 
 (mu/defn- claim!
   "Record that a job processes the entities `entity-type` `entity-ids` with its logic of `current-version`, clearing
-  their `stale` flags in the status `model`, before it reads them, so a write while they are processed marks them
-  again."
+  their `stale` flags in the status `model` one row per statement, before it reads them, so a write while they are
+  processed marks them again and a claim never holds two row locks."
   [model           :- StatusModel
    entity-type     :- EntityType
    entity-ids      :- [:sequential ms/PositiveInt]
    current-version :- ms/PositiveInt]
-  (t2/with-transaction [_]
-    (let [existing (set (t2/select-fn-set :entity_id [model :entity_id]
-                                          :entity_type entity-type :entity_id [:in entity-ids]))]
-      (when (seq existing)
-        (t2/update! model :entity_type entity-type :entity_id [:in existing]
-                    {:stale false :analysis_version current-version}))
-      (when-let [missing (seq (remove existing entity-ids))]
-        (t2/insert! model (for [id missing]
-                            {:entity_type      entity-type
-                             :entity_id        id
-                             :stale            false
-                             :analysis_version current-version}))))))
+  (doseq [id entity-ids]
+    (when (zero? (t2/update! model :entity_type entity-type :entity_id id
+                             {:stale false :analysis_version current-version}))
+      (t2/insert! model {:entity_type      entity-type
+                         :entity_id        id
+                         :stale            false
+                         :analysis_version current-version}))))
 
 (mu/defn mark-dependency-statuses-stale!
   "Mark the DependencyStatuses of the entities `entity-ids` stale, so the dependency job computes their dependencies
@@ -816,16 +809,16 @@
   "Mark the ResultMetadataStatuses of the entities directly depending on the entity `entity-type` `entity-id` stale."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
-  (mark-dependents-stale! :result_metadata_status entity-type entity-id))
+  (mark-dependents-stale! :model/ResultMetadataStatus entity-type entity-id))
 
 (mu/defn mark-dependents-analysis-findings-stale!
   "Mark the AnalysisFindingStatuses of the entities directly depending on the entity `entity-type` `entity-id` stale."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
-  (mark-dependents-stale! :analysis_finding_status entity-type entity-id))
+  (mark-dependents-stale! :model/AnalysisFindingStatus entity-type entity-id))
 
 (mu/defn- current-dependencies-clause
-  "Whether the dependency status of the entity of `entity-type` with `id-field` is current for the analysis of
+  "Whether the dependency status of the entity of `entity-type` with `id-field` is current for the dependency logic of
   `dependency-version`, as Honey SQL."
   [entity-type        :- ::deps.dependency-types/dependency-types
    id-field           :- :keyword
@@ -839,11 +832,11 @@
                                       [:= :ds.analysis_version dependency-version]]}])
 
 (mu/defn- pending-entity-ids :- [:sequential ms/PositiveInt]
-  "The IDs of up to `batch-size` entities of `entity-type` without a row in `status-table`, or whose row is stale or
+  "The IDs of up to `batch-size` entities of `entity-type` without a row in `status-model`, or whose row is stale or
   records a version of the job's logic below `current-version`, those last; `mbql-only?` narrows cards to MBQL ones,
   and `dependency-version` to the entities whose dependencies are current."
   [entity-type     :- ::deps.dependency-types/dependency-types
-   status-table    :- StatusTable
+   status-model    :- StatusModel
    batch-size      :- ms/PositiveInt
    current-version :- ms/PositiveInt
    {:keys [mbql-only? dependency-version]} :- [:map {:closed true}
@@ -855,9 +848,9 @@
     (mapv :id (t2/query
                {:select    [[id-field :id]]
                 :from      [table-name]
-                :left-join [[status-table :status] [:and
-                                                    [:= :status.entity_type (name entity-type)]
-                                                    [:= :status.entity_id id-field]]]
+                :left-join [[(t2/table-name status-model) :status] [:and
+                                                                    [:= :status.entity_type (name entity-type)]
+                                                                    [:= :status.entity_id id-field]]]
                 :where     (cond-> [:and [:or [:= :status.id nil] [:= :status.stale true] outdated]]
                              mbql-only?         (conj [:or [:= :report_card.query_type nil]
                                                        [:not= :report_card.query_type "native"]])
@@ -867,13 +860,13 @@
                 :limit     batch-size}))))
 
 (mu/defn- deleted-entity-ids-with-status :- [:sequential ms/PositiveInt]
-  "Up to `batch-size` IDs of deleted entities of `entity-type` that still have a row in `status-table`."
-  [status-table :- StatusTable
+  "Up to `batch-size` IDs of deleted entities of `entity-type` that still have a row in `status-model`."
+  [status-model :- StatusModel
    entity-type  :- ::deps.dependency-types/dependency-types
    batch-size   :- ms/PositiveInt]
   (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))]
     (mapv :entity_id (t2/query {:select [:status.entity_id]
-                                :from   [[status-table :status]]
+                                :from   [[(t2/table-name status-model) :status]]
                                 :where  [:and
                                          [:= :status.entity_type (name entity-type)]
                                          [:not [:exists ^:allow-subquery {:select [1]
@@ -887,7 +880,7 @@
   "Up to `batch-size` IDs of deleted entities of `entity-type` that still have a DependencyStatus."
   [entity-type :- ::deps.dependency-types/dependency-types
    batch-size  :- ms/PositiveInt]
-  (deleted-entity-ids-with-status :dependency_status entity-type batch-size))
+  (deleted-entity-ids-with-status :model/DependencyStatus entity-type batch-size))
 
 (mu/defn delete-dependency-statuses!
   "Delete the DependencyStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
@@ -905,22 +898,22 @@
 
 (mu/defn dependency-pending-entity-ids :- [:sequential ms/PositiveInt]
   "The IDs of up to `batch-size` entities of the type `entity-type` without a DependencyStatus, or whose status is stale
-  or records an analysis below `current-version`; outdated ones last."
+  or records a version of the dependency logic below `current-version`; outdated ones last."
   [entity-type     :- ::deps.dependency-types/dependency-types
    batch-size      :- ms/PositiveInt
    current-version :- ms/PositiveInt]
-  (pending-entity-ids entity-type :dependency_status batch-size current-version {}))
+  (pending-entity-ids entity-type :model/DependencyStatus batch-size current-version {}))
 
 ;;; ------------------------------------------- Result metadata job -------------------------------------------
 
 (mu/defn result-metadata-pending-card-ids :- [:sequential ::lib.schema.id/card]
   "The IDs of up to `batch-size` MBQL cards without a ResultMetadataStatus, or whose status is stale or records a
-  version of the logic below `current-version`, and whose dependencies the analysis of `dependency-version` computed;
+  version of the logic below `current-version`, and whose dependencies the dependency logic of `dependency-version` computed;
   outdated ones last."
   [batch-size         :- ms/PositiveInt
    current-version    :- ms/PositiveInt
    dependency-version :- ms/PositiveInt]
-  (pending-entity-ids :card :result_metadata_status batch-size current-version
+  (pending-entity-ids :card :model/ResultMetadataStatus batch-size current-version
                       {:mbql-only?         true
                        :dependency-version dependency-version}))
 
@@ -934,7 +927,7 @@
 (mu/defn result-metadata-deleted-card-ids :- [:sequential ::lib.schema.id/card]
   "Up to `batch-size` IDs of deleted Cards that still have a ResultMetadataStatus."
   [batch-size :- ms/PositiveInt]
-  (deleted-entity-ids-with-status :result_metadata_status :card batch-size))
+  (deleted-entity-ids-with-status :model/ResultMetadataStatus :card batch-size))
 
 (mu/defn delete-result-metadata-statuses!
   "Delete the ResultMetadataStatuses of the Cards with `card-ids`, returning the number deleted."
@@ -946,14 +939,15 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pks-set [:model/Card :id] :id [:in card-ids] :query_type :native))
 
-(mu/defn locked-card-query-and-metadata :- [:maybe [:map
-                                                    [:dataset_query   :any]
-                                                    [:result_metadata :any]]]
-  "The `dataset_query` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends, or
-  nil when there is none."
-  [card-id :- ::lib.schema.id/card]
-  (some-> (t2/select-one [:model/Card :dataset_query :result_metadata] :id card-id {:for :update})
-          (select-keys [:dataset_query :result_metadata])))
+(mu/defn stored-card-query-and-metadata :- [:maybe ::dependencies.schema/stored-card-columns]
+  "The stored text of the `dataset_query` and `result_metadata` of the Card with `card-id`, locking its row until the
+  transaction ends when `lock?`, or nil when there is none."
+  [card-id :- ::lib.schema.id/card
+   lock?   :- :boolean]
+  (some-> (t2/select-one [(t2/table-name :model/Card) :dataset_query :result_metadata]
+                         (cond-> {:where [:= :id card-id]} lock? (assoc :for :update)))
+          (select-keys [:dataset_query :result_metadata])
+          (update-vals #(some-> % str))))
 
 (mu/defn update-card-result-metadata!
   "Set the result metadata of the Card with `card-id` to `result-metadata` through the Card model, without touching
@@ -995,7 +989,7 @@
    batch-size         :- ms/PositiveInt
    current-version    :- ms/PositiveInt
    dependency-version :- ms/PositiveInt]
-  (pending-entity-ids entity-type :analysis_finding_status batch-size current-version
+  (pending-entity-ids entity-type :model/AnalysisFindingStatus batch-size current-version
                       {:dependency-version dependency-version}))
 
 (mu/defn claim-analysis-finding-statuses!
@@ -1010,7 +1004,7 @@
   "Up to `batch-size` IDs of deleted entities of `entity-type` that still have an AnalysisFindingStatus."
   [entity-type :- ::deps.dependency-types/dependency-types
    batch-size  :- ms/PositiveInt]
-  (deleted-entity-ids-with-status :analysis_finding_status entity-type batch-size))
+  (deleted-entity-ids-with-status :model/AnalysisFindingStatus entity-type batch-size))
 
 (mu/defn delete-analysis-finding-statuses!
   "Delete the AnalysisFindingStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."

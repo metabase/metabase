@@ -182,7 +182,7 @@
 
 (deftest ^:synchronized analysis-re-analyzes-changed-entity-and-direct-dependents-test
   (testing "after a card's query changes, the analysis finding job re-analyzes it and the cards directly depending on
-           it, and nothing for a rename"
+           it, and only those for a rename"
     (backfill-all-entity-analyses!)
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
@@ -197,7 +197,7 @@
                                               :to_entity_type :card :to_entity_id p-id}]
             (run-jobs!)
             (t2/update! :model/Card gp-id {:name "Renamed"})
-            (is (empty? (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!))))
+            (is (= #{p-id} (set (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!)))))
             (t2/update! :model/Card gp-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
             (is (= #{gp-id p-id}
                    (set (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!)))))))))))
@@ -390,7 +390,7 @@
 (deftest ^:synchronized card-update-triggers-native-cards-test
   (deps.test/run-with-dependencies-setup!
    (fn [mp]
-     (testing "a native card's update has the job re-analyze it and its transitive dependents"
+     (testing "a native card's update with new run metadata has the job re-analyze it and its direct dependents"
        (mt/with-temp [:model/Card {parent-id :id} {:dataset_query (lib/native-query mp "select * from products")}
                       :model/Card {child-id :id}  {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))}
                       :model/Dependency _ {:from_entity_type :card :from_entity_id child-id
