@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { type Ref, useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { hasFeature } from "metabase/databases";
-import { Combobox, Icon, TextInput, useCombobox } from "metabase/ui";
+import { Combobox, TextInput, useCombobox } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
 import { SummaryFormulaEditor } from "./SummaryFormulaEditor";
+import S from "./SummarySidebar.module.css";
 import type {
   SummaryBase,
   SummaryDefinition,
@@ -32,105 +33,98 @@ import {
 const FORMULA_PREFIX = "=";
 const FORMULA_OPTION_VALUE = "formula";
 
-/** The item whose formula the well's input is editing, and the name it starts with. */
+/** The item whose formula is being edited, and the name it starts with. */
 export type SummaryFormulaEdit = {
   itemId: string;
   name: string;
 };
 
-type SummaryWellInputProps = {
+/** Values aggregate with formulas, Rows and Columns group by custom columns written as formulas. */
+export function canWriteWellFormula(
+  database: Database | undefined,
+  wellId: SummaryWellId,
+) {
+  return (
+    database != null &&
+    hasFeature(
+      database,
+      wellId === "values" ? "expression-aggregations" : "expressions",
+    )
+  );
+}
+
+type SummaryWellFormulaProps = {
   base: SummaryBase;
   database: Database | undefined;
   wellId: SummaryWellId;
   definition: SummaryDefinition;
+  /** Set to edit an item's formula; otherwise the formula is added to the well. */
   formulaEdit: SummaryFormulaEdit | null;
+  /** What was typed after `=` in the well's input, for a new formula. */
+  initialSource: string;
   onChange: (definition: SummaryDefinition) => void;
-  onFormulaEditEnd: () => void;
+  onEnd: () => void;
 };
 
-/**
- * A well's typeahead: finds metrics (Values) or columns (Rows, Columns) by name, and turns into a
- * formula editor when the text starts with `=`, for custom aggregations and custom columns.
- * While `formulaEdit` is set, it edits that item's formula instead.
- */
-export function SummaryWellInput({
+/** The formula editor for a well: adds a custom aggregation (Values) or custom column (Rows, Columns), or edits one. */
+export function SummaryWellFormula({
   base,
   database,
   wellId,
   definition,
   formulaEdit,
+  initialSource,
   onChange,
-  onFormulaEditEnd,
-}: SummaryWellInputProps) {
-  const [newFormulaSource, setNewFormulaSource] = useState<string | null>(null);
+  onEnd,
+}: SummaryWellFormulaProps) {
   const isValues = wellId === "values";
   const expressionMode = isValues ? "aggregation" : "expression";
-  const canWriteFormula =
-    database != null &&
-    hasFeature(database, isValues ? "expression-aggregations" : "expressions");
-  const formulaPlaceholder = isValues
+  const placeholder = isValues
     ? t`Aggregate with a formula, or type / to search`
     : t`Group by a formula, or type / to search`;
 
   if (formulaEdit != null) {
-    const formulaEditClause = getFormulaClause(
-      base,
-      definition,
-      formulaEdit.itemId,
-    );
     return (
       <SummaryFormulaEditor
         key={formulaEdit.itemId}
         base={base}
         database={database}
         expressionMode={expressionMode}
-        initialClause={formulaEditClause}
+        initialClause={getFormulaClause(base, definition, formulaEdit.itemId)}
         initialName={formulaEdit.name}
-        placeholder={formulaPlaceholder}
+        placeholder={placeholder}
         submitLabel={t`Update`}
         onSubmit={(expression) => {
           onChange(
             replaceWithExpression(definition, formulaEdit.itemId, expression),
           );
-          onFormulaEditEnd();
+          onEnd();
         }}
-        onCancel={onFormulaEditEnd}
+        onCancel={onEnd}
       />
     );
   }
 
-  if (newFormulaSource != null) {
-    const handleAdd = (expression: SummaryExpression) => {
-      onChange(
-        wellId === "values"
-          ? addExpressionValue(definition, expression)
-          : addExpressionDimension(definition, wellId, expression),
-      );
-      setNewFormulaSource(null);
-    };
-
-    return (
-      <SummaryFormulaEditor
-        base={base}
-        database={database}
-        expressionMode={expressionMode}
-        initialSource={newFormulaSource}
-        placeholder={formulaPlaceholder}
-        submitLabel={t`Add`}
-        onSubmit={handleAdd}
-        onCancel={() => setNewFormulaSource(null)}
-      />
+  const handleAdd = (expression: SummaryExpression) => {
+    onChange(
+      wellId === "values"
+        ? addExpressionValue(definition, expression)
+        : addExpressionDimension(definition, wellId, expression),
     );
-  }
+    onEnd();
+  };
 
   return (
-    <SummaryWellSearch
+    <SummaryFormulaEditor
+      key={wellId}
       base={base}
-      wellId={wellId}
-      definition={definition}
-      canWriteFormula={canWriteFormula}
-      onChange={onChange}
-      onStartFormula={setNewFormulaSource}
+      database={database}
+      expressionMode={expressionMode}
+      initialSource={initialSource}
+      placeholder={placeholder}
+      submitLabel={t`Add`}
+      onSubmit={handleAdd}
+      onCancel={onEnd}
     />
   );
 }
@@ -191,34 +185,41 @@ function getSearchOptions(
     : metricOptions;
 }
 
-function getSearchPlaceholder(isValues: boolean, canWriteFormula: boolean) {
-  if (isValues) {
-    return canWriteFormula
-      ? t`Type a metric name, or = for a formula…`
-      : t`Type a metric name…`;
+function getPlaceholder(isValues: boolean, isEmpty: boolean) {
+  if (!isEmpty) {
+    return t`Add…`;
   }
-  return canWriteFormula
-    ? t`Type a column name, or = for a formula…`
-    : t`Type a column name…`;
+  return isValues ? t`Type or drop a metric` : t`Type or drop a column`;
 }
 
-type SummaryWellSearchProps = {
+type SummaryWellInputProps = {
   base: SummaryBase;
   wellId: SummaryWellId;
   definition: SummaryDefinition;
+  isEmpty: boolean;
   canWriteFormula: boolean;
+  inputRef?: Ref<HTMLInputElement>;
   onChange: (definition: SummaryDefinition) => void;
   onStartFormula: (source: string) => void;
+  /** Backspace in the empty input, like in a token field. */
+  onRemoveLast: () => void;
 };
 
-function SummaryWellSearch({
+/**
+ * The text input inside a well, after its chips: finds metrics (Values) or columns (Rows, Columns)
+ * by name, and starts a formula when the text starts with `=`.
+ */
+export function SummaryWellInput({
   base,
   wellId,
   definition,
+  isEmpty,
   canWriteFormula,
+  inputRef,
   onChange,
   onStartFormula,
-}: SummaryWellSearchProps) {
+  onRemoveLast,
+}: SummaryWellInputProps) {
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
@@ -242,8 +243,6 @@ function SummaryWellSearch({
     () => Object.entries(_.groupBy(options, (option) => option.group)),
     [options],
   );
-
-  const searchPlaceholder = getSearchPlaceholder(isValues, canWriteFormula);
 
   const handleOptionSubmit = (optionValue: string) => {
     setSearchText("");
@@ -273,13 +272,16 @@ function SummaryWellSearch({
     <Combobox
       store={combobox}
       position="bottom-start"
+      width={260}
       onOptionSubmit={handleOptionSubmit}
     >
       <Combobox.Target>
         <TextInput
-          size="sm"
-          placeholder={searchPlaceholder}
-          leftSection={<Icon name={isValues ? "metric" : "table"} />}
+          ref={inputRef}
+          className={S.wellInput}
+          variant="unstyled"
+          size="xs"
+          placeholder={getPlaceholder(isValues, isEmpty)}
           value={searchText}
           aria-label={
             isValues ? t`Add a value by name` : t`Add a grouping by name`
@@ -289,6 +291,11 @@ function SummaryWellSearch({
           onClick={() => combobox.openDropdown()}
           onFocus={() => combobox.openDropdown()}
           onBlur={() => combobox.closeDropdown()}
+          onKeyDown={(event) => {
+            if (event.key === "Backspace" && searchText.length === 0) {
+              onRemoveLast();
+            }
+          }}
         />
       </Combobox.Target>
       <Combobox.Dropdown>

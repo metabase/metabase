@@ -616,6 +616,17 @@ export function removeItem(
   };
 }
 
+/** Transposes the pivot: what grouped rows splits columns, and the other way around. */
+export function swapRowsAndColumns(
+  definition: SummaryDefinition,
+): SummaryDefinition {
+  return {
+    ...definition,
+    rows: definition.columns,
+    columns: definition.rows,
+  };
+}
+
 export function changeValueOperator(
   definition: SummaryDefinition,
   itemId: string,

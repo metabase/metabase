@@ -1,23 +1,27 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
-import { hasFeature } from "metabase/databases";
 import {
   ActionIcon,
   Box,
   Icon,
   Menu,
-  Stack,
-  Text,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { Database, IconName } from "metabase-types/api";
 
 import S from "./SummarySidebar.module.css";
-import { type SummaryFormulaEdit, SummaryWellInput } from "./SummaryWellInput";
+import {
+  type SummaryFormulaEdit,
+  SummaryWellFormula,
+  SummaryWellInput,
+  canWriteWellFormula,
+} from "./SummaryWellInput";
 import type {
   SummaryBase,
   SummaryDefinition,
@@ -32,7 +36,20 @@ import {
   findDimension,
   getColumnOperatorOptions,
   removeItem,
+  swapRowsAndColumns,
 } from "./utils";
+
+const WELL_ICONS: Record<SummaryWellId, IconName> = {
+  rows: "arrow_down",
+  columns: "arrow_right",
+  values: "sum",
+};
+
+/** A new formula being written in a well, starting from what was typed after `=`. */
+type SummaryFormulaDraft = {
+  wellId: SummaryWellId;
+  source: string;
+};
 
 type SummaryWellsProps = {
   base: SummaryBase;
@@ -42,7 +59,10 @@ type SummaryWellsProps = {
   onChange: (definition: SummaryDefinition) => void;
 };
 
-/** The Rows, Columns, and Values drop targets that define the pivot. */
+/**
+ * The pivot, laid out like the table it produces: Columns across the top, Rows down the side, and
+ * Values in the body. Each well is both a drop target and an input to type columns, metrics, or formulas into.
+ */
 export function SummaryWells({
   base,
   definition,
@@ -54,12 +74,17 @@ export function SummaryWells({
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
-  const canWriteValueFormula =
-    database != null && hasFeature(database, "expression-aggregations");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [formulaDraft, setFormulaDraft] = useState<SummaryFormulaDraft | null>(
+    null,
+  );
   const formulaEdit = getFormulaEdit(definition, editingItemId);
-  const editingWellId =
-    formulaEdit != null ? getItemWellId(definition, formulaEdit.itemId) : null;
+  const formulaWellId =
+    formulaEdit != null
+      ? getItemWellId(definition, formulaEdit.itemId)
+      : (formulaDraft?.wellId ?? null);
+  const hasDimensions =
+    definition.rows.length > 0 || definition.columns.length > 0;
 
   const handleRemove = (itemId: string) => {
     onChange(removeItem(definition, itemId));
@@ -68,94 +93,129 @@ export function SummaryWells({
     }
   };
 
-  const renderInput = (wellId: SummaryWellId) => (
-    <SummaryWellInput
-      base={base}
-      database={database}
-      wellId={wellId}
-      definition={definition}
-      formulaEdit={editingWellId === wellId ? formulaEdit : null}
-      onChange={onChange}
-      onFormulaEditEnd={() => setEditingItemId(null)}
-    />
-  );
+  const handleEditFormula = (itemId: string) => {
+    setFormulaDraft(null);
+    setEditingItemId(itemId);
+  };
 
-  const renderDimensions = (
-    wellId: SummaryWellId,
-    dimensions: SummaryDimension[],
-  ) =>
-    dimensions.map((dimension) => {
-      const label = itemLabels.get(dimension.id) ?? "";
-      return (
-        <WellChip
-          key={dimension.id}
-          wellId={wellId}
-          itemId={dimension.id}
-          label={label}
-          isEditing={dimension.id === editingItemId}
-          onRemove={handleRemove}
-        >
-          {"expression" in dimension && (
-            <FormulaChipLabel
-              label={label}
-              onEdit={() => setEditingItemId(dimension.id)}
-            />
-          )}
-        </WellChip>
-      );
-    });
+  const handleStartFormula = (wellId: SummaryWellId, source: string) => {
+    setEditingItemId(null);
+    setFormulaDraft({ wellId, source });
+  };
+
+  const handleFormulaEnd = () => {
+    setEditingItemId(null);
+    setFormulaDraft(null);
+  };
+
+  const wellProps = {
+    base,
+    database,
+    definition,
+    draggedItem,
+    formulaWellId,
+    onChange,
+    onRemove: handleRemove,
+    onStartFormula: handleStartFormula,
+  };
+
+  // the formula editor spans the frame, under the well it writes to, since the cells are too narrow to type in
+  const formulaRow = formulaWellId != null && (
+    <Box className={S.pivotFormula}>
+      <WellCaption wellId={formulaWellId} />
+      <SummaryWellFormula
+        base={base}
+        database={database}
+        wellId={formulaWellId}
+        definition={definition}
+        formulaEdit={formulaEdit}
+        initialSource={formulaDraft?.source ?? ""}
+        onChange={onChange}
+        onEnd={handleFormulaEnd}
+      />
+    </Box>
+  );
 
   return (
     <Box className={S.wells} data-testid="summary-wells">
-      <SummaryWell
-        wellId="rows"
-        title={t`Rows`}
-        placeholder={t`Drag columns here to group rows`}
-        definition={definition}
-        draggedItem={draggedItem}
-        footer={renderInput("rows")}
-      >
-        {renderDimensions("rows", definition.rows)}
-      </SummaryWell>
-      <SummaryWell
-        wellId="columns"
-        title={t`Columns`}
-        placeholder={t`Drag columns here to split across the top`}
-        definition={definition}
-        draggedItem={draggedItem}
-        footer={renderInput("columns")}
-      >
-        {renderDimensions("columns", definition.columns)}
-      </SummaryWell>
-      <SummaryWell
-        wellId="values"
-        title={t`Values`}
-        placeholder={t`Drag columns or metrics here, or type below`}
-        definition={definition}
-        draggedItem={draggedItem}
-        footer={renderInput("values")}
-      >
-        {definition.values.map((value) => (
-          <ValueChip
-            key={value.id}
-            base={base}
-            value={value}
-            label={itemLabels.get(value.id) ?? ""}
-            isEditing={value.id === editingItemId}
-            onChangeOperator={(operatorShortName) =>
-              onChange(
-                changeValueOperator(definition, value.id, operatorShortName),
-              )
-            }
-            onEditFormula={
-              canWriteValueFormula
-                ? () => setEditingItemId(value.id)
-                : undefined
-            }
-            onRemove={handleRemove}
-          />
-        ))}
-      </SummaryWell>
+      <Box className={S.pivotFrame}>
+        <Box className={S.pivotCorner}>
+          <Tooltip label={t`Swap rows and columns`}>
+            <ActionIcon
+              variant="subtle"
+              aria-label={t`Swap rows and columns`}
+              disabled={!hasDimensions}
+              onClick={() => onChange(swapRowsAndColumns(definition))}
+            >
+              <Icon name="sync" />
+            </ActionIcon>
+          </Tooltip>
+        </Box>
+        <SummaryWell
+          {...wellProps}
+          wellId="columns"
+          className={S.pivotColumns}
+          itemIds={definition.columns.map(({ id }) => id)}
+        >
+          {definition.columns.map((dimension) => (
+            <DimensionChip
+              key={dimension.id}
+              wellId="columns"
+              dimension={dimension}
+              label={itemLabels.get(dimension.id) ?? ""}
+              isEditing={dimension.id === editingItemId}
+              onEditFormula={handleEditFormula}
+              onRemove={handleRemove}
+            />
+          ))}
+        </SummaryWell>
+        {formulaWellId === "columns" && formulaRow}
+        <SummaryWell
+          {...wellProps}
+          wellId="rows"
+          className={S.pivotRows}
+          itemIds={definition.rows.map(({ id }) => id)}
+        >
+          {definition.rows.map((dimension) => (
+            <DimensionChip
+              key={dimension.id}
+              wellId="rows"
+              dimension={dimension}
+              label={itemLabels.get(dimension.id) ?? ""}
+              isEditing={dimension.id === editingItemId}
+              onEditFormula={handleEditFormula}
+              onRemove={handleRemove}
+            />
+          ))}
+        </SummaryWell>
+        <SummaryWell
+          {...wellProps}
+          wellId="values"
+          itemIds={definition.values.map(({ id }) => id)}
+        >
+          {definition.values.map((value) => (
+            <ValueChip
+              key={value.id}
+              base={base}
+              value={value}
+              label={itemLabels.get(value.id) ?? ""}
+              isEditing={value.id === editingItemId}
+              onChangeOperator={(operatorShortName) =>
+                onChange(
+                  changeValueOperator(definition, value.id, operatorShortName),
+                )
+              }
+              onEditFormula={
+                canWriteWellFormula(database, "values")
+                  ? () => handleEditFormula(value.id)
+                  : undefined
+              }
+              onRemove={handleRemove}
+            />
+          ))}
+        </SummaryWell>
+        {formulaWellId !== "columns" && formulaRow}
+      </Box>
     </Box>
   );
 }
@@ -198,52 +258,115 @@ function getItemWellId(
   return "values";
 }
 
+function getWellTitle(wellId: SummaryWellId) {
+  switch (wellId) {
+    case "rows":
+      return t`Rows`;
+    case "columns":
+      return t`Columns`;
+    case "values":
+      return t`Values`;
+  }
+}
+
+function WellCaption({ wellId }: { wellId: SummaryWellId }) {
+  return (
+    <Box className={S.wellCaption}>
+      <Icon name={WELL_ICONS[wellId]} size={10} />
+      {getWellTitle(wellId)}
+    </Box>
+  );
+}
+
 type SummaryWellProps = {
+  base: SummaryBase;
+  database: Database | undefined;
   wellId: SummaryWellId;
-  title: string;
-  placeholder: string;
+  className?: string;
   definition: SummaryDefinition;
   draggedItem: SummaryDragItem | null;
-  children: ReactNode[];
-  footer?: ReactNode;
+  formulaWellId: SummaryWellId | null;
+  itemIds: string[];
+  children: ReactNode;
+  onChange: (definition: SummaryDefinition) => void;
+  onRemove: (itemId: string) => void;
+  onStartFormula: (wellId: SummaryWellId, source: string) => void;
 };
 
+/** A cell of the pivot frame: its chips, followed by an input, like a token field. */
 function SummaryWell({
+  base,
+  database,
   wellId,
-  title,
-  placeholder,
+  className,
   definition,
   draggedItem,
+  formulaWellId,
+  itemIds,
   children,
-  footer,
+  onChange,
+  onRemove,
+  onStartFormula,
 }: SummaryWellProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `summary-well:${wellId}`,
     data: { wellId },
   });
+  const inputRef = useRef<HTMLInputElement>(null);
   const canDrop =
     draggedItem != null && canDropOnWell(draggedItem, wellId, definition);
+  const isFormulaTarget = formulaWellId === wellId;
+  const lastItemId = itemIds.at(-1);
+
+  // clicking the cell, not one of its chips, types into it; clicks in portaled
+  // menus and dropdowns bubble here too, but aren't in the cell's DOM
+  const handleClick = (event: MouseEvent<HTMLElement>) => {
+    const { target, currentTarget } = event;
+    const isOnCellBackground =
+      target instanceof Element &&
+      currentTarget.contains(target) &&
+      target.closest(`.${S.chip}`) == null;
+    if (isOnCellBackground) {
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleRemoveLast = () => {
+    if (lastItemId != null) {
+      onRemove(lastItemId);
+    }
+  };
 
   return (
-    <Stack gap="xs">
-      <Text fw="bold">{title}</Text>
-      <Box
-        ref={setNodeRef}
-        className={cx(S.well, {
-          [S.wellAcceptsDrop]: canDrop,
-          [S.wellIsOver]: canDrop && isOver,
-          [S.wellRejectsDrop]: draggedItem != null && !canDrop,
-        })}
-        data-testid={`summary-well-${wellId}`}
-      >
-        {children.length > 0 ? (
-          children
-        ) : (
-          <Text className={S.wellPlaceholder}>{placeholder}</Text>
+    <Box
+      ref={setNodeRef}
+      className={cx(S.well, className, {
+        [S.wellAcceptsDrop]: canDrop,
+        [S.wellIsOver]: canDrop && isOver,
+        [S.wellRejectsDrop]: draggedItem != null && !canDrop,
+        [S.wellIsFormulaTarget]: isFormulaTarget,
+      })}
+      data-testid={`summary-well-${wellId}`}
+      onClick={handleClick}
+    >
+      <WellCaption wellId={wellId} />
+      <Box className={S.wellItems}>
+        {children}
+        {!isFormulaTarget && (
+          <SummaryWellInput
+            base={base}
+            wellId={wellId}
+            definition={definition}
+            isEmpty={itemIds.length === 0}
+            canWriteFormula={canWriteWellFormula(database, wellId)}
+            inputRef={inputRef}
+            onChange={onChange}
+            onStartFormula={(source) => onStartFormula(wellId, source)}
+            onRemoveLast={handleRemoveLast}
+          />
         )}
-        {footer && <Box className={S.valuesInput}>{footer}</Box>}
       </Box>
-    </Stack>
+    </Box>
   );
 }
 
@@ -276,6 +399,7 @@ function WellChip({
         [S.isDragging]: isDragging,
         [S.chipIsEditing]: isEditing,
       })}
+      title={label}
       data-testid="summary-well-item"
       {...attributes}
       {...listeners}
@@ -291,6 +415,41 @@ function WellChip({
         <Icon name="close" size={12} />
       </ActionIcon>
     </Box>
+  );
+}
+
+type DimensionChipProps = {
+  wellId: SummaryWellId;
+  dimension: SummaryDimension;
+  label: string;
+  isEditing: boolean;
+  onEditFormula: (itemId: string) => void;
+  onRemove: (itemId: string) => void;
+};
+
+function DimensionChip({
+  wellId,
+  dimension,
+  label,
+  isEditing,
+  onEditFormula,
+  onRemove,
+}: DimensionChipProps) {
+  return (
+    <WellChip
+      wellId={wellId}
+      itemId={dimension.id}
+      label={label}
+      isEditing={isEditing}
+      onRemove={onRemove}
+    >
+      {"expression" in dimension && (
+        <FormulaChipLabel
+          label={label}
+          onEdit={() => onEditFormula(dimension.id)}
+        />
+      )}
+    </WellChip>
   );
 }
 

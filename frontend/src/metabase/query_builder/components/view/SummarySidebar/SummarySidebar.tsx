@@ -121,7 +121,6 @@ export function SummarySidebar({
         onDone={onClose}
         data-testid="summary-sidebar"
       >
-        <SummaryFieldList base={base} />
         <SummaryWells
           base={base}
           definition={definition}
@@ -129,6 +128,7 @@ export function SummarySidebar({
           draggedItem={draggedItem}
           onChange={handleChange}
         />
+        <SummaryFieldList base={base} />
       </SidebarContent>
       {createPortal(
         <DragOverlay dropAnimation={null}>

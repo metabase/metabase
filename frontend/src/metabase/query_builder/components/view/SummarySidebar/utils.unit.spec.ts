@@ -10,6 +10,7 @@ import type {
   SummaryBase,
   SummaryDefinition,
   SummaryExpression,
+  SummaryWellId,
 } from "./types";
 import {
   addExpressionDimension,
@@ -22,6 +23,7 @@ import {
   getItemLabels,
   getSummaryBase,
   replaceWithExpression,
+  swapRowsAndColumns,
 } from "./utils";
 
 const EMPTY_DEFINITION: SummaryDefinition = {
@@ -273,6 +275,38 @@ describe("editing as a formula", () => {
     expect(getFormulaClause(base, definition, definition.rows[0].id)).toBe(
       null,
     );
+  });
+});
+
+describe("swapRowsAndColumns", () => {
+  it("moves the row groupings to columns and the column groupings to rows, keeping values", () => {
+    const base = createBase();
+    const dropColumn = (
+      definition: SummaryDefinition,
+      columnName: string,
+      wellId: SummaryWellId,
+    ) =>
+      dropOnWell(
+        base,
+        definition,
+        { kind: "column", column: findColumn(base, columnName), label: "" },
+        wellId,
+      );
+    const definition = dropColumn(
+      dropColumn(
+        dropColumn(EMPTY_DEFINITION, "Quantity", "rows"),
+        "Tax",
+        "columns",
+      ),
+      "Total",
+      "values",
+    );
+
+    expect(swapRowsAndColumns(definition)).toEqual({
+      rows: definition.columns,
+      columns: definition.rows,
+      values: definition.values,
+    });
   });
 });
 
