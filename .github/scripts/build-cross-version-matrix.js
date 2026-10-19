@@ -574,6 +574,7 @@ async function notifyReleaseNeeded({
   channelName,
   findSlackMessage,
   sendSlackMessage,
+  dryRun = false,
 }) {
   const { owner, repo } = context.repo;
   const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
@@ -582,6 +583,17 @@ async function notifyReleaseNeeded({
 
   for (const commit of commits) {
     const url = commitUrl({ owner, repo, sha: commit.sha });
+    if (dryRun) {
+      const message = formatReleaseNeededMessage({
+        owner,
+        repo,
+        runUrl,
+        commit,
+        graceDays: validGraceDays,
+      });
+      console.log(`Dry run, not sent to Slack:\n${message}`);
+      continue;
+    }
     const existing = await findSlackMessage({ channelName, text: url }).catch(
       console.error,
     );

@@ -972,6 +972,30 @@ describe("release notification", () => {
     });
   });
 
+  it("only logs the message in a dry run", async () => {
+    const log = jest.spyOn(console, "log").mockImplementation(() => {});
+    const findSlackMessage = jest.fn();
+    const sendSlackMessage = jest.fn();
+    await notifyReleaseNeeded({
+      context,
+      core: { warning: jest.fn() },
+      changesets: [changeset(63, "v63.a")],
+      graceDays: "3",
+      channelName: "release",
+      findSlackMessage,
+      sendSlackMessage,
+      dryRun: true,
+    });
+    expect(findSlackMessage).not.toHaveBeenCalled();
+    expect(sendSlackMessage).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^Dry run, not sent to Slack:\n:warning: .* breaks cross version tests!/,
+      ),
+    );
+    log.mockRestore();
+  });
+
   it("does not send a message when the channel already has one for the master commit", async () => {
     const sendSlackMessage = jest.fn();
     await notifyReleaseNeeded({
