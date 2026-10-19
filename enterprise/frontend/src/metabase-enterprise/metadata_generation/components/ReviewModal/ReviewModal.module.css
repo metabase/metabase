@@ -102,3 +102,18 @@
 .groupLabel {
   white-space: nowrap;
 }
+
+/* The sticky copy of a field header row, drawn over the table under its column headers. */
+.stickyHeader {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_page-secondary);
+  pointer-events: none;
+}

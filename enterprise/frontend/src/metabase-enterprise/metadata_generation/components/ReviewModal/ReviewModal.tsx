@@ -717,11 +717,7 @@ function TableReview({
       ),
     [suggestions, query, isGrouped],
   );
-  const [stickyFieldId, setStickyFieldId] = useState<FieldId | null>(null);
-  const nodes = useMemo(
-    () => withStickyHeader(rows, stickyFieldId),
-    [rows, stickyFieldId],
-  );
+  const [sticky, setSticky] = useState<StickyHeader | null>(null);
   const tableCheckbox = useMemo(
     () => getTableCheckboxState(suggestions ?? []),
     [suggestions],
@@ -750,12 +746,11 @@ function TableReview({
     ],
   );
   const instance = useTreeTableInstance<SuggestionNode>({
-    data: nodes,
+    data: rows,
     columns,
     getNodeId: (node) => node.id,
-    enableRowPinning: true,
   });
-  useStickyGroupRow(instance, rows, setStickyFieldId);
+  useStickyGroupHeader(instance, rows, setSticky);
 
   return (
     <Stack gap="sm" flex={1} miw={0} mih={0}>
@@ -775,6 +770,7 @@ function TableReview({
         display="flex"
         className={S.card}
         data-hover-side={hoveredSide ?? undefined}
+        pos="relative"
       >
         {error != null && (
           <Text c="feedback-negative" p="md">
@@ -782,6 +778,18 @@ function TableReview({
           </Text>
         )}
         {isLoading && <Loader size="sm" m="md" />}
+        {sticky != null && (
+          <Box
+            className={S.stickyHeader}
+            style={{ top: sticky.top }}
+            aria-hidden
+            data-testid="metadata-generation-sticky-field"
+          >
+            <Text fw="bold" className={S.groupLabel}>
+              {sticky.label}
+            </Text>
+          </Box>
+        )}
         {suggestions != null && (
           <TreeTable
             instance={instance}
@@ -808,34 +816,25 @@ function TableReview({
   );
 }
 
-const STICKY_ROW_ID = "sticky-field";
+type StickyHeader = {
+  label: string;
+  /** Offset of the overlay from the top of the card: the height of the column headers. */
+  top: number;
+};
 
 /**
- * `rows` plus a copy of the header row of field `stickyFieldId`, which [[useStickyGroupRow]] pins under the
- * column headers. The copy is never part of the scrolling list, so pinning it moves nothing.
+ * Shows a copy of the header row of the field whose own header has scrolled under the column headers,
+ * as an overlay, until the next field's header reaches the top. The overlay is outside the table, so
+ * showing it changes no layout and moves no scroll position.
  */
-function withStickyHeader(
-  rows: SuggestionNode[],
-  stickyFieldId: FieldId | null,
-): SuggestionNode[] {
-  const group = rows.find(
-    (node): node is GroupRowNode =>
-      node.kind === "group" && node.fieldId === stickyFieldId,
-  );
-  return group ? [...rows, { ...group, id: STICKY_ROW_ID }] : rows;
-}
-
-/**
- * Pins a copy of the header row of the field whose header has scrolled above the viewport, so it reads
- * as a sticky header until the next field's header scrolls past it.
- */
-function useStickyGroupRow(
+function useStickyGroupHeader(
   instance: TreeTableInstance<SuggestionNode>,
   rows: SuggestionNode[],
-  onStickyFieldChange: (fieldId: FieldId | null) => void,
+  onChange: (sticky: StickyHeader | null) => void,
 ) {
   const instanceRef = useRef(instance);
   instanceRef.current = instance;
+  const lastRef = useRef<StickyHeader | null>(null);
 
   useEffect(() => {
     const container = instanceRef.current.containerRef.current;
@@ -843,23 +842,25 @@ function useStickyGroupRow(
       return;
     }
     const update = () => {
-      const { table, virtualizer, centerRows } = instanceRef.current;
+      const { virtualizer, centerRows } = instanceRef.current;
       const scrollTop = container.scrollTop;
       const topItem = virtualizer.getVirtualItemForOffset(scrollTop);
-      const current = getScrolledPastGroup(centerRows, topItem, scrollTop);
-      const isPinned = (table.getState().rowPinning.top ?? []).length > 0;
-      if ((current != null) !== isPinned) {
-        table.setRowPinning({
-          top: current != null ? [STICKY_ROW_ID] : [],
-          bottom: [],
-        });
+      const group = getScrolledPastGroup(centerRows, topItem, scrollTop);
+      const headerHeight = container.firstElementChild?.clientHeight ?? 0;
+      const next = group ? { label: group.label, top: headerHeight } : null;
+      // Scroll events are frequent; only a change re-renders the table.
+      if (
+        next?.label !== lastRef.current?.label ||
+        next?.top !== lastRef.current?.top
+      ) {
+        lastRef.current = next;
+        onChange(next);
       }
-      onStickyFieldChange(current?.fieldId ?? null);
     };
     update();
     container.addEventListener("scroll", update, { passive: true });
     return () => container.removeEventListener("scroll", update);
-  }, [rows, onStickyFieldChange]);
+  }, [rows, onChange]);
 }
 
 /** The last header row at or above `topItem` whose own row has started to leave the viewport. */
@@ -944,10 +945,7 @@ function getRowProps(row: Row<SuggestionNode>): Record<string, unknown> {
   const node = row.original;
   if (node.kind === "group") {
     return {
-      "data-testid":
-        node.id === STICKY_ROW_ID
-          ? "metadata-generation-sticky-field"
-          : "metadata-generation-field-group",
+      "data-testid": "metadata-generation-field-group",
       "data-group": true,
     };
   }
