@@ -138,7 +138,8 @@
 
 (defpipeline-error ambiguous-database-name!
   "The database name in a portable FK matched more than one database."
-  [database-name-step])
+  ;; No step: retrying the database name matches the same databases again.
+  [])
 
 ;;; Field resolution
 
@@ -197,8 +198,9 @@
   [card-entity-id-step])
 
 (defpipeline-error missing-card-entity-id!
-  "A card reference carried no entity_id."
-  [card-entity-id-step])
+  "The referenced card has no stored entity_id, so the query cannot be exported."
+  ;; No step: the stored card has no portable ID for `read_resource` to return.
+  [])
 
 (defpipeline-error cross-database-card!
   "The referenced card belongs to a different database than the query."
@@ -215,8 +217,9 @@
   [measure-entity-id-step])
 
 (defpipeline-error missing-measure-entity-id!
-  "A measure reference carried no entity_id."
-  [measure-entity-id-step])
+  "The referenced measure has no stored entity_id, so the query cannot be exported."
+  ;; No step: the stored measure has no portable ID for `read_resource` to return.
+  [])
 
 (defpipeline-error cross-database-measure!
   "The referenced measure belongs to a different database than the query."
@@ -231,8 +234,9 @@
   [segment-entity-id-step])
 
 (defpipeline-error missing-segment-entity-id!
-  "A segment reference carried no entity_id."
-  [segment-entity-id-step])
+  "The referenced segment has no stored entity_id, so the query cannot be exported."
+  ;; No step: the stored segment has no portable ID for `read_resource` to return.
+  [])
 
 (defpipeline-error cross-database-segment!
   "The referenced segment belongs to a different database than the query."
