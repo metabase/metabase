@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.agent-api.api :as agent-api]
    [metabase.api-scope.core :as api-scope]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.db :as oauth-server.db]
@@ -29,14 +30,13 @@
 (defonce ^:private provider (atom nil))
 
 (defn supported-scopes
-  "All OAuth scopes intended to be advertised in the server's discovery metadata (`scopes-supported`).
-
-  `mb:full` is deliberately absent. Advertising it here puts a full-access grant in front of every client that reads
-  discovery metadata, so keeping it out means no client is led toward it. Note this is not a gate: dynamic
-  registration is unauthenticated and accepts any registered scope, so a client that names `mb:full` itself still
-  registers with it. Keeping it off this list narrows who finds it, not who may ask."
+  "All OAuth scopes intended to be advertised in the server's discovery metadata (`scopes-supported`)."
   []
-  (vec (into (sorted-set) (mcp/all-scopes))))
+  (-> (sorted-set)
+      (into (mcp/v2-scopes))
+      (into (agent-api/defendpoint-scopes))
+      (disj "mb:full") ;; mb:full should not appear so clients don't find it; they can still register with it (e.g., CLI)
+      vec))
 
 (defn all-scopes-registered?
   "True when every scope in the space-delimited `scope` string is registered via

@@ -57,14 +57,11 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
 
 (defn- validate-chart-config!
   "Throw an informative exception when `chart-config` is too malformed to analyze."
-  [{:keys [series] :as _chart-config}]
-  (when (empty? series)
+  [{:keys [series] :as chart-config}]
+  (when (empty? (interestingness/analyzable-series chart-config))
     (throw (ex-info "This chart has no series data to analyze."
                     {:agent-error? true, :type ::malformed-chart-config})))
   (doseq [[series-name {:keys [y_values]}] series]
-    (when (empty? y_values)
-      (throw (ex-info (format "Series \"%s\" has no data points to analyze." series-name)
-                      {:agent-error? true, :type ::malformed-chart-config, :series series-name})))
     (when (non-numeric-y-value? y_values)
       ;; compute-chart-stats assumes each series has numeric y-values.
       (throw (ex-info (format (str "Series \"%s\" has non-numeric y-values. Chart analysis "

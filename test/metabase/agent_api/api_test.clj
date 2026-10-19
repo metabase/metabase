@@ -16,6 +16,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.mcp.core :as mcp]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -28,6 +30,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2]))
 
@@ -728,6 +731,18 @@
                                 {:name          "Should Not Save"
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
+
+(deftest create-question-nested-unreadable-card-403-does-not-leak-definition-test
+  (testing "The 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"
+    (mt/with-temp [:model/Card {secret-id :id} {:collection_id (:id (collection/user->personal-collection
+                                                                     (mt/user->id :crowberto)))
+                                                :dataset_query (mt/native-query {:query "SELECT 1 AS sec_1173_marker"})}]
+      (let [q    {:database (mt/id) :type :query :query {:source-table (str "card__" secret-id)}}
+            body (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                       {:name  "Should Not Save"
+                                        :query (u/encode-base64 (json/encode q))})]
+        (is (= "You cannot save this Question because you do not have permissions to run its query."
+               body))))))
 
 ;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
 
@@ -1469,9 +1484,9 @@
                                                 :visualization_settings
                                                 {:timeline.selected_timeline_ids [(:id timeline)]}}]
         (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
-        (is (= "You don't have permissions to do that."
-               (:cause (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
-                                             {:dashcards [{:action "add" :card_id card-id}]}))))
+        (is (re-find #"You don't have permissions to do that\."
+                     (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                           {:dashcards [{:action "add" :card_id card-id}]})))
         (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
         (testing "a user who can read the timeline can add it"
           (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)
@@ -1938,6 +1953,32 @@
     (let [uris (vec (repeat 10 "metabase://databases"))]
       (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
                             {:uris uris})))
+  (testing "this endpoint publishes the tool's own argument schema, so its limits cannot drift from
+           the ones the agent loop enforces. The hand-written copy this replaced had already lost
+           the 5-URI cap."
+    ;; Compared on the `:uris` entry: `mr/def` stamps its own docstring onto the map's properties,
+    ;; so the outer form differs by a `:description` the endpoint never publishes.
+    (is (= (nth (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)) 2)
+           (nth (mr/schema :metabase.agent-api.api/read-resource-request) 2))))
+  (testing (str "a URI that faults is that item's error, and the ones that read are kept. The agent "
+                "loop fails the whole call for an undeclared failure — a bug is not a partial "
+                "result — but this endpoint publishes one status for the call and an `:error` per "
+                "item, so it opts out with `:on-item-fault`.")
+    (mt/with-dynamic-fn-redefs [metabot-resources/dispatch
+                                (fn [uri]
+                                  (if (str/includes? uri "boom")
+                                    (throw (ex-info "a bug nobody wrote text for" {}))
+                                    {:structured-output {:result-type :metabot-list
+                                                         :list-type   :databases
+                                                         :items [] :total 0 :page 1 :pages 1}}))]
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                       {:uris ["metabase://databases" "metabase://boom"]})]
+        (is (= ["metabase://databases" "metabase://boom"] (mapv :uri (:resources resp))))
+        (is (some? (-> resp :resources first :content))
+            "the URI that read is not discarded by the one that faulted")
+        (testing "and the faulting one carries an authored sentence, not the exception's message"
+          (is (= "This resource could not be read." (-> resp :resources second :error)))
+          (is (not (str/includes? (:output resp) "a bug nobody wrote text for")))))))
   (testing "Reports a per-URI error rather than failing the whole call"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
                                      {:uris ["metabase://nonsense/path"]})]

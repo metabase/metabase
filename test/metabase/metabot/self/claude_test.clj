@@ -340,6 +340,27 @@
     (testing "no speed through the AI proxy"
       (is (nil? (speed {:model "claude-opus-5" :fast? true :ai-proxy? true}))))))
 
+(deftest ^:parallel claude-request-body-nested-object-arguments-test
+  (testing "a replayed tool call whose arguments hold nested string-keyed objects is accepted and sent as-is"
+    ;; Replayed tool calls go through this instrumented entry point, so their arguments must validate here.
+    (let [arguments {:query         {"lib/type" "mbql/query"
+                                     "stages"   [{"source-table" ["db" "public" "orders"]}]}
+                     :visualization {"chart_type" "line"}
+                     :title         "Orders per month"
+                     :description   "Monthly orders in 2025"}
+          body      (claude/claude-request-body
+                     {:input [{:role :user :content "How many orders were placed each month in 2025?"}
+                              {:type :tool-input :id "call-1" :function "construct_notebook_query" :arguments arguments}
+                              {:type     :tool-output
+                               :id       "call-1"
+                               :function "construct_notebook_query"
+                               :result   {:output "query built"}}]})]
+      (is (=? [{:role "user"}
+               {:role    "assistant"
+                :content [{:type "tool_use" :id "call-1" :name "construct_notebook_query" :input arguments}]}
+               {:role "user" :content [{:type "tool_result" :tool_use_id "call-1"}]}]
+              (:messages body))))))
+
 (defn- close-tracking-json-body
   "A streamed JSON error body that flips `closed?` when closed, like the real `:as :stream`
   response body the adapter must not leak."
@@ -518,12 +539,24 @@
              [{:type :tool-input :id "call-1" :function "todo_read" :arguments nil}])))))
 
 (deftest ^:parallel parts->claude-messages-error-result-test
-  (testing "tool error is formatted as error string"
+  (testing "a failed call carries its text and is marked as a failure, so the model does not read
+           it as an ordinary result"
     (is (=? [{:role    "user"
-              :content [{:type    "tool_result"
-                         :content #"Error:.*failed"}]}]
+              :content [{:type        "tool_result"
+                         :tool_use_id "call-1"
+                         :content     "Card 7 was not found."
+                         :is_error    true}]}]
             (claude/parts->claude-messages
-             [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+             [{:type   :tool-output :id "call-1"
+               :result {:output "Card 7 was not found."
+                        :error  {:class :recoverable :code :x}}}]))))
+  (testing "a successful call is not marked"
+    (is (= [{:role    "user"
+             :content [{:type        "tool_result"
+                        :tool_use_id "call-1"
+                        :content     "<card/>"}]}]
+           (claude/parts->claude-messages
+            [{:type :tool-output :id "call-1" :result {:output "<card/>"}}])))))
 
 (deftest ^:parallel parts->claude-messages-blank-content-test
   (testing "blank string content is filtered out during merge"
@@ -630,8 +663,10 @@
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-fable-5"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4-8"})))
         (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-sonnet-5"})))
+        (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-haiku-5-5"})))
         (testing "bedrock vendor prefix is stripped"
-          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"}))))
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-opus-4-8"})))
+          (is (= {:type "adaptive" :display "summarized"} (thinking {:model "anthropic.claude-haiku-5-5"}))))
         (testing "the dotted display-name spelling of the minor version parses the same
                  (Azure admins name deployments freely)"
           (is (= {:type "adaptive" :display "summarized"} (thinking {:model "claude-opus-4.8"})))))
@@ -652,9 +687,9 @@
   (let [schema {:type "object" :properties {:answer {:type "string"}}}
         tools  [(metabot.tu/get-time-tool)]
         body   #(claude/claude-request-body (merge {:input [{:role :user :content "hi"}]} %))]
-    (testing "structured output and a required tool choice force the call, including on date-suffixed 5.0 names"
+    (testing "structured output and a required tool choice force the call, including on date-suffixed 5.0 names and on Haiku"
       (doseq [model ["claude-opus-5" "claude-sonnet-5" "claude-opus-5-20261005" "claude-sonnet-5-2026-10-05"
-                     "claude-fable-5" "claude-mythos-5"]]
+                     "claude-fable-5" "claude-mythos-5" "claude-haiku-5-5" "anthropic.claude-haiku-5-5"]]
         (testing model
           (is (=? {:tool_choice {:type "tool" :name "structured_output"} :max_tokens 512}
                   (body {:model model :schema schema :max-tokens 512})))
@@ -695,6 +730,21 @@
           ;; Bedrock ids reach us vendor-prefixed
           {:model "anthropic.claude-opus-4-8"}           32000
           {:model "my-deployment-3"}                     32000)))))
+
+(deftest ^:parallel context-window-tokens-undated-alias-test
+  (testing "an undated alias reads its dated row"
+    (is (= 200000 (claude/context-window-tokens "claude-haiku-4-5")))
+    (is (= 200000 (claude/context-window-tokens "anthropic.claude-haiku-4-5")))
+    (is (= 200000 (claude/context-window-tokens "claude-haiku-4-5-20251001"))))
+  (testing "only a whole alias matches"
+    (is (nil? (claude/context-window-tokens "claude-haiku-4")))
+    (is (nil? (claude/context-window-tokens "claude-haiku-4-5-x")))
+    (is (nil? (claude/context-window-tokens "claude-haiku-9-9")))))
+
+(deftest ^:parallel undated-aliases-are-unambiguous-test
+  (testing "each undated alias names one dated row, so an alias never picks a row at random"
+    (let [stems (keep #(second (re-matches #"(.+)-\d{8}" %)) (keys claude/supported-models))]
+      (is (= (count stems) (count (set stems)))))))
 
 (deftest claude-auto-cache-breakpoint-test
   (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-test"]
@@ -851,7 +901,7 @@
 (deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
     (doseq [id ["claude-fable-5" "claude-opus-5-5" "claude-opus-5" "claude-opus-4-8" "claude-sonnet-5-5" "claude-sonnet-5"
-                "claude-haiku-4-5-20251001"]]
+                "claude-haiku-5-5" "claude-haiku-4-5-20251001"]]
       (is (contains? claude/supported-models id) id)))
   (testing "non-whitelisted models are not supported"
     (doseq [id ["claude-3-5-sonnet-20241022" "claude-opus-4-0" "claude-sonnet-4-20250514" "claude-opus-4-1-20250805"]]
@@ -871,17 +921,26 @@
               {:id "claude-sonnet-5" :display_name "Claude Sonnet 5"}]
              (:models (claude/list-models {:credentials byok-credentials})))))))
 
+(deftest list-models-does-not-offer-undated-aliases-test
+  (testing "an undated alias in the account's catalog is not offered: only the dated row is supported"
+    (let [catalog {:data [{:id "claude-haiku-4-5"          :display_name "Claude Haiku 4.5"}
+                          {:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]}]
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body catalog})]
+        (is (= [{:id "claude-haiku-4-5-20251001" :display_name "Claude Haiku 4.5"}]
+               (:models (claude/list-models {:credentials byok-credentials}))))))))
+
 (deftest ^:parallel model-supports-temperature?-test
   (testing "models that accept an explicit temperature"
     (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
                    "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1" "claude-opus-4-20250514"]]
       (is (true? (#'claude/model-supports-temperature? model))
           model)))
-  (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, and on Fable models"
+  (testing "sampling parameters were removed starting with Opus 4.7, Sonnet 5, Haiku 5, and on Fable models"
     (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
                    "claude-opus-5" "claude-opus-5-0" "claude-opus-5-5"
                    "claude-sonnet-5" "claude-sonnet-5-0" "claude-sonnet-5-5" "claude-sonnet-6"
                    "claude-fable-5" "claude-fable-5-1" "claude-mythos-5-1"
+                   "claude-haiku-5-5" "anthropic.claude-haiku-5-5"
                    ;; an Azure deployment name without a version
                    "claude-fable-prod"]]
       (is (false? (#'claude/model-supports-temperature? model))
@@ -905,4 +964,13 @@
       (is (not (contains? (request-body "claude-sonnet-5") :temperature)))
       (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))
     (testing "temperature is omitted when thinking is enabled (4.6 accepts sampling but streams thinking here)"
-      (is (not (contains? (request-body "claude-opus-4-6") :temperature))))))
+      (is (not (contains? (request-body "claude-opus-4-6") :temperature))))
+    (testing "a structured-output call sends no thinking config, so only the model decides whether temperature is sent"
+      (let [schema {:type "object" :properties {:answer {:type "string"}}}
+            body   #(claude/claude-request-body {:model       %
+                                                 :input       [{:role :user :content "hi"}]
+                                                 :schema      schema
+                                                 :temperature 0.3})]
+        (is (= 0.3 (:temperature (body "claude-haiku-4-5"))))
+        (is (not (contains? (body "claude-haiku-5-5") :temperature)))
+        (is (not (contains? (body "anthropic.claude-haiku-5-5") :temperature)))))))

@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
-   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
@@ -579,15 +578,6 @@
       (remote-sync.db/update-rso! (:id existing) {:status status :status_changed_at timestamp})
       (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
-(defn- record-data-app-tables!
-  "Record the tables each data app's resources read, after a load or an export, logging a failure: the load's
-  transaction has committed and the export's commit is pushed by then, so a failure must not undo their record."
-  []
-  (try
-    (data-apps/record-table-dependencies!)
-    (catch Exception e
-      (log/warn e "Could not record the tables of the data apps"))))
-
 (defn- import-merged!
   "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
 
@@ -618,7 +608,6 @@
                         :finalize! (fn []
                                      (restore-dirty-objects! dirty-objects sync-timestamp)
                                      (finalize!)))
-        (record-data-app-tables!)
         (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
                    (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
                    (count dirty-objects))
@@ -718,8 +707,7 @@
 
                 :else
                 (let [_             (log/info "Remote sync full import: forced")
-                      imported-data (u/prog1 (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)
-                                      (record-data-app-tables!))]
+                      imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)]
                   (log/info "Successfully reloaded entities from git repository")
                   {:status :success
                    :version snapshot-version
@@ -757,8 +745,7 @@
                                     first-import? "first import"
                                     :else         "changes not incrementally loadable")
                     _             (log/infof "Remote sync full import: %s" reason)
-                    imported-data (u/prog1 (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)
-                                    (record-data-app-tables!))]
+                    imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)]
                 (log/info "Successfully reloaded entities from git repository")
                 {:status :success
                  :version snapshot-version
@@ -856,7 +843,6 @@
                             :finalize! (fn []
                                          (remote-sync.db/mark-all-rsos-synced! sync-timestamp)
                                          (remote-sync.task/set-version! task-id version)))
-            (record-data-app-tables!)
             (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
                        pulled (:added summary) (:updated summary) (:removed summary) (if empty? 0 pushed-count))
             {:status :success :version version :merge-summary summary
@@ -1225,7 +1211,6 @@
           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
             (remote-sync.db/delete-rsos! removed-ids))
           (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp))
-        (record-data-app-tables!)
         (if (= version :remote-sync/empty-commit)
           (do
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
@@ -1259,7 +1244,6 @@
         (doseq [removed-ids (partition-all 500 removed-ids)]
           (remote-sync.db/delete-rsos! removed-ids))
         (mark-rows-synced! (map :id synced) synced sync-timestamp))
-      (record-data-app-tables!)
       (if (= version :remote-sync/empty-commit)
         (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})
@@ -1651,7 +1635,8 @@
                        :conflicts true
                        ;; The un-pushed local changes a switch would discard, so the client can name exactly
                        ;; what would be lost without a second round-trip to /dirty.
-                       :dirty_objects (remote-sync.object/dirty-objects)})))
+                       :dirty_objects (remote-sync.object/dirty-objects)
+                       :response/keys #{:conflicts :dirty_objects}})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)

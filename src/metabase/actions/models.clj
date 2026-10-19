@@ -41,12 +41,15 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
 
 (doseq [model action-sub-models]
   (derive model :metabase/model))
 
-(derive :model/QueryAction :hook/search-index)
+(doto :model/QueryAction
+  (derive :hook/search-index)
+  (derive :hook/dependencies))
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])

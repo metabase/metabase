@@ -2,33 +2,10 @@ import { Ellipsified, Flex, Stack, Text } from "metabase/ui";
 import type { ColumnSettings } from "metabase-types/api";
 
 import S from "./TrendComparisonList.module.css";
-import {
-  type ComparisonDisplay,
-  type ComparisonResult,
-  getComparisonDisplay,
-} from "./compute";
+import { type ComparisonResult, getComparisonDisplay } from "./compute";
+import { getChangeText } from "./utils";
 
 const LIST_WIDTH = 360;
-
-const getChangeText = ({
-  isChanged,
-  isMissing,
-  signedPercent,
-  valueDisplay,
-}: ComparisonDisplay) => {
-  if (isChanged) {
-    return valueDisplay != null && valueDisplay !== ""
-      ? `${signedPercent} (${valueDisplay})`
-      : signedPercent;
-  }
-
-  // the missing display value carries its own parentheses: "N/A (No data)"
-  if (isMissing) {
-    return `${signedPercent} ${valueDisplay}`;
-  }
-
-  return signedPercent;
-};
 
 interface TrendComparisonListProps {
   comparisons: ComparisonResult[];
