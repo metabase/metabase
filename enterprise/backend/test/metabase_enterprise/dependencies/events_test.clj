@@ -894,10 +894,10 @@
            (is (= 1 (t2/update! :model/Segment segment-id
                                 {:definition {:filter [:< [:field price-field-id nil] 50]}})))))))))
 
-(deftest ^:synchronized segment-update-analyzes-only-segment-test
+(deftest ^:synchronized segment-update-analyzes-segment-and-dependents-test
   (run-with-dependencies-setup!
    (fn [mp]
-     (testing "a segment update has the job re-analyze the segment, not the cards using it, whose findings it can't change"
+     (testing "a segment update has the job re-analyze the segment and the cards using it"
        (let [products-id    (mt/id :products)
              price-field-id (mt/id :products :price)
              products       (lib.metadata/table mp products-id)]
@@ -908,7 +908,7 @@
                                              :to_entity_type :segment :to_entity_id segment-id}]
            (analyzed-by-job!)
            (t2/update! :model/Segment segment-id {:definition {:filter [:< [:field price-field-id nil] 50]}})
-           (is (= #{[:segment segment-id]}
+           (is (= #{[:segment segment-id] [:card card-id]}
                   (analyzed-among! [:segment segment-id] [:card card-id])))))))))
 
 (deftest ^:synchronized table-metadata-update-triggers-dependent-analysis-test

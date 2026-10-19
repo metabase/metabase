@@ -799,8 +799,7 @@
 
 (defn- upstream-versions-clause
   "The latest own version, per entity of `entity-type` in the table aliased `alias`, of the entities of each type it
-  directly depends on, as `{:left-join :updated-ats}`, leaving out segments, whose changes change neither the result
-  metadata nor the findings of the entities using them."
+  directly depends on, as `{:left-join :updated-ats}`."
   [entity-type alias]
   (let [dependency (t2/table-name :model/Dependency)
         edges-to   (fn [edge-alias upstream-type]
@@ -808,7 +807,7 @@
                       [:= (u/qualified-key edge-alias :from_entity_type) (name entity-type)]
                       [:= (u/qualified-key edge-alias :to_entity_type) (name upstream-type)]])]
     (left-joins-clause
-     (for [upstream-type (sort (disj deps.dependency-types/dependency-types :segment))
+     (for [upstream-type (sort deps.dependency-types/dependency-types)
            :let [table   (t2/table-name (deps.dependency-types/dependency-type->model upstream-type))
                  version (entity-version-clause upstream-type table
                                                 ^:allow-subquery {:select [:ud.to_entity_id]
