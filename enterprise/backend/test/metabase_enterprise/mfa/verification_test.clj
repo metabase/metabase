@@ -21,6 +21,48 @@
 
 ;;; -------------------------------------------------- verify-attempt! unit tests --------------------------------------------------
 
+(deftest verify-reports-which-factor-succeeded-test
+  (testing "verify-attempt! assocs :mfa/method, so analytics can tell TOTP from the fallbacks"
+    (testing "totp"
+      (let [secret (totp/generate-secret)]
+        (mt/with-temp [:model/User         {user-id :id} {}
+                       :model/AuthIdentity _ {:user_id      user-id
+                                              :provider     "totp"
+                                              :confirmed_at (t/instant)
+                                              :credentials  {:secret secret}}]
+          (is (= :totp (:mfa/method (verification/verify-attempt!
+                                     user-id (totp/generate-code secret) (fresh-jti))))))))
+    (testing "recovery code"
+      (let [secret (totp/generate-secret)
+            codes  (recovery-codes/generate-codes)]
+        (mt/with-temp [:model/User         {user-id :id} {}
+                       :model/AuthIdentity _ {:user_id      user-id
+                                              :provider     "totp"
+                                              :confirmed_at (t/instant)
+                                              :credentials  {:secret         secret
+                                                             :recovery_codes (mapv u.password/hash-bcrypt codes)}}]
+          (is (= :recovery (:mfa/method (verification/verify-attempt!
+                                         user-id (first codes) (fresh-jti))))))))
+    (testing "emailed one-time code"
+      (let [secret (totp/generate-secret)]
+        (mt/with-temp [:model/User         {user-id :id} {}
+                       :model/AuthIdentity _ {:user_id      user-id
+                                              :provider     "totp"
+                                              :confirmed_at (t/instant)
+                                              :credentials  {:secret secret}}]
+          (let [code (verification/set-email-otp! user-id)]
+            (is (= :email (:mfa/method (verification/verify-attempt! user-id code (fresh-jti)))))))))
+    (testing "a failed attempt reports no method at all"
+      (let [secret (totp/generate-secret)]
+        (mt/with-temp [:model/User         {user-id :id} {}
+                       :model/AuthIdentity _ {:user_id      user-id
+                                              :provider     "totp"
+                                              :confirmed_at (t/instant)
+                                              :credentials  {:secret secret}}]
+          ;; a non-numeric code is invalid for all three factors by construction -- every one of them format-checks
+          ;; first. A 6-digit literal would have a small chance of matching one of the three accepted time steps.
+          (is (nil? (verification/verify-attempt! user-id "not-a-code" (fresh-jti)))))))))
+
 (deftest verify-consumes-time-step-test
   (let [secret (totp/generate-secret)]
     (mt/with-temp [:model/User        {user-id :id} {}
