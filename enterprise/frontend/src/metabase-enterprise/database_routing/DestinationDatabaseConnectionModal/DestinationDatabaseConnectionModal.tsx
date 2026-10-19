@@ -115,7 +115,6 @@ export const DestinationDatabaseConnectionModal = () => {
           <Flex
             py="sm"
             px="lg"
-            mx="xl"
             my="lg"
             bg="background_page-secondary"
             align="center"

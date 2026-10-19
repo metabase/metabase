@@ -64,9 +64,6 @@ export const DatabaseFormBody = ({
     [engines, isAdvanced, onEngineChange, setValues],
   );
 
-  const px = match(location)
-    .with("admin", "embedding_setup", () => "xl")
-    .otherwise(() => undefined);
   const mah = match(location)
     .with("admin", "embedding_setup", () => "calc(100vh - 20rem)")
     .with("full-page", () => "100%")
@@ -76,7 +73,6 @@ export const DatabaseFormBody = ({
     <Box
       mah={mah}
       mb="lg"
-      px={px}
       flex={1}
       style={mah ? { overflowY: "auto" } : undefined}
     >
