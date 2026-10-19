@@ -24,11 +24,11 @@
     (dependencies.db/mark-dependency-status-stale! entity-type id)))
 
 (defn upsert-status!
-  "Upsert a dependency_status entry, setting stale=false, version to current,
-  and clearing any failure state."
-  [entity-type entity-id]
+  "Upsert a dependency_status entry, setting stale=false, version to current, whether the entity names tables that
+  match nothing, and clearing any failure state."
+  [entity-type entity-id unresolved-tables?]
   (dependencies.db/upsert-dependency-status!
-   entity-type entity-id models.dependency/current-dependency-analysis-version))
+   entity-type entity-id models.dependency/current-dependency-analysis-version unresolved-tables?))
 
 (defmulti hydrate-for-deps
   "Hydrate a batch of instances with data needed for dependency calculation.

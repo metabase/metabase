@@ -781,8 +781,8 @@
            (deps.findings/upsert-analysis! parent-card)
            (deps.findings/upsert-analysis! child-card)
            (deps.findings/upsert-analysis! other-card)
-           (deps.dependency-status/upsert-status! :card child-card-id)
-           (deps.dependency-status/upsert-status! :card other-card-id)
+           (deps.dependency-status/upsert-status! :card child-card-id false)
+           (deps.dependency-status/upsert-status! :card other-card-id false)
            (testing "Checking that the initial analyses exist"
              (assert-has-analyses
               {:card {parent-card-id old-version
@@ -817,7 +817,7 @@
                                            :to_entity_type :card :to_entity_id parent-id}]
          (deps.findings/upsert-analysis! parent)
          (deps.findings/upsert-analysis! child)
-         (deps.dependency-status/upsert-status! :card child-id)
+         (deps.dependency-status/upsert-status! :card child-id false)
          (t2/update! :model/Card parent-id {:dataset_query (lib/native-query mp "select * from orders")})
          (deps.test/synchronously-run-backfill!)
          (testing "Parent card should be marked stale"
@@ -993,7 +993,7 @@
                                              :to_entity_type :segment :to_entity_id segment-id}]
            (deps.findings/upsert-analysis! segment)
            (deps.findings/upsert-analysis! card)
-           (deps.dependency-status/upsert-status! :card card-id)
+           (deps.dependency-status/upsert-status! :card card-id false)
            (assert-has-analyses {:card {card-id old-version} :segment {segment-id old-version}})
            (t2/update! :model/Segment segment-id {:definition {:filter [:< [:field price-field-id nil] 50]}})
            (deps.test/synchronously-run-backfill!)

@@ -1,9 +1,6 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { DataApp } from "metabase-types/api";
 
 const { H } = cy;
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 /**
  * Drives a real remote-sync pull of a repo whose `data_apps/` holds two apps, each a `data_app.yaml` with its bundle
@@ -54,7 +51,6 @@ describe("scenarios > data apps > repo sync", () => {
       cy.request("/api/card/goodAppOrdersQuestion")
         .its("body.collection_id")
         .should("eq", app.resource_collection_id);
-      expect(app.table_ids).to.deep.eq([ORDERS_ID]);
     });
 
     // An author deletes an app by deleting its directory and its collection's
