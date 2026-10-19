@@ -21,7 +21,6 @@ type DashboardMoreMenuProps = {
   dashboard: Dashboard;
 };
 
-/** Hidden on a trashed dashboard, whose banner offers its actions */
 export function DashboardMoreMenu({ dashboard }: DashboardMoreMenuProps) {
   const [modalType, setModalType] = useState<DashboardModalType>();
 
@@ -121,7 +120,6 @@ function BookmarkMenuItem({ dashboard }: DashboardMenuItemProps) {
   );
 }
 
-// The verification mutation invalidates the dashboard, so the page refetches without a reload callback
 function ModerationMenuItems({ dashboard }: DashboardMenuItemProps) {
   return <>{PLUGIN_MODERATION.useDashboardMenuItems(dashboard)}</>;
 }

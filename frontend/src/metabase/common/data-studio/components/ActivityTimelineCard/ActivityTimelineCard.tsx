@@ -21,11 +21,6 @@ type ActivityTimelineCardProps = {
   "data-testid": string;
 };
 
-/**
- * The revisions and moderation events of a card or dashboard, newest first,
- * each revision with a revert for a user who can write, framed as a Data
- * Studio page card.
- */
 export function ActivityTimelineCard(props: ActivityTimelineCardProps) {
   return (
     <Card withBorder shadow="none" p="lg" flex={1} className={S.card}>

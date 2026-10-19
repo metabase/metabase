@@ -9,7 +9,6 @@ type MoreMenuButtonProps = Omit<
   "aria-label": string;
 };
 
-/** The "..." trigger of a Data Studio more menu, in a header or a list row */
 export const MoreMenuButton = forwardRef<
   HTMLButtonElement,
   MoreMenuButtonProps
