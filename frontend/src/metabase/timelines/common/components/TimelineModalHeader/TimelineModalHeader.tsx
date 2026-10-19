@@ -23,7 +23,7 @@ export const TimelineModalHeader = ({
   actions,
   onGoBack,
 }: TimelineModalHeaderProps) => (
-  <Modal.Header>
+  <Modal.Header className={S.header}>
     {onGoBack && (
       <UnstyledButton
         className={S.backButton}
@@ -34,7 +34,12 @@ export const TimelineModalHeader = ({
       </UnstyledButton>
     )}
     <Stack gap="xs" flex="1 1 auto" miw={0}>
-      <Modal.Title>{title}</Modal.Title>
+      <Modal.Title
+        className={onGoBack ? S.clickableTitle : undefined}
+        onClick={onGoBack}
+      >
+        {title}
+      </Modal.Title>
       {collectionName && (
         <Group gap="xxs">
           {c("Refers to: 'Events' in a collection").t`in`}
