@@ -21,7 +21,6 @@
 description: null
 entity_id: %s
 slug: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 archived: false
 type: %s
 parent_id: %s
@@ -51,7 +50,6 @@ is_sample: false
 description: null
 entity_id: %s
 slug: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 archived: false
 type: %s
 parent_id: %s
@@ -76,7 +74,6 @@ is_sample: false
   (format "name: %s
 description: null
 entity_id: %s
-created_at: '2024-08-28T09:46:24.692002Z'
 creator_id: rasta@metabase.com
 display: table
 archived: false
@@ -117,7 +114,6 @@ document_id: null
                          (str/join "\n" (map (fn [dc]
                                                (format "- entity_id: %s
   card_id: %s
-  created_at: '2024-08-28T09:46:24.733016Z'
   row: 0
   col: 0
   size_x: 4
@@ -140,7 +136,6 @@ document_id: null
     (format "name: %s
 description: null
 entity_id: %s
-created_at: '2024-08-28T09:46:24.726993Z'
 creator_id: rasta@metabase.com
 archived: false
 collection_id: %s
@@ -468,7 +463,6 @@ data_source: null
 owner_email: null
 owner_user_id: null
 is_published: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 archived_at: null
 deactivated_at: null
 data_layer: null
@@ -500,7 +494,6 @@ serdes/meta:
   (format "name: %s
 display_name: %s
 description: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 active: true
 visibility_type: normal
 table_id:
@@ -563,7 +556,6 @@ database_partitioned: null
   (let [eid (or entity-id segment-name)]
     (format "archived: false
 caveats: null
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 definition:
   database: %s
@@ -622,7 +614,6 @@ serdes/meta:
   (format "name: %s
 description: null
 entity_id: %s
-created_at: '2024-08-28T09:46:24.692002Z'
 creator_id: rasta@metabase.com
 archived: false
 model_id: %s
@@ -659,7 +650,6 @@ serdes/meta:
 description: null
 entity_id: %s
 collection_id: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 source_database_id: %s
 source:
@@ -687,7 +677,6 @@ serdes/meta:
 description: null
 entity_id: %s
 collection_id: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 source_database_id: test-data (h2)
 source:
@@ -719,7 +708,6 @@ serdes/meta:
                                            agg-field-name "Some Field"}}]
   (let [eid (or entity-id measure-name)]
     (format "archived: false
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 definition:
   database: %s
@@ -775,7 +763,6 @@ entity_id: %s
 content: '%s'
 archived: false
 template_tags: null
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 collection_id: %s
 serdes/meta:
@@ -792,7 +779,6 @@ serdes/meta:
   (format "entity_id: %s
 term: %s
 definition: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 serdes/meta:
 - id: %s
@@ -806,7 +792,6 @@ serdes/meta:
   [term definition]
   (format "term: %s
 definition: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 creator_id: rasta@metabase.com
 serdes/meta:
 - id: %s
@@ -817,8 +802,7 @@ serdes/meta:
 (defn generate-transform-tag-yaml
   "Generates YAML content for a TransformTag with the given `entity-id` and `name`."
   [entity-id name]
-  (format "created_at: '2024-08-28T09:46:18.671622Z'
-entity_id: %s
+  (format "entity_id: %s
 name: %s
 serdes/meta:
 - id: %s

@@ -2,6 +2,7 @@
   "Application database queries for the remote-sync module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -13,7 +14,7 @@
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :model_id :archived :archived_at])
+  [:enum :exploration_id :built_in_type :entity_id :collection_id :model_id :archived :archived_at])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
@@ -35,14 +36,6 @@
   Collection."
   [:maybe [:or ms/PositiveInt [:= -1]]])
 
-(def ^:private Path
-  "A `{:db_name :schema :table_name :field_name}` path used to locate a Table or Field."
-  [:map {:closed true}
-   [:db_name    :string]
-   [:schema     {:optional true} [:maybe :string]]
-   [:table_name :string]
-   [:field_name {:optional true} :string]])
-
 (mu/defn eligible-children
   "The instances of `model-key` whose `fk` column equals `model-id`, additionally matching `conditions` (a map of
   column to value or Toucan 2 operator-vector value, or nil for none)."
@@ -51,6 +44,13 @@
    model-id    :- ms/PositiveInt
    conditions  :- Conditions]
   (apply t2/select model-key fk model-id (mapcat identity conditions)))
+
+(mu/defn row-exists? :- :boolean
+  "Whether a `model` row has `column` equal to `id`."
+  [model  :- :keyword
+   column :- :keyword
+   id     :- ms/PositiveInt]
+  (t2/exists? model column id))
 
 (mu/defn ids-where
   "The IDs of the instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
@@ -217,15 +217,20 @@
   (t2/delete! model :id [:in ids]))
 
 (defn- tracking-select-parts
-  "The SELECT/FROM/JOIN joining a `model-key` instance (Field, Segment, or Measure) to its Table for sync tracking,
-  plus the `alias` its own table is joined under (so callers can address its `:id` and `:entity_id` columns).
+  "The SELECT/FROM/JOIN of a `model-key` instance (TableUserSettings, FieldUserSettings, Dimension, Segment, or
+  Measure) with its Table for sync tracking, plus the `alias` the row its id refers to is under (so callers can
+  address its `:id` and `:entity_id` columns). The user settings are keyed by the id of their Table or Field.
   Segment and Measure share alias \"s\" — both are looked up the same way by [[tracking-details-by-entity-ids]]."
   [model-key]
   (case model-key
-    :model/Field   {:alias  "f"
-                    :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
-                    :from   [[:metabase_field :f]]
-                    :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]}
+    :model/TableUserSettings {:alias  "t"
+                              :select [:t.name [:t.id :table_id] :t.collection_id [:t.name :table_name]]
+                              :from   [(warehouse-schema-overlay/table-query {:alias :t})]}
+    (:model/FieldUserSettings :model/Dimension)
+    {:alias  "f"
+     :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
+     :from   [[:metabase_field :f]]
+     :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]}
     :model/Segment {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:segment :s]]
@@ -236,12 +241,13 @@
                     :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :s.table_id :t.id]]}))
 
 (mu/defn tracking-details-by-id
-  "The name, table id, collection id, and table name of the `model-key` (Field, Segment, or Measure) instance with
-  `model-id`, or nil."
+  "The name, table id, collection id, and table name of the `model-key` (TableUserSettings, FieldUserSettings,
+  Dimension, Segment, or Measure) instance with `model-id`, or nil."
   [model-key :- :keyword
    model-id  :- ms/PositiveInt]
   (let [{:keys [alias select from join]} (tracking-select-parts model-key)]
-    (first (t2/query {:select select :from from :join join :where [:= (keyword alias "id") model-id]}))))
+    (first (t2/query (m/assoc-some {:select select :from from :where [:= (keyword alias "id") model-id]}
+                                   :join join)))))
 
 (mu/defn tracking-details-by-entity-ids
   "The `:id`, name, table id, collection id, and table name of the `model-key` (Segment or Measure) instances with
@@ -279,57 +285,10 @@
    entity-ids :- [:set :string]]
   (t2/select-pks-vec model :entity_id [:in entity-ids]))
 
-(defn- path-expr
-  "Matches the Tables (aliased `t` in a Database aliased `db`) at `paths`, and their Fields (aliased `f`) when
-  `has-field?`."
-  [paths has-field?]
-  (into [:or]
-        (for [path paths]
-          (let [{:keys [db_name schema table_name field_name]} path]
-            (cond-> [:and
-                     [:= :db.name db_name]
-                     (if schema [:= :t.schema schema] [:is :t.schema nil])
-                     [:= :t.name table_name]]
-              (and has-field? field_name)
-              (conj [:= :f.name field_name]))))))
-
-(mu/defn tables-at-paths
-  "The `:id`, `:name`, and `:collection_id` rows of the Tables at `paths` (`{:db_name :schema :table_name}`)."
-  [paths :- [:sequential Path]]
-  (t2/query {:select [:t.id :t.name :t.collection_id]
-             :from   [[:metabase_table :t]]
-             :join   [[:metabase_database :db] [:= :db.id :t.db_id]]
-             :where  (path-expr paths false)}))
-
-(mu/defn fields-at-paths
-  "The `:id`, `:name`, `:table_id`, `:collection_id`, and `:table_name` rows of the Fields at `paths`
-  (`{:db_name :schema :table_name :field_name}`)."
-  [paths :- [:sequential Path]]
-  (t2/query {:select [:f.id :f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
-             :from   [[:metabase_field :f]]
-             :join   [[:metabase_table :t] [:= :t.id :f.table_id]
-                      [:metabase_database :db] [:= :db.id :t.db_id]]
-             :where  (path-expr paths true)}))
-
 (mu/defn card-types
   "The `:id`, `:type`, and `:display` of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :type :display] :id [:in card-ids]))
-
-(mu/defn table-user-settings-exist? :- :boolean
-  "Whether the Table with `table-id` has a TableUserSettings row."
-  [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/TableUserSettings :table_id table-id))
-
-(mu/defn field-user-settings-exist? :- :boolean
-  "Whether the Field with `field-id` has a FieldUserSettings row."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/FieldUserSettings :field_id field-id))
-
-(mu/defn dimension-exists-for-field? :- :boolean
-  "Whether the Field with `field-id` has a Dimension."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Dimension :field_id field-id))
 
 (mu/defn published-table-ids :- [:set ::lib.schema.id/table]
   "The ids of the Tables published in the Collections with `collection-ids`."
@@ -383,7 +342,7 @@
 (mu/defn fields-tracking-details
   "The `:id`, name, table id, collection id, and table name of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (let [{:keys [select from join]} (tracking-select-parts :model/Field)]
+  (let [{:keys [select from join]} (tracking-select-parts :model/FieldUserSettings)]
     (t2/query {:select (into [:f.id] select) :from from :join join :where [:in :f.id field-ids]})))
 
 (mu/defn snippets

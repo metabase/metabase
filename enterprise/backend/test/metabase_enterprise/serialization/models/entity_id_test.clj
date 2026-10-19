@@ -25,9 +25,6 @@
     :model/FieldValues
     :model/FieldUserSettings
     :model/TableUserSettings
-    ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
-    ;; serdes path nests under that entity, so it has no generated entity_id.
-    :model/OsiAiContext
     ;; Settings have human-selected unique names.
     :model/Setting})
 
