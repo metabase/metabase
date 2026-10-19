@@ -339,7 +339,7 @@ settings: {
 
 ## Formatting and theming
 
-Render numbers, dates, and currencies the way the rest of Metabase does with `formatValue`. Always pass the column the value comes from, since Metabase picks the formatting based on the column's type. Add options like `currency`, `decimals`, `compact`, or `date_style` to adjust it:
+Render numbers, dates, and currencies the way the rest of Metabase does with `formatValue`. Pass the cell's column to pick up that column's formatting settings, or override with options like `currency`, `decimals`, `compact`, or `date_style`:
 
 ```tsx
 import { formatValue } from "@metabase/custom-viz";
@@ -347,6 +347,8 @@ import { formatValue } from "@metabase/custom-viz";
 formatValue(row[1], { column: cols[1] });
 formatValue(row[1], { column: cols[1], number_style: "percent", decimals: 1 });
 ```
+
+Metabase picks the formatting by the column's type, so number options only take effect together with a numeric `column`. Without one, a number is rendered as is (`prefix` and `suffix` still apply). If a number doesn't come from a column, pass the column it's derived from.
 
 To honor the formatting people pick in the column formatting popover (the one `showColumnSetting: true` enables on `"field"` and `"fields"` widgets - see [built-in widgets](#built-in-widgets)), format with `settings.column(col)`. It resolves a column's effective settings (instance-wide defaults, the column's metadata settings, and the card-level popover settings, merged in that order) into ready-to-use `formatValue` options:
 

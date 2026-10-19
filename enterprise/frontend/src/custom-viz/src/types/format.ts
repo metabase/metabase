@@ -1,7 +1,11 @@
 import type { Column, RowValue } from "./data";
 
 export type FormatValueOptions = {
-  column: Column;
+  /**
+   * Formatting is picked by the column's type, so number options like
+   * `number_style` and `decimals` have no effect without a numeric column.
+   */
+  column?: Column;
   compact?: boolean;
   currency?: string;
   currency_style?: Intl.NumberFormatOptionsCurrencyDisplay;
@@ -22,5 +26,5 @@ export type FormatValueOptions = {
 
 export type FormatValue = (
   value: RowValue,
-  options: FormatValueOptions,
+  options?: FormatValueOptions,
 ) => string;

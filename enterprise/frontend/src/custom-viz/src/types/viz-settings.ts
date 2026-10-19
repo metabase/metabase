@@ -1,7 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 
-import type { Column, Series } from "./data";
-import type { FormatValueOptions } from "./format";
+import type { Column, ColumnVisualizationSettings, Series } from "./data";
 import type { BaseWidgetProps, ClickBehavior } from "./viz";
 
 export type WidgetName = keyof Widgets;
@@ -138,7 +137,7 @@ type CommonVisualizationSettings = {
    * from the column formatting popover, merged in that order. Pass the
    * result to `formatValue`.
    */
-  column: (column: Column) => FormatValueOptions;
+  column: (column: Column) => ColumnVisualizationSettings;
 
   /**
    * It's there, but it's intentionally excluded in types, since we don't expose
