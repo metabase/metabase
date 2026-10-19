@@ -62,6 +62,7 @@ function ScalarComponent(
     onVisualizationClick,
     rawSeries,
     actionButtons,
+    cardLevelFilters,
   } = props;
 
   const label = settings["scalar.label"];
@@ -143,6 +144,7 @@ function ScalarComponent(
     <ScalarCardShell
       tier={tier}
       actionButtons={actionButtons}
+      cardLevelFilters={cardLevelFilters}
       footer={descriptionFooter}
     >
       <Box maw="100%">

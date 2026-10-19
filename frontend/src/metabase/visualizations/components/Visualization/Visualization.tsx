@@ -120,6 +120,7 @@ type VisualizationRawSeries = (
 
 type VisualizationOwnProps = {
   actionButtons?: ReactNode | null;
+  cardLevelFilters?: ReactNode | null;
   className?: string;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
@@ -631,6 +632,7 @@ class Visualization extends PureComponent<
   render() {
     const {
       actionButtons,
+      cardLevelFilters,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -912,6 +914,7 @@ class Visualization extends PureComponent<
                   >
                     <CardVisualization
                       actionButtons={actionButtons}
+                      cardLevelFilters={cardLevelFilters}
                       // NOTE: CardVisualization class used as a selector for tests
                       className={cx(
                         "CardVisualization",

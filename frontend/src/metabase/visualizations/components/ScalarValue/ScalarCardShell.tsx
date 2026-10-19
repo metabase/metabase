@@ -80,6 +80,7 @@ export function useScalarCardShell(
 interface ScalarCardShellProps {
   tier: ScalarSizeTier;
   actionButtons: ReactNode;
+  cardLevelFilters?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
 }
@@ -87,11 +88,15 @@ interface ScalarCardShellProps {
 export function ScalarCardShell({
   tier,
   actionButtons,
+  cardLevelFilters,
   children,
   footer,
 }: ScalarCardShellProps) {
   return (
     <ScalarWrapper xPadding={tier.xPadding}>
+      <ScalarActionButtons tier={tier} position="left">
+        {cardLevelFilters}
+      </ScalarActionButtons>
       <ScalarActionButtons tier={tier}>{actionButtons}</ScalarActionButtons>
       <Stack
         pos="relative"

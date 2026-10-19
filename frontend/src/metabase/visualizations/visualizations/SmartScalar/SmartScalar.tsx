@@ -45,6 +45,7 @@ function SmartScalarComponent(
     fontFamily,
     onRenderError,
     actionButtons,
+    cardLevelFilters,
     isQueryBuilder,
     isStandaloneQuestion,
   } = props;
@@ -225,7 +226,11 @@ function SmartScalarComponent(
   }
 
   return (
-    <ScalarCardShell tier={tier} actionButtons={actionButtons}>
+    <ScalarCardShell
+      tier={tier}
+      actionButtons={actionButtons}
+      cardLevelFilters={cardLevelFilters}
+    >
       <Box {...valueBoxProps}>
         {valueElement}
         {symbolElement}
