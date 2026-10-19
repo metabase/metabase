@@ -172,6 +172,19 @@
                           db      (assoc "db" (to-identifier db))
                           catalog (assoc "catalog" (to-identifier catalog))))))))
 
+;;; ------------------------------------------------------ errors ------------------------------------------------------
+
+(defn python-error
+  "An exception for a failure `sql_tools.py` raises itself, which [[metabase.sql-parsing.sqlglot-java/parser]] reports
+  under the Python error name `error-type`, e.g. `\"ValueError\"`."
+  [error-type message]
+  (ex-info message {::python-error-type error-type}))
+
+(defn python-error-type
+  "The Python error name of an exception made by [[python-error]], else nil."
+  [e]
+  (::python-error-type (ex-data e)))
+
 (defn instance-of-any?
   "Whether `node` is an instance of one of `classes`."
   [classes node]

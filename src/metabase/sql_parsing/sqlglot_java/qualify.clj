@@ -96,7 +96,7 @@
                         :validate?     true
                         :sql           sql})
         _    (when-not (instance? Expressions$Query stmt)
-               (throw (ex-info "Ast does not represent a `Query`." {:sql-parsing.sqlglot-java/error-type "AssertionError"})))
+               (throw (ast/python-error "AssertionError" "Ast does not represent a `Query`.")))
         qualified-sql (ast/sql stmt dialect)]
     (vec (for [select-name (.namedSelects ^Expr stmt)
                :let [^Lineage$Node root (Lineage/lineage select-name qualified-sql nil nil dialect nil true true nil nil)]]

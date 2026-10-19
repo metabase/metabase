@@ -127,8 +127,7 @@
 (defn- attribute-error
   "The error Python raises calling `method` on None."
   [method]
-  (ex-info (str "'NoneType' object has no attribute '" method "'")
-           {:sql-parsing.sqlglot-java/error-type "AttributeError"}))
+  (ast/python-error "AttributeError" (str "'NoneType' object has no attribute '" method "'")))
 
 (defn referenced-fields
   "`[catalog schema table field]` of every field `sql` reads from a real table, sorted; `*` for a wildcard."

@@ -46,7 +46,7 @@
   [sql table-name dialect]
   (let [stmt      (ast/parse-one sql dialect)
         _         (when-not (instance? Expressions$Select stmt)
-                    (throw (ex-info "SQL must be a SELECT statement" {:sql-parsing.sqlglot-java/error-type "ValueError"})))
+                    (throw (ast/python-error "ValueError" "SQL must be a SELECT statement")))
         cte-names (into #{} (keep #(not-empty (ast/node-alias %))) (ast/find-all stmt Expressions$CTE))
         ^Set seen (Collections/newSetFromMap (IdentityHashMap.))]
     (doseq [^Scope scope (.traverse (Scope/build stmt))
