@@ -11,6 +11,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
@@ -61,6 +62,50 @@
                                                               :user   "rasta"}))))
     (testing "Things that you can connect to, but are not DBs, should fail"
       (is (not (driver.u/can-connect-with-details? :postgres {:host "google.com", :port 80}))))))
+
+(deftest disallowed-connection-parameters-checked-before-connecting-test
+  ;; `validate-db-details!` only runs when a connection is tested. A database that never was -- saved before a
+  ;; parameter was disallowed, imported through serialization, provisioned from a config file -- must still be refused
+  ;; when its pool is created.
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    (doseq [details [{:host "db.example.com" :port 5432 :dbname "db" :additional-options "socketFactory=a.b.C"}
+                     ;; several drivers hand detail keys they do not recognize to the client as connection properties
+                     {:host "db.example.com" :port 5432 :dbname "db" :sslfactory "a.b.C"}]]
+      (testing (pr-str details)
+        (testing "when a connection pool is created"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"dangerous"
+               (#'sql-jdbc.conn/create-pool! (t2/instance :model/Database {:id      Integer/MAX_VALUE
+                                                                           :engine  driver/*driver*
+                                                                           :details details})))))
+        (testing "when a connection is tested"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"dangerous"
+               (sql-jdbc.conn/with-connection-spec-for-testing-connection [_spec [driver/*driver* details]]
+                 ::reached))))))))
+
+(deftest disallowed-connection-parameters-from-auth-provider-test
+  ;; an auth provider's response is merged into the details (see [[driver/incorporate-auth-provider-details]]), so it
+  ;; can set a connection parameter the user never could
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    (let [details {:host              "db.example.com"
+                   :port              5432
+                   :dbname            "db"
+                   :use-auth-provider true
+                   :auth-provider     "http"
+                   :http-auth-url     "https://auth.example.com/token"}]
+      (mt/with-dynamic-fn-redefs [auth-provider/fetch-auth (constantly {:sslfactory "a.b.C"})]
+        (testing "when a connection pool is created"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"dangerous"
+               (#'sql-jdbc.conn/create-pool! (t2/instance :model/Database {:id      Integer/MAX_VALUE
+                                                                           :engine  driver/*driver*
+                                                                           :details details})))))
+        (testing "when a connection is tested"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"dangerous"
+               (sql-jdbc.conn/with-connection-spec-for-testing-connection [_spec [driver/*driver* details]]
+                 ::reached))))))))
 
 (deftest db->pooled-connection-spec-test
   (mt/test-driver :h2
