@@ -69,6 +69,15 @@ describe("DashboardMoreMenu", () => {
     expect(await getMenuItemLabels()).toEqual(["Bookmark", "Duplicate"]);
   });
 
+  it("offers no Verify to an admin who cannot write the dashboard", async () => {
+    setup({
+      dashboard: createMockDashboard({ can_write: false }),
+      isAdmin: true,
+    });
+
+    expect(await getMenuItemLabels()).toEqual(["Bookmark", "Duplicate"]);
+  });
+
   it("keeps Verify and drops the edits when remote sync is read-only", async () => {
     setup({
       dashboard: createMockDashboard({ can_write: true }),

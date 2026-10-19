@@ -32,7 +32,7 @@ export function DashboardModal({
       <CollectionCopyEntityModal
         entityObject={{ ...dashboard, model: "dashboard" }}
         onClose={onClose}
-        onSaved={(copy: Dashboard) => {
+        onSaved={(copy: Pick<Dashboard, "id">) => {
           onClose();
           navigate(Urls.dataStudioDashboard(copy.id));
         }}

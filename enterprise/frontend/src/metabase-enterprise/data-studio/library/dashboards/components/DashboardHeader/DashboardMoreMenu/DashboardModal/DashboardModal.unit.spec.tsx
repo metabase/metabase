@@ -9,6 +9,8 @@ import {
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
+  setupSearchEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -99,8 +101,8 @@ function setupPickerEndpoints() {
   setupCollectionItemsEndpoint({ collection: ROOT, collectionItems: [] });
   setupCollectionItemsEndpoint({ collection: SALES, collectionItems: [] });
   setupCollectionItemsEndpoint({ collection: EXAMPLES, collectionItems: [] });
-  fetchMock.get("path:/api/search", { data: [] });
-  fetchMock.get("path:/api/user/recipients", { data: [] });
+  setupSearchEndpoints([]);
+  setupUserRecipientsEndpoint({ users: [] });
 }
 
 async function getLastRequestBody(
@@ -136,36 +138,57 @@ describe("DashboardModal", () => {
   });
 
   describe("duplicate", () => {
-    it.each([
-      { where: "in the Library", collectionId: SALES.id },
-      { where: "outside the Library", collectionId: EXAMPLES.id },
-    ])(
-      "opens the copy in Data Studio when it is saved $where",
-      async ({ collectionId }) => {
-        const copy = createMockDashboard({
-          id: 42,
-          name: "Sales overview - Duplicate",
-          collection_id: collectionId,
-        });
-        fetchMock.post("path:/api/dashboard/10/copy", copy);
-        const { onClose, router } = setup({ modalType: "duplicate" });
+    const COPY = createMockDashboard({
+      id: 42,
+      name: "Sales overview - Duplicate",
+    });
 
-        await userEvent.click(
-          await screen.findByRole("button", { name: "Duplicate" }),
-        );
+    it("opens the copy in Data Studio when it is saved in the Library", async () => {
+      fetchMock.post("path:/api/dashboard/10/copy", COPY);
+      const { onClose, router } = setup({ modalType: "duplicate" });
 
-        await waitFor(() =>
-          expect(router?.location.pathname).toBe("/data-studio/dashboards/42"),
-        );
-        expect(onClose).toHaveBeenCalled();
-        expect(
-          await getLastRequestBody("path:/api/dashboard/10/copy", "POST"),
-        ).toMatchObject({
-          name: "Sales overview - Duplicate",
-          collection_id: SALES.id,
-        });
-      },
-    );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Duplicate" }),
+      );
+
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe("/data-studio/dashboards/42"),
+      );
+      expect(onClose).toHaveBeenCalled();
+      expect(
+        await getLastRequestBody("path:/api/dashboard/10/copy", "POST"),
+      ).toMatchObject({
+        name: "Sales overview - Duplicate",
+        collection_id: SALES.id,
+      });
+    });
+
+    it("opens the copy in Data Studio when it is saved outside the Library", async () => {
+      setupPickerEndpoints();
+      fetchMock.post("path:/api/dashboard/10/copy", {
+        ...COPY,
+        collection_id: EXAMPLES_ID,
+      });
+      const { onClose, router } = setup({ modalType: "duplicate" });
+
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: /Which collection should this go in/,
+        }),
+      );
+      await userEvent.click(await screen.findByText("Our analytics"));
+      await userEvent.click(await screen.findByText("Examples"));
+      await userEvent.click(screen.getByRole("button", { name: "Select" }));
+      await userEvent.click(screen.getByRole("button", { name: "Duplicate" }));
+
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe("/data-studio/dashboards/42"),
+      );
+      expect(onClose).toHaveBeenCalled();
+      expect(
+        await getLastRequestBody("path:/api/dashboard/10/copy", "POST"),
+      ).toMatchObject({ collection_id: EXAMPLES_ID });
+    });
   });
 
   describe("trash", () => {
