@@ -120,7 +120,7 @@
         (task-history/task-run-work-done! @run-id)
         (is (= :success (t2/select-one-fn :status :model/TaskRun :id @run-id)))))))
 
-(deftest task-run-work-done-recomputes-run-without-owner-test
+(deftest task-run-work-done-recomputes-async-run-test
   (testing "for an :auto-complete false run, each task-run-work-done! sets the run status from the tasks as they are now (GDGT-3331)"
     (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
       (let [run-id   (task-run/create-task-run! {:run_type    :subscription
