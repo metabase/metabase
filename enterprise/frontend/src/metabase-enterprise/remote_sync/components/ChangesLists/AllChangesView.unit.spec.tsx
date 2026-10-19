@@ -1,8 +1,10 @@
+import fetchMock from "fetch-mock";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupCollectionTreeEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/displayGroups";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
@@ -185,6 +187,31 @@ describe("AllChangesView", () => {
         await screen.findByText("My Transforms Collection"),
       ).toBeInTheDocument();
       expect(screen.getByText("Transform in Collection")).toBeInTheDocument();
+    });
+
+    it("should load transforms collections while remote-sync-transforms is off, so removed transforms keep their folders", async () => {
+      const removedTransform = createMockRemoteSyncEntity({
+        id: 200,
+        name: "Removed Transform",
+        model: "transform",
+        collection_id: 100,
+        sync_status: "removed",
+      });
+
+      setup({
+        entities: [removedTransform],
+        collections: [],
+        isTransformsSyncEnabled: false,
+      });
+
+      await waitFor(() => {
+        const namespaces = fetchMock.callHistory
+          .calls("collection-tree-simple")
+          .map((call) => new URL(call.url).searchParams.getAll("namespaces"));
+        expect(namespaces).toContainEqual(
+          expect.arrayContaining(["transforms"]),
+        );
+      });
     });
 
     it("should display transforms collection hierarchy when remote-sync-transforms is enabled", async () => {

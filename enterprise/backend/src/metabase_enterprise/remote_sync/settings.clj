@@ -1,8 +1,6 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
    [clojure.string :as str]
-   [java-time.api :as t]
-   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
@@ -98,56 +96,13 @@
   :encryption :no
   :default 60)
 
-(def ^:const transforms-root-id
-  "Sentinel value for the virtual Transforms root collection.
-   Used to represent the entire transforms feature being enabled/disabled."
-  -1)
-
-(defn- replace-transforms-root-rso!
-  "Replaces the Transforms root RSO with one in `status`."
-  [status]
-  (remote-sync.db/delete-rso-of! "Collection" transforms-root-id)
-  (remote-sync.db/insert-rso! {:model_type        "Collection"
-                               :model_id          transforms-root-id
-                               :model_name        "Transforms"
-                               :status            status
-                               :status_changed_at (t/offset-date-time)}))
-
-(defn sync-transform-tracking!
-  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when newly enabled, 'delete'
-  when disabled after being tracked, left alone when already in that state (the settings cache also calls this on
-  every load), and absent on a read-only instance, which has nothing to publish."
-  [enabled?]
-  (let [status (:status (remote-sync.db/rso "Collection" transforms-root-id))]
-    (cond
-      (= :read-only (remote-sync-type))
-      (when status
-        (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
-
-      enabled?
-      (when-not (#{"create" "synced"} status)
-        (replace-transforms-root-rso! "create"))
-
-      (and status (not= "delete" status))
-      (replace-transforms-root-rso! "delete"))))
-
-(defn- sync-transform-tracking-on-change
-  "Called when remote-sync-transforms setting changes."
-  [_old-value new-value]
-  ;; new-value may be a string "true"/"false" or a boolean, so we need to parse it
-  (let [enabled? (if (string? new-value)
-                   (parse-boolean new-value)
-                   (boolean new-value))]
-    (sync-transform-tracking! enabled?)))
-
 (defsetting remote-sync-transforms
-  (deferred-tru "Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).")
+  (deferred-tru "Whether to sync transforms via remote-sync. When enabled, transforms, transform tags, transform tests, Python libraries, and transforms folders are synced.")
   :type :boolean
   :visibility :admin
   :export? false
   :encryption :no
-  :default false
-  :on-change sync-transform-tracking-on-change)
+  :default false)
 
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
