@@ -205,9 +205,8 @@
                             (map #(get-in % [:changeSet :id]))
                             seq))]
     (throw (validation-error
-            #_{:clj-kondo/ignore [:unresolved-symbol]}
-            (format "Migration(s) [%s] give entity_id the bare char(21) type; use ${entity_id.type}"
-                    (str/join "," (map #(str "'" % "'") bad-ids)))
+            (str "Migration(s) [" (str/join "," (map #(str "'" % "'") bad-ids))
+                 "] give entity_id the bare char(21) type; use ${entity_id.type}")
             {:invalid-ids (vec bad-ids)}))))
 
 (def ^:private directory-based-id-format-re
