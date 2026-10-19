@@ -3,10 +3,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.test-util :as sql-tools.tu]))
 
 (defn- ->references [query]
-  (sql-parsing/field-references "postgres" query))
+  (sql-parsing/field-references (sql-tools.tu/sqlglot-parser) "postgres" query))
 
 (deftest ^:parallel garbage-test
   (is (= {:used-fields #{}

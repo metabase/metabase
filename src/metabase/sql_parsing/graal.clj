@@ -1,5 +1,5 @@
 (ns metabase.sql-parsing.graal
-  "The `:graalvm` [[metabase.sql-parsing.protocol/SqlParser]]: runs sqlglot on GraalPy in-process on a
+  "The `:sqlglot` [[metabase.sql-parsing.protocol/SqlParser]]: runs sqlglot on GraalPy in-process on a
   pool of sandboxed GraalVM contexts (up to three by default).
 
   The pooled contexts share one `Engine` and one parsed bootstrap `Source`: the engine (and its code
@@ -267,7 +267,7 @@
          (throw (common/call-failed-ex (.getMessage e) e)))))))
 
 (defn parser
-  "The `:graalvm` [[metabase.sql-parsing.protocol/SqlParser]] — runs sqlglot on GraalPy on the pooled
+  "The `:sqlglot` [[metabase.sql-parsing.protocol/SqlParser]] — runs sqlglot on GraalPy on the pooled
   contexts."
   []
   (common/make-parser call-python))

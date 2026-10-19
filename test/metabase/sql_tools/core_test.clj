@@ -117,7 +117,7 @@
             (sql-tools/referenced-tables-raw :postgres "SELECT * FROM public.orders"))))))
 
 (deftest ^:parallel referenced-tables-raw-strict-parse-error-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "ordinary callers retain the fail-soft behavior"
       (is (= [] (sql-tools/referenced-tables-raw :postgres "SELECT !!!"))))
     (testing "Guard A can distinguish a parse failure from a query with no table reads"
@@ -127,11 +127,11 @@
         (is (sql-parsing/parse-error? e))))))
 
 ;;; -------------------------------------------- transpile-sql ---------------------------------------------
-;; transpile-sql is only implemented for the :sqlglot backend, so these tests bind it directly
-;; rather than using test-parser-backends.
+;; transpile-sql is only implemented for the sqlglot backends, so these tests bind one (GraalPy, or the Java port
+;; under MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java) rather than using test-parser-backends.
 
 (deftest ^:parallel transpile-sql-no-added-quoting-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "unquoted identifiers stay unquoted, so folding dialects resolve them as written"
       (doseq [dialect ["snowflake" "postgres" "mysql"]]
         (testing dialect
@@ -142,7 +142,7 @@
             (is (not (re-find #"[\"`]" transpiled-sql)))))))))
 
 (deftest ^:parallel transpile-sql-multi-statement-rejected-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "Multiple SQL statements should be rejected"
       (let [{:keys [status error-message]} (sql-tools/transpile-sql "SELECT 1; SELECT 2"
                                                                     "postgres" "postgres")]
@@ -150,7 +150,7 @@
         (is (str/includes? error-message "Multiple SQL statements"))))))
 
 (deftest ^:parallel transpile-sql-preserves-query-structure-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "Transpilation preserves query structure"
       (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql
                                              "SELECT a, b FROM t WHERE x > 1 ORDER BY a"
@@ -162,7 +162,7 @@
         (is (str/includes? transpiled-sql "ORDER BY"))))))
 
 (deftest ^:parallel transpile-sql-pretty-formatting-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "Transpilation applies pretty formatting (newlines)"
       (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql "SELECT a,b,c FROM users WHERE id=1"
                                                                      "postgres" "postgres")]
@@ -170,7 +170,7 @@
         (is (str/includes? transpiled-sql "\n"))))))
 
 (deftest ^:parallel transpile-sql-template-tags-skipped-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "SQL with Metabase template tags is skipped"
       (let [{:keys [status reason]} (sql-tools/transpile-sql "SELECT * FROM {{#42}} WHERE id = {{user_id}}"
                                                              "postgres" "postgres")]
@@ -183,7 +183,7 @@
         (is (= :contains-templates reason))))))
 
 (deftest ^:parallel transpile-sql-missing-dialect-skipped-test
-  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+  (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
     (testing "Nil dialects are skipped"
       (let [{:keys [status reason]} (sql-tools/transpile-sql "SELECT 1" nil nil)]
         (is (= :skipped status))
