@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { Revision } from "metabase-types/api";
+import type { CardId, DashboardId, Revision } from "metabase-types/api";
 
 export function setupRevisionsEndpoints(revisions: Revision[]) {
   fetchMock.get("path:/api/revision", revisions);
@@ -38,4 +38,25 @@ export function setupTransformRevisionsEndpoint(
     `path:/api/revision?entity=transform&id=${transformId}`,
     revisions,
   );
+}
+
+export function setupCardRevisionsEndpoint(
+  cardId: CardId,
+  revisions: Revision[],
+) {
+  fetchMock.get(`path:/api/revision?entity=card&id=${cardId}`, revisions);
+}
+
+export function setupDashboardRevisionsEndpoint(
+  dashboardId: DashboardId,
+  revisions: Revision[],
+) {
+  fetchMock.get(
+    `path:/api/revision?entity=dashboard&id=${dashboardId}`,
+    revisions,
+  );
+}
+
+export function setupRevertRevisionEndpoint(revision: Revision) {
+  fetchMock.post("path:/api/revision/revert", revision);
 }
