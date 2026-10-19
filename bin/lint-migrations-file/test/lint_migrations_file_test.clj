@@ -278,6 +278,38 @@
                   :id "v49.00-033"
                   :changes [(mock-add-column-changes :columns [(mock-column :type "boolean")])]))))))
 
+(defn- validate-065 [& changes]
+  (apply validate-file (io/file "065/20261019_test.yaml") changes))
+
+(defn- validate-065-older [& changes]
+  (apply validate-file (io/file "065/20261018_test.yaml") changes))
+
+(deftest ^:parallel require-entity-id-type-test
+  (testing "should allow \"${entity_id.type}\" entity_id columns"
+    (is (= :ok
+           (validate-065
+            (mock-change-set
+             :id "v65.2026-10-19T00:00:00"
+             :changes [(mock-add-column-changes :columns [(mock-column :name "entity_id" :type "${entity_id.type}")])])))))
+  (testing "should prevent bare char(21) entity_id columns in files from 20261019 on"
+    (doseq [change [(mock-add-column-changes :columns [(mock-column :name "entity_id" :type "char(21)")])
+                    (mock-create-table-changes :columns [(mock-column :name "entity_id" :type "CHAR(21)")])
+                    {:addNotNullConstraint {:tableName "my_table" :columnName "entity_id" :columnDataType "char(21)"}}
+                    {:modifyDataType {:tableName "my_table" :columnName "entity_id" :newDataType "char(21)"}}]]
+      (is-thrown-with-error-info?
+       "Migration(s) ['v65.2026-10-19T00:00:00'] give entity_id the bare char(21) type; use ${entity_id.type}"
+       {:invalid-ids ["v65.2026-10-19T00:00:00"]}
+       (validate-065 (mock-change-set :id "v65.2026-10-19T00:00:00" :changes [change] :rollback nil))))
+    (testing "but not in older migrations, nor for other columns or other entity_id types"
+      (is (= :ok (validate-065-older (mock-change-set
+                                      :id "v65.2026-10-18T00:00:00"
+                                      :changes [(mock-add-column-changes :columns [(mock-column :name "entity_id" :type "char(21)")])]))))
+      (doseq [column [(mock-column :name "other_id" :type "char(21)")
+                      (mock-column :name "entity_id" :type "bigint")]]
+        (is (= :ok (validate-065 (mock-change-set
+                                  :id "v65.2026-10-19T00:00:00"
+                                  :changes [(mock-add-column-changes :columns [column])]))))))))
+
 (deftest ^:parallel require-rollback-test
   (testing "change types with no automatic rollback support"
     (testing "missing rollback key fails"

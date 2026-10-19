@@ -672,8 +672,7 @@
                  :cache_ttl
                  ;; describes a sync on the source instance, and may name its connection details
                  :initial_sync_error]
-     :transform {:created_at          (serdes/date)
-                 :details             details-transform
+     :transform {:details             details-transform
                  :write_data_details  details-transform
                  :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)
