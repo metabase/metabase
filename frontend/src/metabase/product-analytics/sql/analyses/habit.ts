@@ -1,5 +1,4 @@
 import type { AnalysisSpec } from "../../spec/types";
-import { seconds } from "../compile/actorPredicate";
 import { dateTimeLit, num } from "../compile/dialect";
 import { grainLabel } from "../compile/grain";
 import type { DrillPoint, QueryPlan } from "../compose";
@@ -18,16 +17,7 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
     return { ctes: [], select: "SELECT 1", warnings: [] };
   }
 
-  const lookback = seconds({
-    value: habit.lookback.value,
-    unit: habit.lookback.unit,
-  });
-  const base = scopedEvents(
-    spec,
-    habit.active,
-    [],
-    [`created_at >= now() - INTERVAL ${lookback} SECOND`],
-  );
+  const base = scopedEvents(spec, habit.active);
   const people = grainLabel(spec.grain);
 
   const counts = {
@@ -118,7 +108,9 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n"),
     warnings: [
       ...base.warnings,
-      `The histogram is capped by the lookback: at most ${habit.lookback.value} ${habit.lookback.unit}s of ${habit.subPeriod}s.`,
+      habit.periods !== undefined
+        ? `The histogram is capped by the date range: at most ${habit.periods} ${habit.subPeriod}s.`
+        : `The histogram is capped by the date range.`,
     ],
   };
 };

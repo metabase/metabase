@@ -1,0 +1,50 @@
+/* Sits beside the setup panel, so it's drawn like one. */
+.root {
+  flex-shrink: 0;
+  height: 100%;
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  transition: border-color 120ms ease;
+}
+
+.handle {
+  cursor: col-resize;
+  z-index: 1;
+}
+
+/* Hovering the grab strip only darkens the panel's edge. */
+.root:has(.handle:hover) {
+  border-right-color: var(--mb-color-border-strong);
+}
+
+/* While the toolbar button that closes the palette is hovered. */
+.root[data-hinted="true"] {
+  border-color: var(--mb-color-border-brand);
+}
+
+.section {
+  border: 1px dashed transparent;
+  border-radius: var(--mantine-radius-sm);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.section[data-drop-active="true"] {
+  border-color: var(--mb-color-border-brand);
+}
+
+.section[data-drop-over="true"] {
+  background-color: var(--mb-color-background-brand);
+}
+
+.section[data-drop-active="true"] * {
+  pointer-events: none;
+}
+
+/* On the body while the panel is being resized. */
+.noSelect {
+  user-select: none;
+  -webkit-user-select: none;
+}

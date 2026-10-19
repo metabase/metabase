@@ -1,0 +1,13 @@
+.button {
+  transition: background-color 120ms ease;
+}
+
+.button[data-hinted="true"] {
+  background-color: var(--mb-color-background-brand);
+  color: var(--mb-color-text-brand);
+}
+
+/* The drag enters and leaves the icon and label too; let the button alone see it. */
+.button[data-drop-active="true"] * {
+  pointer-events: none;
+}

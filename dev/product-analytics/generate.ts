@@ -24,6 +24,7 @@ const LEAD_WEEKS = 2;
 
 type Persona = "power" | "regular" | "casual" | "churned";
 type Plan = "starter" | "pro" | "business";
+type TrialSource = "pricing_page" | "onboarding" | "sales_email";
 
 /** Matches Track's pa_identities: session_id is the identify() id. */
 type IdentityRow = {
@@ -70,6 +71,75 @@ type GroundTruth = {
   twoDevicePeople: number;
   /** People with at least one identify() call, so one pa_identities_resolved row each. */
   identifiedPeople: number;
+  insights: PlantedInsights;
+};
+
+/** A funnel transition, named by its steps in `check.ts`'s funnel spec. */
+type Transition = "Viewed pricing → Started trial" | "Started trial → Purchased";
+
+/** What the insight search should and shouldn't find; see `check-insights.ts`. */
+type PlantedInsights = {
+  expected: {
+    transition: Transition;
+    /** Any of these. Different conditions can describe the same people. */
+    conditions: Record<string, string>[];
+    direction: "higher" | "lower";
+    why: string;
+  }[];
+  unexpected: {
+    transition: Transition;
+    column: string;
+    /** Any value of the column when absent. */
+    value?: string;
+    why: string;
+  }[];
+};
+
+// Conversion multipliers the generator applies. Everything else about a
+// person is independent of whether they convert.
+const IOS_CHECKOUT = 0.5;
+const ANDROID_FIREFOX_TRIAL = 0.25;
+const SALES_EMAIL_CHECKOUT = 1.8;
+const NZ_TRIAL = 2.4;
+
+const PLANTED_INSIGHTS: PlantedInsights = {
+  expected: [
+    {
+      transition: "Started trial → Purchased",
+      conditions: [{ os: "iOS" }],
+      direction: "lower",
+      why: `iOS checkout conversion × ${IOS_CHECKOUT}. iOS always means Safari, so this should not also show as Safari, or Safari and iOS.`,
+    },
+    {
+      transition: "Viewed pricing → Started trial",
+      // Mobile Firefox is always Android.
+      conditions: [
+        { browser: "Firefox", os: "Android" },
+        { browser: "Firefox", device: "mobile" },
+      ],
+      direction: "lower",
+      why: `Android + Firefox trial starts × ${ANDROID_FIREFOX_TRIAL}. Android or Firefox alone should be explained by the pair.`,
+    },
+    {
+      transition: "Started trial → Purchased",
+      conditions: [{ trial_source: "sales_email" }],
+      direction: "higher",
+      why: `Checkout × ${SALES_EMAIL_CHECKOUT}. trial_source is only set on trial_started events, so this tests sparse columns.`,
+    },
+  ],
+  unexpected: [
+    {
+      transition: "Started trial → Purchased",
+      column: "plan",
+      why: "plan is only set on checkout_completed, so it isn't known when someone starts a trial.",
+    },
+    {
+      transition: "Viewed pricing → Started trial",
+      column: "country",
+      value: "NZ",
+      why: `NZ trial starts × ${NZ_TRIAL}, but NZ is too small to report.`,
+    },
+  ],
 };
 
 const COUNTRIES: [string, number][] = [
@@ -83,6 +153,8 @@ const COUNTRIES: [string, number][] = [
   ["BR", 0.04],
   ["NL", 0.04],
   ["JP", 0.04],
+  // Too few people to report, however strong their effect.
+  ["NZ", 0.002],
 ];
 
 const FIRST_NAMES = [
@@ -391,6 +463,7 @@ const truth: GroundTruth = {
   inviteWeek1: 0,
   twoDevicePeople: 0,
   identifiedPeople: 0,
+  insights: PLANTED_INSIGHTS,
 };
 
 function bump(name: keyof GroundTruth["counts"], n = 1) {
@@ -431,11 +504,27 @@ function makePerson(i: number) {
     Math.floor(rng() * 3_600_000);
 
   const profile = deviceProfile(rng);
+  const country = pickWeighted(rng, COUNTRIES);
   const twoDevices = rng() < 0.15;
   const persona = personaOf(rng);
+  const trialSource = pickWeighted<TrialSource>(rng, [
+    ["pricing_page", 0.5],
+    ["onboarding", 0.35],
+    ["sales_email", 0.15],
+  ]);
+  const trialChance =
+    0.38 *
+    (profile.os === "Android" && profile.browser === "Firefox"
+      ? ANDROID_FIREFOX_TRIAL
+      : 1) *
+    (country === "NZ" ? NZ_TRIAL : 1);
+  const checkoutChance =
+    0.3 *
+    (profile.os === "iOS" ? IOS_CHECKOUT : 1) *
+    (trialSource === "sales_email" ? SALES_EMAIL_CHECKOUT : 1);
   const sawPricing = rng() < 0.62;
-  const startsTrial = sawPricing && rng() < 0.38;
-  const checksOut = startsTrial && rng() < 0.3;
+  const startsTrial = sawPricing && rng() < trialChance;
+  const checksOut = startsTrial && rng() < checkoutChance;
   const plan = pickWeighted<Plan>(rng, [
     ["starter", 0.5],
     ["pro", 0.35],
@@ -474,7 +563,7 @@ function makePerson(i: number) {
     },
     visitorIds: twoDevices ? [`vid_${i}_0`, `vid_${i}_1`] : [`vid_${i}_0`],
     signupAt,
-    country: pickWeighted(rng, COUNTRIES),
+    country,
     ...profile,
     persona,
     sawPricing,
@@ -482,6 +571,7 @@ function makePerson(i: number) {
     checksOut,
     plan,
     amount,
+    trialSource,
     willInvite,
     cancels: checksOut && rng() < 0.1,
   };
@@ -656,7 +746,16 @@ function simulatePerson(
     const at =
       person.signupAt + (2 * 3_600_000 + Math.floor(rng() * 3 * 86_400_000));
     if (at < END_MS) {
-      push(at, { type: 2, name: "trial_started", path: "/app" }, true);
+      push(
+        at,
+        {
+          type: 2,
+          name: "trial_started",
+          path: "/app",
+          data: { trial_source: person.trialSource },
+        },
+        true,
+      );
       identify(identities, person, at, "trial");
       truth.funnel.trial_started += 1;
       trialAt = at;

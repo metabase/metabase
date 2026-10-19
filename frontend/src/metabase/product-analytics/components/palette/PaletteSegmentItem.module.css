@@ -1,0 +1,33 @@
+.item {
+  cursor: grab;
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-primary);
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.item:hover {
+  background-color: var(--mb-color-background-hover);
+  border-color: var(--mb-color-border-brand);
+}
+
+.item:active {
+  cursor: grabbing;
+}
+
+.item[data-selectable="true"] {
+  cursor: pointer;
+}
+
+.item[data-status="draft"] {
+  border-style: dashed;
+}
+
+.item[data-status="sample"] {
+  color: var(--mb-color-text-secondary);
+}
+
+.item[data-dragging="true"] {
+  opacity: 0.5;
+}

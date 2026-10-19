@@ -1,27 +1,18 @@
 import type { KeyboardEvent } from "react";
 import { useState } from "react";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
-import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Flex,
-  Group,
-  Icon,
-  Popover,
-  Stack,
-  Tooltip,
-} from "metabase/ui";
+import { Button, Group, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { getConditionsName } from "../../events/conditions-name";
 import { readEventQuery } from "../../events/read-event-query";
 import type { EventDefinition } from "../../events/types";
 import { useClickOutsideFirst } from "../../use-click-outside-first";
+
+import { ConditionsEditor } from "./ConditionsEditor";
 
 const STAGE_INDEX = -1;
 
@@ -29,6 +20,7 @@ type EventDefinitionEditorProps = {
   id?: string;
   value: EventDefinition | null;
   tableQuery: Lib.Query;
+  namePlaceholder?: string;
   onCancel: () => void;
   onSubmit: (value: EventDefinition) => void;
 };
@@ -43,6 +35,7 @@ export const EventDefinitionEditor = ({
   id,
   value,
   tableQuery,
+  namePlaceholder = t`Give this set of conditions a name`,
   onCancel,
   onSubmit,
 }: EventDefinitionEditorProps) => {
@@ -93,6 +86,7 @@ export const EventDefinitionEditor = ({
       id={id}
       gap="sm"
       p="sm"
+      bg="background-primary"
       bd="1px solid var(--mb-color-border-neutral)"
       bdrs="sm"
       onPointerDownCapture={handlePointerDownInside}
@@ -103,149 +97,28 @@ export const EventDefinitionEditor = ({
           key={committedName}
           flex={1}
           miw={0}
+          w="100%"
           bg="input-background"
           bd="1px solid var(--mb-color-border-neutral)"
           bdrs="xs"
           initialValue={committedName}
-          placeholder={t`Give this set of conditions a name`}
+          placeholder={namePlaceholder}
           data-testid="event-definition-name"
           onChange={handleNameChange}
           onContentChange={setDraftName}
           onBlur={() => setDraftName(null)}
         />
-        <Tooltip label={t`Done`}>
-          <ActionIcon
-            size="lg"
-            c="icon-primary"
-            bd="1px solid var(--mb-color-border-neutral)"
-            aria-label={t`Done`}
-            disabled={!canSubmit}
-            onClick={handleSubmit}
-          >
-            <Icon name="check" />
-          </ActionIcon>
-        </Tooltip>
       </Group>
-      {filters.length > 0 && (
-        <Flex gap="sm" wrap="wrap">
-          {filters.map((filter, filterIndex) => (
-            <ConditionPill
-              key={filterIndex}
-              query={query}
-              filter={filter}
-              filterIndex={filterIndex}
-              onChange={setQuery}
-            />
-          ))}
-        </Flex>
-      )}
-      <AddConditionButton
+      <ConditionsEditor
         query={query}
         onChange={setQuery}
         initialOpened={filters.length === 0}
       />
-    </Stack>
-  );
-};
-
-/** The conditions' names joined with "and", or "" without conditions. */
-const getConditionsName = (query: Lib.Query): string => {
-  const [first, ...rest] = Lib.filters(query, STAGE_INDEX).map(
-    (filter) => Lib.displayInfo(query, STAGE_INDEX, filter).displayName,
-  );
-  return rest.reduce(
-    (names, name) =>
-      c("{0} is a list of conditions, {1} is one more condition")
-        .t`${names} and ${name}`,
-    first ?? "",
-  );
-};
-
-type ConditionPillProps = {
-  query: Lib.Query;
-  filter: Lib.FilterClause;
-  filterIndex: number;
-  onChange: (query: Lib.Query) => void;
-};
-
-const ConditionPill = ({
-  query,
-  filter,
-  filterIndex,
-  onChange,
-}: ConditionPillProps) => {
-  const [isOpened, setIsOpened] = useState(false);
-  const { displayName } = Lib.displayInfo(query, STAGE_INDEX, filter);
-
-  const handleSelect = (newFilter: Lib.Filterable) => {
-    onChange(Lib.replaceClause(query, STAGE_INDEX, filter, newFilter));
-    setIsOpened(false);
-  };
-
-  return (
-    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
-      <Popover.Target>
-        <FilterPill
-          onClick={() => setIsOpened(!isOpened)}
-          onRemoveClick={() =>
-            onChange(Lib.removeClause(query, STAGE_INDEX, filter))
-          }
-        >
-          {displayName}
-        </FilterPill>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <Box mah="80vh">
-          <FilterPicker
-            query={query}
-            stageIndex={STAGE_INDEX}
-            filter={filter}
-            filterIndex={filterIndex}
-            onSelect={handleSelect}
-          />
-        </Box>
-      </Popover.Dropdown>
-    </Popover>
-  );
-};
-
-type QueryEditorProps = {
-  query: Lib.Query;
-  onChange: (query: Lib.Query) => void;
-  initialOpened: boolean;
-};
-
-const AddConditionButton = ({
-  query,
-  onChange,
-  initialOpened,
-}: QueryEditorProps) => {
-  const [isOpened, setIsOpened] = useState(initialOpened);
-
-  const handleSelect = (filter: Lib.Filterable) => {
-    onChange(Lib.filter(query, STAGE_INDEX, filter));
-    setIsOpened(false);
-  };
-
-  return (
-    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
-      <Popover.Target>
-        <Button
-          leftSection={<Icon name="add" />}
-          onClick={() => setIsOpened(!isOpened)}
-        >
-          {t`Add a condition`}
+      {filters.length > 0 && (
+        <Button fullWidth disabled={!canSubmit} onClick={handleSubmit}>
+          {t`Done`}
         </Button>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <Box mah="80vh">
-          <FilterPicker
-            query={query}
-            stageIndex={STAGE_INDEX}
-            onSelect={handleSelect}
-          />
-        </Box>
-      </Popover.Dropdown>
-    </Popover>
+      )}
+    </Stack>
   );
 };

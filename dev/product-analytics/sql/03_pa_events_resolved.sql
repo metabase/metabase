@@ -4,7 +4,7 @@
 --
 -- person_id is warehouse-side identity stitching:
 --   coalesce(distinct_id, earliest distinct_id for this visitor_id, visitor_id)
--- plan and amount are promoted out of event_data so the prototype does not
+-- plan, trial_source and amount are promoted out of event_data so the prototype does not
 -- need map access in MBQL.
 
 DROP TABLE IF EXISTS product_analytics.pa_events_resolved;
@@ -26,6 +26,7 @@ SELECT
     e.*,
     ifNull(coalesce(e.distinct_id, identity_map.mapped_distinct_id, e.visitor_id), '') AS person_id,
     e.event_data['plan'] AS plan,
+    e.event_data['trial_source'] AS trial_source,
     toFloat64OrNull(e.event_data['amount']) AS amount
 FROM product_analytics.pa_events AS e
 LEFT JOIN identity_map ON identity_map.visitor_id = e.visitor_id;

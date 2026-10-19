@@ -96,7 +96,7 @@ export const getSankeyLayout = (
   );
   const maxRightLabelWidth = Math.max(
     ...mostRightNodes
-      .map(({ node }) => chartModel.formatters.node(node))
+      .map(({ node }) => chartModel.formatters.nodeLabel(node))
       .map((formattedNode) =>
         renderingContext.measureText(formattedNode, {
           ...SANKEY_CHART_STYLE.nodeLabels,

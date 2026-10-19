@@ -1,11 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { ActionIcon, Button, Group, Icon } from "metabase/ui";
+import { ActionIcon, Button, Group, Icon, Tooltip } from "metabase/ui";
 
 import type { CommonSettings } from "../analyses/types";
 import type { SettingKey, SettingWidget } from "../settings/types";
-import type { AnalysisPanel } from "../use-analysis-state";
+import type { AnalysisPanel, HintedPanel } from "../use-analysis-state";
 
 import { SqlModal } from "./SqlModal";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
@@ -22,7 +22,11 @@ type AnalysisToolbarProps = {
   sql: string | null;
   canSave: boolean;
   isSaveDisabled: boolean;
+  isPaletteOpen: boolean;
+  onTogglePalette: () => void;
   onPanelChange: (panel: AnalysisPanel | null) => void;
+  /** The panel whose button is hovered, so the panel can show it's the one. */
+  onHintPanel: (panel: HintedPanel | null) => void;
   onSave: () => void;
 };
 
@@ -37,10 +41,17 @@ export const AnalysisToolbar = ({
   sql,
   canSave,
   isSaveDisabled,
+  isPaletteOpen,
+  onTogglePalette,
   onPanelChange,
+  onHintPanel,
   onSave,
 }: AnalysisToolbarProps) => {
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
+  const hintProps = (target: HintedPanel) => ({
+    onMouseEnter: () => onHintPanel(target),
+    onMouseLeave: () => onHintPanel(null),
+  });
 
   const togglePanel = (target: AnalysisPanel) =>
     onPanelChange(panel === target ? null : target);
@@ -56,11 +67,22 @@ export const AnalysisToolbar = ({
     <>
       <Group justify="space-between" align="center" wrap="wrap" gap="sm">
         <Group gap="sm">
+          <Tooltip label={t`Data and segments`}>
+            <Button
+              variant="default"
+              aria-label={t`Data and segments`}
+              aria-pressed={isPaletteOpen}
+              leftSection={<Icon name="database" />}
+              onClick={onTogglePalette}
+              {...hintProps("palette")}
+            />
+          </Tooltip>
           <Button.Group>
             <Button
               variant="default"
               aria-pressed={panel === "setup"}
               onClick={() => togglePanel("setup")}
+              {...hintProps("setup")}
             >
               {setupLabel}
             </Button>
@@ -71,6 +93,7 @@ export const AnalysisToolbar = ({
                 aria-pressed={panel === "advanced"}
                 leftSection={<Icon name="sliders" />}
                 onClick={() => togglePanel("advanced")}
+                {...hintProps("advanced")}
               />
             )}
           </Button.Group>

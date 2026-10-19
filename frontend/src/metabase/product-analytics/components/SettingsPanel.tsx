@@ -7,6 +7,8 @@ import ChartSettingsWidget from "metabase/visualizations/components/ChartSetting
 import type { SettingWidget } from "../settings/types";
 import type { AnalysisPanel } from "../use-analysis-state";
 
+import S from "./SettingsPanel.module.css";
+
 // ChartSettingsWidget insets itself for the chart settings sidebar; the Paper
 // already provides padding here.
 const WIDGET_STYLE = { marginInline: 0 };
@@ -14,9 +16,15 @@ const WIDGET_STYLE = { marginInline: 0 };
 type SettingsPanelProps = {
   panel: AnalysisPanel;
   widgets: SettingWidget[];
+  /** The toolbar button that closes this panel is hovered. */
+  isHinted?: boolean;
 };
 
-export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
+export const SettingsPanel = ({
+  panel,
+  widgets,
+  isHinted = false,
+}: SettingsPanelProps) => {
   const visible = widgets.filter(
     (widget) => widget.section === panel && !widget.hidden,
   );
@@ -33,7 +41,8 @@ export const SettingsPanel = ({ panel, widgets }: SettingsPanelProps) => {
       px="xl"
       w="25rem"
       mah="100%"
-      className={cx(CS.alignSelfStart, CS.overflowYAuto)}
+      className={cx(S.root, CS.alignSelfStart, CS.overflowYAuto)}
+      data-hinted={isHinted}
     >
       {primary.map((widget) => (
         <ChartSettingsWidget key={widget.id} {...widget} style={WIDGET_STYLE} />

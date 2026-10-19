@@ -140,12 +140,13 @@ export const buildMembersSql = (
   });
 };
 
+/** `plan` defaults to the analysis's own query. */
 export const buildSql = (
   spec: AnalysisSpec,
   baseSql: string,
   baseColumns: BaseColumns,
+  plan: QueryPlan = planAnalysis(spec),
 ): BuiltSql => {
-  const plan = planAnalysis(spec);
   const eventsBase = eventsBaseCte(baseSql, baseColumns);
   const merged: QueryPlan = {
     ...plan,

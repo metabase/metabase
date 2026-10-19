@@ -1,0 +1,33 @@
+.transition {
+  position: relative;
+  isolation: isolate;
+  scroll-margin-top: var(--mantine-spacing-md);
+}
+
+/* Remounted for each focus, which restarts the animation */
+.highlight {
+  position: absolute;
+  inset: calc(-1 * var(--mantine-spacing-sm));
+  z-index: -1;
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background_page-highlighted);
+  pointer-events: none;
+  opacity: 0;
+  animation: fade-out 2s ease-out;
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .highlight {
+    animation: none;
+  }
+}

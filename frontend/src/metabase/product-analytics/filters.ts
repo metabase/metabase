@@ -1,8 +1,9 @@
 import * as Lib from "metabase-lib";
-import type { OpaqueDatasetQuery } from "metabase-types/api";
+import type { OpaqueDatasetQuery, SegmentId } from "metabase-types/api";
 import { isRecord } from "metabase-types/guards";
 
 import type { ColumnRole } from "./columns";
+import type { PaletteSegment } from "./segments/types";
 import type { Grain } from "./spec/types";
 
 /**
@@ -17,14 +18,30 @@ export type CohortFilter = {
   ids: string[];
 };
 
+/**
+ * A segment of the people table, picked from the palette. Prototype: shown
+ * as a pill and saved with the analysis, but not applied to the query yet.
+ */
+export type PeopleFilter = {
+  /** The palette item it came from, so it can't be added twice. */
+  key: string;
+  label: string;
+  segmentId: SegmentId | null;
+};
+
 /** Who an analysis counts, beyond the date range. */
 export type AnalysisFilters = {
   /** A query on the event table; only its filters are used. */
   query: OpaqueDatasetQuery | null;
   cohorts: CohortFilter[];
+  people: PeopleFilter[];
 };
 
-export const NO_FILTERS: AnalysisFilters = { query: null, cohorts: [] };
+export const NO_FILTERS: AnalysisFilters = {
+  query: null,
+  cohorts: [],
+  people: [],
+};
 
 export const COLUMN_ROLE_FOR_GRAIN: Record<Grain, ColumnRole> = {
   person: "person",
@@ -41,14 +58,43 @@ const isCohortFilter = (value: unknown): value is CohortFilter =>
   Array.isArray(value.ids) &&
   value.ids.every((id) => typeof id === "string");
 
+const isPeopleFilter = (value: unknown): value is PeopleFilter =>
+  isRecord(value) &&
+  typeof value.key === "string" &&
+  typeof value.label === "string" &&
+  (value.segmentId === null || typeof value.segmentId === "number");
+
 export const isAnalysisFilters = (value: unknown): value is AnalysisFilters =>
   isRecord(value) &&
   (value.query === null || isRecord(value.query)) &&
   Array.isArray(value.cohorts) &&
-  value.cohorts.every(isCohortFilter);
+  value.cohorts.every(isCohortFilter) &&
+  Array.isArray(value.people) &&
+  value.people.every(isPeopleFilter);
 
 export const hasFilters = (filters: AnalysisFilters): boolean =>
-  filters.query !== null || filters.cohorts.length > 0;
+  filters.query !== null ||
+  filters.cohorts.length > 0 ||
+  filters.people.length > 0;
+
+/** Adds a people segment from the palette, once. */
+export const withPeopleFilter = (
+  filters: AnalysisFilters,
+  segment: PaletteSegment,
+): AnalysisFilters =>
+  filters.people.some((people) => people.key === segment.key)
+    ? filters
+    : {
+        ...filters,
+        people: [
+          ...filters.people,
+          {
+            key: segment.key,
+            label: segment.name,
+            segmentId: segment.status === "saved" ? segment.segment.id : null,
+          },
+        ],
+      };
 
 /** The filter query, or `null` when there is none or it can't be read. */
 export const readFilterQuery = (

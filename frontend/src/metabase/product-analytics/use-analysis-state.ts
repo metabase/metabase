@@ -10,6 +10,9 @@ import { isJustCreated } from "./use-add-to-dashboard-toast";
 
 export type AnalysisPanel = "setup" | "advanced";
 
+/** A side panel a toolbar button opens and closes. */
+export type HintedPanel = "palette" | AnalysisPanel;
+
 const NO_SAVED_SETTINGS: StoredSettings = {};
 
 /**
