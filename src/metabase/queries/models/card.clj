@@ -1269,10 +1269,7 @@
                                                 ;; coerced to `{}`. See #74615.
                                                 (m/update-existing :dataset_query #(lib-be/normalize-query nil % {:strict? true})))
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
-                                             ;; 1. This function is called when storing metadata.
-                                             ;; 2. The metadata for storage shouldn't have remaps.
-                                             ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
-                                             {:query     (assoc-in (:dataset_query card-data) [:middleware :disable-remaps?] true)
+                                             {:query     (:dataset_query card-data)
                                               :metadata  result_metadata
                                               :entity-id (:entity_id card-data)
                                               :model?    (model? card-data)})
@@ -1508,13 +1505,11 @@
                                                         :result_metadata :collection_preview :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
       (maybe-unverify! card-before-update updated-fields actor)
-      ;; Invalidate the cache for card
-      (cache/invalidate-config! {:questions [(:id card-before-update)]
-                                 :with-overrides? true})
-      ;; ok, now save the Card
       (queries.db/update-card! (:id card-before-update)
                                (m/update-existing updated-fields :dataset_query
-                                                  #(lib/normalize ::queries.schema/card.dataset-query %))))
+                                                  #(lib/normalize ::queries.schema/card.dataset-query %)))
+      (cache/invalidate-config! {:questions [(:id card-before-update)]
+                                 :with-overrides? true}))
     ;; Update all transitively dependent cards if the database was changed (#74561)
     (cascade-database-change-to-dependents! card-before-update card-updates)
     ;; ok, now update dependent dashcard parameters
