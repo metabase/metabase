@@ -1,12 +1,13 @@
 import { useCallback, useRef } from "react";
 
-import { type DerivedQuery, deriveMcpQuery } from "../api";
-import type { McpDeriveOperation } from "../derive";
 import {
   advanceCurrentMcpQueryHandle,
   getCurrentMcpQueryHandle,
   getMcpQueryHandleGeneration,
-} from "../requests";
+} from "metabase/embedding-sdk/mcp-app-queries";
+
+import { type DerivedQuery, deriveMcpQuery } from "../api";
+import type { McpDeriveOperation } from "../derive";
 
 interface UseSerializedMcpDeriveParams {
   instanceUrl: string;

@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   getCurrentMcpQueryHandle,
   setCurrentMcpQueryHandle,
-} from "../requests";
+} from "metabase/embedding-sdk/mcp-app-queries";
 
 import { useSerializedMcpDerive } from "./useSerializedMcpDerive";
 

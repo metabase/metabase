@@ -1,14 +1,17 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import {
+  type McpUiAuth,
+  refreshMcpCredential,
+} from "metabase/embedding-sdk/mcp-app-queries";
 import type {
   McpAppsBootstrapResponse,
   SubmitMcpAppsFeedbackRequest,
 } from "metabase-types/api";
 
-import { type McpUiAuth, getMcpUiAuthHeaders } from "./auth/mcpUiAuth";
+import { getMcpUiAuthHeaders } from "./auth/mcpUiAuth";
 import type { McpDeriveOperation, McpDrillOperation } from "./derive";
-import { renewCredentialForRefusedRequest } from "./requests";
 
 type McpRequestAuth = {
   uiCredential: string;
@@ -47,9 +50,15 @@ async function fetchEmbedMcp(
     return response;
   }
 
-  const fresh = await renewCredentialForRefusedRequest(path);
+  let fresh: McpUiAuth;
+  try {
+    fresh = await refreshMcpCredential();
+  } catch (error) {
+    console.error("Error refreshing the MCP UI credential", error);
+    return response;
+  }
 
-  return fresh ? send(fresh) : response;
+  return send(fresh);
 }
 
 type StoreDrillQueryRequest = {

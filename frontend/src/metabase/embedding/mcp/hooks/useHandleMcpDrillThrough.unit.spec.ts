@@ -1,11 +1,11 @@
 import { renderHook } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { setCurrentMcpQueryHandle } from "metabase/embedding-sdk/mcp-app-queries";
 import * as Urls from "metabase/urls";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import type { ApplyMcpOperations, McpDrillOperation } from "../derive";
-import { setCurrentMcpQueryHandle } from "../requests";
 
 import {
   useHandleMcpDrill,

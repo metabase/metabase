@@ -2,16 +2,16 @@ import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { useEffect, useRef, useState } from "react";
 
 import {
+  type McpUiAuth,
+  setMcpCredentialRefresher,
+} from "metabase/embedding-sdk/mcp-app-queries";
+
+import {
   UI_CREDENTIAL_REFRESH_INTERVAL_MS,
   UI_CREDENTIAL_REFRESH_RETRY_MS,
 } from "../constants";
 
-import { setMcpCredentialRefresher } from "./credentialRefresh";
-import {
-  type McpUiAuth,
-  installMcpUiCredential,
-  refreshMcpUiAuth,
-} from "./mcpUiAuth";
+import { installMcpUiCredential, refreshMcpUiAuth } from "./mcpUiAuth";
 
 type UseMcpUiAuthOptions = {
   app: App | null;

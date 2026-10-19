@@ -1,6 +1,7 @@
 import type { App } from "@modelcontextprotocol/ext-apps/react";
 import { type MutableRefObject, useCallback } from "react";
 
+import { getCurrentMcpQueryHandle } from "metabase/embedding-sdk/mcp-app-queries";
 import * as Urls from "metabase/urls";
 import type { SeriesCard } from "metabase-types/api";
 
@@ -10,7 +11,6 @@ import {
   type McpDrillOperation,
   isStayDrill,
 } from "../derive";
-import { getCurrentMcpQueryHandle } from "../requests";
 
 const getInstanceUrl = () => window.metabaseConfig?.instanceUrl;
 

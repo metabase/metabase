@@ -8,9 +8,10 @@ import {
 } from "@modelcontextprotocol/ext-apps/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { setCurrentMcpQueryHandle } from "metabase/embedding-sdk/mcp-app-queries";
+
 import { fetchQueryByHandle } from "../api";
 import { useMcpUiAuth } from "../auth";
-import { setCurrentMcpQueryHandle } from "../requests";
 import {
   getMcpQueryFetchErrorMessage,
   getMcpQueryFetchErrorType,

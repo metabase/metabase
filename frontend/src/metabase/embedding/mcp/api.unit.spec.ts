@@ -1,7 +1,8 @@
 import fetchMock from "fetch-mock";
 
+import { setMcpCredentialRefresher } from "metabase/embedding-sdk/mcp-app-queries";
+
 import { deriveMcpQuery, fetchMcpBootstrap, storeDrillQuery } from "./api";
-import { setMcpCredentialRefresher } from "./auth/credentialRefresh";
 
 const INSTANCE_URL = "http://localhost:3000";
 const BOOTSTRAP_URL = `${INSTANCE_URL}/api/embed-mcp/bootstrap`;

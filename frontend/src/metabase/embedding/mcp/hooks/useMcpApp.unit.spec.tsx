@@ -4,11 +4,12 @@ import type {
 } from "@modelcontextprotocol/ext-apps/react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
-import { MCP_APPS_METADATA_KEY } from "../constants";
 import {
   getCurrentMcpQueryHandle,
   setCurrentMcpQueryHandle,
-} from "../requests";
+} from "metabase/embedding-sdk/mcp-app-queries";
+
+import { MCP_APPS_METADATA_KEY } from "../constants";
 
 import { useMcpApp } from "./useMcpApp";
 

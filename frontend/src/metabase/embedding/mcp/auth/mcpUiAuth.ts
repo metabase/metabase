@@ -1,6 +1,7 @@
 import type { App } from "@modelcontextprotocol/ext-apps/react";
 
 import { PLUGIN_API } from "metabase/api/client";
+import type { McpUiAuth } from "metabase/embedding-sdk/mcp-app-queries";
 import { retry } from "metabase/utils/retry";
 
 import {
@@ -11,11 +12,6 @@ import {
   UI_CREDENTIAL_REFRESH_TOOL,
   UI_CREDENTIAL_VALIDITY_MS,
 } from "../constants";
-
-export interface McpUiAuth {
-  credential: string;
-  sessionId: string;
-}
 
 /** The headers that authenticate a request to an iframe route with `auth`. */
 export function getMcpUiAuthHeaders({
