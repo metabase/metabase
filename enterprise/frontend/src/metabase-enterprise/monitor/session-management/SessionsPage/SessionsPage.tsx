@@ -51,7 +51,7 @@ export const SessionsPage = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams<RouteParams>();
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [urlState, { patchUrlState, search: urlSearch }] = useUrlState(
+  const [urlState, { patchUrlState, urlSearch }] = useUrlState(
     location,
     urlStateConfig,
   );

@@ -23,12 +23,12 @@ type PatchUrlStateOptions = {
   immediate?: boolean;
 };
 
-type UrlStateActions<State extends BaseState> = {
+type UrlStateApi<State extends BaseState> = {
   patchUrlState: (
     patch: Partial<State>,
     options?: PatchUrlStateOptions,
   ) => void;
-  search: string;
+  urlSearch: string;
 };
 
 export const URL_UPDATE_DEBOUNCE_DELAY = 300;
@@ -40,7 +40,7 @@ export const URL_UPDATE_DEBOUNCE_DELAY = 300;
 export function useUrlState<State extends BaseState>(
   location: Location,
   { parse, serialize }: UrlStateConfig<State>,
-): [State, UrlStateActions<State>] {
+): [State, UrlStateApi<State>] {
   const navigate = useNavigate();
   const [state, setState] = useState(() =>
     parse(parseSearchQuery(location.search)),
@@ -87,7 +87,7 @@ export function useUrlState<State extends BaseState>(
     [location, serialize, navigate],
   );
 
-  const search = useMemo(
+  const urlSearch = useMemo(
     () => queryToSearch(serialize(state)),
     [serialize, state],
   );
@@ -120,5 +120,5 @@ export function useUrlState<State extends BaseState>(
     updateUrlRef.current(urlState);
   }, [updateUrlRef, urlState]);
 
-  return [state, { patchUrlState, search }];
+  return [state, { patchUrlState, urlSearch }];
 }
