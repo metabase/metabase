@@ -5,8 +5,8 @@
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.references :as references])
   (:import
-   (com.metabase.sqlglot.ast Expressions$Column Expressions$CTE Expressions$Select
-                             Expressions$Subquery Expressions$Table)
+   (com.metabase.sqlglot.ast Expressions$Alias Expressions$Column Expressions$CTE Expressions$Identifier
+                             Expressions$Select Expressions$Subquery Expressions$Table)
    (com.metabase.sqlglot.reference Scope)
    (java.util Collections IdentityHashMap Set)))
 
@@ -66,14 +66,18 @@
 ;;; -------------------------------------------------- replace-names --------------------------------------------------
 
 (defn- parse-identifier
-  "`ident` read as a column alias, `SELECT 1 AS <ident>`: the identifier node, nil when `ident` is empty, or the
-  exception when it does not parse."
+  "`ident` read the way the dialect reads a column alias, `SELECT 1 AS <ident>`: the identifier node when that is one
+  query selecting one aliased expression, and an unquoted alias reads back as all of `ident`. Else nil, for a name
+  that is not one identifier (`x;y`, `x,y`, `x/*c*/`, a keyword, or a name that does not parse)."
   [ident dialect]
   (when (seq ident)
-    (try
-      (ast/arg (first (ast/expressions (ast/parse-one (str "SELECT 1 AS " ident) dialect))) "alias")
-      (catch Exception e
-        e))))
+    (let [stmt        (try (ast/parse-one (str "SELECT 1 AS " ident) dialect) (catch Exception _ nil))
+          expressions (when (instance? Expressions$Select stmt) (ast/expressions stmt))
+          alias-node  (when (and (= 1 (count expressions)) (instance? Expressions$Alias (first expressions)))
+                        (ast/arg (first expressions) "alias"))]
+      (when (and (instance? Expressions$Identifier alias-node)
+                 (or (ast/quoted? alias-node) (= ident (ast/node-name alias-node))))
+        alias-node))))
 
 (defn- needs-quoting?
   "Whether the identifier `ident` must be quoted because it holds a dash or a space, or starts with a digit."
@@ -132,16 +136,17 @@
 
 (defn- set-identifier!
   "Set `arg` of `node` to the identifier `ident-name`: quoted if the identifier it replaces was, if `ident-name`
-  comes quoted, or if it needs quoting."
+  comes quoted, or if it needs quoting.
+
+  A name that is not one identifier is quoted whole, so it can only ever be read back as that one name. sql_tools.py
+  instead raises for some such names (`x;y`) and writes others into the SQL as they are (`x,y`)."
   [node arg ident-name dialect]
   (let [parsed      (parse-identifier ident-name dialect)
         was-quoted? (ast/quoted? parsed)
         quoted?     (or (ast/quoted? (ast/arg node arg))
+                        (nil? parsed)
                         was-quoted?
-                        (needs-quoting? ident-name)
-                        ;; A name that does not parse fails here, as the second parse in sql_tools.py does.
-                        (when (instance? Exception parsed)
-                          (throw parsed)))]
+                        (needs-quoting? ident-name))]
     (ast/set-arg! node arg (ast/identifier (if was-quoted? (ast/node-name parsed) ident-name) quoted?))))
 
 (defn- replace-table!
@@ -210,7 +215,7 @@
                                                        (= (ast/lower (or key-table "")) (ast/lower table-ref)))))
                                             column-map))]
           (when (seq new-column)
-            (ast/set-arg! column "this" (ast/identifier new-column (ast/quoted? (ast/this column))))))))
+            (set-identifier! column "this" new-column dialect)))))
     (ast/sql stmt dialect)))
 
 (defn replace-names
@@ -220,8 +225,9 @@
      :tables  [[{:db? :schema? :table} new-name-or-parts] ...]
      :columns [[{:schema? :table? :column} new-name] ...]}
 
-  with string keys, as `sql_tools.py` reads them. Replacement values go into the AST unsanitized; callers pass
-  system-generated names."
+  with string keys, as `sql_tools.py` reads them. Replacement values become identifiers, and one that is not a
+  single identifier is quoted whole (see [[set-identifier!]]). Callers still pass system-generated names: the GraalPy
+  backend does not quote them."
   [sql replacements dialect]
   (let [{:strs [schemas tables columns]} replacements
         schemas  (or schemas {})
