@@ -2,8 +2,11 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -12,7 +15,7 @@
 (derive :model/AnalysisFinding :metabase/model)
 
 (t2/deftransforms :model/AnalysisFinding
-  {:analyzed_entity_type mi/transform-keyword})
+  {:entity_type mi/transform-keyword})
 
 (t2/define-before-insert :model/AnalysisFinding
   [finding]
@@ -42,61 +45,30 @@
   - 8: Flag MBQL queries whose source-table is missing/inactive (e.g. dropped during sync)"
   8)
 
-(defn- error->finding-error-row
+(mu/defn- error->finding-error-row :- ::deps.analysis-finding-error/error-input
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.
    We use `:message` for the error detail if there was an `validation-exception-error`."
-  [error]
+  [error :- ::lib.schema.validate/error-with-source]
   {:error-type          (:type error)
    ;; error-detail cannot be longer than 254
    :error-detail        (some-> (or (:name error) (:message error)) (u/truncate 254))
    :source-entity-type  (:source-entity-type error)
    :source-entity-id    (:source-entity-id error)})
 
-(defn upsert-analysis!
+(def ^:private FindingDetails
+  "The errors an analysis found, as `lib/find-bad-refs-with-source` returns them."
+  [:maybe [:set ::lib.schema.validate/error-with-source]])
+
+(mu/defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
    Also writes individual errors to the analysis_finding_error table with source information."
-  [type instance-id result finding-details]
+  [entity-type     :- :keyword
+   entity-id       :- ms/PositiveInt
+   result          :- :boolean
+   finding-details :- FindingDetails]
   (t2/with-transaction [_conn]
-    (let [update {:analysis_version *current-analysis-finding-version*
-                  :result result
-                  :stale false}
-          existing-id (dependencies.db/finding-id type instance-id)]
-      (if existing-id
-        (dependencies.db/update-finding! existing-id update)
-        (dependencies.db/insert-finding! (assoc update
-                                                :analyzed_entity_type type
-                                                :analyzed_entity_id instance-id)))
-      (deps.analysis-finding-error/replace-errors-for-entity!
-       type
-       instance-id
-       (map error->finding-error-row finding-details)))))
-
-(def ^:private mark-stale-batch-size
-  "Maximum number of entity IDs to process in a single query to avoid parameter limits."
-  1000)
-
-(defn mark-stale!
-  "Mark the existing findings of the entities in `type->ids`, `{entity-type ids}`, stale for re-analysis. Entities
-  without findings are ignored - they'll be picked up by the normal job flow."
-  [type->ids]
-  (doseq [[entity-type ids] type->ids
-          batch             (partition-all mark-stale-batch-size ids)]
-    (dependencies.db/mark-findings-stale! entity-type batch)))
-
-(defn has-stale-entities?
-  "Check if there are any stale analysis records."
-  []
-  (dependencies.db/stale-finding-exists?))
-
-(defn stale-entity-count
-  "Number of analysis findings currently marked stale, across all entity types. Used by the entity-check drain loop to
-  detect whether it is still making progress."
-  []
-  (dependencies.db/stale-finding-count))
-
-(defn instances-for-analysis
-  "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,
-  or stale AnalysisFindings.
-  Prioritizes stale entities (stale=true) over outdated version entities."
-  [entity-type batch-size]
-  (dependencies.db/instances-for-analysis entity-type batch-size *current-analysis-finding-version*))
+    (dependencies.db/upsert-finding! entity-type entity-id result)
+    (deps.analysis-finding-error/replace-errors-for-entity!
+     entity-type
+     entity-id
+     (map error->finding-error-row finding-details))))
