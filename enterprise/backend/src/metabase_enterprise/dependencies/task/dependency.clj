@@ -64,11 +64,11 @@
 
 ;;; ------------------------------ Job orchestration ------------------------------
 
-(defn- processable-instances
-  "Claim up to `batch-size` instances of `entity-type` whose dependencies need computing, hydrated."
+(defn- claim-hydrated-entities!
+  "Claim up to `batch-size` entities of `entity-type` whose dependencies need computing, hydrated."
   [entity-type batch-size]
   (deps.dependency-status/hydrate-for-deps
-   entity-type (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)))
+   entity-type (deps.dependency-status/claim-pending-entities! entity-type batch-size)))
 
 (defn- compute-deps-for-entity!
   "Compute and store the dependencies of an `entity` hydrated by [[deps.dependency-status/hydrate-for-deps]], marking
@@ -99,10 +99,10 @@
   [entity-type batch-size]
   (lib-be/with-metadata-provider-cache
     (let [type-name (name entity-type)
-          instances (processable-instances entity-type batch-size)]
-      (when (seq instances)
-        (log/debugf "Processing a batch of %s %s(s)..." (count instances) type-name))
-      (doseq [entity instances]
+          entities  (claim-hydrated-entities! entity-type batch-size)]
+      (when (seq entities)
+        (log/debugf "Processing a batch of %s %s(s)..." (count entities) type-name))
+      (doseq [entity entities]
         (try
           (compute-deps-for-entity! entity-type entity)
           (catch Throwable e ;; catch OOMs
@@ -110,7 +110,7 @@
                         type-name (:id entity) (ex-message e))
             (when-not (instance? Exception e) ;; re-throw Errors
               (throw e)))))
-      (count instances))))
+      (count entities))))
 
 (defn- update-dependencies!
   "Update the dependencies of up to a batch of entities, triggering the jobs that read them, and return whether the

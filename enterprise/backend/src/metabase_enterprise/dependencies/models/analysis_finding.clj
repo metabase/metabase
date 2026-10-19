@@ -59,35 +59,16 @@
   (let [error [:fn {:error/message "an analysis error"} map?]]
     [:maybe [:or [:set error] [:sequential error]]]))
 
-(mu/defn- upsert-analysis-once!
-  "Upsert the AnalysisFinding of `type` `instance-id` and replace its errors, in one transaction."
-  [type            :- :keyword
-   instance-id     :- ms/PositiveInt
+(mu/defn upsert-analysis!
+  "Given the details of an AnalysisFinding row, upsert the data into the actual db.
+   Also writes individual errors to the analysis_finding_error table with source information."
+  [entity-type     :- :keyword
+   entity-id       :- ms/PositiveInt
    result          :- :boolean
    finding-details :- FindingDetails]
   (t2/with-transaction [_conn]
-    (if-let [existing-id (dependencies.db/finding-id type instance-id)]
-      (dependencies.db/update-finding! existing-id {:result result})
-      (dependencies.db/insert-finding! {:result      result
-                                        :entity_type type
-                                        :entity_id   instance-id}))
+    (dependencies.db/upsert-finding! entity-type entity-id result)
     (deps.analysis-finding-error/replace-errors-for-entity!
-     type
-     instance-id
+     entity-type
+     entity-id
      (map error->finding-error-row finding-details))))
-
-(mu/defn upsert-analysis!
-  "Given the details of an AnalysisFinding row, upsert the data into the actual db, updating the row a concurrent
-  analysis inserted meanwhile.
-   Also writes individual errors to the analysis_finding_error table with source information."
-  [type            :- :keyword
-   instance-id     :- ms/PositiveInt
-   result          :- :boolean
-   finding-details :- FindingDetails]
-  (let [existed? (some? (dependencies.db/finding-id type instance-id))]
-    (try
-      (upsert-analysis-once! type instance-id result finding-details)
-      (catch Exception e
-        (if (and (not existed?) (dependencies.db/finding-id type instance-id))
-          (upsert-analysis-once! type instance-id result finding-details)
-          (throw e))))))

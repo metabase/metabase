@@ -238,7 +238,7 @@
                       (mapv (fn [entity]
                               [[node-type (:id entity)]
                                (is-native-entity? node-type entity)])
-                            (dependencies.db/instances node-type ids)))))
+                            (dependencies.db/entities node-type ids)))))
           grouped)))
 
 (defn transitive-mbql-dependents

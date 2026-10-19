@@ -371,7 +371,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
         ;; Precondition: the temp card was inserted directly (no :event/card-create), so it has no
-        ;; status row at all. This is the case the left-join in instances-for-dependency-calculation
+        ;; status row at all. This is the case the left-join in claim-pending-entities!
         ;; must catch — guard it so the test can't silently pass without exercising that branch.
         (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id))
             "Expected the temp card to start with no dependency_status row")

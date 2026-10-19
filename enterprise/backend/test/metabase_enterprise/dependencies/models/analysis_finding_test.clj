@@ -46,10 +46,11 @@
         (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
           (mt/with-temp [:model/Card {card-id :id} {}]
             (let [barrier (CyclicBarrier. 2)
-                  insert! (mt/original-fn #'dependencies.db/insert-finding!)]
-              (mt/with-dynamic-fn-redefs [dependencies.db/insert-finding! (fn [row]
-                                                                            (.await barrier 10 TimeUnit/SECONDS)
-                                                                            (insert! row))]
+                  insert! (mt/original-fn #'t2/insert-returning-pk!)]
+              (mt/with-dynamic-fn-redefs [t2/insert-returning-pk! (fn [model & args]
+                                                                    (when (= :model/AnalysisFinding model)
+                                                                      (.await barrier 10 TimeUnit/SECONDS))
+                                                                    (apply insert! model args))]
                 (let [upserts (repeatedly 2 #(future (models.analysis-finding/upsert-analysis! :card card-id true [])))]
                   (run! deref (doall upserts))))
               (is (=? {:result true} (finding card-id)))

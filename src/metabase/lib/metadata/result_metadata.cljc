@@ -558,9 +558,9 @@
                   (lib.normalize/normalize :metabase.query-processor.schema/result-metadata.column)))
      :cljs (lib.normalize/normalize ::lib.schema.metadata/column col)))
 
-(defn match-stored-columns
-  "For each of the newly computed columns `cols`, the column of the stored result metadata `stored-cols` it stands for,
-  or nil: the one with the same desired column alias, or else the one with the same name when either has no alias."
+(defn match-returned-columns
+  "For each of the newly returned columns `cols`, the returned column of `stored-cols` it stands for, or nil: the one
+  with the same desired column alias, or else the one with the same name when either has no alias."
   [stored-cols cols]
   (let [by-alias (m/index-by :lib/desired-column-alias (filter :lib/desired-column-alias stored-cols))
         by-name  (m/index-by :name stored-cols)]

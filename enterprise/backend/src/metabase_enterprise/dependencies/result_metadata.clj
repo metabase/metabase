@@ -71,7 +71,7 @@
             (and stored-col (measured-by-a-run? stored-col col))
             (merge (select-keys stored-col measured-column-keys))))
         inferred
-        (lib/match-stored-columns stored inferred)))
+        (lib/match-returned-columns stored inferred)))
 
 (defn- rederived-result-metadata
   "The re-derived result metadata of the MBQL `card`, inferred as its creator, as their own save would, so their
@@ -89,15 +89,15 @@
 
 (mu/defn- store-result-metadata!
   "Mark the entities directly depending on the Card with `card-id` stale, then, under the card's row lock, store its
-  re-derived result metadata `metadata` through the Card model when the card still stores the text `stored` it was
-  re-derived from, or else mark the card stale, so it is re-derived from what a save or a run stored meanwhile."
+  re-derived result metadata `metadata` through the Card model when the card is still in the `state` it was re-derived
+  from, or else mark the card stale, so it is re-derived from what a save or a run stored meanwhile."
   [card-id  :- ::lib.schema.id/card
-   stored   :- ::dependencies.schema/stored-card-columns
+   state    :- ::dependencies.schema/card-state
    metadata :- ::lib.schema.metadata/card.result-metadata]
   (t2/with-transaction [_]
     (dependencies.db/mark-dependents-result-metadata-stale! :card card-id)
     (dependencies.db/mark-dependents-analysis-findings-stale! :card card-id)
-    (if (= stored (dependencies.db/stored-card-query-and-metadata card-id true))
+    (if (= state (dependencies.db/locked-card-state card-id))
       (dependencies.db/update-card-result-metadata! card-id metadata)
       (dependencies.db/mark-result-metadata-statuses-stale! {:card #{card-id}}))))
 
@@ -105,13 +105,12 @@
   "Re-derive the result metadata of the MBQL Card with `card-id` and store it when it changed, logging a failure."
   [card-id :- ::lib.schema.id/card]
   (try
-    (let [stored   (dependencies.db/stored-card-query-and-metadata card-id false)
+    (let [card     (dependencies.db/card card-id)
           metadata (lib-be/with-metadata-provider-cache
-                     (when-let [card (dependencies.db/card card-id)]
-                       (when (and (not= :native (:query_type card)) (seq (:dataset_query card)))
-                         (rederived-result-metadata card))))]
-      (when (and stored metadata)
-        (store-result-metadata! card-id stored metadata)))
+                     (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
+                       (rederived-result-metadata card)))]
+      (when metadata
+        (store-result-metadata! card-id (select-keys card [:updated_at :result_metadata]) metadata)))
     (catch Exception e
       (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e)))))
 

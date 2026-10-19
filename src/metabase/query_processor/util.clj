@@ -95,7 +95,7 @@
          (cond-> new-col
            old-col (merge (select-keys old-col preserved-keys))))
        new-metadata
-       (lib/match-stored-columns old-metadata new-metadata)))
+       (lib/match-returned-columns old-metadata new-metadata)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *execute-async?*

@@ -17,26 +17,26 @@
   {:entity_type mi/transform-keyword})
 
 (defmulti hydrate-for-deps
-  "Hydrate a batch of instances with data needed for dependency calculation.
+  "Hydrate a batch of entities with data needed for dependency calculation.
   Dispatches on entity-type keyword. Default is identity (no hydration needed)."
-  {:arglists '([entity-type instances])}
+  {:arglists '([entity-type entities])}
   (fn [entity-type _instances] entity-type))
 
-(defmethod hydrate-for-deps :default [_ instances] instances)
+(defmethod hydrate-for-deps :default [_ entities] entities)
 
-(defmethod hydrate-for-deps :dashboard [_ instances]
-  (t2/hydrate instances [:dashcards :series]))
+(defmethod hydrate-for-deps :dashboard [_ entities]
+  (t2/hydrate entities [:dashcards :series]))
 
-(defmethod hydrate-for-deps :action [_ instances]
-  (let [queries (when (seq instances)
-                  (dependencies.db/query-action-queries (mapv :id instances)))]
+(defmethod hydrate-for-deps :action [_ entities]
+  (let [queries (when (seq entities)
+                  (dependencies.db/query-action-queries (mapv :id entities)))]
     (mapv (fn [{:keys [id] :as action}]
             (cond-> action
               (contains? queries id) (assoc :dataset_query (queries id))))
-          instances)))
+          entities)))
 
-(mu/defn instances-for-dependency-calculation
-  "Claim a batch of instances of type `entity-type` and maximum size `batch-size` whose dependencies are stale, were not
+(mu/defn claim-pending-entities!
+  "Claim a batch of entities of type `entity-type` and maximum size `batch-size` whose dependencies are stale, were not
   computed yet, or were computed by an older analysis, and return them. Prioritizes stale entities over outdated
   analyses."
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -45,7 +45,7 @@
              entity-type batch-size models.dependency/current-dependency-analysis-version)]
     (when (seq ids)
       (dependencies.db/claim-dependency-statuses! entity-type ids models.dependency/current-dependency-analysis-version)
-      (vec (dependencies.db/instances entity-type (set ids))))))
+      (vec (dependencies.db/entities entity-type (set ids))))))
 
 (mu/defn has-pending-entities? :- :boolean
   "Returns true if there are any entities whose dependencies are stale, not computed yet or computed by an older

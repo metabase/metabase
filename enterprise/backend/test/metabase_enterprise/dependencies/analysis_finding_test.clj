@@ -174,7 +174,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/AnalysisFindingError]
           (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
-            (with-redefs-fn {#'deps.analysis-finding/instance-db-id (fn [_] (throw (ex-info "Broken" {})))}
+            (with-redefs-fn {#'deps.analysis-finding/entity-db-id (fn [_] (throw (ex-info "Broken" {})))}
               run-jobs!)
             (is (false? (t2/select-one-fn :result :model/AnalysisFinding
                                           :entity_type :card :entity_id card-id)))
@@ -182,7 +182,7 @@
 
 (deftest ^:synchronized analysis-re-analyzes-changed-entity-and-direct-dependents-test
   (testing "after a card's query changes, the analysis finding job re-analyzes it and the cards directly depending on
-           it, and only those for a rename"
+           it, and nothing for a question's rename"
     (backfill-all-entity-analyses!)
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
@@ -197,7 +197,7 @@
                                               :to_entity_type :card :to_entity_id p-id}]
             (run-jobs!)
             (t2/update! :model/Card gp-id {:name "Renamed"})
-            (is (= #{p-id} (set (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!)))))
+            (is (empty? (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!))))
             (t2/update! :model/Card gp-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
             (is (= #{gp-id p-id}
                    (set (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!)))))))))))
@@ -256,7 +256,7 @@
         (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT 1"})
                                          :database_id   (mt/id)}]
           (let [cid (:id card)]
-            (with-redefs-fn {#'deps.analysis-finding/instance-db-id (constantly nil)}
+            (with-redefs-fn {#'deps.analysis-finding/entity-db-id (constantly nil)}
               (fn []
                 (lib-be/with-metadata-provider-cache
                   (deps.analysis-finding/upsert-analysis! (t2/instance :model/Card card)))))
@@ -273,7 +273,7 @@
               products (lib.metadata/table mp (mt/id :products))]
           (mt/with-temp [:model/Card card {:dataset_query (lib/query mp products)}]
             (let [cid (:id card)]
-              (with-redefs-fn {#'deps.analysis-finding/instance-db-id (constantly nil)}
+              (with-redefs-fn {#'deps.analysis-finding/entity-db-id (constantly nil)}
                 (fn []
                   (lib-be/with-metadata-provider-cache
                     (deps.analysis-finding/upsert-analysis! (t2/instance :model/Card card)))))
@@ -299,10 +299,10 @@
           (let [wanted #{card1-id card2-id}
                 upsert-analysis! (mt/original-fn #'deps.analysis-finding/upsert-analysis!)]
             (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis!
-                                        (fn [instance & args]
-                                          (when (wanted (:id instance))
-                                            (swap! providers conj (:lib/metadata (:dataset_query instance))))
-                                          (apply upsert-analysis! instance args))]
+                                        (fn [entity & args]
+                                          (when (wanted (:id entity))
+                                            (swap! providers conj (:lib/metadata (:dataset_query entity))))
+                                          (apply upsert-analysis! entity args))]
               (run-jobs!)))
           (testing "both cards were selected, so the assertion below is meaningful"
             (is (= 2 (count @providers))))

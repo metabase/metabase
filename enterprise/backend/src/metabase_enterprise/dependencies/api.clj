@@ -352,7 +352,7 @@
         (mapcat (fn [[entity-type entity-ids]]
                   (when (seq entity-ids)
                     (let [fields (entity-select-fields entity-type)]
-                      (->> (dependencies.db/instances-with-columns entity-type fields entity-ids)
+                      (->> (dependencies.db/entities-with-columns entity-type fields entity-ids)
                            (hydrate-entities entity-type)
                            (map (fn [entity]
                                   [[entity-type (:id entity)] entity])))))))
@@ -658,7 +658,7 @@
         usages (node-usages downstream-graph all-ids)
         fetch-entity (fn [entity-type entity-id]
                        (let [fields (entity-select-fields entity-type)]
-                         (dependencies.db/instance-with-columns entity-type fields entity-id)))
+                         (dependencies.db/entity-with-columns entity-type fields entity-id)))
         data (into []
                    (keep (fn [[entity-type entity-id]]
                            (when-let [entity (fetch-entity entity-type entity-id)]

@@ -14,30 +14,30 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti ^:private instance-db-id
-  "Gets the database id for a toucan instance"
-  {:arglists '([toucan-instance])}
+(defmulti ^:private entity-db-id
+  "The database ID of `entity`."
+  {:arglists '([entity])}
   t2/model)
 
-(defmethod instance-db-id :default
-  [toucan-instance]
-  (:database_id toucan-instance))
+(defmethod entity-db-id :default
+  [entity]
+  (:database_id entity))
 
-(defmethod instance-db-id :model/Transform
-  [toucan-instance]
-  (or (some-> toucan-instance :source :query lib/database-id)
+(defmethod entity-db-id :model/Transform
+  [entity]
+  (or (some-> entity :source :query lib/database-id)
       ;; non-query transforms (e.g. Python) have no query to read the database from
-      (:source_database_id toucan-instance)))
+      (:source_database_id entity)))
 
-(defmethod instance-db-id :model/Segment
-  [toucan-instance]
-  (some-> toucan-instance :definition lib/database-id))
+(defmethod entity-db-id :model/Segment
+  [entity]
+  (some-> entity :definition lib/database-id))
 
 (defmulti ^:private pre-analysis-errors
   "Return a (possibly empty) sequence of errors detected without running the full analyzer. When
   non-empty, the entity is recorded broken with these errors and the regular analysis is skipped.
   Use this for structural failures e.g. an orphan Transform whose source database has been deleted."
-  {:arglists '([toucan-instance])}
+  {:arglists '([entity])}
   t2/model)
 
 (defmethod pre-analysis-errors :default [_] nil)
@@ -49,44 +49,41 @@
          (assoc :source-entity-type :transform :source-entity-id id))]))
 
 (mu/defn upsert-analysis!
-  "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`.
+  "Analyze the Toucan entity `entity` and insert or replace its AnalysisFinding, reusing the caller's metadata provider
+  cache when it has one."
+  [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
+  (lib-be/with-metadata-provider-cache
+    (let [model       (t2/model entity)
+          entity-type (deps.dependency-types/model->dependency-type model)
+          entity-id   (:id entity)]
+      (if-let [errors (seq (pre-analysis-errors entity))]
+        (models.analysis-finding/upsert-analysis! entity-type entity-id false errors)
+        (if-let [db-id (entity-db-id entity)]
+          (let [mp (lib-be/application-database-metadata-provider db-id)
+                results (try (deps.analysis/check-entity mp entity-type entity-id)
+                             (catch Exception e
+                               (log/errorf "Error analyzing entity: %s" (ex-message e))
+                               [(lib/validation-exception-error (.getMessage e))]))
+                success (empty? results)]
+            (models.analysis-finding/upsert-analysis! entity-type entity-id success results))
+          (models.analysis-finding/upsert-analysis!
+           entity-type entity-id false
+           [(lib/validation-exception-error "Could not resolve a database for this entity.")]))))))
 
-  If any row exists already, it is replaced. If it does not exist, it is created."
-  [toucan-instance :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
-  (when-not (lib-be/metadata-provider-cache)
-    (throw (ex-info "FIXME: deps.analysis-finding/upsert-analysis! ran without reusing `MetadataProvider`s"
-                    {:instance toucan-instance})))
-  (let [model       (t2/model toucan-instance)
-        entity-type (deps.dependency-types/model->dependency-type model)
-        instance-id (:id toucan-instance)]
-    (if-let [errors (seq (pre-analysis-errors toucan-instance))]
-      (models.analysis-finding/upsert-analysis! entity-type instance-id false errors)
-      (if-let [db-id (instance-db-id toucan-instance)]
-        (let [mp (lib-be/application-database-metadata-provider db-id)
-              results (try (deps.analysis/check-entity mp entity-type instance-id)
-                           (catch Exception e
-                             (log/errorf "Error analyzing entity: %s" (ex-message e))
-                             [(lib/validation-exception-error (.getMessage e))]))
-              success (empty? results)]
-          (models.analysis-finding/upsert-analysis! entity-type instance-id success results))
-        (models.analysis-finding/upsert-analysis!
-         entity-type instance-id false
-         [(lib/validation-exception-error "Could not resolve a database for this entity.")])))))
-
-(mu/defn- analyze-instance!
-  "Analyze `instance`, recording a failure as a failed finding."
-  [instance :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
-  (try (upsert-analysis! instance)
+(mu/defn- analyze-entity!
+  "Analyze `entity`, recording a failure as a failed finding."
+  [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
+  (try (upsert-analysis! entity)
        (catch Exception e
          (log/errorf "Analyzing entity %s %s failed: %s"
-                     (t2/model instance) (:id instance) (ex-message e))
+                     (t2/model entity) (:id entity) (ex-message e))
          (try
            (models.analysis-finding/upsert-analysis!
-            (deps.dependency-types/model->dependency-type (t2/model instance)) (:id instance) false
+            (deps.dependency-types/model->dependency-type (t2/model entity)) (:id entity) false
             [(lib/validation-exception-error (ex-message e))])
            (catch Exception record-e
              (log/errorf "Recording the failure of entity %s %s failed: %s"
-                         (t2/model instance) (:id instance) (ex-message record-e)))))))
+                         (t2/model entity) (:id entity) (ex-message record-e)))))))
 
 (def analyzable-entities
   "Entities for which we can compute analysis findings."
@@ -131,6 +128,6 @@
     (lib-be/with-metadata-provider-cache
       (let [claimed (claim-batch! batch-size)]
         (doseq [[entity-type ids] claimed
-                instance          (dependencies.db/instances entity-type (set ids))]
-          (analyze-instance! instance))
+                entity            (dependencies.db/entities entity-type (set ids))]
+          (analyze-entity! entity))
         (+ removed (reduce + (map count (vals claimed))))))))

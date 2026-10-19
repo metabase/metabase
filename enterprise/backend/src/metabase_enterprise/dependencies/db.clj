@@ -576,8 +576,8 @@
 
 ;;; ---------------------------------------------------- Entities ----------------------------------------------------
 
-(mu/defn instances
-  "The instances of the entity type `entity-type` with `ids`."
+(mu/defn entities
+  "The entities of the entity type `entity-type` with `ids`."
   [entity-type :- ::deps.dependency-types/dependency-types
    ids         :- [:set ::deps.dependency-types/entity-id]]
   (t2/select (deps.dependency-types/dependency-type->model entity-type) :id [:in ids]))
@@ -589,16 +589,16 @@
     {:from [(warehouse-schema-overlay/table-query)]}
     {}))
 
-(mu/defn instances-with-columns
-  "The `columns` of the instances of the entity type `entity-type` with `ids`."
+(mu/defn entities-with-columns
+  "The `columns` of the entities of the entity type `entity-type` with `ids`."
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
   (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
              :id [:in ids] (entity-source entity-type)))
 
-(mu/defn instance-with-columns
-  "The `columns` of the instance of the entity type `entity-type` with `id`, or nil."
+(mu/defn entity-with-columns
+  "The `columns` of the entity of the entity type `entity-type` with `id`, or nil."
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    id          :- ::deps.dependency-types/entity-id]
@@ -941,15 +941,12 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pks-set [:model/Card :id] :id [:in card-ids] :query_type :native))
 
-(mu/defn stored-card-query-and-metadata :- [:maybe ::dependencies.schema/stored-card-columns]
-  "The stored text of the `dataset_query` and `result_metadata` of the Card with `card-id`, locking its row until the
-  transaction ends when `lock?`, or nil when there is none."
-  [card-id :- ::lib.schema.id/card
-   lock?   :- :boolean]
-  (some-> (t2/select-one [(t2/table-name :model/Card) :dataset_query :result_metadata]
-                         (cond-> {:where [:= :id card-id]} lock? (assoc :for :update)))
-          (select-keys [:dataset_query :result_metadata])
-          (update-vals #(some-> % str))))
+(mu/defn locked-card-state :- [:maybe ::dependencies.schema/card-state]
+  "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends, or
+  nil."
+  [card-id :- ::lib.schema.id/card]
+  (some-> (t2/select-one [:model/Card :updated_at :result_metadata] {:where [:= :id card-id] :for :update})
+          (select-keys [:updated_at :result_metadata])))
 
 (mu/defn update-card-result-metadata!
   "Set the result metadata of the Card with `card-id` to `result-metadata` through the Card model, without touching
@@ -961,27 +958,14 @@
 
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 
-(mu/defn finding-id
-  "The ID of the AnalysisFinding of the entity `entity-type` `entity-id`, or nil."
+(mu/defn upsert-finding!
+  "Insert or update the AnalysisFinding of the entity `entity-type` `entity-id` with `result`, updating the row a
+  concurrent analysis inserted meanwhile."
   [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (t2/select-one-fn :id [:model/AnalysisFinding :id] :entity_type entity-type :entity_id entity-id))
-
-(mu/defn insert-finding!
-  "Insert the AnalysisFinding `row`, returning the number inserted."
-  [row :- [:map {:closed true}
-           [:id                   {:optional true} ms/PositiveInt]
-           [:analyzed_at          {:optional true} [:maybe ms/TemporalInstant]]
-           [:result               {:optional true} :boolean]
-           [:entity_type          {:optional true} [:maybe [:or :keyword :string]]]
-           [:entity_id            {:optional true} [:maybe ms/PositiveInt]]]]
-  (t2/insert! :model/AnalysisFinding row))
-
-(mu/defn update-finding!
-  "Apply `changes` to the AnalysisFinding with `finding-id`, returning the number updated."
-  [finding-id :- ms/PositiveInt
-   changes    :- (mut/select-keys ::dependencies.schema/analysis-finding.update [:analyzed_at :result])]
-  (t2/update! :model/AnalysisFinding finding-id changes))
+   entity-id   :- ms/PositiveInt
+   result      :- :boolean]
+  (mdb/update-or-insert! :model/AnalysisFinding {:entity_type entity-type :entity_id entity-id}
+                         (constantly {:result result})))
 
 (mu/defn analysis-finding-pending-entity-ids :- [:sequential ms/PositiveInt]
   "The IDs of up to `batch-size` entities of the type `entity-type` without an AnalysisFindingStatus, or whose status

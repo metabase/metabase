@@ -133,9 +133,9 @@
    (let [valid-edits (if include-native?
                        edits
                        (into {}
-                             (map (fn [[entity-type instances]]
+                             (map (fn [[entity-type entities]]
                                     [entity-type (remove #(deps.graph/is-native-entity? entity-type %)
-                                                         instances)]))
+                                                         entities)]))
                              edits))]
      (cond
        (not (some seq (vals valid-edits)))

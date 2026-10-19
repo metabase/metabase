@@ -59,19 +59,25 @@
           (is (= [] @submitted)))))))
 
 (deftest output-columns-mark-dependents-test
-  (testing "a card rename, a field position and a table schema reach the cards reading them, a table caveat doesn't"
+  (testing "a metric rename, a field position and a table schema reach the cards reading them, a question rename and a
+           table caveat don't"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}
-                     :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
+                     :model/Card {card-id :id}   {:dataset_query (card-query source-id)}
+                     :model/Card {metric-id :id} {:type          :metric
+                                                  :dataset_query (lib/aggregate (table-query :venues) (lib/count))}]
         (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
                                        :to_entity_type   :card :to_entity_id   source-id})
+        (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
+                                       :to_entity_type   :card :to_entity_id   metric-id})
         (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id source-id
                                        :to_entity_type   :table :to_entity_id  (mt/id :venues)})
         (let [marks? (fn [card write!]
                        (deps.test/record-result-metadata-processed! card)
                        (write!)
                        (deps.test/result-metadata-pending? card))]
-          (is (marks? card-id #(t2/update! :model/Card source-id {:name "Renamed"})))
+          (is (not (marks? card-id #(t2/update! :model/Card source-id {:name "Renamed"}))))
+          (is (marks? card-id #(t2/update! :model/Card metric-id {:name "Renamed"})))
           (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:position 5}
             (is (marks? source-id #(t2/update! :model/Field (mt/id :venues :price) {:position 0}))))
           (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:schema "PUBLIC"}

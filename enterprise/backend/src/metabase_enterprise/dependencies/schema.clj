@@ -2,6 +2,7 @@
   (:require
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -9,11 +10,11 @@
   "Entities as `{entity-type ids}`."
   [:map-of :metabase-enterprise.dependencies.dependency-types/dependency-types [:set ms/PositiveInt]])
 
-(mr/def ::stored-card-columns
-  "A Card's `dataset_query` and `result_metadata` as the app DB stores them, before any decoding."
+(mr/def ::card-state
+  "The `updated_at` and `result_metadata` of a Card, which a save or a run changes."
   [:map {:closed true}
-   [:dataset_query   [:maybe :string]]
-   [:result_metadata [:maybe :string]]])
+   [:updated_at      ms/TemporalInstant]
+   [:result_metadata [:maybe ::queries.schema/card.result-metadata]]])
 
 (mr/def ::upstream-deps
   [:map
