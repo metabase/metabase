@@ -100,6 +100,7 @@ function CartesianChartInner(props: VisualizationProps) {
   const {
     chartModel,
     chartLayout,
+    legendChart,
     timelineEventsModel,
     option,
     renderingContext,
@@ -264,9 +265,7 @@ function CartesianChartInner(props: VisualizationProps) {
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}
-        chartHeight={chartSize.height || undefined}
-        indent={chartLayout.padding.left - chartLayout.padding.right}
-        plotInsetWidth={chartLayout.padding.left + chartLayout.padding.right}
+        chart={legendChart}
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}

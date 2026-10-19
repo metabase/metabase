@@ -7,6 +7,7 @@ import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
+import type { LegendChart } from "metabase/visualizations/components/legend/plots";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { useLegendHiddenSeries } from "metabase/visualizations/hooks/use-legend-hidden-series";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -136,17 +137,38 @@ function BoxPlotInner({
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
+  const layoutInput = useMemo(
+    () => ({ ...chartModel, dataset: chartModel.boxDataset }),
+    [chartModel],
+  );
+
   const cartesianLayout = useMemo(
     () =>
       getChartLayout(
-        { ...chartModel, dataset: chartModel.boxDataset },
+        layoutInput,
         settings,
         false,
         chartSize.width,
         chartSize.height,
         renderingContext,
       ),
-    [chartModel, settings, chartSize.width, chartSize.height, renderingContext],
+    [
+      layoutInput,
+      settings,
+      chartSize.width,
+      chartSize.height,
+      renderingContext,
+    ],
+  );
+
+  const legendChart: LegendChart = useMemo(
+    () => ({
+      layoutInput,
+      settings,
+      hasTimelineEvents: false,
+      renderingContext,
+    }),
+    [layoutInput, settings, renderingContext],
   );
 
   const layoutModel = useMemo(
@@ -244,11 +266,7 @@ function BoxPlotInner({
         onHoverChange={onHoverChange}
         width={width}
         height={height}
-        chartHeight={chartSize.height || undefined}
-        indent={cartesianLayout.padding.left - cartesianLayout.padding.right}
-        plotInsetWidth={
-          cartesianLayout.padding.left + cartesianLayout.padding.right
-        }
+        chart={legendChart}
       >
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}

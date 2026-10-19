@@ -30,8 +30,10 @@ export {
 export {
   ROW_CHART_MIN_BAR_HEIGHT,
   foldRowChartModel,
+  getChartModelAtHeight,
 } from "./echarts/cartesian/model/row-fold";
 export { getChartLayout } from "./echarts/cartesian/layout";
+export type { ChartLayoutInput } from "./echarts/cartesian/layout";
 export type {
   ChartBoundsCoords,
   ChartLayout,

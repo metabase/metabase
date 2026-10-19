@@ -38,10 +38,6 @@ interface CardProps {
   alwaysVisible?: boolean;
 }
 
-// vertical padding of the card wrapper below; real charts measure their
-// viewport, so the stories pass the equivalent height for exact row fitting
-const CARD_VERTICAL_PADDING = 16;
-
 const Card = ({
   names,
   width,
@@ -61,7 +57,6 @@ const Card = ({
       hasLegend
       width={width}
       height={height}
-      chartHeight={height - CARD_VERTICAL_PADDING}
       isQueryBuilder={isQueryBuilder}
       alwaysVisible={alwaysVisible}
       fontFamily="Lato"
@@ -86,7 +81,7 @@ export const Horizontal: StoryObj = {
   render: () => <Card names={SHORT_NAMES} width={600} height={300} />,
 };
 
-// a complete row shows at any card height
+// a short card keeps a complete row while the row leaves the plot most of its height
 export const ShortCard: StoryObj = {
   render: () => <Card names={SHORT_NAMES} width={300} height={120} />,
 };

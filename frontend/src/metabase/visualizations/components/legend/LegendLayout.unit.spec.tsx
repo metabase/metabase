@@ -19,7 +19,6 @@ interface SetupOpts {
   legendPosition?: LegendPosition;
   width?: number;
   height?: number;
-  plotInsetWidth?: number;
   isQueryBuilder?: boolean;
   actionButtons?: React.ReactNode;
 }
@@ -29,7 +28,6 @@ const setup = ({
   legendPosition,
   width = 600,
   height = 300,
-  plotInsetWidth,
   isQueryBuilder,
   actionButtons,
 }: SetupOpts) => {
@@ -40,7 +38,6 @@ const setup = ({
       legendPosition={legendPosition}
       width={width}
       height={height}
-      plotInsetWidth={plotInsetWidth}
       isQueryBuilder={isQueryBuilder}
       actionButtons={actionButtons}
       fontFamily="Lato"
@@ -75,11 +72,13 @@ describe("LegendLayout", () => {
     expectNoLegend();
   });
 
-  it("should render a complete row on a short card", () => {
-    setup({ names: ["first", "second"], width: 300, height: 60 });
+  it("should render a vertical legend on a wide short card", () => {
+    // row plot 900 x 70.2, column plot 822 x 100: 70.2 < 100 * 75%
+    setup({ names: ["first", "second"], width: 900, height: 116 });
 
-    const legend = screen.getByTestId("legend-horizontal");
+    const legend = screen.getByTestId("legend-vertical");
     expect(within(legend).getAllByTestId("legend-item")).toHaveLength(2);
+    expect(screen.queryByTestId("legend-horizontal")).not.toBeInTheDocument();
   });
 
   it("should render a horizontal legend below the chart when the items fit", () => {
@@ -158,12 +157,11 @@ describe("LegendLayout with an explicit position", () => {
     expect(screen.getByTestId("legend-horizontal")).toBeInTheDocument();
   });
 
-  it("should hide a bottom legend when the axes leave the plot under 150px", () => {
+  it("should hide a bottom legend when the plot would be under 150px wide", () => {
     setup({
       names: ["first", "second"],
       legendPosition: "bottom",
-      width: 300,
-      plotInsetWidth: 151,
+      width: 149,
     });
 
     expectNoLegend();

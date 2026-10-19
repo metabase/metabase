@@ -2,17 +2,22 @@ import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
 import {
+  type ChartSize,
   LEGEND_PADDING,
   LEGEND_SIZES,
   type LegendSize,
   MIN_LEGEND_CARD_WIDTH,
   getLegendLayout,
   getLegendSize,
+  mapLegendCandidates,
+  measureLegend,
 } from "./layout";
 
 const CHAR_WIDTH = 6;
 const MIN_PLOT_WIDTH = 150;
 const SM = LEGEND_SIZES.sm;
+const ROW_HEIGHT =
+  SM.fontSize * SM.lineHeight + SM.horizontalGap + LEGEND_PADDING * 2;
 
 const measureText = (text: string) => text.length * CHAR_WIDTH;
 
@@ -50,10 +55,13 @@ interface LayoutOpts {
   position?: LegendPosition;
   width?: number;
   height?: number;
-  chartHeight?: number;
+  chartAreaHeight?: number;
   size?: LegendSize;
-  horizontalWidth?: number;
-  plotInsetWidth?: number;
+  // the plot's y-axis indent at every size
+  indent?: number;
+  plotInset?: ChartSize;
+  // the narrowest chart that still draws its x-axis labels
+  minXAxisLabelsWidth?: number;
   alwaysVisible?: boolean;
   isReversed?: boolean;
 }
@@ -64,36 +72,44 @@ const layout = (
     position = "auto",
     width = 600,
     height = 300,
-    chartHeight,
+    chartAreaHeight,
     size = "sm",
-    horizontalWidth,
-    plotInsetWidth,
+    indent = 0,
+    plotInset = { width: 0, height: 0 },
+    minXAxisLabelsWidth = 0,
     alwaysVisible,
     isReversed,
   }: LayoutOpts = {},
-) =>
-  getLegendLayout({
+) => {
+  const metrics = measureLegend({
     items: createItems(names),
-    position,
     width,
     height,
-    chartHeight,
+    chartRoom:
+      chartAreaHeight === undefined
+        ? undefined
+        : { width, height: chartAreaHeight },
     size,
-    horizontalWidth,
-    plotInsetWidth,
     fontFamily: "Lato",
     measureText,
-    alwaysVisible,
     isReversed,
   });
+  const plots = mapLegendCandidates(metrics.chartSizes, (chart) => ({
+    width: chart.width - plotInset.width,
+    height: chart.height - plotInset.height,
+    hasXAxisLabels: chart.width >= minXAxisLabelsWidth,
+    indent,
+  }));
+  return getLegendLayout(metrics, { position, plots, alwaysVisible });
+};
 
 const row = (
   visibleCount: number,
-  { isBeforeChart = false, isIndented = true } = {},
+  { isBeforeChart = false, indent = 0 } = {},
 ) => ({
   type: "horizontal",
   isBeforeChart,
-  isIndented,
+  indent,
   visibleCount,
 });
 
@@ -110,11 +126,103 @@ describe("getLegendLayout", () => {
 });
 
 describe("getLegendLayout auto", () => {
-  it("should show a complete bottom row at any card height", () => {
-    expect(layout(["first", "second"], SHORT_CARD)).toEqual(row(2));
-    expect(layout(["first", "second"], { width: 300, height: 1 })).toEqual(
-      row(2),
-    );
+  it("should hide a row that leaves a short card's plot under 60% of its height", () => {
+    // 300 x 44 plot, 14.2 under a row; no column under 100px
+    expect(layout(["first", "second"], SHORT_CARD)).toEqual(HIDDEN);
+  });
+
+  describe("weighing a row against a column", () => {
+    // the column takes "second" = 8 + 6 + 36 = 50px + 2 * 2 padding + 24 gap
+    const plotInset = { width: 0, height: 20 };
+
+    it("should move the legend to a right column on a wide short card", () => {
+      // row plot 900 x 50.2, column plot 822 x 80: 50.2 < 80 * 75%
+      expect(
+        layout(["first", "second"], {
+          width: 900,
+          chartAreaHeight: 100,
+          plotInset,
+        }),
+      ).toMatchObject({ type: "vertical", isBeforeChart: false });
+    });
+
+    it("should keep the row when the column leaves at most a third more height", () => {
+      // row plot 900 x 150.2, column plot 822 x 180: 150.2 >= 180 * 75%
+      expect(
+        layout(["first", "second"], {
+          width: 900,
+          chartAreaHeight: 200,
+          plotInset,
+        }),
+      ).toEqual(row(2));
+    });
+
+    it("should count only the height a narrow plot can use", () => {
+      // column plot (259 - 78) x 97 uses 181 / 3 = 60.3, row plot 259 x 67.2 all of it
+      expect(
+        layout(["first", "second"], {
+          width: 259,
+          chartAreaHeight: 131,
+          plotInset: { width: 0, height: 34 },
+        }),
+      ).toEqual(row(2));
+    });
+  });
+
+  describe("when a column would hide the x-axis labels", () => {
+    // the 8x4 card with 90-degree labels: bare plot 311 x 48
+    const CRAMPED_CARD = {
+      width: 311,
+      chartAreaHeight: 131,
+      plotInset: { width: 0, height: 83 },
+    };
+
+    it("should hide the legend when a row leaves the plot under 60% of its height", () => {
+      // row plot 311 x 18.2 < 48 * 60%, column chart 233px wide
+      expect(
+        layout(["first", "second"], {
+          ...CRAMPED_CARD,
+          minXAxisLabelsWidth: 300,
+        }),
+      ).toEqual(HIDDEN);
+    });
+
+    it("should show the column when it keeps the labels", () => {
+      expect(
+        layout(["first", "second"], {
+          ...CRAMPED_CARD,
+          minXAxisLabelsWidth: 200,
+        }),
+      ).toMatchObject({ type: "vertical" });
+    });
+
+    it("should not count labels the bare chart hides too", () => {
+      expect(
+        layout(["first", "second"], {
+          ...CRAMPED_CARD,
+          plotInset: { width: 0, height: 34 },
+          minXAxisLabelsWidth: 1000,
+        }),
+      ).toEqual(row(2));
+    });
+  });
+
+  it("should size the chart beside each candidate", () => {
+    const { chartSizes } = measureLegend({
+      items: createItems(createSeriesNames(10)),
+      width: 420,
+      height: 300,
+      chartRoom: { width: 420, height: 200 },
+      size: "sm",
+      fontFamily: "Lato",
+      measureText,
+    });
+
+    expect(chartSizes).toEqual({
+      none: { width: 420, height: 200 },
+      row: { width: 420, height: 200 - ROW_HEIGHT },
+      column: { width: 420 - getColumnSpace(62), height: 200 },
+    });
   });
 
   it("should switch to a right column when the row overflows and the plot keeps 150px", () => {
@@ -180,23 +288,23 @@ describe("getLegendLayout auto", () => {
     const names = ["first", "other", "third", "fourth", "fifth"];
     const width = getCardWidthForRow(names);
 
-    expect(layout(names, { width, horizontalWidth: width })).toEqual(row(5));
-    expect(layout(names, { width, horizontalWidth: width - 1 })).toEqual(
-      row(5, { isIndented: false }),
+    expect(layout(names, { width: width + 1, indent: 1 })).toEqual(
+      row(5, { indent: 1 }),
     );
+    expect(layout(names, { width, indent: 1 })).toEqual(row(5, { indent: 0 }));
   });
 
   it("should take the plot inset from the room left for the plot", () => {
     const names = createSeriesNames(10);
     const width = 420;
-    const plotInsetWidth = width - getColumnSpace(62) - MIN_PLOT_WIDTH;
+    const insetWidth = width - getColumnSpace(62) - MIN_PLOT_WIDTH;
 
-    expect(layout(names, { width, plotInsetWidth })).toMatchObject({
-      type: "vertical",
-    });
+    expect(
+      layout(names, { width, plotInset: { width: insetWidth, height: 0 } }),
+    ).toMatchObject({ type: "vertical" });
     // 4 items + 3 gaps + 12 gap + "+ 6 more" 48 = 344 <= 384
     expect(
-      layout(names, { width, plotInsetWidth: plotInsetWidth + 1 }),
+      layout(names, { width, plotInset: { width: insetWidth + 1, height: 0 } }),
     ).toEqual(row(4));
   });
 
@@ -233,13 +341,13 @@ describe("getLegendLayout auto", () => {
     });
   });
 
-  it("should fit column rows into the measured chart height when it is known", () => {
+  it("should fit column rows into the measured chart area when it is known", () => {
     // (100 - 4 + 8) / (13.8 + 8) = 4 rows, 3 items + "+ 17 more"
     expect(
       layout(createSeriesNames(20), {
         width: 420,
         height: 300,
-        chartHeight: 100,
+        chartAreaHeight: 100,
       }),
     ).toEqual({
       type: "vertical",
@@ -279,7 +387,7 @@ describe("getLegendLayout auto", () => {
       layout(createSeriesNames(20), {
         width: 700,
         height: 400,
-        chartHeight: 200,
+        chartAreaHeight: 200,
         size: "lg",
       }),
     ).toMatchObject({ type: "vertical", visibleCount: 7 });
@@ -288,11 +396,17 @@ describe("getLegendLayout auto", () => {
 
 describe("getLegendLayout with an explicit position", () => {
   it.each<LegendPosition>(["top", "bottom"])(
-    "should show a %s row on a short card where auto shows a row",
+    "should show a %s row on a cramped card where auto hides it",
     (position) => {
       const isBeforeChart = position === "top";
-      expect(layout(["first", "second"], SHORT_CARD)).toEqual(row(2));
-      expect(layout(["first", "second"], { ...SHORT_CARD, position })).toEqual(
+      const card = {
+        width: 311,
+        chartAreaHeight: 131,
+        plotInset: { width: 0, height: 83 },
+        minXAxisLabelsWidth: 300,
+      };
+      expect(layout(["first", "second"], card)).toEqual(HIDDEN);
+      expect(layout(["first", "second"], { ...card, position })).toEqual(
         row(2, { isBeforeChart }),
       );
     },
@@ -308,7 +422,11 @@ describe("getLegendLayout with an explicit position", () => {
         layout(["a", "b"], { width: MIN_PLOT_WIDTH - 1, position }),
       ).toEqual(HIDDEN);
       expect(
-        layout(["a", "b"], { width: 300, plotInsetWidth: 151, position }),
+        layout(["a", "b"], {
+          width: 300,
+          plotInset: { width: 151, height: 0 },
+          position,
+        }),
       ).toEqual(HIDDEN);
     },
   );
@@ -323,7 +441,10 @@ describe("getLegendLayout with an explicit position", () => {
       expect(
         layout(createSeriesNames(2), {
           width: 420,
-          plotInsetWidth: 420 - getColumnSpace(62) - MIN_PLOT_WIDTH + 1,
+          plotInset: {
+            width: 420 - getColumnSpace(62) - MIN_PLOT_WIDTH + 1,
+            height: 0,
+          },
           position,
         }),
       ).toEqual(HIDDEN);
@@ -370,9 +491,9 @@ describe("getLegendLayout with an explicit position", () => {
   });
 
   it("should hide a column when its height fits no item", () => {
-    expect(layout(["a", "b"], { chartHeight: 10, position: "right" })).toEqual(
-      HIDDEN,
-    );
+    expect(
+      layout(["a", "b"], { chartAreaHeight: 10, position: "right" }),
+    ).toEqual(HIDDEN);
   });
 
   describe("in the query builder with the chart indent", () => {
@@ -380,7 +501,7 @@ describe("getLegendLayout with an explicit position", () => {
     // the row's items get 880 - 48 - 73 - 2 * 2 = 755px
     const QUERY_BUILDER_ROW = {
       width: 880,
-      horizontalWidth: 880 - 73,
+      indent: 73,
       size: "md" as const,
     };
     // md item = 14 + 8 + 3 * 6 = 40, one item per 40 + 16 gap
@@ -390,7 +511,7 @@ describe("getLegendLayout with an explicit position", () => {
       // 12 items = 12 * 56 - 16 = 656, + 16 gap + "+ 37 more" 54 = 726 <= 755
       // 13 items = 13 * 56 - 16 = 712, + 16 gap + "+ 36 more" 54 = 782 > 755
       expect(layout(names, { ...QUERY_BUILDER_ROW, position: "top" })).toEqual(
-        row(12, { isBeforeChart: true }),
+        row(12, { isBeforeChart: true, indent: 73 }),
       );
     });
 
@@ -401,7 +522,7 @@ describe("getLegendLayout with an explicit position", () => {
           ...QUERY_BUILDER_ROW,
           position: "bottom",
         }),
-      ).toEqual(row(14, { isIndented: false }));
+      ).toEqual(row(14, { indent: 0 }));
     });
   });
 });
@@ -427,7 +548,7 @@ describe("getLegendLayout alwaysVisible", () => {
       layout(names, {
         width: 300,
         height: 40,
-        chartHeight: 10,
+        chartAreaHeight: 10,
         alwaysVisible: true,
       }),
     ).toMatchObject({ visibleCount: 1 });
