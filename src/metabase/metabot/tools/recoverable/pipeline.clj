@@ -21,6 +21,7 @@
   tool."
   (:require
    [metabase.metabot.tools.error :refer [defrecoverable]]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -32,6 +33,7 @@
   the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]])."
   [:map {:closed true}
    [:message     :string]
+   [:humanized   {:optional true} :any]
    [:entity-type {:optional true} [:maybe :string]]
    [:entity-id   {:optional true} [:maybe [:or :string :int]]]])
 
@@ -248,13 +250,23 @@
   "A stage carried a key the representations format does not define."
   [])
 
-(defpipeline-error invalid-representations-query!
-  "The query did not parse as a representations query."
-  [])
+(defn- structural-recovery
+  [{:keys [humanized]}]
+  (if-let [hint (recovery-hints/structural-validation-hint humanized)]
+    [{:uses #{} :text hint}]
+    []))
 
-(defpipeline-error invalid-external-query!
+(defrecoverable invalid-representations-query!
+  "The query did not parse as a representations query."
+  {:payload ::payload}
+  [payload]
+  {:message (:message payload), :recovery (structural-recovery payload)})
+
+(defrecoverable invalid-external-query!
   "A query supplied from outside the pipeline was not a valid MBQL query."
-  [])
+  {:payload ::payload}
+  [payload]
+  {:message (:message payload), :recovery (structural-recovery payload)})
 
 (defpipeline-error query-not-runnable!
   "The query parsed but would not run — the editor's own run gate rejects it."

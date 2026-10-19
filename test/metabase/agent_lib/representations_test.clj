@@ -157,3 +157,28 @@
     (let [data (validate-query-error (join-query-with-lib-type nil))]
       (is (= :invalid-representations-query (:error data)))
       (is (= 400 (:status-code data))))))
+
+(deftest ^:parallel humanized-paths-test
+  (testing "nested maps and sequences keep their query locations"
+    (is (= "stages[0].filters: invalid type; stages[1].aggregation[0]: invalid clause"
+           (repr/humanized->paths
+            {:stages [{:filters ["invalid type"]}
+                      {"aggregation" [["invalid clause"]]}]}))))
+  (testing "satisfied entries do not shift the remaining indices"
+    (is (= "stages[1].filters[2]: invalid clause, missing options"
+           (repr/humanized->paths
+            {"stages" [nil {"filters" [nil nil ["invalid clause" "missing options"]]}]}))))
+  (testing "namespaced keyword keys retain their namespace"
+    (is (= "stages[0].lib/type: missing required key"
+           (repr/humanized->paths {:stages [{:lib/type ["missing required key"]}]}))))
+  (testing "errors on the whole query have an explicit location"
+    (is (= "(root): invalid type" (repr/humanized->paths ["invalid type"]))))
+  (testing "empty explanations contain no paths"
+    (doseq [humanized [nil {} [] {:stages [nil {}]}]]
+      (is (= "" (repr/humanized->paths humanized)))))
+  (testing "short explanations retain all their text"
+    (let [text (apply str (repeat 491 "x"))]
+      (is (= (str "filters: " text) (repr/humanized->paths {:filters [text]})))))
+  (testing "long explanations end with an ellipsis within the character budget"
+    (is (= (str "filters: " (apply str (repeat 490 "x")) "\u2026")
+           (repr/humanized->paths {:filters [(apply str (repeat 1000 "x"))]})))))

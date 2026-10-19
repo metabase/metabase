@@ -2,9 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-lib.representations :as repr]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -369,3 +371,27 @@
     (is (=? {:class :unrecoverable :code :internal} (pipeline-failure "boom" {}))))
   (testing "a successful body is returned untouched"
     (is (= :fine (tools/with-pipeline-errors :fine)))))
+
+(deftest ^:parallel structural-validation-paths-test
+  (doseq [[validate query message] [[repr/validate-external-query
+                                     {:lib/type "mbql/query"
+                                      :database "Sample"
+                                      :stages [{:lib/type "mbql.stage/mbql"
+                                                :source-table ["Sample" "PUBLIC" "ORDERS"]
+                                                :filters {:op ">"}}]}
+                                     "External query has an invalid structure."]
+                                    [repr/validate-query
+                                     {"lib/type" "mbql/query"
+                                      "database" "Sample"
+                                      "stages" [{"lib/type" "mbql.stage/mbql"
+                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                 "filters" {"op" ">"}}]}
+                                     "Representations query has an invalid structure."]]]
+    (testing message
+      (let [e    (try (validate query) (catch clojure.lang.ExceptionInfo e e))
+            data (ex-data e)
+            hint "Invalid at stages[0].filters: invalid type. Fix the named paths."]
+        (is (= hint (recovery-hints/recovery-hint data)))
+        (is (= (str message "\n" hint)
+               (tools.error/recoverable-text
+                (pipeline-failure (ex-message e) (assoc data :agent-error? true)) #{})))))))

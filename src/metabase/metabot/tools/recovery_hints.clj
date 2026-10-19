@@ -12,6 +12,7 @@
    which is the intended failure mode: a missing hint reads as terse, a wrong one sends the
    agent at a tool it does not have."
   (:require
+   [metabase.agent-lib.representations :as repr]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -38,10 +39,20 @@
 
     (tru "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` or, via `source-card:`, a saved-card `portable_entity_id`.")))
 
+(defn structural-validation-hint
+  "Describe the failing paths in a humanized structural explanation, or nil when it has no errors."
+  [humanized]
+  (let [paths (repr/humanized->paths humanized)]
+    (when (seq paths)
+      (tru "Invalid at {0}. Fix the named paths." paths))))
+
 (defn recovery-hint
   "The v1 recovery sentence for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id]}]
+  [{:keys [error entity-type entity-id humanized]}]
   (case error
+    (:invalid-representations-query :invalid-external-query)
+    (structural-validation-hint humanized)
+
     :uri-in-source-table
     (uri-hint entity-type entity-id)
 

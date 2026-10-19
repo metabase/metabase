@@ -25,6 +25,7 @@
       `fields`;
     * explicit joins supported; implicit joins are filled in by the repair pass."
   (:require
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.lib.schema :as lib.schema]
@@ -240,3 +241,38 @@
                      :schema        ::query
                      :response/keys #{:humanized :details}})))
   parsed)
+
+(defn query-path
+  "Format a query location as a dotted path with bracketed indices, or `(root)` for an empty path."
+  [path]
+  (if (seq path)
+    (reduce (fn [s part]
+              (if (integer? part)
+                (str s "[" part "]")
+                (str s (when (seq s) ".") (if (keyword? part) (keyword->repr-string part) part))))
+            "" path)
+    "(root)"))
+
+(defn- humanized-paths
+  [path errors]
+  (cond
+    (nil? errors) nil
+    (map? errors) (mapcat (fn [[k v]] (humanized-paths (conj path k) v)) errors)
+    (and (sequential? errors) (every? string? errors))
+    (when (seq errors)
+      [(str (query-path path) ": " (str/join ", " errors))])
+    (sequential? errors)
+    (mapcat (fn [[i v]] (humanized-paths (conj path i) v)) (map-indexed vector errors))
+    :else [(str (query-path path) ": " errors)]))
+
+(defn humanized->paths
+  "Flatten humanized validation errors into readable paths, capped at 500 characters with an ellipsis."
+  [humanized]
+  (let [text (->> (humanized-paths [] humanized)
+                  (interpose "; ")
+                  (mapcat seq)
+                  (take 501)
+                  (apply str))]
+    (if (> (count text) 500)
+      (str (subs text 0 499) "\u2026")
+      text)))

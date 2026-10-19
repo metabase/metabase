@@ -484,7 +484,7 @@
   (try
     (thunk)
     (catch Throwable e
-      (let [{:keys [agent-error? status-code error entity-type entity-id]} (ex-data e)
+      (let [{:keys [agent-error? status-code error entity-type entity-id humanized]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
           ;; `:agent-error?` *and* an `:error` key. The pipeline's `as-agent-input-error` stamps
@@ -495,6 +495,7 @@
           (tools.error/throw-recoverable!
            code
            (cond-> {:message (or (ex-message e) "")}
+             (some? humanized) (assoc :humanized humanized)
              entity-type       (assoc :entity-type entity-type)
              (some? entity-id) (assoc :entity-id entity-id))
            {:cause e})
