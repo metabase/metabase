@@ -26,6 +26,7 @@
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
@@ -541,47 +542,91 @@
                    :error        :uncurated-source
                    :uncurated    (vec uncurated)})))
 
-(defn- portable-metric-refs?
-  "Whether `parsed-query` references a metric anywhere."
+(defn- portable-metric-refs
+  "The ids the metric references in `parsed-query` carry: `[\"metric\" opts id]` or `[\"metric\" id]`, with `id` an
+  entity id or, on the numeric-id surface, a card id."
   [parsed-query]
-  (boolean (some #(and (vector? %) (= "metric" (nth % 0 nil)) (map? (nth % 1 nil)))
-                 (tree-seq coll? seq parsed-query))))
+  (into []
+        (comp (filter #(and (vector? %) (not (map-entry? %)) (= "metric" (nth % 0 nil))))
+              (keep #(let [id (if (map? (nth % 1 nil)) (nth % 2 nil) (nth % 1 nil))]
+                       (when (or (string? id) (pos-int? id)) id)))
+              (distinct))
+        (tree-seq coll? seq parsed-query)))
+
+(defn- source-card-refs
+  "Every `source-card:` in `parsed-query`, first stage, later stages, and joins: entity ids, or card ids on the
+  numeric-id surface."
+  [parsed-query]
+  (into []
+        (comp (filter map?)
+              (keep #(get % "source-card"))
+              (filter #(or (string? %) (pos-int? %)))
+              (distinct))
+        (tree-seq coll? seq parsed-query)))
+
+(defn- readable-card-by-ref
+  "The Card `ref` names, when it exists and the current user can read it; nil otherwise, which leaves a missing or
+  unreadable Card to resolve's own answer."
+  [ref]
+  (when-let [card (cond
+                    (string? ref)                           (metabot.db/card-by-entity-id ref)
+                    serdes.resolve/*numeric-ids-allowed?*   (metabot.db/card ref))]
+    (when (mi/can-read? card)
+      card)))
 
 (defn- check-curated-portable-sources!
-  "Under [[shared/curated-only?]], before repair reads the query: reject it when its first-stage source, or a table it
-  references, is neither curated nor one FK hop from curated content it references (see
+  "Under [[shared/curated-only?]], before repair reads the query: reject it when its first-stage source, a Card it
+  reads, or a table it references is neither curated nor reachable from curated content it references (see
   `metabase.metabot.curation`). Repair's errors name the columns of the tables and cards they touch, so an
-  uncurated source has to be refused before it runs. A query that references a metric, or whose source card is a
-  metric, is left to [[check-curated-query-sources!]]: a curated metric can authorize its own source.
-  `table-ids` are the tables [[check-source-table-query-permissions!]] resolved."
+  uncurated source has to be refused before it runs. This is the coarse gate: it reads only what the portable
+  query names, and [[check-curated-query-sources!]] applies the full rule once the query resolves. A metric this
+  Metabot may use authorizes its own sources ([[curation/metric-reach]]), so a query on a curated metric's raw
+  table passes here and is judged for real after resolve. `table-ids` are the tables
+  [[check-source-table-query-permissions!]] resolved."
   [metadata-provider parsed-query table-ids]
   (when (shared/curated-only?)
-    (let [source-card  (or (some-> (first-stage-source-card-eid parsed-query) tools.u/get-card-by-entity-id)
-                           (when serdes.resolve/*numeric-ids-allowed?*
-                             (some-> (first-stage-numeric-source-card parsed-query) metabot.db/card)))]
-      (when-not (or (portable-metric-refs? parsed-query) (= :metric (:type source-card)))
-        (let [source-table (when-let [fk (or (first-stage-source-table-fk parsed-query)
-                                             (when serdes.resolve/*numeric-ids-allowed?*
-                                               (first-stage-numeric-source-table parsed-query)))]
-                             (resolve-table-fk metadata-provider
-                                               (resolve.mp/import-resolver metadata-provider
-                                                                           permission-aware-content-store)
-                                               fk))
-              card-id      (:id source-card)
-              curated      (curation/curated-ids (cond-> (mapv #(vector "table" %) table-ids)
-                                                   card-id (conj ["card" card-id])))
-              curated?     (fn [model id] (contains? curated [model id]))
-              covered      (curation/covered-table-ids metadata-provider
-                                                       (filter #(curated? "table" %) table-ids)
-                                                       (when (and card-id (curated? "card" card-id)) [card-id]))
-              uncurated    (concat (when (and source-table (not (curated? "table" source-table)))
-                                     [["table" source-table]])
-                                   (when (and card-id (not (curated? "card" card-id)))
-                                     [["card" card-id]])
-                                   (for [id table-ids :when (not (or (curated? "table" id) (contains? covered id)))]
-                                     ["table" id]))]
-          (when (seq uncurated)
-            (uncurated-source! uncurated)))))))
+    (let [cards        (into [] (keep readable-card-by-ref) (source-card-refs parsed-query))
+          metric-ids   (into #{}
+                             (comp (keep readable-card-by-ref) (map :id))
+                             (portable-metric-refs parsed-query))
+          ;; a metric Card used as a source is judged as a metric, as the full rule judges it
+          metric-ids   (into metric-ids (comp (filter #(= :metric (:type %))) (map :id)) cards)
+          card-ids     (into [] (comp (remove #(= :metric (:type %))) (map :id)) cards)
+          source-card  (some-> (or (first-stage-source-card-eid parsed-query)
+                                   (when serdes.resolve/*numeric-ids-allowed?*
+                                     (first-stage-numeric-source-card parsed-query)))
+                               readable-card-by-ref
+                               :id)
+          source-table (when-let [fk (or (first-stage-source-table-fk parsed-query)
+                                         (when serdes.resolve/*numeric-ids-allowed?*
+                                           (first-stage-numeric-source-table parsed-query)))]
+                         (resolve-table-fk metadata-provider
+                                           (resolve.mp/import-resolver metadata-provider
+                                                                       permission-aware-content-store)
+                                           fk))
+          curated      (curation/curated-ids (concat (map #(vector "table" %) table-ids)
+                                                     (map #(vector "card" %) card-ids)))
+          curated?     (fn [model id] (contains? curated [model id]))
+          reach        (curation/metric-reach metadata-provider metric-ids)
+          covered      (into (curation/covered-table-ids metadata-provider
+                                                         (filter #(curated? "table" %) table-ids)
+                                                         (filter #(curated? "card" %) card-ids))
+                             (:tables reach))
+          source-ok?   (fn [model id]
+                         (or (curated? model id)
+                             (contains? (get-in reach [:sources (keyword model)]) id)
+                             (and (= model "card") (contains? (:usable reach) id))))
+          uncurated    (distinct
+                        (concat (when (and source-table (not (source-ok? "table" source-table)))
+                                  [["table" source-table]])
+                                (when (and source-card (not (source-ok? "card" source-card)))
+                                  [["card" source-card]])
+                                (for [id table-ids :when (not (or (curated? "table" id) (contains? covered id)))]
+                                  ["table" id])
+                                (for [id card-ids :when (not (or (= id source-card) (source-ok? "card" id)))]
+                                  ["card" id])))]
+      (when (seq uncurated)
+        (uncurated-source! uncurated)))))
 
 (defn- check-curated-query-sources!
   "Under [[shared/curated-only?]], reject `pmbql-query` unless everything it reads is curated, or covered by curated

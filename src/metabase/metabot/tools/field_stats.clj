@@ -142,9 +142,10 @@
           filterable-cols (lib/filterable-columns query)
           col             (metabot.tools.u/find-column-by-field-id field-id filterable-cols)]
       (check-column-table-perms! col)
+      (check-curated-field-owner! metric-id col)
       (field-metadata-output query col field-id limit))
     (catch Exception ex
-      (metabot.tools.u/handle-agent-error ex))))
+      (agent-output-or-rethrow ex))))
 
 (defn field-values
   "Return statistics and/or values for a given field of a given entity."

@@ -103,7 +103,7 @@
   email address."
   [{:keys [dashboard_id email slack_channel schedule]} :- subscription-schema]
   (when (shared/curated-only?)
-    (curation/check-curated-subject! (str "dashboard " dashboard_id) ["dashboard" dashboard_id]))
+    (curation/check-curated-readable-subject! (str "dashboard " dashboard_id) ["dashboard" dashboard_id]))
   (try
     (-> (create-dashboard-subscription
          {:dashboard-id  dashboard_id

@@ -18,7 +18,7 @@
                            [:entity_id :int]]]
   ;; a question or a metric: judged as a metric read is, a curated card on its own or a metric by its definition
   (when (shared/curated-only?)
-    (curation/check-curated-subject! (str "entity " entity_id) ["metric" entity_id]))
+    (curation/check-curated-readable-subject! (str "entity " entity_id) ["metric" entity_id]))
   {:instructions (str "Visualization queued for entity " entity_id ". "
                       "The visualization will be posted as a separate follow-up message "
                       "with the question or metric's name as its title and a link to open "

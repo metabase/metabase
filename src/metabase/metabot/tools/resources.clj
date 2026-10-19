@@ -1038,10 +1038,11 @@
 
 (defn- curation-subject
   "What a single-entity URI must be curated as under [[shared/curated-only?]]: a `[model id]` pair — `\"table\"`,
-   `\"card\"`, `\"dashboard\"`, `\"metric\"` (judged by [[curation/curated-metric?]]), or `\"transform\"` (never
-   curated) — or nil when the URI isn't gated: navigation, collections, documents, conversation state, and
-   `table/{id}/derived` (whose listing is filtered instead), plus measures and segments that don't exist (left to
-   their handler's 404)."
+   `\"card\"`, `\"dashboard\"`, `\"metric\"` (judged by [[curation/curated-metric?]]), `:measure` and `:segment`
+   (judged by [[curation/measure-or-segment-curated?]]: their Table, and the Tables their definition reads), or
+   `\"transform\"` (never curated) — or nil when the URI isn't gated: navigation, collections, documents,
+   conversation state, and `table/{id}/derived` (whose listing is filtered instead), plus measures and segments
+   that don't exist (left to their handler's 404)."
   [[type-seg id-seg aspect]]
   (let [id (some-> id-seg parse-long)]
     (when (and id (pos? id))
@@ -1050,8 +1051,8 @@
         ("model" "question") ["card" id]
         "metric"             ["metric" id]
         "dashboard"          ["dashboard" id]
-        "measure"            (some->> (metabot.db/measure-table-id id) (vector "table"))
-        "segment"            (some->> (metabot.db/segment-table-id id) (vector "table"))
+        "measure"            (when (metabot.db/measure-table-id id) [:measure id])
+        "segment"            (when (metabot.db/segment-table-id id) [:segment id])
         "transform"          ["transform" id]
         nil))))
 
@@ -1068,6 +1069,8 @@
         "table"           (check-table-resource-database id)
         ("card" "metric") (check-card-resource-database id)
         "dashboard"       (api/read-check :model/Dashboard id)
+        :measure          (check-measure-or-segment-resource-database :model/Measure id)
+        :segment          (check-measure-or-segment-resource-database :model/Segment id)
         "transform"       (transforms/get-transform id))
       (curation/check-curated-subject! uri subject))))
 

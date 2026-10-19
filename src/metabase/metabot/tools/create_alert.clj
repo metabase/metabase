@@ -134,7 +134,7 @@
   `send_once` is optional (default false); when true the alert is deleted after it fires once."
   [{:keys [card_id send_condition schedule send_once]} :- alert-schema]
   (when (shared/curated-only?)
-    (curation/check-curated-subject! (str "card " card_id) ["card" card_id]))
+    (curation/check-curated-readable-subject! (str "card " card_id) ["card" card_id]))
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
     (try
       (when-not slack-channel-id

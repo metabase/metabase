@@ -82,11 +82,31 @@
     index))
 
 (defn- check-curated-metrics!
-  "Under [[shared/curated-only?]], reject the first of `metric-ids` this Metabot may not use."
+  "Under [[shared/curated-only?]], reject the first of `metric-ids` this Metabot may not use. A missing or unreadable
+  id is left to the catalog, which reports it as missing."
   [metric-ids]
   (when (shared/curated-only?)
     (doseq [id metric-ids]
-      (curation/check-curated-subject! (str "metric " id) ["metric" id]))))
+      (curation/check-curated-readable-subject! (str "metric " id) ["metric" id]))))
+
+(defn- curated-only-candidates
+  "Under [[shared/curated-only?]], keep only the metrics of the research `candidates` this Metabot may use, and the
+  dimension groups that still slice one of them. A `q` search reaches every readable metric the catalog matches,
+  so the result is filtered the way [[curated-only-index]] filters the index."
+  [candidates]
+  (if (shared/curated-only?)
+    (let [usable (curation/usable-metric-ids (map :id (:metrics candidates)))]
+      (-> candidates
+          (update :metrics (fn [rows] (filterv #(contains? usable (:id %)) rows)))
+          (update :dimension_groups
+                  (fn [groups]
+                    (into []
+                          (keep (fn [group]
+                                  (let [ids (filterv usable (:metric_ids group))]
+                                    (when (seq ids)
+                                      (assoc group :metric_ids ids)))))
+                          groups)))))
+    candidates))
 
 (mu/defn ^{:tool-name "list_research_metrics"
            :scope     scope/agent-explorations-read}
@@ -133,7 +153,8 @@
     :else
     (do
       (check-curated-metrics! metric_ids)
-      {:output (json/encode (explorations/research-candidates {:metric-ids metric_ids :q q}))})))
+      {:output (json/encode (curated-only-candidates
+                             (explorations/research-candidates {:metric-ids metric_ids :q q})))})))
 
 (defn- research-groups-payload
   "Validate `groups` and hydrate the FE picker payload for them, in the snake_case shape the

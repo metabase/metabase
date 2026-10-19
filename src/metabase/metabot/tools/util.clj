@@ -156,9 +156,10 @@
       api/read-check))
 
 (defn get-table
-  "Get the `fields` of the table with ID `id`."
+  "Get the `fields` of the table with ID `id`. `is_published` and `collection_id` always come along: the read check
+  grants a Library table through its collection, and needs them to."
   [id & fields]
-  (-> (metabot.db/active-table-with-columns (into [:model/Table :id] fields) id)
+  (-> (metabot.db/active-table-with-columns (into [:model/Table :id :is_published :collection_id] fields) id)
       api/read-check))
 
 (defn get-card
@@ -199,13 +200,31 @@
 
 (defn card-definition-table-ids
   "The ids of the Tables the definition of the card with ID `card-id` reads, plus the Tables one FK hop away from
-  them, or nil when the card is missing or its query can't be built."
+  them, following source Cards to their own definitions (ten levels at most), or nil when the card is missing or
+  its query can't be built. A native definition names no Tables: its result columns say which Tables it exposes."
   [card-id]
   (when-let [card (get-card card-id)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (try
-        (:table (lib/all-referenced-entity-ids [(lib/query mp (:dataset_query card))]
-                                               {:include-implicitly-joinable? true}))
+        (loop [todo #{card-id} seen #{} tables #{} depth 0]
+          (if (or (empty? todo) (= depth 10))
+            tables
+            (let [queries (into []
+                                (keep (fn [{:keys [dataset-query result-metadata]}]
+                                        (when-let [query (some->> dataset-query (lib/query mp))]
+                                          (if (lib/any-native-stage? query)
+                                            ;; result columns keep their stored spelling in lib's card metadata
+                                            {:native-tables (into #{} (keep #(or (:table-id %) (:table_id %))) result-metadata)}
+                                            {:query query}))))
+                                (lib.metadata/bulk-metadata mp :metadata/card todo))
+                  refs    (if-let [qs (not-empty (into [] (keep :query) queries))]
+                            (lib/all-referenced-entity-ids qs {:include-implicitly-joinable? true})
+                            {})
+                  seen    (into seen todo)]
+              (recur (into #{} (remove seen) (:card refs))
+                     seen
+                     (-> tables (into (:table refs)) (into (mapcat :native-tables) queries))
+                     (inc depth)))))
         (catch Throwable _
           nil)))))
 

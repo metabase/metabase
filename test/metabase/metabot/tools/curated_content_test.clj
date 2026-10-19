@@ -2,6 +2,7 @@
   "BOT-1649: with `use_verified_content` on, Metabot tools that read or query entities directly stay within curated
   content, matching the `:curated` filter search applies."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.activity-feed.core :as activity-feed]
@@ -15,6 +16,7 @@
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.create-alert :as create-alert]
+   [metabase.metabot.tools.explorations :as explorations-tools]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.metabot.tools.resources :as read-resource]
@@ -24,6 +26,7 @@
    [metabase.metabot.tools.static-viz :as static-viz]
    [metabase.metabot.tools.subscriptions :as subscriptions]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (def ^:private curation-features
@@ -828,3 +831,211 @@
         (is (= "false" (probe curated :nlq-fallback)))
         (is (= "false" (probe open :internal)))
         (is (= "false" (probe nil :internal)))))))
+
+(deftest construct-coarse-gate-runs-before-repair-test
+  (testing "the gate before repair rejects an uncurated source whatever else the query names, so repair never lists
+            its columns: an unusable metric, a metric reference without options, or a joined uncurated card"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {raw-metric-eid :entity_id} {:type          :metric
+                                                                :name          "raw orders count"
+                                                                :dataset_query (count-metric-query (orders-query))}
+                       :model/Card {verified-metric-eid :entity_id verified-metric :id}
+                       {:type :metric :name "verified orders count" :dataset_query (count-metric-query (orders-query))}
+                       :model/Card {plain-model-eid :entity_id} {:type          :model
+                                                                 :name          "plain products model"
+                                                                 :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                       :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+          (verify-card! verified-metric)
+          (let [db-name   (db-name)
+                error-of  (fn [q]
+                            (try
+                              (as-metabot metabot :internal #(construct/execute-representations-query q))
+                              nil
+                              (catch clojure.lang.ExceptionInfo e
+                                (ex-data e))))
+                bad-field ["field" {} [db-name "PUBLIC" "ORDERS" "NO_SUCH_COLUMN"]]
+                query     (fn [stage]
+                            {:lib/type "mbql/query"
+                             :stages   [(merge {:lib/type "mbql.stage/mbql" :source-table [db-name "PUBLIC" "ORDERS"]}
+                                               stage)]})]
+            (testing "a metric this Metabot may not use doesn't authorize its table: rejected before repair"
+              (is (= :uncurated-source
+                     (:error (error-of (query {:aggregation [["metric" {} raw-metric-eid]] :breakout [bad-field]}))))))
+            (testing "a metric reference without its options map is read the same way"
+              (is (= :uncurated-source
+                     (:error (error-of (query {:aggregation [["metric" raw-metric-eid]] :breakout [bad-field]}))))))
+            (testing "a curated metric authorizes its own table as the source, so the query reaches repair"
+              (is (= :unknown-field
+                     (:error (error-of (query {:aggregation [["metric" {} verified-metric-eid]] :breakout [bad-field]}))))))
+            (testing "a joined uncurated card is rejected before repair, even under a curated source"
+              (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+                (is (= :uncurated-source
+                       (:error (error-of
+                                (query {:aggregation [["count" {}]]
+                                        :joins       [{:lib/type   "mbql/join"
+                                                       :fields     "all"
+                                                       :strategy   "left-join"
+                                                       :alias      "P"
+                                                       :conditions [["=" {}
+                                                                     ["field" {} [db-name "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                                                     ["field" {:join-alias "P"} ["card" plain-model-eid "NO_SUCH"]]]]
+                                                       :stages     [{:lib/type "mbql.stage/mbql" :source-card plain-model-eid}]}]})))))))
+            (testing "each uncurated entity is listed once"
+              (is (= [["table" (mt/id :orders)]]
+                     (:uncurated (error-of (query {:breakout [bad-field]}))))))))))))
+
+(deftest run-query-conversation-query-curated-only-test
+  (testing "run_query and create_autogenerated_dashboard judge a query the conversation holds, which may come from the
+            user's viewing context unjudged"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Metabot metabot {:name "curated metabot" :use_verified_content true}
+                     :model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+        (let [orders-count {:database (mt/id)
+                            :type     :query
+                            :query    {:source-table (mt/id :orders) :aggregation [[:count]]}}
+              with-query   (fn [f]
+                             (as-metabot metabot :internal
+                                         #(binding [tools.shared/*memory-atom* (atom {:conversation-id conversation-id
+                                                                                      :state           {:queries {"adhoc" orders-count}}
+                                                                                      :context         {}})]
+                                            (f))))
+              run          (fn []
+                             (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+                               (with-query #(run-query/run-query-tool {:query_id "adhoc"}))))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content" (run)))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
+                                (with-query #(autogen/create-autogenerated-dashboard-tool {:source {:query_id "adhoc"}}))))
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (is (str/includes? (:output (run)) "Count"))))))))
+
+(deftest id-taking-tools-missing-id-reads-as-missing-test
+  (testing "a missing id gets the handler's own answer, not a curation verdict"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (as-metabot metabot :internal
+                    (fn []
+                      (let [missing   2147483647
+                            output-of (fn [f]
+                                        (try
+                                          (:output (f))
+                                          (catch clojure.lang.ExceptionInfo e
+                                            (ex-message e))))]
+                        (doseq [f [#(autogen/create-autogenerated-dashboard-tool {:source {:report_id missing}})
+                                   #(autogen/create-autogenerated-dashboard-tool {:source {:table_id missing}})
+                                   #(create-alert/create-alert-tool {:card_id        missing
+                                                                     :send_condition "has_result"
+                                                                     :schedule       {:frequency "daily" :hour 9}})
+                                   #(subscriptions/create-dashboard-subscription-tool {:dashboard_id  missing
+                                                                                       :slack_channel "#general"
+                                                                                       :schedule      {:frequency "daily" :hour 9}})]]
+                          (let [text (output-of f)]
+                            (is (string? text))
+                            (is (not (str/includes? text "only uses curated content")) text))))))))))
+
+(deftest explorations-tools-curated-only-test
+  (testing "the research catalog tools list and accept only the metrics this Metabot may use"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {raw-metric :id} {:type          :metric
+                                                   :name          "zz raw orders count"
+                                                   :dataset_query (count-metric-query (orders-query))}
+                     :model/Card {verified-metric :id} {:type          :metric
+                                                        :name          "zz verified orders count"
+                                                        :dataset_query (count-metric-query (orders-query))}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (verify-card! verified-metric)
+        (let [ours       #{raw-metric verified-metric}
+              metric-ids (fn [metabot profile-id tool args]
+                           (set/intersection ours
+                                             (into #{}
+                                                   (map :id)
+                                                   (:metrics (json/decode+kw (:output (as-metabot metabot profile-id #(tool args))))))))]
+          (testing "list_research_metrics"
+            (is (= ours (metric-ids nil nil explorations-tools/list-research-metrics-tool {:q "zz"})))
+            (is (= #{verified-metric} (metric-ids metabot :internal explorations-tools/list-research-metrics-tool {:q "zz"}))))
+          (testing "get_research_candidates by q"
+            (is (= ours (metric-ids nil nil explorations-tools/get-research-candidates-tool {:q "zz"})))
+            (is (= #{verified-metric} (metric-ids metabot :internal explorations-tools/get-research-candidates-tool {:q "zz"}))))
+          (testing "get_research_candidates by id"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
+                                  (as-metabot metabot :internal
+                                              #(explorations-tools/get-research-candidates-tool {:metric_ids [raw-metric]}))))
+            (is (= #{verified-metric}
+                   (metric-ids metabot :internal explorations-tools/get-research-candidates-tool {:metric_ids [verified-metric]})))))))))
+
+(deftest listings-omit-query-json-curated-only-test
+  (testing "under curated-only a card's details omit its definition in list_available_fields, as in read_resource"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {model-id :id} {:type :model :name "verified orders model" :dataset_query (orders-query)}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (verify-card! model-id)
+        (let [model-entry (fn [metabot profile-id]
+                            (first (get-in (as-metabot metabot profile-id
+                                                       #(metadata-tools/list-available-fields-tool {:table_ids  []
+                                                                                                    :model_ids  [model-id]
+                                                                                                    :metric_ids []}))
+                                           [:structured-output :models])))]
+          (is (contains? (model-entry nil nil) :query_json))
+          (is (not (contains? (model-entry metabot :internal) :query_json))))))))
+
+(deftest field-values-follow-the-definition-through-cards-test
+  (testing "the field-owner rule follows a card's definition through its source cards, reads a native definition's
+            result columns, and judges a metric's columns the same way"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+        (let [mp    (mt/metadata-provider)
+              total (mt/id :orders :total)]
+          (mt/with-temp [:model/Card {base-model :id} {:type :model :name "orders model" :dataset_query (orders-query)}
+                         :model/Card {stacked-model :id} {:type          :model
+                                                          :name          "model on model"
+                                                          :dataset_query (lib/query mp (lib.metadata/card mp base-model))}
+                         :model/Card {native-model :id} {:type          :model
+                                                         :name          "native model"
+                                                         :dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}
+                         :model/Card {edited-model :id} {:type :model :name "edited model" :dataset_query (orders-query)}
+                         :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+            (t2/update! :model/Card native-model
+                        {:result_metadata [{:name "TOTAL" :display_name "Total" :base_type :type/Float
+                                            :id total :table_id (mt/id :orders)}]})
+            (t2/update! :model/Card edited-model
+                        {:result_metadata [{:name "RATING" :display_name "Rating" :base_type :type/Integer
+                                            :id (mt/id :reviews :rating) :table_id (mt/id :reviews)}]})
+            (doseq [id [base-model stacked-model native-model edited-model]]
+              (verify-card! id))
+            (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
+                                                        :name          "metric on edited model"
+                                                        :dataset_query (count-metric-query
+                                                                        (lib/query mp (lib.metadata/card mp edited-model)))}]
+              (let [values (fn [source-type source-id field-id]
+                             (as-metabot metabot :internal
+                                         #(metadata-tools/get-field-values-tool {:data_source source-type
+                                                                                 :source_id   source-id
+                                                                                 :field_id    field-id})))]
+                (is (some? (get-in (values "model" stacked-model total) [:structured-output :value_metadata]))
+                    "a model built on a model reaches the tables its source reads")
+                (is (some? (get-in (values "model" native-model total) [:structured-output :value_metadata]))
+                    "a native model exposes the tables its result columns map to")
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
+                                      (values "metric" metric-id (mt/id :reviews :rating)))
+                    "a metric's columns are judged by its definition, source cards included")))))))))
+
+(deftest measure-reads-follow-their-definitions-test
+  (testing "read_resource judges a measure by its table and by the tables its definition reads"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [mp     (mt/metadata-provider)
+            orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            price  (first (filter #(= (:id %) (mt/id :products :price)) (lib/visible-columns orders)))]
+        (mt/with-temp [:model/Measure {raw-measure :id} {:name       "reviews count"
+                                                         :table_id   (mt/id :reviews)
+                                                         :definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :reviews)))
+                                                                                    (lib/count))}
+                       :model/Measure {hop-measure :id} {:name       "orders product price"
+                                                         :table_id   (mt/id :orders)
+                                                         :definition (lib/aggregate orders (lib/sum price))}
+                       :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (is (denied? (first (read-uris metabot :internal (str "metabase://measure/" raw-measure)))))
+            (is (not (denied? (first (read-uris metabot :internal (str "metabase://measure/" hop-measure)))))
+                "PRODUCTS is one FK hop from curated ORDERS")
+            (is (false? (curation/measure-or-segment-curated? :measure raw-measure)))
+            (is (true? (curation/measure-or-segment-curated? :measure hop-measure)))))))))

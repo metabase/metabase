@@ -17,6 +17,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -361,13 +362,36 @@
           (filter (fn [id] (or (contains? curated ["card" id]) (curated-metric? id))))
           ids)))
 
+(defn measure-or-segment-curated?
+  "Whether a curated-only Metabot may read the measure or segment `id` (`kind` is `:measure` or `:segment`): its
+  Table is curated, and every Table its definition reads is curated or one FK hop from its Table, the way
+  [[uncurated-query-sources]] judges a measure or segment a query uses. A missing one, or one whose definition
+  can't be built, fails closed."
+  [kind id]
+  (when-let [table-id (case kind
+                        :measure (metabot.db/measure-table-id id)
+                        :segment (metabot.db/segment-table-id id))]
+    (let [mp     (lib-be/application-database-metadata-provider (metabot.db/table-database-id table-id))
+          tables (get (measure-and-segment-tables mp
+                                                  (when (= kind :measure) [id])
+                                                  (when (= kind :segment) [id]))
+                      [kind id])]
+      (when (seq tables)
+        (let [curated  (curated-ids (map #(vector "table" %) tables))
+              curated? (fn [tid] (contains? curated ["table" tid]))]
+          (boolean
+           (and (curated? table-id)
+                (let [covered (covered-table-ids mp (filter curated? tables) [])]
+                  (every? #(or (curated? %) (contains? covered %)) tables)))))))))
+
 (defn subject-curated?
   "Whether `subject`, a `[model id]` pair, is curated: `\"table\"`, `\"card\"`, and `\"dashboard\"` by their own
-  signals; `\"metric\"` as [[curated-metric?]] judges a Card named where a metric is expected; anything else
-  (`\"transform\"`) never."
+  signals; `\"metric\"` as [[curated-metric?]] judges a Card named where a metric is expected; `:measure` and
+  `:segment` as [[measure-or-segment-curated?]]; anything else (`\"transform\"`) never."
   [[model id :as subject]]
-  (if (= model "metric")
-    (curated-metric? id)
+  (case model
+    "metric"            (curated-metric? id)
+    (:measure :segment) (measure-or-segment-curated? model id)
     (contains? (curated-ids [subject]) subject)))
 
 (defn check-curated-subject!
@@ -377,3 +401,50 @@
   [label subject]
   (when (and subject (not (subject-curated? subject)))
     (recoverable.common/not-curated! {:label label})))
+
+(defn check-curated-readable-subject!
+  "[[check-curated-subject!]] for a tool that takes a bare id and has no pre-checks of its own: the judgement runs
+  only when the entity exists and the current user can read it, so a missing or unreadable id gets the handler's
+  own answer rather than a curation verdict, and an unreadable entity doesn't reveal whether it's curated."
+  [label [model id :as subject]]
+  (let [row (case model
+              "table"           (metabot.db/table id)
+              ("card" "metric") (metabot.db/card id)
+              "dashboard"       (metabot.db/dashboard id)
+              nil)]
+    (when (some-> row mi/can-read?)
+      (check-curated-subject! label subject))))
+
+(defn check-curated-query!
+  "Reject `query` — a query the conversation holds, as a lib query or a query map with `:database` — unless everything
+  it reads is curated or covered (see [[uncurated-query-sources]]), naming it by `label`. A native query names no
+  tables to judge it by and is left to the SQL tools' own gates. Callers decide whether the session is curated-only."
+  [label query]
+  (let [query (cond-> query
+                (not (:lib/metadata query))
+                (->> (lib/query (lib-be/application-database-metadata-provider (:database query)))))]
+    (when (and (not (lib/any-native-stage? query))
+               (seq (uncurated-query-sources query)))
+      (recoverable.common/not-curated! {:label label}))))
+
+(defn metric-reach
+  "What the metric Cards `metric-ids` let a query reach, for the coarse gate `construct_notebook_query` runs before
+  repair can read a query (the full rule, [[uncurated-query-sources]], runs once the query resolves): `:sources`,
+  the Tables and Cards the usable metrics' definitions read from directly, which such a query may use as its
+  source; `:tables`, every Table those definitions read or that is one FK hop from them, which it may join;
+  `:usable`, the metrics this Metabot may use (see [[usable-metric-ids]]), the only ones that count: the rest
+  contribute nothing, so a query on their tables is judged on its other content."
+  [mp metric-ids]
+  (let [usable  (usable-metric-ids metric-ids)
+        queries (into []
+                      (keep (fn [id]
+                              (when-let [{:keys [dataset_query]} (metabot.db/card-of-type id :metric)]
+                                (definition-query mp dataset_query))))
+                      usable)
+        refs    (if (seq queries)
+                  (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})
+                  {})]
+    {:usable  usable
+     :sources {:table (into #{} (keep lib/primary-source-table-id) queries)
+               :card  (into #{} (keep lib/primary-source-card-id) queries)}
+     :tables  (covered-table-ids mp (:table refs) (:card refs))}))

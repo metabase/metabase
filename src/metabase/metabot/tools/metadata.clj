@@ -80,16 +80,18 @@
                                   (fn [model-id]
                                     (resources-tools/check-card-resource-database model-id)
                                     (check-curated (str "model " model-id) ["card" model-id])
-                                    (entity-details-tools/get-table-details
-                                     {:entity-type :model
-                                      :entity-id model-id
-                                      :with-fields? true
-                                      :with-field-values? false
-                                      :with-related-tables? false
-                                      :with-metrics? false
-                                      :with-default-temporal-breakout? false
-                                      :with-measures? true
-                                      :with-segments? true}))
+                                    ;; under curated-only a card's details omit its definition, as read_resource's do
+                                    (cond-> (entity-details-tools/get-table-details
+                                             {:entity-type :model
+                                              :entity-id model-id
+                                              :with-fields? true
+                                              :with-field-values? false
+                                              :with-related-tables? false
+                                              :with-metrics? false
+                                              :with-default-temporal-breakout? false
+                                              :with-measures? true
+                                              :with-segments? true})
+                                      curated-only? (update :structured-output dissoc :query_json)))
                                   %)
                                 model-ids)
             metric-results (mapv #(safe-fetch
@@ -158,10 +160,17 @@
   "List all data sources (metrics and models) available to the metabot instance."
   [_args :- [:map {:closed true}]]
   (add-output
-   (entity-details-tools/answer-sources {:metabot            shared/*metabot*
-                                         :with-field-values? false
-                                         :with-measures?     true
-                                         :with-segments?     true})
+   (cond-> (entity-details-tools/answer-sources {:metabot            shared/*metabot*
+                                                 :with-field-values? false
+                                                 :with-measures?     true
+                                                 :with-segments?     true})
+     ;; under curated-only a card's details omit its definition, as read_resource's do
+     (shared/curated-only?)
+     (update :structured-output
+             (fn [so]
+               (-> so
+                   (update :metrics (fn [rows] (mapv #(dissoc % :query_json) rows)))
+                   (update :models (fn [rows] (mapv #(dissoc % :query_json) rows)))))))
    format-answer-sources-output))
 
 (def ^:private list-available-fields-schema

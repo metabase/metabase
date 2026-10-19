@@ -74,6 +74,9 @@
                         {:agent-error? true
                          :query-id query_id
                          :available-queries (keys queries-state)})))
+      ;; a query the conversation holds may come from the user's viewing context, which nothing judged
+      (when (shared/curated-only?)
+        (curation/check-curated-query! (str "query " query_id) query))
       ;; For queries, we create a transient card-like structure
       {:entity {:dataset_query query}
        :path (str "/auto/dashboard/adhoc/" query_id)})))

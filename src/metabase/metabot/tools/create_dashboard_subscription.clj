@@ -27,7 +27,7 @@
                                        [:dashboard_id :int]
                                        [:schedule tools.create-alert/schedule-schema]]]
   (when (shared/curated-only?)
-    (curation/check-curated-subject! (str "dashboard " dashboard_id) ["dashboard" dashboard_id]))
+    (curation/check-curated-readable-subject! (str "dashboard " dashboard_id) ["dashboard" dashboard_id]))
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
     (try
       (when-not slack-channel-id
