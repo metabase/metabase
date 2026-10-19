@@ -28,11 +28,14 @@
        :show-column-totals show-column-totals})))
 
 (defn- compile-pivot
-  "Compile `query` through the Mongo QP and return the aggregation-pipeline vector."
-  [query]
+  "Compile `query` through the Mongo QP and return the aggregation-pipeline vector. Defaults to a tight
+  `:max-results` so the shape dispatch picks `$facet`; pass `:max-results nil` to let the default (no
+  cap known) select `$unionWith`."
+  [query & {:keys [max-results] :or {max-results 1000}}]
   (qp.store/with-metadata-provider meta/metadata-provider
     (binding [driver/*driver* :mongo]
-      (:query (mongo.qp/mbql->native query)))))
+      (:query (mongo.qp/mbql->native (cond-> query
+                                       max-results (assoc-in [:constraints :max-results] max-results)))))))
 
 (defn- two-breakout-orders-count
   "Fixture: `orders` grouped by product-id + user-id with a `count` aggregation."
@@ -58,10 +61,10 @@
   (get-in (branch-project branch-pipeline) ["pivot-grouping" "$literal"]))
 
 (deftest ^:parallel top-level-pipeline-shape-test
-  (testing "the compiled pivot pipeline has [$facet, $addFields, $unwind, $replaceRoot, $sort] after any shared upstream"
+  (testing "the compiled pivot pipeline has right top-level keys after any shared upstream"
     (let [pipeline (compile-pivot (with-pivot (two-breakout-orders-count) [0] [1]))
           top-keys (mapv #(first (keys %)) pipeline)]
-      (is (= ["$facet" "$addFields" "$unwind" "$replaceRoot" "$sort"] top-keys)))))
+      (is (= ["$facet" "$addFields" "$unwind" "$replaceRoot" "$sort" "$limit"] top-keys)))))
 
 (deftest ^:parallel facet-branch-count-test
   (testing "a 2-breakout pivot with both totals produces 4 branches (detail + row-totals + col-totals + grand-total)"
@@ -106,13 +109,68 @@
       (is (nil? (get-in (first grand-total-branch) ["$group" "_id"]))))))
 
 (deftest ^:parallel outer-sort-test
-  (testing "the outer $sort leads with pivot-grouping ASC so grand totals sort last, then breakouts as a canonical tiebreaker"
+  (testing (str "the outer $sort leads with pivot-grouping DESC so rollups sort first, "
+                "then breakouts ASC as a canonical tiebreaker")
     (let [pipeline  (compile-pivot (with-pivot (two-breakout-orders-count) [0] [1]))
-          sort-map  (get (last pipeline) "$sort")
+          sort-map  (get (nth pipeline (- (count pipeline) 2)) "$sort")
           sort-keys (vec (keys sort-map))]
       (is (= "pivot-grouping" (first sort-keys)))
-      (is (every? #(= 1 (get sort-map %)) sort-keys))
+      (is (= -1 (get sort-map "pivot-grouping")))
+      (is (every? #(= 1 (get sort-map %)) (rest sort-keys)))
       (is (= #{"pivot-grouping" "PRODUCT_ID" "USER_ID"} (set sort-keys))))))
+
+;;; ------------------------------------ $facet vs $unionWith dispatch ------------------------------------
+
+(defn- top-stage-keys [pipeline]
+  (mapv #(first (keys %)) pipeline))
+
+(deftest ^:parallel shape-dispatch-test
+  (let [q (with-pivot (two-breakout-orders-count) [0] [1])]
+    (testing "effective limit at or below the facet-safe limit picks $facet"
+      (let [keys-set (set (top-stage-keys (compile-pivot q :max-results 10000)))]
+        (is (contains? keys-set "$facet"))
+        (is (not (contains? keys-set "$unionWith")))))
+    (testing "effective limit above the facet-safe limit picks $unionWith"
+      (let [keys-set (set (top-stage-keys (compile-pivot q :max-results 50000)))]
+        (is (contains? keys-set "$unionWith"))
+        (is (not (contains? keys-set "$facet")))))
+    (testing "no effective limit (no constraints, no stage :limit) falls through to $unionWith"
+      (is (contains? (set (top-stage-keys (compile-pivot q :max-results nil)))
+                     "$unionWith")))
+    (testing "a tight MBQL :limit picks $facet even when :max-results is high"
+      (let [tight    (-> q (lib/limit 500))
+            keys-set (set (top-stage-keys (compile-pivot tight :max-results 50000)))]
+        (is (contains? keys-set "$facet"))))))
+
+(deftest ^:parallel limit-tail-stage-test
+  (let [q (with-pivot (two-breakout-orders-count) [0] [1])]
+    (testing "a known effective limit appends a $limit stage after the final $sort"
+      (let [pipeline (compile-pivot q :max-results 10000)]
+        (is (= "$limit" (first (keys (last pipeline)))))
+        (is (= 10000    (get (last pipeline) "$limit")))))
+    (testing "no effective limit means no tail $limit"
+      (let [pipeline (compile-pivot q :max-results nil)]
+        (is (not= "$limit" (first (keys (last pipeline)))))))))
+
+;;; ------------------------------------ $unionWith shape ------------------------------------
+
+(defn- union-branches
+  "Return the ordered `$unionWith` stage maps from `pipeline` (empty vector when none)."
+  [pipeline]
+  (into [] (keep #(get % "$unionWith")) pipeline))
+
+(deftest ^:parallel union-with-shape-test
+  (let [pipeline (compile-pivot (with-pivot (two-breakout-orders-count) [0] [1])
+                                :max-results 50000)
+        branches (union-branches pipeline)]
+    (testing (str "a 2-breakout pivot with both totals yields 4 grouping combos; "
+                  "one continues the main pipeline, the other 3 become $unionWith stages")
+      (is (= 3 (count branches))))
+    (testing "each $unionWith names the collection and attaches an inner pipeline"
+      (doseq [branch branches]
+        (is (= "ORDERS" (get branch "coll")))
+        (is (sequential? (get branch "pipeline")))
+        (is (seq (get branch "pipeline")))))))
 
 ;;; ------------------------------------ $facet size-limit translation ------------------------------------
 

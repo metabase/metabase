@@ -12,7 +12,6 @@
   (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
@@ -20,7 +19,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util :as lib.util]
@@ -703,12 +701,13 @@
     ::default (running-in-clojure-test?)
     (boolean *check-pivot-parity?*)))
 
-(def ^:private pivot-flow-comparison-pairs
-  "Pivot flow pairs the parity checker compares, in order. `:multi-query` is placed first in each pair that
-  includes it so `do-report` renders it as `:expected` (the reference)."
-  [[:multi-query :native-pivot-query]
-   [:multi-query :union-all]
-   [:native-pivot-query :union-all]])
+(defn- flow-comparison-pairs
+  "Ordered pairs `[a b]` where `a` precedes `b` in `flows`."
+  [flows]
+  (into []
+        (for [[a & rst] (take-while next (iterate next flows))
+              b         rst]
+          [a b])))
 
 (defn- failure-signature
   "Comparable `[class-name message]` for a failure's deepest cause. Accepts a `Throwable` (walks
@@ -741,15 +740,12 @@
       :else                     (outcomes-data-equivalent? a-outcome b-outcome))))
 
 (defn- divergent-pivot-pairs
-  "Vector of `[flow-a flow-b]` pairs (drawn in [[pivot-flow-comparison-pairs]] order) whose outcomes in
-  `outcomes` disagree. Pairs where either side is missing (flow didn't run) are skipped."
-  [outcomes]
+  "Vector of `[flow-a flow-b]` pairs from `outcomes` whose outcomes disagree, ordered by
+  [[flow-comparison-pairs]] over `flows`."
+  [flows outcomes]
   (into []
-        (filter (fn [[a b]]
-                  (when-let [oa (get outcomes a)]
-                    (when-let [ob (get outcomes b)]
-                      (not (outcomes-match? oa ob))))))
-        pivot-flow-comparison-pairs))
+        (filter (fn [[a b]] (not (outcomes-match? (outcomes a) (outcomes b)))))
+        (flow-comparison-pairs flows)))
 
 (defn- outcome->reportable
   "The value inside an outcome map, whether success or failure."
@@ -780,31 +776,22 @@
   [[default-on-parity-mismatch!]]."
   default-on-parity-mismatch!)
 
+(defmulti pivot-shapes
+  "Single-query pivot shapes `query` can run against `database`, in order of decreasing efficiency.
+  Each shape value doubles as a `:qp.pivot/forced-shape` stage value the driver's compiler recognises.
+  Returns an ordered collection — a seq, vector, or empty when the driver has no single-query shape
+  for this query."
+  {:added "0.66.0" :changelog-test/ignore true :arglists '([query database])}
+  (fn [_query database] (:engine database))
+  :hierarchy #'driver/hierarchy)
+
+(defmethod pivot-shapes :default [_query _database] [])
+
 (defn- pivot-parity-flows
-  "Ordered flow list, given the (preprocessed) `query` and its `database`.
-
-  * every driver includes `:multi-query` — the reference flow, one query per breakout combination.
-  * every SQL driver additionally includes `:union-all` — the SQL family's unconditional single-query
-    fallback shape.
-  * every driver that declares `:native-pivot-tables` additionally includes `:native-pivot-query`,
-    which each family's compiler renders as its native single-scan shape (`GROUPING SETS` on SQL,
-    `$facet` on Mongo). Dropped when the query has a window-function aggregation and the driver
-    does NOT declare `:native-pivot-tables/window-functions`.
-
-  `:multi-query` comes first (the reference). The remaining flows are listed in order of
-  decreasing efficiency. Non-`:multi-query` labels double as `:qp.pivot/forced-shape` stage values that
-  the driver's compiler recognises."
+  "Ordered flow list for `query` on `database`: `:multi-query` (reference) followed by whatever
+  single-query shapes [[pivot-shapes]] declares, in that method's order."
   [query database]
-  (let [driver       (:engine database)
-        sql?         (isa? driver/hierarchy driver :sql)
-        native?      (driver.u/supports? driver :native-pivot-tables database)
-        native-safe? (and native?
-                          (or (not (some lib.schema.aggregation/window-aggregation-expression?
-                                         (lib/aggregations query)))
-                              (driver.u/supports? driver :native-pivot-tables/window-functions database)))]
-    (cond-> [:multi-query]
-      native-safe? (conj :native-pivot-query)
-      sql?         (conj :union-all))))
+  (into [:multi-query] (pivot-shapes query database)))
 
 (defn- run-pivot-flow
   "Run one pivot `flow` against `query`. `primary-flow` uses the caller's `rff` and lets
@@ -840,7 +827,7 @@
   polling budget shows up plainly instead of the QP's wrapping `Error preparing statement` text."
   [query rff flows primary-flow]
   (let [outcomes        (into {} (map (fn [flow] [flow (run-pivot-flow flow query rff primary-flow)])) flows)
-        divergent-pairs (divergent-pivot-pairs outcomes)
+        divergent-pairs (divergent-pivot-pairs flows outcomes)
         cause-chain     (fn [^Throwable t]
                           (loop [t t, acc []]
                             (if t (recur (.getCause t) (conj acc (.getMessage t))) acc)))]

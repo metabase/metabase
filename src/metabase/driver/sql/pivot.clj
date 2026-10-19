@@ -13,6 +13,7 @@
    [metabase.lib.pivot :as lib.pivot]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.util :as u]
    [metabase.util.performance :refer [mapv not-empty some]]))
@@ -34,6 +35,15 @@
     :union-all          false
     (and (driver.u/supports? (driver.u/database->driver database) :native-pivot-tables database)
          (not (stage-has-window-fn-aggregation? stage)))))
+
+(defmethod qp.pivot/pivot-shapes :sql
+  [query database]
+  (let [driver       (:engine database)
+        native-safe? (and (driver.u/supports? driver :native-pivot-tables database)
+                          (or (not (stage-has-window-fn-aggregation? (lib.util/query-stage query -1)))
+                              (driver.u/supports? driver :native-pivot-tables/window-functions database)))]
+    (cond-> [:union-all]
+      native-safe? (->> (cons :native-pivot-query) vec))))
 
 (defn- format-exprs
   "Format each expression in `exprs` via [[honey.sql/format-expr]] and return `[[sql-strings] [args]]`."

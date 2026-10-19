@@ -217,7 +217,7 @@
   inside a `$facet` branch (which cannot spill to disk)."
   #{10334 4031700})
 
-(defn- pivot-pipeline?
+(defn- facet-pipeline?
   "True iff `pipeline` contains a `$facet` stage."
   [pipeline]
   (boolean (some #(contains? % "$facet") pipeline)))
@@ -227,11 +227,11 @@
   queries whose `$facet` output overruns MongoDB's size limits get a message that names the two
   remediations; everything else gets the generic wrapping."
   [e native-query]
-  (let [code               (when (instance? MongoCommandException e)
-                             (.getErrorCode ^MongoCommandException e))
-        oversize-on-pivot? (and (contains? facet-oversize-error-codes code)
-                                (pivot-pipeline? (:query native-query)))]
-    (if oversize-on-pivot?
+  (let [code             (when (instance? MongoCommandException e)
+                           (.getErrorCode ^MongoCommandException e))
+        facet-oversize?  (and (contains? facet-oversize-error-codes code)
+                              (facet-pipeline? (:query native-query)))]
+    (if facet-oversize?
       (ex-info (tru (str "Pivot result exceeded MongoDB''s $facet size limits. Reduce the pivot''s "
                          "cardinality by adding filters or dropping breakouts with many distinct values, "
                          "or ask an admin to disable the ''use-native-pivot-tables'' setting."))

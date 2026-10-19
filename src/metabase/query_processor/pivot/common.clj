@@ -56,6 +56,13 @@
    (long (dec (math/pow 2 num-breakouts)))
    indexes))
 
+(def ^:private max-powerset-breakouts
+  "The most breakouts [[breakout-combinations]] will expand to their full powerset (2^n grouping combinations) when no
+  pivot rows or columns are given. Beyond this a single request could force the server to enumerate billions of
+  combinations. Each combination is a separate query on the multi-query path, so the cap is kept low: 10 breakouts
+  is 1024 combinations."
+  10)
+
 (defn- powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
   [xs]
@@ -64,13 +71,6 @@
           :when (not (zero? (bit-and (bit-shift-left 1 item) combo)))]
       (nth xs item))))
 
-(def ^:private max-powerset-breakouts
-  "The most breakouts [[breakout-combinations]] will expand to their full powerset (2^n grouping combinations) when no
-  pivot rows or columns are given. Beyond this a single request could force the server to enumerate billions of
-  combinations. Each combination is a separate query on the multi-query path, so the cap is kept low: 10 breakouts
-  is 1024 combinations."
-  10)
-
 (defn validate-pivot-indices!
   "Throw an `:invalid-query` error if any index in `pivot-rows` or `pivot-cols` falls outside
   `[0, num-breakouts)`, if either contains duplicates, or if they overlap."
@@ -78,7 +78,7 @@
   (doseq [[k pivots] [[:pivot-rows pivot-rows]
                       [:pivot-cols pivot-cols]]
           i          pivots]
-    (when (>= i num-breakouts)
+    (when (or (neg? i) (>= i num-breakouts))
       (throw (ex-info (tru "Invalid {0}: specified breakout at index {1}, but we only have {2} breakouts"
                            (name k) i num-breakouts)
                       {:type          qp.error-type/invalid-query
