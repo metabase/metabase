@@ -85,3 +85,12 @@
   (testing "while changing its source makes it no longer the default one"
     (python-library/update-python-library-source! "common" "def f(): pass")
     (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py")))))
+
+(deftest recreated-library-is-the-built-in-one-test
+  (testing "A recreated common.py takes the built-in entity_id, and is the default one only with an empty source"
+    (doseq [[source default?] [["" true] ["def f(): pass" false]]]
+      (testing (pr-str source)
+        (t2/delete! :model/PythonLibrary)
+        (python-library/update-python-library-source! "common" source)
+        (is (=? {:entity_id python-library/builtin-entity-id :is_default default?}
+                (t2/select-one :model/PythonLibrary :path "common.py")))))))

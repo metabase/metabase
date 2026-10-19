@@ -1,5 +1,6 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.schema]
    [metabase.api.common :as api]
@@ -78,7 +79,8 @@
   [path source]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (let [id (transforms-python.db/upsert-python-library-source! normalized-path source)]
+    (let [id (transforms-python.db/upsert-python-library-source!
+              normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})]
       (transforms-python.db/python-library id))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
