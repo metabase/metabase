@@ -80,4 +80,25 @@ describe("Remote Sync first-time setup", () => {
       ]);
     });
   });
+
+  it("opens branch picker after push while collections to sync are hidden", () => {
+    H.updateSetting("remote-sync-collections-enabled", false);
+    H.configureGitWithNewSyncedCollection("read-write");
+    H.createBranchViaSettings("first-branch");
+
+    cy.visit("/collection/root");
+    H.moveCollectionItemToSyncedCollection(
+      "Orders, Count",
+      "Test Synced Collection",
+    );
+    H.clickPushOption();
+    H.modal()
+      .button(/Push changes/)
+      .click();
+    H.waitForTask({ taskName: "export" });
+
+    cy.log("Branch picker opens with both branches listed");
+    H.createBranchViaSettings("second-branch");
+    H.getSettingsBranchSwitcher().should("contain.text", "second-branch");
+  });
 });
