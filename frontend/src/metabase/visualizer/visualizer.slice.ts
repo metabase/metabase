@@ -130,23 +130,28 @@ const initializeFromState = async (
   const columnRefs = initialState.columnValuesMapping
     ? extractReferencedColumns(initialState.columnValuesMapping)
     : [];
-  const dataSourceIds = Array.from(
-    new Set(columnRefs.map((ref) => ref.sourceId)),
+  const referencedCardIds = columnRefs.map(
+    (ref) => parseDataSourceId(ref.sourceId).sourceId,
+  );
+  // A card whose columns can't be auto-mapped (e.g. a bar chart over a raw table)
+  // must still be loaded as a data source so the user can pick columns by hand
+  const preloadedCardIds = Object.keys(
+    initialState.preloadedDatasets ?? {},
+  ).map(Number);
+  const cardIds = Array.from(
+    new Set([...referencedCardIds, ...preloadedCardIds]),
   );
   await Promise.all(
-    dataSourceIds
-      .map((sourceId) => {
-        const [, cardId] = sourceId.split(":");
-        return [
-          dispatch(fetchCard(Number(cardId))),
-          dispatch(
-            fetchCardQuery({
-              cardId: Number(cardId),
-              preloadedDatasets: initialState.preloadedDatasets,
-            }),
-          ),
-        ];
-      })
+    cardIds
+      .map((cardId) => [
+        dispatch(fetchCard(cardId)),
+        dispatch(
+          fetchCardQuery({
+            cardId,
+            preloadedDatasets: initialState.preloadedDatasets,
+          }),
+        ),
+      ])
       .flat(),
   );
   return clone(initialState);
