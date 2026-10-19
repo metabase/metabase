@@ -1189,7 +1189,7 @@
     (let [original (ex-info "boom" {:agent-error? true :error :unknown-database})
           hinted   (#'construct/with-recovery-hint original (constantly "do the thing"))]
       (testing "message carries the hint"
-        (is (= "boom do the thing" (ex-message hinted))))
+        (is (= "boom\ndo the thing" (ex-message hinted))))
       (testing "the original exception is the direct cause (not its cause, which is nil here)"
         (is (identical? original (ex-cause hinted)))))))
 
