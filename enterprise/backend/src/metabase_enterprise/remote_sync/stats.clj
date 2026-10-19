@@ -13,12 +13,14 @@
    "Card"               :remote-sync-card-count
    "Dashboard"          :remote-sync-dashboard-count
    "DataApp"            :remote-sync-data-app-count
+   "Dimension"          :remote-sync-dimension-count
    "Document"           :remote-sync-document-count
+   "FieldUserSettings"  :remote-sync-field-user-settings-count
    "Glossary"           :remote-sync-glossary-entry-count
    "Measure"            :remote-sync-measure-count
    "NativeQuerySnippet" :remote-sync-snippet-count
    "Segment"            :remote-sync-segment-count
-   "Table"              :remote-sync-table-count
+   "TableUserSettings"  :remote-sync-table-user-settings-count
    "Timeline"           :remote-sync-timeline-count
    "Transform"          :remote-sync-transform-count})
 
@@ -30,13 +32,12 @@
      :remote-sync-metric-count   (get types :metric 0)}))
 
 (defenterprise remote-sync-stats
-  "Counts of the content a full Git sync export walks, by model, empty without Git sync."
+  "Counts of the content a full Git sync export writes, by model, empty without Git sync."
   :feature :remote-sync
   []
   (if (settings/remote-sync-enabled)
-    (let [entities (spec/traversed-entities)
-          counts   (into {} (map (fn [[model k]] [k (count (get entities model))])) model-count-keys)]
-      (merge counts
+    (let [entities (spec/exportable-entities)]
+      (merge (into {} (map (fn [[model k]] [k (count (get entities model))])) model-count-keys)
              (card-type-counts (get entities "Card"))
-             {:remote-sync-content-count (reduce + (vals counts))}))
+             {:remote-sync-content-count (spec/exportable-entity-count entities)}))
     {}))

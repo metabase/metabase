@@ -586,9 +586,10 @@
 (def ^:private remote-sync-metric-names
   "Snowplow metric names of the Git-synced content counts."
   [:remote_sync_action_count :remote_sync_card_count :remote_sync_content_count :remote_sync_dashboard_count
-   :remote_sync_data_app_count :remote_sync_document_count :remote_sync_glossary_entry_count
-   :remote_sync_measure_count :remote_sync_metric_count :remote_sync_model_count :remote_sync_question_count
-   :remote_sync_segment_count :remote_sync_snippet_count :remote_sync_table_count :remote_sync_timeline_count
+   :remote_sync_data_app_count :remote_sync_dimension_count :remote_sync_document_count
+   :remote_sync_field_user_settings_count :remote_sync_glossary_entry_count :remote_sync_measure_count
+   :remote_sync_metric_count :remote_sync_model_count :remote_sync_question_count :remote_sync_segment_count
+   :remote_sync_snippet_count :remote_sync_table_user_settings_count :remote_sync_timeline_count
    :remote_sync_transform_count])
 
 (defenterprise remote-sync-stats

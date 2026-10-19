@@ -730,5 +730,5 @@
   (testing "every Git-synced content count is sent, zero without Git sync"
     (mt/with-premium-features #{}
       (let [metrics (#'stats/remote-sync-metrics)]
-        (is (= 16 (count metrics)))
+        (is (= 18 (count metrics)))
         (is (every? zero? (vals metrics)))))))
