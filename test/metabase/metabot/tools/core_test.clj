@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.agent-lib.representations :as repr]
+   [metabase.agent-lib.test-util :as agent-lib.tu]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
@@ -375,20 +375,7 @@
     (is (= :fine (tools/with-pipeline-errors :fine)))))
 
 (deftest ^:parallel structural-validation-paths-test
-  (doseq [[validate query message] [[repr/validate-external-query
-                                     {:lib/type "mbql/query"
-                                      :database "Sample"
-                                      :stages [{:lib/type "mbql.stage/mbql"
-                                                :source-table ["Sample" "PUBLIC" "ORDERS"]
-                                                :filters {:op ">"}}]}
-                                     "External query has an invalid structure."]
-                                    [repr/validate-query
-                                     {"lib/type" "mbql/query"
-                                      "database" "Sample"
-                                      "stages" [{"lib/type" "mbql.stage/mbql"
-                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                                                 "filters" {"op" ">"}}]}
-                                     "Representations query has an invalid structure."]]]
+  (doseq [[validate query message] agent-lib.tu/structural-validation-cases]
     (testing message
       (let [e    (try (validate query) (catch clojure.lang.ExceptionInfo e e))
             data (ex-data e)

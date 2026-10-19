@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.agent-lib.representations :as repr]
+   [metabase.agent-lib.test-util :as agent-lib.tu]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -219,20 +219,7 @@
     (is (nil? (v2.recovery-hints/recovery-hint {:error :no-such-error})))))
 
 (deftest ^:parallel structural-validation-schema-detail-test
-  (doseq [[validate query message] [[repr/validate-external-query
-                                     {:lib/type "mbql/query"
-                                      :database "Sample"
-                                      :stages [{:lib/type "mbql.stage/mbql"
-                                                :source-table ["Sample" "PUBLIC" "ORDERS"]
-                                                :filters {:op ">"}}]}
-                                     "External query has an invalid structure."]
-                                    [repr/validate-query
-                                     {"lib/type" "mbql/query"
-                                      "database" "Sample"
-                                      "stages" [{"lib/type" "mbql.stage/mbql"
-                                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                                                 "filters" {"op" ">"}}]}
-                                     "Representations query has an invalid structure."]]]
+  (doseq [[validate query message] agent-lib.tu/structural-validation-cases]
     (let [e (try (validate query) (catch clojure.lang.ExceptionInfo e e))]
       (is (= (str "\"" message "\" Invalid at \"stages\": [0] \"filters\": \"invalid type\". "
                   "Fix the named paths, or call \"learn\" with \"query-dialect\" for the clause shapes.")
