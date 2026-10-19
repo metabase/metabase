@@ -163,7 +163,8 @@
         grouping-sets     (into [::grouping-sets] sets-hsql)
         ;; With only one grouping set the grouping bitmask is constant; skip the ORDER BY prefix so dialects that
         ;; reject constants in ORDER BY (e.g. SQL Server) don't fail, and to avoid the redundant sort.
-        prefix-order-by   (if (= 1 (count sets-hsql)) [] [[grouping-fn :asc]])]
+        ;; `:desc` sorts rollups first so a `:max-results` truncation drops detail rows rather than totals.
+        prefix-order-by   (if (= 1 (count sets-hsql)) [] [[grouping-fn :desc]])]
     (-> honeysql-form
         (update :select splice-pivot-grouping-select (count breakout) [grouping-fn lib.pivot/pivot-grouping-column-name])
         (assoc :group-by [grouping-sets]

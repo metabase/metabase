@@ -67,6 +67,7 @@ no-object-illustration: null
 no-object-illustration-custom: null
 non-table-chart-generated: null
 persisted-models-enabled: null
+pivot-max-result-rows: null
 report-timezone: null
 report-timezone-long: null
 report-timezone-short: null

@@ -98,6 +98,18 @@
                      :num-breakouts num-breakouts
                      :max-breakouts max-powerset-breakouts}))))
 
+(defmacro ^:private wrapping-pivot-generation-errors
+  "Rewrap any throw from `body` as `\"Error generating pivot queries\"` of type `:qp`, matching the
+  outer error shape every pivot path presents to the QP's error handling."
+  {:style/indent 1}
+  [query & body]
+  `(try
+     ~@body
+     (catch Throwable e#
+       (throw (ex-info (tru "Error generating pivot queries")
+                       {:type qp.error-type/qp, :query ~query}
+                       e#)))))
+
 (mu/defn breakout-combinations :- ::pivot.common/breakout-combinations
   "Return a sequence of all breakout combinations (by index) we should generate queries for.
 
@@ -191,7 +203,7 @@
   "Generate the additional queries to perform a generic pivot table"
   [query :- ::lib.schema/query
    {:keys [pivot-rows pivot-cols show-row-totals show-column-totals] :as _pivot-options} :- ::pivot-opts]
-  (try
+  (wrapping-pivot-generation-errors query
     (let [all-breakouts (lib/breakouts query)
           all-queries   (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts)
                                                                                pivot-rows
@@ -206,11 +218,13 @@
       (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
             (->
              (assoc-in (first all-queries) [:info :pivot/original-query] query)
-             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))
-    (catch Throwable e
-      (throw (ex-info (tru "Error generating pivot queries")
-                      {:type qp.error-type/qp, :query query}
-                      e)))))
+             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))))
+
+(defn- maybe-userland
+  "Wrap `query` as a userland query when it carries a non-empty `:info` map."
+  [query]
+  (cond-> query
+    (seq (:info query)) qp/userland-query))
 
 (mu/defn- process-query-append-results
   "Reduce the results of a single (sub)`query` using `rf` and initial value `init`."
@@ -619,19 +633,16 @@
            :qp.pivot/num-remapped-breakouts   num-remapped-breakouts
            :qp.pivot/remapped-indexes         remap)))
 
-(def ^:dynamic ^:private *pivot-max-result-rows*
-  "Maximum number of result rows for each pivot sub-query. Divided by the number of aggregations since each aggregation
-  adds a column to the output, so fewer rows are needed to fill the pivot table."
-  200000)
-
 (defn- pivot-query-max-rows
-  "Calculate the per-sub-query row limit for pivot queries: `floor(pivot-max-result-rows / num-aggregations)`.
-  Falls back to `pivot-max-result-rows` if there are no aggregations (shouldn't happen for pivot queries)."
+  "Calculate the per-sub-query row limit for the multi-query pivot path:
+  `floor(pivot-max-result-rows / num-aggregations)`. Falls back to the raw setting value if there are no
+  aggregations (shouldn't happen for pivot queries)."
   [query]
-  (let [num-aggs (count (lib/aggregations query))]
+  (let [cap      (qp.settings/pivot-max-result-rows)
+        num-aggs (count (lib/aggregations query))]
     (if (pos? num-aggs)
-      (quot *pivot-max-result-rows* num-aggs)
-      *pivot-max-result-rows*)))
+      (quot cap num-aggs)
+      cap)))
 
 (defn- pivot-opts-from-query
   "Return `query`'s pivot-options map — as downstream export middleware and streaming writers read it from
@@ -721,20 +732,31 @@
     (not (lib.pivot/has-pivot? query))
     (lib.pivot/with-pivot {:rows [] :columns [] :show-row-totals true :show-column-totals true})))
 
+(defn- cap-constraints-at-pivot-setting
+  "Cap `:max-results` (and `:max-results-bare-rows`, so it stays ≤ `:max-results`) at the pivot setting.
+  A caller-supplied smaller value is still honored."
+  [query]
+  (let [cap (qp.settings/pivot-max-result-rows)]
+    (cond-> (update-in query [:constraints :max-results] u/safe-min cap)
+      (get-in query [:constraints :max-results-bare-rows])
+      (update-in [:constraints :max-results-bare-rows] min cap))))
+
 (defn- run-native-pivot-query
   "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
   on the last stage and submit to the standard QP through `rff`."
   [query rff]
   (let [viz-settings (or (:viz-settings query)
                          (get-in query [:info :visualization-settings]))
-        pivot-opts   (pivot-opts-from-query query)]
-    (-> query
-        apply-legacy-pivot-keys
-        (apply-pivot-viz-settings viz-settings)
-        ensure-pivot-clause
-        (assoc-in [:middleware :pivot-options] pivot-opts)
-        (cond-> (seq (:info query)) qp/userland-query)
-        (qp/process-query rff))))
+        pivot-opts   (pivot-opts-from-query query)
+        prepared     (wrapping-pivot-generation-errors query
+                       (-> query
+                           apply-legacy-pivot-keys
+                           (apply-pivot-viz-settings viz-settings)
+                           ensure-pivot-clause
+                           (assoc-in [:middleware :pivot-options] pivot-opts)
+                           cap-constraints-at-pivot-setting
+                           maybe-userland))]
+    (qp/process-query prepared rff)))
 
 (defn- running-in-clojure-test?
   "True when a `clojure.test` test is currently on the stack — the presence of `*testing-vars*` is the

@@ -1548,68 +1548,127 @@
                (str "Detail count sum (" detail-count-sum ") should equal grand total ("
                     grand-total-count ") because pivot uses its own higher limit"))))))))
 
-(deftest ^:parallel pivot-query-short-circuits-when-master-hits-limit-test
+(deftest pivot-query-short-circuits-when-master-hits-limit-test
   (testing "When the master pivot query hits the row limit, remaining sub-queries are skipped and truncation is signaled"
     ;; The native pivot path is a single GROUPING SETS query, so the per-sub-query row cap doesn't apply — this test
     ;; intentionally exercises multi-query-only behavior.
-    (qp.pivot.test-util/without-pivot-parity-check
-     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-       ;; Use the standard pivot-query but override the pivot limit to be very small.
-       ;; The master query (state × source × category) produces ~200+ rows.
-       ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
-       (binding [qp.pivot/*pivot-max-result-rows* 20]
-         (let [query   (qp.pivot.test-util/pivot-query)
-               results (qp.pivot/run-pivot-query query)
-               rows    (mt/rows results)]
-           (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
-             ;; All rows should be pivot-grouping=0 (the master query's group)
-             (is (every? #(zero? (nth % 3)) rows)
-                 "All rows should be from the master query (pivot-grouping=0)"))
-           (testing "The result includes pivot_rows_truncated flag"
-             (is (= 10 (get-in results [:data :pivot_rows_truncated]))
-                 "Should signal truncation with the row count"))))))))
+    (qp.pivot.test-util/with-multi-query-pivot!
+      (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+        ;; Use the standard pivot-query but override the pivot limit to be very small.
+        ;; The master query (state × source × category) produces ~200+ rows.
+        ;; With pivot-max-result-rows 20, the limit is 20/2=10 per sub-query.
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 20]
+          (let [query   (qp.pivot.test-util/pivot-query)
+                results (qp.pivot/run-pivot-query query)
+                rows    (mt/rows results)]
+            (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
+              ;; All rows should be pivot-grouping=0 (the master query's group)
+              (is (every? #(zero? (nth % 3)) rows)
+                  "All rows should be from the master query (pivot-grouping=0)"))
+            (testing "The result includes pivot_rows_truncated flag"
+              (is (= 10 (get-in results [:data :pivot_rows_truncated]))
+                  "Should signal truncation with the row count"))))))))
 
 (deftest pivot-query-with-high-unaggregated-row-limit-test
   (testing "Pivot queries don't fail when MB_UNAGGREGATED_QUERY_ROW_LIMIT exceeds the pivot row limit (#72157)"
     ;; This exercises the multi-query path's per-sub-query constraint plumbing; the native path doesn't use it.
-    (qp.pivot.test-util/without-pivot-parity-check
-     (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-       ;; pivot-query has 2 aggregations, so pivot-limit = 20/2 = 10.
-       ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
-       ;; which violates the constraint schema without the fix.
-       ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
-       (binding [qp.pivot/*pivot-max-result-rows* 20]
-         (mt/with-temporary-setting-values [qp.settings/unaggregated-query-row-limit 15]
-           (let [query   (-> (qp.pivot.test-util/pivot-query)
-                             (assoc :constraints (qp.constraints/default-query-constraints)))
-                 results (qp.pivot/run-pivot-query query)]
-             (is (<= 2 (count (get-in query [:query :aggregation])))
-                 "Sanity check: pivot-query should have at least 2 aggregations")
-             (is (not= :failed (:status results))
-                 "Pivot query should not fail with a constraint violation"))))))))
+    (qp.pivot.test-util/with-multi-query-pivot!
+      (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+        ;; pivot-query has 2 aggregations, so pivot-limit = 20/2 = 10.
+        ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
+        ;; which violates the constraint schema without the fix.
+        ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 20
+                                           qp.settings/unaggregated-query-row-limit 15]
+          (let [query   (-> (qp.pivot.test-util/pivot-query)
+                            (assoc :constraints (qp.constraints/default-query-constraints)))
+                results (qp.pivot/run-pivot-query query)]
+            (is (<= 2 (count (get-in query [:query :aggregation])))
+                "Sanity check: pivot-query should have at least 2 aggregations")
+            (is (not= :failed (:status results))
+                "Pivot query should not fail with a constraint violation")))))))
 
-(deftest ^:parallel native-pivot-honors-max-results-constraint-test
-  (testing "Native pivot path honors the caller's :constraints :max-results — no special pivot-only cap"
-    (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
-      (let [max-results 50
-            mp          (mt/metadata-provider)
-            orders      (lib.metadata/table mp (mt/id :orders))
-            product-id  (lib.metadata/field mp (mt/id :orders :product_id))
-            user-id     (lib.metadata/field mp (mt/id :orders :user_id))
-            query       (-> (lib/query mp orders)
-                            (lib/breakout product-id)
-                            (lib/breakout user-id)
-                            (lib/aggregate (lib/count))
-                            (merge {:constraints {:max-results max-results}
+(defn- native-pivot-two-breakout-query
+  "An orders breakout product × user × count pivot query, used by the native-pivot limit/ordering tests to
+  exercise all four grouping sets `#{0 1 2 3}`."
+  []
+  (let [mp         (mt/metadata-provider)
+        orders     (lib.metadata/table mp (mt/id :orders))
+        product-id (lib.metadata/field mp (mt/id :orders :product_id))
+        user-id    (lib.metadata/field mp (mt/id :orders :user_id))]
+    (-> (lib/query mp orders)
+        (lib/breakout product-id)
+        (lib/breakout user-id)
+        (lib/aggregate (lib/count)))))
+
+(deftest native-pivot-exceeds-default-aggregated-cap-test
+  (testing "Native pivot path returns more than `default-aggregated-query-row-limit` rows when the detail set is bigger — the whole point of the pivot-specific cap"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        ;; `orders` has 18,760 rows, 18,076 unique `(product_id, user_id)` tuples. Add rollups + grand total
+        ;; and we're well past the plain aggregated cap of 10,000.
+        (let [default-aggregated-max (:max-results (qp.constraints/default-query-constraints))
+              query                  (-> (native-pivot-two-breakout-query)
+                                         (merge {:pivot_rows [0] :pivot_cols [1]}))
+              results                (qp.pivot/run-pivot-query query)]
+          (testing "row count exceeds the default aggregated cap"
+            (is (< default-aggregated-max (count (mt/rows results)))))
+          (testing "no truncation flag (we're well under `pivot-max-result-rows`)"
+            (is (not (contains? (:data results) :pivot_rows_truncated)))))))))
+
+(deftest native-pivot-caps-max-results-at-pivot-cap-test
+  (testing "Native pivot path caps `:constraints :max-results` at `pivot-max-result-rows` but honors a smaller caller-supplied value"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 100]
+          (let [run (fn [caller-max]
+                      (qp.pivot/run-pivot-query
+                       (-> (native-pivot-two-breakout-query)
+                           (cond-> caller-max (assoc :constraints {:max-results caller-max}))
+                           (assoc :pivot_rows [0] :pivot_cols [1]))))]
+            (testing "caller's smaller `:max-results` is honored"
+              (let [results (run 10)]
+                (is (= 10 (count (mt/rows results))))
+                (is (= 10 (get-in results [:data :pivot_rows_truncated])))))
+            (testing "caller's larger `:max-results` is clamped to `pivot-max-result-rows`"
+              (let [results (run 500)]
+                (is (= 100 (count (mt/rows results))))
+                (is (= 100 (get-in results [:data :pivot_rows_truncated])))))
+            (testing "no caller `:max-results` falls back to `pivot-max-result-rows`"
+              (let [results (run nil)]
+                (is (= 100 (count (mt/rows results))))
+                (is (= 100 (get-in results [:data :pivot_rows_truncated])))))))))))
+
+(deftest native-pivot-caps-max-results-bare-rows-test
+  (testing "Native pivot path caps `:max-results-bare-rows` at `pivot-max-result-rows` so it stays ≤ `:max-results`"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        (mt/with-temporary-setting-values [qp.settings/pivot-max-result-rows 10]
+          ;; `:max-results-bare-rows` (2000) > `pivot-max-result-rows` (10). Without the cap, the
+          ;; constraints middleware rejects the query with
+          ;; `max-results-bare-rows must be less than or equal to max-results`.
+          (let [query   (-> (native-pivot-two-breakout-query)
+                            (merge {:constraints {:max-results-bare-rows 2000}
                                     :pivot_rows  [0]
-                                    :pivot_cols  [1]})
-                            qp.middleware.normalize/normalize-preprocessing-middleware)
-            results     (#'qp.pivot/run-native-pivot-query query nil)]
-        (testing "row count matches the requested cap"
-          (is (= max-results (count (mt/rows results)))))
-        (testing "result emits :pivot_rows_truncated (not :rows_truncated) so the FE pivot truncation warning fires"
-          (is (= max-results (get-in results [:data :pivot_rows_truncated])))
-          (is (not (contains? (:data results) :rows_truncated))))))))
+                                    :pivot_cols  [1]}))
+                results (qp.pivot/run-pivot-query query)]
+            (testing "query completes without a constraint-schema violation"
+              (is (= :completed (:status results))))
+            (testing "row count is capped at `pivot-max-result-rows` and the truncation flag fires"
+              (is (= 10 (count (mt/rows results))))
+              (is (= 10 (get-in results [:data :pivot_rows_truncated]))))))))))
+
+(deftest native-pivot-emits-rollups-before-details-test
+  (testing "Native pivot path returns rows in pivot-grouping DESC order so totals survive `:max-results` truncation"
+    (qp.pivot.test-util/with-single-query-pivot!
+      (mt/test-drivers (mt/normal-drivers-with-feature :native-pivot-tables)
+        (let [query   (-> (native-pivot-two-breakout-query)
+                          (merge {:pivot_rows [0] :pivot_cols [1]}))
+              results (qp.pivot/run-pivot-query query)]
+          (testing "all four grouping sets present and emitted in rollups-first (DESC) order"
+            ;; `long` on each `pivot-grouping` so drivers that return it as BigDecimal (e.g. Oracle) compare equal.
+            (is (= [3 2 1 0] (into [] (comp (map #(long (nth % 2))) (distinct))
+                                   (mt/rows results))))))))))
 
 (deftest ^:parallel filters-query-test
   (testing "Pivot queries with a filter on a breakout column complete successfully"
