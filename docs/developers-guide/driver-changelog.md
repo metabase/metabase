@@ -6,6 +6,17 @@ title: Driver interface changelog
 
 ## Metabase 0.65.0
 
+- `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
+  connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
+  details that set one when a connection is tested, when a connection pool is created, and when a Database is saved.
+  Names match case-insensitively and as substrings. Extend the parent's list rather than replacing it:
+
+  ```clj
+  (defmethod driver/disallowed-connection-parameters :my-driver
+    [driver]
+    (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
+  ```
+
 - `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
   in the docstring of this method.

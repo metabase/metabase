@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text } from "metabase/ui";
+import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 import { assignLazily } from "metabase/utils/merge-lazily";
 import {
   ScalarCardShell,
@@ -12,7 +13,10 @@ import {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
+import {
+  compactifyValue,
+  estimateScalarValueWidth,
+} from "metabase/visualizations/lib/scalar_utils";
 import type {
   VisualizationPassThroughProps,
   VisualizationProps,
@@ -46,6 +50,8 @@ function SmartScalarComponent(
   } = props;
 
   const scalarRef = useRef(null);
+  const { isTruncated: isValueTruncated, ref: valueRef } =
+    useIsTruncated<HTMLHeadingElement>({ ignoreHeightTruncation: true });
   const { getColor } = useBrowserRenderingContext({ fontFamily });
 
   const insights = rawSeries?.[0].data?.insights;
@@ -106,27 +112,47 @@ function SmartScalarComponent(
     symbolDirection != null
       ? (tier.symbolSize + tier.symbolGap) * rootFontScale
       : 0;
-  const valueMaxWidth = Math.max(
+  const centeredValueMaxWidth = Math.max(
     width - 2 * Math.max(tier.xPadding * rootFontScale, symbolAllowance),
     0,
   );
 
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    valueMaxWidth,
+    centeredValueMaxWidth,
     tier.valueFontSize,
     formatOptions,
   );
+
+  const isValueWide =
+    typeof displayValue === "string" &&
+    estimateScalarValueWidth(displayValue, tier.valueFontSize) >
+      centeredValueMaxWidth;
+  const valueMaxWidth = isValueWide
+    ? Math.max(availableWidth - symbolAllowance, 0)
+    : centeredValueMaxWidth;
+  const valueBoxProps = {
+    pos: "relative" as const,
+    style: {
+      maxWidth: `${valueMaxWidth}px`,
+      marginLeft: isValueWide ? `${symbolAllowance}px` : undefined,
+      alignSelf: isValueWide ? ("flex-start" as const) : undefined,
+    },
+    "data-testid": "scalar-value-box",
+  };
+
+  const hasValueTooltip = fullScalarValue !== displayValue || isValueTruncated;
 
   const valueElement = (
     <ScalarValueContainer
       className={DashboardS.fullscreenNormalText}
       tooltip={fullScalarValue}
-      alwaysShowTooltip={fullScalarValue !== displayValue}
+      alwaysShowTooltip={hasValueTooltip}
       isClickable={isClickable}
     >
       <span onClick={handleClick} ref={scalarRef}>
         <ScalarValue
+          ref={valueRef}
           fontSize={tier.valueFontSize}
           // Unjustified type cast. FIXME
           value={displayValue as string}
@@ -158,7 +184,7 @@ function SmartScalarComponent(
       <ScalarWrapper xPadding={tier.xPadding}>
         <Stack align="center" gap="lg" maw="100%" data-testid="scalar-content">
           {hasSingleComparison ? (
-            <Box pos="relative" maw={`${valueMaxWidth}px`}>
+            <Box {...valueBoxProps}>
               {valueElement}
               {symbolElement}
             </Box>
@@ -200,11 +226,7 @@ function SmartScalarComponent(
 
   return (
     <ScalarCardShell tier={tier} actionButtons={actionButtons}>
-      <Box
-        pos="relative"
-        // measured pixels, not a design size — must not be rem-scaled
-        maw={`${valueMaxWidth}px`}
-      >
+      <Box {...valueBoxProps}>
         {valueElement}
         {symbolElement}
       </Box>
