@@ -105,7 +105,6 @@ export const DestinationDatabaseConnectionModal = () => {
       }
       opened
       onClose={handleCloseModal}
-      padding="xxl"
       classNames={{
         content: S.modalRoot,
         header: S.modalHeader,
@@ -117,7 +116,6 @@ export const DestinationDatabaseConnectionModal = () => {
           <Flex
             py="sm"
             px="lg"
-            mx="xxl"
             my="lg"
             bg="background_page-secondary"
             align="center"

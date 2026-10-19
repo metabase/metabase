@@ -109,7 +109,6 @@ export const DatabaseReplicationModal = ({
       closeOnClickOutside={canCloseModal}
       closeOnEscape={canCloseModal}
       withCloseButton={canCloseModal}
-      padding="2.5rem"
       title={
         isProgressStep
           ? undefined

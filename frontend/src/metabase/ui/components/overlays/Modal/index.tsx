@@ -30,7 +30,8 @@ export const MODAL_DENSITIES = ["default", "relaxed"] as const;
 
 export type ModalDensity = (typeof MODAL_DENSITIES)[number];
 
-// Spacing comes from `layout` and `density`, so call sites can't override it.
+// Spacing comes from the theme, `layout` and `density`, so call sites can't
+// override it. `padding` is re-added as `0` only, in `ModalLayoutProps`.
 type ForbiddenMantineModalProps =
   | "m"
   | "mx"
@@ -49,7 +50,8 @@ type ForbiddenMantineModalProps =
   | "pl"
   | "pr"
   | "ps"
-  | "pe";
+  | "pe"
+  | "padding";
 
 interface ModalLayoutProps {
   /**
@@ -64,6 +66,11 @@ interface ModalLayoutProps {
    * is 24px, for bodies with several fields or sections, such as forms.
    */
   density?: ModalDensity;
+  /**
+   * Pass `0` for a full-bleed modal that lays out its own contents. Leave it
+   * out to get the standard modal padding.
+   */
+  padding?: 0;
 }
 
 export interface ModalProps

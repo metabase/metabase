@@ -46,7 +46,7 @@ export const DatabaseFormFooter = ({
 
   if (isAdvanced) {
     return (
-      <FormFooter data-testid="form-footer" px={isFullPage ? undefined : "xxl"}>
+      <FormFooter data-testid="form-footer">
         <Flex gap="sm" align="center" mr="auto">
           <DatabaseTestConnectionButton />
           {isNew && (
