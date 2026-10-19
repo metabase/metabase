@@ -32,6 +32,7 @@ export * from "./oauth";
 export * from "./parameters";
 export * from "./performance";
 export * from "./permissions";
+export * from "./public-link";
 export * from "./pulse";
 export * from "./query";
 export * from "./remote-sync";
