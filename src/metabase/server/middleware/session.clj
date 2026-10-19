@@ -276,11 +276,6 @@
                      :mcp-ui-credential claims
                      :embedding/auth-method "mcp-ui")))))
 
-(defn- bearer-only-credentials
-  "The user info for a request on a bearer-only path: from its OAuth bearer token, and nothing else."
-  [{:keys [oauth-bearer]} request]
-  (current-user-info-for-oauth-token oauth-bearer request))
-
 (defn- credentials
   "The user info from the first credential on `request` that authenticates: session, then API key, then OAuth bearer
   token, then MCP UI credential."
@@ -297,7 +292,7 @@
   (merge
    request
    (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
-     (bearer-only-credentials options request)
+     (current-user-info-for-oauth-token oauth-bearer request)
      (credentials options request))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
