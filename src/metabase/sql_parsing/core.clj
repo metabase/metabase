@@ -4,15 +4,14 @@
   This module provides dialect-aware SQL parsing with no Metabase dependencies.
   All functions take strings and return strings/simple data structures.
 
-  API:
-    (referenced-tables sql dialect) → [[catalog schema table] ...]
-    (referenced-fields dialect sql) → [[catalog schema table field] ...]
-    (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
-    (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
+  API (`parser` is a [[parser]], chosen by the caller):
+    (referenced-tables parser dialect sql) → [[catalog schema table] ...]
+    (referenced-fields parser dialect sql) → [[catalog schema table field] ...]
+    (returned-columns-lineage parser dialect sql schema schema-map) → [[col pure? deps] ...]
+    (validate-query parser dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
 
   The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
-  GraalPy or Java implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
-  owns the JVM-side pre- and post-processing around it."
+  GraalPy or Java implementation); this namespace owns the JVM-side pre- and post-processing around it."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -26,10 +25,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- parser
-  "The [[metabase.sql-parsing.protocol/SqlParser]] implementation for the configured mode."
-  []
-  (parser/parser))
+(defn parser
+  "The [[metabase.sql-parsing.protocol/SqlParser]] for `backend`: `:sqlglot` (GraalPy) or `:sqlglot-java` (the Java
+  port). Every parsing function in this namespace takes it as its first argument."
+  [backend]
+  (parser/parser backend))
 
 (defn parse-error?
   "True if `e` is a sqlglot ParseError — the SQL could not be parsed — regardless of which parser
@@ -327,8 +327,8 @@
 
    This is the pure parsing layer - it returns what's literally in the SQL.
    Default schema resolution happens in the matching layer (core.clj)."
-  [dialect sql]
-  (protocol/referenced-tables (parser) dialect (strip-large-literal-lists sql)))
+  [parser dialect sql]
+  (protocol/referenced-tables parser dialect (strip-large-literal-lists sql)))
 
 (defn referenced-fields
   "Extract field references from SQL, returning only fields from actual database tables.
@@ -345,16 +345,16 @@
    - Table aliases (returns actual table names)
 
    Examples:
-   (referenced-fields \"postgres\" \"SELECT id FROM users\")
+   (referenced-fields parser \"postgres\" \"SELECT id FROM users\")
    => [[nil nil \"users\" \"id\"]]
 
-   (referenced-fields \"postgres\" \"SELECT * FROM public.users\")
+   (referenced-fields parser \"postgres\" \"SELECT * FROM public.users\")
    => [[nil \"public\" \"users\" \"*\"]]
 
-   (referenced-fields \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
+   (referenced-fields parser \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
    => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
-  [dialect sql]
-  (protocol/referenced-fields (parser) dialect (strip-large-literal-lists sql)))
+  [parser dialect sql]
+  (protocol/referenced-fields parser dialect (strip-large-literal-lists sql)))
 
 (defn returned-columns-lineage
   "Extract column lineage from SQL query, showing which output columns depend on which source columns.
@@ -368,13 +368,13 @@
    {\"schema_name\" {\"table_name\" {\"column_name\" \"TYPE\"}}}
 
    Examples:
-   (returned-columns-lineage \"postgres\" \"SELECT id FROM users\" nil {nil {\"users\" {\"id\" \"INT\"}}})
+   (returned-columns-lineage parser \"postgres\" \"SELECT id FROM users\" nil {nil {\"users\" {\"id\" \"INT\"}}})
    => [[\"id\" true [[[nil \"users\" \"id\"]]]]]
 
-   (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
+   (returned-columns-lineage parser \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
    => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
-  [dialect sql default-table-schema sqlglot-schema]
-  (protocol/returned-columns-lineage (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
+  [parser dialect sql default-table-schema sqlglot-schema]
+  (protocol/returned-columns-lineage parser dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn validate-query
   "Validate a SQL query against a schema using sqlglot's qualify optimizer.
@@ -405,8 +405,8 @@
    - \"column_not_resolved\": Column not found (includes :column key)
    - \"invalid_expression\": Syntax/parse error
    - \"unhandled\": Other errors"
-  [dialect sql default-table-schema & [sqlglot-schema]]
-  (protocol/validate-query (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
+  [parser dialect sql default-table-schema & [sqlglot-schema]]
+  (protocol/validate-query parser dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
@@ -420,13 +420,13 @@
    - :reason - string explaining why query is not simple (when false)
 
    Examples:
-   (simple-query? \"postgres\" \"SELECT * FROM users\")
+   (simple-query? parser \"postgres\" \"SELECT * FROM users\")
    => {:is_simple true}
 
-   (simple-query? nil \"SELECT * FROM users LIMIT 10\")
+   (simple-query? parser nil \"SELECT * FROM users LIMIT 10\")
    => {:is_simple false :reason \"Contains a LIMIT\"}"
-  [dialect sql]
-  (protocol/simple-query (parser) dialect (strip-large-literal-lists sql)))
+  [parser dialect sql]
+  (protocol/simple-query parser dialect (strip-large-literal-lists sql)))
 
 (defn add-into-clause
   "Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
@@ -443,8 +443,8 @@
    - table-name: The target table name (already formatted/quoted)
 
    Returns: Modified SQL string with INTO clause"
-  [dialect sql table-name]
-  (protocol/add-into-clause (parser) dialect sql table-name))
+  [parser dialect sql table-name]
+  (protocol/add-into-clause parser dialect sql table-name))
 
 (defn- convert-field-type
   "Convert field type string (snake_case) to keyword (kebab-case)."
@@ -556,9 +556,9 @@
 
    On timeout, returns an error map instead of throwing, consistent with the
    'fail soft' pattern used for parsing failures."
-  [dialect sql]
+  [parser dialect sql]
   (try
-    (let [raw (protocol/field-references (parser) dialect (strip-large-literal-lists sql))
+    (let [raw (protocol/field-references parser dialect (strip-large-literal-lists sql))
           used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
           returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
           errors (or (:errors raw) (get raw "errors") [])]
@@ -588,10 +588,10 @@
    See sql_tools.py replace_names for details.
 
    Examples:
-   (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
+   (replace-names parser \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
    => \"SELECT * FROM users\""
-  [dialect sql replacements]
-  (protocol/replace-names (parser) dialect sql replacements))
+  [parser dialect sql replacements]
+  (protocol/replace-names parser dialect sql replacements))
 
 ;;; --------------------------------------- Single-statement classification ----------------------------------------
 
@@ -640,9 +640,9 @@
                            parsed-sql    (assoc :sql parsed-sql)))))
 
 (defn- classify-single-stmt
-  "Classify `sql` as a single statement of `stmt-type` for `dialect`, spending no more than `limits` allow.
+  "Classify `sql` as a single statement of `stmt-type` for `dialect` with `parser`, spending no more than `limits` allow.
    Applies `limits` as given; it does not infer them from `stmt-type`."
-  [dialect sql stmt-type {:keys [max-sql-chars literal-list-ceiling require-dialect?]}]
+  [parser dialect sql stmt-type {:keys [max-sql-chars literal-list-ceiling require-dialect?]}]
   (cond
     ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that
     ;; grows with it.
@@ -660,7 +660,7 @@
     (unknown sql "large-literal-list")
 
     :else
-    (verdict sql (protocol/single-stmt-of-type (parser) dialect sql stmt-type))))
+    (verdict sql (protocol/single-stmt-of-type parser dialect sql stmt-type))))
 
 (defn validate-executable-stmt
   "Whether `sql` is a single statement of `stmt-type` for `dialect`, for a caller that will **execute** the
@@ -671,8 +671,8 @@
   parsed as it stands comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched
   for in its original one. See [[executable-limits]] for what that costs, and [[classify-stmt]] for the
   same question asked by a caller that only needs a verdict."
-  [dialect sql stmt-type]
-  (classify-single-stmt dialect sql stmt-type executable-limits))
+  [parser dialect sql stmt-type]
+  (classify-single-stmt parser dialect sql stmt-type executable-limits))
 
 (defn classify-stmt
   "Whether `sql` is a single statement of `stmt-type` for `dialect` (see [[validate-executable-stmt]] for
@@ -681,15 +681,15 @@
   Cheaper and more permissive about `dialect` than [[validate-executable-stmt]] — see [[gate-limits]].
   Do not execute the `:sql` this returns: with no `dialect` it is a generic-dialect regeneration, not the
   string that was checked."
-  [dialect sql stmt-type]
-  (classify-single-stmt dialect sql stmt-type gate-limits))
+  [parser dialect sql stmt-type]
+  (classify-single-stmt parser dialect sql stmt-type gate-limits))
 
 (comment
-  (referenced-tables "postgres" "select * from transactions")
+  (referenced-tables (parser :sqlglot) "postgres" "select * from transactions")
 
-  (validate-query "postgres" "SELECT * FROM users" nil)
+  (validate-query (parser :sqlglot-java) "postgres" "SELECT * FROM users" nil)
 
-  (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
+  (referenced-fields (parser :sqlglot) "postgres" "SELECT id, name FROM users WHERE active = true"))
 
 ;;;; Transpile sql
 
@@ -704,6 +704,6 @@
 (defn transpile-sql
   "Transpiles sql string from one dialect to another. An `:error-message` is cleaned of the parser's internals as
   [[parse-error-message]] cleans a parse failure."
-  [sql from-dialect to-dialect]
+  [parser sql from-dialect to-dialect]
   (normalize-transpilation-result
-   (protocol/transpile-sql (parser) sql from-dialect to-dialect)))
+   (protocol/transpile-sql parser sql from-dialect to-dialect)))
