@@ -5,7 +5,7 @@ import * as Yup from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 
-import { FormBooleanWidget } from "./FormBooleanWidget";
+import { FormSwitchWidget } from "./FormSwitchWidget";
 
 const TEST_SCHEMA = Yup.object({
   value: Yup.boolean().isTrue("error"),
@@ -30,7 +30,7 @@ function setup({ initialValue = false, actions }: SetupOpts = {}) {
       onSubmit={onSubmit}
     >
       <Form>
-        <FormBooleanWidget
+        <FormSwitchWidget
           name="value"
           title="Label"
           type="boolean"
@@ -44,7 +44,7 @@ function setup({ initialValue = false, actions }: SetupOpts = {}) {
   return { onSubmit };
 }
 
-describe("FormBooleanWidget", () => {
+describe("FormSwitchWidget", () => {
   it("should use the initial value from the form", () => {
     setup({ initialValue: true });
 

@@ -7,12 +7,12 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { FormField } from "metabase/forms";
 import { Flex, Switch } from "metabase/ui";
 
-type FormBooleanWidgetProps = ActionFormFieldProps & {
+type FormSwitchWidgetProps = ActionFormFieldProps & {
   actions?: ReactNode;
   disabled?: boolean;
 };
 
-export const FormBooleanWidget = forwardRef(function FormBooleanWidget(
+export const FormSwitchWidget = forwardRef(function FormSwitchWidget(
   {
     name,
     title,
@@ -20,7 +20,7 @@ export const FormBooleanWidget = forwardRef(function FormBooleanWidget(
     description,
     optional,
     disabled,
-  }: FormBooleanWidgetProps,
+  }: FormSwitchWidgetProps,
   ref: Ref<HTMLInputElement>,
 ) {
   const id = useUniqueId();
