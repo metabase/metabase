@@ -42,6 +42,7 @@
 (defn- remote-sync-init []
   ;; Only stale rows: a fresh open row may belong to a worker on another node sharing this app DB.
   (remote-sync.task/supersede-stale-tasks!)
+  (settings/pin-remote-sync-collections-enabled!)
   (events/convert-legacy-transforms-root!)
   (if (settings/remote-sync-enabled)
     (do
