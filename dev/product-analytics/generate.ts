@@ -1,6 +1,7 @@
 /**
  * Seeded SaaS event simulator → product_analytics.pa_events and
- * pa_identities, then the *_resolved tables Metabase queries.
+ * pa_identities (with pa_identity_history alongside), then the *_resolved
+ * tables Metabase queries.
  *
  * Usage: bun run dev/product-analytics/generate.ts
  * Env:   PA_PEOPLE (default 25000), PA_DAYS (default 120),
@@ -25,6 +26,7 @@ const LEAD_WEEKS = 2;
 type Persona = "power" | "regular" | "casual" | "churned";
 type Plan = "starter" | "pro" | "business";
 type TrialSource = "pricing_page" | "onboarding" | "sales_email";
+type BillingCycle = "monthly" | "annual";
 
 /** Matches Track's pa_identities: session_id is the identify() id. */
 type IdentityRow = {
@@ -101,6 +103,7 @@ const IOS_CHECKOUT = 0.5;
 const ANDROID_FIREFOX_TRIAL = 0.25;
 const SALES_EMAIL_CHECKOUT = 1.8;
 const NZ_TRIAL = 2.4;
+const ADMIN_CHECKOUT = 1.6;
 
 const PLANTED_INSIGHTS: PlantedInsights = {
   expected: [
@@ -126,6 +129,12 @@ const PLANTED_INSIGHTS: PlantedInsights = {
       direction: "higher",
       why: `Checkout × ${SALES_EMAIL_CHECKOUT}. trial_source is only set on trial_started events, so this tests sparse columns.`,
     },
+    {
+      transition: "Started trial → Purchased",
+      conditions: [{ person_role: "admin" }],
+      direction: "higher",
+      why: `Admin checkout × ${ADMIN_CHECKOUT}. person_role comes from identify(), copied onto events as of each event.`,
+    },
   ],
   unexpected: [
     {
@@ -138,6 +147,16 @@ const PLANTED_INSIGHTS: PlantedInsights = {
       column: "country",
       value: "NZ",
       why: `NZ trial starts × ${NZ_TRIAL}, but NZ is too small to report.`,
+    },
+    {
+      transition: "Started trial → Purchased",
+      column: "person_billing_cycle",
+      why: "Only the identify() at checkout sets billing_cycle, so it isn't known when someone starts a trial.",
+    },
+    {
+      transition: "Started trial → Purchased",
+      column: "person_plan",
+      why: "The plan trait follows the funnel (free, trial, then the plan bought), so its value as of an event can't predict a later step.",
     },
   ],
 };
@@ -507,6 +526,22 @@ function makePerson(i: number) {
   const country = pickWeighted(rng, COUNTRIES);
   const twoDevices = rng() < 0.15;
   const persona = personaOf(rng);
+  // Separate stream so adding traits leaves the event data unchanged. Draw
+  // new traits last so existing ones keep their values.
+  const traitRng = rngFrom(`${SEED}:traits:${i}`);
+  const firstName = pick(traitRng, FIRST_NAMES);
+  const lastName = pick(traitRng, LAST_NAMES);
+  const company = pickWeighted(traitRng, COMPANIES);
+  const domain = `${company.toLowerCase().replace(/[^a-z0-9]+/g, "")}.example`;
+  const role: string = pickWeighted(traitRng, [
+    ["admin", persona === "power" ? 0.5 : 0.15],
+    ["editor", 0.45],
+    ["viewer", persona === "power" ? 0.05 : 0.4],
+  ]);
+  const billingCycle = pickWeighted<BillingCycle>(traitRng, [
+    ["monthly", 0.7],
+    ["annual", 0.3],
+  ]);
   const trialSource = pickWeighted<TrialSource>(rng, [
     ["pricing_page", 0.5],
     ["onboarding", 0.35],
@@ -521,7 +556,8 @@ function makePerson(i: number) {
   const checkoutChance =
     0.3 *
     (profile.os === "iOS" ? IOS_CHECKOUT : 1) *
-    (trialSource === "sales_email" ? SALES_EMAIL_CHECKOUT : 1);
+    (trialSource === "sales_email" ? SALES_EMAIL_CHECKOUT : 1) *
+    (role === "admin" ? ADMIN_CHECKOUT : 1);
   const sawPricing = rng() < 0.62;
   const startsTrial = sawPricing && rng() < trialChance;
   const checksOut = startsTrial && rng() < checkoutChance;
@@ -538,18 +574,6 @@ function makePerson(i: number) {
   if (twoDevices) {
     truth.twoDevicePeople += 1;
   }
-
-  // Separate stream so adding traits leaves the event data unchanged.
-  const traitRng = rngFrom(`${SEED}:traits:${i}`);
-  const firstName = pick(traitRng, FIRST_NAMES);
-  const lastName = pick(traitRng, LAST_NAMES);
-  const company = pickWeighted(traitRng, COMPANIES);
-  const domain = `${company.toLowerCase().replace(/[^a-z0-9]+/g, "")}.example`;
-  const role: string = pickWeighted(traitRng, [
-    ["admin", persona === "power" ? 0.5 : 0.15],
-    ["editor", 0.45],
-    ["viewer", persona === "power" ? 0.05 : 0.4],
-  ]);
 
   return {
     i,
@@ -571,6 +595,7 @@ function makePerson(i: number) {
     checksOut,
     plan,
     amount,
+    billingCycle,
     trialSource,
     willInvite,
     cancels: checksOut && rng() < 0.1,
@@ -640,19 +665,20 @@ function emit(
  * One identify() call, the way Track stores it: session_id is the identify()
  * id, and the whole trait map is sent every time, so later rows replace
  * earlier ones once ReplacingMergeTree merges. ip is '' without consent.
+ * `account` holds the traits that change as the person moves through the funnel.
  */
 function identify(
   identities: IdentityRow[],
   person: Person,
   at: number,
-  plan: string,
+  account: Record<string, string>,
 ) {
   identities.push({
     website_id: WEBSITE_ID,
     session_id: person.distinctId,
     identity_data: {
       ...person.traits,
-      plan,
+      ...account,
       signed_up_at: fmt(person.signupAt),
     },
     ip: "",
@@ -671,6 +697,7 @@ function simulatePerson(
   let lastTs = 0;
   let sessionId = "";
   let path = "/";
+  const account: Record<string, string> = { plan: "free" };
 
   const visitorAt = (identified: boolean) => {
     if (!identified || person.visitorIds.length === 1) {
@@ -737,7 +764,7 @@ function simulatePerson(
   // Signup.
   push(person.signupAt - 30_000, { type: 1, name: null, path: "/signup" }, false);
   if (push(person.signupAt, { type: 2, name: "signup", path: "/signup" }, true)) {
-    identify(identities, person, person.signupAt, "free");
+    identify(identities, person, person.signupAt, account);
     truth.identifiedPeople += 1;
   }
 
@@ -756,7 +783,8 @@ function simulatePerson(
         },
         true,
       );
-      identify(identities, person, at, "trial");
+      account.plan = "trial";
+      identify(identities, person, at, account);
       truth.funnel.trial_started += 1;
       trialAt = at;
     }
@@ -777,7 +805,9 @@ function simulatePerson(
         },
         true,
       );
-      identify(identities, person, checkoutAt, person.plan);
+      account.plan = person.plan;
+      account.billing_cycle = person.billingCycle;
+      identify(identities, person, checkoutAt, account);
       truth.funnel.checkout_completed += 1;
     }
   }
@@ -838,7 +868,8 @@ function simulatePerson(
     const cancelAt = person.signupAt + (14 + rng() * 50) * 86_400_000;
     if (cancelAt < END_MS) {
       push(cancelAt, { type: 2, name: "subscription_cancelled", path: "/app/settings" }, true);
-      identify(identities, person, cancelAt, "cancelled");
+      account.plan = "cancelled";
+      identify(identities, person, cancelAt, account);
     }
   }
 }
@@ -860,8 +891,11 @@ async function main() {
   await waitForClickHouse();
   await execSqlFile(`${import.meta.dir}/sql/01_pa_events.sql`);
   await execSqlFile(`${import.meta.dir}/sql/02_pa_identities.sql`);
+  // Before any insert, so the history sees every identify().
+  await execSqlFile(`${import.meta.dir}/sql/03_pa_identity_history.sql`);
   await chQuery("TRUNCATE TABLE IF EXISTS product_analytics.pa_events");
   await chQuery("TRUNCATE TABLE IF EXISTS product_analytics.pa_identities");
+  await chQuery("TRUNCATE TABLE IF EXISTS product_analytics.pa_identity_history");
   console.log(`Generating ${PEOPLE} people over ${DAYS} days, seed=${SEED}`);
 
   const buffer: EventRow[] = [];
@@ -884,9 +918,9 @@ async function main() {
   await flush("pa_identities", identities);
 
   console.log("Building pa_events_resolved");
-  await execSqlFile(`${import.meta.dir}/sql/03_pa_events_resolved.sql`);
+  await execSqlFile(`${import.meta.dir}/sql/04_pa_events_resolved.sql`);
   console.log("Building pa_identities_resolved");
-  await execSqlFile(`${import.meta.dir}/sql/04_pa_identities_resolved.sql`);
+  await execSqlFile(`${import.meta.dir}/sql/05_pa_identities_resolved.sql`);
 
   const out = `${import.meta.dir}/ground-truth.json`;
   await Bun.write(out, JSON.stringify(truth, null, 2) + "\n");

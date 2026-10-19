@@ -48,8 +48,13 @@ type GetInsightAttributesArgs = {
 
 /**
  * The columns to look for insights in: low-cardinality string and boolean
- * columns from the event table and the users table, most interesting first.
- * Role columns and the columns the steps are defined by are left out.
+ * columns from the event table, most interesting first. Role columns and the
+ * columns the steps are defined by are left out.
+ *
+ * The users table is left out too: it holds each person's current traits, so
+ * joined onto events it shows a later state (a plan bought at checkout) as
+ * known before the person reached earlier steps. Person traits as of each
+ * event belong on the event table.
  */
 export const getInsightAttributes = ({
   context,
@@ -57,31 +62,24 @@ export const getInsightAttributes = ({
   stepColumns,
 }: GetInsightAttributesArgs): InsightAttribute[] => {
   const roleColumns = new Set(Object.values(roles));
-  const eventFields = (context.table?.fields ?? [])
+  const distinctCount = (field: Field) =>
+    field.fingerprint?.global?.["distinct-count"] ?? MAX_DISTINCT_VALUES;
+  return (context.table?.fields ?? [])
     .filter(isCandidateField)
     .filter(
       (field) => !roleColumns.has(field.name) && !stepColumns.has(field.name),
     )
-    .map((field) => ({ field, from: "events" as const }));
-  const usersFields = (context.usersTable?.table.fields ?? [])
-    .filter(isCandidateField)
-    .filter((field) => field.name !== context.usersTable?.link.primaryKey)
-    .map((field) => ({ field, from: "users" as const }));
-
-  const distinctCount = (field: Field) =>
-    field.fingerprint?.global?.["distinct-count"] ?? MAX_DISTINCT_VALUES;
-  return [...eventFields, ...usersFields]
     .sort(
       (a, b) =>
-        (b.field.dimension_interestingness ?? 0) -
-          (a.field.dimension_interestingness ?? 0) ||
-        distinctCount(a.field) - distinctCount(b.field),
+        (b.dimension_interestingness ?? 0) -
+          (a.dimension_interestingness ?? 0) ||
+        distinctCount(a) - distinctCount(b),
     )
     .slice(0, MAX_ATTRIBUTES)
-    .map(({ field, from }, index) => ({
+    .map((field, index) => ({
       id: `attr_${index + 1}`,
       column: field.name,
-      from,
+      from: "events",
       displayName: field.display_name,
     }));
 };

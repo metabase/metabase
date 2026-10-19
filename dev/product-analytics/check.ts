@@ -143,7 +143,8 @@ const cohortColumns = (spec: AnalysisSpec): ProjectedColumn[] =>
 /**
  * The identities tables and their link to events: every identified person has
  * exactly one resolved identity row, and every identity row points at a
- * person who has events. This is the join Metabase's FK relies on.
+ * person who has events. This is the join Metabase's FK relies on. The
+ * history keeps every identify(), and events carry traits only from then on.
  */
 const checkIdentities = async (truth: GroundTruth) => {
   console.log("\nidentities");
@@ -156,7 +157,12 @@ const checkIdentities = async (truth: GroundTruth) => {
       (SELECT count() FROM product_analytics.pa_identities_resolved AS i
         LEFT ANTI JOIN (SELECT DISTINCT person_id FROM product_analytics.pa_events_resolved) AS e
         ON e.person_id = i.person_id) AS orphan_identities,
-      (SELECT count() FROM product_analytics.pa_identities_resolved WHERE email = '' OR plan = '') AS missing_traits
+      (SELECT count() FROM product_analytics.pa_identities_resolved WHERE email = '' OR plan = '') AS missing_traits,
+      (SELECT count() FROM product_analytics.pa_identity_history) AS history_rows,
+      (SELECT countIf(distinct_id IS NOT NULL AND person_role IS NULL) FROM product_analytics.pa_events_resolved) AS identified_without_traits,
+      (SELECT countIf(distinct_id IS NULL AND person_role IS NOT NULL) FROM product_analytics.pa_events_resolved) AS anonymous_with_traits,
+      (SELECT countIf(event_name = 'checkout_completed' AND person_billing_cycle IS NULL) FROM product_analytics.pa_events_resolved) AS checkouts_without_cycle,
+      (SELECT countIf(event_name = 'trial_started' AND person_billing_cycle IS NOT NULL) FROM product_analytics.pa_events_resolved) AS trials_with_cycle
   `);
   const rawRows = asNumber(stats?.raw_rows);
   const resolvedRows = asNumber(stats?.resolved_rows);
@@ -186,6 +192,32 @@ const checkIdentities = async (truth: GroundTruth) => {
   );
   check("no identity without events", orphans === 0, `${orphans} orphan rows`);
   check("resolved traits are filled", missingTraits === 0, `${missingTraits} rows missing email or plan`);
+
+  const historyRows = asNumber(stats?.history_rows);
+  const identifiedWithoutTraits = asNumber(stats?.identified_without_traits);
+  const anonymousWithTraits = asNumber(stats?.anonymous_with_traits);
+  const checkoutsWithoutCycle = asNumber(stats?.checkouts_without_cycle);
+  const trialsWithCycle = asNumber(stats?.trials_with_cycle);
+  check(
+    "pa_identity_history holds one row per identify()",
+    historyRows === expectedRaw,
+    `got ${historyRows}, identify() calls ${expectedRaw}`,
+  );
+  check(
+    "identified events carry person traits",
+    identifiedWithoutTraits === 0,
+    `${identifiedWithoutTraits} events`,
+  );
+  check(
+    "anonymous events carry no person traits",
+    anonymousWithTraits === 0,
+    `${anonymousWithTraits} events`,
+  );
+  check(
+    "billing cycle is set from checkout on, not before",
+    checkoutsWithoutCycle === 0 && trialsWithCycle === 0,
+    `${checkoutsWithoutCycle} checkouts without, ${trialsWithCycle} trials with`,
+  );
 };
 const baseColumns = (spec: AnalysisSpec): BaseColumns => ({
   columns: {
@@ -304,8 +336,8 @@ const truthRaw: unknown = await Bun.file(
 const truth = parseTruth(truthRaw);
 
 for (const [table, file] of [
-  ["pa_events_resolved", "03_pa_events_resolved.sql"],
-  ["pa_identities_resolved", "04_pa_identities_resolved.sql"],
+  ["pa_events_resolved", "04_pa_events_resolved.sql"],
+  ["pa_identities_resolved", "05_pa_identities_resolved.sql"],
 ]) {
   const exists = await chQuery(`EXISTS TABLE product_analytics.${table}`);
   if (exists.trim() !== "1") {

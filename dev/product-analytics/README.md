@@ -3,15 +3,26 @@
 Fake SaaS event data in the `pa_events` and `pa_identities` schemas, plus
 resolved tables Metabase queries. This is demo data, not production ingestion.
 
-| Table                    | What it is                                                                 |
-|--------------------------|----------------------------------------------------------------------------|
-| `pa_events`              | Track's events DDL, verbatim. One row per event.                           |
-| `pa_identities`          | Track's identities DDL, verbatim. One row per `identify()` call.           |
-| `pa_events_resolved`     | Events plus `person_id` (identity stitching) and promoted `plan`/`amount`. |
-| `pa_identities_resolved` | One row per identified person, latest traits promoted to columns.          |
+| Table                    | What it is                                                                                  |
+|--------------------------|---------------------------------------------------------------------------------------------|
+| `pa_events`              | Track's events DDL, verbatim. One row per event.                                            |
+| `pa_identities`          | Track's identities DDL, verbatim. Keeps only the latest `identify()` per person.            |
+| `pa_identity_history`    | Not in Track. Every `identify()`, copied by a materialized view on `pa_identities`.         |
+| `pa_events_resolved`     | Events plus `person_id` (identity stitching), promoted event properties, and `person_*` traits as of each event. |
+| `pa_identities_resolved` | One row per identified person, current traits promoted to columns.                          |
 
 The prototype UI reads the two `_resolved` tables. The raw tables keep the
 swap to real Track data possible.
+
+A person's traits come in two forms:
+
+- **As of each event:** `pa_events_resolved.person_company`, `person_role`,
+  `person_plan` and `person_billing_cycle`, from the latest `identify()` at or
+  before the event. Events before someone's first `identify()` have none.
+  Insights use these, because a trait recorded later can't predict an
+  earlier step.
+- **Current:** the columns of `pa_identities_resolved`, through the FK below.
+  Use these for "what are my Pro customers doing" questions, not for insights.
 
 Design notes, open questions, and the query-layer plan live in [`context/`](context/).
 
@@ -42,8 +53,11 @@ bun run dev/product-analytics/generate.ts
 
 Every signup is also an `identify()` call with `email`, `name`, `company`,
 `role`, `plan` and `signed_up_at`. Starting a trial, checking out and
-cancelling each send the whole map again with a new `plan`, so `pa_identities`
-has several rows for some people and `pa_identities_resolved` has one.
+cancelling each send the whole map again with a new `plan`, and checkout adds
+`billing_cycle`. `pa_identity_history` has a row per call, and
+`pa_identities` and `pa_identities_resolved` have one per person.
+`pa_identities` collapses as soon as rows are inserted, so the
+materialized view in `03_pa_identity_history.sql` has to exist before loading.
 
 Smaller run: `PA_PEOPLE=2000 bun run dev/product-analytics/generate.ts`
 
@@ -80,8 +94,9 @@ mb table update <table-id> --body '{"entity_type":"entity/EventTable"}'
 
 ClickHouse has no foreign keys, so sync can't discover the relationship.
 Set it in Metabase: `pa_identities_resolved.person_id` is the primary key and
-`pa_events_resolved.person_id` points at it. After that the identity traits
-show up as implicitly joined columns when filtering or breaking out events.
+`pa_events_resolved.person_id` points at it. After that the current identity
+traits show up as implicitly joined columns when filtering or breaking out
+events. Insights ignore them; see "A person's traits" above.
 
 ```bash
 DB_ID=$(mb db list --json | jq '.data[] | select(.name == "Product Analytics") | .id')
@@ -176,7 +191,9 @@ bun run dev/product-analytics/check.ts
 Runs each analysis's SQL against ClickHouse (hand-written `events_base` CTE,
 no Metabase) and compares counts to `ground-truth.json`. It also checks the
 identities tables: one resolved row per identified person, every identified
-person in events has one, and no identity row lacks events.
+person in events has one, and no identity row lacks events. And it checks
+the history: one row per `identify()`, and `person_*` traits on events only
+from someone's first `identify()` on.
 
 ```bash
 bun run dev/product-analytics/check-insights.ts
@@ -184,8 +201,9 @@ bun run dev/product-analytics/check-insights.ts
 
 Runs the funnel insight search the same way and checks it finds the effects
 `generate.ts` planted (`insights` in `ground-truth.json`). After regenerating,
-re-sync the database in Metabase so new columns like `trial_source` get
-fingerprints, since insights only consider fingerprinted columns.
+re-sync the database in Metabase so new columns like `trial_source` and
+`person_role` get fingerprints, since insights only consider fingerprinted
+columns.
 
 ## What the generator deliberately does *not* copy from Track
 

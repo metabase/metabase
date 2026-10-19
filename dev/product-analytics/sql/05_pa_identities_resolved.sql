@@ -8,6 +8,9 @@
 -- key and pa_events_resolved.person_id as a foreign key to it (see README).
 -- Never-identified visitors have events but no identity row.
 --
+-- These are current traits. Splitting events by them applies a later state
+-- to earlier events; pa_events_resolved.person_* are the traits as of each event.
+--
 -- FINAL collapses ReplacingMergeTree(created_at) to the latest identify() per
 -- person. Traits are promoted out of identity_data so the prototype does not
 -- need map access in MBQL.
@@ -26,6 +29,7 @@ SELECT
     identity_data['company']            AS company,
     identity_data['role']               AS role,
     identity_data['plan']               AS plan,
+    nullIf(identity_data['billing_cycle'], '') AS billing_cycle,
     parseDateTimeBestEffortOrNull(identity_data['signed_up_at']) AS signed_up_at,
     created_at                          AS identified_at,
     identity_data

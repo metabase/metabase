@@ -68,6 +68,7 @@ Design notes used to live in gitignored `/local`. They now live in this folder s
   - `ORDER BY (person_id, created_at)`.
 - Connect it as a Metabase database with `mb` (engine `clickhouse`, host `localhost`, port `18123`, db `product_analytics`, user `default`). Optionally set the Event entity type on `pa_events_resolved`.
 - Added later: `sql/02_pa_identities.sql` copies Track's `pa_identities` DDL (one row per `identify()`, keyed by `(website_id, session_id)` where `session_id` is the identify id), and `sql/04_pa_identities_resolved.sql` builds one row per person with traits promoted to columns. The resolved events SQL moved to `03_`. In Metabase, `pa_events_resolved.person_id` is an FK to `pa_identities_resolved.person_id`; see the README.
+- Added later still: `sql/03_pa_identity_history.sql` keeps every `identify()` through a materialized view, and `pa_events_resolved` gains `person_*` traits as of each event. The resolved SQL moved to `04_` and `05_`. See "Person properties" in [insights.plan.md](insights.plan.md).
 
 ## Part 2: Data generator
 
@@ -75,7 +76,7 @@ Design notes used to live in gitignored `/local`. They now live in this folder s
 - Deterministic: seeded random numbers, adapted from `src/util/seeded.ts` in `metabase/event-analytics-ui`.
 - Inserts `JSONEachRow` batches over ClickHouse HTTP.
 - Writes `ground-truth.json` with the configured rates.
-- Emits an `identify()` row per signup, trial start, checkout and cancellation, each with the full trait map (`email`, `name`, `company`, `role`, `plan`, `signed_up_at`).
+- Emits an `identify()` row per signup, trial start, checkout and cancellation, each with the full trait map (`email`, `name`, `company`, `role`, `plan`, `signed_up_at`, plus `billing_cycle` from checkout on).
 
 Scale and shape:
 - About 25k people over 120 days, roughly 2–3M events.

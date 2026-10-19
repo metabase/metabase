@@ -9,22 +9,22 @@
     "end": "2026-09-20T00:00:00.000Z"
   },
   "counts": {
-    "events": 1638220,
-    "pageviews": 1500599,
+    "events": 1638496,
+    "pageviews": 1500691,
     "signup": 22123,
     "trial_started": 5077,
-    "checkout_completed": 1443,
-    "invite_sent": 3724,
-    "report_created": 96791,
-    "subscription_cancelled": 68,
-    "error": 8395,
-    "error_incident": 3304,
-    "identities": 28711
+    "checkout_completed": 1598,
+    "invite_sent": 3726,
+    "report_created": 96797,
+    "subscription_cancelled": 84,
+    "error": 8400,
+    "error_incident": 3312,
+    "identities": 28882
   },
   "funnel": {
-    "pricing": 19366,
+    "pricing": 19364,
     "trial_started": 5077,
-    "checkout_completed": 1443
+    "checkout_completed": 1598
   },
   "inviteWeek1": 2667,
   "twoDevicePeople": 3722,
@@ -65,6 +65,16 @@
         ],
         "direction": "higher",
         "why": "Checkout × 1.8. trial_source is only set on trial_started events, so this tests sparse columns."
+      },
+      {
+        "transition": "Started trial → Purchased",
+        "conditions": [
+          {
+            "person_role": "admin"
+          }
+        ],
+        "direction": "higher",
+        "why": "Admin checkout × 1.6. person_role comes from identify(), copied onto events as of each event."
       }
     ],
     "unexpected": [
@@ -78,6 +88,16 @@
         "column": "country",
         "value": "NZ",
         "why": "NZ trial starts × 2.4, but NZ is too small to report."
+      },
+      {
+        "transition": "Started trial → Purchased",
+        "column": "person_billing_cycle",
+        "why": "Only the identify() at checkout sets billing_cycle, so it isn't known when someone starts a trial."
+      },
+      {
+        "transition": "Started trial → Purchased",
+        "column": "person_plan",
+        "why": "The plan trait follows the funnel (free, trial, then the plan bought), so its value as of an event can't predict a later step."
       }
     ]
   }

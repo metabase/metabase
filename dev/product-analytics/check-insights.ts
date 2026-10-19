@@ -2,6 +2,11 @@
  * Run the funnel insight search against ClickHouse with a hand-written
  * events_base (no Metabase), and check it finds what generate.ts planted.
  *
+ * Not the app's defaults: this covers all the data with a 30-day window, where
+ * the app shows the last 90 days with a 7-day window. Most journeys here take
+ * longer than 7 days, so with the app's defaults the funnel is too small to
+ * find the iOS and Android + Firefox effects. See insights.plan.md.
+ *
  * Usage: bun run dev/product-analytics/check-insights.ts
  */
 

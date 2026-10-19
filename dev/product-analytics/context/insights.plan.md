@@ -119,7 +119,7 @@ The `browser_first != ''` guard matters because `minIf` returns the epoch, not N
 
 ## Candidate columns
 
-- String, boolean and category columns from the event table and the joined users table.
+- String, boolean and category columns from the event table. Person traits come in as `person_*` columns on it (see [Person properties](#person-properties)), not from the users table.
 - Excluded:
   - Role columns: person, session, event ID, timestamp, event name and URL path.
   - PK, FK and UUID columns.
@@ -130,6 +130,31 @@ The `browser_first != ''` guard matters because `minIf` returns the epoch, not N
 - Numeric columns are skipped for now. They need binning.
 
 Attribute columns flow through `extraColumns` (`base-query.ts`, `build-sql.ts`, `scopedEvents`), the same way the cohorts attribute does.
+
+## Person properties
+
+Traits sent with `identify()` (company, role, plan) are candidates like any other column, but only as they were at the time of each event.
+
+- **Where they come from:** `pa_events_resolved.person_*`, copied from the latest `identify()` at or before each event (`04_pa_events_resolved.sql`, an `ASOF JOIN` against `pa_identity_history`). This matches PostHog's default, where person properties on an event are frozen when the event is ingested, and the current values are an opt-in join.
+- **Not from the users table.** `pa_identities_resolved` holds current traits. Joined onto events, a plan bought at checkout looks known before the person even saw pricing, and the as-of rule can't catch it because the value is on every event. Users-table columns were candidates for a while (#84618) and made insights useless. `candidates.ts` now only takes event table columns. The FK to the users table is still the right source for questions about current state, like breakdowns and filters.
+
+### Known gap: traits that change
+
+The as-of rule takes the **first** non-empty value seen by step k. For event properties and for traits that don't change, that's right. For a trait that changes, it's the oldest value: `person_plan` reads `free` for everyone at trial → checkout, though it's `trial` by then.
+
+The right rule is the **latest** value as of reaching step k. It doesn't fit the single `GROUP BY` in `funnel_people`, because the step times are computed in that same aggregate. Two ways to get it:
+
+- Join `funnel_transitions` against the identity history on `person = person AND valid_from <= reached_at < valid_to`. Transitions are few rows and the history is small, so this is cheap. MBQL can express the range join. ClickHouse's `ASOF JOIN` does it without `valid_to`.
+- A second pass over the events once the step times are known. It's simpler but scans the events twice.
+
+For the prototype this doesn't matter. The only trait in the generated data that changes is `plan`, which follows the funnel and shouldn't be an insight anyway.
+
+### Open questions
+
+- **Traits before someone is identified.** Most people view pricing anonymously, so every `person_*` column is `(not set)` at pricing → trial and person-property insights only appear from signup on. A trait that never changes (company) would be safe to apply to earlier events. A trait that's first set later isn't, because having a value at all leaks the outcome (`billing_cycle` is only set at checkout). Telling them apart could be a per-trait setting, like PostHog's choice between properties as of the event and current ones, or inferred from the history, for example "set at the first `identify()` and never changed".
+- **Ties.** An `identify()` in the same second as an event applies to it, so `checkout_completed` carries the plan it bought. Fine for generated data. In Track, `created_at` is the batch time, so the order of an `identify()` and the events around it is unknown (see "Technical feedback" in [product-analytics.md](product-analytics.md)).
+- **Which traits to copy.** The prototype promotes four traits by hand. The real thing needs a generic route: the whole trait map on each event with map access in MBQL, or the user picking which traits matter.
+- **Track has no history.** `pa_identities` keeps only the latest row per person. The prototype adds `pa_identity_history`. Track needs it, or something like it, before any of this works on real data (see [product-analytics.md](product-analytics.md)).
 
 ## Pass 1: single attributes
 
@@ -364,8 +389,10 @@ The generator draws `sawPricing`, `startsTrial` and `checksOut` independently of
 |---|---|
 | **One factor:** iOS checkout conversion × 0.6 | "People on iOS" for trial → checkout |
 | **Two factors:** Android + Firefox drop between pricing and trial, weak for either alone | Reported only as the combination |
-| **Sparse property:** a property set only on `trial_started` (e.g. `trial_source` in `event_data`, promoted in `02_pa_events_resolved.sql` like `plan`) that predicts checkout | Found for trial → checkout only |
+| **Sparse property:** a property set only on `trial_started` (e.g. `trial_source` in `event_data`, promoted in `04_pa_events_resolved.sql` like `plan`) that predicts checkout | Found for trial → checkout only |
 | **Leakage:** `plan` is only set on `checkout_completed` (already true) | Never appears for trial → checkout |
+| **Person property:** admins (`role` from `identify()`) check out × 1.6 | `person_role = admin` for trial → checkout |
+| **Person-property leakage:** `billing_cycle` is only sent by the `identify()` at checkout, and `plan` changes with the funnel | Neither `person_billing_cycle` nor `person_plan` appears for trial → checkout |
 | **Decoy:** ~50 people with a huge effect | Rejected by the minimum group size |
 | **Redundancy:** iOS always means Safari (already true) | "People on iOS", not "Safari and iOS" |
 
@@ -388,12 +415,27 @@ The contract per analysis is a CTE of (actor, question, as_of, converted). Share
 
 Built as planned, except where noted here. `bun run dev/product-analytics/check-insights.ts` runs both passes and the search against ClickHouse without Metabase, and checks the planted effects in `ground-truth.json`.
 
-On the generated data it reports six insights: the three planted ones, plus three that come from how the generator simulates browsing:
+It covers all the data with a 30-day window, not the app's defaults (the last 90 days, 7 days). There it finds the four planted effects, plus three side effects of how the generator simulates browsing:
 
 - `(not set)` UTM people start more trials. People who browse less before reaching pricing pick up fewer UTM tags, and only people who were going to see pricing anyway start trials.
 - `utm_source = google` and `utm_campaign = brand` start fewer trials. The cause isn't known, possibly correlated draws from the generator's random number generator.
 
-- **Test data:** `dev/product-analytics/generate.ts`, `sql/02_pa_events_resolved.sql`, `ground-truth.json`.
+With the app's defaults, most journeys take longer than 7 days from the first pricing view, so the funnel is small (about 1,800 trials and 190 purchases on 25,000 people):
+
+- **Android + Firefox** has 6 conversions at pricing → trial, under the minimum of 10.
+- **iOS** is significant, but desktop Safari happens to come out low too (12 of 176), so "Safari converts worse" explains it and replaces it.
+- With `PA_PEOPLE=100000` both are found, but the admin effect disappears (see the known issue below).
+
+The top insight with the app's defaults is "Person Plan is not set" at pricing → trial: 12.3% vs 0.3%. It isn't leakage, since the plan really was known at that pricing view. It says the first step mixes prospects with people who'd already signed up: the generator only starts trials within 3 days of signup, so signed-up people almost never start one. That's exaggerated, but it's the insight doing its job. A funnel about converting prospects should only count pricing views by people who haven't signed up, for example "Viewed pricing and Person Plan is empty". All `person_*` columns are empty for the same people, so the search keeps one of them.
+
+**Known issue: chains of explanations.** An insight is left out if any other insight explains it, even one that's left out itself. Both outcomes of this rule show up in the generated data:
+
+- **It removes real effects.** On 100,000 people with the app's defaults, "admin converts better" (17.2% vs 9.3%, 1,325 people) is left out as explained by "desktop converts better". "Desktop" is itself left out, since it only looks better because iOS converts worse.
+- **It also removes noise that nothing else can.** Only letting kept insights explain others brings admin back, but also about 30 UTM pairs ("UTM source is Twitter and campaign is launch"). "UTM source is not set" explains them, and is itself explained by people not having signed up yet. The pairs can't be tested against that directly, because it would take counts for three conditions together and pass 2 only has pairs.
+
+A fix needs both: some way to test a pair against an explanation with a third condition (or a cheap three-way count for the conditions in question), and then only kept insights explaining others. The "explained by" test also counts "no significant difference" as explained, so a small remainder can't save an insight even when its effect is the same size. "Admin" was explained by "desktop" that way, with only about 400 admins not on desktop.
+
+- **Test data:** `dev/product-analytics/generate.ts`, `sql/04_pa_events_resolved.sql`, `ground-truth.json`.
 - **Planner:** in `sql/analyses/funnel.ts`, extract `funnel_levels` into a builder that takes attribute columns. Add `planFunnelInsights(spec, attributes, pass)`, which returns `funnel_transitions` plus the pass 1, pass 2 and explore `SELECT`s. The "last definition wins" dedupe in `compose.ts` lets it replace `funnel_levels`.
 - **New files under `insights/`:**
   - `candidates.ts`: column selection from table metadata.
@@ -426,3 +468,8 @@ On the generated data it reports six insights: the three planted ones, plus thre
 - `event_data` map keys as candidate columns. Real Track data keeps sparse properties there.
 - Binning numeric columns.
 - When two one-factor insights are mostly the same people (≥ 80% overlap, known from pass 2), show the stronger one and mention the other.
+- **Leave out columns that nearly determine conversion.** A column that almost perfectly separates who converted is recorded as part of converting, not something that predicts it. The minimum of 10 conversions and 10 drop-offs per side already drops groups at exactly 0% or 100%, but only by accident, and 98% gets through. Measure the whole column, since every value of a leaky column is an artifact (`plan = free` at 2% as much as `plan = pro` at 98%). Normalized mutual information does this at any base rate: the share of the uncertainty in `converted` that knowing the column removes. Leave the column out above roughly 0.8 and say so ("Left out *Plan*: it almost determines who converted"). This is a backstop: leaks are often far from perfect (with a 7-day window, many buyers count as drop-offs), so the as-of rule stays the main defense.
+  - **Not for one-sided groups.** "Person Plan is not set" at 37× has a normalized mutual information of 0.06: the identified fifth almost never converts, but the anonymous majority only converts at 12%, so the column predicts little overall. Numbers alone can't separate a structural 0% from a real one. A browser with a broken checkout would look the same, and that's the most useful insight there is. So don't leave groups out by ratio or rate.
+- **Name person `(not set)` for what it means.** For `person_*` columns, `(not set)` mostly means "not identified yet". Show it as one condition, such as "Hadn't signed up yet", not one per trait column.
+- **Latest value as of each step** for person traits that change (see [Known gap](#known-gap-traits-that-change)).
+- **Per-trait settings for person properties:** as of the event or current, and whether a trait that never changes may apply to events before someone is identified (see [Open questions](#open-questions)).

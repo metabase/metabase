@@ -43,7 +43,7 @@ export const usePrototypeTable = (): PrototypeTableResult => {
           database &&
           tables.isSuccess &&
           tableId === undefined
-        ? `No table named ${PROTOTYPE_TABLE_NAME} on ${PROTOTYPE_DATABASE_NAME}. Run 03_pa_events_resolved.sql and sync.`
+        ? `No table named ${PROTOTYPE_TABLE_NAME} on ${PROTOTYPE_DATABASE_NAME}. Run 04_pa_events_resolved.sql and sync.`
         : undefined;
 
   return {
