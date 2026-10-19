@@ -514,6 +514,19 @@
   [collections :- [:sequential ::collections.schema/collection]]
   (t2/select-pks-set :model/Collection {:where (subtree-expr collections)}))
 
+(mu/defn collection-content-exists? :- :boolean
+  "Whether a Card, Dashboard, Document, Timeline, or Action is in the Collections with `collection-ids`, or a Table is
+  published to one."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (boolean
+   (or (t2/exists? :model/Card :collection_id [:in collection-ids])
+       (t2/exists? :model/Dashboard :collection_id [:in collection-ids])
+       (t2/exists? :model/Document :collection_id [:in collection-ids])
+       (t2/exists? :model/Timeline :collection_id [:in collection-ids])
+       (t2/exists? :model/Action :collection_id [:in collection-ids])
+       (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
+
 (mu/defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."
   [collections :- [:sequential ::collections.schema/collection]]

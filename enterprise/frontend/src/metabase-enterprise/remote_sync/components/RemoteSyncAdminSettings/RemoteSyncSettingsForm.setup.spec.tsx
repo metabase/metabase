@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import {
+  setupCreateLibraryEndpoint,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
   setupRootCollectionItemsEndpoint,
@@ -10,6 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type {
   Collection,
   CollectionItem,
@@ -153,6 +155,8 @@ interface SetupOpts {
   envSettings?: EnterpriseSettingKey[];
   isDevInstance?: boolean;
   upsellDismissed?: boolean;
+  hasLibraryFeature?: boolean;
+  createdLibraryCollection?: Collection;
 }
 
 export const setup = ({
@@ -172,7 +176,11 @@ export const setup = ({
   envSettings = [],
   isDevInstance = false,
   upsellDismissed = false,
+  hasLibraryFeature = false,
+  createdLibraryCollection = createMockLibraryCollection(),
 }: SetupOpts = {}) => {
+  PLUGIN_LIBRARY.isEnabled = hasLibraryFeature;
+  setupCreateLibraryEndpoint(createdLibraryCollection);
   setupEndpoints({
     remoteSyncEnabled,
     remoteSyncUrl,
