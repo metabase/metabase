@@ -23,8 +23,18 @@
 
 (def current-dependency-analysis-version
   "Current version of the dependency analysis logic.
-  This should be incremented when the dependency analysis logic changes."
-  6)
+  This should be incremented when the dependency analysis logic changes.
+
+  Version history:
+  - 1: Initial version
+  - 2: Added implicitly joined tables
+  - 3: Added segments
+  - 4: Tracked unreferenced and broken entities
+  - 5: Added the source tables of Python transforms
+  - 6: Enabled native entity validation
+  - 7: Native queries depend on the cards they reference but no longer on those cards' tables, and record whether
+       they name tables that match nothing"
+  7)
 
 (methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
 
