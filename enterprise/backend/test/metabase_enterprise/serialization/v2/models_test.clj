@@ -78,7 +78,9 @@
               :when (isa? model :hook/entity-id)
               :let  [table (name (t2/table-name model))]]
         (testing table
-          (is (= expected (entity-id-collation table schema-fn))))))))
+          (is (= expected (entity-id-collation table schema-fn))
+              (str "Create the entity_id column with type ${entity_id.type}, and re-state that type in any "
+                   "modifyDataType or addNotNullConstraint on it")))))))
 
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db!

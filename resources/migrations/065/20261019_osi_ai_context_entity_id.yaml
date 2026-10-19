@@ -1,7 +1,8 @@
 ## OSI ai_context rows get an entity_id, like every other serialized model, so serialization orders them, and names
 ## their files, the same way on every instance. Their serdes identity stays the entity they describe. Backfill mirrors
 ## 064/20260911_glossary_entity_id: all three dialect variants in one changeset so every database records it, then
-## NOT NULL with the byte-wise collation of 20261016_entity_id_binary_collation, then UNIQUE.
+## NOT NULL and UNIQUE. `${entity_id.type}` gives the column the byte-wise collation of
+## 20261016_entity_id_binary_collation, and the NOT NULL change re-states it.
 
 databaseChangeLog:
   - changeSet:
@@ -14,7 +15,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: entity_id
-                  type: char(21)
+                  type: ${entity_id.type}
                   remarks: Random NanoID tag for unique identity.
                   constraints:
                     nullable: true
@@ -42,18 +43,12 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-10-19T00:00:02
       author: ranquild
-      comment: entity_id is NOT NULL and compares byte by byte on osi_ai_context
+      comment: entity_id is NOT NULL on osi_ai_context
       changes:
-        - sql:
-            dbms: postgresql
-            sql: ALTER TABLE osi_ai_context ALTER COLUMN entity_id TYPE char(21) COLLATE "C", ALTER COLUMN entity_id SET NOT NULL;
-        - sql:
-            dbms: mysql,mariadb
-            sql: ALTER TABLE osi_ai_context MODIFY entity_id CHAR(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT 'Random NanoID tag for unique identity.';
-        - sql:
-            dbms: h2
-            sql: ALTER TABLE osi_ai_context ALTER COLUMN entity_id SET NOT NULL;
-      rollback: []
+        - addNotNullConstraint:
+            tableName: osi_ai_context
+            columnName: entity_id
+            columnDataType: ${entity_id.type}
 
   - changeSet:
       id: v65.2026-10-19T00:00:03
