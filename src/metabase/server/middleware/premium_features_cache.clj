@@ -47,24 +47,32 @@
         (log/debug "Ignoring malformed premium features cookie value")
         nil))))
 
+(defn- advance-last-known-invalidation!
+  "Atomically move [[last-known-invalidation]] forward to `timestamp` if it is newer. Returns true if it moved, so that
+  of several concurrent callers with the same timestamp exactly one sees true."
+  [^Instant timestamp]
+  (let [[old new] (swap-vals! last-known-invalidation
+                              (fn [^Instant last-known]
+                                (if (or (nil? last-known) (.isAfter timestamp last-known))
+                                  timestamp
+                                  last-known)))]
+    (not= old new)))
+
 (defn- check-and-invalidate-features-cache
   "If the request cookie carries a valid timestamp newer than the last invalidation this instance knows about, drop
   this instance's in-process token caches. Never touches the shared DB cache."
   [request]
   (when-let [cookie-timestamp (parse-cookie-timestamp (get-in request [:cookies cookie-name :value]))]
-    (let [last-known ^Instant @last-known-invalidation]
-      (when (or (nil? last-known)
-                (.isAfter cookie-timestamp last-known))
-        (log/info "Premium features cookie indicates local cache is out of date. Clearing...")
-        (reset! last-known-invalidation cookie-timestamp)
-        (premium-features/clear-local-cache!)))))
+    (when (advance-last-known-invalidation! cookie-timestamp)
+      (log/info "Premium features cookie indicates local cache is out of date. Clearing...")
+      (premium-features/clear-local-cache!))))
 
 (defn- maybe-set-premium-features-cookie
   "Set the premium features last-updated cookie if this request refreshed the token status."
   [response]
   (if (-> response :mb/cookies :cookie/premium-features-cache-timestamp)
     (let [timestamp (Instant/now)]
-      (reset! last-known-invalidation timestamp)
+      (advance-last-known-invalidation! timestamp)
       (response/set-cookie (update response :mb/cookies dissoc :cookie/premium-features-cache-timestamp)
                            cookie-name
                            (str timestamp)
