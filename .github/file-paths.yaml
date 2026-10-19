@@ -7,7 +7,7 @@ default: &default
   - "locales/**"
   - "bin/**/!(*.md)"
 
-workflows:
+workflows: &workflows
   - added|modified: ".github/workflows/*.{yml,yaml}"
 
 shared_sources: &shared_sources
