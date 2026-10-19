@@ -247,9 +247,10 @@
 
 (defn- customer-environment-exception*?
   [e]
-  (if (instance? java.sql.SQLException e)
-    (customer-environment-sql-exception? e)
-    (some-> (ex-message e) (str/includes? "not authorized to perform:"))))  ; AWS IAM denial (Athena, Glue)
+  (or (and (instance? java.sql.SQLException e)
+           (customer-environment-sql-exception? e))
+      ;; checked on every exception: a JDBC driver may put the AWS SDK's message in its own SQLException
+      (some-> (ex-message e) (str/includes? "not authorized to perform:"))))  ; AWS IAM denial (Athena, Glue)
 
 (defn customer-environment-exception?
   "True if `e` (or any of its causes) is a failure the customer has to fix in their own environment -- the connecting
