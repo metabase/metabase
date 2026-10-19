@@ -40,7 +40,6 @@ jobs:
           sparse-checkout: |
             release
             .github
-            cross-version
             resources/migrations
 
       - name: Prepare release scripts
@@ -61,7 +60,7 @@ jobs:
             const supportedMajors = await getSupportedMajors();
             console.log("supported majors:", supportedMajors);
 
-            await generateCrossVersionMatrix({ core, supportedMajors });
+            await generateCrossVersionMatrix({ core, github, context, supportedMajors });
 
   notify-unreleased-migrations:
     needs: generate-test-matrix
@@ -90,7 +89,6 @@ jobs:
             const { notifyReleaseNeeded } = require('${{ github.workspace }}/.github/scripts/build-cross-version-matrix');
 
             await notifyReleaseNeeded({
-              github,
               context,
               core,
               changesets: JSON.parse(process.env.CHANGESETS),
