@@ -69,11 +69,13 @@
       (u/sh {:dir u/project-root-directory}
             "bun" "run" "generate-license-disclaimer"))))
 
-(defn- build-uberjar! [edition]
+(defn- build-uberjar! [edition compiled]
   {:pre [(#{:oss :ee} edition)]}
   (u/delete-file-if-exists! uberjar/uberjar-filename)
   (u/step (format "Build uberjar with profile %s" edition)
-    (uberjar/uberjar {:edition edition})
+    (if compiled
+      (uberjar/package! @@compiled)
+      (uberjar/uberjar {:edition edition}))
     (u/assert-file-exists uberjar/uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
@@ -92,8 +94,8 @@
                        (build-drivers/build-drivers! edition))
    :python       (fn [{:keys [edition]}]
                    (build.python/build-python-deps! edition))
-   :uberjar      (fn [{:keys [edition]}]
-                   (build-uberjar! edition))))
+   :uberjar      (fn [{:keys [edition compiled]}]
+                   (build-uberjar! edition compiled))))
 
 (defn- github-actions? []
   (= (System/getenv "GITHUB_ACTIONS") "true"))
@@ -119,9 +121,12 @@
   ([{:keys [version edition steps]
      :or   {edition (edition-from-env-var)
             steps   (keys all-steps)}}]
-   (let [version (or version
-                     (version-properties/current-snapshot-version edition))
-         timer         (u/start-timer)]
+   (let [version  (or version
+                      (version-properties/current-snapshot-version edition))
+         timer    (u/start-timer)
+         ;; AOT compilation doesn't need the frontend, so it starts with the frontend step and `:uberjar` waits for it.
+         compiled (when (every? (set (map u/parse-as-keyword steps)) [:frontend :uberjar])
+                    (delay (future (uberjar/compile! edition))))]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
                        :oss "Community (OSS) Edition"
@@ -133,8 +138,10 @@
                                       (throw (ex-info (format "Invalid step: %s" step-name)
                                                       {:step        step-name
                                                        :valid-steps (keys all-steps)})))]]
+         (when (= (u/parse-as-keyword step-name) :frontend)
+           (some-> compiled force))
          (do-with-log-group (name step-name)
-                            #(step-fn {:version version, :edition edition}))
+                            #(step-fn {:version version, :edition edition, :compiled compiled}))
          (u/announce "Did %s in %d ms." step-name (u/since-ms timer)))
        (u/announce "All build steps finished.")))))
 
