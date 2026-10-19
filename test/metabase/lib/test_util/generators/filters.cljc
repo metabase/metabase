@@ -87,7 +87,6 @@
                                                                               :column         column}))))
 
 ;; Filter clauses ================================================================================
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *filterable-columns* nil)
 
 (defmulti ^:private gen-filter-clause
@@ -184,7 +183,7 @@
   (take 7 (iterate #(u.time/add % :day 1) (u.time/local-date))))
 
 (defn- jan1 []
-  (u.time/truncate (u.time/local-date) :year))
+  (u.time/truncate {:start-of-week :sunday} (u.time/local-date) :year))
 
 (defmethod gen-filter:exclude-date-options :month-of-year [_unit]
   (->> (jan1)

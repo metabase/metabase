@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/settings";
+import {
+  WAITING_REFRESH_INTERVAL,
+  useTokenRefreshUntil,
+} from "metabase/settings";
 import {
   Box,
   Button,
@@ -28,7 +31,10 @@ export const TransformsSettingUpModal = ({
   isPython = false,
 }: TransformsSettingUpModalProps) => {
   const featureToCheck = isPython ? "transforms-python" : "transforms-basic";
-  useTokenRefreshUntil(featureToCheck, { intervalMs: 1000, skip: !opened });
+  useTokenRefreshUntil(featureToCheck, {
+    intervalMs: WAITING_REFRESH_INTERVAL,
+    skip: !opened,
+  });
   const isSettingUp = !hasPremiumFeature(featureToCheck);
 
   return (
@@ -39,7 +45,6 @@ export const TransformsSettingUpModal = ({
       closeOnEscape={false}
       withCloseButton={false}
       size="30rem"
-      padding="2.5rem"
       mah="80%"
     >
       <Stack align="center" gap="xl" my="4.5rem">

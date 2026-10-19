@@ -546,6 +546,19 @@
     agg-index    :- nat-int?]
    (lib.aggregation/aggregation-ref a-query stage-number agg-index)))
 
+(mu/defn aggregation-column :- ::lib.metadata.calculation/column-metadata-with-source
+  "Given an `aggregation-clause` from [[aggregations]], returns the column it produces, named before the stage
+  deduplicates its column names.
+
+  **Code Health:** Healthy."
+  ([a-query            :- ::lib.schema/query
+    aggregation-clause :- ::lib.schema.aggregation/aggregation]
+   (aggregation-column a-query -1 aggregation-clause))
+  ([a-query            :- ::lib.schema/query
+    stage-number       :- :int
+    aggregation-clause :- ::lib.schema.aggregation/aggregation]
+   (lib.aggregation/aggregation-column a-query stage-number aggregation-clause)))
+
 ;;; These functions all directly construct an aggregation clause suitable for passing to [[aggregate]], taking
 ;;; input column and/or filter clauses as arguments, depending on the operator.
 ;;;
@@ -1581,6 +1594,8 @@
   native-query
   raw-native-query
   recognize-template-tags
+  rename-template-tags
+  rename-template-tags-in-text
   replace-template-tag-names
   required-native-extras
   native-query-card-ids
@@ -1724,6 +1739,7 @@
  [metabase.lib.walk.util
   all-field-ids
   all-referenced-entity-ids
+  all-referenced-entity-ids-recursive
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids

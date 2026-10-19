@@ -8,6 +8,7 @@
    4.  Sync FKs and indexes
    5.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
@@ -73,26 +74,27 @@
                           (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
                             (fetch-metadata/db-metadata database))
                           (catch Throwable e
-                            (sync-util/set-initial-database-sync-aborted! database)
+                            (sync-util/set-initial-database-sync-aborted! database e)
                             (throw e)))
         ;; holder the `sync-tables` step fills with any `_metabase_metadata` table(s) as it streams
         ;; `:tables`, so the later `sync-metabase-metadata` step doesn't have to re-scan them
         db-metadata     (assoc db-metadata :metabase-metadata-tables (volatile! []))
         steps           (make-sync-steps db-metadata)
         essential-steps (into #{} (comp (filter :essential?) (map :step-name)) steps)
-        results         (sync-util/run-sync-operation "sync" database steps)]
-    (cond
-      (some sync-util/abandon-sync? (map second (:steps results)))
-      (sync-util/set-initial-database-sync-aborted! database)
-
-      (some (fn [[step-name step-results]]
-              (and (contains? essential-steps step-name)
-                   (sync-util/step-failed? step-results)))
-            (:steps results))
-      (sync-util/set-initial-database-sync-aborted! database)
-
-      :else
+        results         (sync-util/run-sync-operation "sync" database steps)
+        abort-cause     (or (some (fn [[_ step-results]]
+                                    (when (sync-util/abandon-sync? step-results)
+                                      (:throwable step-results)))
+                                  (:steps results))
+                            (some (fn [[step-name step-results]]
+                                    (when (and (contains? essential-steps step-name)
+                                               (sync-util/step-failed? step-results))
+                                      (:throwable step-results)))
+                                  (:steps results)))]
+    (if abort-cause
+      (sync-util/set-initial-database-sync-aborted! database abort-cause)
       (sync-util/set-initial-database-sync-complete! database))
+    (dependencies.hooks/after-database-sync (:id database))
     results))
 
 (mu/defn sync-db-metadata!

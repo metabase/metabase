@@ -1,3 +1,4 @@
+import cx from "classnames";
 import {
   type HTMLAttributes,
   type KeyboardEvent,
@@ -7,12 +8,26 @@ import {
   useState,
 } from "react";
 
-import {
-  Header,
-  HeaderContainer,
-  HeaderContent,
-  ToggleIcon,
-} from "./CollapseSection.styled";
+import { Flex, Icon, rem } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
+
+import S from "./CollapseSection.module.css";
+
+type IconVariant = "right-down" | "up-down";
+
+const ICON_VARIANTS: Record<
+  IconVariant,
+  { collapsed: IconName; expanded: IconName }
+> = {
+  "right-down": {
+    collapsed: "chevronright",
+    expanded: "chevrondown",
+  },
+  "up-down": {
+    collapsed: "chevrondown",
+    expanded: "chevronup",
+  },
+};
 
 type CollapseSectionProps = {
   children?: React.ReactNode;
@@ -21,7 +36,7 @@ type CollapseSectionProps = {
   headerClass?: string;
   bodyClass?: string;
   initialState?: "expanded" | "collapsed";
-  iconVariant?: "right-down" | "up-down";
+  iconVariant?: IconVariant;
   iconPosition?: "left" | "right";
   iconSize?: number;
   onToggle?: (nextState: boolean) => void;
@@ -71,35 +86,36 @@ export const CollapseSection = ({
     [toggle],
   );
 
-  const HeaderIcon = (
-    <ToggleIcon
-      isExpanded={isExpanded}
-      variant={iconVariant}
-      position={iconPosition}
-      size={iconSize}
-    />
+  const { collapsed, expanded } = ICON_VARIANTS[iconVariant];
+  const headerIcon = (
+    <Icon name={isExpanded ? expanded : collapsed} size={iconSize} />
   );
 
   return (
     <div className={className} {...props}>
-      <HeaderContainer
+      <Flex
         id={buttonId}
-        className={headerClass}
-        hasRightAction={!!rightAction}
+        className={cx(S.header, headerClass)}
+        role="button"
+        tabIndex={0}
+        align="center"
+        mih={rem(28)}
         aria-expanded={isExpanded}
         aria-controls={regionId}
         onKeyDown={onKeyDown}
         onClick={toggle}
       >
-        <HeaderContent>
-          {iconPosition === "left" && HeaderIcon}
-          <Header>{header}</Header>
-          {iconPosition === "right" && HeaderIcon}
-        </HeaderContent>
+        <Flex align="center" flex={1} gap="sm">
+          {iconPosition === "left" && headerIcon}
+          <Flex component="span" align="center">
+            {header}
+          </Flex>
+          {iconPosition === "right" && headerIcon}
+        </Flex>
         {rightAction && (
           <div onClick={handleRightActionClick}>{rightAction}</div>
         )}
-      </HeaderContainer>
+      </Flex>
       {isExpanded && (
         <div
           id={regionId}

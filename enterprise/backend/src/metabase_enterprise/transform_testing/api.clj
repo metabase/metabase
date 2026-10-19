@@ -34,7 +34,7 @@
   [_route-params
    {:keys [transform-id]} :- [:map {:closed true}
                               [:transform-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (filter mi/can-read? (transform-testing.db/transform-tests {:transform-id transform-id})))
 
 (api.macros/defendpoint :get "/:id" :- ::transform-testing.schema/transform-test

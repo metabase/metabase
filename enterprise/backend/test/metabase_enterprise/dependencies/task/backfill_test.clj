@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.task.backfill-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.task.backfill-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
@@ -9,7 +10,9 @@
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase-enterprise.dependencies.test-util :as deps.test]
-   [metabase.events.core :as events]
+   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -34,7 +37,7 @@
 (defn- mark-stale!
   "Mark an entity as stale in dependency_status for testing."
   [entity-type entity-id]
-  (deps.dependency-status/mark-stale! entity-type [entity-id]))
+  (deps.dependency-status/mark-stale! {entity-type #{entity-id}}))
 
 (defn- assert-processed
   "Assert that an entity has been processed (not stale, current version)."
@@ -374,33 +377,6 @@
             (assert-processed :card card-id)
             (is (= 1 deps-after))))))))
 
-(deftest ^:synchronized backfill-dependencies-on-serdes-load-test
-  (testing "Serdes load triggers the backfill job (entities remain stale until job runs)"
-    (backfill-all-existing-entities!)
-    (let [query (mt/mbql-query orders)]
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card {card1-id :id} {:dataset_query query}
-                       :model/Card {card2-id :id} {:dataset_query query}
-                       :model/Card {card3-id :id} {:dataset_query query}]
-          ;; Mark all as stale
-          (mark-stale! :card card1-id)
-          (mark-stale! :card card2-id)
-          (mark-stale! :card card3-id)
-          ;; serdes-load triggers the async job, not synchronous processing
-          (events/publish-event! :event/serdes-load {})
-          ;; entities are still stale (job hasn't run yet in this test)
-          (is (= 3 (t2/count :model/DependencyStatus
-                             :entity_type :card
-                             :entity_id [:in [card1-id card2-id card3-id]]
-                             :stale true)))
-          ;; manually run the backfill to verify it processes them
-          (backfill-all-existing-entities!)
-          (is (= 3 (t2/count :model/DependencyStatus
-                             :entity_type :card
-                             :entity_id [:in [card1-id card2-id card3-id]]
-                             :stale false
-                             :dependency_analysis_version dependencies.model/current-dependency-analysis-version))))))))
-
 (deftest ^:synchronized backfill-dependencies-on-token-update-test
   (testing "Token update triggers the backfill job (entities remain stale until job runs)"
     (backfill-all-existing-entities!)
@@ -414,7 +390,7 @@
           (mark-stale! :card card2-id)
           (mark-stale! :card card3-id)
           ;; token update triggers the async job, not synchronous processing
-          (events/publish-event! :event/set-premium-embedding-token {})
+          (dependencies.hooks/after-premium-token-update)
           ;; entities are still stale (job hasn't run yet in this test)
           (is (= 3 (t2/count :model/DependencyStatus
                              :entity_type :card
@@ -485,7 +461,10 @@
                          (reset! scheduled [])
                          (thunk)
                          (count @scheduled))]
-      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args]
+                                                        (when (some #(str/includes? (str %) "dependency-backfill") args)
+                                                          (swap! scheduled conj args))
+                                                        nil)]
         (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "0")]
           (testing "the 1-second event-driven trigger is suppressed"
             (is (zero? (scheduled-by dependencies.backfill/trigger-backfill-job!))))
@@ -565,7 +544,7 @@
                       :terminal false :next_retry_at [:not= nil])
           "test setup: the card must be in retry backoff")
       (let [actionable? (fn [licence]
-                          (with-redefs [premium-features/canonically-has-feature? (constantly licence)]
+                          (mt/with-dynamic-fn-redefs [premium-features/canonically-has-feature? (constantly licence)]
                             (#'dependencies.backfill/has-pending-retries?)))]
         (testing "licensed: the pending retry keeps the job scheduled"
           (is (true? (actionable? true))))
@@ -600,11 +579,67 @@
            task/init! recovers on boot, but survivable Errors -- StackOverflowError from deeply nested SQL, an
            AssertionError, a LinkageError -- leave a live process with a dead job."
     (let [scheduled (atom [])]
-      (with-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)
-                    dependencies.backfill/backfill-dependencies!
-                    (fn [& _] (throw (Error. "simulated fatal error")))]
+      (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)
+                                  dependencies.backfill/backfill-dependencies!
+                                  (fn [& _] (throw (Error. "simulated fatal error")))]
         (testing "the Error still propagates"
           (is (thrown-with-msg? Error #"simulated fatal error"
                                 (#'dependencies.backfill/run-and-reschedule! nil))))
         (testing "and the next run was scheduled anyway"
           (is (= 1 (count @scheduled))))))))
+
+(defn- table-dependency-ids
+  "The IDs of the tables the `entity-type` entity `entity-id` depends on directly."
+  [entity-type entity-id]
+  (t2/select-fn-set :to_entity_id :model/Dependency
+                    :from_entity_type entity-type :from_entity_id entity-id :to_entity_type :table))
+
+(deftest ^:synchronized backfill-snippet-edit-recomputes-queries-expanding-it-test
+  (testing "a snippet's tables are the card's own dependencies, so editing a snippet, even one nested in another,
+           recomputes the cards whose SQL expands it"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "birds inner" :content "VENUES"}
+                     :model/NativeQuerySnippet _ {:name "birds outer" :content "SELECT * FROM {{snippet: birds inner}}"}
+                     :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                 "{{snippet: birds outer}}")}]
+        (backfill-all-existing-entities!)
+        (is (= #{(mt/id :venues)} (table-dependency-ids :card card-id)))
+        (t2/update! :model/NativeQuerySnippet inner-id {:content "CHECKINS"})
+        (backfill-all-existing-entities!)
+        (is (= #{(mt/id :checkins)} (table-dependency-ids :card card-id)))))))
+
+(deftest ^:synchronized backfill-card-reference-leaves-out-card-tables-test
+  (testing "a native query depends on the card it references, not on the card's tables, which it reads through the card"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {orders-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                       :model/Card {card-id :id} {:dataset_query
+                                                  (lib/native-query
+                                                   mp
+                                                   (format "SELECT * FROM {{#%d}} o JOIN PRODUCTS p ON o.PRODUCT_ID = p.ID"
+                                                           orders-id))}]
+          (backfill-all-existing-entities!)
+          (is (= #{(mt/id :products)} (table-dependency-ids :card card-id)))
+          (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
+                          :to_entity_type :card :to_entity_id orders-id)))))))
+
+(deftest ^:synchronized backfill-records-table-sync-finds-later-test
+  (testing "a table a native query names before sync finds it gets its dependency once a sync of the database finds it"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                 "SELECT * FROM PUBLIC.BIRDS_LATE")}
+                     :model/Card {known-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                  "SELECT * FROM VENUES")}]
+        (backfill-all-existing-entities!)
+        (is (empty? (table-dependency-ids :card card-id)))
+        (is (true? (t2/select-one-fn :unresolved_tables :model/DependencyStatus :entity_type :card :entity_id card-id)))
+        (is (false? (t2/select-one-fn :unresolved_tables :model/DependencyStatus :entity_type :card :entity_id known-id)))
+        (mt/with-temp [:model/Table {late-id :id} {:db_id (mt/id) :schema "PUBLIC" :name "BIRDS_LATE" :active true}]
+          (dependencies.hooks/after-database-sync (mt/id))
+          (backfill-all-existing-entities!)
+          (is (= #{late-id} (table-dependency-ids :card card-id)))
+          (is (false? (t2/select-one-fn :unresolved_tables :model/DependencyStatus
+                                        :entity_type :card :entity_id card-id))))))))

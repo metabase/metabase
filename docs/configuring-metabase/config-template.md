@@ -147,9 +147,9 @@ config:
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
+    enable-embedding-modular: false
     enable-embedding-sdk: false
-    enable-embedding-simple: false
-    enable-embedding-static: false
+    enable-embedding-sidecar: false
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
@@ -167,6 +167,7 @@ config:
     hide-stacktraces: false
     humanization-strategy: simple
     index-update-thread-count: 2
+    interestingness-max-fields-per-sync: 100000
     jdbc-data-warehouse-connection-pool-checkout-timeout-ms: 0
     jdbc-data-warehouse-connection-pool-max-pending-checkouts: 0
     jdbc-data-warehouse-max-connection-pool-size: 15
@@ -210,7 +211,6 @@ config:
     license-token-missing-banner-dismissal-timestamp: []
     llm-anthropic-api-base-url: https://api.anthropic.com
     llm-anthropic-api-key: null
-    llm-anthropic-model: claude-opus-4-5-20251101
     llm-azure-api-base-url: null
     llm-azure-api-key: null
     llm-azure-deployment-name: null
@@ -228,25 +228,29 @@ config:
     llm-google-oauth-access-token: null
     llm-google-project-id: null
     llm-google-service-account-key: null
-    llm-max-tokens: 4096
     llm-metabot-provider: anthropic/claude-sonnet-4-6
     llm-mini-model: null
     llm-mistral-api-base-url: https://api.mistral.ai/v1
     llm-mistral-api-key: null
     llm-moonshot-api-base-url: https://api.moonshot.ai/v1
     llm-moonshot-api-key: null
+    llm-ollama-api-base-url: null
+    llm-ollama-api-key: null
+    llm-ollama-request-timeout-ms: 300000
     llm-openai-api-base-url: https://api.openai.com
     llm-openai-api-key: null
+    llm-openai-compatible-api-base-url: null
+    llm-openai-compatible-api-key: null
     llm-openai-model: gpt-5.4
     llm-openrouter-api-base-url: https://openrouter.ai/api
     llm-openrouter-api-key: null
     llm-providers: []
-    llm-rate-limit-per-ip: 100
-    llm-rate-limit-per-user: 20
     llm-request-timeout-ms: 120000
     llm-vllm-api-base-url: null
     llm-vllm-api-key: null
     llm-vllm-request-timeout-ms: 300000
+    llm-xai-api-base-url: https://api.x.ai/v1
+    llm-xai-api-key: null
     llm-zai-api-base-url: https://api.z.ai/api/paas/v4
     llm-zai-api-key: null
     loading-message: doing-science
@@ -257,16 +261,19 @@ config:
     mcp-apps-cors-enabled-clients: []
     metabot-advanced-permissions: false
     metabot-chat-system-prompt: ''
+    metabot-chat-turn-async-timeout-ms: 1800000
     metabot-enabled: true
     metabot-icon: metabot
     metabot-limit-reset-rate: monthly
     metabot-limit-unit: tokens
     metabot-name: Metabot
     metabot-nlq-system-prompt: ''
+    metabot-query-execution-enabled: false
     metabot-quota-reached-message: You have reached your AI usage limit for the current period. Please contact your administrator.
     metabot-recent-views-enabled: true
     metabot-show-illustrations: true
     metabot-slack-signing-secret: null
+    metabot-sql-execution-enabled: true
     metabot-sql-system-prompt: ''
     mfa-challenge-signing-key: null
     mfa-enforcement: 'off'

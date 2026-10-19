@@ -1,40 +1,31 @@
+import cx from "classnames";
 import type { MouseEvent, ReactNode } from "react";
-import { isValidElement, useCallback, useMemo } from "react";
+import { isValidElement } from "react";
 import _ from "underscore";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type { IconData } from "metabase/common/utils/icon";
-import type { IconProps } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Flex, Icon, type IconProps } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import {
-  FullWidthButton,
-  FullWidthLink,
-  ItemName,
-  LeftElementContainer,
-  NameContainer,
-  NodeRoot,
-  RightElementContainer,
-  SidebarIcon,
-} from "./SidebarItems.styled";
+import { SidebarItemName } from "./SidebarItemName";
+import S from "./SidebarItems.module.css";
 
-interface SidebarLinkProps {
+export interface SidebarLinkProps {
   children: string;
   url?: string;
   icon?: IconName | IconProps | IconData;
   isSelected?: boolean;
-  hasDefaultIconStyle?: boolean;
   left?: ReactNode;
   right?: ReactNode;
   onClick?: (event: MouseEvent) => void;
   target?: string;
   rel?: string;
+  className?: string;
 }
-
-type ContentProps = {
-  children: ReactNode;
-};
 
 function isIconPropsObject(
   icon: string | IconProps | IconData,
@@ -50,95 +41,96 @@ function disableImageDragging(e: MouseEvent) {
   e.preventDefault();
 }
 
-function SidebarLink({
+interface SidebarLinkIconProps {
+  icon: IconName | IconProps | IconData;
+}
+
+function SidebarLinkIcon({ icon }: SidebarLinkIconProps) {
+  if (isValidElement(icon)) {
+    return icon;
+  }
+  const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+  const hasIconUrl = "iconUrl" in iconProps && iconProps.iconUrl;
+
+  return (
+    <TreeNode.IconContainer transparent={false} c="core-brand">
+      {hasIconUrl ? (
+        <EntityIcon
+          name={iconProps.name}
+          iconUrl={iconProps.iconUrl}
+          size="1rem"
+          color="core-brand"
+        />
+      ) : (
+        <Icon {...iconProps} />
+      )}
+    </TreeNode.IconContainer>
+  );
+}
+
+export function SidebarLink({
   children,
   icon,
   url,
   isSelected = false,
-  hasDefaultIconStyle,
   left = null,
   right = null,
   onClick,
   target,
   rel,
+  className,
   ...props
 }: SidebarLinkProps) {
-  const renderIcon = useCallback(() => {
-    if (!icon) {
-      return null;
-    }
-    if (isValidElement(icon)) {
-      return icon;
-    }
-    const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
-    const hasIconUrl = "iconUrl" in iconProps && iconProps.iconUrl;
-
-    return (
-      <TreeNode.IconContainer transparent={false}>
-        {hasIconUrl ? (
-          <EntityIcon
-            name={iconProps.name}
-            iconUrl={iconProps.iconUrl}
-            size="1rem"
-            color="core-brand"
-          />
-        ) : (
-          <SidebarIcon {...iconProps} isSelected={isSelected} />
-        )}
-      </TreeNode.IconContainer>
-    );
-  }, [icon, isSelected]);
-
-  const Content = useMemo(() => {
-    return url
-      ? (props: ContentProps) => (
-          <FullWidthLink
-            {...props}
-            to={url}
-            target={target}
-            rel={rel}
-            onClick={onClick}
-          />
-        )
-      : (props: ContentProps) => (
-          <FullWidthButton
-            {...props}
-            isSelected={isSelected}
-            onClick={onClick}
-          />
-        );
-  }, [url, isSelected, onClick, target, rel]);
+  const content = (
+    <>
+      {icon && <SidebarLinkIcon icon={icon} />}
+      <SidebarItemName>{children}</SidebarItemName>
+    </>
+  );
 
   return (
-    <NodeRoot
+    <TreeNode.Root
       depth={0}
       isSelected={isSelected}
-      hasDefaultIconStyle={hasDefaultIconStyle}
+      className={cx(S.nodeRoot, { [S.selected]: isSelected }, className)}
+      bdrs="xxs"
+      pl="md"
       aria-label={children}
       aria-selected={isSelected}
       onMouseDown={disableImageDragging}
       {...props}
     >
-      {isValidElement(left) && (
-        <LeftElementContainer>{left}</LeftElementContainer>
+      {isValidElement(left) && <div>{left}</div>}
+      {url ? (
+        <Flex
+          component={ForwardRefLink}
+          className={S.link}
+          align="center"
+          w="100%"
+          miw={0}
+          to={url}
+          target={target}
+          rel={rel}
+          onClick={onClick}
+        >
+          {content}
+        </Flex>
+      ) : (
+        <Flex
+          component="button"
+          className={cx(S.button, CS.cursorPointer)}
+          align="center"
+          w="100%"
+          miw={0}
+          c="inherit"
+          fw={700}
+          ta="start"
+          onClick={onClick}
+        >
+          {content}
+        </Flex>
       )}
-      <Content>
-        {icon && renderIcon()}
-        <NameContainer>{children}</NameContainer>
-      </Content>
-      {isValidElement(right) && (
-        <RightElementContainer>{right}</RightElementContainer>
-      )}
-    </NodeRoot>
+      {isValidElement(right) && <div>{right}</div>}
+    </TreeNode.Root>
   );
 }
-
-export type { SidebarLinkProps };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(SidebarLink, {
-  NameContainers: [ItemName, TreeNode.NameContainer],
-  Icon: SidebarIcon,
-  LeftElement: LeftElementContainer,
-  RightElement: RightElementContainer,
-});

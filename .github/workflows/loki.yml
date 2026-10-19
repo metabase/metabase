@@ -3,10 +3,6 @@ name: Loki Visual Regression Testing
 on:
   workflow_call:
     inputs:
-      skip:
-        description: "Skip the Loki visual tests."
-        type: boolean
-        default: false
       test-plan-artifact-id:
         description: "ID of this run's test-plan.json artifact, or '' to run the full suite."
         type: string
@@ -17,8 +13,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    uses: ./.github/workflows/test.gate.yml
+    with:
+      filters: frontend_loki_all
+
+  # Without a plan there is nothing to narrow, so this is skipped and every story runs.
   story-selection:
-    if: ${{ !inputs.skip && inputs.test-plan-artifact-id != '' }}
+    needs: gate
+    if: ${{ needs.gate.outputs.run == 'true' && inputs.test-plan-artifact-id != '' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -46,10 +49,14 @@ jobs:
 
   visual-test:
     name: loki-run
-    needs: story-selection
-    # A missing job output compares equal to '0' in GitHub expressions,
-    # so an empty selection is marked with a non-numeric value.
-    if: ${{ !cancelled() && !inputs.skip && needs.story-selection.outputs.selection != 'empty' }}
+    needs: [gate, story-selection]
+    # `!cancelled()` so a skipped selection (no plan) still runs every story. A missing job output
+    # compares equal to '0' in GitHub expressions, so an empty selection is marked with a
+    # non-numeric value.
+    if: >-
+      ${{ !cancelled() && needs.gate.outputs.run == 'true'
+      && needs.story-selection.result != 'failure'
+      && needs.story-selection.outputs.selection != 'empty' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     services:
@@ -110,8 +117,8 @@ jobs:
 
   loki-tests-result:
     name: visual-test
-    needs: [story-selection, visual-test]
-    if: always() && !cancelled()
+    needs: [gate, story-selection, visual-test]
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:

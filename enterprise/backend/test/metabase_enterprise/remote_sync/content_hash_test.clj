@@ -161,44 +161,47 @@
 
 (deftest null-baseline-update-marks-dirty-test
   (testing "An update with no recorded baseline hash still marks dirty — exports the first time (GHY-3933)"
-    (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
-                   :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
-                                           :status "synced" :status_changed_at (t/offset-date-time)})
-      (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
-      (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
-          "A null content_hash baseline must be treated as dirty"))))
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
+                                             :status "synced" :status_changed_at (t/offset-date-time)})
+        (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
+        (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+            "A null content_hash baseline must be treated as dirty")))))
 
 (deftest changed-content-marks-dirty-test
   (testing "A real change to serialized content marks dirty (GHY-3933)"
-    (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
-                   :model/Card card {:name "Original" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "Original"
-                                           :status "synced"
-                                           :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
-                                           :status_changed_at (t/offset-date-time)})
-      (t2/update! :model/Card (:id card) {:name "Renamed"})
-      (events/publish-event! :event/card-update {:object (t2/select-one :model/Card :id (:id card))
-                                                 :previous-object card
-                                                 :user-id (mt/user->id :rasta)})
-      (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
-          "A changed serialization must mark the row dirty"))))
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Card card {:name "Original" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "Original"
+                                             :status "synced"
+                                             :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
+                                             :status_changed_at (t/offset-date-time)})
+        (t2/update! :model/Card (:id card) {:name "Renamed"})
+        (events/publish-event! :event/card-update {:object (t2/select-one :model/Card :id (:id card))
+                                                   :previous-object card
+                                                   :user-id (mt/user->id :rasta)})
+        (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+            "A changed serialization must mark the row dirty")))))
 
 (deftest revert-to-baseline-resyncs-test
   (testing "An update whose content matches the synced baseline clears a stale dirty flag (GHY-3933)"
-    (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
-                   :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
-      (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
-                                           :status "update"
-                                           :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
-                                           :status_changed_at (t/offset-date-time)})
-      (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
-      (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
-          "Content matching the baseline must clear a stale dirty flag")
-      (is (not (sync-object/dirty?))))))
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection coll {:is_remote_synced true :name "RS"}
+                     :model/Card card {:name "C" :dataset_query (mt/mbql-query venues) :collection_id (:id coll)}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id (:id card) :model_name "C"
+                                             :status "update"
+                                             :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
+                                             :status_changed_at (t/offset-date-time)})
+        (events/publish-event! :event/card-update {:object card :previous-object card :user-id (mt/user->id :rasta)})
+        (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))))
+            "Content matching the baseline must clear a stale dirty flag")
+        (is (not (sync-object/dirty?)))))))
 
 ;;; ------------------------------------------- mark-rows-synced! -------------------------------------------
 

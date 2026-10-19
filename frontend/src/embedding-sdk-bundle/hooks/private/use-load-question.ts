@@ -39,7 +39,9 @@ export interface LoadQuestionHookResult {
   isQuestionLoading: boolean;
   isQueryRunning: boolean;
 
-  queryQuestion(): Promise<Question | undefined>;
+  queryQuestion(options?: {
+    ignoreCache?: boolean;
+  }): Promise<Question | undefined>;
 
   loadAndQueryQuestion(): LoadQuestionResult;
 
@@ -197,32 +199,36 @@ export function useLoadQuestion({
     initialVisualization,
   ]);
 
-  const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
-    if (!question) {
-      return;
-    }
+  const [runQuestionState, queryQuestion] = useAsyncFn(
+    async (options?: { ignoreCache?: boolean }) => {
+      if (!question) {
+        return;
+      }
 
-    const state = await runQuestionQuerySdk({
+      const state = await runQuestionQuerySdk({
+        question,
+        isGuestEmbed,
+        token,
+        originalQuestion,
+        parameterValues,
+        signal: nextSignal(),
+        dispatch,
+        ignoreCache: options?.ignoreCache,
+      });
+
+      mergeQuestionState(state);
+
+      return state.question;
+    },
+    [
+      dispatch,
       question,
       isGuestEmbed,
       token,
       originalQuestion,
       parameterValues,
-      signal: nextSignal(),
-      dispatch,
-    });
-
-    mergeQuestionState(state);
-
-    return state.question;
-  }, [
-    dispatch,
-    question,
-    isGuestEmbed,
-    token,
-    originalQuestion,
-    parameterValues,
-  ]);
+    ],
+  );
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
     async (nextQuestion: Question, options: { run?: boolean }) => {

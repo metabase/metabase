@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { seedApiQueryCache } from "__support__/state";
 import { Api } from "metabase/api";
+import { actionApi } from "metabase/api/action";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
@@ -20,6 +21,7 @@ import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSettings,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import {
@@ -29,6 +31,9 @@ import {
 } from "../sync-task-slice";
 
 import { remoteSyncListenerMiddleware } from "./remote-sync-listener-middleware";
+
+const CURRENT_USER_ID = 1;
+const OTHER_USER_ID = 2;
 
 const createTestStore = (
   settingsOverrides: Partial<EnterpriseSettings> = {},
@@ -50,6 +55,10 @@ const createTestStore = (
             "remote-sync-transforms": false,
             ...settingsOverrides,
           }),
+        },
+        {
+          endpointName: "getCurrentUser",
+          value: createMockUser({ id: CURRENT_USER_ID, is_superuser: true }),
         },
       ]),
     },
@@ -326,7 +335,7 @@ describe("remote-sync-listener-middleware", () => {
     const CURRENT_TASK = "path:/api/ee/remote-sync/current-task";
     const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
 
-    it("follows a task found running on load so the tab can watch it", async () => {
+    it("follows the current user's task found running on load so the tab can watch it", async () => {
       fetchMock.get(CURRENT_TASK, {
         status: 200,
         body: {
@@ -335,6 +344,7 @@ describe("remote-sync-listener-middleware", () => {
           sync_task_type: "import",
           progress: 0.4,
           ended_at: null,
+          initiated_by: CURRENT_USER_ID,
         },
       });
       const store = createTestStore();
@@ -349,6 +359,84 @@ describe("remote-sync-listener-middleware", () => {
         );
       });
       expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(true);
+    });
+
+    it.each([
+      ["another user", OTHER_USER_ID],
+      ["no user (auto-import)", null],
+    ])(
+      "does not follow or show a running task started by %s",
+      async (_description, initiatedBy) => {
+        fetchMock.get(CURRENT_TASK, {
+          status: 200,
+          body: {
+            id: 5,
+            status: "running",
+            sync_task_type: "export",
+            progress: 0.3,
+            ended_at: null,
+            initiated_by: initiatedBy,
+          },
+        });
+        const store = createTestStore();
+
+        store.dispatch(
+          remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+        );
+
+        await waitForCondition(() => fetchMock.callHistory.done(CURRENT_TASK));
+        await settle();
+
+        expect(
+          store.getState().plugins.remoteSyncPlugin.currentTask,
+        ).toBeNull();
+        expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(false);
+      },
+    );
+
+    it("does not route another user's import conflict to the setup modal", async () => {
+      const responses = [
+        {
+          id: 5,
+          status: "running",
+          sync_task_type: "import",
+          progress: 0.3,
+          ended_at: null,
+          initiated_by: OTHER_USER_ID,
+        },
+        {
+          id: 5,
+          status: "conflict",
+          sync_task_type: "import",
+          ended_at: "2026-01-01T00:00:01Z",
+          initiated_by: OTHER_USER_ID,
+        },
+      ];
+      fetchMock.get(CURRENT_TASK, () => ({
+        status: 200,
+        body: responses.shift() ?? responses[0],
+      }));
+      const store = createTestStore();
+
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+      );
+      await waitForCondition(() => fetchMock.callHistory.done(CURRENT_TASK));
+      await settle();
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(undefined, {
+          forceRefetch: true,
+        }),
+      );
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls(CURRENT_TASK)).toHaveLength(2);
+      });
+      await settle();
+
+      expect(
+        store.getState().plugins.remoteSyncPlugin.syncConflictVariant,
+      ).toBeNull();
+      expect(store.getState().plugins.remoteSyncPlugin.showModal).toBe(false);
     });
 
     it("leaves a finished task found on load alone", async () => {
@@ -767,6 +855,76 @@ describe("remote-sync-listener-middleware", () => {
           name: "Renamed",
         }),
       );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+  });
+
+  describe("action listeners", () => {
+    afterEach(() => {
+      fetchMock.clearHistory();
+    });
+
+    const subscribeAndSettle = async (
+      store: ReturnType<typeof createTestStore>,
+    ) => {
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncChanges.initiate(undefined),
+      );
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("remote-sync-dirty"),
+      );
+    };
+
+    const dirtyCallCount = () =>
+      fetchMock.callHistory.calls("remote-sync-dirty").length;
+
+    // Model actions are tracked by remote sync, so creating one must refresh
+    // the dirty state that enables the push button (GHY-4722).
+    it("invalidates when a model action is created", async () => {
+      fetchMock.post("path:/api/action", { id: 1, model_id: 10 });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        actionApi.endpoints.createAction.initiate({
+          name: "Create",
+          type: "implicit",
+          kind: "row/create",
+          model_id: 10,
+        }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a model action is updated", async () => {
+      fetchMock.put("path:/api/action/1", { id: 1, model_id: 10 });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(
+        actionApi.endpoints.updateAction.initiate({ id: 1, name: "Renamed" }),
+      );
+
+      await waitForCondition(() => dirtyCallCount() > 1);
+      expect(dirtyCallCount()).toBeGreaterThan(1);
+    });
+
+    it("invalidates when a model action is deleted", async () => {
+      fetchMock.delete("path:/api/action/1", { id: 1, model_id: 10 });
+      setupRemoteSyncDirtyEndpoint();
+
+      const store = createTestStore();
+      await subscribeAndSettle(store);
+
+      store.dispatch(actionApi.endpoints.deleteAction.initiate(1));
 
       await waitForCondition(() => dirtyCallCount() > 1);
       expect(dirtyCallCount()).toBeGreaterThan(1);

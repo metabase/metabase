@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
-import { useTokenRefreshUntil } from "metabase/settings";
+import {
+  WAITING_REFRESH_INTERVAL,
+  useTokenRefreshUntil,
+} from "metabase/settings";
 import {
   Box,
   Button,
@@ -28,7 +31,7 @@ export function MetabotSettingUpModal({
     isSavingConfiguration || !hasPremiumFeature(METABASE_MANAGED_AI_FEATURE);
 
   useTokenRefreshUntil(METABASE_MANAGED_AI_FEATURE, {
-    intervalMs: 1000,
+    intervalMs: WAITING_REFRESH_INTERVAL,
     skip: !opened || !isSettingUp,
   });
 
@@ -40,7 +43,6 @@ export function MetabotSettingUpModal({
       closeOnEscape={false}
       withCloseButton={false}
       size="30rem"
-      padding="2.5rem"
       mah="80%"
     >
       <Stack align="center" gap="xl" my="4.5rem">

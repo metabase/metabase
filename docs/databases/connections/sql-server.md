@@ -95,7 +95,14 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Connecting to Azure SQL
 
-To connect to Azure SQL, you'll need to set the port to 1433.
+To connect to Azure SQL, set the port to 1433. Under **Authentication method**, pick how the server will identify Metabase:
+
+- **SQL Server login**: a traditional username and password. Only works when SQL authentication is enabled on the server.
+- **Azure AD - Service principal**: Metabase authenticates as an [Entra ID app registration](https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals). Fill in the **Client ID** and **Client secret** from the app registration, and grant that service principal `CONNECT` on the target database.
+- **Azure AD - Service principal (certificate)**: Same as service principal, but authenticates with the app registration's certificate.  Upload the **Client certificate**.
+  - If the certificate needs a password, provide the password in **Certificate password**.
+  - If the private key is stored in a separate file, provide the key in **Client key**. If the key is encrypted, fill in its password in **Client key password**.
+- **Azure AD - Managed identity**: This mode only works when Metabase runs inside Azure. Metabase authenticates using the [managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/overview) assigned to the compute that your Metabase is running on (App Service, Container Apps, VM, AKS). To use the default identity, leave **Managed identity client ID** blank. You can also fill in a specific user-assigned managed identity. 
 
 ## Writable connection
 

@@ -4,13 +4,9 @@
   OAuth scopes are mapped onto `:token-scopes` for the scope-enforcement middleware."
   (:require
    [clojure.test :refer [deftest is testing]]
-   ;; Loaded for its load-time side effects: it registers the agent API endpoints, from which the
-   ;; OAuth provider derives its scopes-supported (see [[metabase.mcp.core/all-scopes]]). In a full
-   ;; server boot [[metabase.api-routes.routes]] loads it; the isolated test classpath does not
-   ;; mount the routes, so require it here as that route ns does.
-   [metabase.agent-api.api]
    [metabase.api.macros.scope :as scope]
    [metabase.initialization-status.core :as init-status]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.events.revoke-on-deactivation] ; for side effects: revokes tokens on deactivation
    [metabase.oauth-server.test-util :as oauth-server.tu]
@@ -26,8 +22,11 @@
 ;; the isolated test runner never boots the web server, so mark init complete as session_test does.
 (init-status/set-complete!)
 
-(def ^:private merge-current-user-info #'mw.session/merge-current-user-info)
-(def ^:private oauth-token->token-scopes #'mw.session/oauth-token->token-scopes)
+(def ^:private merge-current-user-info
+  (partial #'mw.session/merge-current-user-info mcp.http-handler/options))
+
+(def ^:private oauth-token->token-scopes
+  (partial #'mw.session/oauth-token->token-scopes oauth-server/full-access-scope))
 
 (defn- bearer-request [token]
   {:headers {"authorization" (str "Bearer " token)}})
@@ -56,9 +55,10 @@
 (deftest oauth-token->token-scopes-test
   (testing "a token carrying the full-access scope maps to the unrestricted sentinel (general REST reachable)"
     (is (= #{::scope/unrestricted}
-           (oauth-token->token-scopes #{oauth-server/full-access-scope})))
-    (is (= #{::scope/unrestricted}
-           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:query:execute"}))))
+           (oauth-token->token-scopes #{oauth-server/full-access-scope}))))
+  (testing "GHY-4942: the other scopes it was granted ride along, since MCP ignores the sentinel and gates on them"
+    (is (= #{::scope/unrestricted "agent:sql:run"}
+           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:sql:run"}))))
   (testing "any narrower scope set is passed through verbatim (only opted-in agent endpoints reachable)"
     (is (= #{"agent:query:execute"}
            (oauth-token->token-scopes #{"agent:query:execute"})))

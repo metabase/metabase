@@ -34,21 +34,16 @@ export const CHART_STYLE = {
     barWidth: 0.8,
     histogramBarWidth: 0.995,
   },
-  axisTicksMarginX: 5,
-  axisTicksMarginY: 10,
   axisTicks: {
     weight: 400,
   },
+  hiddenYAxisWidth: 12,
   seriesLabels: {
     weight: 700,
     size: 13,
     offset: 4,
     stackedPadding: 2,
   },
-  axisName: {
-    weight: 400,
-  },
-  axisNameMargin: 12,
   padding: {
     x: 8,
     y: 12,
@@ -65,6 +60,14 @@ export const CHART_STYLE = {
       margin: 4,
       size: 13,
       weight: 400,
+    },
+    marker: {
+      outerRingRadius: 4.42,
+      innerRingRadius: 1.42,
+      ringWidth: 1.15,
+      backgroundRadius: 8,
+      shadowSpread: 1,
+      hitAreaRadius: 8,
     },
   },
   opacity: {

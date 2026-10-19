@@ -88,21 +88,53 @@
       (testing "the keepalive written before the cancellation still reached the client"
         (is (= ": keepalive\n\n" (str sink)))))))
 
+(defn- scripted-hash-fn!
+  "A tools hash fn whose `n`th read returns the `n`th of `reads`, throwing for `::fail`, and offering a cancellation on
+  `canceled` from the third read so the loop ends after a known number of ticks."
+  [canceled reads]
+  (let [calls (atom 0)]
+    (fn []
+      (let [call (swap! calls inc)
+            read (nth reads (dec call))]
+        (when (>= call 3)
+          (a/offer! canceled ::request-canceled))
+        (if (= ::fail read)
+          (throw (ex-info "app database unavailable" {}))
+          read)))))
+
+(defn- run-scripted-keepalive-loop!
+  "Run the keepalive loop over [[scripted-hash-fn!]] `reads`, returning what it wrote, after checking it returned
+  after three ticks."
+  [reads]
+  (let [canceled (a/promise-chan)
+        sink     (StringWriter.)]
+    (is (= :returned (run-keepalive-loop! sink (scripted-hash-fn! canceled reads) canceled 1)))
+    (is (= 3 (count (re-seq #": keepalive" (str sink)))))
+    (str sink)))
+
+(defn- list-changed-count
+  [output]
+  (count (re-seq #"notifications/tools/list_changed" output)))
+
 (deftest keepalive-loop-emits-tools-list-changed-on-hash-change-test
   (testing "a change in the visible tool set between ticks emits notifications/tools/list_changed exactly once"
-    (let [canceled (a/promise-chan)
-          sink     (StringWriter.)
-          calls    (atom 0)
-          hash-fn  (fn []
-                     (let [n (swap! calls inc)]
-                       ;; cancel on the third read so the loop terminates after a known number of ticks
-                       (when (>= n 3)
-                         (a/offer! canceled ::request-canceled))
-                       (if (= n 1) "hash-1" "hash-2")))]
-      (is (= :returned (run-keepalive-loop! sink hash-fn canceled 1)))
-      (let [output (str sink)]
-        (is (= 3 (count (re-seq #": keepalive" output))))
-        (is (= 1 (count (re-seq #"notifications/tools/list_changed" output))))))))
+    (is (= 1 (list-changed-count (run-scripted-keepalive-loop! ["hash-1" "hash-2" "hash-2"]))))))
+
+(deftest keepalive-loop-survives-a-failing-tools-hash-test
+  (testing "a tick whose tools hash throws keeps the previous hash, so the stream stays open and nothing is announced"
+    (is (zero? (list-changed-count (run-scripted-keepalive-loop! ["hash-1" ::fail "hash-1"])))))
+  (testing "a failing first read doesn't end the stream, and the first hash read after it seeds the hash rather than
+            announcing a change"
+    (is (zero? (list-changed-count (run-scripted-keepalive-loop! [::fail "hash-1" "hash-1"])))))
+  (testing "a change after that seeding read is still announced"
+    (is (= 1 (list-changed-count (run-scripted-keepalive-loop! [::fail "hash-1" "hash-2"]))))))
+
+(deftest keepalive-loop-warns-once-for-a-sustained-tools-hash-failure-test
+  (testing "a tools hash that keeps failing warns on the first failure and logs the rest at debug"
+    (mt/with-log-messages-for-level [messages [metabase.mcp.transport :debug]]
+      (run-scripted-keepalive-loop! [::fail ::fail ::fail])
+      (is (= [:warn :debug :debug]
+             (map :level (filter #(re-find #"hash the MCP tool list" (str (:message %))) (messages))))))))
 
 (defn- keepalive-counts []
   @@#'mcp.transport/keepalive-stream-counts)
@@ -298,8 +330,10 @@
 (defn- jsonrpc-notification [method]
   {:jsonrpc "2.0" :method method :params {}})
 
-(defn- ping-call []
-  (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}}))
+(defn- ping-call
+  "A JSON-RPC `ping`: it dispatches inside the session but needs no scope, so a cookie session can send it."
+  []
+  (jsonrpc-request "ping"))
 
 (defn- initialize!
   "Run the `initialize` handshake as `username` and return the issued `Mcp-Session-Id`."
@@ -349,7 +383,7 @@
           "the fabricated id is structurally valid — the ownership model, not format, is the boundary")
       (let [response (mcp-request (ping-call) {"mcp-session-id" fabricated})]
         (is (= 200 (:status response)))
-        (is (= {:ok true :message "pong"} (get-in response [:body :result :structuredContent]))
+        (is (= {} (get-in response [:body :result]))
             "an authenticated caller dispatches inside a correlator it fabricated, because no other user owns it")))))
 
 (deftest session-belonging-to-another-user-is-refused-test
@@ -365,7 +399,7 @@
         (testing "its owner still dispatches"
           (let [response (mcp-request :rasta (ping-call) {"mcp-session-id" session-id})]
             (is (= 200 (:status response)))
-            (is (= {:ok true :message "pong"} (get-in response [:body :result :structuredContent])))))
+            (is (= {} (get-in response [:body :result])))))
         (testing "another authenticated user gets the answer a nonexistent session gets, and no tool result"
           (let [response (mcp-request :crowberto (ping-call) {"mcp-session-id" session-id})]
             (is (= 404 (:status response)))
@@ -438,7 +472,7 @@
   (testing (str "with no instance origin to check against — site-url unset or unparsable — the guard falls back "
                 "to the Origin/Host comparison. Weaker, but a misconfigured instance degrading to the previous "
                 "behaviour beats 403ing its own browser clients.")
-    (with-redefs [system/site-url (constantly nil)]
+    (mt/with-dynamic-fn-redefs [system/site-url (constantly nil)]
       (testing "same host and port is served"
         (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
                                          {"host" "localhost:3000" "origin" "http://localhost:3000"})))))
@@ -884,64 +918,42 @@
       (is (= (str "Bearer error=\"insufficient_scope\", scope=\"a b\", resource_metadata=\"" url "\"")
              (challenge url ["a" "b"] nil))))))
 
-(deftest legacy-scoped-bearer-token-is-challenged-then-refused-test
+(deftest legacy-scoped-bearer-token-is-stepped-up-test
   (testing (str "GHY-4343: `/api/metabase-mcp` now serves the v2 tool surface, but every MCP client connected to a "
                 "shipped v0.60-v0.63 release holds a token carrying the pre-v2 per-entity agent scopes. No legacy "
-                "scope satisfies any v2 tool scope and `registry/list-tools` then filtered silently, so the pre-fix "
-                "failure mode was a successful handshake followed by HTTP 200 with an empty tools list - no error, "
-                "nothing logged, and no self-heal (the refresh grant copies scope forward and can only narrow). "
-                "`RevokeLegacyMcpOAuthTokens` stamps such tokens revoked so the client is refused outright and "
-                "re-authenticates. Whichever way it resolves, it must never be a 200 carrying zero tools.")
+                "scope satisfies any v2 tool scope, and the pre-fix failure mode was a successful handshake followed "
+                "by HTTP 200 with an empty tools list. GHY-4491: the upgrade leaves such tokens alive, so the client "
+                "must recover on its own: it is listed every tool, and a call gets a 403 `insufficient_scope` "
+                "challenge naming the v2 scope to re-authorize for.")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (oauth-server.tu/with-oauth-client [client-id]
         (mt/with-model-cleanup [:model/OAuthAccessToken]
-          (let [;; Exactly the review's token: one per-entity scope the v2 surface never gates on, plus
-                ;; `agent:resource:read`, which gates a resource rather than any tool.
-                token   (issue-bearer! (mt/user->id :rasta) client-id
-                                       ["agent:question:create" "agent:resource:read"])
-                headers (fn [& {:as extra}]
-                          {:request-options {:headers (merge {"authorization" (str "Bearer " token)} extra)}})
-                ;; The tool list is only reachable through a session, so the handshake runs first. Its status is
-                ;; not asserted: the point is what `tools/list` can be answered, and revoking the token moves the
-                ;; refusal to this call rather than removing it.
-                _       (testing (str "GHY-4543: before the migration this token handshakes and is listed every tool, "
-                                      "since tools/list no longer filters by scope, but can call none of them")
-                          (let [sid   (get-in (client/client-full-response
-                                               :post 200 "metabase-mcp" (headers)
-                                               (jsonrpc-request "initialize" {:capabilities {}}))
-                                              [:headers "Mcp-Session-Id"])
-                                r     (client/client-full-response :post 200 "metabase-mcp"
-                                                                   (headers "mcp-session-id" sid)
-                                                                   (jsonrpc-request "tools/list" {} 2))
-                                tools (get-in r [:body :result :tools])
-                                call  (client/client-full-response :post 403 "metabase-mcp"
-                                                                   (headers "mcp-session-id" sid)
-                                                                   (jsonrpc-request
-                                                                    "tools/call"
-                                                                    {:name      (:name (first tools))
-                                                                     :arguments {}}
-                                                                    3))]
-                            (is (= 200 (:status r)))
-                            (is (seq tools))
-                            (is (= 403 (:status call)))
-                            (is (str/includes? (get-in call [:headers "WWW-Authenticate"] "")
-                                               "error=\"insufficient_scope\""))
-                            (is (str/starts-with? (get-in call [:body :error :message] "")
-                                                  "Insufficient scope to call tool: "))))
-                ;; Then put the token in the state `RevokeLegacyMcpOAuthTokens` leaves it in. The migration
-                ;; class itself is exercised in `metabase.app-db.custom-migrations-test`, against the changelog;
-                ;; what this test owns is the consequence at the transport, which is the revoked stamp.
-                _       (t2/update! :model/OAuthAccessToken
-                                    {:token (oidc.util/hash-token token)} {:revoked_at :%now})
-                init    (client/client-full-response :post 401 "metabase-mcp" (headers)
-                                                     (jsonrpc-request "initialize" {:capabilities {}}))]
-            (testing "after the migration the token is refused at the handshake, so it never holds a useless session"
-              (is (= 401 (:status init)))
-              (is (nil? (get-in init [:headers "Mcp-Session-Id"]))
-                  "a revoked token must not be handed a working MCP session")
-              (let [challenge (get-in init [:headers "WWW-Authenticate"] "")]
-                (is (str/includes? challenge "invalid_token"))
-                (is (str/includes? challenge "resource_metadata=")
-                    "the challenge carries RFC 9728 discovery, so the client knows where to re-authenticate")
-                (is (str/includes? challenge "agent:content:read")
-                    "and names the v2 scopes to ask for, which the widened client snapshot now validates")))))))))
+          (let [;; Two agent-API scopes the v2 surface never gates on.
+                token     (issue-bearer! (mt/user->id :rasta) client-id
+                                         ["agent:question:create" "agent:resource:read"])
+                headers   (fn [& {:as extra}]
+                            {:request-options {:headers (merge {"authorization" (str "Bearer " token)} extra)}})
+                sid       (get-in (client/client-full-response
+                                   :post 200 "metabase-mcp" (headers)
+                                   (jsonrpc-request "initialize" {:capabilities {}}))
+                                  [:headers "Mcp-Session-Id"])
+                listed    (client/client-full-response :post 200 "metabase-mcp"
+                                                       (headers "mcp-session-id" sid)
+                                                       (jsonrpc-request "tools/list" {} 2))
+                tools     (get-in listed [:body :result :tools])
+                call      (client/client-full-response :post 403 "metabase-mcp"
+                                                       (headers "mcp-session-id" sid)
+                                                       (jsonrpc-request "tools/call" {:name "search" :arguments {}} 3))
+                challenge (get-in call [:headers "WWW-Authenticate"] "")]
+            (testing "the handshake succeeds and every tool is listed, since tools/list does not filter by scope"
+              (is (string? sid))
+              (is (some #{"search"} (map :name tools))))
+            (testing "a call is refused with a step-up challenge rather than a 200 or a 401"
+              (is (= 403 (:status call)))
+              (is (str/includes? challenge "error=\"insufficient_scope\""))
+              (is (str/includes? challenge "agent:content:read")
+                  "the challenge names the v2 scope to ask for, which the widened client snapshot validates")
+              (is (str/includes? challenge "resource_metadata=")
+                  "and carries RFC 9728 discovery, so the client knows where to re-authorize")
+              (is (str/starts-with? (get-in call [:body :error :message] "")
+                                    "Insufficient scope to call tool: ")))))))))

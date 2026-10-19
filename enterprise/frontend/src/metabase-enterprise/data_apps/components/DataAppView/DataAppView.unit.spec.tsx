@@ -90,20 +90,6 @@ describe("DataAppView", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows a not-published screen when the app has no resource collection yet", () => {
-    setup({ error: { status: 409 } });
-
-    expect(
-      screen.getByText("This data app isn’t published yet"),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(
-        "An administrator needs to publish this data app before it can be opened.",
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("shows the API's outdated message when the app 409s with the outdated error code", () => {
     setup({
       error: {

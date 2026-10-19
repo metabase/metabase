@@ -47,6 +47,7 @@
                                          :is-superuser?         true
                                          :is-impersonated-user? false
                                          :is-sandboxed-user?    false
+                                         :is-routed-user?       false
                                          :models                nil
                                          :search-string         "x"})]
     (is (not-any? ctx [:vector-search-strategy :vector-search-ef-search :vector-search-max-scan-tuples
@@ -104,6 +105,9 @@
                                                  :models                      search.config/all-models
                                                  :current-user-id             (mt/user->id :crowberto)
                                                  :is-superuser?               true
+                                                 :is-impersonated-user?       false
+                                                 :is-sandboxed-user?          false
+                                                 :is-routed-user?             false
                                                  :is-data-analyst?            false
                                                  :current-user-perms          #{"/"}
                                                  :model-ancestors?            false
@@ -157,11 +161,11 @@
                                                :created_at two-years-ago}
          :model/Action     {action-new :id}   {:name       search-term
                                                :model_id   model-new
-                                               :type       :http
+                                               :type       :query
                                                :created_at new}
          :model/Action     {action-old :id}   {:name       search-term
                                                :model_id   model-old
-                                               :type       :http
+                                               :type       :query
                                                :created_at two-years-ago}
          :model/Segment    {_segment-new :id} {:name       search-term
                                                :created_at new}
@@ -184,6 +188,9 @@
                                                                   :created-at         created-at
                                                                   :current-user-id    (mt/user->id :crowberto)
                                                                   :is-superuser?      true
+                                                                  :is-impersonated-user? false
+                                                                  :is-sandboxed-user? false
+                                                                  :is-routed-user?    false
                                                                   :current-user-perms @api/*current-user-permissions-set*}))
                                             :data
                                             (map (juxt :model :id))
@@ -236,11 +243,11 @@
          :model/Card       {metric-old :id}    {:name search-term :type :metric}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
-                                                :type       :http
+                                                :type       :query
                                                 :updated_at new}
          :model/Action     {action-old :id}    {:name       search-term
                                                 :model_id   model-old
-                                                :type       :http
+                                                :type       :query
                                                 :updated_at two-years-ago}]
         (t2/insert! (t2/table-name :model/Revision) (for [[model model-id timestamp]
                                                           [["Dashboard" dashboard-new new]
@@ -270,6 +277,9 @@
                                                                   :last-edited-at     last-edited-at
                                                                   :current-user-id    (mt/user->id :crowberto)
                                                                   :is-superuser?      true
+                                                                  :is-impersonated-user? false
+                                                                  :is-sandboxed-user? false
+                                                                  :is-routed-user?    false
                                                                   :current-user-perms @api/*current-user-permissions-set*}))
                                             :data
                                             (map (juxt :model :id))
@@ -315,6 +325,9 @@
                                                 :models             search.config/all-models
                                                 :current-user-id    (mt/user->id :crowberto)
                                                 :is-superuser?      true
+                                                :is-impersonated-user? false
+                                                :is-sandboxed-user? false
+                                                :is-routed-user?    false
                                                 :current-user-perms @api/*current-user-permissions-set*}))
                           :data
                           (map (juxt :model :id))
@@ -329,6 +342,9 @@
                                                 :models             search.config/all-models
                                                 :current-user-id    (mt/user->id :crowberto)
                                                 :is-superuser?      true
+                                                :is-impersonated-user? false
+                                                :is-sandboxed-user? false
+                                                :is-routed-user?    false
                                                 :current-user-perms @api/*current-user-permissions-set*}))
                           :data
                           (map (juxt :model :id))
@@ -365,6 +381,9 @@
                                                     :models             search.config/all-models
                                                     :current-user-id    (mt/user->id :crowberto)
                                                     :is-superuser?      true
+                                                    :is-impersonated-user? false
+                                                    :is-sandboxed-user? false
+                                                    :is-routed-user?    false
                                                     :current-user-perms @api/*current-user-permissions-set*}))
                               :data
                               (map (juxt :model :id))

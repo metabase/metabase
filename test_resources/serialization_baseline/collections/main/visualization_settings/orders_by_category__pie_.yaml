@@ -74,7 +74,6 @@ result_metadata:
   lib/source: source/aggregations
   lib/source-column-alias: count
 visualization_settings:
-  column_settings: null
   pie.colors:
     Doohickey: '#ED6E6E'
     Gadget: '#88BF4D'
@@ -89,8 +88,6 @@ visualization_settings:
   version: 2
 card_schema: 24
 serdes/meta:
-- id: dYD1j3pQtJdctg8duByUL
-  label: orders_by_category__pie_
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question
