@@ -51,7 +51,7 @@ export const SessionsPage = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams<RouteParams>();
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [urlState, { patchUrlState, urlSearch }] = useUrlState(
+  const [urlState, { patchUrlState, searchString }] = useUrlState(
     location,
     urlStateConfig,
   );
@@ -154,10 +154,10 @@ export const SessionsPage = () => {
           id === undefined
             ? Urls.monitorSessions()
             : Urls.monitorSessionDetail(id),
-        search: urlSearch,
+        search: searchString,
       });
     },
-    [navigate, urlSearch],
+    [navigate, searchString],
   );
 
   const handleSidebarClose = useCallback(
