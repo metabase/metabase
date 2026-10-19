@@ -42,16 +42,33 @@ const getColumnDataFields = (datasetColumn: DatasetColumn) => {
   return _.pick(datasetColumn, DATA_COLUMN_KEYS);
 };
 
-// Reordering columns reorders `data.cols` too, and saved widths follow the new order, so order is not a data change
-const getComparableColumns = (cols: DatasetColumn[]) => {
-  return cols
-    .map(getColumnDataFields)
-    .sort((a, b) => a.name.localeCompare(b.name));
+const getColumnNames = (cols: DatasetColumn[]) => cols.map((col) => col.name);
+
+const getComparableColumns = (cols: DatasetColumn[]) =>
+  cols.map(getColumnDataFields).sort((a, b) => a.name.localeCompare(b.name));
+
+const haveSameColumns = (prevCols: DatasetColumn[], cols: DatasetColumn[]) =>
+  _.isEqual(getComparableColumns(prevCols), getComparableColumns(cols));
+
+/**
+ * Saved widths are positional, so a reorder has to carry each width over by column name. Only columns with a
+ * saved width get one in the new order; the rest stay auto-sized.
+ */
+const reorderWidths = (
+  prevCols: DatasetColumn[],
+  widths: number[],
+  cols: DatasetColumn[],
+) => {
+  const widthByName = new Map(
+    prevCols.map((col, index) => [col.name, widths[index]] as const),
+  );
+  return cols.map((col) => widthByName.get(col.name));
 };
 
 /**
- * Reset table column widths when the dataset columns change
- * unless it is due to the question <-> model conversion
+ * Keeps `table.column_widths` in step with the dataset columns: a reorder (drag and drop, viz settings, or a
+ * changed query) moves each saved width with its column, while a changed set of columns resets the widths,
+ * unless the change is due to the question <-> model conversion.
  */
 export function useResetWidthsOnColumnsChange(
   onUpdateVisualizationSettings: (
@@ -59,20 +76,43 @@ export function useResetWidthsOnColumnsChange(
   ) => void,
   data?: DatasetData,
   question?: Question,
+  columnWidths?: number[],
 ) {
   const prevData = useRef<DatasetData>();
   const prevDataQuestion = useRef<Question>();
 
   useEffect(() => {
-    const isDataChange =
-      prevData.current &&
-      data &&
-      !_.isEqual(
-        getComparableColumns(prevData.current.cols),
-        getComparableColumns(data.cols),
-      );
+    if (!data) {
+      return;
+    }
 
-    if (isDataChange) {
+    const prevCols = prevData.current?.cols;
+    if (prevCols == null) {
+      prevDataQuestion.current = question;
+      prevData.current = data;
+      return;
+    }
+
+    const isSameColumns = haveSameColumns(prevCols, data.cols);
+    const isSameOrder = _.isEqual(
+      getColumnNames(prevCols),
+      getColumnNames(data.cols),
+    );
+    if (isSameColumns && isSameOrder) {
+      return;
+    }
+
+    if (isSameColumns) {
+      if (columnWidths) {
+        onUpdateVisualizationSettings({
+          "table.column_widths": reorderWidths(
+            prevCols,
+            columnWidths,
+            data.cols,
+          ),
+        });
+      }
+    } else {
       // Check whether question <-> model conversion happened. If so dataset columns change should be ignored
       const isDatasetStatusChange =
         prevDataQuestion.current &&
@@ -82,17 +122,13 @@ export function useResetWidthsOnColumnsChange(
       if (!isDatasetStatusChange) {
         onUpdateVisualizationSettings({ "table.column_widths": undefined });
       }
-
-      // Save the current dataset and question for the next comparison.
-      // We update these only on a dataset change which happens after question update.
-      // Between question update and dataset update there could be rerenders so
-      // a simple usePrevious hook would pair the wrong question with the data.
-      prevDataQuestion.current = question;
-      prevData.current = data;
-    } else if (prevData.current == null && data) {
-      // Sets initial prevData and prevDataQuestion
-      prevDataQuestion.current = question;
-      prevData.current = data;
     }
-  }, [data, question, onUpdateVisualizationSettings]);
+
+    // Save the current dataset and question for the next comparison.
+    // We update these only on a dataset change which happens after question update.
+    // Between question update and dataset update there could be rerenders so
+    // a simple usePrevious hook would pair the wrong question with the data.
+    prevDataQuestion.current = question;
+    prevData.current = data;
+  }, [data, question, columnWidths, onUpdateVisualizationSettings]);
 }

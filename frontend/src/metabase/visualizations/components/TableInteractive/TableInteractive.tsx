@@ -455,21 +455,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         }
       });
 
-      const newEnabledColumns = newColumns.filter((col) => col.enabled);
-      // Resizing one column saves a widths array shorter than the column count, so widths are remapped by
-      // name rather than by comparing lengths
-      const newWidths = Array.isArray(settings["table.column_widths"])
-        ? newEnabledColumns.map((c) => columnSizingMap[c.name])
-        : undefined;
-
-      const settingsUpdate = {
-        "table.columns": newColumns,
-        "table.column_widths": newWidths,
-      };
-
-      onUpdateVisualizationSettings(settingsUpdate);
+      onUpdateVisualizationSettings({ "table.columns": newColumns });
     },
-    [onUpdateVisualizationSettings, settings, columnSizingMap],
+    [onUpdateVisualizationSettings, settings],
   );
 
   const handleAddColumnButtonClick = useMemo(() => {
@@ -827,9 +815,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [infoPopoversDisabled],
   );
 
-  // If the data changes we reset saved column widths as it is no longer relevant
-  // except for the case where question is converted from a model to a question and back.
-  useResetWidthsOnColumnsChange(onUpdateVisualizationSettings, data, question);
+  useResetWidthsOnColumnsChange(
+    onUpdateVisualizationSettings,
+    data,
+    question,
+    columnWidths,
+  );
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {
