@@ -7,6 +7,7 @@
   (:require
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.protocol :as protocol]
+   [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.field-references :as field-references]
    [metabase.sql-parsing.sqlglot-java.qualify :as qualify]
    [metabase.sql-parsing.sqlglot-java.references :as references]
@@ -15,7 +16,7 @@
    [metabase.sql-parsing.sqlglot-java.transpile :as transpile]
    [metabase.util :as u])
   (:import
-   (com.metabase.sqlglot.reference Parser$DialectError SqlglotError)))
+   (com.metabase.sqlglot.reference Parser$DialectError)))
 
 (set! *warn-on-reflection* true)
 
@@ -23,11 +24,9 @@
   "The name of the error Python raises for `e`."
   [^Throwable e]
   (cond
-    (instance? StackOverflowError e)     "RecursionError"
-    (instance? Parser$DialectError e)    "ValueError"
-    (instance? SqlglotError e)           (.getSimpleName (class e))
-    (:sql-parsing.sqlglot-java/error-type (ex-data e)) (:sql-parsing.sqlglot-java/error-type (ex-data e))
-    :else                                (.getSimpleName (class e))))
+    (instance? Parser$DialectError e) "ValueError"
+    (ast/python-error-type e)         (ast/python-error-type e)
+    :else                             (.getSimpleName (class e))))
 
 (defn- call
   "Call `f`, turning any failure into the exception every parser throws: its cause carries `ErrorType: message`,
