@@ -40,19 +40,6 @@ console.error = (...args) => {
   }
 };
 
-afterEach(() => {
-  const warnings = reactWarnings.splice(0);
-
-  if (warnings.length > 0) {
-    throw new Error(
-      `Test completed with React warnings:\n${warnings.join("\n")}\n` +
-        "A warning can come from work that an earlier test left pending. If this " +
-        "test passes on its own, look at the test before it for a render or a " +
-        "request that nothing awaits.",
-    );
-  }
-});
-
 // jsdom has no layout, so popover positioning computes nothing useful while
 // costing getComputedStyle calls and an extra re-render per position update.
 jest.mock("@floating-ui/dom", () => ({
@@ -120,12 +107,27 @@ afterEach(async () => {
   fetchMock.removeRoutes();
   fetchMock.callHistory.clear();
 
+  // Unmount effects and the flush above both render, so the warnings are read
+  // once that work is done and this test still owns them. Draining before the
+  // throw below keeps a test that fails for another reason from reporting its
+  // warnings against the next one.
+  const warnings = reactWarnings.splice(0);
+
   if (unmatched.length > 0) {
     const errors = unmatched.map(
       (call) => `Unmocked ${call.options.method} request to: ${call.url}`,
     );
     throw new Error(
       `Test completed with unmocked routes:\n${errors.join("\n")}`,
+    );
+  }
+
+  if (warnings.length > 0) {
+    throw new Error(
+      `Test completed with React warnings:\n${warnings.join("\n")}\n` +
+        "A warning can come from work that an earlier test left pending. If this " +
+        "test passes on its own, look at the test before it for a render or a " +
+        "request that nothing awaits.",
     );
   }
 });
