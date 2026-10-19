@@ -540,7 +540,7 @@ describe("scenarios > organization > timelines > collection", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("First collection events");
       cy.wait("@createTimeline");
-      cy.icon("close").click();
+      H.modal().findByLabelText("Close").click();
 
       cy.findByDisplayValue("First collection")
         .clear()

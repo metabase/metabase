@@ -13,21 +13,24 @@ import { useSetTimeline } from "metabase/timelines/common/hooks";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import type { ModalParams } from "../../types";
 
 interface OwnProps {
   params: ModalParams;
-  onClose?: () => void;
 }
 
 type ContainerProps = Omit<
   MoveEventModalProps,
-  "event" | "timelines" | "collection" | "onSubmit"
+  "event" | "timelines" | "collection" | "onSubmit" | "animated"
 > &
   OwnProps;
 
-function MoveEventModalContainer({ params, ...props }: ContainerProps) {
+function MoveEventModalContainer({
+  params,
+  onClose,
+  ...props
+}: ContainerProps) {
   const setTimeline = useSetTimeline();
   const navigate = useNavigate();
   const eventId = Urls.extractEntityId(params.timelineEventId);
@@ -67,7 +70,13 @@ function MoveEventModalContainer({ params, ...props }: ContainerProps) {
   const error = eventError ?? timelinesError ?? collectionError;
 
   if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
+    );
   }
 
   return (
@@ -77,6 +86,8 @@ function MoveEventModalContainer({ params, ...props }: ContainerProps) {
       timelines={timelines}
       collection={collection}
       onSubmit={handleSubmit}
+      onClose={onClose}
+      animated={false}
     />
   );
 }

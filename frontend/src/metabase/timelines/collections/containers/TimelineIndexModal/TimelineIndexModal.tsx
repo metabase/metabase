@@ -1,18 +1,18 @@
 import { skipToken, useListCollectionTimelinesQuery } from "metabase/api";
 import * as Urls from "metabase/urls";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import TimelineIndexModal from "../../components/TimelineIndexModal";
 import type { ModalParams } from "../../types";
 
 interface TimelineIndexModalContainerProps {
   params: ModalParams;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 function TimelineIndexModalContainer({
   params,
-  ...props
+  onClose,
 }: TimelineIndexModalContainerProps) {
   const collectionId = Urls.extractCollectionId(params.slug);
   const {
@@ -25,12 +25,20 @@ function TimelineIndexModalContainer({
 
   if (isLoading || error) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
     );
   }
 
   return (
-    <TimelineIndexModal {...props} params={params} timelines={timelines} />
+    <TimelineIndexModal
+      params={params}
+      timelines={timelines}
+      onClose={onClose}
+    />
   );
 }
 

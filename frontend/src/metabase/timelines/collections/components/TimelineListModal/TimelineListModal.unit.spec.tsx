@@ -40,5 +40,6 @@ const getProps = (
 ): TimelineListModalProps => ({
   timelines: [],
   collection: createMockCollection(),
+  onClose: jest.fn(),
   ...opts,
 });

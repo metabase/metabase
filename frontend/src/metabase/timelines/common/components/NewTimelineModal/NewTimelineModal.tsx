@@ -2,17 +2,21 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/common/collections/utils";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import { getDefaultTimelineIcon } from "metabase/common/utils/timelines";
+import {
+  type TimelineModalTransitionProps,
+  getTimelineModalTransitionProps,
+} from "metabase/timelines/common/modal-transitions";
+import { Modal } from "metabase/ui";
 import type { Collection, TimelineData } from "metabase-types/api";
 
 import { TimelineForm } from "../TimelineForm";
 
-export interface NewTimelineModalProps {
+export interface NewTimelineModalProps extends TimelineModalTransitionProps {
   collection: Collection;
   onSubmit: (values: TimelineData, collection: Collection) => void;
   onSubmitSuccess?: () => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const NewTimelineModal = ({
@@ -20,6 +24,7 @@ const NewTimelineModal = ({
   onSubmit,
   onSubmitSuccess,
   onClose,
+  animated,
 }: NewTimelineModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
     return getInitialValues(collection);
@@ -34,13 +39,20 @@ const NewTimelineModal = ({
   );
 
   return (
-    <ModalContent title={t`New event timeline`} onClose={onClose}>
+    <Modal
+      opened
+      size="lg"
+      density="relaxed"
+      title={t`New event timeline`}
+      onClose={onClose}
+      {...getTimelineModalTransitionProps(animated)}
+    >
       <TimelineForm
         initialValues={initialValues}
         onSubmit={handleSubmit}
         onCancel={onClose}
       />
-    </ModalContent>
+    </Modal>
   );
 };
 

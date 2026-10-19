@@ -11,7 +11,7 @@ import EditEventModal from "metabase/timelines/common/components/EditEventModal"
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
 function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const navigate = useNavigate();
@@ -50,7 +50,13 @@ function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
   const error = timelineError ?? eventError;
 
   if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
+    );
   }
 
   return (
@@ -60,6 +66,7 @@ function EditEventModalContainer({ params, onClose }: ModalComponentProps) {
       onSubmit={onSubmit}
       onArchive={onArchive}
       onClose={onClose}
+      animated={false}
     />
   );
 }

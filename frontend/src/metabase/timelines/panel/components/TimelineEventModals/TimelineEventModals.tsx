@@ -40,9 +40,9 @@ export function TimelineEventModals({
   onEventCreated?: (event: TimelineEvent) => void;
   onClose: () => void;
 }) {
-  // The edit/move containers render nothing until the event arrives, so the
-  // modal shows this query's loading and error states instead of a blank box.
-  const { isLoading, error } = useGetTimelineEventQuery(
+  // The edit/move containers render nothing until the event arrives, so this
+  // query's error is shown in their place.
+  const { error } = useGetTimelineEventQuery(
     modal && modal.type !== "new" ? modal.eventId : skipToken,
   );
 
@@ -50,7 +50,20 @@ export function TimelineEventModals({
     return null;
   }
 
-  const content = match(modal)
+  if (error) {
+    return (
+      <Modal
+        opened
+        size="lg"
+        title={getModalLabel(modal.type)}
+        onClose={onClose}
+      >
+        <LoadingAndErrorWrapper loading={false} error={error} />
+      </Modal>
+    );
+  }
+
+  return match(modal)
     .with({ type: "new" }, () => (
       <NewEventModal
         collectionId={collectionId}
@@ -70,19 +83,4 @@ export function TimelineEventModals({
       />
     ))
     .exhaustive();
-
-  return (
-    <Modal
-      opened
-      onClose={onClose}
-      size="lg"
-      withCloseButton={false}
-      padding={0}
-      aria-label={getModalLabel(modal.type)}
-    >
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
-        {content}
-      </LoadingAndErrorWrapper>
-    </Modal>
-  );
 }

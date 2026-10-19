@@ -13,7 +13,7 @@ import type {
   TimelineEvent,
 } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
 function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
   const navigate = useNavigate();
@@ -27,7 +27,11 @@ function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
     );
   }
 
@@ -49,6 +53,7 @@ function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
       timelines={[timeline]}
       onSubmit={onSubmit}
       onClose={onClose}
+      animated={false}
     />
   );
 }

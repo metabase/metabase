@@ -10,21 +10,22 @@ import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
 import type { Collection, TimelineEventData } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import type { ModalParams } from "../../types";
 
 interface NewEventWithTimelineModalContainerProps {
   params: ModalParams;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
-function NewEventWithTimelineModalContainer(
-  props: NewEventWithTimelineModalContainerProps,
-) {
+function NewEventWithTimelineModalContainer({
+  params,
+  onClose,
+}: NewEventWithTimelineModalContainerProps) {
   const navigate = useNavigate();
   const [createTimeline] = useCreateTimelineMutation();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
-  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const collectionId = Urls.extractCollectionId(params.slug);
   const {
     data: collection,
     isLoading,
@@ -51,15 +52,22 @@ function NewEventWithTimelineModalContainer(
   };
 
   if (isLoading || error || !collection) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
+    );
   }
 
   return (
     <NewEventModal
-      {...props}
       source="collections"
       collection={collection}
       onSubmit={onSubmit}
+      onClose={onClose}
+      animated={false}
     />
   );
 }

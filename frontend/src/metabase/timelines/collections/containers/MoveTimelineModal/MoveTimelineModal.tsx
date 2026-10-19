@@ -15,9 +15,9 @@ import MoveTimelineModal from "metabase/timelines/common/components/MoveTimeline
 import * as Urls from "metabase/urls";
 import type { CollectionId, Timeline } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
-function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
+function MoveTimelineModalContainer({ params, onClose }: ModalComponentProps) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const setCollection = useSetCollection();
@@ -65,12 +65,20 @@ function MoveTimelineModalContainer({ params, ...props }: ModalComponentProps) {
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
     );
   }
 
   return (
-    <MoveTimelineModal {...props} timeline={timeline} onSubmit={handleSubmit} />
+    <MoveTimelineModal
+      timeline={timeline}
+      onSubmit={handleSubmit}
+      onClose={onClose}
+    />
   );
 }
 

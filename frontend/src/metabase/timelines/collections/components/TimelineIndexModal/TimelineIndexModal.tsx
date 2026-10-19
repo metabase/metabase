@@ -7,7 +7,7 @@ import type { ModalParams } from "../../types";
 export interface TimelineIndexModalProps {
   timelines: Timeline[];
   params: ModalParams;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const TimelineIndexModal = ({

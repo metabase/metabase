@@ -3,11 +3,12 @@ import {
   useDeleteTimelineEventMutation,
   useGetTimelineEventQuery,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
 import * as Urls from "metabase/urls";
 import type { TimelineEvent } from "metabase-types/api";
+
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
 function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
   const eventId = Urls.extractEntityId(params.timelineEventId);
@@ -24,11 +25,22 @@ function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
   };
 
   if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
+    );
   }
 
   return (
-    <DeleteEventModal event={event} onSubmit={onSubmit} onClose={onClose} />
+    <DeleteEventModal
+      event={event}
+      onSubmit={onSubmit}
+      onClose={onClose}
+      animated={false}
+    />
   );
 }
 

@@ -12,7 +12,7 @@ import type { TimelineEvent } from "metabase-types/api";
 
 interface EditEventModalContainerProps {
   eventId: number;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 function EditEventModalContainer({

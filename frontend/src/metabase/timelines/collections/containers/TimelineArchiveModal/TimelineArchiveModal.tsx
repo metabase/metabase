@@ -5,12 +5,12 @@ import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 
 function TimelineArchiveModalContainer({
   params,
-  ...props
+  onClose,
 }: ModalComponentProps) {
   const navigate = useNavigate();
   const archive = useSetArchive();
@@ -25,7 +25,11 @@ function TimelineArchiveModalContainer({
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
     );
   }
 
@@ -38,7 +42,7 @@ function TimelineArchiveModalContainer({
 
   return (
     <TimelineDetailsModal
-      {...props}
+      onClose={onClose}
       timeline={timeline}
       isArchive
       onUnarchive={handleUnarchive}

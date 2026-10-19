@@ -3,11 +3,12 @@ import {
   useDeleteTimelineMutation,
   useGetTimelineQuery,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
+
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
 function DeleteTimelineModalContainer({
   params,
@@ -24,7 +25,11 @@ function DeleteTimelineModalContainer({
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
     );
   }
 
@@ -39,6 +44,7 @@ function DeleteTimelineModalContainer({
       onClose={onClose}
       timeline={timeline}
       onSubmit={handleSubmit}
+      animated={false}
     />
   );
 }

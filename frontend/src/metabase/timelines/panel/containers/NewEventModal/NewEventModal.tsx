@@ -23,7 +23,7 @@ interface NewEventModalContainerProps {
   collectionId?: CollectionId | null;
   source?: TimelineEventSource;
   onEventCreated?: (event: TimelineEvent) => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 function NewEventModalContainer({

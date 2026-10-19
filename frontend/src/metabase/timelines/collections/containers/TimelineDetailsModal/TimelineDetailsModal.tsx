@@ -8,17 +8,18 @@ import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import type { ModalParams } from "../../types";
 
 interface TimelineDetailsModalContainerProps {
   params: ModalParams;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 function TimelineDetailsModalContainer({
   params,
+  onClose,
   ...props
 }: TimelineDetailsModalContainerProps) {
   const navigate = useNavigate();
@@ -43,7 +44,11 @@ function TimelineDetailsModalContainer({
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
     );
   }
 
@@ -57,6 +62,7 @@ function TimelineDetailsModalContainer({
   return (
     <TimelineDetailsModal
       {...props}
+      onClose={onClose}
       timeline={timeline}
       isOnlyTimeline={timelines.length <= 1}
       onArchive={handleArchive}

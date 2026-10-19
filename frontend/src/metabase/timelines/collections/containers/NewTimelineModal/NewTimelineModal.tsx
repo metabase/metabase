@@ -8,18 +8,21 @@ import NewTimelineModal from "metabase/timelines/common/components/NewTimelineMo
 import * as Urls from "metabase/urls";
 import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 import type { ModalParams } from "../../types";
 
 interface NewTimelineModalContainerProps {
   params: ModalParams;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
-function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
+function NewTimelineModalContainer({
+  params,
+  onClose,
+}: NewTimelineModalContainerProps) {
   const navigate = useNavigate();
   const [createTimeline] = useCreateTimelineMutation();
-  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const collectionId = Urls.extractCollectionId(params.slug);
   const {
     data: collection,
     isLoading,
@@ -37,11 +40,22 @@ function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
   };
 
   if (isLoading || error || !collection) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
+    );
   }
 
   return (
-    <NewTimelineModal {...props} collection={collection} onSubmit={onSubmit} />
+    <NewTimelineModal
+      collection={collection}
+      onSubmit={onSubmit}
+      onClose={onClose}
+      animated={false}
+    />
   );
 }
 

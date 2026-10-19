@@ -10,9 +10,9 @@ import EditTimelineModal from "metabase/timelines/common/components/EditTimeline
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { LoadingAndErrorModal } from "../../components/LoadingAndErrorModal";
 
-function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
+function EditTimelineModalContainer({ params, onClose }: ModalComponentProps) {
   const navigate = useNavigate();
   const archive = useSetArchive();
   const [updateTimeline] = useUpdateTimelineMutation();
@@ -25,7 +25,11 @@ function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
 
   if (isLoading || error || !timeline) {
     return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
+      <LoadingAndErrorModal
+        loading={isLoading}
+        error={error}
+        onClose={onClose}
+      />
     );
   }
 
@@ -41,10 +45,11 @@ function EditTimelineModalContainer({ params, ...props }: ModalComponentProps) {
 
   return (
     <EditTimelineModal
-      {...props}
       timeline={timeline}
       onSubmit={handleSubmit}
       onArchive={handleArchive}
+      onClose={onClose}
+      animated={false}
     />
   );
 }

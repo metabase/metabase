@@ -1,17 +1,18 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/ui";
+import {
+  type TimelineModalTransitionProps,
+  getTimelineModalTransitionProps,
+} from "metabase/timelines/common/modal-transitions";
+import { Button, Modal } from "metabase/ui";
 import type { TimelineEvent } from "metabase-types/api";
 
-import { ModalFooter } from "../ModalFooter";
-import { ModalHeader } from "../ModalHeader";
-
-export interface DeleteEventModalProps {
+export interface DeleteEventModalProps extends TimelineModalTransitionProps {
   event: TimelineEvent;
   onSubmit: (event: TimelineEvent) => void;
   onSubmitSuccess?: () => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const DeleteEventModal = ({
@@ -19,6 +20,7 @@ const DeleteEventModal = ({
   onSubmit,
   onSubmitSuccess,
   onClose,
+  animated,
 }: DeleteEventModalProps): JSX.Element => {
   const handleSubmit = useCallback(async () => {
     await onSubmit(event);
@@ -26,17 +28,22 @@ const DeleteEventModal = ({
   }, [event, onSubmit, onSubmitSuccess]);
 
   return (
-    <div>
-      <ModalHeader title={t`Delete ${event?.name}?`} onClose={onClose} />
-      <ModalFooter hasPadding>
+    <Modal
+      opened
+      size="lg"
+      title={t`Delete ${event.name}?`}
+      onClose={onClose}
+      {...getTimelineModalTransitionProps(animated)}
+    >
+      <Modal.Footer>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button
           variant="filled"
           color="negative"
           onClick={handleSubmit}
         >{t`Delete`}</Button>
-      </ModalFooter>
-    </div>
+      </Modal.Footer>
+    </Modal>
   );
 };
 

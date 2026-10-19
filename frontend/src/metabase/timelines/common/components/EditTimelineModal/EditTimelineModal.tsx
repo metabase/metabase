@@ -1,19 +1,22 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import {
+  type TimelineModalTransitionProps,
+  getTimelineModalTransitionProps,
+} from "metabase/timelines/common/modal-transitions";
+import { Modal } from "metabase/ui";
 import type { Timeline, TimelineData } from "metabase-types/api";
 
-import ModalBody from "../ModalBody";
-import { ModalHeader } from "../ModalHeader";
 import { TimelineForm } from "../TimelineForm";
 
-export interface EditTimelineModalProps {
+export interface EditTimelineModalProps extends TimelineModalTransitionProps {
   timeline: Timeline;
   onSubmit: (values: Timeline) => void;
   onSubmitSuccess?: () => void;
   onArchive: (timeline: Timeline) => void;
   onArchiveSuccess?: () => void;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 const EditTimelineModal = ({
@@ -23,6 +26,7 @@ const EditTimelineModal = ({
   onArchive,
   onArchiveSuccess,
   onClose,
+  animated,
 }: EditTimelineModalProps): JSX.Element => {
   const handleSubmit = useCallback(
     async (values: TimelineData) => {
@@ -38,17 +42,21 @@ const EditTimelineModal = ({
   }, [timeline, onArchive, onArchiveSuccess]);
 
   return (
-    <div>
-      <ModalHeader title={t`Edit event timeline`} onClose={onClose} />
-      <ModalBody>
-        <TimelineForm
-          initialValues={timeline}
-          onSubmit={handleSubmit}
-          onArchive={handleArchive}
-          onCancel={onClose}
-        />
-      </ModalBody>
-    </div>
+    <Modal
+      opened
+      size="lg"
+      density="relaxed"
+      title={t`Edit event timeline`}
+      onClose={onClose}
+      {...getTimelineModalTransitionProps(animated)}
+    >
+      <TimelineForm
+        initialValues={timeline}
+        onSubmit={handleSubmit}
+        onArchive={handleArchive}
+        onCancel={onClose}
+      />
+    </Modal>
   );
 };
 

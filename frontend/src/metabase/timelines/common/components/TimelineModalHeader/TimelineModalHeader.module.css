@@ -1,0 +1,16 @@
+.backButton {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  /* As tall as the close button, so the chevron lines up with the first line of the title */
+  height: rem(24px);
+  /* The header's gap is wider than the space the chevron needs from the title */
+  margin-inline-end: calc(
+    var(--mantine-spacing-sm) - var(--mantine-spacing-md)
+  );
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    color: var(--mb-color-text-brand);
+  }
+}

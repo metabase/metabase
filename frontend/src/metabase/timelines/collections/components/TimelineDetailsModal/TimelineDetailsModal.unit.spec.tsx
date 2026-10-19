@@ -92,5 +92,6 @@ const getProps = (
   opts?: Partial<TimelineDetailsModalProps>,
 ): TimelineDetailsModalProps => ({
   timeline: createMockTimeline(),
+  onClose: jest.fn(),
   ...opts,
 });

@@ -17,7 +17,7 @@ type ContainerProps = Omit<
 > & {
   eventId: number;
   collectionId?: CollectionId | null;
-  onClose?: () => void;
+  onClose: () => void;
 };
 
 function MoveEventModalContainer({
