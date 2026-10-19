@@ -16,24 +16,40 @@ import { describeError, getEnv } from "./utils";
 export default function App() {
   const env = getEnv();
   const [result, setResult] = useState("pending");
+  const [probeId, setProbeId] = useState<string | null>(null);
   const [reactMode, setReactMode] = useState<ReactMode | null>(null);
   const firedRef = useRef(false);
+  const timerRef = useRef<number | undefined>(undefined);
+  const currentProbeRef = useRef<string | null>(null);
 
   useProbeCustomElement(setResult);
 
   // If a probe never reports, `no-probe-observed` fails the spec (the probe
   // never fired) rather than hanging.
-  const arm = () =>
-    window.setTimeout(
+  const arm = (id: string) => {
+    currentProbeRef.current = id;
+    window.clearTimeout(timerRef.current);
+    setProbeId(id);
+    setResult("pending");
+    timerRef.current = window.setTimeout(
       () => setResult((r) => (r === "pending" ? "no-probe-observed" : r)),
       20000,
     );
+  };
 
-  const fire = (run: () => void) => {
-    arm();
+  const reportFor = (id: string) => (value: string) => {
+    if (currentProbeRef.current === id) {
+      setResult(value);
+    }
+  };
+
+  const fire = (id: string) => {
+    arm(id);
 
     try {
-      run();
+      createProbes(env, reportFor(id))
+        .find((p) => p.id === id)
+        ?.run();
     } catch (err) {
       setResult(`isolated:${describeError(err)}`);
     }
@@ -44,14 +60,16 @@ export default function App() {
   return (
     <div data-testid="data-app-isolation" style={{ padding: 24 }}>
       <h1>Isolation probe</h1>
-      <div data-testid="isolation-result">{result}</div>
+      <div data-testid="isolation-result" data-probe-id={probeId ?? ""}>
+        {result}
+      </div>
 
       <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
         {probes.map((probe) => (
           <button
             key={probe.id}
             data-testid={`isolation-${probe.id}`}
-            onClick={() => fire(probe.run)}
+            onClick={() => fire(probe.id)}
           >
             {probe.label}
           </button>
@@ -61,7 +79,7 @@ export default function App() {
             key={probe.id}
             data-testid={`isolation-${probe.id}`}
             onClick={() => {
-              arm();
+              arm(probe.id);
               firedRef.current = false;
               setReactMode(probe.mode);
             }}
