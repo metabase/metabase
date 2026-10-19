@@ -210,6 +210,17 @@
                                                                   {:user "cam", :password "toucans", :db "birddb",
                                                                    :host "localhost", :instance "MYINSTANCE"}))))))
 
+(deftest ^:parallel reject-inherited-disallowed-parameters-in-host-test
+  (mt/test-driver :sqlserver
+    (testing "parameters every SQL-JDBC driver disallows are refused in `host` too"
+      (are [bad-option] (thrown-with-msg? clojure.lang.ExceptionInfo
+                                          #"Potentially dangerous keys in connection details"
+                                          (driver/validate-db-details! :sqlserver {:host (str "sql.example.com;" bad-option)
+                                                                                   :db   "db"}))
+        "hostnameverifier=bad.Verifier"
+        "sslfactory=bad.Factory"
+        "loggerFile=/tmp/x"))))
+
 (deftest ^:parallel reject-details-with-dangerous-additional-options-test
   (mt/test-driver :sqlserver
     (let [details (:details (mt/db))]
@@ -217,7 +228,7 @@
         (are [bad-option] (let [bad-opts-details (assoc details :additional-options bad-option)
                                 bad-host-details (update details :host str ";" bad-option)]
                             (is (thrown-with-msg? java.lang.Exception
-                                                  #"Potentially dangerous keys in connection details"
+                                                  #"Potentially dangerous keys in additional options"
                                                   (driver/can-connect? :sqlserver bad-opts-details)))
                             (is (thrown-with-msg? java.lang.Exception
                                                   #"Potentially dangerous keys in connection details"
