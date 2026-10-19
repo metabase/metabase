@@ -153,7 +153,9 @@
 
 (defpipeline-error ambiguous-field!
   "A field reference matched more than one column."
-  [list-fields-step])
+  [{:uses #{}
+    :text (str "The field name matches more than one column in this table, so it cannot be referenced by name. "
+               "Tell the user about the ambiguous column name.")}])
 
 (defpipeline-error invalid-field-fk!
   "A field's portable FK was not a well-formed `[db, schema, table, field]` path."

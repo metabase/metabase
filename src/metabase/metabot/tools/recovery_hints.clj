@@ -60,6 +60,9 @@
     (:unknown-field :unknown-field-id)
     (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns.")
 
+    :ambiguous-field
+    (tru "The field name matches more than one column in this table, so it cannot be referenced by name. Tell the user about the ambiguous column name.")
+
     :ambiguous-fk
     (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns.")
 

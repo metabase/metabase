@@ -54,7 +54,7 @@
     (message/msg [(str "Call \"browse_data\" with action \"list_tables\" for the database, "
                        "then retry with the numeric table id — it is never ambiguous.")])
 
-    (:unknown-field :unknown-field-id)
+    (:unknown-field :unknown-field-id :ambiguous-field)
     (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for "
                        "the table to list its columns with their numeric ids.")])
 

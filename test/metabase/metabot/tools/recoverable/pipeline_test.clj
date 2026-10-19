@@ -138,11 +138,9 @@
         "the dialect-specific, tool-free step reaches the numeric-id surface")))
 
 (deftest ^:parallel the-two-hint-tables-cover-the-same-codes-test
-  (testing "the per-surface hint tables answer the same set of codes, which is why one declaration
-           per code is the right shape for them. A code one table answers and the other does not
-           would mean the surfaces disagree about what is recoverable."
+  (testing "the shared recovery codes have a hint on each surface and a declaration in the catalog"
     (let [codes [:uri-in-source-table :unknown-table :unknown-table-id :ambiguous-table
-                 :unknown-field :unknown-field-id :ambiguous-fk :no-fk-path
+                 :unknown-field :unknown-field-id :ambiguous-field :ambiguous-fk :no-fk-path
                  :unknown-card :unknown-card-id :unknown-measure :unknown-measure-id
                  :unknown-segment :unknown-segment-id :unknown-database
                  :missing-source-in-first-stage]]
@@ -152,3 +150,26 @@
           (is (some? (v2-hints/recovery-hint {:error code :entity-type "table" :entity-id 1})))))
       (testing "and every one of them is declared here"
         (is (= #{} (set/difference (set codes) (declared-codes))))))))
+
+(defn- pipeline-error-text!
+  [error]
+  (let [code (keyword declaration-ns (name error))
+        e    (try
+               (tools.error/throw-recoverable! code {:message "Query failed."})
+               (catch clojure.lang.ExceptionInfo e e))]
+    (tools.error/recoverable-text (tools.error/classify e) #{})))
+
+(deftest ambiguous-field-recovery-test
+  (is (= (str "Query failed.\n"
+              "The field name matches more than one column in this table, so it cannot be referenced by name. "
+              "Tell the user about the ambiguous column name.")
+         (pipeline-error-text! :ambiguous-field))))
+
+(deftest cross-database-recovery-test
+  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
+    (testing error
+      (is (= (str "Query failed.\n"
+                  "A query can only reference saved questions, models, metrics, measures and segments "
+                  "from its own database. Use one from that database, or change the source to a table "
+                  "in the referenced item's database.")
+             (pipeline-error-text! error))))))
