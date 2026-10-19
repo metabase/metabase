@@ -81,6 +81,15 @@ export interface ModalProps
   illustration?: ReactNode;
 }
 
+/**
+ * The props that change from step to step when a multi-step modal reuses
+ * one `Modal`, so moving between steps doesn't remount it.
+ */
+export type ModalStepProps = Pick<
+  ModalProps,
+  "layout" | "title" | "illustration"
+>;
+
 export interface ModalRootProps
   extends
     Omit<MantineModalRootProps, ForbiddenMantineModalProps>,
