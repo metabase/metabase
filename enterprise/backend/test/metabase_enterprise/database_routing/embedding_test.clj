@@ -2,10 +2,17 @@
   "Guest embeds and embed previews on a database with routing enabled answer from the router database when an admin has
   granted that database anonymous access, and refuse when they have not."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase.test :as mt]
-   [metabase.test.http-client :as client]))
+   [metabase.test.http-client :as client]
+   [metabase.util :as u]))
+
+(defn- body-mentions?
+  "True when an /api/embed response body contains `message`, whatever prefix the layer that caught the refusal added."
+  [body message]
+  (str/includes? (str body) message))
 
 (defn- message-paths
   "The refused `/api/embed` paths that raise instead of failing as a query, as `[endpoint & request-args]`."
@@ -136,9 +143,16 @@
        (testing "the remapping and map-tile endpoints refuse with a 400"
          (doseq [[endpoint url & args] (message-paths urls)]
            (testing endpoint
-             (is (= #{(:db-id urls)}
-                    (:refused (routing.tu/call-recording-grant-refusals
-                               #(apply client/client :get 400 url args))))))))
+             (doseq [[requester request] [[:anonymous           (fn [& args] (apply client/client args))]
+                                          [:signed-in-non-admin (fn [& args] (apply mt/user-http-request :rasta args))]]]
+               (testing requester
+                 (let [{body :response, :keys [refused]} (routing.tu/call-recording-grant-refusals
+                                                          #(apply request :get 400 url args))]
+                   (is (= #{(:db-id urls)} refused))
+                   (is (body-mentions? body routing.tu/plain-refusal-message) (pr-str body))
+                   (doseq [disclosure (routing.tu/configuration-disclosures (:db-name urls))]
+                     (is (not (body-mentions? body disclosure))
+                         (str (pr-str disclosure) " leaked in " (pr-str body))))))))))
        ;; `metabase.parameters.field/search-values-from-field-id` logs and returns `[]` when the fetch throws, so these
        ;; come back empty instead of raising.
        (testing "the card parameter-value endpoints return no values"
@@ -172,3 +186,26 @@
              (is (= routing.tu/generic-query-failure
                     (select-keys response query-failure-keys)))
              (is (= #{(:db-id urls)} refused)))))))))
+
+;;; ------------------------------------------ Publishing is not refused --------------------------------------------
+
+(deftest publishing-a-guest-embed-is-not-refused-test
+  (testing "publishing a guest embed on an ungranted routed database is deliberately allowed: unlike public-link
+           creation, embed publishing is not validated against the grant, because the card and dashboard update path
+           is heavily trafficked and the embed setup flow already warns about database routing"
+    (mt/with-premium-features #{:database-routing}
+      (mt/with-temp [:model/DatabaseRouter _ {:database_id              (mt/id)
+                                              :user_attribute           "db_name"
+                                              :anonymous_access_granted false}
+                     :model/Card card {:database_id      (mt/id)
+                                       :enable_embedding false}
+                     :model/Dashboard dashboard {:enable_embedding false}]
+        (mt/with-temporary-setting-values [enable-embedding-modular true]
+          (testing "PUT /api/card/:id"
+            (is (true? (:enable_embedding
+                        (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                              {:enable_embedding true})))))
+          (testing "PUT /api/dashboard/:id"
+            (is (true? (:enable_embedding
+                        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard))
+                                              {:enable_embedding true}))))))))))

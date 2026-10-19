@@ -5,7 +5,8 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
@@ -14,6 +15,17 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *database-routing-on* :unset)
+
+(defn- refuse-anonymous-access!
+  "Logs which database refused an anonymous query, and throws an error saying only that anonymous access is disabled."
+  [db-id]
+  (log/warnf (str "Refusing an anonymous query: database %d (%s) has database routing enabled and"
+                  " anonymous_access_granted is false.")
+             db-id (database-routing.db/database-name db-id))
+  (throw (ex-info (tru "This database does not allow anonymous access.")
+                  {:status-code                  400
+                   :anonymous-access-not-granted true
+                   :router-database-id           db-id})))
 
 (defn- router-db-or-id->destination-db-id*
   [is-anonymous-user? user-attributes is-superuser? db-or-id]
@@ -26,10 +38,7 @@
 
         (= :router-if-granted *database-routing-on*)
         (when-not (database-routing.db/router-anonymous-access-granted? (u/the-id db-or-id))
-          (throw (ex-info (tru "This database does not allow anonymous access.")
-                          {:status-code                  400
-                           :anonymous-access-not-granted true
-                           :router-database-id           (u/the-id db-or-id)})))
+          (refuse-anonymous-access! (u/the-id db-or-id)))
 
         is-anonymous-user?
         (throw (ex-info (tru "Anonymous users cannot access a database with routing enabled.") {:status-code 400
