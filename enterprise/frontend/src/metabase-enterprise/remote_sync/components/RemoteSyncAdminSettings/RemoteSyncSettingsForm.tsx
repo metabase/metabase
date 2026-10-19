@@ -58,8 +58,7 @@ export const RemoteSyncSettingsForm = ({
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-  const { initialValues, libraryCollection } =
-    useRemoteSyncInitialValues(variant);
+  const { initialValues, libraryCollection } = useRemoteSyncInitialValues();
   const {
     handleSubmit,
     branchChangeModal,
