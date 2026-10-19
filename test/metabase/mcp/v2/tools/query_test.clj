@@ -1057,7 +1057,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (str/includes? (error-text (call! (str (random-uuid))
                                               {:query (assoc (numeric-orders-query {:limit 1}) :evil "x")}))
-                           ":evil"))))))
+                           "Failing paths: evil: disallowed key"))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest query-shape-still-reaches-the-qp-test
