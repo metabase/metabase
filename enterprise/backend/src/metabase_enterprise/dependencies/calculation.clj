@@ -67,7 +67,7 @@
   (let [driver (:engine (lib.metadata/database query))
         deps   (deps.native/native-query-deps driver query)]
     ;; The deps are in #{{:table 7} ...} form and need conversion to ::deps.schema/upstream-deps form.
-    (u/group-by ffirst (comp second first) conj #{} deps)))
+    (u/group-by ffirst (comp second first) conj #{} (remove :unresolved-table deps))))
 
 (mu/defn- upstream-deps:query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
@@ -86,6 +86,7 @@
 
 ;; Modified implementation of documents.models.document/document-deps
 (defn- document-deps
+  "The `[entity-type entity-id]` pairs that the smart links and card embeds of a prose-mirror `document` point at."
   [{:keys [content_type] :as document}]
   (when (= content_type prose-mirror/prose-mirror-content-type)
     (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]

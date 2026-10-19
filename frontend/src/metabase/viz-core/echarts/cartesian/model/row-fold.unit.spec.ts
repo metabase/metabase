@@ -14,7 +14,7 @@ import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import type { RenderingContext } from "../../../types";
 import { OTHER_DATA_KEY } from "../constants/dataset";
 
-import { MIN_BAR_HEIGHT, foldRowChartModel } from "./row-fold";
+import { ROW_CHART_MIN_BAR_HEIGHT, foldRowChartModel } from "./row-fold";
 
 import { getCartesianChartModel } from "./index";
 
@@ -61,7 +61,7 @@ const single = (values: number[]) => values.map((value) => [value]);
 
 describe("foldRowChartModel", () => {
   const ROW_BUDGET = 4;
-  const chartHeight = ROW_BUDGET * MIN_BAR_HEIGHT;
+  const chartHeight = ROW_BUDGET * ROW_CHART_MIN_BAR_HEIGHT;
 
   it("refits the metric axis to the folded Other row's total", () => {
     const model = getModel(single([100, 100, 100, 100, 100, 100, 100, 100]));
@@ -81,6 +81,16 @@ describe("foldRowChartModel", () => {
 
     // "Other" sums the five negatives to -150, below every original row.
     expect(folded.leftAxisModel?.extent).toEqual([-150, 300]);
+  });
+
+  it("keeps the rows folded into Other, in order, without rendering them", () => {
+    const model = getModel(single([800, 700, 600, 500, 400, 300, 200, 100]));
+
+    const folded = foldRowChartModel(model, chartHeight, settings);
+
+    expect(folded.foldedDataset).toEqual(model.dataset.slice(ROW_BUDGET - 1));
+    expect(folded.dataset).toHaveLength(ROW_BUDGET);
+    expect(folded.transformedDataset).toHaveLength(ROW_BUDGET);
   });
 
   it("leaves a model that fits untouched", () => {

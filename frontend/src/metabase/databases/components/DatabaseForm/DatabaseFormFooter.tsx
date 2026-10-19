@@ -46,33 +46,28 @@ export const DatabaseFormFooter = ({
 
   if (isAdvanced) {
     return (
-      <FormFooter data-testid="form-footer" px={isFullPage ? undefined : "xxl"}>
-        <Flex justify="space-between" align="center" w="100%">
-          <Flex gap="sm" align="center">
-            <DatabaseTestConnectionButton />
-            {isNew && (
-              <Tooltip label={t`Need help connecting?`}>
-                <ActionIcon
-                  variant="subtle"
-                  component={ExternalLink}
-                  href={docsUrl}
-                  aria-label={t`Need help connecting?`}
-                >
-                  <Icon name="question" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-          </Flex>
-
-          <Flex gap="sm">
-            {!isFullPage && <Button onClick={onCancel}>{t`Cancel`}</Button>}
-            <FormSubmitButton
-              disabled={!isDirty}
-              label={isNew ? t`Save` : t`Save changes`}
-              variant="filled"
-            />
-          </Flex>
+      <FormFooter data-testid="form-footer">
+        <Flex gap="sm" align="center" mr="auto">
+          <DatabaseTestConnectionButton />
+          {isNew && (
+            <Tooltip label={t`Need help connecting?`}>
+              <ActionIcon
+                variant="subtle"
+                component={ExternalLink}
+                href={docsUrl}
+                aria-label={t`Need help connecting?`}
+              >
+                <Icon name="question" />
+              </ActionIcon>
+            </Tooltip>
+          )}
         </Flex>
+        {!isFullPage && <Button onClick={onCancel}>{t`Cancel`}</Button>}
+        <FormSubmitButton
+          disabled={!isDirty}
+          label={isNew ? t`Save` : t`Save changes`}
+          variant="filled"
+        />
       </FormFooter>
     );
   }

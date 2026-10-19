@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
+import { waitForRequestsToSettle } from "__support__/utils";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { createMockCollectionItemFromCollection } from "metabase-types/api/mocks";
 
@@ -434,12 +435,20 @@ describe("RemoteSyncSettingsForm", () => {
       PLUGIN_TRANSFORMS.isEnabled = false;
     });
 
-    it("should not display transforms toggle when transforms feature is disabled", () => {
+    it("should not display transforms toggle when transforms feature is disabled", async () => {
       setup({
         remoteSyncEnabled: true,
         remoteSyncType: "read-write",
         remoteSyncUrl: "https://github.com/test/repo.git",
       });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      // The branch dropdown only starts loading once the read-write form is on
+      // screen, so its request has to be flushed after that wait, not before.
+      await waitForRequestsToSettle();
 
       expect(
         screen.queryByLabelText("Sync Transforms"),
