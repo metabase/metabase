@@ -131,7 +131,7 @@
   org.apache.sshd/sshd-core                 {:mvn/version "3.0.0-M2"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
-  org.apache.tika/tika-core                 {:mvn/version "3.2.3"}
+  org.apache.tika/tika-core                 {:mvn/version "3.3.3"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.85"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.85.2"}
@@ -630,6 +630,7 @@
                                  :implicit-dependencies
                                  ;; too many false positives for now
                                  :unused-ret-vals
+                                 :unused-ret-vals-in-try
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
                                  :wrong-arity
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.

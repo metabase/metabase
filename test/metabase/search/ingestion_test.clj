@@ -2,6 +2,7 @@
   (:require
    [clojure.core.cache :as cache]
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.metadata.jvm :as metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -23,6 +24,17 @@
   (is (= ["dataset" "1901"] (#'search.ingestion/extract-model-and-id ["dataset" [:and [:= true true] [:= :this.id 1901] [:= "Card" "Card"]]])))
   (is (= nil (#'search.ingestion/extract-model-and-id ["dataset" [:and [:= true true] [:= :this.model_id 1901] [:= "Card" "Card"]]])))
   (is (= nil (#'search.ingestion/extract-model-and-id ["indexed-entity" [:and [:= 26 :this.model_index_id] [:= 38004300 :this.model_pk]]]))))
+
+;; The index query is memoized, but only Postgres and H2 trim searchable values with LEFT/CAST, which MySQL rejects.
+(deftest spec-index-query-varies-by-app-db-type-test
+  (let [trims? (fn [query]
+                 (boolean (some #(and (vector? %) (= :left (first %)))
+                                (tree-seq coll? seq query))))]
+    (mt/with-dynamic-fn-redefs [mdb/db-type (constantly :h2)]
+      (is (trims? (#'search.ingestion/spec-index-query "database"))))
+    (testing "a query built for an H2 app DB is not reused for MySQL"
+      (mt/with-dynamic-fn-redefs [mdb/db-type (constantly :mysql)]
+        (is (not (trims? (#'search.ingestion/spec-index-query "database"))))))))
 
 (deftest searchable-text-test
   (testing "searchable-text with vector format (legacy)"

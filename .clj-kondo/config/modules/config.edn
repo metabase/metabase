@@ -1529,6 +1529,7 @@
            metabase.query-processor.preprocess
            metabase.query-processor.reducible
            metabase.query-processor.schema
+           metabase.query-processor.sensitive-fields
            metabase.query-processor.setup
            metabase.query-processor.store
            metabase.query-processor.streaming
@@ -2495,6 +2496,7 @@
            events
            lib
            models
+           permissions
            premium-features
            query-processor
            settings

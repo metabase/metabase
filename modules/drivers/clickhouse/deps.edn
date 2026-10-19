@@ -1,5 +1,7 @@
 {:paths ["src" "resources"]
  :deps
  {com.clickhouse/clickhouse-jdbc {:mvn/version "0.8.4"
-                                  :exclusions [org.apache.commons/commons-lang3]}
-  org.lz4/lz4-java {:mvn/version "1.8.0"}}}
+                                  :exclusions [org.apache.commons/commons-lang3
+                                               org.lz4/lz4-java]}
+  ;; original org.lz4:lz4-java project is discontinued, this is the maintained fork
+  at.yawk.lz4/lz4-java {:mvn/version "1.11.4"}}}
