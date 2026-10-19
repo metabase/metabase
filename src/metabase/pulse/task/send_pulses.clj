@@ -39,18 +39,13 @@
         (if (pulse.db/dashboard-archived? (:dashboard_id pulse))
           (log/debugf "Dashboard of Pulse %d is archived, Skipping." pulse-id)
           (task-history/with-task-run (some-> (pulse.send/pulse->task-run-info pulse) (assoc :auto-complete false))
-            (try
-              (task-history/with-task-history {:task         "send-pulse"
-                                               :task_details {:pulse-id    pulse-id
-                                                              :channel-ids (seq channel-ids)}}
-                (log/debugf "Starting Pulse Execution: %d" pulse-id)
-                (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
-                (log/debugf "Finished Pulse Execution: %d" pulse-id)
-                :done)
-              (finally
-                ;; the sends complete the run from the worker threads; this call covers the sends that all ended
-                ;; before the `send-pulse` row did, and a send-pulse that failed before it queued any send
-                (some-> (task-history/current-run-id) task-history/task-run-work-done!)))))
+            (task-history/with-task-history {:task         "send-pulse"
+                                             :task_details {:pulse-id    pulse-id
+                                                            :channel-ids (seq channel-ids)}}
+              (log/debugf "Starting Pulse Execution: %d" pulse-id)
+              (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
+              (log/debugf "Finished Pulse Execution: %d" pulse-id)
+              :done)))
         (log/debugf "Pulse %d not found, Skipping." pulse-id))
       (catch Throwable e
         (log/errorf "Error sending Pulse %d to channel ids: %s: %s" pulse-id (str/join ", " channel-ids) (ex-message e))))))

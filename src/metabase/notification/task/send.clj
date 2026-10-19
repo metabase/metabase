@@ -38,11 +38,7 @@
               (log/info "Submitted to the notification queue")
               (catch Exception e
                 (log/errorf "Failed to submit to the notification queue: %s" (ex-message e))
-                (throw e))
-              (finally
-                ;; the send completes the run from a worker thread; this call covers a send that ended before the
-                ;; `notification-trigger` row did
-                (some-> (task-history/current-run-id) task-history/task-run-work-done!)))))
+                (throw e)))))
 
         (nil? notification)
         (do

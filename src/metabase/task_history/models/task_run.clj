@@ -149,8 +149,9 @@
   nothing. A completion here would fix the run status before the rest of the work ran.
 
   Otherwise (`:auto-complete false`) the work runs on other threads, and no single place sees it all end. So every
-  piece of work, and the code that queued it, calls this, and each call sets the run status from the tasks as they are
-  now. The run is started while any task runs; the last call sees every task and sets the final status."
+  piece of work calls this, and [[with-task-run]] calls it after its body, and each call sets the run status from the
+  tasks as they are now. The run is started while any task runs; the last call sees every task and sets the final
+  status."
   [run-id :- ms/PositiveInt]
   (when-not (and (= run-id (:id *run*)) (:auto-complete? *run*))
     (recompute-task-run-status! run-id)))
@@ -162,8 +163,9 @@
    If `run-info` is nil or already inside a task run, just executes body without
    creating a new task run (prevents nesting).
 
-   For async flows (e.g., async notifications), use :auto-complete false and
-   call [[task-run-work-done!]] when each piece of async work is done, and when the code that queued it is done."
+   After the body, it completes the run with [[complete-task-run!]]. For async flows (e.g., async notifications), use
+   :auto-complete false: then it calls [[task-run-work-done!]] after the body instead, and each piece of async work
+   must call [[task-run-work-done!]] when it is done."
   {:style/indent 1}
   [run-info & body]
   `(if (or *run* (nil? ~run-info))
@@ -172,10 +174,9 @@
            auto-complete# (boolean (get info# :auto-complete true))
            run-id#        (create-task-run! info#)]
        (binding [*run* {:id run-id# :auto-complete? auto-complete#}]
-         (if auto-complete#
-           (try
-             ~@body
-             (finally
-               (complete-task-run! run-id#)))
-           ;; Async: each piece of work calls task-run-work-done!
-           (do ~@body))))))
+         (try
+           ~@body
+           (finally
+             (if auto-complete#
+               (complete-task-run! run-id#)
+               (task-run-work-done! run-id#))))))))

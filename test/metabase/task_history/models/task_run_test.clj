@@ -70,7 +70,7 @@
 
 (deftest with-task-run-auto-complete-false-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
-    (testing "with-task-run does NOT auto-complete when :auto-complete false"
+    (testing "with :auto-complete false, with-task-run sets the status from the tasks that exist after its body, and async work sets it again when it ends"
       (let [run-id (atom nil)]
         (task-history/with-task-run {:run_type      :subscription
                                      :entity_type   :dashboard
@@ -80,13 +80,16 @@
           (task-history/with-task-history {:task "test-task"}
             :done))
         (let [run (t2/select-one :model/TaskRun :id @run-id)]
-          (is (= :started (:status run)) "status remains :started")
-          (is (nil? (:ended_at run)) "ended_at is nil"))
-        ;; Manual completion
-        (task-history/complete-task-run! @run-id)
-        (let [run (t2/select-one :model/TaskRun :id @run-id)]
-          (is (= :success (:status run)))
-          (is (some? (:ended_at run))))))))
+          (is (= :success (:status run)) "the only task succeeded")
+          (is (some? (:ended_at run))))
+        ;; async work that ends later, on another thread, and fails
+        (t2/insert! :model/TaskHistory {:task       "async-work"
+                                        :run_id     @run-id
+                                        :status     :failed
+                                        :started_at (t/instant)
+                                        :ended_at   (t/instant)})
+        (task-history/task-run-work-done! @run-id)
+        (is (= :failed (t2/select-one-fn :status :model/TaskRun :id @run-id)))))))
 
 (deftest task-run-work-done-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
