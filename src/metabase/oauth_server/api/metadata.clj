@@ -52,8 +52,7 @@
   "OAuth Protected Resource Metadata (RFC 9728) advertising `resource-path` as the protected resource, with every
    [[metabase.mcp.core/v2-scopes]] as `:scopes_supported`."
   [resource-path]
-  ;; Every v2 scope, not the baseline (ENG-11089): a manual reconnect asks for exactly this, so a narrower list left
-  ;; the write scopes unreachable for clients whose step-up is lossy.
+  ;; Every v2 scope so it works even with incorrect clients
   (let [site-url (system/site-url)]
     {:status  200
      :headers {"Content-Type" "application/json"}
