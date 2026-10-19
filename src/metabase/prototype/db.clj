@@ -56,3 +56,11 @@
   (if (t2/exists? :model/FieldUserSettings field-id)
     (t2/update! :model/FieldUserSettings field-id {:semantic_type semantic-type})
     (t2/insert! :model/FieldUserSettings {:field_id field-id, :semantic_type semantic-type})))
+
+(mu/defn set-table-display-name!
+  "Set the display name of the Table with `table-id` as a user value, the same as an edit in the data model."
+  [table-id     :- ::lib.schema.id/table
+   display-name :- :string]
+  (if (t2/exists? :model/TableUserSettings table-id)
+    (t2/update! :model/TableUserSettings table-id {:display_name display-name})
+    (t2/insert! :model/TableUserSettings {:table_id table-id, :display_name display-name})))

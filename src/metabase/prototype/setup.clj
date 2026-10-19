@@ -63,6 +63,15 @@
             :when (and field-id (not (#{:type/PK :type/FK} semantic-type)))]
       (prototype.db/set-field-semantic-type! field-id semantic-type))))
 
+(defn- apply-table-display-names!
+  "Label each table as slow or fast, so that the UI tells them apart."
+  [database-id]
+  (let [ids-by-name (prototype.db/table-ids-by-name database-id dataset/schema-name)]
+    (doseq [{table-name :name, :as table} dataset/tables
+            :let  [table-id (get ids-by-name table-name)]
+            :when table-id]
+      (prototype.db/set-table-display-name! table-id (dataset/table-display-name table)))))
+
 (defn- sync-and-apply-metadata!
   [database]
   (log/info "Prototype data: syncing the Database")
@@ -87,4 +96,5 @@
                        (prototype.db/prototype-database)
                        (prototype.db/insert-prototype-database! details))]
         (when (or seeded? (not existing) (not= "complete" (:initial_sync_status database)))
-          (sync-and-apply-metadata! database))))))
+          (sync-and-apply-metadata! database))
+        (apply-table-display-names! (:id database))))))

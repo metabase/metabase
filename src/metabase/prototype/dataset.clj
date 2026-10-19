@@ -466,6 +466,7 @@
 (def tables
   "Table definitions in insert order. `:slow?` marks the tables whose queries Metabase delays on purpose."
   [{:name        "countries"
+    :display-name "Countries"
     :description "Countries of the world, one row per country."
     :slow?       false
     :rows        countries-rows
@@ -488,6 +489,7 @@
                   [:flag_url "text" :type/ImageURL]
                   [:wikipedia_url "text" :type/URL]]}
    {:name        "us_states"
+    :display-name "US States"
     :description "US states, one row per state."
     :slow?       false
     :rows        us-states-rows
@@ -505,6 +507,7 @@
                   [:unemployment_rate "numeric(5,3)" :type/Percentage]
                   [:sales_tax_rate "numeric(6,4)" :type/Percentage]]}
    {:name        "stores"
+    :display-name "Stores"
     :description "Physical stores, in the US and abroad."
     :slow?       false
     :rows        stores-rows
@@ -531,6 +534,7 @@
                   [:opening_time "time" nil]
                   [:closing_time "time" nil]]}
    {:name        "products"
+    :display-name "Products"
     :description "Product catalog."
     :slow?       false
     :rows        products-rows
@@ -560,6 +564,7 @@
                   [:updated_at "timestamptz" :type/UpdatedTimestamp]
                   [:discontinued_at "timestamptz" :type/DeletionTimestamp]]}
    {:name        "customers"
+    :display-name "Customers"
     :description "Customers of the shop."
     :slow?       false
     :rows        customers-rows
@@ -593,6 +598,7 @@
                   [:last_seen_at "timestamptz" nil]
                   [:churned_at "timestamptz" :type/CancelationTimestamp]]}
    {:name        "orders"
+    :display-name "Orders"
     :description "Orders. A slow table: Metabase delays its queries on purpose."
     :slow?       true
     :rows        orders-rows
@@ -624,6 +630,7 @@
                   [:is_gift "boolean" nil]
                   [:gift_message "text" :type/Comment]]}
    {:name        "web_events"
+    :display-name "Web Events"
     :description "Website and app analytics events. A slow table: Metabase delays its queries on purpose."
     :slow?       true
     :rows        web-events-rows
@@ -649,6 +656,7 @@
                   [:is_bot "boolean" nil]
                   [:properties "jsonb" nil]]}
    {:name        "reviews"
+    :display-name "Reviews"
     :description "Product reviews. A slow table: Metabase delays its queries on purpose."
     :slow?       true
     :rows        reviews-rows
@@ -665,6 +673,7 @@
                   [:photo_url "text" :type/ImageURL]
                   [:created_at "timestamptz" :type/CreationTimestamp]]}
    {:name        "support_tickets"
+    :display-name "Support Tickets"
     :description "Customer support tickets. A slow table: Metabase delays its queries on purpose."
     :slow?       true
     :rows        support-tickets-rows
@@ -689,6 +698,11 @@
   [["customer_status" ["trial" "active" "suspended" "churned"]]
    ["order_status" ["pending" "processing" "shipped" "delivered" "cancelled" "returned"]]
    ["ticket_priority" ["low" "medium" "high" "urgent"]]])
+
+(defn table-display-name
+  "Display name of `table` in Metabase, with a label that says whether it is slow or fast."
+  [{:keys [display-name slow?]}]
+  (str display-name (if slow? " (slow)" " (fast)")))
 
 (def slow-table-names
   "Names of the tables whose queries Metabase delays on purpose."

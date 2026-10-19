@@ -2071,7 +2071,8 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   public-sharing
   {:team "UX West"
