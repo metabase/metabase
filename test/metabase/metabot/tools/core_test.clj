@@ -7,6 +7,8 @@
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.test :as mt]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -392,6 +394,7 @@
             data (ex-data e)
             hint "Invalid at stages[0].filters: invalid type. Fix the named paths."]
         (is (= hint (recovery-hints/recovery-hint data)))
-        (is (= (str message "\n" hint)
-               (tools.error/recoverable-text
-                (pipeline-failure (ex-message e) (assoc data :agent-error? true)) #{})))))))
+        (mt/with-dynamic-fn-redefs [i18n/translate-user-locale (constantly "Translated recovery")]
+          (is (= (str message "\n" hint)
+                 (tools.error/recoverable-text
+                  (pipeline-failure (ex-message e) (assoc data :agent-error? true)) #{}))))))))

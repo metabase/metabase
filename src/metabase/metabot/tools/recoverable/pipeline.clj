@@ -20,8 +20,8 @@
   gets no steps at all: a missing step reads as terse, a wrong one sends the agent at the wrong
   tool."
   (:require
+   [metabase.agent-lib.representations :as repr]
    [metabase.metabot.tools.error :refer [defrecoverable]]
-   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -252,9 +252,10 @@
 
 (defn- structural-recovery
   [{:keys [humanized]}]
-  (if-let [hint (recovery-hints/structural-validation-hint humanized)]
-    [{:uses #{} :text hint}]
-    []))
+  (let [paths (repr/humanized->paths humanized)]
+    (if (seq paths)
+      [{:uses #{} :text (str "Invalid at " paths ". Fix the named paths.")}]
+      [])))
 
 (defrecoverable invalid-representations-query!
   "The query did not parse as a representations query."
