@@ -322,6 +322,7 @@ build_uberjar:
   - *e2e_all
   - *embedding_sdk_components
   - *embedding_sdk_host_sample_apps
+  - *workflows
 
 yaml:
   - "**/*.yml"
