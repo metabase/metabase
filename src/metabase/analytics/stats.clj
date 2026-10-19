@@ -583,26 +583,16 @@
     {:transforms               (analytics.db/transform-count)
      :transform_runs_last_24h  (analytics.db/transform-run-count-since one-day-ago)}))
 
-(def ^:private remote-sync-metric-names
-  "Snowplow metric names of the Git-synced content counts."
-  [:remote_sync_action_count :remote_sync_card_count :remote_sync_content_count :remote_sync_dashboard_count
-   :remote_sync_data_app_count :remote_sync_dimension_count :remote_sync_document_count
-   :remote_sync_field_user_settings_count :remote_sync_glossary_entry_count :remote_sync_measure_count
-   :remote_sync_metric_count :remote_sync_model_count :remote_sync_question_count :remote_sync_segment_count
-   :remote_sync_snippet_count :remote_sync_table_user_settings_count :remote_sync_timeline_count
-   :remote_sync_transform_count])
-
 (defenterprise remote-sync-stats
-  "Counts of active Git-synced content by model, empty without Git sync."
+  "Counts of the content a full Git sync export serializes, by model and in total, empty without Git sync."
   metabase-enterprise.remote-sync.stats
   []
   {})
 
 (defn- remote-sync-metrics
-  "Returns Git-synced content counts for the Snowplow stats ping, all zero without Git sync."
+  "Returns Git-synced content counts for the Snowplow stats ping."
   []
-  (merge (zipmap remote-sync-metric-names (repeat 0))
-         (update-keys (remote-sync-stats) u/->snake_case_en)))
+  (update-keys (remote-sync-stats) u/->snake_case_en))
 
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
@@ -762,68 +752,96 @@
                 [:library_data :int]
                 [:library_metrics :int]]]]]])
 
-(def ^:private SnowplowMetricInfo
-  (into [:map {:closed true}
-         [:models :int]
-         [:new_embedded_dashboards :int]
-         [:new_users_last_24h :int]
-         [:pivot_tables :int]
-         [:query_executions_last_24h :int]
-         [:entity_id_translations_last_24h :int]
-         [:transforms :int]
-         [:transform_runs_last_24h :int]]
-        (map (fn [k] [k :int]))
-        remote-sync-metric-names))
-
 (mu/defn- snowplow-metrics
   [stats :- LegacyAnonymousUsageStats
-   metric-info :- SnowplowMetricInfo]
+   metric-info :- [:map {:closed true}
+                   [:models :int]
+                   [:new_embedded_dashboards :int]
+                   [:new_users_last_24h :int]
+                   [:pivot_tables :int]
+                   [:query_executions_last_24h :int]
+                   [:entity_id_translations_last_24h :int]
+                   [:transforms :int]
+                   [:transform_runs_last_24h :int]
+                   [:remote_sync_action_count {:optional true} :int]
+                   [:remote_sync_card_count {:optional true} :int]
+                   [:remote_sync_content_count {:optional true} :int]
+                   [:remote_sync_dashboard_count {:optional true} :int]
+                   [:remote_sync_data_app_count {:optional true} :int]
+                   [:remote_sync_dimension_count {:optional true} :int]
+                   [:remote_sync_document_count {:optional true} :int]
+                   [:remote_sync_field_user_settings_count {:optional true} :int]
+                   [:remote_sync_glossary_entry_count {:optional true} :int]
+                   [:remote_sync_measure_count {:optional true} :int]
+                   [:remote_sync_metric_count {:optional true} :int]
+                   [:remote_sync_model_count {:optional true} :int]
+                   [:remote_sync_question_count {:optional true} :int]
+                   [:remote_sync_segment_count {:optional true} :int]
+                   [:remote_sync_snippet_count {:optional true} :int]
+                   [:remote_sync_table_user_settings_count {:optional true} :int]
+                   [:remote_sync_timeline_count {:optional true} :int]
+                   [:remote_sync_transform_count {:optional true} :int]]]
   (mapv
    (fn [[k v tags]]
      (assert (every? string? tags) "Tags must be strings in snowplow metrics.")
      (assert (some? v) "Cannot have a nil value in snowplow metrics.")
      {"name" (name k) "value" v "tags" (-> tags sort vec)})
-   (into
-    [[:above_goal_alerts               (get-in stats [:stats :alert :above_goal] 0)                    #{"alerts"}]
-     [:alerts                          (get-in stats [:stats :alert :alerts] 0)                        #{"alerts"}]
-     [:all_time_query_executions       (get-in stats [:stats :execution :executions] 0)                #{"query_executions"}]
-     [:analyzed_databases              (get-in stats [:stats :database :databases :analyzed] 0)        #{}]
-     [:cache_average_entry_size        (get-in stats [:stats :cache :average_entry_size] 0)            #{"cache"}]
-     [:cache_num_queries_cached        (get-in stats [:stats :cache :num_queries_cached_unbinned] 0)   #{"cache"}]
-     [:cards_in_collections            (get-in stats [:stats :collection :cards_in_collections] 0)     #{"collections"}]
-     [:cards_not_in_collections        (get-in stats [:stats :collection :cards_not_in_collections] 0) #{"collections"}]
-     [:collections                     (get-in stats [:stats :collection :collections] 0)              #{"collections"}]
-     [:connected_databases             (get-in stats [:stats :database :databases :total] 0)           #{"databases"}]
-     [:dashboards_with_params          (get-in stats [:stats :dashboard :with_params] 0)               #{"dashboards"}]
-     [:embedded_dashboards             (get-in stats [:stats :dashboard :embedded :total] 0)           #{"dashboards" "embedding"}]
-     [:embedded_questions              (get-in stats [:stats :question :embedded :total] 0)            #{"questions" "embedding"}]
-     [:entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info 0)                #{"embedding"}]
-     [:first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)               #{"alerts"}]
-     [:library_data                    (get-in stats [:stats :library :library_data] 0)               #{"library"}]
-     [:library_metrics                 (get-in stats [:stats :library :library_metrics] 0)            #{"library"}]
-     [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
-     [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
-     [:models                          (:models metric-info 0)                                         #{}]
-     [:native_questions                (get-in stats [:stats :question :questions :native] 0)          #{"questions"}]
-     [:new_embedded_dashboards         (:new_embedded_dashboards metric-info 0)                        #{}]
-     [:new_users_last_24h              (:new_users_last_24h metric-info 0)                             #{"users"}]
-     [:permission_groups               (get-in stats [:stats :group :groups] 0)                        #{"permissions"}]
-     [:pivot_tables                    (:pivot_tables metric-info 0)                                   #{}]
-     [:public_dashboards               (get-in stats [:stats :dashboard :public :total] 0)             #{"dashboards"}]
-     [:public_dashboards_with_params   (get-in stats [:stats :dashboard :public :with_params] 0)       #{"dashboards"}]
-     [:public_questions                (get-in stats [:stats :question :public :total] 0)              #{"questions"}]
-     [:public_questions_with_params    (get-in stats [:stats :question :public :with_params] 0)        #{"questions"}]
-     [:query_builder_questions         (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
-     [:query_executions_last_24h       (:query_executions_last_24h metric-info 0)                      #{"query_executions"}]
-     [:questions                       (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
-     [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
-     [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
-     [:tables                          (get-in stats [:stats :table :tables] 0)                        #{"tables"}]
-     [:transform_runs_last_24h         (:transform_runs_last_24h metric-info 0)                        #{"transforms"}]
-     [:transforms                      (:transforms metric-info 0)                                     #{"transforms"}]
-     [:users                           (get-in stats [:stats :user :users :total] 0)                   #{"users"}]]
-    (map (fn [k] [k (k metric-info) #{"remote_sync"}]))
-    remote-sync-metric-names)))
+   [[:above_goal_alerts               (get-in stats [:stats :alert :above_goal] 0)                    #{"alerts"}]
+    [:alerts                          (get-in stats [:stats :alert :alerts] 0)                        #{"alerts"}]
+    [:all_time_query_executions       (get-in stats [:stats :execution :executions] 0)                #{"query_executions"}]
+    [:analyzed_databases              (get-in stats [:stats :database :databases :analyzed] 0)        #{}]
+    [:cache_average_entry_size        (get-in stats [:stats :cache :average_entry_size] 0)            #{"cache"}]
+    [:cache_num_queries_cached        (get-in stats [:stats :cache :num_queries_cached_unbinned] 0)   #{"cache"}]
+    [:cards_in_collections            (get-in stats [:stats :collection :cards_in_collections] 0)     #{"collections"}]
+    [:cards_not_in_collections        (get-in stats [:stats :collection :cards_not_in_collections] 0) #{"collections"}]
+    [:collections                     (get-in stats [:stats :collection :collections] 0)              #{"collections"}]
+    [:connected_databases             (get-in stats [:stats :database :databases :total] 0)           #{"databases"}]
+    [:dashboards_with_params          (get-in stats [:stats :dashboard :with_params] 0)               #{"dashboards"}]
+    [:embedded_dashboards             (get-in stats [:stats :dashboard :embedded :total] 0)           #{"dashboards" "embedding"}]
+    [:embedded_questions              (get-in stats [:stats :question :embedded :total] 0)            #{"questions" "embedding"}]
+    [:entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info 0)                #{"embedding"}]
+    [:first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)               #{"alerts"}]
+    [:library_data                    (get-in stats [:stats :library :library_data] 0)               #{"library"}]
+    [:library_metrics                 (get-in stats [:stats :library :library_metrics] 0)            #{"library"}]
+    [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
+    [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
+    [:models                          (:models metric-info 0)                                         #{}]
+    [:native_questions                (get-in stats [:stats :question :questions :native] 0)          #{"questions"}]
+    [:new_embedded_dashboards         (:new_embedded_dashboards metric-info 0)                        #{}]
+    [:new_users_last_24h              (:new_users_last_24h metric-info 0)                             #{"users"}]
+    [:permission_groups               (get-in stats [:stats :group :groups] 0)                        #{"permissions"}]
+    [:pivot_tables                    (:pivot_tables metric-info 0)                                   #{}]
+    [:public_dashboards               (get-in stats [:stats :dashboard :public :total] 0)             #{"dashboards"}]
+    [:public_dashboards_with_params   (get-in stats [:stats :dashboard :public :with_params] 0)       #{"dashboards"}]
+    [:public_questions                (get-in stats [:stats :question :public :total] 0)              #{"questions"}]
+    [:public_questions_with_params    (get-in stats [:stats :question :public :with_params] 0)        #{"questions"}]
+    [:query_builder_questions         (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
+    [:query_executions_last_24h       (:query_executions_last_24h metric-info 0)                      #{"query_executions"}]
+    [:remote_sync_action_count        (:remote_sync_action_count metric-info 0)                       #{"remote_sync"}]
+    [:remote_sync_card_count          (:remote_sync_card_count metric-info 0)                         #{"remote_sync"}]
+    [:remote_sync_content_count       (:remote_sync_content_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_dashboard_count     (:remote_sync_dashboard_count metric-info 0)                    #{"remote_sync"}]
+    [:remote_sync_data_app_count      (:remote_sync_data_app_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_dimension_count     (:remote_sync_dimension_count metric-info 0)                    #{"remote_sync"}]
+    [:remote_sync_document_count      (:remote_sync_document_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_field_user_settings_count (:remote_sync_field_user_settings_count metric-info 0)    #{"remote_sync"}]
+    [:remote_sync_glossary_entry_count (:remote_sync_glossary_entry_count metric-info 0)              #{"remote_sync"}]
+    [:remote_sync_measure_count       (:remote_sync_measure_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_metric_count        (:remote_sync_metric_count metric-info 0)                       #{"remote_sync"}]
+    [:remote_sync_model_count         (:remote_sync_model_count metric-info 0)                        #{"remote_sync"}]
+    [:remote_sync_question_count      (:remote_sync_question_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_segment_count       (:remote_sync_segment_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_snippet_count       (:remote_sync_snippet_count metric-info 0)                      #{"remote_sync"}]
+    [:remote_sync_table_user_settings_count (:remote_sync_table_user_settings_count metric-info 0)    #{"remote_sync"}]
+    [:remote_sync_timeline_count      (:remote_sync_timeline_count metric-info 0)                     #{"remote_sync"}]
+    [:remote_sync_transform_count     (:remote_sync_transform_count metric-info 0)                    #{"remote_sync"}]
+    [:questions                       (get-in stats [:stats :question :questions :total] 0)           #{"questions"}]
+    [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
+    [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
+    [:tables                          (get-in stats [:stats :table :tables] 0)                        #{"tables"}]
+    [:transform_runs_last_24h         (:transform_runs_last_24h metric-info 0)                        #{"transforms"}]
+    [:transforms                      (:transforms metric-info 0)                                     #{"transforms"}]
+    [:users                           (get-in stats [:stats :user :users :total] 0)                   #{"users"}]]))
 
 (defn- whitelabeling-in-use?
   "Are any whitelabeling settings set to values other than their default?"

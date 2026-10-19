@@ -2,6 +2,7 @@
   "Counts of Git-synced content for the anonymous stats ping."
   (:require
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.premium-features.core :refer [defenterprise]]))
@@ -10,7 +11,6 @@
 
 (def ^:private model-count-keys
   {"Action"             :remote-sync-action-count
-   "Card"               :remote-sync-card-count
    "Dashboard"          :remote-sync-dashboard-count
    "DataApp"            :remote-sync-data-app-count
    "Dimension"          :remote-sync-dimension-count
@@ -26,13 +26,17 @@
 
 (defn- card-type-counts
   [card-ids]
-  (let [types (frequencies (map :type (when (seq card-ids) (remote-sync.db/card-types (vec card-ids)))))]
-    {:remote-sync-model-count    (get types :model 0)
-     :remote-sync-question-count (get types :question 0)
-     :remote-sync-metric-count   (get types :metric 0)}))
+  (let [counts (transduce (map #(remote-sync.db/card-counts-by-type (vec %)))
+                          (partial merge-with +)
+                          {}
+                          (partition-all impl/app-db-batch-size card-ids))]
+    {:remote-sync-card-count     (reduce + 0 (vals counts))
+     :remote-sync-model-count    (get counts :model 0)
+     :remote-sync-question-count (get counts :question 0)
+     :remote-sync-metric-count   (get counts :metric 0)}))
 
 (defenterprise remote-sync-stats
-  "Counts of the content a full Git sync export writes, by model, empty without Git sync."
+  "Counts of the content a full Git sync export serializes, by model and in total, empty without Git sync."
   :feature :remote-sync
   []
   (if (settings/remote-sync-enabled)

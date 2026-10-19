@@ -1,11 +1,14 @@
 (ns metabase-enterprise.remote-sync.stats-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.stats :as stats]
+   [metabase.analytics.stats :as analytics.stats]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,13 +30,14 @@
                    :model/Card       _                 {:collection_id synced-id :type :question
                                                         :dataset_query (let [mp (mt/metadata-provider)]
                                                                          (lib/query mp (lib.metadata/card mp source-id)))}
+                   :model/Card       _                 {:collection_id synced-id :type :question}
                    :model/Card       _                 {:collection_id child-id :type :metric}
                    :model/Card       _                 {:collection_id synced-id :type :model :archived true}
                    :model/Card       _                 {:collection_id archived-id :type :model}
                    :model/Card       _                 {:collection_id local-id :type :question}]
-      (is (=? {:remote-sync-card-count     3
+      (is (=? {:remote-sync-card-count     4
                :remote-sync-model-count    1
-               :remote-sync-question-count 1
+               :remote-sync-question-count 2
                :remote-sync-metric-count   1}
               (stats/remote-sync-stats))))))
 
@@ -61,6 +65,33 @@
                :remote-sync-segment-count             1}
               (stats/remote-sync-stats))))))
 
+(deftest content-counts-test
+  (with-remote-sync
+    (mt/with-temp [:model/Collection         _        {:type "library" :is_remote_synced true}
+                   :model/Collection         {id :id} {:is_remote_synced true}
+                   :model/Dashboard          _        {:collection_id id}
+                   :model/Document           _        {:collection_id id}
+                   :model/Timeline           _        {:collection_id id}
+                   :model/Action             _        {:type :query :name "Library action" :model_id nil}
+                   :model/NativeQuerySnippet _        {}
+                   :model/Glossary           _        {:term "Term" :definition "A definition"}
+                   :model/DataApp            _        {:name "app" :display_name "App" :bundle_path "app.js"}]
+      (is (=? {:remote-sync-action-count         1
+               :remote-sync-dashboard-count      1
+               :remote-sync-data-app-count       1
+               :remote-sync-document-count       1
+               :remote-sync-glossary-entry-count 1
+               :remote-sync-snippet-count        1
+               :remote-sync-timeline-count       1}
+              (stats/remote-sync-stats))))))
+
+(deftest content-total-test
+  (with-remote-sync
+    (mt/with-temp [:model/Collection {id :id} {:is_remote_synced true}
+                   :model/Dashboard  _        {:collection_id id}]
+      (is (=? {:remote-sync-content-count 3}
+              (stats/remote-sync-stats))))))
+
 (deftest transform-counts-test
   (with-remote-sync
     (mt/with-temp [:model/Collection {folder-id :id}   {:namespace collection/transforms-ns}
@@ -85,3 +116,11 @@
         (mt/with-temp [:model/Collection {id :id} {:is_remote_synced true}
                        :model/Card       _        {:collection_id id}]
           (is (= {} (stats/remote-sync-stats))))))))
+
+(deftest snowplow-metrics-test
+  (with-remote-sync
+    (is (= (set (map (comp name u/->snake_case_en) (keys (stats/remote-sync-stats))))
+           (into #{}
+                 (comp (map #(get % "name")) (filter #(str/starts-with? % "remote_sync_")))
+                 (get (#'analytics.stats/snowplow-anonymous-usage-stats (analytics.stats/legacy-anonymous-usage-stats))
+                      "metrics"))))))
