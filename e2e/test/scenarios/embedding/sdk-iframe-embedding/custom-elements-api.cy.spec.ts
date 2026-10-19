@@ -32,15 +32,8 @@ const LIMITED_ORDERS_QUESTION_DETAILS = {
 
 const LIMITED_ORDERS_DASHBOARD_NAME = "Limited Orders dashboard";
 
-const assertDrills = (drills: boolean) => {
+const assertDrillsEnabled = () => {
   clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
-
-  if (!drills) {
-    H.getSimpleEmbedIframeContent()
-      .findByText(/Filter by this value/)
-      .should("not.exist");
-    return;
-  }
 
   H.getSimpleEmbedIframeContent()
     .findByText(/Filter by this value/)
@@ -57,6 +50,14 @@ const assertDrills = (drills: boolean) => {
     .findByText("29.8")
     .should("be.visible");
   H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
+};
+
+const assertDrillsDisabled = () => {
+  clickEmbeddedTableCell("37.65", LIMITED_ORDERS_ROW_COUNT);
+
+  H.getSimpleEmbedIframeContent()
+    .findByText(/Filter by this value/)
+    .should("not.exist");
 };
 
 describe("scenarios > embedding > sdk iframe embedding > custom elements api", () => {
@@ -190,7 +191,11 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
             .findByLabelText("Download as PDF")
             .should(withDownloads ? "be.visible" : "not.exist");
 
-          assertDrills(drills);
+          if (drills) {
+            assertDrillsEnabled();
+          } else {
+            assertDrillsDisabled();
+          }
         });
       });
     });
@@ -303,7 +308,11 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
                 .should("not.exist");
             }
 
-            assertDrills(drills);
+            if (drills) {
+              assertDrillsEnabled();
+            } else {
+              assertDrillsDisabled();
+            }
           },
         );
       });
