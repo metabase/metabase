@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
-  setupDashboardRevisionsEndpoint,
+  setupEntityRevisionsEndpoint,
   setupRevertRevisionEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -61,7 +61,7 @@ function setup({
     "token-features": createMockTokenFeatures({ content_verification: true }),
   });
   setupEnterpriseOnlyPlugin("moderation");
-  setupDashboardRevisionsEndpoint(DASHBOARD_ID, revisions);
+  setupEntityRevisionsEndpoint("dashboard", DASHBOARD_ID, revisions);
   setupRevertRevisionEndpoint(CREATED);
 
   renderWithProviders(

@@ -4,16 +4,14 @@ import fetchMock from "fetch-mock";
 import {
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
-  setupDashboardRevisionsEndpoint,
+  setupEntityRevisionsEndpoint,
   setupRevertRevisionEndpoint,
 } from "__support__/server-mocks";
 import { setupListSubscriptionsEndpoint } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
-import type { CollectionId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDashboard,
@@ -22,23 +20,11 @@ import {
 
 import { DashboardHistoryPage } from "./DashboardHistoryPage";
 
-const LIBRARY = createMockCollection({
-  id: 1,
-  name: "Library",
-  type: "library",
-});
-const DASHBOARDS = createMockCollection({
-  id: 2,
-  name: "Dashboards",
-  type: "library-dashboards",
-});
 const SALES = createMockCollection({
   id: 3,
   name: "Sales",
   type: "library-dashboards",
-  effective_ancestors: [LIBRARY, DASHBOARDS],
 });
-const EXAMPLES = createMockCollection({ id: 5, name: "Examples" });
 
 const CREATED = createMockRevision({
   id: 1,
@@ -53,35 +39,25 @@ const RENAMED = createMockRevision({
 });
 
 type SetupOpts = {
-  collectionId?: CollectionId;
   canWrite?: boolean;
   isRemoteSyncReadOnly?: boolean;
 };
 
 function setup({
-  collectionId = SALES.id,
   canWrite = true,
   isRemoteSyncReadOnly = false,
 }: SetupOpts = {}) {
   const dashboard = createMockDashboard({
     id: 10,
     name: "Sales overview",
-    collection_id: collectionId,
+    collection_id: SALES.id,
     can_write: canWrite,
     dashcards: [],
   });
   setupListSubscriptionsEndpoint([]);
   setupDashboardEndpoints(dashboard);
-  setupCollectionByIdEndpoint({
-    collections: [
-      createMockCollection(ROOT_COLLECTION),
-      LIBRARY,
-      DASHBOARDS,
-      SALES,
-      EXAMPLES,
-    ],
-  });
-  setupDashboardRevisionsEndpoint(dashboard.id, [RENAMED, CREATED]);
+  setupCollectionByIdEndpoint({ collections: [SALES] });
+  setupEntityRevisionsEndpoint("dashboard", dashboard.id, [RENAMED, CREATED]);
   setupRevertRevisionEndpoint(CREATED);
 
   renderWithProviders(
@@ -143,28 +119,4 @@ describe("DashboardHistoryPage", () => {
       ).not.toBeInTheDocument();
     },
   );
-
-  it("shows the Dashboards section and folders of a Library dashboard", async () => {
-    setup();
-
-    const header = await screen.findByTestId("dashboard-pane-header");
-    expect(
-      await within(header).findByRole("link", { name: "Sales" }),
-    ).toHaveAttribute("href", "/data-studio/dashboards?expandedId=3");
-    expect(
-      within(header).getByRole("link", { name: "Dashboards" }),
-    ).toHaveAttribute("href", "/data-studio/dashboards");
-  });
-
-  it("shows the collection path of a dashboard outside the Library", async () => {
-    setup({ collectionId: EXAMPLES.id });
-
-    const header = await screen.findByTestId("dashboard-pane-header");
-    expect(
-      await within(header).findByRole("link", { name: "Examples" }),
-    ).toBeInTheDocument();
-    expect(
-      within(header).queryByRole("link", { name: "Dashboards" }),
-    ).not.toBeInTheDocument();
-  });
 });

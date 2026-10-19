@@ -5,9 +5,9 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCardRevisionsEndpoint,
   setupCollectionsEndpoints,
   setupDatabaseEndpoints,
+  setupEntityRevisionsEndpoint,
   setupMetricEndpoint,
   setupRevertRevisionEndpoint,
 } from "__support__/server-mocks";
@@ -72,7 +72,7 @@ function setup() {
   setupBookmarksEndpoints([]);
   setupListNotificationEndpoints({ card_id: card.id }, []);
   setupAuditInfoEndpoint({ auditInfo: {} });
-  setupCardRevisionsEndpoint(card.id, [RENAMED, CREATED]);
+  setupEntityRevisionsEndpoint("card", card.id, [RENAMED, CREATED]);
   setupRevertRevisionEndpoint(CREATED);
 
   renderWithProviders(
