@@ -54,6 +54,9 @@ export const RemoteSyncSettingsForm = ({
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
+  const isCollectionsSyncEnabled = !!useSetting(
+    "remote-sync-collections-enabled",
+  );
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
@@ -104,9 +107,9 @@ export const RemoteSyncSettingsForm = ({
                   <BranchSwitcherSection dirty={dirtyEntities} />
                 )}
                 {isReadOnly && <ReadOnlyBranchSection />}
-                {(isRemoteSyncEnabled || isReadWrite) && !isModalVariant && (
-                  <CollectionsToSyncSection />
-                )}
+                {isCollectionsSyncEnabled &&
+                  (isRemoteSyncEnabled || isReadWrite) &&
+                  !isModalVariant && <CollectionsToSyncSection />}
                 {isModalVariant && isReadWrite && (
                   <RemoteSyncSettingsSection title={t`Content to sync`}>
                     <TopLevelCollectionsList skipCollections />

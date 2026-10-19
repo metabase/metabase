@@ -104,6 +104,20 @@
   :encryption :no
   :default false)
 
+(defsetting remote-sync-collections-enabled
+  (deferred-tru "Whether git sync settings let admins choose collections to sync, besides the Library and transforms.")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default false)
+
+(defn pin-remote-sync-collections-enabled!
+  "Stores [[remote-sync-collections-enabled]] when nothing has set it yet, enabled only where remote sync is already configured."
+  []
+  (when (= :default (setting/get-raw-value-source :remote-sync-collections-enabled))
+    (remote-sync-collections-enabled! (remote-sync-enabled))))
+
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
   :type :integer
