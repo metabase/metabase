@@ -325,22 +325,39 @@ describe("dashboard entity-id deep links", () => {
   const DASHBOARD_EID = "xBLdW9FsgRuB2HGhWiBa_";
   const TAB_EID = "N-o1tJ9swdO4YJycqMA8P";
   const DASHCARD_EID = "19JbScZRjz5mSQ7chtjuY";
+  const UNKNOWN_DASHCARD_EID = "unknownDashcardEid___";
   const DASHBOARD_ID = 1;
   const TAB_ID = 2;
+  const DASHCARD_ID = 25;
 
   const dashboardRedirectConfig: EntityIdRedirectProps = {
     parametersToTranslate: [
       { name: "entity_id", resourceType: "dashboard", type: "param" },
       { name: "tab", resourceType: "dashboard-tab", type: "search" },
+      { name: "scrollTo", resourceType: "dashboard-card", type: "hash" },
     ],
   };
 
-  function setupDashboard(initialRoute: string) {
+  type SetupOpts = {
+    initialRoute: string;
+  };
+
+  function setup({ initialRoute }: SetupOpts) {
     setupCurrentUserEndpoint(createMockUser());
     fetchMock.post("path:/api/eid-translation/translate", () => ({
       entity_ids: {
         [DASHBOARD_EID]: { status: "ok", id: DASHBOARD_ID, type: "dashboard" },
         [TAB_EID]: { status: "ok", id: TAB_ID, type: "dashboard-tab" },
+        [DASHCARD_EID]: {
+          status: "ok",
+          id: DASHCARD_ID,
+          type: "dashboard-card",
+        },
+        [UNKNOWN_DASHCARD_EID]: {
+          status: "not-found",
+          id: null,
+          type: "dashboard-card",
+        },
       },
     }));
 
@@ -359,7 +376,9 @@ describe("dashboard entity-id deep links", () => {
   }
 
   it("resolves the dashboard entity_id in the path to its numeric id", async () => {
-    const router = setupDashboard(`/dashboard/entity/${DASHBOARD_EID}`);
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}`,
+    });
 
     await waitFor(() =>
       expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`),
@@ -367,24 +386,43 @@ describe("dashboard entity-id deep links", () => {
     expect(await screen.findByText("dashboard app")).toBeInTheDocument();
   });
 
-  it("translates the tab entity_id and preserves the scrollTo hash through the redirect", async () => {
-    const router = setupDashboard(
-      `/dashboard/entity/${DASHBOARD_EID}?tab=${TAB_EID}#scrollTo=${DASHCARD_EID}`,
-    );
+  it("translates the tab and the scrollTo dashcard entity_ids", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}?tab=${TAB_EID}#scrollTo=${DASHCARD_EID}`,
+    });
 
     await waitFor(() =>
       expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`),
     );
+    expect(router?.location.search).toBe(`?tab=${TAB_ID}`);
+    expect(router?.location.hash).toBe(`#scrollTo=${DASHCARD_ID}`);
+  });
 
-    const location = router!.location;
-    expect(location.search).toBe(`?tab=${TAB_ID}`);
-    expect(location.hash).toBe(`#scrollTo=${DASHCARD_EID}`);
+  it("drops a scrollTo entity_id that doesn't exist and keeps the rest of the hash", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}#scrollTo=${UNKNOWN_DASHCARD_EID}&fullscreen`,
+    });
+
+    expect(await screen.findByText("dashboard app")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`);
+    expect(router?.location.hash).toBe("#fullscreen");
+  });
+
+  it("keeps a hash without entity_ids as it is", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}#scrollTo=${DASHCARD_ID}&refresh=60`,
+    });
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`),
+    );
+    expect(router?.location.hash).toBe(`#scrollTo=${DASHCARD_ID}&refresh=60`);
   });
 
   it("shows a 404 for a tab entity_id that doesn't exist, even when it starts with a number", async () => {
-    setupDashboard(
-      `/dashboard/entity/${DASHBOARD_EID}?tab=${"12".padEnd(21, "x")}`,
-    );
+    setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}?tab=${"12".padEnd(21, "x")}`,
+    });
 
     expect(
       await screen.findByText("We're a little lost..."),
