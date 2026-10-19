@@ -8,7 +8,6 @@ import {
 } from "metabase/common/utils/timelines";
 import S from "metabase/timelines/common/components/TimelineModal.module.css";
 import { TimelineModalHeader } from "metabase/timelines/common/components/TimelineModalHeader";
-import { MODAL_MIN_HEIGHT } from "metabase/timelines/common/constants";
 import {
   ActionIcon,
   Flex,
@@ -63,7 +62,7 @@ const TimelineListModal = ({
       {...NO_ANIMATION_MODAL_PROPS}
     >
       <Modal.Overlay />
-      <Modal.Content mih={MODAL_MIN_HEIGHT}>
+      <Modal.Content>
         <TimelineModalHeader
           title={title}
           collectionName={hasTimelines ? collection.name : undefined}
