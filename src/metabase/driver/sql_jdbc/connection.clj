@@ -378,20 +378,20 @@
            false))))
 
 (defn invalidate-empty-pool!
-  "Close the cached pool of `database-id` that has `data-source` if the pool has no Connections. Call this function
-  after a checkout from that pool fails. If the pool stays open, c3p0 continues to try to connect in the background."
+  "Closes the cached pool for a given `data-source` if it has no connections. This should be called
+   after a checkout from a pool fails, otherwise c3p0 will make repeated requests which can lock
+   out certain DBs (#84206). We don't use [[pool-cache-key]] here to avoid looking up the database
+   object from the app DB, which could fail or have a race condition across multiple pods."
   [data-source]
   (when (empty-pool? data-source)
     (doseq [[cache-key pool-spec] @pool-cache-key->connection-pool
-            :let [db-id (first cache-key)]
-            :when (identical? (:datasource pool-spec) data-source)]
+            :when (identical? (:datasource pool-spec) data-source)
+            :let [db-id (first cache-key)]]
       (log/warnf "Could not acquire a connection for database %d; closing its empty connection pool" db-id)
       ;; do not remove a newer pool that another thread put in the cache
       (swap! pool-cache-key->connection-pool
-             (fn [m]
-               (if (identical? (get m cache-key) pool-spec)
-                 (dissoc m cache-key)
-                 m)))
+             #(cond-> %
+                (identical? (get % cache-key) pool-spec) (dissoc cache-key)))
       (destroy-pool! db-id pool-spec)
       (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
 
