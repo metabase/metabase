@@ -59,6 +59,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
     <SdkDashboard
       // Unjustified type cast. FIXME
       {...(normalizedProps as SdkDashboardProps)}
+      sdkComponentName="StaticDashboard"
       clickActionMode={staticClickActionMode}
       dashboardActions={[
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,

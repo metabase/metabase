@@ -1,4 +1,5 @@
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
+import { useReportComponentReady } from "embedding-sdk-bundle/analytics/component-signals";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import {
   getCollectionIdSlugFromReference,
@@ -77,6 +78,13 @@ const CreateDashboardModalInner = ({
   );
 
   useTrackSdkComponentMount("CreateDashboardModal", null, {});
+
+  // Modal is ready when its form renders (loading finished).
+  useReportComponentReady({
+    component: "CreateDashboardModal",
+    isReady: !isLocaleLoading && !isCollectionQueryLoading,
+    isError: false,
+  });
 
   if (isLocaleLoading || isCollectionQueryLoading) {
     return null;

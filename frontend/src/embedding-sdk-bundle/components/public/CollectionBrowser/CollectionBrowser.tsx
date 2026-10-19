@@ -2,6 +2,7 @@ import { type ComponentType, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
+import { useReportComponentReady } from "embedding-sdk-bundle/analytics/component-signals";
 import {
   CollectionNotFoundError,
   SdkError,
@@ -218,6 +219,33 @@ export const CollectionBrowserInner = ({
     collection,
     reportLocation,
   ]);
+
+  // Derive collection-level error/ready state for the signal.
+  const hasCollectionAccessError =
+    isObject(collectionLoadingError) && collectionLoadingError.status === 403;
+  const hasCollectionNotFoundError =
+    isObject(collectionLoadingError) && collectionLoadingError.status === 404;
+  const hasAllCollectionsError = isAtAllModeRoot && !!allCollectionsError;
+  const hasCollectionError =
+    hasCollectionAccessError ||
+    hasCollectionNotFoundError ||
+    hasAllCollectionsError;
+  const isCollectionReady =
+    !hasCollectionError && !isFetchingCollection && !isLoadingAllCollections;
+
+  const collectionErrorType = hasCollectionNotFoundError
+    ? "not_found"
+    : hasCollectionError
+      ? "load_error"
+      : undefined;
+
+  useReportComponentReady({
+    component: "CollectionBrowser",
+    isReady: isCollectionReady,
+    isError: hasCollectionError,
+    errorType: collectionErrorType,
+  });
+  // -- end component ready/error signal block --
 
   if (
     isObject(collectionLoadingError) &&

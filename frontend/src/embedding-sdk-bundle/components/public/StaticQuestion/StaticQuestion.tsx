@@ -173,6 +173,7 @@ const StaticQuestionInner = (
       questionId={questionId}
       token={token}
       deserializedCard={deserializedCard}
+      sdkComponentName="StaticQuestion"
       clickActionMode={staticClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}

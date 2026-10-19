@@ -14,6 +14,8 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
+import type { SdkComponentName } from "embedding-sdk-bundle/analytics/component-events";
+import { useReportComponentReady } from "embedding-sdk-bundle/analytics/component-signals";
 import {
   DashboardNotFoundError,
   SdkError,
@@ -270,7 +272,10 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
       | "dashcardMenu"
       | "navigateToNewCardFromDashboard"
     >
-  >;
+  > & {
+    /** The public SDK component name, forwarded for ready/error signaling. */
+    sdkComponentName?: SdkComponentName;
+  };
 
 const SdkDashboardInner = ({
   dashboardId: rawDashboardId,
@@ -304,6 +309,7 @@ const SdkDashboardInner = ({
   children,
   dataPickerProps,
   onVisualizationChange,
+  sdkComponentName,
 }: SdkDashboardInnerProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
@@ -531,6 +537,41 @@ const SdkDashboardInner = ({
     [onEditQuestion, sdkNavigation, onNavigateBackToDashboard],
   );
 
+  // Passing an invalid entity ID format results in a 400 Bad Request.
+  // We can show this as a generic "not found" error on the frontend.
+  const isDashboardNotFound =
+    errorPage?.status === 404 || errorPage?.status === 400;
+
+  // Derive dashboard-level error state for the ready/error signal.
+  const dashboardErrorType = (() => {
+    if (tokenError || tokenFetchError) {
+      return "auth_error";
+    }
+    if (isStaticEmbeddingEntityLoadingError(errorPage, { isGuestEmbed })) {
+      return "load_error";
+    }
+    if (!dashboardId || isDashboardNotFound) {
+      return "not_found";
+    }
+    if (errorPage) {
+      return "load_error";
+    }
+    return undefined;
+  })();
+
+  const hasDashboardError = dashboardErrorType !== undefined;
+
+  // Report the ready/error signal for the public SDK component.
+  // "Ready" is detected by a child inside DashboardContextProvider; errors
+  // are caught here before the context provider renders.
+  useReportComponentReady({
+    component: sdkComponentName ?? "StaticDashboard",
+    isReady: false,
+    isError: hasDashboardError,
+    errorType: dashboardErrorType,
+  });
+  // -- end component ready/error signal block --
+
   if (isLocaleLoading) {
     return (
       <MaybeStyledWrapper
@@ -570,11 +611,6 @@ const SdkDashboardInner = ({
       </MaybeStyledWrapper>
     );
   }
-
-  // Passing an invalid entity ID format results in a 400 Bad Request.
-  // We can show this as a generic "not found" error on the frontend.
-  const isDashboardNotFound =
-    errorPage?.status === 404 || errorPage?.status === 400;
 
   if (!dashboardId || isDashboardNotFound) {
     return (
@@ -738,6 +774,9 @@ const SdkDashboardInner = ({
             ),
           )
           .exhaustive()}
+        <DashboardReadyReporter
+          sdkComponentName={sdkComponentName ?? "StaticDashboard"}
+        />
         {modalContent}
       </DashboardContextProvider>
     </EmbeddingEntityContextProvider>
@@ -830,6 +869,31 @@ function DashboardQueryBuilder({
       onVisualizationChange={onVisualizationChange}
     />
   );
+}
+
+/**
+ * Renders null. Placed inside DashboardContextProvider to detect when card
+ * loading completes and report a "ready" signal.
+ */
+function DashboardReadyReporter({
+  sdkComponentName,
+}: {
+  sdkComponentName: SdkComponentName;
+}) {
+  const { isLoading, error } = useDashboardContext();
+
+  const hasContextError = error != null;
+  // Cards finished loading when isLoading transitions to false and no error.
+  const isReady = !isLoading && !hasContextError;
+
+  useReportComponentReady({
+    component: sdkComponentName,
+    isReady,
+    isError: hasContextError,
+    errorType: hasContextError ? "load_error" : undefined,
+  });
+
+  return null;
 }
 
 interface AutoRefreshControllerProps {

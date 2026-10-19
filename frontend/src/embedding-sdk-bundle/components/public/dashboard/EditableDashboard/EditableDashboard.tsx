@@ -80,6 +80,7 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
   return (
     <SdkDashboard
       {...props}
+      sdkComponentName="EditableDashboard"
       clickActionMode={clickActionMode}
       dashboardActions={dashboardActions}
     />
