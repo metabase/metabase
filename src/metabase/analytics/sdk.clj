@@ -171,8 +171,7 @@
    [:sandbox_details             {:optional true} [:maybe [:sequential [:map {::mr/deliberately-open true}]]]]])
 
 (mu/defn include-sdk-info :- :map
-  "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
-   into the `view_log` or `query_execution` table. Falls back to the original value."
+  "Embeds the sdk information into the map for usage analytics."
   [m :- sdk-info-row]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
