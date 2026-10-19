@@ -62,6 +62,9 @@
   decode the unit on `absolute-datetime` / `during` back from a string, so `clean` silently deleted
   such a filter and the question answered something else (BOT-1972).
 
+  A native-only query goes as legacy MBQL through [[->legacy-mbql]], as `create_sql_query` sends it. It has no
+  temporal units to lose, and the embedding SDK opens the SQL editor only for a `dataset_query.type` of `\"native\"`.
+
   A query with `:stages` but no `:lib/type` (its `:lib/*` keys stripped, `:lib/uuid`s with them) stays MBQL 5 too
   when it normalizes to a valid query. One that doesn't, because normalizing minted fresh uuids its aggregation refs
   no longer match, goes to [[->legacy-mbql]], as does anything that isn't MBQL 5 at all."
@@ -69,7 +72,8 @@
   (or (when (and (map? query) (or (:lib/type query) (:stages query)))
         (try
           (let [normalized (lib/normalize :metabase.lib.schema/query query)]
-            (when (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized))
+            (when (and (not (lib/native-only-query? normalized))
+                       (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized)))
               (lib/prepare-for-serialization normalized)))
           (catch Exception e
             (log/warn e "Failed to normalize MBQL 5 query for the frontend")

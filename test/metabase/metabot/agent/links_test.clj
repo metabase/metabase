@@ -123,6 +123,24 @@
       (is (= (links/->legacy-mbql stripped)
              (links/->frontend-query stripped))))))
 
+(deftest ^:parallel ->frontend-query-sends-native-queries-as-legacy-test
+  (let [native     (lib/native-query meta/metadata-provider "SELECT * FROM CHECKINS")
+        structured (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                       (lib/filter (lib/between (meta/field-metadata :checkins :date)
+                                                (lib/absolute-datetime "2025-01-01" :day)
+                                                (lib/absolute-datetime "2025-12-31" :day))))]
+    (testing "a native query goes as the legacy MBQL create_sql_query sends, which the SDK opens in its SQL editor"
+      (doseq [[desc sent] {"MBQL 5"                             native
+                           "MBQL 5 stripped of its :lib/* keys" (strip-lib-keys native)
+                           "MBQL 5 after a JSON round trip"     (-> native lib/prepare-for-serialization json/encode json/decode+kw)}]
+        (testing desc
+          (is (= (lib/->legacy-MBQL native)
+                 (links/->frontend-query sent))))))
+    (testing "a structured query with a date filter stays MBQL 5"
+      (let [sent (links/->frontend-query structured)]
+        (is (= :mbql/query (:lib/type sent)))
+        (is (= (lib/filters structured) (-> sent :stages first :filters)))))))
+
 (deftest ^:parallel resolve-chart-link-lib-type-less-query-test
   (testing "chart link whose query lost :lib/type resolves to a renderable MBQL 5 /question# URL"
     (let [chart-id     "chart-fe-1"
