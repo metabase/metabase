@@ -2,14 +2,18 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { act, render, screen, waitFor } from "__support__/ui";
-import { delay } from "metabase/utils/promise";
 
 import { Tooltip, TooltipPortalTargetProvider } from "./Tooltip";
-import { TOOLTIP_CLOSE_DELAY_MS } from "./Tooltip.config";
 
-const LONGER_THAN_CLOSE_DELAY_MS = TOOLTIP_CLOSE_DELAY_MS * 3;
+// Well past the close delay and the fade-out, so a tooltip that's going to
+// close has gone.
+const LONGER_THAN_CLOSE_MS = 1000;
+
+const setupUser = () =>
+  userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
 const setup = () => {
+  const user = setupUser();
   const onParentClick = jest.fn<void, []>();
   const onParentPointerDown = jest.fn<void, []>();
   render(
@@ -19,24 +23,32 @@ const setup = () => {
       </Tooltip>
     </div>,
   );
-  return { onParentClick, onParentPointerDown };
+  return { user, onParentClick, onParentPointerDown };
 };
 
 describe("Tooltip", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("stays open while the pointer is over the tooltip and closes when it leaves", async () => {
-    setup();
+    const { user } = setup();
     const target = screen.getByRole("button", { name: "Target" });
 
-    await userEvent.hover(target);
+    await user.hover(target);
     const tooltip = await screen.findByRole("tooltip");
     await waitFor(() => expect(tooltip).toHaveAttribute("data-hoverable"));
 
-    await userEvent.unhover(target);
-    await userEvent.hover(tooltip);
-    await act(() => delay(LONGER_THAN_CLOSE_DELAY_MS));
+    await user.unhover(target);
+    await user.hover(tooltip);
+    act(() => jest.advanceTimersByTime(LONGER_THAN_CLOSE_MS));
     expect(screen.getByRole("tooltip")).toBeInTheDocument();
 
-    await userEvent.unhover(tooltip);
+    await user.unhover(tooltip);
     // While it fades out, it lets the pointer through to what's underneath.
     await waitFor(() => {
       expect(tooltip).not.toHaveAttribute("data-hoverable");
@@ -48,33 +60,34 @@ describe("Tooltip", () => {
   });
 
   it("closes when the pointer leaves the target without moving onto the tooltip", async () => {
-    setup();
+    const { user } = setup();
     const target = screen.getByRole("button", { name: "Target" });
 
-    await userEvent.hover(target);
+    await user.hover(target);
     expect(await screen.findByRole("tooltip")).toBeInTheDocument();
 
-    await userEvent.unhover(target);
+    await user.unhover(target);
     await waitFor(() => {
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
   });
 
   it("doesn't pass clicks on the tooltip to the target's parents", async () => {
-    const { onParentClick, onParentPointerDown } = setup();
+    const { user, onParentClick, onParentPointerDown } = setup();
     const target = screen.getByRole("button", { name: "Target" });
 
-    await userEvent.click(target);
+    await user.click(target);
     expect(onParentClick).toHaveBeenCalledTimes(1);
     expect(onParentPointerDown).toHaveBeenCalledTimes(1);
 
-    await userEvent.click(await screen.findByText("Tooltip content"));
-    await userEvent.click(await screen.findByRole("tooltip"));
+    await user.click(await screen.findByText("Tooltip content"));
+    await user.click(await screen.findByRole("tooltip"));
     expect(onParentClick).toHaveBeenCalledTimes(1);
     expect(onParentPointerDown).toHaveBeenCalledTimes(1);
   });
 
   it("still stops events on the tooltip reaching the target's parents when the caller handles them", async () => {
+    const user = setupUser();
     const onParentDoubleClick = jest.fn<void, []>();
     const onTooltipDoubleClick = jest.fn<void, []>();
     render(
@@ -85,8 +98,8 @@ describe("Tooltip", () => {
       </div>,
     );
 
-    await userEvent.hover(screen.getByRole("button", { name: "Target" }));
-    await userEvent.dblClick(await screen.findByRole("tooltip"));
+    await user.hover(screen.getByRole("button", { name: "Target" }));
+    await user.dblClick(await screen.findByRole("tooltip"));
     expect(onTooltipDoubleClick).toHaveBeenCalledTimes(1);
     expect(onParentDoubleClick).not.toHaveBeenCalled();
   });
@@ -101,7 +114,7 @@ describe("Tooltip", () => {
     rerender(<TooltipWithTarget opened />);
 
     const tooltip = await screen.findByRole("tooltip");
-    await act(() => delay(LONGER_THAN_CLOSE_DELAY_MS));
+    act(() => jest.advanceTimersByTime(LONGER_THAN_CLOSE_MS));
     expect(tooltip).not.toHaveAttribute("data-hoverable");
   });
 
