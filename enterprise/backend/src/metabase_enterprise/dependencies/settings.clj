@@ -76,3 +76,12 @@
   :default    30
   :setter     :none
   :export?    false)
+
+(defsetting dependency-max-failures
+  "How many times in a row a dependency job fails to process an entity before it gives up on it until a write changes
+  it."
+  :visibility :internal
+  :type       :integer
+  :default    3
+  :setter     :none
+  :export?    false)

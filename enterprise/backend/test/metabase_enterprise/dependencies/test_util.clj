@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.test-util
   (:require
    [medley.core :as m]
-   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
@@ -57,46 +56,59 @@
     (lib/query mp (lib.metadata/card mp card-id))))
 
 (defn- status-pending?
-  "Whether the entity `entity-type` `entity-id` has no row in the status `model`, or a stale one."
+  "Whether the entity `entity-type` `entity-id` has no status in the status `model`, or one that counts a write and
+  that the job has not given up on."
   [model entity-type entity-id]
-  (not (t2/exists? model :entity_type entity-type :entity_id entity-id :stale false)))
+  (not (t2/exists? model {:where [:and
+                                  [:= :entity_type (name entity-type)]
+                                  [:= :entity_id entity-id]
+                                  [:or [:= :stale 0] [:= :terminal true]]]})))
+
+(defn record-status-processed!
+  "Record, as a job does when it clears a status, that the entity `entity-type` `entity-id` was processed by the logic
+  of `version`, inserting its status in the status `model` when there is none."
+  [model entity-type entity-id version]
+  (when (zero? (t2/update! model :entity_type entity-type :entity_id entity-id {:stale 0 :analysis_version version}))
+    (t2/insert! model {:entity_type entity-type :entity_id entity-id :stale 0 :analysis_version version})))
 
 (defn dependency-pending?
   "Whether the dependency job is to compute the dependencies of the entity `entity-type` `entity-id`: it has no
-  status, or a stale one."
+  status, or one that counts a write."
   [entity-type entity-id]
   (status-pending? :model/DependencyStatus entity-type entity-id))
 
 (defn record-dependencies-computed!
-  "Record, as the dependency job does when it claims it, that the dependencies of the entity `entity-type` `entity-id`
-  are current."
+  "Record, as the dependency job does when it clears its status, that the dependencies of the entity `entity-type`
+  `entity-id` are current."
   [entity-type entity-id]
-  (dependencies.db/claim-dependency-statuses!
-   entity-type [entity-id] models.dependency/current-dependency-analysis-version))
+  (record-status-processed! :model/DependencyStatus entity-type entity-id
+                            models.dependency/current-dependency-analysis-version))
 
 (defn result-metadata-pending?
-  "Whether the result metadata job is to re-derive the Card with `card-id`: it has no status, or a stale one."
+  "Whether the result metadata job is to re-derive the Card with `card-id`: it has no status, or one that counts a
+  write."
   [card-id]
   (status-pending? :model/ResultMetadataStatus :card card-id))
 
 (defn record-result-metadata-processed!
-  "Record, as the result metadata job does when it claims it, that the result metadata of the Card with `card-id` is
-  current."
+  "Record, as the result metadata job does when it clears its status, that the result metadata of the Card with
+  `card-id` is current."
   [card-id]
-  (dependencies.db/claim-result-metadata-statuses!
-   [card-id] models.result-metadata-status/current-result-metadata-version))
+  (record-status-processed! :model/ResultMetadataStatus :card card-id
+                            models.result-metadata-status/current-result-metadata-version))
 
 (defn analysis-finding-pending?
-  "Whether the analysis job is to analyze the entity `entity-type` `entity-id`: it has no status, or a stale one."
+  "Whether the analysis job is to analyze the entity `entity-type` `entity-id`: it has no status, or one that counts a
+  write."
   [entity-type entity-id]
   (status-pending? :model/AnalysisFindingStatus entity-type entity-id))
 
 (defn record-analysis-finding-processed!
-  "Record, as the analysis job does when it claims it, that the finding of the entity `entity-type` `entity-id` is
-  current."
+  "Record, as the analysis job does when it clears its status, that the finding of the entity `entity-type`
+  `entity-id` is current."
   [entity-type entity-id]
-  (dependencies.db/claim-analysis-finding-statuses!
-   entity-type [entity-id] models.analysis-finding/*current-analysis-finding-version*))
+  (record-status-processed! :model/AnalysisFindingStatus entity-type entity-id
+                            models.analysis-finding/*current-analysis-finding-version*))
 
 (defn do-with-immediate-hook-writes
   "Run `thunk` with the work the dependency hooks defer until commit done at once, since a test's transaction never

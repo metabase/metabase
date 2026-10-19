@@ -167,7 +167,7 @@
                             :entity_id card-id))))))))
 
 (deftest ^:synchronized failed-analysis-waits-for-change-test
-  (testing "an entity whose analysis throws records a failed finding of its version, and is not analyzed again"
+  (testing "an entity whose analysis keeps throwing records a failed finding, and is given up on until it changes"
     (backfill-all-entity-analyses!)
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]

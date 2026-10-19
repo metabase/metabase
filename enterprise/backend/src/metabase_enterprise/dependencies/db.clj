@@ -766,25 +766,34 @@
   "A job's status model."
   [:enum :model/DependencyStatus :model/ResultMetadataStatus :model/AnalysisFindingStatus])
 
+(def ^:private one-more-write
+  "The `stale` count of a status after one more write changed what its job reads, as Honey SQL."
+  [:+ :stale [:inline 1]])
+
+(def ^:private fresh-attempts
+  "The columns of a status a write resets, so that the job tries an entity it gave up on again."
+  {:fail_count 0 :terminal false})
+
 (mu/defn- mark-stale!
-  "Mark the statuses in the status `model` of the entities `type->ids` stale, locking them, so a job claiming one waits
-  for the write; an entity without a status is processed anyway."
+  "Count one more write in the statuses in the status `model` of the entities `type->ids`, with fresh attempts, so the
+  job processes them until it clears a count no write raised meanwhile; an entity without a status is processed
+  anyway."
   [model      :- StatusModel
    type->ids  :- ::dependencies.schema/type->ids]
   (doseq [[entity-type ids] type->ids
           batch             (partition-all 1000 ids)]
-    (t2/update! model :entity_type entity-type :entity_id [:in batch] {:stale true})))
+    (t2/update! model :entity_type entity-type :entity_id [:in batch] (assoc fresh-attempts :stale one-more-write))))
 
 (mu/defn- mark-dependents-stale!
-  "Mark the statuses in the status `model` of the entities directly depending on the entities `entity-type` `entity-ids`
-  stale, in one UPDATE per 1,000 of them, locking them, so a job claiming one waits for the write."
+  "Count one more write in the statuses in the status `model` of the entities directly depending on the entities
+  `entity-type` `entity-ids`, in one UPDATE per 1,000 of them."
   [model       :- StatusModel
    entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:set ms/PositiveInt]]
   (let [table (t2/table-name model)]
     (doseq [batch (partition-all 1000 entity-ids)]
       (t2/query {:update table
-                 :set    {:stale true}
+                 :set    (assoc fresh-attempts :stale one-more-write)
                  :where  [:exists ^:allow-subquery
                           {:select [1]
                            :from   [[(t2/table-name :model/Dependency) :d]]
@@ -794,21 +803,28 @@
                                     [:= :d.from_entity_type (u/qualified-key table :entity_type)]
                                     [:= :d.from_entity_id (u/qualified-key table :entity_id)]]}]}))))
 
-(mu/defn- claim!
-  "Record that a job processes the entities `entity-type` `entity-ids` with its logic of `current-version`, clearing
-  their `stale` flags in the status `model` one status per statement, before it reads them, so a write while they are
-  processed marks them again and a claim never holds two row locks."
+(mu/defn- clear-stale! :- :boolean
+  "Record that a job processed the entity `entity-type` `entity-id` with its logic of `current-version`, clearing the
+  `stale` count of its status in the status `model` when it is still the `stale` the job picked it with, so a write
+  while it was processed has the job process it again, returning whether it cleared it."
   [model           :- StatusModel
    entity-type     :- ::dependencies.schema/entity-type
-   entity-ids      :- [:sequential ms/PositiveInt]
+   entity-id       :- ms/PositiveInt
+   stale           :- ms/IntGreaterThanOrEqualToZero
    current-version :- ms/PositiveInt]
-  (doseq [id entity-ids]
-    (when (zero? (t2/update! model :entity_type entity-type :entity_id id
-                             {:stale false :analysis_version current-version}))
-      (t2/insert! model {:entity_type      entity-type
-                         :entity_id        id
-                         :stale            false
-                         :analysis_version current-version}))))
+  (pos? (t2/update! model :entity_type entity-type :entity_id entity-id :stale stale
+                    {:stale 0 :fail_count 0 :analysis_version current-version})))
+
+(mu/defn- record-failure! :- :boolean
+  "Record that a job failed to process the entity `entity-type` `entity-id`, giving up on it until a write changes it
+  once it failed `max-failures` times in a row, returning whether it gave up."
+  [model        :- StatusModel
+   entity-type  :- ::dependencies.schema/entity-type
+   entity-id    :- ms/PositiveInt
+   max-failures :- ms/PositiveInt]
+  (t2/update! model :entity_type entity-type :entity_id entity-id {:fail_count [:+ :fail_count [:inline 1]]})
+  (pos? (t2/update! model :entity_type entity-type :entity_id entity-id :fail_count [:>= max-failures]
+                    {:terminal true})))
 
 (mu/defn mark-dependency-statuses-stale!
   "Mark the DependencyStatuses of the entities `type->ids` stale, so the dependency job computes their dependencies
@@ -850,14 +866,14 @@
                              :where  [:and
                                       [:= :ds.entity_type (name entity-type)]
                                       [:= :ds.entity_id id-field]
-                                      [:= :ds.stale false]
+                                      [:= :ds.stale 0]
                                       [:= :ds.analysis_version dependency-version]]}])
 
-(mu/defn- pending-entity-ids :- [:sequential ms/PositiveInt]
-  "The IDs of up to `batch-size` entities of `entity-type` without a status in `status-model`, or whose status is
-  stale or records a version of the job's logic below `current-version`, those last; `user-mbql-only?` narrows cards
-  to MBQL ones that Metabase did not create itself, and `dependency-version` to the entities whose dependencies are
-  current."
+(mu/defn- pending-statuses :- [:sequential ::dependencies.schema/pending-status]
+  "Up to `batch-size` entities of `entity-type` without a status in `status-model`, or whose status the job has not
+  given up on and that counts a write or records a version of the job's logic below `current-version`, those last,
+  with their `stale` counts, nil without a status; `user-mbql-only?` narrows cards to MBQL ones that Metabase did not create itself, and `dependency-version`
+  to the entities whose dependencies are current."
   [entity-type     :- ::deps.dependency-types/dependency-types
    status-model    :- StatusModel
    batch-size      :- ms/PositiveInt
@@ -868,21 +884,43 @@
   (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))
         id-field   (u/qualified-key table-name :id)
         outdated   [:< :status.analysis_version current-version]]
-    (mapv :id (t2/query
-               {:select    [[id-field :id]]
-                :from      [table-name]
-                :left-join [[(t2/table-name status-model) :status] [:and
-                                                                    [:= :status.entity_type (name entity-type)]
-                                                                    [:= :status.entity_id id-field]]]
-                :where     (cond-> [:and [:or [:= :status.id nil] [:= :status.stale true] outdated]]
-                             user-mbql-only?    (conj [:or [:= :report_card.query_type nil]
-                                                       [:not= :report_card.query_type "native"]]
-                                                      (mi/exclude-internal-content-hsql :model/Card
-                                                                                        :table-alias :report_card))
-                             dependency-version (conj (current-dependencies-clause
-                                                       entity-type id-field dependency-version)))
-                :order-by  [[[:case outdated [:inline 1] :else [:inline 0]]]]
-                :limit     batch-size}))))
+    (mapv #(select-keys % [:entity_id :stale])
+          (t2/query
+           {:select    [[id-field :entity_id] [:status.stale :stale]]
+            :from      [table-name]
+            :left-join [[(t2/table-name status-model) :status] [:and
+                                                                [:= :status.entity_type (name entity-type)]
+                                                                [:= :status.entity_id id-field]]]
+            :where     (cond-> [:and [:or [:= :status.id nil]
+                                      [:and [:= :status.terminal false] [:or [:> :status.stale 0] outdated]]]]
+                         user-mbql-only?    (conj [:or [:= :report_card.query_type nil]
+                                                   [:not= :report_card.query_type "native"]]
+                                                  (mi/exclude-internal-content-hsql :model/Card
+                                                                                    :table-alias :report_card))
+                         dependency-version (conj (current-dependencies-clause
+                                                   entity-type id-field dependency-version)))
+            :order-by  [[[:case outdated [:inline 1] :else [:inline 0]]]]
+            :limit     batch-size}))))
+
+(mu/defn- take-pending-statuses! :- [:sequential ::dependencies.schema/pending-status]
+  "The [[pending-statuses]] a job is to process, each with the `stale` count it clears afterwards, inserting a status
+  counting one write for each entity without one before the job reads it, so a write while it is processed counts."
+  [entity-type     :- ::deps.dependency-types/dependency-types
+   status-model    :- StatusModel
+   batch-size      :- ms/PositiveInt
+   current-version :- ms/PositiveInt
+   opts            :- [:map {:closed true}
+                       [:user-mbql-only?    {:optional true} :boolean]
+                       [:dependency-version {:optional true} ms/PositiveInt]]]
+  (let [statuses (pending-statuses entity-type status-model batch-size current-version opts)
+        missing  (remove :stale statuses)]
+    (when (seq missing)
+      (t2/insert! status-model (for [{:keys [entity_id]} missing]
+                                 {:entity_type      entity-type
+                                  :entity_id        entity_id
+                                  :stale            1
+                                  :analysis_version 0})))
+    (mapv #(update % :stale (fnil identity 1)) statuses)))
 
 (mu/defn- deleted-entity-ids-with-status :- [:sequential ms/PositiveInt]
   "Up to `batch-size` IDs of deleted entities of `entity-type` that still have a status in `status-model`."
@@ -913,41 +951,66 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id [:in entity-ids]))
 
-(mu/defn claim-dependency-statuses!
-  "Record that the dependency job computes the dependencies of the entities `entity-type` `entity-ids` with the
-  analysis of `current-version`, before it reads them."
-  [entity-type     :- ::dependencies.schema/entity-type
-   entity-ids      :- [:sequential ms/PositiveInt]
-   current-version :- ms/PositiveInt]
-  (claim! :model/DependencyStatus entity-type entity-ids current-version))
+(mu/defn record-dependency-failure! :- :boolean
+  "Record that the dependency job failed to compute the dependencies of the entity `entity-type` `entity-id`, giving up on it until a write changes it once it failed
+  `max-failures` times in a row, returning whether it gave up."
+  [entity-type  :- ::dependencies.schema/entity-type
+   entity-id    :- ms/PositiveInt
+   max-failures :- ms/PositiveInt]
+  (record-failure! :model/DependencyStatus entity-type entity-id max-failures))
 
-(mu/defn dependency-pending-entity-ids :- [:sequential ms/PositiveInt]
-  "The IDs of up to `batch-size` entities of the type `entity-type` without a DependencyStatus, or whose status is stale
-  or records a version of the dependency logic below `current-version`; outdated ones last."
+(mu/defn clear-dependency-status! :- :boolean
+  "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id` with the analysis
+  of `current-version`, clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
+  [entity-type     :- ::dependencies.schema/entity-type
+   entity-id       :- ms/PositiveInt
+   stale           :- ms/IntGreaterThanOrEqualToZero
+   current-version :- ms/PositiveInt]
+  (clear-stale! :model/DependencyStatus entity-type entity-id stale current-version))
+
+(mu/defn dependency-pending? :- :boolean
+  "Whether an entity of the type `entity-type` has no DependencyStatus, or one that counts a write or records a version
+  of the dependency logic below `current-version`."
+  [entity-type     :- ::deps.dependency-types/dependency-types
+   current-version :- ms/PositiveInt]
+  (boolean (seq (pending-statuses entity-type :model/DependencyStatus 1 current-version {}))))
+
+(mu/defn take-pending-dependency-statuses! :- [:sequential ::dependencies.schema/pending-status]
+  "Up to `batch-size` entities of the type `entity-type` without a DependencyStatus, or whose status counts a write or
+  records a version of the dependency logic below `current-version`, outdated ones last, with the `stale` count the job
+  clears afterwards."
   [entity-type     :- ::deps.dependency-types/dependency-types
    batch-size      :- ms/PositiveInt
    current-version :- ms/PositiveInt]
-  (pending-entity-ids entity-type :model/DependencyStatus batch-size current-version {}))
+  (take-pending-statuses! entity-type :model/DependencyStatus batch-size current-version {}))
 
 ;;; ------------------------------------------- Result metadata job -------------------------------------------
 
-(mu/defn result-metadata-pending-card-ids :- [:sequential ::lib.schema.id/card]
-  "The IDs of up to `batch-size` MBQL cards Metabase did not create itself without a ResultMetadataStatus, or whose
-  status is stale or records a version of the logic below `current-version`, and whose dependencies the dependency
-  logic of `dependency-version` computed; outdated ones last."
+(mu/defn take-pending-result-metadata-statuses! :- [:sequential ::dependencies.schema/pending-status]
+  "Up to `batch-size` MBQL cards Metabase did not create itself without a ResultMetadataStatus, or whose status counts a
+  write or records a version of the logic below `current-version`, and whose dependencies the dependency logic of
+  `dependency-version` computed, outdated ones last, with the `stale` count the job clears afterwards."
   [batch-size         :- ms/PositiveInt
    current-version    :- ms/PositiveInt
    dependency-version :- ms/PositiveInt]
-  (pending-entity-ids :card :model/ResultMetadataStatus batch-size current-version
-                      {:user-mbql-only?    true
-                       :dependency-version dependency-version}))
+  (take-pending-statuses! :card :model/ResultMetadataStatus batch-size current-version
+                          {:user-mbql-only?    true
+                           :dependency-version dependency-version}))
 
-(mu/defn claim-result-metadata-statuses!
-  "Record that the result metadata job re-derives the Cards with `card-ids` with the logic of `current-version`, before
-  it reads them."
-  [card-ids        :- [:sequential ::lib.schema.id/card]
+(mu/defn record-result-metadata-failure! :- :boolean
+  "Record that the result metadata job failed to re-derive the Card with `card-id`, giving up on it until a write
+  changes it once it failed `max-failures` times in a row, returning whether it gave up."
+  [card-id      :- ::lib.schema.id/card
+   max-failures :- ms/PositiveInt]
+  (record-failure! :model/ResultMetadataStatus :card card-id max-failures))
+
+(mu/defn clear-result-metadata-status! :- :boolean
+  "Record that the result metadata job re-derived the Card with `card-id` with the logic of `current-version`, clearing
+  its count of `stale` writes unless a write raised it, returning whether it cleared it."
+  [card-id         :- ::lib.schema.id/card
+   stale           :- ms/IntGreaterThanOrEqualToZero
    current-version :- ms/PositiveInt]
-  (claim! :model/ResultMetadataStatus :card card-ids current-version))
+  (clear-stale! :model/ResultMetadataStatus :card card-id stale current-version))
 
 (mu/defn result-metadata-deleted-card-ids :- [:sequential ::lib.schema.id/card]
   "Up to `batch-size` IDs of deleted Cards that still have a ResultMetadataStatus."
@@ -992,24 +1055,33 @@
   (mdb/update-or-insert! :model/AnalysisFinding {:entity_type entity-type :entity_id entity-id}
                          (constantly {:result result})))
 
-(mu/defn analysis-finding-pending-entity-ids :- [:sequential ms/PositiveInt]
-  "The IDs of up to `batch-size` entities of the type `entity-type` without an AnalysisFindingStatus, or whose status
-  is stale or records an analysis below `current-version`, and whose dependencies the analysis of `dependency-version`
-  computed; outdated ones last."
+(mu/defn take-pending-analysis-finding-statuses! :- [:sequential ::dependencies.schema/pending-status]
+  "Up to `batch-size` entities of the type `entity-type` without an AnalysisFindingStatus, or whose status counts a
+  write or records an analysis below `current-version`, and whose dependencies the analysis of `dependency-version`
+  computed, outdated ones last, with the `stale` count the job clears afterwards."
   [entity-type        :- ::deps.dependency-types/dependency-types
    batch-size         :- ms/PositiveInt
    current-version    :- ms/PositiveInt
    dependency-version :- ms/PositiveInt]
-  (pending-entity-ids entity-type :model/AnalysisFindingStatus batch-size current-version
-                      {:dependency-version dependency-version}))
+  (take-pending-statuses! entity-type :model/AnalysisFindingStatus batch-size current-version
+                          {:dependency-version dependency-version}))
 
-(mu/defn claim-analysis-finding-statuses!
-  "Record that the analysis job analyzes the entities `entity-type` `entity-ids` with the analysis of `current-version`,
-  before it reads them."
+(mu/defn record-analysis-finding-failure! :- :boolean
+  "Record that the analysis job failed to analyze the entity `entity-type` `entity-id`, giving up on it until a write changes it once it failed
+  `max-failures` times in a row, returning whether it gave up."
+  [entity-type  :- ::dependencies.schema/entity-type
+   entity-id    :- ms/PositiveInt
+   max-failures :- ms/PositiveInt]
+  (record-failure! :model/AnalysisFindingStatus entity-type entity-id max-failures))
+
+(mu/defn clear-analysis-finding-status! :- :boolean
+  "Record that the analysis job analyzed the entity `entity-type` `entity-id` with the analysis of `current-version`,
+  clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
   [entity-type     :- ::dependencies.schema/entity-type
-   entity-ids      :- [:sequential ms/PositiveInt]
+   entity-id       :- ms/PositiveInt
+   stale           :- ms/IntGreaterThanOrEqualToZero
    current-version :- ms/PositiveInt]
-  (claim! :model/AnalysisFindingStatus entity-type entity-ids current-version))
+  (clear-stale! :model/AnalysisFindingStatus entity-type entity-id stale current-version))
 
 (mu/defn analysis-finding-deleted-entity-ids :- [:sequential ms/PositiveInt]
   "Up to `batch-size` IDs of deleted entities of `entity-type` that still have an AnalysisFindingStatus."

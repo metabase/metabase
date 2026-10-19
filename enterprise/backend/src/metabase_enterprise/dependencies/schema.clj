@@ -41,6 +41,12 @@
     [:entity-type {:optional true} ::entity-type]
     [:ids         {:optional true} [:sequential :metabase-enterprise.dependencies.dependency-types/entity-id]]]])
 
+(mr/def ::pending-status
+  "An entity a job is to process, with the `stale` count of its status when the job picked it, nil without a status."
+  [:map {:closed true}
+   [:entity_id ms/PositiveInt]
+   [:stale     [:maybe ms/IntGreaterThanOrEqualToZero]]])
+
 (mr/def ::type->ids
   "Entities as `{entity-type ids}`."
   [:map-of :metabase-enterprise.dependencies.dependency-types/dependency-types [:set ms/PositiveInt]])

@@ -8,6 +8,7 @@
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -124,31 +125,36 @@
       (dependencies.db/mark-result-metadata-statuses-stale! {:card #{card-id}}))))
 
 (mu/defn- rederive-card!
-  "Re-derive the result metadata of the MBQL Card with `card-id` and store it when it changed, logging a failure."
+  "Re-derive the result metadata of the MBQL Card with `card-id` and store it when it changed."
   [card-id :- ::lib.schema.id/card]
-  (try
-    (let [state    (dependencies.db/card-state card-id false)
-          card     (dependencies.db/card card-id)
-          metadata (lib-be/with-metadata-provider-cache
-                     (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
-                       (rederived-result-metadata card)))]
-      (when (and state metadata)
-        (store-result-metadata! card-id state metadata)))
-    (catch Exception e
-      (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e)))))
+  (let [state    (dependencies.db/card-state card-id false)
+        card     (dependencies.db/card card-id)
+        metadata (lib-be/with-metadata-provider-cache
+                   (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
+                     (rederived-result-metadata card)))]
+    (when (and state metadata)
+      (store-result-metadata! card-id state metadata))))
 
 (mu/defn update-result-metadata! :- nat-int?
-  "Delete the statuses of deleted cards, claim up to `batch-size` MBQL cards whose ResultMetadataStatus is stale,
-  missing or outdated and re-derive them, returning how many statuses it took, deleted ones included."
+  "Delete the statuses of deleted cards, then re-derive up to `batch-size` MBQL cards whose ResultMetadataStatus counts
+  a write, is missing or is outdated, clearing each one's `stale` count unless a write raised it meanwhile, or counting
+  its failure, returning how many statuses it took, deleted ones included."
   [batch-size :- ms/PositiveInt]
   (let [deleted-ids (dependencies.db/result-metadata-deleted-card-ids batch-size)
-        card-ids    (dependencies.db/result-metadata-pending-card-ids
+        statuses    (dependencies.db/take-pending-result-metadata-statuses!
                      batch-size models.result-metadata-status/current-result-metadata-version
                      models.dependency/current-dependency-analysis-version)]
     (when (seq deleted-ids)
       (dependencies.db/delete-result-metadata-statuses! deleted-ids))
-    (when (seq card-ids)
-      (dependencies.db/claim-result-metadata-statuses!
-       card-ids models.result-metadata-status/current-result-metadata-version))
-    (run! rederive-card! card-ids)
-    (+ (count deleted-ids) (count card-ids))))
+    (doseq [{card-id :entity_id, :keys [stale]} statuses]
+      (try
+        (rederive-card! card-id)
+        (dependencies.db/clear-result-metadata-status!
+         card-id stale models.result-metadata-status/current-result-metadata-version)
+        (catch Throwable e
+          (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e))
+          (when (dependencies.db/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
+            (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))
+          (when-not (instance? Exception e)
+            (throw e)))))
+    (+ (count deleted-ids) (count statuses))))

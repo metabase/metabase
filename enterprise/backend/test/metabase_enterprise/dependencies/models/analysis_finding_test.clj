@@ -15,9 +15,10 @@
 (defn- finding [card-id]
   (t2/select-one :model/AnalysisFinding :entity_type :card :entity_id card-id))
 
-(deftest ^:synchronized analysis-finding-pending-entity-ids-test
-  (testing "the analysis job picks the entities without a status, with a stale one or one of an older analysis, stale
-           ones first, and only once their dependencies are current"
+(deftest ^:synchronized take-pending-analysis-finding-statuses-test
+  (testing "the analysis job takes the entities without a status, with one counting a write or one of an older
+           analysis, the last ones last, only once their dependencies are current, and inserts the missing statuses
+           counting one write"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/AnalysisFindingStatus :model/DependencyStatus]
         (mt/with-temp [:model/Card {unanalyzed :id} {}
@@ -27,17 +28,20 @@
                        :model/Card {blocked :id}    {}]
           (let [ids      #{unanalyzed current outdated changed blocked}
                 version  models.analysis-finding/*current-analysis-finding-version*
-                selected #(into [] (filter ids)
-                                (dependencies.db/analysis-finding-pending-entity-ids
+                selected #(into [] (filter (comp ids :entity_id))
+                                (dependencies.db/take-pending-analysis-finding-statuses!
                                  :card 100000 version models.dependency/current-dependency-analysis-version))]
             (doseq [card-id (disj ids blocked)]
               (deps.test/record-dependencies-computed! :card card-id))
-            (dependencies.db/claim-analysis-finding-statuses! :card [current changed] version)
-            (dependencies.db/claim-analysis-finding-statuses! :card [outdated] (dec version))
+            (doseq [card-id [current changed]]
+              (deps.test/record-status-processed! :model/AnalysisFindingStatus :card card-id version))
+            (deps.test/record-status-processed! :model/AnalysisFindingStatus :card outdated (dec version))
             (dependencies.db/mark-analysis-finding-statuses-stale! {:card #{changed}})
             (let [picked (selected)]
-              (is (= #{unanalyzed changed} (set (butlast picked))))
-              (is (= outdated (last picked))))))))))
+              (is (= #{{:entity_id unanalyzed :stale 1} {:entity_id changed :stale 1}} (set (butlast picked))))
+              (is (= {:entity_id outdated :stale 0} (last picked)))
+              (is (= 1 (t2/select-one-fn :stale :model/AnalysisFindingStatus :entity_type :card
+                                         :entity_id unanalyzed))))))))))
 
 (deftest ^:synchronized concurrent-upserts-test
   (testing "two analyses of an entity inserting its finding at once leave the finding they found, not an insert error"

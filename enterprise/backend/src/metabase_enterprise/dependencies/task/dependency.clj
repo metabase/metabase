@@ -1,10 +1,6 @@
 (ns metabase-enterprise.dependencies.task.dependency
-  "Implements a task that brings all entities with dependencies tracked in the dependency table
-  (see [[metabase-enterprise.dependencies.models.dependency]]) up to date, that is, makes sure
-  the dependency table contains fresh entries.
-
-  It claims the entities whose dependency_status is stale, records an older analysis_version, or is missing, clearing
-  their stale flags, then computes their dependencies; a write while they are computed marks them stale again."
+  "The job that computes the dependencies of the entities whose dependency_status counts a write, records an older
+  analysis_version or is missing, clearing each count afterwards unless a write raised it meanwhile."
   (:require
    [clojurewerkz.quartzite.scheduler :as qs]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
@@ -71,12 +67,12 @@
 
 ;;; ------------------------------ Job orchestration ------------------------------
 
-(mu/defn- claim-hydrated-entities! :- [:maybe [:sequential Entity]]
-  "Claim up to `batch-size` entities of `entity-type` whose dependencies need computing, hydrated."
+(mu/defn- hydrated-entities :- [:sequential Entity]
+  "The entities of `entity-type` with `entity-ids`, hydrated for computing their dependencies."
   [entity-type :- ::deps.dependency-types/dependency-types
-   batch-size  :- ms/PositiveInt]
-  (deps.dependency-status/hydrate-for-deps
-   entity-type (deps.dependency-status/claim-pending-entities! entity-type batch-size)))
+   entity-ids  :- [:set ms/PositiveInt]]
+  (vec (deps.dependency-status/hydrate-for-deps
+        entity-type (vec (dependencies.db/entities entity-type entity-ids)))))
 
 (mu/defn- compute-deps-for-entity! :- :any
   "Compute and store the dependencies of an `entity` hydrated by [[deps.dependency-status/hydrate-for-deps]], marking
@@ -109,23 +105,28 @@
     (count entity-ids)))
 
 (mu/defn- update-entity-batch! :- ms/IntGreaterThanOrEqualToZero
-  "Compute the dependencies of up to `batch-size` claimed entities of `entity-type`, returning how many it claimed."
+  "Compute the dependencies of up to `batch-size` pending entities of `entity-type`, clearing each one's `stale` count
+  unless a write raised it meanwhile, or counting its failure, returning how many it took."
   [entity-type :- ::deps.dependency-types/dependency-types
    batch-size  :- ms/PositiveInt]
   (lib-be/with-metadata-provider-cache
     (let [type-name (name entity-type)
-          entities  (claim-hydrated-entities! entity-type batch-size)]
-      (when (seq entities)
-        (log/debugf "Processing a batch of %s %s(s)..." (count entities) type-name))
-      (doseq [entity entities]
+          statuses  (deps.dependency-status/take-pending-statuses! entity-type batch-size)
+          stale     (into {} (map (juxt :entity_id :stale)) statuses)]
+      (when (seq statuses)
+        (log/debugf "Processing a batch of %s %s(s)..." (count statuses) type-name))
+      (doseq [entity (when (seq statuses) (hydrated-entities entity-type (set (keys stale))))]
         (try
           (compute-deps-for-entity! entity-type entity)
+          (deps.dependency-status/clear-status! entity-type (:id entity) (stale (:id entity)))
           (catch Throwable e ;; catch OOMs
-            (log/errorf "Entity %s %s failed, so its dependencies are computed again when it changes: %s"
-                        type-name (:id entity) (ex-message e))
+            (log/errorf "Computing the dependencies of %s %s failed: %s" type-name (:id entity) (ex-message e))
+            (when (dependencies.db/record-dependency-failure! entity-type (:id entity)
+                                                              (deps.settings/dependency-max-failures))
+              (log/warnf "Giving up on the dependencies of %s %s until it changes" type-name (:id entity)))
             (when-not (instance? Exception e) ;; re-throw Errors
               (throw e)))))
-      (count entities))))
+      (count statuses))))
 
 (mu/defn- update-dependencies! :- [:maybe :boolean]
   "Update the dependencies of up to a batch of entities, triggering the jobs that read them, and return whether the

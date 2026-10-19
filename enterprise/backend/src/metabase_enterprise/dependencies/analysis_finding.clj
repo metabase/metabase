@@ -6,11 +6,12 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -71,7 +72,7 @@
            #{(lib/validation-exception-error "Could not resolve a database for this entity.")}))))))
 
 (mu/defn- analyze-entity!
-  "Analyze `entity`, recording a failure as a failed finding."
+  "Analyze `entity`, recording a failure as a failed finding before rethrowing it."
   [entity :- [:fn {:error/message "a Toucan instance"} t2/instance?]]
   (try (upsert-analysis! entity)
        (catch Exception e
@@ -83,7 +84,8 @@
             #{(lib/validation-exception-error (ex-message e))})
            (catch Exception record-e
              (log/errorf "Recording the failure of entity %s %s failed: %s"
-                         (t2/model entity) (:id entity) (ex-message record-e)))))))
+                         (t2/model entity) (:id entity) (ex-message record-e))))
+         (throw e))))
 
 (def analyzable-entities
   "Entities for which we can compute analysis findings."
@@ -99,35 +101,44 @@
                 (dependencies.db/delete-analysis-finding-statuses! entity-type ids)
                 0))))
 
-(mu/defn- claim-batch! :- [:map-of ::deps.dependency-types/dependency-types [:sequential ms/PositiveInt]]
-  "Claim up to `batch-size` analyzable entities whose AnalysisFindingStatus is stale, missing or outdated, as
-  `{entity-type ids}`."
+(mu/defn- take-pending-statuses! :- [:map-of ::deps.dependency-types/dependency-types
+                                     [:sequential ::dependencies.schema/pending-status]]
+  "Up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is outdated, as
+  `{entity-type statuses}`, each with the `stale` count the job clears afterwards."
   [batch-size :- pos-int?]
-  (reduce (fn [claimed entity-type]
-            (let [remaining (- batch-size (reduce + (map count (vals claimed))))
-                  ids       (when (pos? remaining)
-                              (dependencies.db/analysis-finding-pending-entity-ids
+  (reduce (fn [taken entity-type]
+            (let [remaining (- batch-size (reduce + (map count (vals taken))))
+                  statuses  (when (pos? remaining)
+                              (dependencies.db/take-pending-analysis-finding-statuses!
                                entity-type remaining models.analysis-finding/*current-analysis-finding-version*
                                models.dependency/current-dependency-analysis-version))]
-              (if (seq ids)
-                (do (dependencies.db/claim-analysis-finding-statuses!
-                     entity-type ids models.analysis-finding/*current-analysis-finding-version*)
-                    (assoc claimed entity-type ids))
-                claimed)))
+              (cond-> taken
+                (seq statuses) (assoc entity-type statuses))))
           {}
           (sort analyzable-entities)))
 
 (mu/defn analyze-batch! :- nat-int?
-  "Claim and analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus is stale, missing or outdated,
-  returning how many it took."
+  "Analyze up to `batch-size` analyzable entities whose AnalysisFindingStatus counts a write, is missing or is outdated,
+  clearing each one's `stale` count unless a write raised it meanwhile, or counting its failure, returning how many it
+  took."
   [batch-size :- pos-int?]
   ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
   ;; (see `metabase.lib-be.models.transforms/transform-query`), so selecting outside the cache gives every entity in
   ;; the batch a private one.
   (let [removed (remove-deleted-statuses! batch-size)]
     (lib-be/with-metadata-provider-cache
-      (let [claimed (claim-batch! batch-size)]
-        (doseq [[entity-type ids] claimed
-                entity            (dependencies.db/entities entity-type (set ids))]
-          (analyze-entity! entity))
-        (+ removed (reduce + (map count (vals claimed))))))))
+      (let [taken (take-pending-statuses! batch-size)]
+        (doseq [[entity-type statuses] taken
+                :let   [stale (into {} (map (juxt :entity_id :stale)) statuses)]
+                entity (dependencies.db/entities entity-type (set (keys stale)))]
+          (try
+            (analyze-entity! entity)
+            (dependencies.db/clear-analysis-finding-status!
+             entity-type (:id entity) (stale (:id entity)) models.analysis-finding/*current-analysis-finding-version*)
+            (catch Throwable e
+              (when (dependencies.db/record-analysis-finding-failure! entity-type (:id entity)
+                                                                      (deps.settings/dependency-max-failures))
+                (log/warnf "Giving up on analyzing %s %s until it changes" (name entity-type) (:id entity)))
+              (when-not (instance? Exception e)
+                (throw e)))))
+        (+ removed (reduce + (map count (vals taken))))))))

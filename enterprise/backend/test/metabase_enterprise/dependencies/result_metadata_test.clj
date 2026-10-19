@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.result-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
@@ -362,7 +363,8 @@
             (mapv #'deps.result-metadata/normalize-column [{:semantic-type :type/FK :fk-target-field-id 29}]))))))
 
 (deftest failure-waits-for-change-test
-  (testing "a card whose re-derive failed is not re-derived again until it or an upstream changes again, and then is"
+  (testing "a card whose re-derive keeps failing is given up on, not re-derived again until it or an upstream changes
+           again, and then is"
     (with-dependencies-feature
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
@@ -587,6 +589,53 @@
         (mt/with-temp [:model/Card card {:dataset_query query :result_metadata run}]
           (is (nil? (#'deps.result-metadata/rederived-result-metadata card))))))))
 
+(deftest failed-dependencies-block-rederive-test
+  (testing "a card whose dependency computation keeps failing is not re-derived from its old edges until it changes"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
+                     :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
+        (run-jobs!)
+        (let [calculate (mt/original-fn #'deps.calculation/calculate-deps)]
+          (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps
+                                      (fn [entity-type entity]
+                                        (if (= card-id (:id entity))
+                                          (throw (ex-info "Computation failed" {}))
+                                          (calculate entity-type entity)))]
+            (t2/update! :model/Card card-id {:dataset_query (card-query source-id)
+                                             :description   "edited"})
+            (dependencies.db/mark-dependency-statuses-stale! {:card #{card-id}})
+            (t2/update! :model/Card source-id {:dataset_query (add-grand-total (table-query :orders))})
+            (run-jobs!)))
+        (is (nil? (column card-id "Grand total")))
+        (is (pending? card-id))))))
+
+(deftest crash-leaves-card-pending-test
+  (testing "a job that dies between taking a card's status and clearing it leaves the card pending, and the next run
+           re-derives it"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (reprocess! card-id)
+        (is (thrown? Error (do-with-inference (fn [_infer _query _card] (throw (Error. "crash"))) rederive!)))
+        (is (pending? card-id))
+        (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed")) rederive!)
+        (is (= "Changed" (:display_name (column card-id "NAME"))))
+        (is (not (pending? card-id)))))))
+
+(deftest write-during-rederive-keeps-card-pending-test
+  (testing "a write counted on a card while it is re-derived keeps it pending after the job clears what it read"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (reprocess! card-id)
+        (do-with-inference (fn [infer query card]
+                             (dependencies.db/mark-result-metadata-statuses-stale! {:card #{card-id}})
+                             (infer query card))
+                           rederive!)
+        (is (pending? card-id))
+        (rederive!)
+        (is (not (pending? card-id)))))))
+
 (deftest store-compares-same-read-test
   (testing "a card whose full read normalizes its stored metadata away is stored, since both compared reads are alike"
     (with-dependencies-feature
@@ -632,7 +681,7 @@
                                         (reset! marked (deref (future (t2/update! :model/ResultMetadataStatus
                                                                                   :entity_type :card
                                                                                   :entity_id other-id
-                                                                                  {:stale false}))
+                                                                                  {:stale 0}))
                                                               5000 :timed-out))
                                         (apply store args))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "TOTAL" "Changed"))
@@ -663,7 +712,7 @@
           (is (= "Changed" (:display_name (column card-id "TOTAL")))))))))
 
 (deftest failing-dependent-test
-  (testing "a card whose re-derive fails doesn't stop its siblings, and is recorded as processed"
+  (testing "a card whose re-derive fails doesn't stop its siblings, and stays pending for the next run"
     (with-dependencies-feature
       (mt/with-temp [:model/Card {first-id :id}  {:dataset_query (table-query :venues)}
                      :model/Card {failing-id :id} {:dataset_query (table-query :venues)}
@@ -676,7 +725,7 @@
                                (rename-column (infer query card) "NAME" "Changed")))
                            rederive!)
         (is (= ["Changed" "Changed"] (mapv #(:display_name (column % "NAME")) [first-id last-id])))
-        (is (not (pending? failing-id)))))))
+        (is (pending? failing-id))))))
 
 (deftest store-updates-parameters-using-dropped-columns-test
   (testing "storing a re-derived card resets the parameters taking values from a column it no longer has"

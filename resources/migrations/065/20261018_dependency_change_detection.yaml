@@ -1,29 +1,10 @@
 ## The dependency jobs process the entities whose status rows a write marks stale in its own transaction: an
 ## entity's own row for the columns each job reads, and its direct dependents' rows when what they read changes. The
-## status rows lose the retry state. result_metadata_status and analysis_finding_status hold one row per entity,
+## status rows lose the retry delays and keep a failure count and a terminal flag; their stale flag becomes a count
+## of the writes the job has not read. result_metadata_status and analysis_finding_status hold one row per entity,
 ## as dependency_status does, and analysis_finding keeps only the findings.
 
 databaseChangeLog:
-  - changeSet:
-      id: v65.brqkb7
-      author: ranquild
-      comment: Drop dependency_status.fail_count, which the jobs no longer use since they don't retry
-      changes:
-        - dropColumn:
-            tableName: dependency_status
-            columnName: fail_count
-      rollback:
-        - addColumn:
-            tableName: dependency_status
-            columns:
-              - column:
-                  name: fail_count
-                  type: int
-                  defaultValueNumeric: 0
-                  remarks: Number of consecutive failed dependency calculation attempts
-                  constraints:
-                    nullable: false
-
   - changeSet:
       id: v65.drkztr
       author: ranquild
@@ -40,26 +21,6 @@ databaseChangeLog:
                   name: next_retry_at
                   type: ${timestamp_type}
                   remarks: Earliest time at which a failed entity can be retried (null means immediately processable)
-
-  - changeSet:
-      id: v65.mhlfsd
-      author: ranquild
-      comment: Drop dependency_status.terminal, which the jobs no longer use since they don't retry
-      changes:
-        - dropColumn:
-            tableName: dependency_status
-            columnName: terminal
-      rollback:
-        - addColumn:
-            tableName: dependency_status
-            columns:
-              - column:
-                  name: terminal
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: True when the entity has exceeded max retries and should not be retried until modified
-                  constraints:
-                    nullable: false
 
   - changeSet:
       id: v65.u3r8zm
@@ -160,9 +121,23 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: stale
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many writes changed what the job reads for the entity since the job last read it; the job processes it while above 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fail_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many times in a row the job failed to process the entity since a write changed it
+                  constraints:
+                    nullable: false
+              - column:
+                  name: terminal
                   type: ${boolean.type}
                   defaultValueBoolean: false
-                  remarks: True when a write changed what the job reads for the entity, so the job processes it again
+                  remarks: True when the job gave up on the entity after its failures, until a write changes it
                   constraints:
                     nullable: false
               - column:
@@ -219,9 +194,23 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: stale
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many writes changed what the job reads for the entity since the job last read it; the job processes it while above 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fail_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many times in a row the job failed to process the entity since a write changed it
+                  constraints:
+                    nullable: false
+              - column:
+                  name: terminal
                   type: ${boolean.type}
                   defaultValueBoolean: false
-                  remarks: True when a write changed what the job reads for the entity, so the job processes it again
+                  remarks: True when the job gave up on the entity after its failures, until a write changes it
                   constraints:
                     nullable: false
               - column:
@@ -256,7 +245,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO analysis_finding_status (entity_type, entity_id, stale, analysis_version)
-              SELECT analyzed_entity_type, analyzed_entity_id, stale, COALESCE(analysis_version, 0)
+              SELECT analyzed_entity_type, analyzed_entity_id, CASE WHEN stale THEN 1 ELSE 0 END, COALESCE(analysis_version, 0)
               FROM analysis_finding
       rollback: # the table is dropped by the rollback of the changeset creating it
 
@@ -297,7 +286,7 @@ databaseChangeLog:
                     nullable: false
         - sql:
             sql: >-
-              UPDATE analysis_finding SET stale = COALESCE((SELECT s.stale
+              UPDATE analysis_finding SET stale = COALESCE((SELECT s.stale > 0
               FROM analysis_finding_status s WHERE s.entity_type = analysis_finding.analyzed_entity_type
               AND s.entity_id = analysis_finding.analyzed_entity_id), FALSE)
 
@@ -389,3 +378,126 @@ databaseChangeLog:
             columnName: entity_id
             columnDataType: int
       rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.7d5dj3
+      author: ranquild
+      comment: Drop the index on dependency_status.stale, which becomes a count of the writes the job has not read
+      changes:
+        - dropIndex:
+            tableName: dependency_status
+            indexName: idx_dependency_status_stale
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale) WHERE stale = true
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale)
+
+  - changeSet:
+      id: v65.47bljg
+      author: ranquild
+      comment: Add dependency_status.stale_count, which replaces the stale flag
+      changes:
+        - addColumn:
+            tableName: dependency_status
+            columns:
+              - column:
+                  name: stale_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: How many writes changed what the job reads for the entity since the job last read it
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: stale_count
+
+  - changeSet:
+      id: v65.i33b3h
+      author: ranquild
+      comment: Copy the dependency_status stale flags into stale_count
+      changes:
+        - sql:
+            sql: UPDATE dependency_status SET stale_count = CASE WHEN stale THEN 1 ELSE 0 END
+      rollback:
+        - sql:
+            sql: UPDATE dependency_status SET stale = (stale_count > 0)
+
+  - changeSet:
+      id: v65.vcn86w
+      author: ranquild
+      comment: Drop the dependency_status stale flag, which stale_count replaces
+      changes:
+        - dropColumn:
+            tableName: dependency_status
+            columnName: stale
+      rollback:
+        - addColumn:
+            tableName: dependency_status
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity needs (re)processing
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.accafc
+      author: ranquild
+      comment: Rename dependency_status.stale_count to stale, as the other status tables name it
+      changes:
+        - renameColumn:
+            tableName: dependency_status
+            oldColumnName: stale_count
+            newColumnName: stale
+            columnDataType: int
+      rollback:
+        - renameColumn:
+            tableName: dependency_status
+            oldColumnName: stale
+            newColumnName: stale_count
+            columnDataType: int
+
+  - changeSet:
+      id: v65.cw6b2z
+      author: ranquild
+      comment: Keep dependency_status.stale not null, which a rename on MySQL drops
+      changes:
+        - addNotNullConstraint:
+            tableName: dependency_status
+            columnName: stale
+            columnDataType: int
+      rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.hn74zg
+      author: ranquild
+      comment: Keep the default of dependency_status.stale, which a rename on MySQL drops
+      changes:
+        - addDefaultValue:
+            tableName: dependency_status
+            columnName: stale
+            columnDataType: int
+            defaultValueNumeric: 0
+      rollback: # the rename's rollback restores the column
+
+  - changeSet:
+      id: v65.f2ttgl
+      author: ranquild
+      comment: Index dependency_status.stale, the count of writes the job has not read
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale) WHERE stale > 0
+        - sql:
+            dbms: mysql,mariadb,h2
+            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale)
+      rollback:
+        - dropIndex:
+            tableName: dependency_status
+            indexName: idx_dependency_status_stale

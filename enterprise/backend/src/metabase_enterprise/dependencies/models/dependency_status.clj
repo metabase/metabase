@@ -3,6 +3,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -35,16 +36,22 @@
               (contains? queries id) (assoc :dataset_query (queries id))))
           entities)))
 
-(mu/defn claim-pending-entities!
-  "Claim and return up to `batch-size` entities of `entity-type` whose dependencies are stale, not computed yet, or
-  computed by an older analysis, stale ones first."
+(mu/defn take-pending-statuses! :- [:sequential ::dependencies.schema/pending-status]
+  "Up to `batch-size` entities of `entity-type` whose dependencies a write changed, are not computed yet, or were
+  computed by an older analysis, those last, with the `stale` count the job clears afterwards."
   [entity-type :- ::deps.dependency-types/dependency-types
    batch-size  :- ms/PositiveInt]
-  (let [ids (dependencies.db/dependency-pending-entity-ids
-             entity-type batch-size models.dependency/current-dependency-analysis-version)]
-    (when (seq ids)
-      (dependencies.db/claim-dependency-statuses! entity-type ids models.dependency/current-dependency-analysis-version)
-      (vec (dependencies.db/entities entity-type (set ids))))))
+  (dependencies.db/take-pending-dependency-statuses!
+   entity-type batch-size models.dependency/current-dependency-analysis-version))
+
+(mu/defn clear-status! :- :boolean
+  "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id`, clearing its
+  `stale` count unless a write raised it."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity-id   :- ms/PositiveInt
+   stale       :- ms/IntGreaterThanOrEqualToZero]
+  (dependencies.db/clear-dependency-status!
+   entity-type entity-id stale models.dependency/current-dependency-analysis-version))
 
 (mu/defn has-pending-entities? :- :boolean
   "Returns true if there are any entities whose dependencies are stale, not computed yet or computed by an older
@@ -52,7 +59,7 @@
   []
   (boolean
    (some (fn [entity-type]
-           (or (seq (dependencies.db/dependency-pending-entity-ids
-                     entity-type 1 models.dependency/current-dependency-analysis-version))
+           (or (dependencies.db/dependency-pending?
+                entity-type models.dependency/current-dependency-analysis-version)
                (seq (dependencies.db/dependency-deleted-entity-ids entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))
