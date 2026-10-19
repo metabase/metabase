@@ -125,7 +125,7 @@ To create a new Library metric, go to **Data Studio > Semantic layer** and selec
 
 ## Dashboards
 
-Use **Library > Dashboards** for curated, "official" dashboards, like your company's KPI dashboard. People find these dashboards in the **Library** section of the main app's navigation sidebar.
+Use **Library > Dashboards** for curated, official dashboards, like your company's KPI dashboard. People find these dashboards in the **Library** section of the main app's navigation sidebar.
 
 **Library > Dashboards** holds only dashboards and their [dashboard questions](../../questions/introduction.md#saving-questions-to-dashboards). To save a question there, you save it to one of its dashboards.
 
