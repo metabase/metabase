@@ -1,0 +1,50 @@
+## HTTP actions are removed: their rows go (dashboard cards and http_action rows cascade) and so does their table.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-03T00:00:00
+      author: ranquild
+      comment: Delete HTTP actions
+      changes:
+        - sql:
+            sql: DELETE FROM action WHERE type = 'http';
+      rollback: # nothing to do; the deleted actions cannot be restored
+
+  - changeSet:
+      id: v65.2026-10-03T00:00:01
+      author: ranquild
+      comment: Drop http_action
+      changes:
+        - dropTable:
+            tableName: http_action
+      rollback:
+        - createTable:
+            tableName: http_action
+            remarks: An http api call type of action
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_http_action
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_http_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: template
+                  type: ${text.type}
+                  remarks: A template that defines method,url,body,headers required to make an api call
+                  constraints:
+                    nullable: false
+              - column:
+                  name: response_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response and transform to an appropriate response for emitters
+              - column:
+                  name: error_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response to determine if an error occurred

@@ -38,11 +38,6 @@ export interface TreeNodeProps<TData = unknown> {
    */
   onHover?: () => void;
   className?: string;
-  classNames?: {
-    root?: string;
-    expandToggleButton?: string;
-    iconContainer?: string;
-  };
 }
 
 export type TreeNodeComponent<TData = unknown> = React.ComponentType<

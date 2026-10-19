@@ -8,8 +8,9 @@
   unknown name, ambiguous name, missing name, mismatched DB component in source-table)."
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
+   [malli.core :as mc]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -28,7 +29,8 @@
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -84,17 +86,17 @@
   ([entity id & _conditions] {:model entity :id id}))
 
 (defn- with-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (defn- with-ambiguous-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-ambiguous)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-ambiguous)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (def ^:private mp-coerced
@@ -115,10 +117,10 @@
                 :effective-type :type/DateTime :coercion-strategy :Coercion/ISO8601->DateTime}]}))
 
 (defn- with-coerced-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-coerced)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (def ^:private mp-temporal
@@ -132,10 +134,10 @@
                {:id 104 :name "STATUS"     :table-id 10 :base-type :type/Text}]}))
 
 (defn- with-temporal-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-temporal)
-                construct/resolve-database-id-from-first-stage (fn [_] 1)
-                api/read-check                                  allow-read-check
-                api/query-check                                 allow-read-check]
+  (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-temporal)
+                              construct/resolve-database-id-from-first-stage (fn [_] 1)
+                              api/read-check                                  allow-read-check
+                              api/query-check                                 allow-read-check]
     (f)))
 
 (defn- query-data
@@ -257,17 +259,17 @@
     ;; This fixture's MP-name is "Sample Database". We DON'T stub `resolve-database-id-from-first-stage`
     ;; here - we want the actual function to run against `name = "Sample"` and observe the
     ;; not-found behaviour.
-    (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-sample-database)
-                  construct/resolve-database-id-from-first-stage
-                  (fn [parsed]
-                    (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
-                      (if (= db-name "Sample Database")
-                        1
-                        (throw (ex-info (str "Unknown database: `" db-name "`.")
-                                        {:agent-error? true
-                                         :status-code  400
-                                         :error        :unknown-database
-                                         :database     db-name})))))]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-sample-database)
+                                construct/resolve-database-id-from-first-stage
+                                (fn [parsed]
+                                  (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
+                                    (if (= db-name "Sample Database")
+                                      1
+                                      (throw (ex-info (str "Unknown database: `" db-name "`.")
+                                                      {:agent-error? true
+                                                       :status-code  400
+                                                       :error        :unknown-database
+                                                       :database     db-name})))))]
       (let [query (query-data
                    {"lib/type" "mbql/query"
                     "stages"   [{"lib/type"     "mbql.stage/mbql"
@@ -436,17 +438,17 @@
                 "DB surfaces `:unknown-database` at the `resolve-database-id-from-first-stage`\n"
                 "step, reflagged `:agent-error?` for the LLM.")
     ;; No with-mp-and-stubs! - we want the DB-name-not-found path to trigger.
-    (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
-                  construct/resolve-database-id-from-first-stage
-                  (fn [parsed]
-                    (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
-                      (if (= db-name "Sample")
-                        1
-                        (throw (ex-info (str "Unknown database: `" db-name "`.")
-                                        {:agent-error? true
-                                         :status-code  400
-                                         :error        :unknown-database
-                                         :database     db-name})))))]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
+                                construct/resolve-database-id-from-first-stage
+                                (fn [parsed]
+                                  (let [db-name (get-in parsed ["stages" 0 "source-table" 0])]
+                                    (if (= db-name "Sample")
+                                      1
+                                      (throw (ex-info (str "Unknown database: `" db-name "`.")
+                                                      {:agent-error? true
+                                                       :status-code  400
+                                                       :error        :unknown-database
+                                                       :database     db-name})))))]
       (try
         (construct/execute-representations-query
          (query-data
@@ -633,7 +635,7 @@
             (is (some? e))
             (is (true? (:agent-error? (ex-data e))))
             (is (= :query-not-runnable (:error (ex-data e))))
-            (is (re-find #"`offset`" (ex-message e)))
+            (is (re-find #"`offset` cannot be custom columns" (ex-message e)))
             (is (re-find #"non-aggregation expression" (ex-message e)))))))))
 
 (deftest editor-gate-offset-in-filter-surfaces-error-end-to-end-test
@@ -751,7 +753,8 @@
               ;; exact shape that resolves structurally yet makes Lib.canRun false.
               bad  (assoc-in good [:stages 0 :breakout 0] [:field {} "PRODUCT_ID"])]
           (is (nil? (#'construct/query-not-runnable-explanation good)))
-          (is (some? (#'construct/query-not-runnable-explanation bad))))))))
+          (is (str/includes? (#'construct/query-not-runnable-explanation bad)
+                             "[:stages 0 :breakout 0 1 :base-type]: a field reference by name is missing `base-type`")))))))
 
 ;;; ============================================================
 ;;; Step-9 contract: expressions (custom columns)
@@ -1198,10 +1201,10 @@
         record  (fn ([obj] obj)
                   ([entity id] (swap! checked conj [entity id]) {:model entity :id id})
                   ([entity id & _] (swap! checked conj [entity id]) {:model entity :id id}))]
-    (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
-                  construct/resolve-database-id-from-first-stage (fn [_] 1)
-                  api/read-check  record
-                  api/query-check record]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
+                                construct/resolve-database-id-from-first-stage (fn [_] 1)
+                                api/read-check  record
+                                api/query-check record]
       (f))
     (into #{} (comp (filter (fn [[m _]] (= m :model/Table))) (map second)) @checked)))
 
@@ -1238,10 +1241,10 @@
                              (if (and (= entity :model/Table) (= id 20))
                                (throw (ex-info "You don't have permissions to do that." {:status-code 403}))
                                {:model entity :id id})))]
-        (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
-                      construct/resolve-database-id-from-first-stage (fn [_] 1)
-                      api/read-check  deny-table-20
-                      api/query-check deny-table-20]
+        (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (fn [_] mp)
+                                    construct/resolve-database-id-from-first-stage (fn [_] 1)
+                                    api/read-check  deny-table-20
+                                    api/query-check deny-table-20]
           (try
             (construct/execute-representations-query
              (query-data
@@ -2047,3 +2050,85 @@
                 (is (true? (:agent-error? d)))
                 (is (= :temporal-unit-on-non-temporal-column (:error d)))
                 (is (str/includes? (ex-message e) (str "is a " type-name " column")))))))))))
+
+;;; ============================================================
+;;; BOT-2222: refs to a grouped join's columns
+;;; ============================================================
+
+(defn- smallest-order-query
+  "Compares each order's TOTAL with `target` through `ref-alias` (default `First`, a self-join
+  returning each product's smallest TOTAL as `min`)."
+  [target & {:keys [ref-alias] :or {ref-alias "First"}}]
+  (let [orders-col (fn [column] ["field" {} ["Sample" "PUBLIC" "ORDERS" column]])]
+    {"lib/type" "mbql/query"
+     "database" "Sample"
+     "stages"   [{"lib/type"     "mbql.stage/mbql"
+                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                  "joins"        [{"alias"      "First"
+                                   "strategy"   "left-join"
+                                   "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                  "aggregation"  [["min" {} (orders-col "TOTAL")]]
+                                                  "breakout"     [(orders-col "PRODUCT_ID")]}]
+                                   "conditions" [["=" {}
+                                                  (orders-col "PRODUCT_ID")
+                                                  ["field" {"join-alias" "First"} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]]}]
+                  "expressions"  {"Smallest?" ["=" {} (orders-col "TOTAL") ["field" {"join-alias" ref-alias} target]]}}]}))
+
+(deftest grouped-join-aggregation-by-name-test
+  (with-mp-and-stubs!
+    (fn []
+      (testing "a ref to the grouped join's aggregation by name builds a query with the ref typed"
+        (let [result (construct/execute-representations-query (query-data (smallest-order-query "min")))]
+          (is (=? [:field {:join-alias "First" :base-type :type/Float} "min"]
+                  (get-in result [:structured-output :query :stages 0 :expressions 0 3])))))
+      (testing "an unknown name is a retryable agent error"
+        (let [e (editor-rejection (smallest-order-query "nope"))]
+          (is (=? {:agent-error? true :status-code 400} (ex-data e)))
+          (is (str/includes? (ex-message e) "join \"First\" doesn't return \"nope\"")))))))
+
+(deftest ref-through-unknown-join-alias-explained-test
+  (testing "a by-name ref through an alias no join has is explained as an unresolved reference"
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection (smallest-order-query "TOTAL" :ref-alias "Nope"))]
+          (is (=? {:agent-error? true :error :query-not-runnable :status-code 400} (ex-data e)))
+          (is (str/includes? (ex-message e) "could not be resolved")))))))
+
+(deftest path-ref-to-dropped-join-column-rejected-before-sql-test
+  (testing "a path ref to a column the grouped join drops fails in repair, not in the database"
+    (with-mp-and-stubs!
+      (fn []
+        (is (= :unresolved-join-alias-field
+               (:error (ex-data (editor-rejection (smallest-order-query ["Sample" "PUBLIC" "ORDERS" "ID"]))))))))))
+
+(deftest ^:parallel not-runnable-problem-test
+  (let [missing (fn [k] {:type :malli.core/missing-key :in [:stages 0 :breakout 0 1 k]})
+        invalid (fn [schema value] {:schema (mc/schema schema) :value value})]
+    (are [error re] (re-find re (#'construct/not-runnable-problem error))
+      (missing :lib/uuid)                                                   #"could not be resolved"
+      (missing :base-type)                                                  #"missing `base-type`"
+      (missing :alias)                                                      #"^missing `alias`$"
+      (invalid [:fn {:error/message "non-aggregation expression"} any?] 1)  #"cannot be custom columns")
+    (testing "an error with no known cause is left to Malli's own message"
+      (is (nil? (#'construct/not-runnable-problem (invalid :int "x")))))))
+
+(deftest query-not-runnable-explanation-test
+  (let [explain (fn [& errors]
+                  (mt/with-dynamic-fn-redefs [mr/explain (constantly {:errors errors})]
+                    (#'construct/query-not-runnable-explanation {})))
+        missing (fn [k] {:type :malli.core/missing-key :in [:stages 0 k]})
+        invalid (fn [k] {:schema (mc/schema :int) :value "x" :in [:stages 0 k]})
+        hint    #"\. This usually means a field reference is missing its type"]
+    (testing "identical problems are listed once"
+      (is (= "[:stages 0 :alias]: missing `alias`" (explain (missing :alias) (missing :alias)))))
+    (testing "at most three problems are listed"
+      (is (= 3 (count (str/split (apply explain (map missing [:a :b :c :d])) #"; ")))))
+    (testing "problems with a known cause are listed before Malli's own messages"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c) (missing :alias))
+                            "[:stages 0 :alias]: missing `alias`; [:stages 0 :a]: should be an integer")))
+    (testing "the usual causes are added only when no problem has a known cause"
+      (is (re-find hint (explain (invalid :a))))
+      (is (not (re-find hint (explain (invalid :a) (missing :alias))))))
+    (testing "an explanation with no errors falls back to a generic sentence and the usual causes"
+      (is (str/starts-with? (explain) "the query does not match the query builder's schema. This usually means")))))

@@ -15,7 +15,7 @@
   [card-id :- [:maybe ::lib.schema.id/card]
    & {:keys [enable-embedding?]} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters :visualization_settings
-                  :card_schema :type :result_metadata :dimensions :dimension_mappings]
+                  :card_schema :type :entity_id :result_metadata :dimensions :dimension_mappings]
                  {:where [:and
                           [:= :id card-id]
                           [:= :archived false]
@@ -68,3 +68,20 @@
   "The id, content, and content type of the Document with `document-id`, or nil."
   [document-id :- [:maybe ms/PositiveInt]]
   (t2/select-one [:model/Document :id :document :content_type] :id document-id))
+
+;;; ----------------------------------------------------- Timelines ----------------------------------------------------
+
+(mu/defn active-timeline-ids
+  "The ids of the non-archived Timelines among `timeline-ids`."
+  [timeline-ids :- [:set ms/PositiveInt]]
+  (t2/select-pks-set :model/Timeline :id [:in timeline-ids] :archived false))
+
+(mu/defn active-timeline-events
+  "The non-archived TimelineEvents of the Timelines with `timeline-ids`, restricted to the columns safe to expose
+  publicly, in timestamp order."
+  [timeline-ids :- [:set ms/PositiveInt]]
+  (t2/select [:model/TimelineEvent :id :timeline_id :name :description :icon :timestamp :timezone :time_matters
+              :archived :created_at]
+             :timeline_id [:in timeline-ids]
+             :archived false
+             {:order-by [[:timestamp :asc] [:id :asc]]}))

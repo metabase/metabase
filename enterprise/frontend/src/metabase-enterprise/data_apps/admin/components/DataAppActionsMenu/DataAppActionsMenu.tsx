@@ -26,7 +26,7 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
     try {
       await setEnabled({ name: app.name, enabled: !app.enabled }).unwrap();
     } catch {
-      sendToast({ message: t`Failed to update this app`, icon: "warning" });
+      sendToast({ message: t`Failed to update this app`, variant: "negative" });
     }
   }, [app.name, app.enabled, setEnabled, sendToast]);
 
@@ -41,7 +41,7 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
         } catch {
           sendToast({
             message: t`Failed to remove this data app`,
-            icon: "warning",
+            variant: "negative",
           });
         }
       },
@@ -63,23 +63,19 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
         </Menu.Target>
 
         <Menu.Dropdown>
-          {app.resource_collection_id != null && (
-            <Menu.Item
-              component={Link}
-              to={`/collection/${app.resource_collection_id}`}
-            >
-              {t`View resources`}
-            </Menu.Item>
-          )}
+          <Menu.Item
+            component={Link}
+            to={`/collection/${app.resource_collection_id}`}
+          >
+            {t`View resources`}
+          </Menu.Item>
 
-          {app.permission_group_id != null && (
-            <Menu.Item
-              component={Link}
-              to={`/admin/settings/apps/${app.name}/users`}
-            >
-              {t`Manage user access`}
-            </Menu.Item>
-          )}
+          <Menu.Item
+            component={Link}
+            to={`/admin/settings/apps/${encodeURIComponent(app.name)}/groups`}
+          >
+            {t`Manage group access`}
+          </Menu.Item>
 
           <Menu.Item onClick={handleToggleEnabled}>
             {app.enabled ? t`Disable` : t`Re-enable`}

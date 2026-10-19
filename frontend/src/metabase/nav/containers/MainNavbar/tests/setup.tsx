@@ -28,6 +28,7 @@ import type { DashboardState, StoreDashboard } from "metabase/redux/store";
 import { Route, useLocation, useParams } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
+  Bookmark,
   Card,
   Collection,
   Dashboard,
@@ -61,6 +62,7 @@ export type SetupOpts = {
   withAdditionalDatabase?: boolean;
   isUploadEnabled?: boolean;
   openQuestionCard?: Card;
+  bookmarks?: Bookmark[];
   openDashboard?: Dashboard;
   models?: ModelResult[];
   canCurateRootCollection?: boolean;
@@ -110,6 +112,7 @@ export async function setup({
   hasDataAccess = true,
   openDashboard,
   openQuestionCard,
+  bookmarks = [],
   models = [],
   isUploadEnabled = false,
   withAdditionalDatabase = true,
@@ -196,7 +199,7 @@ export async function setup({
     settingValue: {},
   });
 
-  fetchMock.get("path:/api/bookmark", []);
+  fetchMock.get("path:/api/bookmark", bookmarks);
 
   if (openQuestionCard) {
     setupCardsEndpoints([openQuestionCard]);

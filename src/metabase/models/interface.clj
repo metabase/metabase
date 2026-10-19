@@ -18,6 +18,7 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
@@ -38,14 +39,20 @@
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
+   [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
   (:import
    (java.sql Blob)
+   (java.time OffsetDateTime ZoneOffset)
+   (java.time.temporal ChronoUnit)
    (toucan2.instance Instance)))
 
 (set! *warn-on-reflection* true)
@@ -238,6 +245,11 @@
   "Transform for keywords."
   {:in  u/qualified-name
    :out keyword})
+
+(def transform-boolean
+  "Transform for booleans; a boolean computed in SQL comes back as a number from MySQL and MariaDB."
+  {:in  identity
+   :out (fn [v] (if (number? v) (pos? v) v))})
 
 (def transform-trim
   "Transform that trims whitespace on input and output. Useful for fixed-width char columns that pad with spaces."
@@ -611,6 +623,11 @@
   []
   (h2x/current-datetime-honeysql-form (mdb/db-type)))
 
+(defn current-timestamp
+  "The current moment in UTC at the microsecond precision of the app DB's timestamp columns, so it reads back unchanged."
+  []
+  (.truncatedTo (OffsetDateTime/now ZoneOffset/UTC) ChronoUnit/MICROS))
+
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
     (not (:created_at obj)) (assoc :created_at (now))))
@@ -664,6 +681,38 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+
+(t2/define-before-insert :hook/dependencies
+  [instance]
+  (dependencies.hooks/before-insert &model instance)
+  instance)
+
+(t2/define-before-update :hook/dependencies
+  [instance]
+  (dependencies.hooks/before-update &model instance)
+  instance)
+
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/dependencies :default]
+  "Run the before-update hooks of a `:hook/dependencies` model in the transaction of its UPDATE, which Toucan otherwise
+  opens only after them, so dependency marks commit together with the UPDATE and after-commit work sees it."
+  [rf query-type model parsed-args resolved-query]
+  (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
+    (next-method rf query-type model parsed-args resolved-query)))
+
+(t2/define-before-delete :hook/dependencies
+  [instance]
+  instance)
+
+(methodical/defmethod t2.before-delete/before-delete :before :hook/dependencies
+  [model instance]
+  (dependencies.hooks/before-delete model instance)
+  instance)
+
+(doseq [hook [:hook/timestamped? :hook/created-at-timestamped? :hook/updated-at-timestamped? :hook/entity-id]]
+  (methodical/prefer-method! #'t2.before-insert/before-insert hook :hook/dependencies))
+
+(doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
+  (methodical/prefer-method! #'t2.before-update/before-update hook :hook/dependencies))
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.

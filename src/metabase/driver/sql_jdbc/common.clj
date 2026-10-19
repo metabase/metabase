@@ -4,7 +4,12 @@
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
-   [metabase.util.performance :refer [not-empty]]))
+   [metabase.util.performance :refer [not-empty]])
+  (:import
+   (java.net URLDecoder)
+   (java.nio.charset StandardCharsets)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private valid-separator-styles #{:url :comma :semicolon})
 
@@ -129,25 +134,54 @@
                           {:connection-string connection-string})))
         hosts))))
 
+(defn- percent-decoded
+  "`s` percent-decoded, or nil when it is not valid percent-encoding."
+  [^String s]
+  (try
+    (URLDecoder/decode s StandardCharsets/UTF_8)
+    (catch IllegalArgumentException _ nil)))
+
 (defn- connection-string-parameters
   "The `name=value` pairs in a JDBC `connection-string`, whichever separator style the driver that built it uses. Only
   what follows the first separator is read: the authority (`//host:port/db`) is [[connection-string-hosts]]' business,
-  not ours."
+  not ours.
+
+  Each pair is given as written and, when that differs, percent-decoded as well. Some clients (Snowflake's) decode
+  names and values after splitting the string, so `proxy%48ost=%6Cocalhost` reaches them as `proxyHost=localhost`;
+  others read the string as written. Answering with both reads it the way either kind of client would."
   [connection-string]
   (when-let [params (second (str/split (str connection-string) #"[?;,]" 2))]
     (for [pair  (str/split params #"[&;,]")
           :let  [[k v] (str/split pair #"=" 2)]
-          :when (and k v)]
+          :when (and k v)
+          [k v] (distinct (cons [k v] (when-let [decoded-k (percent-decoded k)]
+                                        (when-let [decoded-v (percent-decoded v)]
+                                          [[decoded-k decoded-v]]))))]
       [(str/trim k) (str/trim v)])))
+
+(defn connection-string-parameter-values
+  "Every value `connection-string` gives the parameter named `parameter-name` (matched case-insensitively), as written
+  and percent-decoded, in order. For a driver that reads a parameter itself rather than declaring it
+  in [[metabase.driver/host-carrying-parameters]] -- one whose value names a host only sometimes."
+  [connection-string parameter-name]
+  (let [parameter-name (u/lower-case-en parameter-name)]
+    (into []
+          (comp (filter (fn [[k _v]] (= parameter-name (u/lower-case-en k))))
+                (map second))
+          (connection-string-parameters connection-string))))
 
 (defn- parameter-host [declared? backstop? [k v]]
   (when-let [host (u.http/->hostname v)]
-    (when (or (declared? (name k))
-              ;; A parameter of the connection string that was not declared is read only when its value is already an
-              ;; IP address. That covers a declaration that has fallen behind the client it describes without ever
-              ;; resolving a value that may not be a host at all -- which would both hand the value to the resolver
-              ;; and, for a name that happens to resolve inside the cluster, refuse a database over its username.
-              (and backstop? (u.http/ip-literal? host)))
+    (when (and (or (declared? (name k))
+                   ;; A parameter of the connection string that was not declared is read only when its value is
+                   ;; already an IP address. That covers a declaration that has fallen behind the client it describes
+                   ;; without ever resolving a value that may not be a host at all -- which would both hand the value to
+                   ;; the resolver and, for a name that happens to resolve inside the cluster, refuse a database over
+                   ;; its username.
+                   (and backstop? (u.http/ip-literal? host)))
+               ;; still percent-encoded, so not a name any client resolves: one that decodes it is checked against
+               ;; the decoded pair, and one that does not fails to resolve it
+               (or (not (str/includes? host "%")) (u.http/ip-literal? host)))
       host)))
 
 (defn connection-parameter-hosts

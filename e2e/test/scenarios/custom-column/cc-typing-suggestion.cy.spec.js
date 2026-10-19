@@ -313,11 +313,10 @@ const addCustomColumn = () => {
 function verifyHelptextPosition(text) {
   H.CustomExpressionEditor.get()
     .findByText(text)
-    .then(($element) => {
-      const { left: textLeft } = $element[0].getBoundingClientRect();
-
-      H.CustomExpressionEditor.helpText().then(($element) => {
-        const { left: helpTextLeft } = $element[0].getBoundingClientRect();
+    .then(($text) => {
+      H.CustomExpressionEditor.helpText().should(($helpText) => {
+        const { left: textLeft } = $text[0].getBoundingClientRect();
+        const { left: helpTextLeft } = $helpText[0].getBoundingClientRect();
 
         expect(helpTextLeft).to.be.closeTo(textLeft, 5);
       });

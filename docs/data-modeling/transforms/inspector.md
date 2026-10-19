@@ -9,7 +9,7 @@ redirect_from:
 
 > Transform inspector requires the [Advanced transforms add-on](addons.md).
 
-_Data Studio > Transforms > [transform name] > Inspect_
+_Data Studio > Data transformation > [transform name] > Inspect_
 
 The transform inspector gives you a diagnostic view of your transforms. Instead of writing your own SQL to check row counts, join match rates, or column distributions, you can open the **Inspect** tab and let Metabase analyze your transform's inputs and outputs for you. The inspector is especially useful for catching data quality issues (like unmatched rows in joins) before they cause problems downstream.
 

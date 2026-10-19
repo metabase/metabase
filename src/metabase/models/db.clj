@@ -60,6 +60,7 @@
    :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.update
    :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.update
    :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.update
+   :model/DataApp                  :metabase-enterprise.data-apps.schema/data-app.update
    :model/Database                 :metabase.warehouses.schema/database.update
    :model/Dimension                :metabase.warehouse-schema.schema/dimension.update
    :model/Document                 :metabase.documents.schema/document.update
@@ -69,7 +70,6 @@
    :model/FieldUserSettings        :metabase.warehouse-schema.schema/field-user-settings.update
    :model/FieldValues              :metabase.warehouse-schema.schema/field-values.update
    :model/Glossary                 :metabase.glossary.schema/glossary.update
-   :model/HTTPAction               :metabase.actions.schema/httpaction.update
    :model/ImplicitAction           :metabase.actions.schema/implicit-action.update
    :model/Measure                  :metabase.measures.schema/measure.update
    :model/Metabot                  :metabase.metabot.schema/metabot.update
@@ -221,9 +221,9 @@
   (t2/delete! model parent-column parent-id :entity_id [:not-in entity-ids]))
 
 (mu/defn collection-paths-columns
-  "The id, entity id, location, and name of every Collection."
+  "The id, entity id, location, name, and namespace of every Collection."
   []
-  (t2/select [:model/Collection :id :entity_id :location :name]))
+  (t2/select [:model/Collection :id :entity_id :location :name :namespace]))
 
 (mu/defn dashboard-entity-ids-and-names
   "The entity id and name of every Dashboard."
@@ -259,11 +259,6 @@
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
 
-(mu/defn database-names
-  "The names of every Database."
-  []
-  (t2/select-fn-vec :name :model/Database))
-
 (mu/defn database-id-by-name
   "The id of the Database named `database-name`, or nil."
   [database-name :- :string]
@@ -275,6 +270,15 @@
    schema      :- [:maybe :string]
    database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+
+(mu/defn insert-stub-database!
+  "Insert a stub Postgres Database named `database-name` with empty connection details and return its id."
+  [database-name :- :string]
+  (t2/insert-returning-pk! :model/Database {:name                database-name
+                                            :engine              :postgres
+                                            :details             {}
+                                            :is_stub             true
+                                            :initial_sync_status "complete"}))
 
 (mu/defn insert-inactive-table!
   "Insert an inactive Table named `table-name` in `schema` of the Database with `database-id` and return its id."
@@ -353,6 +357,11 @@
   "The id, entity id, and Table id of the Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
+
+(mu/defn timeline-ids-of-events
+  "The distinct Timeline ids of the TimelineEvents with `event-ids`."
+  [event-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
 
 (mu/defn entity-by-own-pk
   "The `model` row identified by `id`, using whatever column is that model's own primary key."

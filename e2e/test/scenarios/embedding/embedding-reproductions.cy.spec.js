@@ -932,7 +932,7 @@ describe("issue 8490", () => {
           display: "pie",
         },
       ],
-      cards: [{}, { col: 11 }],
+      cards: [{}, { col: 12 }],
     }).then(({ dashboard, questions: [lineChartQuestion] }) => {
       cy.wrap(dashboard.id).as("dashboardId");
       cy.wrap(lineChartQuestion.id).as("lineChartQuestionId");

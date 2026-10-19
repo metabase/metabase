@@ -108,6 +108,26 @@
           (is (=? {:entity_type "table" :entity_local_id table-id}
                   (t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id table-id))))))))
 
+(deftest schemaless-table-entity-round-trip-test
+  (testing "a schemaless Table keeps its nil schema in the export, so both import paths find the Table"
+    (mt/with-temp [:model/Table        {table-id :id} {:db_id (mt/id) :schema nil :name "schemaless_table"}
+                   :model/OsiAiContext _              {:ai_context {:instructions "no schema"}
+                                                       :entity_type "table" :entity_local_id table-id}]
+      (let [db-name   (t2/select-one-fn :name :model/Database :id (mt/id))
+            extracted (serdes/with-cache (extract-for "table" table-id))
+            restored  #(t2/select-one :model/OsiAiContext :entity_type "table" :entity_local_id table-id)]
+        (is (= [db-name nil "schemaless_table"] (:entity_local_id extracted)))
+        (testing "from an in-memory ingestion carrying the full path"
+          (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id table-id)
+          (serdes.load/load-metabase! (ingestion-in-memory [extracted]))
+          (is (=? {:ai_context {:instructions "no schema"}} (restored))))
+        (testing "from files, whose path is rebuilt from the entity"
+          (ts/with-random-dump-dir [dump-dir "osi-schemaless-"]
+            (storage/store! [extracted] (storage.files/file-writer dump-dir))
+            (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id table-id)
+            (serdes/with-cache (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir)))
+            (is (=? {:ai_context {:instructions "no schema"}} (restored)))))))))
+
 (deftest import-over-existing-row-updates-by-compound-key-test
   (testing "importing over an existing row updates it in place via the full compound key, not entity_type alone"
     (mt/with-temp [:model/Card {card-id :id} {}

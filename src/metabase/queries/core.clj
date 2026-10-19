@@ -35,7 +35,13 @@
   card-query-info
   cards-queries-info]
  [metabase.queries.models.card
-  create-card!]
+  check-shared-dashboard-timeline-permissions!
+  check-newly-exposed-dashcards-timeline-permissions!
+  check-shared-dashboard-timeline-permissions-for-card-ids!
+  create-card!
+  card-exposed-timeline-ids
+  dashcard-hides-card-events?
+  with-copy-source-card]
  [metabase.queries.card-write-checks
   actual-collection-id
   check-allowed-to-create-card!
@@ -49,16 +55,16 @@
   batch-fetch-dashboard-metadata
   batch-fetch-query-metadata]
  [metabase.queries.models.card
+  current-card-schema-version
   fully-parameterized?
   maybe-unverify!
-  model-supports-implicit-actions?
   model?
   sole-dashboard-id
   starting-card-schema-version
+  timeline-events-supported-display?
   update-card!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata
-  infer-metadata
   infer-metadata-with-model-overrides
   maybe-async-result-metadata
   refresh-metadata

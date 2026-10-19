@@ -6,7 +6,6 @@
    [metabase.actions.args :as actions.args]
    [metabase.actions.audit :as actions.audit]
    [metabase.actions.db :as actions.db]
-   [metabase.actions.http-action :as http-action]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
@@ -17,6 +16,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.card :as qp.card]
@@ -36,19 +36,25 @@
 
 (def ^:private ExecuteActionOpts
   [:map {:closed true}
-   [:allow-http-actions? {:optional true} [:maybe :boolean]]
    [:context             {:optional true} [:maybe :keyword]]
    [:dashboard-id        {:optional true} [:maybe ms/PositiveInt]]])
+
+(defn- check-action-read-perms
+  "Throws a permissions error unless the current user, when there is one, can read `action`."
+  [action]
+  (when (and api/*current-user-id* (not (mi/can-read? action)))
+    (throw (ex-info (tru "You do not have permissions to run this action.")
+                    {:type qp.error-type/missing-required-permissions, :status-code 403}))))
 
 (mu/defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
   endpoint of shape `{<parameter-id> <value>}`.
 
   `action` should already be hydrated with its `:card`. `opts` carries the audit attribution from the endpoint."
-  [{query :dataset_query, model-id :model_id, :as action} :- ::actions.schema/action
+  [{query :dataset_query, action-id :id, :as action} :- ::actions.schema/action
    request-parameters :- RequestParameters
    opts                :- [:maybe ExecuteActionOpts]]
-  (log/tracef "Executing action for model %d" model-id)
+  (log/tracef "Executing action %d" action-id)
   (driver.conn/with-write-connection
     (try
       (let [parameters        (for [parameter (:parameters action)]
@@ -61,19 +67,20 @@
             ;; the routed destination database and the impersonation flag are only knowable from inside the
             ;; writeback QP's middleware stack
             execution-context (volatile! nil)]
-        (binding [qp.perms/*card-id* model-id]
-          (actions.audit/with-audited-execution
-            {:action       :query/execute
-             :action-id    (:id action)
-             :dashboard-id (:dashboard-id opts)
-             :database-id  (:database substituted-query)
-             :user-id      api/*current-user-id*
-             :context      (:context opts :action-execute)
-             :native?      true
-             :template     (dissoc query :parameters :info)
-             :inputs       (filterv (comp some? :value) parameters)}
-            (fn [result]
-              (merge {:result_rows (or (:rows-affected result) 0)} @execution-context))
+        (actions.audit/with-audited-execution
+          {:action       :query/execute
+           :action-id    action-id
+           :dashboard-id (:dashboard-id opts)
+           :database-id  (:database substituted-query)
+           :user-id      api/*current-user-id*
+           :context      (:context opts :action-execute)
+           :native?      true
+           :template     (dissoc query :parameters :info)
+           :inputs       (filterv (comp some? :value) parameters)}
+          (fn [result]
+            (merge {:result_rows (or (:rows-affected result) 0)} @execution-context))
+          (do
+            (check-action-read-perms action)
             (qp/do-with-captured-execution-context #(qp/execute-write-query! substituted-query)
                                                    #(vreset! execution-context %)))))
       (catch Throwable e
@@ -91,51 +98,24 @@
     (t2/hydrate (actions.db/table table-id) :fields)))
 
 (defn- execute-custom-action! [action request-parameters opts]
-  (let [{action-type :type, action-id :id} action]
-    (actions/check-actions-enabled! action)
-    (let [model (actions.db/card (:model_id action))
-          ;; the query executes against its own :database; fall back to the derived column if absent
-          action-db-id (or (:database (:dataset_query action)) (:database_id action))]
-      (when (and (= action-type :query) (not= (:database_id model) action-db-id))
-        ;; the above check checks the db of the model. We check the db of the query action here
-        (actions/check-actions-enabled-for-database!
-         (actions.db/database action-db-id))))
-    (try
-      (case action-type
-        :query
-        (execute-query-action! action request-parameters opts)
+  (actions/check-actions-enabled action)
+  (try
+    (execute-query-action! action request-parameters opts)
+    (catch Exception e
+      (log/errorf "Error executing action: %s" (ex-message e))
+      (if-let [ed (ex-data e)]
+        (let [ed (cond-> ed
+                   (and (nil? (:status-code ed))
+                        (= (:type ed) :missing-required-permissions))
+                   (assoc :status-code 403)
 
-        :http
-        ;; `execute-http-action!` refuses every call today, so this records the refused attempt. The template holds
-        ;; `url`/`headers`/`body`, which may carry credentials and `query.query` is plaintext -- so the hash
-        ;; identifies the action, never its content.
-        (actions.audit/with-audited-execution
-          {:action       :http/execute
-           :action-id    action-id
-           :dashboard-id (:dashboard-id opts)
-           :database-id  nil
-           :user-id      api/*current-user-id*
-           :context      (:context opts :action-execute)
-           :native?      false
-           :template     {:type :internal, :action :http/execute, :action-id action-id}
-           :inputs       (if (seq request-parameters) [request-parameters] [])}
-          (constantly {:result_rows 0})
-          (http-action/execute-http-action! action request-parameters)))
-      (catch Exception e
-        (log/errorf "Error executing action: %s" (ex-message e))
-        (if-let [ed (ex-data e)]
-          (let [ed (cond-> ed
-                     (and (nil? (:status-code ed))
-                          (= (:type ed) :missing-required-permissions))
-                     (assoc :status-code 403)
-
-                     (nil? (:message ed))
-                     (assoc :message (ex-message e)))]
-            (if (= (ex-data e) ed)
-              (throw e)
-              (throw (ex-info (ex-message e) ed e))))
-          {:body {:message (or (ex-message e) (tru "Error executing action."))}
-           :status 500})))))
+                   (nil? (:message ed))
+                   (assoc :message (ex-message e)))]
+          (if (= (ex-data e) ed)
+            (throw e)
+            (throw (ex-info (ex-message e) ed e))))
+        {:body {:message (or (ex-message e) (tru "Error executing action."))}
+         :status 500}))))
 
 (defn- check-no-extra-parameters
   "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
@@ -249,10 +229,7 @@
    (execute-action! action request-parameters nil))
   ([action              :- ::actions.schema/action
     request-parameters  :- RequestParameters
-    {:keys [allow-http-actions?] :or {allow-http-actions? true} :as opts} :- [:maybe ExecuteActionOpts]]
-   (when (and (= (:type action) :http) (not allow-http-actions?))
-     (throw (ex-info (tru "HTTP actions cannot be executed from public endpoints.")
-                     {:status-code 403})))
+    opts                :- [:maybe ExecuteActionOpts]]
    (let [;; if a value is supplied for a hidden parameter, it should raise an error
          field-settings         (get-in action [:visualization_settings :fields])
          hidden-param-ids       (->> (vals field-settings)
@@ -273,7 +250,7 @@
      (case (:type action)
        :implicit
        (execute-implicit-action! action request-parameters opts)
-       (:query :http)
+       :query
        (execute-custom-action! action request-parameters opts)
        (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action))))))
 

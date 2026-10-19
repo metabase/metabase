@@ -21,8 +21,15 @@ const dataAppView = () =>
     Component: DataAppView,
   }));
 
-registerPagePrefetch(`${Urls.DATA_APP_ROOT_URL}/`, dataAppLayout);
-registerPagePrefetch(`${Urls.DATA_APP_ROOT_URL}/`, dataAppView);
+/**
+ * Called from the licensed branch of `initializePlugin`, so only the pages this
+ * instance mounts are registered. The background pass reads the registrations too,
+ * and fetching a page nobody can reach would spend a download on nothing.
+ */
+export function registerDataAppsPagePrefetch(): void {
+  registerPagePrefetch(`${Urls.DATA_APP_ROOT_URL}/`, dataAppLayout);
+  registerPagePrefetch(`${Urls.DATA_APP_ROOT_URL}/`, dataAppView);
+}
 
 /**
  * Data-app host routes. Open to any signed-in user.

@@ -264,16 +264,6 @@ export function DataAppView() {
       );
     }
 
-    if (status === 409) {
-      return (
-        <CenteredEmptyState
-          title={t`This data app isn’t published yet`}
-          message={t`An administrator needs to publish this data app before it can be opened.`}
-          illustrationElement={<Icon name="hourglass" size={64} />}
-        />
-      );
-    }
-
     if (status === 403) {
       return (
         <CenteredEmptyState
@@ -354,7 +344,7 @@ export function DataAppView() {
       {!appReady && (
         <Box
           pos="absolute"
-          bg="background-primary"
+          bg="background_page-primary"
           style={{ inset: 0, zIndex: 1 }}
         >
           <LoadingAndErrorWrapper loading data-testid="data-app-loading" />

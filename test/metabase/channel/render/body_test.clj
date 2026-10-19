@@ -812,7 +812,7 @@
                 card-b-doc (render.tu/render-card-as-hickory! card-b-id)]
             ;; The test asserts that all 4 slices exist by seeing that each path element has the colour assigned to that category
             ;; we should expect to see each of the 4 (and only those 4) colours.
-            ;; This is also true of the colours for the legend circle elements.
+            ;; This is also true of the colours for the legend marker elements.
             ;; When legend and Totals are disabled, we should expect those elements not to exist in the render
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
@@ -822,7 +822,7 @@
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :total-els-text     #{}}]]]
-              (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
+              (let [legend-elements (->> (hik.s/select (hik.s/child (hik.s/class "visx-group") (hik.s/tag :rect)) doc)
                                          (map #(get-in % [:attrs :fill]))
                                          set)
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
@@ -876,6 +876,34 @@
             (testing "The underlying add-dashcard-timeline-events call adds the timeline events to the card"
               (is (=? [tl-a tl-b] (:timeline_events (#'body/add-dashcard-timeline-events {:card card})))))
             (is (= 2 (count (:timeline_events (first cards-with-data)))))))))))
+
+(deftest subscription-render-omits-timeline-events-test
+  (testing "A chart saved with timeline events renders in a subscription, without showing any of the events"
+    (mt/dataset test-data
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [event-name "Kilroy Was Here"]
+          (mt/with-temp [:model/Collection {collection-id :id} {:name "Timeline Collection"}
+                         :model/Timeline {timeline-id :id} {:name          "Releases"
+                                                            :collection_id collection-id}
+                         :model/TimelineEvent _ {:timeline_id timeline-id
+                                                 :name        event-name
+                                                 :timestamp   #t "2019-05-15T00:00:00Z"}
+                         :model/Card {card-id :id}
+                         {:display                :line
+                          :collection_id          collection-id
+                          :dataset_query          (mt/mbql-query orders
+                                                    {:aggregation [[:count]]
+                                                     :breakout    [!month.created_at]})
+                          :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}
+                         :model/Dashboard {dash-id :id} {:collection_id collection-id}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id
+                                                                 :card_id      card-id}]
+            (let [doc (render.tu/render-dashcard-as-hickory! dashcard-id)]
+              (testing "the line chart itself renders"
+                (is (seq (hik.s/select (hik.s/tag :path) doc))))
+              (testing "the saved event is nowhere in the rendered chart"
+                (is (empty? (hik.s/select (hik.s/find-in-text (re-pattern event-name)) doc)))
+                (is (not (str/includes? (pr-str doc) event-name)))))))))))
 
 (deftest unknown-column-settings-test
   (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."
@@ -1296,10 +1324,11 @@
                                              :graph.metrics ["sum"]}}]
           (mt/with-temp [:model/Card {card-id :id} card]
             (let [doc            (render.tu/render-card-as-hickory! card-id)
+                  weekday-names  #{"Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"}
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 4)
                                       (map str/trim)
+                                      (filter weekday-names)
                                       first)]
               (testing "Renders with correct day of week first"
                 (is (= "Monday" first-day-text))))))))))
@@ -1326,7 +1355,7 @@
                               (map str/trim)
                               first)]
               (testing "Renders with correct day of week first"
-                (is (= "2017/1" label))))))))))
+                (is (= "2018/4" label))))))))))
 
 (deftest render-correct-whitelabel-colors
   (when config/ee-available?

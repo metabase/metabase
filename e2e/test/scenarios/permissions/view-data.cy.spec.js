@@ -124,13 +124,19 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not allow making permissions granular in the either database or group focused view", () => {
+  it("should not show the view data column without a token in either the database or group focused view", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
+    cy.findByTestId("permission-table")
+      .findByText("Create queries")
+      .should("exist");
     cy.get("main").findByText("View data").should("not.exist");
 
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
+    cy.findByTestId("permission-table")
+      .findByText("Create queries")
+      .should("exist");
     cy.get("main").findByText("View data").should("not.exist");
   });
 });
@@ -176,7 +182,17 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     });
   });
 
-  it("should allow making permissions granular in the group focused view", () => {
+  it("should preserve parent value for children when selecting granular, allow making permissions granular in the group focused view, and infer parent permissions if all granular permissions are equal", () => {
+    cy.log("Preserve parent value for children when selecting granular");
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Blocked");
+
+    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
+
+    H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Blocked");
+
+    cy.log("Make permissions granular in the group focused view");
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
     H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
@@ -207,23 +223,9 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     cy.wait("@saveGraph").then(({ response }) => {
       expect(response.statusCode).to.equal(200);
     });
-  });
 
-  it("should infer parent permissions if all granular permissions are equal", () => {
-    // TODO: this feature (not test) is broken when changing permissions for all schemas to the samve value
-
-    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
-    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
-
-    makeOrdersSandboxed();
-
-    H.selectSidebarItem("All Users");
-
-    H.assertPermissionTable([
-      ["Sample Database", "Granular", "No", "1 million rows", "No", "No", "No"],
-    ]);
-
+    cy.log("Infer parent permissions if all granular permissions are equal");
+    // TODO: this feature (not test) is broken when changing permissions for all schemas to the same value
     cy.findByTestId("permission-table")
       .find("tbody > tr")
       .contains("Sample Database")
@@ -237,16 +239,6 @@ describe("scenarios > admin > permissions > view data > granular", () => {
     H.assertPermissionTable([
       ["Sample Database", "Can view", "No", "1 million rows", "No", "No", "No"],
     ]);
-  });
-
-  it("should preserve parent value for children when selecting granular for permissions available to child entities", () => {
-    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
-    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Blocked");
-
-    H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
-
-    H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Blocked");
   });
 });
 
@@ -266,7 +258,9 @@ describe(
 
       // Check there is no Impersonated option on H2
       H.selectPermissionRow("Sample Database", DATA_ACCESS_PERM_IDX);
-      H.popover().should("not.contain", "Impersonated");
+      H.popover()
+        .should("contain", "Blocked")
+        .and("not.contain", "Impersonated");
 
       // Set impersonated access on Postgres database
       H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
@@ -385,6 +379,21 @@ describe(
     });
 
     it("allows switching to the granular access and update table permissions", () => {
+      cy.log(
+        "Set unrestricted for children if database is set to impersonated before going granular",
+      );
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+
+      H.selectImpersonatedAttribute("role");
+      H.saveImpersonationSettings();
+
+      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Granular");
+
+      H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Can view");
+
+      cy.log("Same, after saving the impersonated permissions");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
       H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
@@ -470,19 +479,6 @@ describe(
 
       cy.focused().should("have.attr", "placeholder", "username");
     });
-
-    it("should set unrestricted for children if database is set to impersonated before going granular", () => {
-      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
-
-      H.selectImpersonatedAttribute("role");
-      H.saveImpersonationSettings();
-
-      H.modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
-
-      H.assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Can view");
-    });
   },
 );
 
@@ -499,7 +495,9 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
     H.selectPermissionRow("Sample Database", DATA_ACCESS_PERM_IDX);
-    H.popover().should("not.contain", "No self-service (Deprecated)");
+    H.popover()
+      .should("contain", "Blocked")
+      .and("not.contain", "No self-service (Deprecated)");
 
     H.selectPermissionRow("Sample Database", CREATE_QUERIES_PERM_IDX);
 
@@ -511,7 +509,6 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
     );
 
     // load the page w/ legacy value in the graph and test that it does exist
-    cy.reload();
     cy.intercept("GET", `/api/permissions/graph/group/${ALL_USERS_GROUP}`, {
       statusCode: 200,
       body: {
@@ -527,6 +524,7 @@ describe("scenarios > admin > permissions > view data > legacy no self-service",
         },
       },
     });
+    cy.reload();
 
     H.assertPermissionTable([
       [
@@ -604,6 +602,7 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
   });
 
   it("allows editing sandboxed access in the database focused view", () => {
+    cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     // make sure that we have native permissions now so that we can validate that
@@ -690,7 +689,9 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
       "not.exist",
     );
 
-    cy.button("Save changes").click();
+    H.savePermissions();
+    cy.wait("@saveGraph").its("response.statusCode").should("eq", 200);
+    cy.reload();
 
     H.assertPermissionTable(expectedFinalPermissions);
   });
@@ -940,7 +941,7 @@ describe("scenarios > admin > permissions > view data > unrestricted", () => {
   });
 });
 
-// ENFORMCENT RELATED TESTS
+// ENFORCEMENT RELATED TESTS
 
 describe("scenarios > admin > permissions > view data > blocked (enforcement)", () => {
   beforeEach(() => {
@@ -949,32 +950,25 @@ describe("scenarios > admin > permissions > view data > blocked (enforcement)", 
     H.activateToken("pro-self-hosted");
   });
 
-  it("should deny view access to a query builder question that makes use of a blocked table", () => {
-    assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
-    cy.visit(
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
-    );
-    removeCollectionGroupPermissions();
-    assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
-  });
-
   it("should deny view access to a query builder question that makes use of a blocked database", () => {
-    assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
+    assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID);
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
     removeCollectionGroupPermissions();
-    assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
+    assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID);
   });
 
-  it("should deny view access to any native question if the user has blocked view data for any table or database", () => {
+  it("should deny view access to query builder questions using a blocked table and to any native question", () => {
     H.createNativeQuestion({
       native: { query: "select 1" },
     }).then(({ body: { id: nativeQuestionId } }) => {
-      assertCollectionGroupUserHasAccess(nativeQuestionId, false);
+      assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID);
+      assertCollectionGroupUserHasAccess(nativeQuestionId);
       cy.visit(
         `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
       );
       removeCollectionGroupPermissions();
-      assertCollectionGroupHasNoAccess(nativeQuestionId, false);
+      assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID);
+      assertCollectionGroupHasNoAccess(nativeQuestionId);
     });
   });
 });
@@ -988,18 +982,19 @@ function lackPermissionsView(shouldExist) {
 // NOTE: all helpers below make user of the "sandboxed" user and "collection" group to test permissions
 // as this user is of only one group and has permission to view existing question
 
-function assertCollectionGroupUserHasAccess(questionId, isQbQuestion) {
+function assertCollectionGroupUserHasAccess(questionId) {
   cy.signOut();
   cy.signIn("sandboxed");
 
   H.visitQuestion(questionId);
+  cy.findByTestId("query-visualization-root").should("be.visible");
   lackPermissionsView(false);
 
   cy.signOut();
   cy.signInAsAdmin();
 }
 
-function assertCollectionGroupHasNoAccess(questionId, isQbQuestion) {
+function assertCollectionGroupHasNoAccess(questionId) {
   cy.signOut();
   cy.signIn("sandboxed");
 

@@ -54,14 +54,14 @@ export {
 } from "./hooks/public/use-metabase-query";
 export type {
   DefinedQuery,
-  LocalFieldReference,
+  MetabaseLocalFieldReference,
   MetabaseBreakout,
   MetabaseDynamicColumn,
   MetabaseDynamicQuery,
   MetabaseOrderBy,
   MetabaseQueryOptions,
   MetabaseQueryObject,
-  OrderByDirection,
+  MetabaseOrderByDirection,
   UseMetabaseQueryObjectResult,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";

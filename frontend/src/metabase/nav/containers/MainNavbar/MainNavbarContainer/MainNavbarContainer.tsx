@@ -29,7 +29,6 @@ import { logout } from "metabase/redux/auth";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import type { To } from "metabase/router";
-import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, CollectionId, User } from "metabase-types/api";
 
@@ -130,23 +129,28 @@ function MainNavbarContainer({
     [selectedItems],
   );
 
+  // Only a real collection has a path to reveal. The virtual ones (`root`, `users`, `trash`) have no ancestors, and
+  // `expand-to` takes a numeric id, so asking for them would be a request that could never help.
+  const revealableCollectionId =
+    typeof selectedCollectionId === "number" ? selectedCollectionId : undefined;
+
   // Already fetched by MainNavbar for the selected item, so this costs nothing and gives us the permission-aware
   // ancestor chain we need to reveal a deeply nested collection without walking the tree.
   const { data: selectedCollection } = useGetCollectionQuery(
-    selectedCollectionId != null ? { id: selectedCollectionId } : skipToken,
+    revealableCollectionId != null ? { id: revealableCollectionId } : skipToken,
   );
 
   // Stays empty until the collection resolves, so the tree reveals the full path in one go rather than expanding
   // the selected node first and its ancestors a render later.
   const ancestorIds = useMemo(() => {
-    if (selectedCollectionId == null || selectedCollection == null) {
+    if (revealableCollectionId == null || selectedCollection == null) {
       return [];
     }
     return [
       ...getSelectedCollectionAncestorIds(selectedCollection),
-      selectedCollectionId,
+      revealableCollectionId,
     ];
-  }, [selectedCollection, selectedCollectionId]);
+  }, [selectedCollection, revealableCollectionId]);
 
   const {
     collections,
@@ -225,8 +229,7 @@ function MainNavbarContainer({
       } catch (e) {
         dispatch(
           addUndo({
-            icon: "warning",
-            toastColor: "feedback-negative",
+            variant: "negative",
             message: t`Something went wrong`,
           }),
         );
@@ -240,21 +243,6 @@ function MainNavbarContainer({
   }, []);
 
   const closeModal = useCallback(() => setModal(null), []);
-
-  const renderModalContent = useCallback(() => {
-    if (modal === "MODAL_NEW_COLLECTION") {
-      return (
-        <CreateCollectionModal
-          onClose={closeModal}
-          onCreate={(collection: Collection) => {
-            closeModal();
-            onChangeLocation(Urls.collection(collection));
-          }}
-        />
-      );
-    }
-    return null;
-  }, [modal, closeModal, onChangeLocation]);
 
   if (error || databasesError) {
     return <NavbarErrorView />;
@@ -291,15 +279,15 @@ function MainNavbarContainer({
         showExternalCollectionsSection={showExternalCollectionsSection}
       />
 
-      <Modal
-        opened={Boolean(modal)}
-        onClose={closeModal}
-        size="lg"
-        withCloseButton={false}
-        padding={0}
-      >
-        {renderModalContent()}
-      </Modal>
+      {modal === "MODAL_NEW_COLLECTION" && (
+        <CreateCollectionModal
+          onClose={closeModal}
+          onCreate={(collection: Collection) => {
+            closeModal();
+            onChangeLocation(Urls.collection(collection));
+          }}
+        />
+      )}
     </>
   );
 }

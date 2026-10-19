@@ -1320,7 +1320,7 @@
                 :setting     "test-feature-setting"
                 :feature     :test-feature}
                (try (test-feature-setting! "custom")
-                    (catch ExceptionInfo e (ex-data e)))))))
+                    (catch ExceptionInfo e (dissoc (ex-data e) :response/keys)))))))
     (testing ":enabled? returns false"
       (is (= {:status-code 400
               :setting     "test-enabled-setting-default"}
@@ -1370,6 +1370,10 @@
         (catch Exception e
           (is (= "Setting name 'retired-setting' is retired; use a different name instead"
                  (ex-message e))))))))
+
+(deftest ^:parallel llm-max-tokens-is-retired-test
+  (testing "the removed llm-max-tokens setting's name cannot be reused by a new setting"
+    (is (contains? @#'setting/retired-setting-names "llm-max-tokens"))))
 
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"

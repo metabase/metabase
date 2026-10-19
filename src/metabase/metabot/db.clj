@@ -281,6 +281,33 @@
    user-id :- ::lib.schema.id/user]
   (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id user-id))
 
+(mu/defn- other-participant?
+  "Whether a User other than `user-id` has sent a message in the MetabotConversation with `conversation-id`."
+  [conversation-id :- :string
+   user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id [:not= user-id]))
+
+(mu/defn- slack-message?
+  "Whether any message in the MetabotConversation with `conversation-id` was sent through Slack."
+  [conversation-id :- :string]
+  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :channel_id [:not= nil]))
+
+(mu/defn conversation-open-to-others?
+  "Whether someone other than the User with `user-id` can read the MetabotConversation with `conversation-id`,
+   now or by joining it later. False for a conversation that does not exist.
+   Superusers can read every conversation and are not counted."
+  [conversation-id :- :string
+   user-id :- ::lib.schema.id/user]
+  (boolean
+   (when-let [{:keys [id user_id slack_thread_ts]} (conversation conversation-id)]
+     ;; Anyone in a Slack thread can join its conversation, so the thread counts before a second person writes.
+     ;; A thread older than the `slack_thread_ts` column shows as Slack only through its messages.
+     ;; Whoever started a conversation can read it even when none of its messages name them.
+     (or (some? slack_thread_ts)
+         (some-> user_id (not= user-id))
+         (other-participant? id user-id)
+         (slack-message? id)))))
+
 (mu/defn message-by-external-id
   "The ID and conversation of the MetabotMessage with `external-id`, or nil."
   [external-id :- :string]
@@ -420,10 +447,12 @@
   (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil]))
 
 (mu/defn non-audit-databases
-  "The ID, name, engine, description, and audit flag of every non-audit, non-destination Database, ordered by name."
+  "The ID, name, engine, description, and audit flag of every non-audit, non-stub, non-destination Database, ordered
+  by name."
   []
   (t2/select [:model/Database :id :name :engine :description :is_audit]
              :is_audit false
+             :is_stub false
              :router_database_id nil
              {:order-by [[:%lower.name :asc]]}))
 
@@ -662,6 +691,11 @@
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+
+(mu/defn fields
+  "The Fields with `field-ids`."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
@@ -1038,3 +1072,13 @@
   "The ID, name, description, Table ID, and entity ID of the Segments with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Segment :id :name :description :table_id :entity_id] :id [:in ids]))
+
+(mu/defn measure-entity-ids
+  "A map of Measure ID to entity ID for `ids`."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (t2/select-pk->fn :entity_id :model/Measure :id [:in ids]))
+
+(mu/defn segment-entity-ids
+  "A map of Segment ID to entity ID for `ids`."
+  [ids :- [:sequential ::lib.schema.id/segment]]
+  (t2/select-pk->fn :entity_id :model/Segment :id [:in ids]))

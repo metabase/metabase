@@ -19,8 +19,8 @@
   nil)
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *metabot-id*
-  "The resolved metabot ID for the current agent session. Bound during the agent loop
+(def ^:dynamic *metabot*
+  "The resolved Metabot row for the current agent session. Bound during the agent loop
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
@@ -42,6 +42,11 @@
   create came from (e.g. `save_entity` stamps it onto the saved card)."
   []
   (:conversation-id (current-memory)))
+
+(defn request-canceled-chan
+  "The channel that receives a value when the current turn's request is canceled, or nil when the turn has none."
+  []
+  (:request-canceled-chan (current-memory)))
 
 (defn current-queries-state
   "Returns the current queries state map from agent memory."
@@ -67,6 +72,13 @@
   Chart configs contain pre-materialized series data from the frontend viewing context."
   []
   (get-in (current-memory) [:state :chart-configs] {}))
+
+(defn tool-offered?
+  "Whether the current agent session recorded its tools and offers the one named `tool-name`.
+  A session that did not record its tools does not count as offering it, so text that promises the model a tool is
+  never shown on a guess."
+  [tool-name]
+  (contains? (:tool-names (current-memory)) tool-name))
 
 (defn current-context
   "Returns the current agent context from memory."

@@ -106,5 +106,6 @@
                  (:id user) grant-ends-at)
       (t2/with-transaction [_]
         (support-access-grants.db/update-auth-identity! (:id auth-identity) (auth-identity/mark-token-consumed auth-identity))
-        (auth-identity/set-password! (:id user) password {:expires-at grant-ends-at}))))
+        ;; the support user is who is changing their own password here, so they are who ends their sessions
+        (auth-identity/set-password! (:id user) password {:expires-at grant-ends-at, :ended-by (:id user)}))))
   result)

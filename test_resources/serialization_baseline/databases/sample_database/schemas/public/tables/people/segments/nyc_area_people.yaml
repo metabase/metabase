@@ -32,6 +32,4 @@ description: People located within the NYC bounding box
 entity_id: D2R9JpvI8sMfYWqfPsTkx
 name: NYC Area People
 serdes/meta:
-- id: D2R9JpvI8sMfYWqfPsTkx
-  label: nyc_area_people
-  model: Segment
+- model: Segment

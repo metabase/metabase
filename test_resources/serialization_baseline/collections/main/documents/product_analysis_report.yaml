@@ -85,6 +85,4 @@ entity_id: dOc1PrOdAnAlYsIsRpTx2
 name: Product Analysis Report
 updated_at: '2026-04-02T02:59:02.778668Z'
 serdes/meta:
-- id: dOc1PrOdAnAlYsIsRpTx2
-  label: product_analysis_report
-  model: Document
+- model: Document
