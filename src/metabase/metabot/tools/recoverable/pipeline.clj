@@ -90,6 +90,12 @@
    :text (str "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an "
               "entity_id string.")})
 
+(def ^:private cross-database-step
+  {:uses #{}
+   :text (str "A query can only reference saved questions, models, metrics, measures and segments "
+              "from its own database. Use one from that database, or change the source to a table "
+              "in the referenced item's database.")})
+
 ;;; ------------------------------------------- Declarations -------------------------------------------------------
 
 (defmacro ^:private defpipeline-error
@@ -206,9 +212,7 @@
 
 (defpipeline-error cross-database-card!
   "The referenced card belongs to a different database than the query."
-  ;; No step: the fix is to pick a different source entirely, and which one depends on the question
-  ;; the agent is answering, not on anything it can look up.
-  [])
+  [cross-database-step])
 
 (defpipeline-error unknown-measure!
   "A measure entity_id matched no measure."
@@ -225,7 +229,7 @@
 
 (defpipeline-error cross-database-measure!
   "The referenced measure belongs to a different database than the query."
-  [])
+  [cross-database-step])
 
 (defpipeline-error unknown-segment!
   "A segment entity_id matched no segment."
@@ -242,7 +246,7 @@
 
 (defpipeline-error cross-database-segment!
   "The referenced segment belongs to a different database than the query."
-  [])
+  [cross-database-step])
 
 ;;; Query shape
 

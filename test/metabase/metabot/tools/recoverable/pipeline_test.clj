@@ -143,6 +143,7 @@
                  :unknown-field :unknown-field-id :ambiguous-field :ambiguous-fk :no-fk-path
                  :unknown-card :unknown-card-id :unknown-measure :unknown-measure-id
                  :unknown-segment :unknown-segment-id :unknown-database
+                 :cross-database-card :cross-database-measure :cross-database-segment
                  :missing-source-in-first-stage]]
       (doseq [code codes]
         (testing code

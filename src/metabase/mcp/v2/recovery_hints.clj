@@ -77,6 +77,11 @@
     (message/msg [(str "Call \"browse_data\" with action \"get_fields\" for the table that "
                        "owns the segment and use the numeric id from its segments list.")])
 
+    (:cross-database-card :cross-database-measure :cross-database-segment)
+    (message/msg [(str "A query can only reference saved questions, models, metrics, measures and segments "
+                       "from its own database. Use one from that database, or change the source to a table "
+                       "in the referenced item's database.")])
+
     :unknown-database
     (message/msg [(str "Use a numeric table id in `source-table:` (from \"browse_data\" "
                        "action \"list_tables\"), which needs no database name at all.")])
