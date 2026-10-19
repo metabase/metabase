@@ -120,6 +120,8 @@ describe("scenarios - embedding hub", () => {
     ].forEach(({ dbId, dbName }) => {
       it(`"Create models" step should be marked in ${dbName} as done after creating a model`, () => {
         if (dbId === 2) {
+          // Local SQLite fixtures are allowed on self-hosted instances.
+          H.activateToken("pro-self-hosted");
           H.addSqliteDatabase(dbName);
         }
 

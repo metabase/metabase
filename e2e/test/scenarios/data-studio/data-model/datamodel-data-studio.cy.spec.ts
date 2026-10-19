@@ -2734,6 +2734,8 @@ describe("scenarios > data studio > datamodel", () => {
           const remappedNullValue = "nothin";
 
           cy.signInAsAdmin();
+          // Local SQLite fixtures are allowed on self-hosted instances.
+          H.activateToken("pro-self-hosted");
           H.addSqliteDatabase();
 
           cy.get<number>("@sqliteID").then((databaseId) => {
