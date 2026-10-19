@@ -17,12 +17,7 @@ import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
-import {
-  queryToSearch,
-  useLocation,
-  useNavigate,
-  useParams,
-} from "metabase/router";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { Button, Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useLazyListSessionsQuery } from "metabase-enterprise/api";
@@ -56,7 +51,10 @@ export const SessionsPage = () => {
   const navigate = useNavigate();
   const { sessionId } = useParams<RouteParams>();
   const { ref: containerRef, width: containerWidth } = useElementSize();
-  const [urlState, { patchUrlState }] = useUrlState(location, urlStateConfig);
+  const [urlState, { patchUrlState, search: urlSearch }] = useUrlState(
+    location,
+    urlStateConfig,
+  );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const clearSelection = useCallback(() => setRowSelection({}), []);
 
@@ -156,10 +154,10 @@ export const SessionsPage = () => {
           id === undefined
             ? Urls.monitorSessions()
             : Urls.monitorSessionDetail(id),
-        search: queryToSearch(urlStateConfig.serialize(urlState)),
+        search: urlSearch,
       });
     },
-    [navigate, urlState],
+    [navigate, urlSearch],
   );
 
   const handleSidebarClose = useCallback(

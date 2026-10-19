@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEffectOnce, useLatest } from "react-use";
 import _ from "underscore";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { Location } from "metabase/router";
-import { queryToSearch, useNavigate } from "metabase/router";
+import { getRouterLocation, queryToSearch, useNavigate } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
 
 import type { UrlStateQuery } from "./types";
@@ -28,6 +28,7 @@ type UrlStateActions<State extends BaseState> = {
     patch: Partial<State>,
     options?: PatchUrlStateOptions,
   ) => void;
+  search: string;
 };
 
 export const URL_UPDATE_DEBOUNCE_DELAY = 300;
@@ -70,6 +71,12 @@ export function useUrlState<State extends BaseState>(
 
   const updateUrl = useCallback(
     (state: State) => {
+      const routerLocationKey = getRouterLocation()?.key;
+      const hasNavigatedSinceRender =
+        routerLocationKey !== undefined && routerLocationKey !== location.key;
+      if (hasNavigatedSinceRender) {
+        return;
+      }
       const search = queryToSearch(serialize(state));
       // skip when the URL already carries this state, so adopting a URL below
       // does not push it onto the history a second time
@@ -78,6 +85,11 @@ export function useUrlState<State extends BaseState>(
       }
     },
     [location, serialize, navigate],
+  );
+
+  const search = useMemo(
+    () => queryToSearch(serialize(state)),
+    [serialize, state],
   );
 
   const updateUrlRef = useLatest(updateUrl);
@@ -108,5 +120,5 @@ export function useUrlState<State extends BaseState>(
     updateUrlRef.current(urlState);
   }, [updateUrlRef, urlState]);
 
-  return [state, { patchUrlState }];
+  return [state, { patchUrlState, search }];
 }
