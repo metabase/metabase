@@ -28,6 +28,24 @@ describe("Onboarding checklist page", () => {
   });
 });
 
+describe("Onboarding checklist on a Starter instance", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("starter");
+  });
+
+  it("should tag the docs link with the Starter plan", () => {
+    // Fails when the real Starter token gains a feature `getPlan` treats as Pro: add it to STARTER_FEATURES
+    cy.visit("/getting-started");
+
+    cy.findByTestId("learning-section")
+      .findByRole("link", { name: "Docs" })
+      .should("have.attr", "href")
+      .and("include", "source_plan=starter");
+  });
+});
+
 describe("Inaccessible Onboarding checklist", () => {
   beforeEach(() => {
     H.restore();

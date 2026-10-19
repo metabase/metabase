@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -63,22 +63,18 @@ describe("SettingsNav", () => {
     expect(await screen.findByText("Authentication")).toBeInTheDocument();
   });
 
-  it("should show Remote sync upsell nav item for non-pro plans", async () => {
+  it("should show the Remote sync upsell nav item when remote sync is not enabled, even with other paid features", async () => {
     await setup({
       initialRoute: "/admin/settings/general",
-      tokenFeatures: {
-        "custom-viz": false,
-        "custom-viz-available": false,
-      },
+      tokenFeatures: { advanced_permissions: true },
     });
 
-    expect(await screen.findByText("Remote sync")).toBeInTheDocument();
-  });
-
-  it("should hide Remote sync upsell nav item for pro plans", async () => {
-    await setup({ initialRoute: "/admin/settings/general" });
-
-    expect(screen.queryByText("Remote sync")).not.toBeInTheDocument();
+    const remoteSyncNavItem = await screen.findByRole("link", {
+      name: /Remote sync/,
+    });
+    expect(
+      within(remoteSyncNavItem).getByTestId("upsell-gem"),
+    ).toBeInTheDocument();
   });
 
   it("should highlight the active nav item", async () => {

@@ -58,7 +58,16 @@ describe("EnableTransformsPage", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("shows analysts-and-admins copy on Pro self-hosted", () => {
+    it("shows admins-only copy without advanced permissions, even with other paid features", () => {
+      setup({ tokenFeatures: { hosting: true, "transforms-basic": true } });
+
+      expect(screen.getByText(ADMINS_ONLY_COPY)).toBeInTheDocument();
+      expect(
+        screen.queryByText(ANALYSTS_AND_ADMINS_COPY),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows analysts-and-admins copy with advanced permissions", () => {
       setup({ tokenFeatures: { advanced_permissions: true } });
 
       expect(screen.getByText(ANALYSTS_AND_ADMINS_COPY)).toBeInTheDocument();

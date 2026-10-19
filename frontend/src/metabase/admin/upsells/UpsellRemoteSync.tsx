@@ -9,20 +9,17 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { getPlan, isProPlan, useSetting } from "metabase/settings";
 
 export const UpsellRemoteSync = ({ source }: { source: string }) => {
   const hasRemoteSync = useHasTokenFeature("remote_sync");
-  const tokenFeatures = useSetting("token-features");
   const applicationName = useSelector(getApplicationName);
-  const isPro = isProPlan(getPlan(tokenFeatures));
   const campaign = "remote-sync";
   const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
     campaign,
     location: source,
   });
 
-  if (hasRemoteSync || isPro) {
+  if (hasRemoteSync) {
     return null;
   }
 
