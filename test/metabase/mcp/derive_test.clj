@@ -7,6 +7,7 @@
    [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.callback-api :as mcp.callback-api]
+   [metabase.mcp.derive :as mcp.derive]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-test-util :as ui.tu]
    [metabase.permissions.core :as perms]
@@ -15,6 +16,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -342,6 +344,18 @@
                 (zoom-filters! (orders-count-binned-by "TOTAL")
                                {:column "count" :value 5 :dimensions [{:column "TOTAL" :value 40.0}]}
                                {})))))))
+
+(deftest string-for-a-numeric-column-is-a-400-test
+  (testing "a string click value on a numeric column is the caller's mistake, so a 400, even with Malli validation off as
+            in production, where Lib would otherwise fail on it with a ClassCastException and answer a 500"
+    (mu/disable-enforcement
+      (are [context] (= 400 (try (mcp.derive/derive-query (orders-count-binned-by "TOTAL")
+                                                          [{:type "drill-thru" :drill "zoom-in.binning" :context context}])
+                                 ::derived
+                                 (catch clojure.lang.ExceptionInfo e (or (:status-code (ex-data e))
+                                                                         (class (ex-cause e))))))
+        {:column "count" :value 5 :dimensions [{:column "TOTAL" :value "abc"}]}
+        {:column "TOTAL" :value "abc"}))))
 
 (deftest zoom-in-geographic-on-binned-lat-lon-test
   (testing "the binned lat/lon zoom acts on both coordinates and names no column, so it applies with no dimension"

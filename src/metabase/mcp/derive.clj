@@ -170,13 +170,20 @@
         resolve (fn [column-name]
                   (or (get columns column-name)
                       (throw (bad-request (tru "The query returns no column named {0}." (pr-str column-name))))))
+        ;; Lib fails on a string for a number with a ClassCastException, which would answer a 500.
+        checked (fn [col v]
+                  (when (and (string? v) (isa? (:effective-type col) :type/Number))
+                    (throw (bad-request (tru "{0} is not a number." (pr-str v)))))
+                  v)
         ;; A SQL NULL is `:null` only as the clicked value; in row and dimension cells it stays nil.
         cell    (fn [{column-name :column v :value}]
                   (let [col (resolve column-name)]
-                    {:column col :column-ref (lib/ref col) :value v}))]
+                    {:column col :column-ref (lib/ref col) :value (checked col v)}))]
     (cond-> {:value (when (contains? context :value)
                       (if (nil? (:value context)) :null (:value context)))}
-      column           (merge (let [col (resolve column)] {:column col :column-ref (lib/ref col)}))
+      column           (merge (let [col (resolve column)]
+                                (checked col (:value context))
+                                {:column col :column-ref (lib/ref col)}))
       ;; Row cells are context only, and a row carries display columns the query does not return, such as an FK
       ;; remapping's, so cells naming no returned column are dropped.
       (seq row)        (assoc :row (into [] (keep #(when (contains? columns (:column %)) (cell %))) row))
