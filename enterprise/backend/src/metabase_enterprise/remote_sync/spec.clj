@@ -68,8 +68,8 @@
                        :statuses   - Set of statuses to check for removal (e.g., #{\"removed\" \"delete\"})
                        :scope-key  - Optional key for scoping deletions (e.g., :collection_id, :id).
                                      If nil, deletions are global (by entity_id only).
-                       :all-on-setting-disable - Optional setting keyword; when this setting's sentinel
-                                     RSO exists with 'delete' status, remove ALL entities of this type
+                       :all-on-setting-disable - Optional setting keyword; the model syncs all or nothing with
+                                     this setting, so an import that drops it is checked for unsynced local work
    - :export-scope   - Export scope for query-export-roots:
                        :root-collections - Query root-level remote-synced + namespace collections (Collection)
                        :root-only        - Query root instances with collection_id = nil (Transform)
@@ -315,6 +315,7 @@
     :archived-key   nil  ; no archived field
     :tracking       {:select-fields  [:path]
                      :field-mappings {:model_name :path}}
+    :conditions         {:source [:not= ""]}  ; exclude a default (empty) library such as the built-in common.py
     :removal-conditions {:entity_id [:not= transforms-python/builtin-entity-id]}  ; protect built-in common.py from deletion
     :removal        {:statuses               #{"removed" "delete"}  ; no scope-key = global deletion
                      :all-on-setting-disable :remote-sync-transforms}
@@ -726,12 +727,15 @@
    positive evidence the condition holds (e.g. the Document spec's `{:exploration_id nil}` must
    see an explicit nil, not an absent key), so a partial payload can't sneak conditioned rows into
    sync scope.
-   NOTE: only handles scalar values — non-scalar `:conditions` (e.g. `[:not= ...]`) are not supported here.
+   NOTE: only handles scalar values and `[:not= value]` — other operator vectors are not supported here.
    Such forms belong in `:export-conditions`/`:removal-conditions`, which feed query-builders, not this helper."
   [conditions object]
   (or (empty? conditions)
       (every? (fn [[k v]]
-                (= (find object k) [k v]))
+                (when-let [[_ actual] (find object k)]
+                  (if (and (vector? v) (= :not= (first v)))
+                    (not= actual (second v))
+                    (= actual v))))
               conditions)))
 
 (defmulti ^:private check-eligibility-by-type

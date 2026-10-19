@@ -39,6 +39,7 @@
           (save [] nil))))))
 
 (defn- remote-sync-init []
+  (events/convert-legacy-transforms-root!)
   (if (settings/remote-sync-enabled)
     (do
       (when (= :read-only (settings/remote-sync-type))

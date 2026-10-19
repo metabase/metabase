@@ -14,7 +14,7 @@
 (def ^:private ConditionKey
   "The column keys used in the `:conditions` / `:cascade-filter` / `:removal-conditions` of a remote-sync model
   spec (see `metabase-enterprise.remote-sync.spec`)."
-  [:enum :exploration_id :built_in_type :active :entity_id :collection_id :archived :archived_at])
+  [:enum :exploration_id :built_in_type :source :active :entity_id :collection_id :archived :archived_at])
 
 (def ^:private Conditions
   "A map of column to value (possibly nil) or Toucan 2 operator-vector value, or nil for none."
@@ -30,9 +30,8 @@
    [:removal-conditions    Conditions]])
 
 (def ^:private ModelId
-  "A `:model_id`: the primary key of the referenced entity, or the `-1` sentinel
-  (`metabase-enterprise.remote-sync.settings/transforms-root-id`) standing in for the virtual Transforms root
-  Collection."
+  "A `:model_id`: the primary key of the referenced entity, or `-1` for the legacy Transforms root Collection row that
+  startup converts."
   [:maybe [:or ms/PositiveInt [:= -1]]])
 
 (def ^:private Path
@@ -58,6 +57,21 @@
   [model-key  :- :keyword
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
+
+(mu/defn existing-ids :- [:set ms/PositiveInt]
+  "The IDs among `ids` of the existing instances of `model-key`."
+  [model-key :- :keyword
+   ids       :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select-pks-set model-key :id [:in ids])
+    #{}))
+
+(mu/defn instances-where
+  "The instances of `model-key` matching `conditions` (a map of column to value or Toucan 2 operator-vector value,
+  or nil for every instance)."
+  [model-key  :- :keyword
+   conditions :- Conditions]
+  (apply t2/select model-key (mapcat identity conditions)))
 
 (mu/defn entity-id-where :- [:maybe :string]
   "The `:entity_id` of the instance of `model-key` whose `column` equals `value`, or nil."
@@ -369,6 +383,11 @@
   [namespace-name :- :string]
   (t2/select-pks-vec :model/Collection :namespace namespace-name))
 
+(mu/defn collections-with-names-in-namespace
+  "The `:id` and `:name` of the Collections of `namespace-name`."
+  [namespace-name :- :string]
+  (t2/select [:model/Collection :id :name] :namespace namespace-name))
+
 (mu/defn remote-synced-collection-ids
   "The IDs of the remote-synced Collections."
   []
@@ -491,22 +510,31 @@
   (t2/select :model/RemoteSyncObject {:where [:not= :status "synced"]}))
 
 (mu/defn dirty-rso-exists?
-  "Whether a RemoteSyncObject of a model type other than `excluded-model-types` is not synced."
+  "Whether a RemoteSyncObject is not synced, counting those of `excluded-model-types` only for a pending removal."
   [excluded-model-types :- [:set :string]]
   (t2/exists? :model/RemoteSyncObject
               {:where [:and
                        [:not= :status "synced"]
                        (when (seq excluded-model-types)
-                         [:not-in :model_type excluded-model-types])]}))
+                         [:or
+                          [:not-in :model_type excluded-model-types]
+                          [:in :status ["removed" "delete"]]])]}))
 
 (mu/defn dirty-rsos
-  "The RemoteSyncObjects of model types other than `excluded-model-types` that are not synced."
+  "The RemoteSyncObjects that are not synced, including those of `excluded-model-types` only for a pending removal."
   [excluded-model-types :- [:set :string]]
   (t2/select :model/RemoteSyncObject
              {:where [:and
                       [:not= :status "synced"]
                       (when (seq excluded-model-types)
-                        [:not-in :model_type excluded-model-types])]}))
+                        [:or
+                         [:not-in :model_type excluded-model-types]
+                         [:in :status ["removed" "delete"]]])]}))
+
+(mu/defn rsos-of-types
+  "The RemoteSyncObjects of `model-types`."
+  [model-types :- [:sequential :string]]
+  (t2/select :model/RemoteSyncObject :model_type [:in model-types]))
 
 (mu/defn tracked-model-ids
   "The model IDs of the RemoteSyncObjects of `model-type`."

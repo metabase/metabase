@@ -78,7 +78,8 @@
   [path source]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (let [id (transforms-python.db/upsert-python-library-source! normalized-path source)]
+    (let [id (transforms-python.db/upsert-python-library-source!
+              normalized-path source {:entity_id builtin-entity-id})]
       (transforms-python.db/python-library id))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
