@@ -170,3 +170,12 @@
             error (try (protocol/referenced-tables java-parser "postgres" sql) nil (catch Exception e e))]
         (is (= "RecursionError" (:sql-parsing/python-error-type (ex-data error))))
         (is (= "RecursionError: maximum recursion depth exceeded" (ex-message (ex-cause error))))))))
+
+(deftest read-only-check-of-too-deep-sql-test
+  (testing "SQL nested past the stack is unparseable to the read-only check, as on GraalPy, not an exception"
+    (let [sql (str "SELECT " (apply str (repeat 5000 "(")) "1" (apply str (repeat 5000 ")")))]
+      (is (=? {:is_single_stmt?    false
+               :allowed_stmt_type? false
+               :reason             "unparseable"
+               :error              "maximum recursion depth exceeded"}
+              (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" sql "read-only"))))))
