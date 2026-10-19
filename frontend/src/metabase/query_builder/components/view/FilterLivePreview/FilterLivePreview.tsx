@@ -16,6 +16,7 @@ import {
   LIVE_FILTER_PREVIEW_ANIMATION_MS,
   LIVE_FILTER_PREVIEW_DELAY_MS,
   LIVE_FILTER_PREVIEW_MODE,
+  LIVE_FILTER_PREVIEW_ONION_SKIN,
   LIVE_FILTER_PREVIEW_SLOW_DATA,
   usePrototypeSetting,
 } from "metabase/prototype";
@@ -26,6 +27,8 @@ import {
 } from "metabase/querying/filters/components/FilterPicker/FilterPreviewContext";
 import { useSetting } from "metabase/settings";
 import { Box, Center, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
+import { staticVizOverrides } from "metabase/ui/colors";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import {
   type ChartAnimation,
   ChartAnimationContext,
@@ -500,6 +503,26 @@ function usePreviewSeries(
       setLastRawSeries(rawSeries);
     }
   }, [rawSeries]);
+  const shownSeries = rawSeries ?? lastRawSeries;
+
+  const [isOnionSkinEnabled] = usePrototypeSetting(
+    LIVE_FILTER_PREVIEW_ONION_SKIN,
+  );
+  const ghostSeries = useMemo(
+    (): RawSeries | undefined =>
+      question != null && !isQuestionQuery && isOnionSkinEnabled && result?.data
+        ? [{ card: question.card(), data: result.data }]
+        : undefined,
+    [question, isQuestionQuery, isOnionSkinEnabled, result],
+  );
+
+  const seriesWithGhost = useMemo(
+    () =>
+      shownSeries && ghostSeries && ghostSeries !== shownSeries
+        ? withOnionSkin(shownSeries, ghostSeries)
+        : shownSeries,
+    [shownSeries, ghostSeries],
+  );
 
   const errorMessage =
     !isQuestionQuery && error
@@ -509,12 +532,85 @@ function usePreviewSeries(
         : undefined;
 
   return {
-    rawSeries: rawSeries ?? lastRawSeries,
+    rawSeries: seriesWithGhost,
     isQuestionQuery: isQuestionQuery && !isDebouncing,
     errorMessage,
     isUpdating: isDebouncing || (!isQuestionQuery && isFetching),
     chartAnimation,
   };
+}
+
+const ONION_SKIN_DISPLAYS = new Set([
+  "bar",
+  "line",
+  "area",
+  "combo",
+  "scatter",
+]);
+
+/**
+ * Adds `ghostSeries` behind `series` as a second, grey series of the same
+ * chart, so that both share the axes. Charts that cannot combine series, and
+ * results with more than one series, get no ghost.
+ */
+function withOnionSkin(series: RawSeries, ghostSeries: RawSeries): RawSeries {
+  const [main] = series;
+  const [ghost] = ghostSeries;
+  if (
+    main == null ||
+    ghost == null ||
+    series.length !== 1 ||
+    ghostSeries.length !== 1 ||
+    !ONION_SKIN_DISPLAYS.has(main.card.display)
+  ) {
+    return series;
+  }
+
+  const settings = main.card.visualization_settings;
+  const metricColumn = main.data.cols.find(
+    (column) => column.source === "aggregation",
+  );
+  if (metricColumn == null) {
+    return series;
+  }
+
+  // Combined cards key their series settings by the metric column name for the
+  // first card, and by the card name for the others.
+  const ghostKey = metricColumn.name;
+  const previewName = t`Preview`;
+  const previewColor =
+    settings.series_settings?.[ghostKey]?.color ??
+    getColorsForValues([ghostKey])[ghostKey];
+
+  // The ghost goes first: the x axis keeps the order of the first series, and
+  // the ghost has every value the preview has, and maybe more.
+  return [
+    {
+      ...ghost,
+      // The ghost is a copy of the same question; a different id keeps the
+      // two series apart.
+      card: {
+        ...ghost.card,
+        id: -1,
+        name: t`Before`,
+        visualization_settings: {
+          ...settings,
+          series_settings: {
+            ...settings.series_settings,
+            [ghostKey]: {
+              ...settings.series_settings?.[ghostKey],
+              title: t`Before`,
+              // Solid grey: chart series colours do not support transparency.
+              color: staticVizOverrides["text-disabled"],
+              "line.style": "dashed",
+            },
+            [previewName]: { color: previewColor },
+          },
+        },
+      },
+    },
+    { ...main, card: { ...main.card, name: previewName } },
+  ];
 }
 
 function getPreviewQuery(
