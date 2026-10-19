@@ -23,7 +23,9 @@
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
@@ -2133,3 +2135,24 @@
       (is (not (re-find hint (explain (invalid :a) (missing :alias))))))
     (testing "an explanation with no errors falls back to a generic sentence and the usual causes"
       (is (str/starts-with? (explain) "the query does not match the query builder's schema. This usually means")))))
+
+(deftest structural-validation-locations-end-to-end-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[filters details]
+              [[{"op" ">"} "stages[0].filters: invalid type"]
+               [[{"op" ">"} {"op" "<"}]
+                (str "stages[0].filters[0]: should be a vector, "
+                     "clause must be [operator-string, options-map, \u2026args]; "
+                     "stages[0].filters[1]: should be a vector, "
+                     "clause must be [operator-string, options-map, \u2026args]")]]]
+        (let [query (query-data {"lib/type" "mbql/query"
+                                 "stages" [{"lib/type" "mbql.stage/mbql"
+                                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                            "filters" filters}]})
+              hint  (str "Invalid at " details ". Fix the named paths.")
+              error (try
+                      (tools/with-pipeline-errors (construct/execute-representations-query query))
+                      (catch clojure.lang.ExceptionInfo e e))]
+          (is (= (str "Representations query has an invalid structure.\n" hint)
+                 (tools.error/recoverable-text (tools.error/classify error) #{}))))))))
