@@ -307,10 +307,10 @@
 (deftest ^:parallel reject-inherited-disallowed-parameters-in-host-test
   (mt/test-driver :sqlserver
     (testing "parameters every SQL-JDBC driver disallows are refused in `host` too"
-      (are [bad-option] (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                              #"Potentially dangerous keys in connection details"
-                                              (driver/validate-db-details! :sqlserver {:host (str "sql.example.com;" bad-option)
-                                                                                       :db   "db"})))
+      (are [bad-option] (thrown-with-msg? clojure.lang.ExceptionInfo
+                                          #"Potentially dangerous keys in connection details"
+                                          (driver/validate-db-details! :sqlserver {:host (str "sql.example.com;" bad-option)
+                                                                                   :db   "db"}))
         "hostnameverifier=bad.Verifier"
         "sslfactory=bad.Factory"
         "loggerFile=/tmp/x"))))
