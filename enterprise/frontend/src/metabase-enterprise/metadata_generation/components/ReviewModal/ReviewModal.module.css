@@ -66,6 +66,25 @@
   white-space: normal;
 }
 
-.suggestions [data-human-set="true"] {
+/* Rows are neither selectable nor navigable, so they don't highlight. */
+.card .suggestions .suggestionRow:hover,
+.card .suggestions .suggestionRow:focus:not([data-disabled]) {
+  background-color: transparent;
+}
+
+.card .suggestions .suggestionRow[data-human-set="true"] {
   background-color: var(--mb-color-background_surface-warning);
+}
+
+/* A header row naming the field of the rows below it. */
+.card .suggestions .suggestionRow[data-group="true"] {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.card .suggestions .suggestionRow[data-group="true"] .suggestionCell {
+  overflow: visible;
+}
+
+.groupLabel {
+  white-space: nowrap;
 }

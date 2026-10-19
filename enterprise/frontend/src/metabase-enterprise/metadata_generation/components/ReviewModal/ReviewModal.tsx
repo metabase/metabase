@@ -1,6 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { Row } from "@tanstack/react-table";
 import cx from "classnames";
-import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { skipToken, useGetDatabaseMetadataQuery } from "metabase/api";
@@ -28,6 +35,7 @@ import {
   ScrollArea,
   Stack,
   Text,
+  TextInput,
   Textarea,
   Tooltip,
   TreeTable,
@@ -337,29 +345,19 @@ function ReviewContent({
               )
             }
           />
-          <Card
-            withBorder
-            p={0}
-            flex={1}
-            miw={0}
-            mih={0}
-            display="flex"
-            className={S.card}
-            data-hover-side={hoveredSide ?? undefined}
-          >
-            <TableReview
-              key={selectedTable.table_id}
-              runId={runId}
-              table={selectedTable}
-              decideState={decideState}
-              detailFieldId={detailFieldId}
-              onToggleFieldDetails={(fieldId) =>
-                setDetailFieldId((current) =>
-                  current === fieldId ? null : fieldId,
-                )
-              }
-            />
-          </Card>
+          <TableReview
+            key={selectedTable.table_id}
+            runId={runId}
+            table={selectedTable}
+            decideState={decideState}
+            detailFieldId={detailFieldId}
+            hoveredSide={hoveredSide}
+            onToggleFieldDetails={(fieldId) =>
+              setDetailFieldId((current) =>
+                current === fieldId ? null : fieldId,
+              )
+            }
+          />
           {detailFieldId != null && (
             <ResizeHandle
               side="right"
@@ -656,24 +654,37 @@ type TableReviewProps = {
   decideState: DecideState;
   /** The field whose details pane is open. */
   detailFieldId: FieldId | null;
+  /** The card border a resize grip is over, which it draws stronger. */
+  hoveredSide: ResizeSide | null;
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
-type SuggestionNode = {
-  id: MetadataGenerationSuggestionId;
+type SuggestionRowNode = {
+  id: string;
+  kind: "suggestion";
   suggestion: MetadataGenerationSuggestion;
-  /** The first suggestion of a field shows the field name. */
-  isFirstOfField: boolean;
 };
+
+/** A header row naming the field of the suggestion rows below it. */
+type GroupRowNode = {
+  id: string;
+  kind: "group";
+  fieldId: FieldId;
+  label: string;
+};
+
+type SuggestionNode = SuggestionRowNode | GroupRowNode;
 
 function TableReview({
   runId,
   table,
   decideState,
   detailFieldId,
+  hoveredSide,
   onToggleFieldDetails,
 }: TableReviewProps) {
   const { decide, decidingIds } = decideState;
+  const [query, setQuery] = useState("");
   const {
     data: suggestions,
     error,
@@ -683,15 +694,20 @@ function TableReview({
     table_id: table.table_id,
   });
 
-  const nodes = useMemo<SuggestionNode[]>(
-    () =>
-      (suggestions ?? []).map((suggestion, index, all) => ({
-        id: suggestion.id,
-        suggestion,
-        isFirstOfField:
-          index === 0 || all[index - 1].field_id !== suggestion.field_id,
-      })),
+  // Group by field when any field has more than one suggestion.
+  const isGrouped = useMemo(
+    () => hasFieldWithSeveralSuggestions(suggestions ?? []),
     [suggestions],
+  );
+  const nodes = useMemo(
+    () =>
+      getNodes(
+        (suggestions ?? []).filter((suggestion) =>
+          matchesQuery(suggestion, query),
+        ),
+        isGrouped,
+      ),
+    [suggestions, query, isGrouped],
   );
   const tableCheckbox = useMemo(
     () => getTableCheckboxState(suggestions ?? []),
@@ -703,6 +719,7 @@ function TableReview({
         runId,
         table,
         tableCheckbox,
+        isGrouped,
         decide,
         decidingIds,
         detailFieldId,
@@ -712,6 +729,7 @@ function TableReview({
       runId,
       table,
       tableCheckbox,
+      isGrouped,
       decide,
       decidingIds,
       detailFieldId,
@@ -721,65 +739,171 @@ function TableReview({
   const instance = useTreeTableInstance<SuggestionNode>({
     data: nodes,
     columns,
-    getNodeId: (node) => String(node.id),
+    getNodeId: (node) => node.id,
   });
 
-  if (error) {
-    return (
-      <Text c="feedback-negative" p="md">
-        {getErrorMessage(error)}
-      </Text>
-    );
-  }
-  if (isLoading || suggestions == null) {
-    return <Loader size="sm" m="md" />;
-  }
-
   return (
-    <TreeTable
-      instance={instance}
-      hierarchical={false}
-      classNames={{
-        root: S.suggestions,
-        row: S.suggestionRow,
-        cell: S.suggestionCell,
-      }}
-      ariaLabel={t`Suggestions of ${getTableLabel(table)}`}
-      getRowProps={(row) => ({
-        "data-testid": "metadata-generation-suggestion",
-        "data-human-set":
-          isHumanSet(row.original.suggestion) &&
-          isSuggestionDecidable(row.original.suggestion),
-      })}
-      emptyState={
-        <Text
-          c="text-secondary"
-          p="md"
-        >{t`No suggestions for this table.`}</Text>
-      }
-    />
+    <Stack gap="sm" flex={1} miw={0} mih={0}>
+      <TextInput
+        value={query}
+        placeholder={t`Search suggestions`}
+        aria-label={t`Search suggestions`}
+        leftSection={<Icon name="search" />}
+        onChange={(event) => setQuery(event.currentTarget.value)}
+      />
+      <Card
+        withBorder
+        p={0}
+        flex={1}
+        miw={0}
+        mih={0}
+        display="flex"
+        className={S.card}
+        data-hover-side={hoveredSide ?? undefined}
+      >
+        {error != null && (
+          <Text c="feedback-negative" p="md">
+            {getErrorMessage(error)}
+          </Text>
+        )}
+        {isLoading && <Loader size="sm" m="md" />}
+        {suggestions != null && (
+          <TreeTable
+            instance={instance}
+            hierarchical={false}
+            classNames={{
+              root: S.suggestions,
+              row: S.suggestionRow,
+              cell: S.suggestionCell,
+            }}
+            ariaLabel={t`Suggestions of ${getTableLabel(table)}`}
+            getRowProps={getRowProps}
+            emptyState={
+              <Text c="text-secondary" p="md">
+                {query
+                  ? t`No suggestions match.`
+                  : t`No suggestions for this table.`}
+              </Text>
+            }
+          />
+        )}
+      </Card>
+    </Stack>
   );
+}
+
+function hasFieldWithSeveralSuggestions(
+  suggestions: MetadataGenerationSuggestion[],
+): boolean {
+  const counts = new Map<FieldId, number>();
+  for (const { field_id } of suggestions) {
+    counts.set(field_id, (counts.get(field_id) ?? 0) + 1);
+  }
+  return [...counts.values()].some((count) => count > 1);
+}
+
+/** The rows of the table: suggestions, each field's run of them led by a header row when `isGrouped`. */
+function getNodes(
+  suggestions: MetadataGenerationSuggestion[],
+  isGrouped: boolean,
+): SuggestionNode[] {
+  return suggestions.flatMap((suggestion, index, all) => {
+    const row: SuggestionRowNode = {
+      id: `suggestion-${suggestion.id}`,
+      kind: "suggestion",
+      suggestion,
+    };
+    const isFirstOfField =
+      index === 0 || all[index - 1].field_id !== suggestion.field_id;
+    if (!isGrouped || !isFirstOfField) {
+      return [row];
+    }
+    const group: GroupRowNode = {
+      id: `field-${suggestion.field_id}`,
+      kind: "group",
+      fieldId: suggestion.field_id,
+      label: getFieldLabel(suggestion),
+    };
+    return [group, row];
+  });
+}
+
+function matchesQuery(
+  suggestion: MetadataGenerationSuggestion,
+  query: string,
+): boolean {
+  const needle = query.trim().toLowerCase();
+  if (needle === "") {
+    return true;
+  }
+  const haystack = [
+    suggestion.field_name,
+    suggestion.field_display_name,
+    getAttributeLabel(suggestion.attribute),
+    formatSuggestionValue(suggestion.attribute, suggestion.current_value),
+    formatSuggestionValue(suggestion.attribute, getSuggestionValue(suggestion)),
+  ];
+  return haystack.some((text) => text?.toLowerCase().includes(needle));
+}
+
+function getRowProps(row: Row<SuggestionNode>): Record<string, unknown> {
+  const node = row.original;
+  if (node.kind === "group") {
+    return {
+      "data-testid": "metadata-generation-field-group",
+      "data-group": true,
+    };
+  }
+  return {
+    "data-testid": "metadata-generation-suggestion",
+    "data-human-set":
+      isHumanSet(node.suggestion) && isSuggestionDecidable(node.suggestion),
+  };
 }
 
 type ColumnOptions = {
   runId: MetadataGenerationRunId;
   table: MetadataGenerationRunTable;
   tableCheckbox: TableCheckboxState;
+  isGrouped: boolean;
   decide: Decide;
   decidingIds: ReadonlySet<MetadataGenerationSuggestionId>;
   detailFieldId: FieldId | null;
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
+type SuggestionCell = (suggestion: MetadataGenerationSuggestion) => ReactNode;
+
+/** A cell that renders for suggestion rows only; group rows leave it empty. */
+function suggestionCell(render: SuggestionCell) {
+  return ({ row }: { row: Row<SuggestionNode> }) =>
+    row.original.kind === "suggestion" ? render(row.original.suggestion) : null;
+}
+
 function getColumns({
   runId,
   table,
   tableCheckbox,
+  isGrouped,
   decide,
   decidingIds,
   detailFieldId,
   onToggleFieldDetails,
 }: ColumnOptions): TreeTableColumnDef<SuggestionNode>[] {
+  const fieldColumn: TreeTableColumnDef<SuggestionNode> = {
+    id: "field",
+    header: t`Field`,
+    width: 180,
+    cell: suggestionCell((suggestion) => {
+      const fieldLabel = getFieldLabel(suggestion);
+      return (
+        <Text fw="bold" title={fieldLabel} truncate>
+          {fieldLabel}
+        </Text>
+      );
+    }),
+  };
+
   return [
     {
       id: "accept",
@@ -804,36 +928,30 @@ function getColumns({
         </Tooltip>
       ),
       width: 48,
-      cell: ({ row }) => (
+      cell: suggestionCell((suggestion) => (
         <AcceptCell
-          suggestion={row.original.suggestion}
-          isDeciding={decidingIds.has(row.original.id)}
+          suggestion={suggestion}
+          isDeciding={decidingIds.has(suggestion.id)}
           decide={decide}
         />
-      ),
+      )),
     },
-    {
-      id: "field",
-      header: t`Field`,
-      width: 180,
-      cell: ({ row }) => {
-        const { suggestion, isFirstOfField } = row.original;
-        const fieldLabel = getFieldLabel(suggestion);
-        return isFirstOfField ? (
-          <Text fw="bold" title={fieldLabel} truncate>
-            {fieldLabel}
-          </Text>
-        ) : null;
-      },
-    },
+    ...(isGrouped ? [] : [fieldColumn]),
     {
       id: "attribute",
       header: t`Attribute`,
       width: 150,
       cell: ({ row }) => {
-        const attributeLabel = getAttributeLabel(
-          row.original.suggestion.attribute,
-        );
+        const node = row.original;
+        if (node.kind === "group") {
+          // The group label overflows into the empty cells beside it.
+          return (
+            <Text fw="bold" className={S.groupLabel}>
+              {node.label}
+            </Text>
+          );
+        }
+        const attributeLabel = getAttributeLabel(node.suggestion.attribute);
         return (
           <Text title={attributeLabel} truncate>
             {attributeLabel}
@@ -845,40 +963,41 @@ function getColumns({
       id: "current",
       header: t`Current`,
       width: 180,
-      cell: ({ row }) => <CurrentValue suggestion={row.original.suggestion} />,
+      cell: suggestionCell((suggestion) => (
+        <CurrentValue suggestion={suggestion} />
+      )),
     },
     {
       id: "proposed",
       header: t`Proposed`,
       minWidth: 440,
-      cell: ({ row }) => (
+      cell: suggestionCell((suggestion) => (
         <Stack gap={4} align="flex-start" py="xs">
           <ProposedValue
             runId={runId}
-            suggestion={row.original.suggestion}
+            suggestion={suggestion}
             decide={decide}
           />
-          {row.original.suggestion.status === "stale" && (
-            <Tooltip label={getFixedStatusTooltip(row.original.suggestion)}>
+          {suggestion.status === "stale" && (
+            <Tooltip label={getFixedStatusTooltip(suggestion)}>
               <Badge
                 variant="light"
-                color={getSuggestionStatusColor(row.original.suggestion.status)}
+                color={getSuggestionStatusColor(suggestion.status)}
                 data-testid="metadata-generation-suggestion-status"
               >
-                {getSuggestionStatusLabel(row.original.suggestion.status)}
+                {getSuggestionStatusLabel(suggestion.status)}
               </Badge>
             </Tooltip>
           )}
         </Stack>
-      ),
+      )),
     },
     {
       id: "explanation",
       header: t`Explanation`,
       width: 120,
-      cell: ({ row }) => {
-        const { reasoning } = row.original.suggestion;
-        return reasoning ? (
+      cell: suggestionCell(({ reasoning }) =>
+        reasoning ? (
           <Center w="100%">
             <Tooltip label={reasoning} maw="25rem" multiline>
               <Icon
@@ -889,15 +1008,14 @@ function getColumns({
               />
             </Tooltip>
           </Center>
-        ) : null;
-      },
+        ) : null,
+      ),
     },
     {
       id: "details",
       header: "",
       width: 64,
-      cell: ({ row }) => {
-        const { suggestion } = row.original;
+      cell: suggestionCell((suggestion) => {
         const isDetailOpen = suggestion.field_id === detailFieldId;
         return (
           <Tooltip
@@ -913,7 +1031,7 @@ function getColumns({
             </ActionIcon>
           </Tooltip>
         );
-      },
+      }),
     },
   ];
 }
