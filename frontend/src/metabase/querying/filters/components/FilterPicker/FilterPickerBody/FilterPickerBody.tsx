@@ -1,12 +1,14 @@
 import cx from "classnames";
+import { useContext, useState } from "react";
 
-import { Box } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BooleanFilterPicker } from "../BooleanFilterPicker";
 import { CoordinateFilterPicker } from "../CoordinateFilterPicker";
 import { DateFilterPicker } from "../DateFilterPicker";
 import { DefaultFilterPicker } from "../DefaultFilterPicker";
+import { FilterPreviewContext } from "../FilterPreviewContext";
 import { NumberFilterPicker } from "../NumberFilterPicker";
 import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
@@ -41,13 +43,21 @@ export function FilterPickerBody({
   onBack,
   readOnly,
 }: FilterPickerBodyProps) {
+  const preview = useContext(FilterPreviewContext);
+  const [draftFilter, setDraftFilter] = useState<Lib.ExpressionClause>();
+
   const FilterWidget = getFilterWidget(column);
   if (!FilterWidget) {
     return null;
   }
 
-  return (
-    <Box className={cx({ [S.readOnly]: readOnly })}>
+  const body = (
+    <Box
+      className={cx({
+        [S.readOnly]: readOnly,
+        [S.withPreview]: preview != null && !readOnly,
+      })}
+    >
       <FilterWidget
         autoFocus={autoFocus}
         query={query}
@@ -58,10 +68,22 @@ export function FilterPickerBody({
         withAddButton={withAddButton}
         withSubmitButton={withSubmitButton && !readOnly}
         onChange={onChange}
+        onDraftChange={preview ? setDraftFilter : undefined}
         onBack={onBack}
         readOnly={readOnly}
       />
     </Box>
+  );
+
+  if (!preview || readOnly) {
+    return body;
+  }
+
+  return (
+    <Flex align="stretch">
+      {body}
+      {preview.renderPreview({ query, stageIndex, filter, draftFilter })}
+    </Flex>
   );
 }
 
