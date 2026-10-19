@@ -95,6 +95,7 @@ const [showHints, setShowHints] = usePrototypeSetting(SHOW_FILTER_HINTS);
 |---|---|---|
 | `boolean` | switch | |
 | `select` | dropdown | `options: [{ value, label }]` |
+| `segmented` | segmented control (all options in one row) | `options: [{ value, label }]`, best for 2–4 short options |
 | `number` | number input | `min`, `max` (optional) |
 | `text` | text input | |
 

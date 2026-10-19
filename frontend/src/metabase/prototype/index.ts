@@ -5,6 +5,7 @@ export type {
   NumberPrototypeSetting,
   PrototypeSetting,
   PrototypeSettingOption,
+  SegmentedPrototypeSetting,
   SelectPrototypeSetting,
   TextPrototypeSetting,
 } from "./types";

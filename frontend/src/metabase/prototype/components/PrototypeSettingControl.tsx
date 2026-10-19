@@ -1,9 +1,18 @@
-import { NumberInput, Select, Switch, TextInput } from "metabase/ui";
+import {
+  NumberInput,
+  SegmentedControl,
+  Select,
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+} from "metabase/ui";
 
 import type {
   BooleanPrototypeSetting,
   NumberPrototypeSetting,
   PrototypeSetting,
+  SegmentedPrototypeSetting,
   SelectPrototypeSetting,
   TextPrototypeSetting,
 } from "../types";
@@ -21,6 +30,8 @@ export function PrototypeSettingControl({
       return <BooleanSettingControl setting={setting} />;
     case "select":
       return <SelectSettingControl setting={setting} />;
+    case "segmented":
+      return <SegmentedSettingControl setting={setting} />;
     case "number":
       return <NumberSettingControl setting={setting} />;
     case "text":
@@ -64,6 +75,33 @@ function SelectSettingControl({
         }
       }}
     />
+  );
+}
+
+function SegmentedSettingControl({
+  setting,
+}: {
+  setting: SegmentedPrototypeSetting;
+}) {
+  const [value, setValue] = usePrototypeSetting(setting);
+  return (
+    <Stack gap="xs">
+      <div>
+        <Text fw="bold">{setting.label}</Text>
+        {setting.description && (
+          <Text size="sm" c="text-secondary">
+            {setting.description}
+          </Text>
+        )}
+      </div>
+      <SegmentedControl
+        aria-label={setting.label}
+        data={setting.options.map(({ value, label }) => ({ value, label }))}
+        value={value}
+        fullWidth
+        onChange={setValue}
+      />
+    </Stack>
   );
 }
 

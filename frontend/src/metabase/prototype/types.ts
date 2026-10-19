@@ -21,6 +21,13 @@ export interface SelectPrototypeSetting extends PrototypeSettingBase {
   defaultValue: string;
 }
 
+/** Like a select setting, but shows all options at once, for a few short options. */
+export interface SegmentedPrototypeSetting extends PrototypeSettingBase {
+  type: "segmented";
+  options: readonly PrototypeSettingOption[];
+  defaultValue: string;
+}
+
 export interface NumberPrototypeSetting extends PrototypeSettingBase {
   type: "number";
   defaultValue: number;
@@ -36,5 +43,6 @@ export interface TextPrototypeSetting extends PrototypeSettingBase {
 export type PrototypeSetting =
   | BooleanPrototypeSetting
   | SelectPrototypeSetting
+  | SegmentedPrototypeSetting
   | NumberPrototypeSetting
   | TextPrototypeSetting;

@@ -14,6 +14,7 @@ function isValidValue<S extends PrototypeSetting>(
     case "number":
       return typeof value === "number" && Number.isFinite(value);
     case "select":
+    case "segmented":
       return (
         typeof value === "string" &&
         setting.options.some((option) => option.value === value)

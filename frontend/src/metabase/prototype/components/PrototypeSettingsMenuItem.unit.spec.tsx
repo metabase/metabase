@@ -6,6 +6,7 @@ import { Menu } from "metabase/ui";
 import type {
   BooleanPrototypeSetting,
   PrototypeSetting,
+  SegmentedPrototypeSetting,
   SelectPrototypeSetting,
 } from "../types";
 import { usePrototypeSetting } from "../use-prototype-setting";
@@ -28,6 +29,18 @@ const FILTER_LAYOUT: SelectPrototypeSetting = {
     { value: "wide", label: "Wide" },
   ],
   defaultValue: "compact",
+};
+
+const PREVIEW_MODE: SegmentedPrototypeSetting = {
+  type: "segmented",
+  key: "preview-mode",
+  label: "Preview mode",
+  options: [
+    { value: "off", label: "Off" },
+    { value: "popover", label: "Popover" },
+    { value: "chart", label: "Chart" },
+  ],
+  defaultValue: "popover",
 };
 
 function SettingValues() {
@@ -109,6 +122,20 @@ describe("PrototypeSettingsMenuItem", () => {
 
     expect(within(submenu).getByLabelText("Show hints")).toBeChecked();
     expect(screen.getByTestId("setting-values")).toHaveTextContent("true:wide");
+  });
+
+  it("should show a segmented setting with all its options and change it", async () => {
+    setup({ settings: [PREVIEW_MODE] });
+
+    const submenu = await openSubmenu();
+    expect(within(submenu).getByLabelText("Popover")).toBeChecked();
+
+    await userEvent.click(within(submenu).getByText("Chart"));
+
+    expect(within(submenu).getByLabelText("Chart")).toBeChecked();
+    expect(
+      localStorage.getItem("metabase-prototype-setting:preview-mode"),
+    ).toBe(JSON.stringify("chart"));
   });
 
   it("should keep the values after the app is rendered again", async () => {
