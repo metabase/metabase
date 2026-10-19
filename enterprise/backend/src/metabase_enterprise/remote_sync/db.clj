@@ -215,12 +215,6 @@
    ids   :- [:sequential ms/PositiveInt]]
   (t2/delete! model :id [:in ids]))
 
-(def ^:private field-tracking-select-parts
-  {:alias  "f"
-   :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
-   :from   [[:metabase_field :f]]
-   :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]})
-
 (defn- tracking-select-parts
   "The SELECT/FROM/JOIN of a `model-key` instance (TableUserSettings, FieldUserSettings, Dimension, Segment, or
   Measure) with its Table for sync tracking, plus the `alias` the row its id refers to is under (so callers can
@@ -231,8 +225,11 @@
     :model/TableUserSettings {:alias  "t"
                               :select [:t.name [:t.id :table_id] :t.collection_id [:t.name :table_name]]
                               :from   [(warehouse-schema-overlay/table-query {:alias :t})]}
-    :model/FieldUserSettings field-tracking-select-parts
-    :model/Dimension         field-tracking-select-parts
+    (:model/FieldUserSettings :model/Dimension)
+    {:alias  "f"
+     :select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
+     :from   [[:metabase_field :f]]
+     :join   [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]}
     :model/Segment {:alias  "s"
                     :select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                     :from   [[:segment :s]]
@@ -344,7 +341,7 @@
 (mu/defn fields-tracking-details
   "The `:id`, name, table id, collection id, and table name of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (let [{:keys [select from join]} field-tracking-select-parts]
+  (let [{:keys [select from join]} (tracking-select-parts :model/FieldUserSettings)]
     (t2/query {:select (into [:f.id] select) :from from :join join :where [:in :f.id field-ids]})))
 
 (mu/defn snippets

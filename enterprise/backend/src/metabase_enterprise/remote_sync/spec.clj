@@ -228,6 +228,7 @@
     :model-key      :model/TableUserSettings
     :source-model   :model/Table
     :identity       :user-settings
+    :row-key        :table_id
     :events         {:prefix :event/table
                      :types  [:create :update :delete :publish :unpublish]}
     :eligibility    {:type :published-table}
@@ -1100,12 +1101,7 @@
 
 (defmethod extract-identity-from-serdes-path :user-settings
   [_ serdes-path _ingest-one]
-  (let [path-map (into {} (map (fn [elem] [(keyword (u/lower-case-en (:model elem))) (:id elem)]) serdes-path))]
-    (cond-> {}
-      (contains? path-map :database) (assoc :db_name (:database path-map))
-      (contains? path-map :schema)   (assoc :schema (:schema path-map))
-      (contains? path-map :table)    (assoc :table_name (:table path-map))
-      (contains? path-map :field)    (assoc :field_name (:field path-map)))))
+  serdes-path)
 
 (defmethod extract-identity-from-serdes-path :default
   [_ _ _]
@@ -1114,7 +1110,7 @@
 (defn extract-imported-entities
   "Processes serdes paths from an import and extracts entity identities grouped by how they should be looked up.
    Returns a map with :by-entity-id containing entity_ids grouped by model type, and :by-path containing
-   path lookup maps for models like Table and Field that use path-based identity.
+   the serdes paths of the user settings models, which are only counted.
 
    `ingest-one` (path -> ingested entity) is for the pre-load conflict check: a `:natural-key-paths?` path whose
    id matches no local row yet resolves to the row the loader will match on the entity's natural key."
@@ -1190,7 +1186,6 @@
    Parameters:
    - spec: The model spec
    - data: For :entity-id/:hybrid - a collection of entity_ids
-           For :path - a collection of path maps {:db_name :schema :table_name [:field_name]}
    - timestamp: The sync timestamp"
   {:arglists '([spec data timestamp])}
   (fn [spec _data _timestamp] (:identity spec)))
@@ -1246,15 +1241,10 @@
   "Builds RemoteSyncObject entries for all imported entities based on their specs. Iterates over enabled
    specs and queries the database to hydrate the fields needed for each sync object. Returns a sequence
    of maps ready for insertion into the RemoteSyncObject table."
-  [timestamp {:keys [by-entity-id by-path]}]
+  [timestamp {:keys [by-entity-id]}]
   (into []
-        (for [[model-key spec] (enabled-specs)
-              :let [identity-type (:identity spec)
-                    model-type (:model-type spec)
-                    data (case identity-type
-                           :entity-id     (get by-entity-id model-type)
-                           :user-settings (get by-path model-key)
-                           :hybrid        (get by-entity-id model-type))]
+        (for [[_model-key spec] (enabled-specs)
+              :let [data (get by-entity-id (:model-type spec))]
               :when (seq data)
               entity (query-entities-for-sync spec data timestamp)]
           entity)))

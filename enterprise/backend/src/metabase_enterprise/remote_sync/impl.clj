@@ -460,7 +460,7 @@
   (serialization/entity-file-path? path))
 
 (defn- pulled-change-count
-  "Total number of entities applied by a pull, across entity-id- and path-identified models in `imported-data`."
+  "Total number of entities applied by a pull, across the entity-id models and the user settings in `imported-data`."
   [imported-data]
   (transduce (map count) + 0 (concat (vals (:by-entity-id imported-data))
                                      (vals (:by-path imported-data)))))

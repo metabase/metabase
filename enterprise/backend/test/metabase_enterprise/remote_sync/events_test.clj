@@ -1075,13 +1075,20 @@
 ;;; Table Event Tests
 
 (deftest table-update-event-creates-entry-for-published-table-test
-  (testing "table-update event creates remote sync object entry for published table in remote-synced collection"
+  (testing "table-update event creates remote sync object entry for published table in remote-synced collection,
+            only once the table has a TableUserSettings row"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                      :model/Table table {:name "Test Table"
                                          :is_published true
                                          :collection_id (:id remote-sync-collection)}]
         (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/table-update
+                               {:object table :user-id (mt/user->id :rasta)})
+        (is (not (t2/exists? :model/RemoteSyncObject)))
+        (t2/insert! :model/TableUserSettings {:table_id      (:id table)
+                                              :is_published  true
+                                              :collection_id (:id remote-sync-collection)})
         (events/publish-event! :event/table-update
                                {:object table :user-id (mt/user->id :rasta)})
         (let [entries (t2/select :model/RemoteSyncObject)]
@@ -1122,6 +1129,9 @@
                      :model/Table table {:name "Test Table"
                                          :is_published true
                                          :collection_id (:id remote-sync-collection)}]
+        (t2/insert! :model/TableUserSettings {:table_id      (:id table)
+                                              :is_published  true
+                                              :collection_id (:id remote-sync-collection)})
         (track-as-synced! "TableUserSettings" table)
         (events/publish-event! :event/table-update
                                {:object (assoc table :archived_at (t/offset-date-time))

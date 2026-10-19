@@ -1,7 +1,7 @@
 ## Remote sync now tracks a published table through its TableUserSettings, FieldUserSettings, and Dimensions
-## rather than its Table and Fields. A Table or Field row whose table or field has a user settings row becomes that
-## user settings row, keeping its pending status, file path, and content hash, so unpushed changes are still pushed;
-## the rest are deleted after.
+## rather than its Table and Fields. A Table or Field row whose table or field has a user settings row, and no row of
+## that user settings yet, becomes that user settings row, keeping its pending status so unpushed changes are still
+## pushed; the rest are deleted after.
 
 databaseChangeLog:
   - changeSet:
@@ -14,6 +14,8 @@ databaseChangeLog:
               UPDATE remote_sync_object SET model_type = 'TableUserSettings'
               WHERE model_type = 'Table'
               AND EXISTS (SELECT 1 FROM metabase_table_user_settings tus WHERE tus.table_id = remote_sync_object.model_id)
+              AND NOT EXISTS (SELECT 1 FROM (SELECT model_id FROM remote_sync_object WHERE model_type = 'TableUserSettings') rso
+                              WHERE rso.model_id = remote_sync_object.model_id)
       rollback: []
 
   - changeSet:
@@ -26,6 +28,8 @@ databaseChangeLog:
               UPDATE remote_sync_object SET model_type = 'FieldUserSettings'
               WHERE model_type = 'Field'
               AND EXISTS (SELECT 1 FROM metabase_field_user_settings fus WHERE fus.field_id = remote_sync_object.model_id)
+              AND NOT EXISTS (SELECT 1 FROM (SELECT model_id FROM remote_sync_object WHERE model_type = 'FieldUserSettings') rso
+                              WHERE rso.model_id = remote_sync_object.model_id)
       rollback: []
 
   - changeSet:

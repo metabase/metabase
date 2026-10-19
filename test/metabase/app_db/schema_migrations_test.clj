@@ -3957,7 +3957,7 @@
 
 (deftest remote-sync-object-user-settings-test
   (testing "v65.2026-10-16T00:00:00-02: the RemoteSyncObject rows of Tables and Fields with user settings become their
-           user settings' rows, keeping their status and file path, and the rest are deleted"
+           user settings' rows, keeping their status, unless those are already tracked, and the rest are deleted"
     (impl/test-migrations ["v65.2026-10-16T00:00:00" "v65.2026-10-16T00:00:02"] [migrate!]
       (let [db-id       (t2/insert-returning-pk! :metabase_database {:name       "Remote Sync User Settings Test DB"
                                                                      :engine     "h2"
@@ -3991,19 +3991,27 @@
                                                                         :file_path         (str model-type "/" model-id ".yaml")}))
             published   (table! "published")
             unpublished (table! "unpublished")
+            tracked     (table! "tracked")
             edited      (field! published "edited")
-            unedited    (field! published "unedited")]
-        (t2/insert! :metabase_table_user_settings {:table_id published :created_at :%now :updated_at :%now})
-        (t2/insert! :metabase_field_user_settings {:field_id edited :created_at :%now :updated_at :%now})
+            unedited    (field! published "unedited")
+            tracked-fld (field! tracked "tracked")]
+        (t2/insert! :metabase_table_user_settings [{:table_id published :created_at :%now :updated_at :%now}
+                                                   {:table_id tracked :created_at :%now :updated_at :%now}])
+        (t2/insert! :metabase_field_user_settings [{:field_id edited :created_at :%now :updated_at :%now}
+                                                   {:field_id tracked-fld :created_at :%now :updated_at :%now}])
         (let [table-rso (rso! "Table" published "create")
               field-rso (rso! "Field" edited "update")
-              dropped   [(rso! "Table" unpublished "update") (rso! "Field" unedited "update")]
+              dropped   [(rso! "Table" unpublished "update") (rso! "Field" unedited "update")
+                         (rso! "Table" tracked "update") (rso! "Field" tracked-fld "update")]
+              kept      [(rso! "TableUserSettings" tracked "update") (rso! "FieldUserSettings" tracked-fld "update")]
               card-rso  (rso! "Card" 1 "update")]
           (migrate!)
-          (is (=? {:model_type "TableUserSettings" :model_id published :status "create"
-                   :file_path  (str "Table/" published ".yaml")}
+          (is (=? {:model_type "TableUserSettings" :model_id published :status "create"}
                   (t2/select-one :remote_sync_object :id table-rso)))
           (is (=? {:model_type "FieldUserSettings" :model_id edited :status "update"}
                   (t2/select-one :remote_sync_object :id field-rso)))
           (is (not (t2/exists? :remote_sync_object :id [:in dropped])))
+          (is (= (set kept)
+                 (set (concat (t2/select-pks-vec :remote_sync_object :model_type "TableUserSettings" :model_id tracked)
+                              (t2/select-pks-vec :remote_sync_object :model_type "FieldUserSettings" :model_id tracked-fld)))))
           (is (t2/exists? :remote_sync_object :id card-rso)))))))
