@@ -16,7 +16,7 @@ Before frontend edits, including test-only changes, read `frontend/CLAUDE.md`, `
 - **New, moved, or otherwise edited code must not contain `any`, explicit or implicit.** No `any` annotations, no `as any` / `as unknown as`, no untyped parameters or returns that infer `any`, no implicitly-`any` destructures or array/object literals.
 - **Stop untyped values at the boundary.** Use canonical types, typed wrappers, or `unknown` with validation or narrowing. Check library defaults and inferred types: a passing type-check does not guarantee that `any` hasn't propagated into your code. For example, capture untyped `JSON.parse` and response `.json()` results as `unknown`; narrow or validate before accessing fields or passing to typed callers.
 - **Type the captured value, not only its eventual result.** A return annotation doesn't change the inferred types of parameters or destructured bindings. Capture untyped data as `unknown`, then narrow or validate before destructuring or accessing fields.
-- **Mandatory type verification.** Before finishing a TS/TSX change, run `bun run type-check-pure`. If TypeScript LSP tools are available, also inspect changed symbols with hover and go-to-definition; otherwise skip LSP check.
+- **Mandatory type verification.** Before finishing a TS/TSX change, run `bun run type-check`. If TypeScript LSP tools are available, also inspect changed symbols with hover and go-to-definition; otherwise skip LSP check.
 
 ## Type tightening
 

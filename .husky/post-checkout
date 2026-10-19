@@ -1,0 +1,2 @@
+[ "$3" = 1 ] || exit 0
+.husky/regenerate-cljs-types

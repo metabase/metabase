@@ -34,7 +34,8 @@ mkdir -p "locales"
 #######################
 
 # NOTE: about twice as fast to call babel directly rather than a full webpack build
-BABEL_ENV=extract ./node_modules/.bin/babel --quiet -x .ts,.tsx -o /dev/null {enterprise/,}frontend/src
+# NOTE: babel does not read .gitignore, so the generated cljs declarations are excluded by hand.
+BABEL_ENV=extract ./node_modules/.bin/babel --quiet -x .ts,.tsx --ignore 'frontend/src/types/cljs/**' -o /dev/null {enterprise/,}frontend/src
 # BABEL_ENV=extract BABEL_DISABLE_CACHE=1 bun run build
 
 # NOTE: replace ttag's "${ 0 }" style references with xgettext "{0}" style references for consistency
