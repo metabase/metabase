@@ -2106,6 +2106,19 @@ function(bin) {
                             "pipeline" (vec (concat base-pipeline branch)))}))
         (rest branch-pipelines)))
 
+(defn- previous-stages-pipeline
+  "Compile stages before `stage-number` of `query` into their accumulated Mongo pipeline. `handle-pivot`
+  only receives the pivot stage's own upstream in `pipeline-ctx` — stages 0..N-1 are compiled
+  independently and concatenated by [[mbql->native-rec]], so a `$unionWith` branch that replays only
+  `pipeline-ctx` would skip prior stages (e.g. a sandbox-induced source-query at stage 0)."
+  [query stage-number]
+  (if (zero? stage-number)
+    []
+    (-> query
+        (update :stages #(vec (take stage-number %)))
+        mbql->native-rec
+        :query)))
+
 (mu/defn- handle-pivot :- ::compiled-pipeline
   "Compile the last stage's `:pivot` clause into either a `$facet`-based single-pass pipeline or a
   `$unionWith`-based multi-pass pipeline, picked by comparing the effective row ceiling to
@@ -2176,7 +2189,8 @@ function(bin) {
         shape-stages      (if use-facet?
                             (facet-pivot-stages branch-pipelines)
                             (union-with-pivot-stages branch-pipelines
-                                                     (:query pipeline-ctx)
+                                                     (into (previous-stages-pipeline query stage-number)
+                                                           (:query pipeline-ctx))
                                                      (find-source-collection query query)))
         tail-stages       (cond-> [{$sort outer-sort}]
                             effective-limit (conj {$limit effective-limit}))
