@@ -2110,8 +2110,9 @@ function(bin) {
                                 (map-indexed (fn [i combo]
                                                [(str "combo_" i) (compile-branch combo)]))
                                 combos)
+        ;; `-1` (DESC) sorts rollups first so a `:max-results` truncation drops detail rows rather than totals.
         outer-sort        (into (ordered-map/ordered-map)
-                                (concat [[lib.pivot/pivot-grouping-column-name 1]]
+                                (concat [[lib.pivot/pivot-grouping-column-name -1]]
                                         (map (fn [alias] [alias 1]) breakout-aliases)))
         pivot-stages      [{$facet facet-branches}
                            {$addFields {pivot-facet-rows-field
