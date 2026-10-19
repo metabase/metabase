@@ -142,7 +142,8 @@
         grouping-sets     (into [::grouping-sets] sets-hsql)
         ;; With only one grouping set the grouping bitmask is constant; skip the ORDER BY prefix so dialects that
         ;; reject constants in ORDER BY (e.g. SQL Server) don't fail, and to avoid the redundant sort.
-        prefix-order-by   (if (= 1 (count sets-hsql)) [] [[grouping-fn :asc]])]
+        ;; `:desc` sorts rollups first so a `:max-results` truncation drops detail rows rather than totals.
+        prefix-order-by   (if (= 1 (count sets-hsql)) [] [[grouping-fn :desc]])]
     (-> honeysql-form
         (update :select splice-pivot-grouping-select (count breakout) [grouping-fn lib.pivot/pivot-grouping-column-name])
         (assoc :group-by [grouping-sets]
@@ -323,12 +324,15 @@
                                                    (when-let [entry (and agg-idx (nth orig-agg-select agg-idx nil))]
                                                      [(alias-ident (alias-of entry)) dir])))))
                                        user-order-bys)
-        ;; `[:pivot-grouping :asc]` sorts combos so grand totals sort last; only meaningful when >1 combo.
-        ;; User `:order-by` and the breakout tiebreakers apply in every case, so they're always included
-        ;; when non-empty — dropping them for the single-combo case silently discarded the user's sort.
+        ;; `[:pivot-grouping :desc]` sorts combos so grand totals sort first; only meaningful when >1 combo.
+        ;; Rollups-first means truncation at `:max-results` drops detail rows rather than totals, so a
+        ;; capped pivot still renders with correct subtotals/grand totals (details can be recovered by
+        ;; narrowing the question). User `:order-by` and the breakout tiebreakers apply in every case,
+        ;; so they're always included when non-empty — dropping them for the single-combo case silently
+        ;; discarded the user's sort.
         outer-order-by           (not-empty
                                   (into (if (> (count combos) 1)
-                                          [[(keyword lib.pivot/pivot-grouping-column-name) :asc]]
+                                          [[(keyword lib.pivot/pivot-grouping-column-name) :desc]]
                                           [])
                                         cat
                                         [user-order-by-outer

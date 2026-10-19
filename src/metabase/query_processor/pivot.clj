@@ -63,6 +63,7 @@
 (defmacro ^:private wrapping-pivot-generation-errors
   "Rewrap any throw from `body` as `\"Error generating pivot queries\"` of type `:qp`, matching the
   outer error shape every pivot path presents to the QP's error handling."
+  {:style/indent 1}
   [query & body]
   `(try
      ~@body
@@ -492,20 +493,16 @@
            :qp.pivot/num-remapped-breakouts   num-remapped-breakouts
            :qp.pivot/remapped-indexes         remap)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic ^:private *pivot-max-result-rows*
-  "Maximum number of result rows for each pivot sub-query. Divided by the number of aggregations since each aggregation
-  adds a column to the output, so fewer rows are needed to fill the pivot table."
-  200000)
-
 (defn- pivot-query-max-rows
-  "Calculate the per-sub-query row limit for pivot queries: `floor(pivot-max-result-rows / num-aggregations)`.
-  Falls back to `pivot-max-result-rows` if there are no aggregations (shouldn't happen for pivot queries)."
+  "Calculate the per-sub-query row limit for the multi-query pivot path:
+  `floor(pivot-max-result-rows / num-aggregations)`. Falls back to the raw setting value if there are no
+  aggregations (shouldn't happen for pivot queries)."
   [query]
-  (let [num-aggs (count (lib/aggregations query))]
+  (let [cap      (qp.settings/pivot-max-result-rows)
+        num-aggs (count (lib/aggregations query))]
     (if (pos? num-aggs)
-      (quot *pivot-max-result-rows* num-aggs)
-      *pivot-max-result-rows*)))
+      (quot cap num-aggs)
+      cap)))
 
 (defn- mbql-pivot-options
   "Translate the last stage's MBQL `:pivot` clause into the same pivot-options shape [[pivot-options]]
@@ -656,6 +653,15 @@
          (not (lib.pivot/has-pivot? query)))
     (lib.pivot/with-pivot {:rows [] :columns [] :show-row-totals true :show-column-totals true})))
 
+(defn- cap-constraints-at-pivot-setting
+  "Cap `:max-results` (and `:max-results-bare-rows`, so it stays ≤ `:max-results`) at the pivot setting.
+  A caller-supplied smaller value is still honored."
+  [query]
+  (let [cap (qp.settings/pivot-max-result-rows)]
+    (cond-> (update-in query [:constraints :max-results] u/safe-min cap)
+      (get-in query [:constraints :max-results-bare-rows])
+      (update-in [:constraints :max-results-bare-rows] min cap))))
+
 (defn- run-single-query-pivot
   "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
   on the last stage and submit to the standard QP through `rff`."
@@ -669,6 +675,7 @@
                            (apply-pivot-viz-settings viz-settings)
                            maybe-add-default-pivot-clause
                            (assoc-in [:middleware :pivot-options] pivot-opts)
+                           cap-constraints-at-pivot-setting
                            maybe-userland))]
     (qp/process-query prepared rff)))
 
