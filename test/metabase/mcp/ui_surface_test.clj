@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
+   [metabase.initialization-status.core :as init-status]
    [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.ui-surface :as mcp.ui-surface]
@@ -77,6 +78,7 @@
                                                             "mcp-session-id" session-id}}}))
 
 (deftest ui-credential-authenticates-with-auth-method-mcp-ui-test
+  (init-status/set-complete!)
   (testing "a resolvable credential on the surface authenticates its user with auth method \"mcp-ui\""
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
