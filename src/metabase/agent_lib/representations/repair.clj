@@ -3240,7 +3240,7 @@
                     :filter      "`filters:`")]
         (throw (ex-info
                 (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
-                     where stage-idx message)
+                     where stage-idx (str/replace message #"\.$" ""))
                 {:agent-error? true
                  :error        :expression-editor-rejection
                  :status-code  400
