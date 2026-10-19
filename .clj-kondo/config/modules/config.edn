@@ -2075,6 +2075,7 @@
            metabase.public-sharing.init
            metabase.public-sharing.validation}
    :uses #{api
+           database-routing
            embedding
            lib.schema
            parameters.schema
@@ -2083,6 +2084,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Dashboard
+                    :model/Database
                     :model/Document}}
 
   public-sharing.rest

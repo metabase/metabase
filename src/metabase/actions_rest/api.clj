@@ -142,6 +142,8 @@
                     [:id ::actions.schema/id]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
+  ;; No anonymous-reach refusal here, unlike Card, Dashboard and Document public links: actions cannot be enabled on a
+  ;; router database.
   (let [action (api/read-check :model/Action id :archived false)]
     (actions/check-actions-enabled action)
     {:uuid (or (:public_uuid action)

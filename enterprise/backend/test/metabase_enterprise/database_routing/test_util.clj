@@ -31,6 +31,7 @@
                                                "VALUES ('router-data', -10, 10)"))
             (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination-data')")
             (let [db-id        (u/the-id router-db)
+                  db-name      (:name router-db)
                   table-id     (t2/select-one-pk :model/Table :db_id db-id)
                   field-id     (t2/select-one-pk :model/Field :table_id table-id :name "STR")
                   lat-field-id (t2/select-one-pk :model/Field :table_id table-id :name "LATITUDE")
@@ -42,6 +43,7 @@
                                                       :user_attribute           "db_name"
                                                       :anonymous_access_granted granted?}]
                 (f {:db-id         db-id
+                    :db-name       db-name
                     :field-id      field-id
                     :str-dimension [:dimension [:field field-id nil]]
                     :str-query     (-> (lib/query mp table)
@@ -94,6 +96,16 @@
       {:response (thunk)
        :refused  @refused})))
 
+(def plain-refusal-message
+  "What the query-time refusal says on the paths that return its message rather than replacing it."
+  "This database does not allow anonymous access.")
+
+(defn configuration-disclosures
+  "The strings a refusal must never show a viewer of the router database `database-name`: the database itself, the
+  feature, and the setting."
+  [database-name]
+  [database-name "routing" "anonymous_access_granted"])
+
 (defn- do-with-guest-embedding-enabled!
   [f]
   (let [secret-key (u.random/secure-hex 32)]
@@ -106,7 +118,7 @@
   [granted? f]
   (do-with-routed-warehouse!
    granted?
-   (fn [{:keys [db-id field-id str-dimension str-query pivot-query param-query tile-query
+   (fn [{:keys [db-id db-name field-id str-dimension str-query pivot-query param-query tile-query
                 lat-field lon-field]}]
      (let [embedded    {:enable_embedding true}
            card-source (fn [source-card]
@@ -179,6 +191,7 @@
                     pivot-dc  [(u/the-id pivot-dashcard) (u/the-id pivot-card)]
                     tile-dc   [(u/the-id tile-dashcard) (u/the-id tile-card)]]
                 (f {:db-id              db-id
+                    :db-name            db-name
                     :card-metadata      (str "embed/card/" card-tok)
                     :dash-metadata      (str "embed/dashboard/" dash-tok)
                     :card-query         (str "embed/card/" card-tok "/query")
