@@ -10,12 +10,13 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::retry-config
-  [:map
+  [:map {:closed true}
    [:max-retries              :int]
    [:initial-interval-millis  :int]
    [:multiplier               :float]
    [:jitter-factor            :float]
-   [:max-interval-millis      :int]])
+   [:max-interval-millis      :int]
+   [:delay-ms                 {:optional true} :int]])
 
 (mr/def ::retry-overrides
   (mut/optional-keys [:ref ::retry-config]))
@@ -30,6 +31,7 @@
     initial-interval-millis (assoc :backoff-ms (cond-> [initial-interval-millis max-interval-millis]
                                                  multiplier (conj multiplier)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *test-time-config-hook*
   "This should only be used during testing to modify the final config map passed to Diehard."
   identity)

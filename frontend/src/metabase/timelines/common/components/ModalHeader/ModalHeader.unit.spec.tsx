@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 
-import ModalHeader from "./ModalHeader";
+import { ModalHeader } from "./ModalHeader";
 
 describe("ModalHeader", () => {
   it("should render title", () => {

@@ -2,6 +2,8 @@ import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
+import { hasActionsEnabled } from "metabase/common/utils/database";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getNativeQueryLanguage } from "metabase/databases/utils/engine";
@@ -12,10 +14,9 @@ import {
 } from "metabase/querying/common/components/DataSelector";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { Database, DatabaseId, TableId } from "metabase-types/api";
 
 type EditorContext = "action" | "question";
 
@@ -44,20 +45,22 @@ export const DataSourceSelectors = ({
   databaseIsDisabled,
   databaseDisabledTooltip,
 }: DataSourceSelectorsProps) => {
-  const database = question.database();
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const allDatabases = databasesResponse?.data;
+  const database =
+    allDatabases?.find((db) => db.id === question.databaseId()) ?? null;
 
   const databases = useMemo(() => {
-    const allDatabases = query
-      .metadata()
-      .databasesList({ savedQuestions: false })
-      .filter((db) => db.canWrite() && !db.is_audit);
+    const writableDatabases = (allDatabases ?? []).filter(
+      (db) => db.native_permissions === "write" && !db.is_audit,
+    );
 
     if (editorContext === "action") {
-      return allDatabases.filter((database) => database.hasActionsEnabled());
+      return writableDatabases.filter(hasActionsEnabled);
     }
 
-    return allDatabases;
-  }, [query, editorContext]);
+    return writableDatabases;
+  }, [allDatabases, editorContext]);
 
   if (
     !isNativeEditorOpen ||

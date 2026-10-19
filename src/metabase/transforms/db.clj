@@ -128,17 +128,30 @@
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
 
-(mu/defn active-job-schedules-for-transforms
-  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag."
-  [transform-ids :- [:set ::lib.schema.id/transform]]
+(defn- job-schedule-rows
+  "Rows of Transform ID and the schedule of the TransformJobs that run it through a shared tag, narrowed
+  by `where`."
+  [where]
   (t2/select :model/TransformTransformTag
              {:select [:ttt.transform_id [:job.schedule :schedule]]
               :from   [[:transform_transform_tag :ttt]]
               :join   [[:transform_job_transform_tag :jtt] [:= :ttt.tag_id :jtt.tag_id]
                        [:transform_job :job] [:= :jtt.job_id :job.id]]
-              :where  [:and
-                       [:in :ttt.transform_id transform-ids]
-                       [:= :job.active true]]}))
+              :where  where}))
+
+(mu/defn active-job-schedules
+  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag,
+  for every Transform such a job runs."
+  []
+  (job-schedule-rows [:= :job.active true]))
+
+(mu/defn active-job-schedules-for-transforms
+  "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag,
+  for `transform-ids`."
+  [transform-ids :- [:set ::lib.schema.id/transform]]
+  (job-schedule-rows [:and
+                      [:in :ttt.transform_id transform-ids]
+                      [:= :job.active true]]))
 
 (mu/defn insert-transform-tag-links!
   "Insert the TransformTransformTag `rows`."
@@ -402,9 +415,11 @@
                         :where  [:= :rn [:inline 1]]}))
 
 (mu/defn active-run-for-transform
-  "The active TransformRun of the Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/TransformRun :transform_id transform-id :is_active true))
+  "The active TransformRun of the Transform with `transform-id`, or nil. `transform-id` is nil for a
+  transform that hasn't been saved yet, in which case there is no run either."
+  [transform-id :- [:maybe ::lib.schema.id/transform]]
+  (when transform-id
+    (t2/select-one :model/TransformRun :transform_id transform-id :is_active true)))
 
 (mu/defn active-run-ids-of-parent
   "The IDs of the active TransformRuns whose `parent-column` is `parent-run-id`."
@@ -427,6 +442,31 @@
                          [:in :transform_id transform-ids]
                          [:= :status "succeeded"]]
               :group-by [:transform_id]}))
+
+(mu/defn latest-run-start-times-query
+  "HoneySQL map selecting each transform's most recent run `start_time` (any status) as
+  `:last_start`, one row per `:transform_id`; optionally restricted to `transform-ids`. The single
+  definition of the \"most recent run\" anchor - embedded as the staleness method's join subquery
+  ([[metabase.staleness.core/find-stale-query]] `:model/Transform`) and realized by
+  [[last-start-times]] for the schedule-freshness check, so the two can't drift apart."
+  ([]
+   (latest-run-start-times-query nil))
+  ([transform-ids :- [:maybe [:or
+                              [:set ::lib.schema.id/transform]
+                              [:sequential ::lib.schema.id/transform]]]]
+   (cond-> ^:allow-subquery {:select   [:transform_id [[:max :start_time] :last_start]]
+                             :from     [:transform_run]
+                             :group-by [:transform_id]}
+     (seq transform-ids) (assoc :where [:in :transform_id transform-ids]))))
+
+(mu/defn last-start-times
+  "Rows of Transform ID and the latest `start_time` of its runs, any status, restricted to
+  `transform-ids` when non-empty - an empty collection means every Transform (see
+  [[latest-run-start-times-query]])."
+  [transform-ids :- [:maybe [:or
+                             [:set ::lib.schema.id/transform]
+                             [:sequential ::lib.schema.id/transform]]]]
+  (t2/select :model/TransformRun (latest-run-start-times-query transform-ids)))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."
@@ -777,7 +817,7 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn databases

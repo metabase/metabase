@@ -73,7 +73,7 @@
                         available just in case)."
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
-   & args]
+   & args      :- [:* :int]]
   ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
@@ -279,14 +279,15 @@
     state afterwards (see [[mdb.encryption/record-encryption-state!]]). Turned off by the `enable-encryption` command
     and by [[metabase.cmd.copy/copy!]],
     which handle the encryption state themselves."
-  ([db-type data-source]
+  ([db-type     :- :keyword
+    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
    (setup-db! db-type data-source {}))
 
   ([db-type     :- :keyword
     data-source :- (ms/InstanceOfClass javax.sql.DataSource)
     {:keys [auto-migrate? create-sample-content? manage-encryption-state?]
      :or   {auto-migrate? true, create-sample-content? false, manage-encryption-state? true}}
-    :- [:map
+    :- [:map {:closed true}
         [:auto-migrate?          {:optional true} :boolean]
         [:create-sample-content? {:optional true} :boolean]
         [:manage-encryption-state?      {:optional true} :boolean]]]

@@ -44,7 +44,7 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-perms-columns
@@ -61,5 +61,5 @@
   "Set the dimensions and dimension mappings of the Measure with `id`."
   [id                 :- ::lib.schema.id/measure
    dimensions         :- [:maybe sequential?]
-   dimension-mappings :- [:maybe [:sequential :map]]]
+   dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
   (t2/update! :model/Measure id {:dimensions dimensions, :dimension_mappings dimension-mappings}))

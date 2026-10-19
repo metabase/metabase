@@ -4,9 +4,8 @@ import { useMemo } from "react";
 
 // To run initialization side effects like Mantine styles, dayjs plugins, etc
 import "embedding-sdk-bundle";
-
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import { STORYBOOK_METABASE_INSTANCE_URL } from "embedding-sdk-shared/.storybook/constants";
+import { STORYBOOK_METABASE_INSTANCE_URL } from "embedding-sdk-shared/test/storybook-constants";
 import { storybookThemes } from "embedding-sdk-shared/test/storybook-themes";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";

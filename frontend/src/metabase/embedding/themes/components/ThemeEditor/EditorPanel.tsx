@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/embedding/themes/hooks/use-embedding-theme-editor";
 import {
+  ActionIcon,
   Box,
   Button,
   Card,
@@ -77,7 +78,7 @@ export function EditorPanel({
             {({ copied, copy }) => (
               <Button
                 variant="subtle"
-                size="compact-sm"
+                size="sm"
                 leftSection={<Icon name="copy" size={16} />}
                 onClick={copy}
               >
@@ -105,15 +106,14 @@ export function EditorPanel({
               <Text fw={600}>{t`Main colors`}</Text>
               {editor.hasMainColorChanges && (
                 <Tooltip label={t`Reset main colors to defaults`}>
-                  <Button
+                  <ActionIcon
                     variant="subtle"
-                    pt="5"
-                    size="compact-sm"
+                    size="sm"
                     aria-label={t`Reset main colors to defaults`}
                     onClick={editor.resetMainColors}
                   >
-                    <Icon name="revert" size={16} />
-                  </Button>
+                    <Icon name="revert" />
+                  </ActionIcon>
                 </Tooltip>
               )}
             </Flex>
@@ -150,14 +150,14 @@ export function EditorPanel({
                 <Tooltip
                   label={t`Regenerate filter, summarize, positive, negative, and chart colors from the brand color`}
                 >
-                  <Button
+                  <ActionIcon
                     variant="subtle"
-                    size="compact-sm"
+                    size="sm"
                     aria-label={t`Regenerate from brand color`}
                     onClick={editor.regenerateAdditionalColorsFromBrand}
                   >
-                    <Icon name="revert" size={16} />
-                  </Button>
+                    <Icon name="revert" />
+                  </ActionIcon>
                 </Tooltip>
               )}
             </Flex>
@@ -250,9 +250,9 @@ export function EditorPanel({
         {onDelete && (
           <Button
             mt="xl"
-            variant="subtle"
-            color="feedback-negative"
-            px={0}
+            variant="transparent"
+            color="negative"
+            size="compact-md"
             leftSection={<Icon name="trash" size={16} />}
             onClick={onDelete}
           >
@@ -268,7 +268,7 @@ export function EditorPanel({
         justify="space-between"
         style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}
       >
-        <Button variant="subtle" onClick={onCancel}>
+        <Button variant="subtle" color="neutral" onClick={onCancel}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" onClick={onSave} disabled={!editor.canSave}>

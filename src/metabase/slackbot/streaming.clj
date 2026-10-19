@@ -14,6 +14,8 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
    [metabase.permissions.core :as perms]
@@ -24,6 +26,7 @@
    [metabase.slackbot.query :as slackbot.query]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str])
@@ -71,7 +74,7 @@
   A message with no other text names its attachments instead, or contributes nothing."
   [{:keys [text files]} bot-user-id]
   ;; The model rejects an empty user message, and a file shared on its own arrives with empty text.
-  (let [content (slackbot.events/strip-bot-mention text bot-user-id)]
+  (let [content (slackbot.events/strip-bot-mention (or text "") bot-user-id)]
     (if-not (str/blank? content)
       content
       (when-let [names (seq (keep :name files))]
@@ -95,7 +98,6 @@
         msg-history (slackbot.persistence/message-history conversation-id bot-msg-ids)
         deleted-ids (slackbot.persistence/deleted-message-ids conversation-id bot-msg-ids)]
     (->> (:messages thread)
-         (filter :text)
          (remove ignore-msg?)
          (remove (fn [{:keys [ts] :as msg}]
                    (and (slackbot.events/bot-message? msg)
@@ -204,6 +206,18 @@
 (def ^:private generic-error-message
   "Something went wrong. Please try again.")
 
+(def ^:private no-response-copy
+  "Shown when a turn left nothing to show: no streamed text, no tool progress and no visualization."
+  "I wasn't able to generate a response. Please try again.")
+
+(def ^:private no-response-block
+  "[[no-response-copy]] as a muted aside, for a streamed DM reply that showed nothing.
+
+   A block for the same reason as [[metabase.slackbot.channel/finish-reason-block]]: [[thread->history]]
+   replays a bot message's text to the model as its own words, and this is Metabase speaking."
+  {:type     "context"
+   :elements [{:type "mrkdwn" :text (str "_" no-response-copy "_")}]})
+
 (def ^:private provider-config-error-codes
   "Error codes that mean the LLM provider connection is misconfigured.
 
@@ -221,8 +235,9 @@
    `:type :metabot/permission-denied` tag. `error` is a streamed `:error` part's
    payload or a thrown exception's ex-data; errors the agent loop caught nest their
    ex-data under `:data`. Only whitelisted markers get copy, and only the usage-limit
-   codes pass their server-authored message through: everything else, raw provider
-   errors and permission keywords included, must stay out of shared Slack channels."
+   and actionable provider-failure codes pass their server-authored message through:
+   everything else, raw provider errors and permission keywords included, must stay out
+   of shared Slack channels."
   [error]
   (let [code (some-> (or (:error-code error) (get-in error [:data :error-code])) name)]
     (cond
@@ -231,8 +246,13 @@
           (= :metabot/permission-denied (get-in error [:data :type])))
       "You do not have permission to use the AI assistant."
 
-      (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"} code)
+      (#{"metabase_ai_managed_locked" "ai_usage_limit_reached"
+         "ai_provider_billing" "ai_provider_rate_limit" "ai_provider_auth" "ai_provider_unavailable"} code)
       (:message error)
+
+      ;; Not the web copy in `:message`: in Slack, the user continues in a new thread, not a new chat.
+      (= code self.core/context-full-error-code)
+      (tru "This conversation has reached its maximum length and can''t continue. Please start a new thread.")
 
       (provider-config-error-codes code)
       "The AI provider isn't configured correctly. Ask your Metabase admin to check the AI settings."
@@ -255,15 +275,20 @@
    - req-slack-msg-id: The Slack message ts for the user's incoming message
    - get-res-slack-msg-id: Function that returns the Slack message ts for the bot's response
 
-   Returns `{:msg-id <pk> :external-id <uuid-str>}` so callers can both reference
-   the assistant `metabot_message` row by primary key (e.g. to backfill
-   `slack_msg_id` after `chat.postMessage` returns) and bake the `external_id`
-   into feedback button payloads."
+   Returns `{:msg-id <pk> :external-id <uuid-str> :finish-reason <reason-or-nil>}`. The ids let
+   callers reference the assistant `metabot_message` row by primary key (e.g. to backfill
+   `slack_msg_id` after `chat.postMessage` returns) and bake the `external_id` into feedback
+   button payloads. `:finish-reason` is why the turn stopped early, for the notice the reply
+   carries; it is nil when the turn also produced an `:error` part."
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
            request-prompt team-id thread-ts]}]
-  (let [message         (metabot.envelope/user-message prompt)
-        ai-proxy?       (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
+  (let [metabot         (metabot.config/resolve-metabot metabot.config/internal-metabot-id)
+        message         (metabot.envelope/user-message prompt)
+        model-ref       (metabot.settings/llm-metabot-provider)
+        ai-proxy?       (llm.provider/managed-model-ref? model-ref)
+        ;; Read with `ai-proxy?`, before the loop, so the row's verdict uses the model the turn ran on.
+        window          (metabot.self/context-window-tokens model-ref)
         ;; Persist a placeholder assistant row up front so its `created_at` pins
         ;; turn ordering before any retry can sneak in earlier-timestamped rows.
         ;; `:user-id` stamps the author on both rows so participation-based
@@ -295,7 +320,7 @@
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
                           :slack_channel_id           channel-id}
-                         {:metabot-id metabot.config/internal-metabot-id
+                         {:metabot metabot
                           :profile-id :slackbot})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
@@ -341,6 +366,7 @@
                  (agent/run-agent-loop
                   {:messages        messages
                    :state           baseline-state
+                   :metabot         metabot
                    :profile-id      :slackbot
                    :conversation-id conversation-id
                    :context         context
@@ -362,17 +388,24 @@
           (metabot.persistence/finalize-assistant-turn!
            assistant-msg-id
            combined-parts
-           :profile-id   "slackbot"
-           :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-           :turn-state   (some-> @memory-atom memory/turn-state)
+           :profile-id            "slackbot"
+           :slack-msg-id          (when get-res-slack-msg-id (get-res-slack-msg-id))
+           :turn-state            (some-> @memory-atom memory/turn-state)
+           :context-window-tokens window
            ;; A thrown error is more authoritative, but the agent loop catches most
            ;; failures internally and emits an `:error` part instead of throwing. Without
            ;; the fallback such a turn persists as a clean `finished` row, and
            ;; `conversation-state` then merges its partial state into every later turn.
-           :error        (or (some-> @thrown metabot.persistence/throwable->error-payload)
-                             (:error (u/seek #(= :error (:type %)) combined-parts)))))))
-    {:msg-id      assistant-msg-id
-     :external-id assistant-external-id}))
+           :error                 (or (some-> @thrown metabot.persistence/throwable->error-payload)
+                                      (:error (u/seek #(= :error (:type %)) combined-parts)))))))
+    {:msg-id        assistant-msg-id
+     :external-id   assistant-external-id
+     ;; Suppressed when the turn also errored: the error copy already explains the failure, and a
+     ;; second aside about truncation would only muddy it -- the same reading web reload takes, where
+     ;; an errored turn is errored whatever else it did. Persistence derives its own reason and stores
+     ;; both, so nothing is lost here.
+     :finish-reason (when-not (some #(= :error (:type %)) @parts-atom)
+                      (self.core/parts->incomplete-finish-reason @parts-atom))}))
 
 (def ^:private viz-data-types
   "DATA part types that represent visualizations."
@@ -506,7 +539,7 @@
 
    A 'Thinking...' placeholder message can be posted before the stream starts via
    `:start-with-thinking!`. It is automatically deleted when the first text or tool update
-   is sent to the stream.
+   is sent to the stream, or explicitly via `:dismiss-thinking!` for a reply that sends neither.
 
    Visualization DATA parts are prefetched: when a `static_viz` or `adhoc_viz` DATA part
    arrives mid-stream, the full visualization pipeline (query execution + rendering) is
@@ -516,6 +549,9 @@
    - `:on-text`, `:on-tool-start`, `:on-tool-end`, `:on-data` — callbacks for [[make-streaming-ai-request]]
    - `:start-with-thinking!` — posts a 'Thinking...' placeholder in the thread
    - `:request-flush!` — schedules a drain of pending text to Slack
+   - `:dismiss-thinking!` — schedules deletion of that placeholder, for a reply that streamed no text
+   - `:text-streamed?` — atom, true once any non-blank text has reached the stream
+   - `:tools-streamed?` — atom, true once any tool progress (a task update) has reached the stream
    - `:stream-state` — atom holding `{:stream_ts :channel}` once started, nil before
    - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream
    - `:prefetched-viz` — atom holding `{index -> {:future Future :filename str :title str :link str}}` for in-flight visualizations"
@@ -526,6 +562,12 @@
         ;; Text awaiting write to Slack. Callback thread appends here; agent thread drains.
         ;; An atom because it's shared across threads (callback thread writes, agent thread reads).
         pending-text      (atom "")
+        ;; Whether any text ever reached the stream. A reply with none may have left the placeholder
+        ;; standing, so the DM path deletes it before it finalizes.
+        text-streamed?    (atom false)
+        ;; Whether any tool progress reached the stream. The user watched it, so a reply that ends with
+        ;; no text is still not an empty one.
+        tools-streamed?   (atom false)
         ;; Holds the ts of the "Thinking..." placeholder message, or nil if not posted / already dismissed.
         thinking-ts       (atom nil)
         slack-writer      (agent nil
@@ -558,14 +600,21 @@
                                  (when (:ok response)
                                    (reset! thinking-ts (:ts response)))))
 
+        dismiss-thinking! (fn []
+                            (send-off slack-writer
+                                      (bound-fn* (fn [_] (dismiss-thinking-msg! client channel thinking-ts) nil))))
+
         on-text (fn [text]
                   (when (seq text)
+                    (when-not (str/blank? text)
+                      (reset! text-streamed? true))
                     (swap! pending-text str text)
                     (when (>= (count @pending-text) min-text-batch-size)
                       (request-flush!))))
 
         send-task-update! (fn [id tool-name status]
                             (when-let [{:keys [stream_ts channel]} @stream-state]
+                              (reset! tools-streamed? true)
                               (send-off slack-writer
                                         (fn [_]
                                           (drain-pending-text! client stream-state pending-text thinking-ts)
@@ -597,6 +646,9 @@
      :on-data              on-data
      :request-flush!       (bound-fn* request-flush!)
      :start-with-thinking! start-with-thinking!
+     :dismiss-thinking!    dismiss-thinking!
+     :text-streamed?       text-streamed?
+     :tools-streamed?      tools-streamed?
      :stream-state         stream-state
      :slack-writer         slack-writer
      :prefetched-viz       prefetched-viz}))
@@ -656,7 +708,8 @@
 (defn- send-dm-response
   [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id]}]
   (let [{:keys [on-text on-tool-start on-tool-end on-data
-                request-flush! start-with-thinking! stream-state slack-writer prefetched-viz]}
+                request-flush! start-with-thinking! stream-state slack-writer prefetched-viz
+                dismiss-thinking! text-streamed? tools-streamed?]}
         (make-streaming-callbacks client {:channel   channel
                                           :thread-ts thread-ts
                                           :team-id   (:team_id auth-info)
@@ -665,7 +718,7 @@
     (try
       ;; Start stream early so assistant persistence has :slack_msg_id.
       (request-flush! true)
-      (let [{message-external-id :external-id}
+      (let [{message-external-id :external-id finish-reason :finish-reason}
             (make-streaming-ai-request
              conversation-id
              prompt
@@ -682,13 +735,26 @@
               :req-slack-msg-id     (:ts event)
               :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
         (request-flush! true)
+        ;; With no text there was nothing to drain, so at most a tool update has taken the placeholder
+        ;; down; deleting it again is a no-op.
+        (when-not @text-streamed?
+          (dismiss-thinking!))
         (when-not (await-for slack-writer-await-timeout-ms slack-writer)
           (log/warn "[slackbot] Timed out waiting for slack-writer agent to flush"))
         (if-let [{:keys [stream_ts channel]} @stream-state]
           ;; Hold stop-stream until all viz futures finish so text + viz + controls
           ;; finalize as a single message.
           (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
-                final-blocks            (into blocks (feedback-blocks conversation-id message-external-id))
+                ;; A reply is empty only when the user saw nothing: no text, no tool progress and no
+                ;; visualization. Only then does it get the "couldn't answer" copy -- and not even then
+                ;; when a finish-reason notice already says why it is empty.
+                empty-reply?            (not (or @text-streamed? @tools-streamed? (seq blocks)))
+                notice-block            (or (slackbot.channel/finish-reason-block finish-reason)
+                                            (when empty-reply? no-response-block))
+                final-blocks            (-> []
+                                            (cond-> notice-block (conj notice-block))
+                                            (into blocks)
+                                            (into (feedback-blocks conversation-id message-external-id)))
                 stop-result             (slackbot.client/stop-stream client channel stream_ts final-blocks)]
             (log/debugf "[slackbot] stop-stream finalize attempt channel=%s thread_ts=%s stream_ts=%s block_count=%d block_types=%s"
                         channel thread-ts stream_ts (count final-blocks) (pr-str (mapv :type final-blocks)))
@@ -703,7 +769,7 @@
                   (analytics/inc! :metabase-slackbot/responses-undeliverable))))
             (doseq [e errors]
               (post-viz-error! client channel thread-ts e)))
-          (slackbot.client/post-thread-reply client message-ctx "I wasn't able to generate a response. Please try again.")))
+          (slackbot.client/post-thread-reply client message-ctx no-response-copy)))
       (catch Exception e
         (cancel-prefetched-viz! prefetched-viz)
         (log/errorf "[slackbot] Error in streaming response: %s" (ex-message e))

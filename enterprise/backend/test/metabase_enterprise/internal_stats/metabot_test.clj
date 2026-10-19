@@ -127,9 +127,8 @@
               (is (every? false? (map :ai_proxied logs)))))
           (testing "usage keys are provider/model (metabase/ prefix stripped)"
             ;; accumulate-usage-xf strips metabase/ prefix → "anthropic/claude-sonnet-4-6"
-            ;; JSON roundtrip keywordizes → :anthropic/claude-sonnet-4-6
             (let [msg (t2/select-one :model/MetabotMessage :conversation_id conv-1 :role :assistant)]
-              (is (contains? (:usage msg) (keyword "anthropic" "claude-sonnet-4-6"))
+              (is (contains? (:usage msg) "anthropic/claude-sonnet-4-6")
                   "usage key should be provider/model without metabase/ prefix")))
           ;; -- Verify stats aggregation --
 

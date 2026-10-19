@@ -6,8 +6,8 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.audit-app.events.audit-log]
-   [metabase.channel.api.email :as api.email]
    [metabase.channel.email :as email]
+   [metabase.channel.rest.api.email :as api.email]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
    [metabase.notification.send :as notification.send]
@@ -423,6 +423,27 @@
                     :message-type :html
                     :message "101. Metabase will make you a better person")
                    (@inbox "test@test.com"))))))))))
+
+(deftest send-message-or-throw!-smtp-host-test
+  (premium-features.test-util/with-premium-features [:cloud-custom-smtp]
+    (dynamic-redefs/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (let [sent-hosts (atom [])
+            send!      #(email/send-message-or-throw! {:subject      "Subject"
+                                                       :recipients   ["test@test.com"]
+                                                       :message-type :text
+                                                       :message      "Message"})]
+        (dynamic-redefs/with-dynamic-fn-redefs [email/send-email! (fn [smtp-settings _] (swap! sent-hosts conj (:host smtp-settings)))]
+          (tu/with-temporary-setting-values [email-smtp-host          nil
+                                             email-smtp-host-override "cloud.metabase.com"
+                                             smtp-override-enabled    true]
+            (testing "sends through the custom SMTP server when it is the only one configured"
+              (send!)
+              (is (= ["cloud.metabase.com"] @sent-hosts)))
+            (testing "sends nothing when the custom SMTP server is disabled and no primary host is set"
+              (reset! sent-hosts [])
+              (tu/with-temporary-setting-values [smtp-override-enabled false]
+                (send!))
+              (is (= [] @sent-hosts)))))))))
 
 (deftest throttle-test
   ;; The throttle is applied once per logical message in send-message-or-throw!; check-email-throttle is the unit

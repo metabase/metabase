@@ -97,7 +97,8 @@
 
 (defn- plugin-info [^Path jar-path]
   (some-> (slurp-plugin-manifest-from-archive jar-path)
-          yaml/parse-string))
+          yaml/parse-string
+          plugins.init/normalize-manifest))
 
 (defn- register-plugin-with-info!
   "Register a plugin using parsed info from its manifest. Returns truthy if registration was successful;
@@ -140,7 +141,7 @@
     path))
 
 (defn- load-plugin-manifest! [path]
-  (some-> (slurp (str path)) yaml/parse-string plugins.init/register-plugin-with-info!))
+  (some-> (slurp (str path)) yaml/parse-string plugins.init/normalize-manifest plugins.init/register-plugin-with-info!))
 
 (defn- bundled-manifest-paths
   "Paths (URIs when running from a jar, `Path`s in dev) for every `metabase-plugin.yaml` on the classpath.
@@ -180,7 +181,7 @@
     (try
       (register-plugin! reserved-names path)
       (catch Throwable e
-        (log/errorf "Failed to register plugin %s: %s" (.getFileName path) (ex-message e))))))
+        (log/errorf e "Failed to register plugin %s" (.getFileName path))))))
 
 (defn- bundled-plugin-names
   "Names of every bundled (classpath) plugin, whether or not its dependencies are yet satisfied. A bundled

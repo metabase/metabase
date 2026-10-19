@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
 import {
@@ -10,8 +11,9 @@ import {
   getIsEmbeddingHubApp,
   getIsMonitorApp,
   getIsNavBarEnabled,
-} from "metabase/app/selectors";
+} from "metabase/app/nav/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
   Archived,
   GenericError,
@@ -22,7 +24,7 @@ import {
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
-import ScrollToTop from "metabase/hoc/ScrollToTop";
+import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -36,7 +38,7 @@ import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
-import ErrorBoundary from "./ErrorBoundary";
+import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
@@ -55,7 +57,7 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (data?.error_code === "archived" && context === "query-builder") {
     return <Archived entityName="question" linkTo="/questions/archive" />;
   }
-  return <GenericError details={data?.message} />;
+  return <GenericError details={findErrorMessage(data)} />;
 };
 
 export function App() {
@@ -124,6 +126,7 @@ export function App() {
               <UndoListing />
               <StatusListing />
               <NewModals />
+              <EmbedSetupModals />
               <Metabot
                 hide={
                   isAdminApp ||

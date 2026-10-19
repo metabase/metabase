@@ -1,6 +1,9 @@
 import { t } from "ttag";
 
-import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
+import {
+  getDefaultPlaceholder,
+  getExtraFormFieldProps,
+} from "metabase/admin/settings/utils";
 import { FormTextInput } from "metabase/forms";
 import { useAdminSetting } from "metabase/settings";
 import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
@@ -21,6 +24,7 @@ export function LdapGroupMembershipFilter() {
     <FormTextInput
       name="ldap-group-membership-filter"
       label={t`Group membership filter`}
+      placeholder={getDefaultPlaceholder(settingDetails)}
       nullable
       {...getExtraFormFieldProps(settingDetails)}
     />

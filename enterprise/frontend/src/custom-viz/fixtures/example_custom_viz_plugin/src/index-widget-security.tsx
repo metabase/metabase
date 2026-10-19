@@ -1,5 +1,6 @@
 import { defineConfig } from "../../../src/index";
 import type { CreateCustomVisualization } from "../../../src/types/viz";
+
 import { Visualization } from "./Visualization";
 
 type Settings = {

@@ -10,6 +10,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.models.interface :as mi]))
 
 (set! *warn-on-reflection* true)
@@ -66,8 +67,9 @@
       ;; Name a retry that works: the obvious reading of "pass a numeric id" is to send the same
       ;; number again, which fails identically.
       (common/throw-teaching-error
-       (format "Invalid id %s — pass the positive numeric id, or the 21-character entity_id from a search or list result."
-               (pr-str id-or-eid))))))
+       (message/msg [(str "Invalid id %s — pass the positive numeric id, or the "
+                          "21-character entity_id from a search or list result.")]
+                    id-or-eid)))))
 
 (defn resolve-and-read-with
   "Resolve `id-or-eid` for `model`, then return the object from `read-check-fn`, which must
@@ -89,12 +91,23 @@
           (common/throw-not-found model id-or-eid)
           (throw e))))))
 
+(defn hidden?
+  "True for a row MCP v2 treats as absent: a collection in the transforms namespace, because MCP v2 has no
+   transforms."
+  [model row]
+  (and (= model :model/Collection)
+       (= (name collection/transforms-ns) (some-> (:namespace row) name))))
+
 (defn resolve-and-read
   "Resolve `id-or-eid` for `model` and return the row from behind its `api/read-check` — what
-   nearly every read needs, with the same not-found collapse as [[resolve-and-read-with]]."
+   nearly every read needs, with the same not-found collapse as [[resolve-and-read-with]]. A
+   collection in the transforms namespace is not found too."
   [model id-or-eid]
   (resolve-and-read-with model id-or-eid
-                         (fn [id] (api/read-check (mcp.db/select-one-by-id model id)))))
+                         (fn [id]
+                           (let [row (mcp.db/select-one-by-id model id)]
+                             (when-not (hidden? model row)
+                               (api/read-check row))))))
 
 (defn resolve-collection-id
   "Resolve a `collection_id`/`parent_id` argument. `nil` and `\"root\"` mean the root
@@ -115,7 +128,8 @@
 
      (= "trash" id-or-sentinel)
      (or trash-collection-id
-         (common/throw-teaching-error "\"trash\" is not a valid collection here — pass a collection id, entity_id, or \"root\"."))
+         (common/throw-teaching-error (message/msg [(str "\"trash\" is not a valid collection here — "
+                                                         "pass a collection id, entity_id, or \"root\".")])))
 
      :else
      (:id (resolve-and-read :model/Collection id-or-sentinel)))))
@@ -136,8 +150,8 @@
     (resolve-collection-id id-or-sentinel)
     (or (:id (collection/user->personal-collection api/*current-user-id*))
         (common/throw-teaching-error
-         (str "The current user has no personal collection. Pass an explicit collection_id "
-              "(or \"root\" for the root collection) instead.")))))
+         (message/msg [(str "The current user has no personal collection. Pass an explicit "
+                            "collection_id (or \"root\" for the root collection) instead.")])))))
 
 ;;; --------------------------------------------- Collection paths -------------------------------------------------
 

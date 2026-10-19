@@ -70,7 +70,9 @@
   [query     :- ::lib.schema/query
    lat-field :- ::lib.schema.metadata/column
    lon-field :- ::lib.schema.metadata/column
-   x y zoom]
+   x :- ms/Int
+   y :- ms/Int
+   zoom :- ms/Int]
   (let [top-left      (x+y+zoom->lat-lon      x       y  zoom)
         bottom-right  (x+y+zoom->lat-lon (inc x) (inc y) zoom)
         inside-filter (lib/inside
@@ -150,10 +152,10 @@
   - add [:inside lat lon bounding-region coordings] filter
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
-  [query                :- :map
-   zoom
-   x
-   y
+  [query                :- [:maybe [:or [:= {} {}] ::mbql.s/Query ::lib.schema/query]]
+   zoom                 :- ms/Int
+   x                    :- ms/Int
+   y                    :- ms/Int
    lat-field-legacy-ref :- ::legacy-ref
    lon-field-legacy-ref :- ::legacy-ref]
   (let [query     (-> query
@@ -170,7 +172,8 @@
   [{{:keys [rows cols]} :data, :as qp-response} lat-field-ref lon-field-ref]
   (when-not (= (:status qp-response) :completed)
     (throw (ex-info (format "Error running tiles query: %s" (:error qp-response))
-                    (assoc qp-response :status-code 400))))
+                    ;; `:error` is client-facing by default, and the message already carries it
+                    (-> qp-response (dissoc :error) (assoc :status-code 400)))))
   (let [lat-id-or-name (second lat-field-ref)
         lon-id-or-name (second lon-field-ref)
 

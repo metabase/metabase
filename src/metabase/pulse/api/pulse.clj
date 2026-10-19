@@ -23,6 +23,7 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
+   [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.send :as pulse.send]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -99,7 +100,7 @@
   (t2/with-transaction [_conn]
     ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
     ;; check that and fix it if needed
-    (api/maybe-reconcile-collection-position! pulse-data)
+    (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
     ;; ok, now create the Pulse
     (let [pulse (api/check-500
                  (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
@@ -130,6 +131,7 @@
   [:map {:closed true}
    [:attachment_only {:optional true} [:maybe :boolean]]
    [:include_pdf     {:optional true} [:maybe :boolean]]
+   [:subject         {:optional true} [:maybe ::pulse.schema/email-subject]]
    [:channel         {:optional true} [:maybe :string]]
    [:channels        {:optional true} [:maybe :string]]
    [:channel_id      {:optional true} [:maybe :string]]
@@ -286,7 +288,7 @@
       (t2/with-transaction [_conn]
         ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
         ;; depending on what changed.
-        (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+        (api/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
         ;; ok, now update the Pulse
         (models.pulse/update-pulse!
          (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position

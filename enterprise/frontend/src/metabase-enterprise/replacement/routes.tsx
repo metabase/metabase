@@ -8,7 +8,14 @@ const migrateModelsPage = () =>
     Component: MigrateModelsPage,
   }));
 
-registerPagePrefetch(Urls.transformMigrateModels(), migrateModelsPage);
+/**
+ * Called from the licensed branch of `initializePlugin`, so only a page this
+ * instance mounts is registered. The background pass reads the registrations too,
+ * and fetching a page nobody can reach would spend a download on nothing.
+ */
+export function registerReplacementPagePrefetch(): void {
+  registerPagePrefetch(Urls.transformMigrateModels(), migrateModelsPage);
+}
 
 export function getTransformToolsRoutes() {
   return (

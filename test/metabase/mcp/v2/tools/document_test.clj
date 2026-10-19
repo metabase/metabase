@@ -6,7 +6,10 @@
    [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
+   [metabase.mcp.v2.tools.content]
    [metabase.mcp.v2.tools.document :as v2.document]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -18,12 +21,13 @@
 (set! *warn-on-reflection* true)
 
 (defn- call
-  "Invoke the document_write handler directly (unrestricted scopes) and return the decoded
+  "Invoke the document_write handler directly with every v2 scope and return the decoded
    payload map. Teaching errors surface as thrown ex-infos, matching how the registry treats
    handler exceptions."
   [args]
-  (-> (v2.document/document-write-tool args {:token-scopes nil})
+  (-> (v2.document/document-write-tool args {:token-scopes v2.tu/all-scopes})
       (get-in [:content 0 :text])
+      v2.tu/strip-data-boundary
       json/decode+kw))
 
 (defn- orders-query
@@ -252,6 +256,14 @@
                                  :edits [{:old_str "gamma" :new_str "gamma gamma" :replace_all true}]})]
               (is (= "gamma gamma one\n\ngamma gamma two" (:content_markdown updated))))))))))
 
+(deftest ^:parallel snippet-keeps-surrogate-pairs-whole-test
+  (testing "GHY-4544: cutting an old_str for an error message never splits a surrogate pair"
+    (let [prefix (apply str (repeat 76 "a"))]
+      (is (= (str prefix "…")
+             (#'v2.document/snippet (str prefix "😀" (apply str (repeat 10 "b"))))))
+      (is (= (str prefix "b…")
+             (#'v2.document/snippet (str prefix "b" (apply str (repeat 10 "b")))))))))
+
 (deftest edit-replacement-parses-markdown-test
   (testing "replacement text is parsed as Markdown"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -324,7 +336,7 @@
    that went through can never satisfy an assertion about a refusal."
   [{:keys [result error]}]
   (cond
-    error             (:message error)
+    error             (message/render (:message error))
     (:isError result) (-> result :content first :text)))
 
 (defn- write-error
@@ -332,13 +344,14 @@
    handler directly — the tool's own Malli schema is only applied at that seam, and these are
    arguments the schema is meant to reject."
   [args]
-  (error-text (registry/call-tool nil "test-session" "document_write" args)))
+  (error-text (registry/call-tool v2.tu/all-scopes "test-session" "document_write" args)))
 
 (deftest markdown-tables-are-rejected-test
   (mt/with-current-user (mt/user->id :crowberto)
     (with-tool-documents
       (fn [created!]
-        (let [message "Markdown tables are not supported. Save the query as a question with `display: table` and embed it with {% card id=… %}."
+        (let [message (str "Markdown tables are not supported. Save the query as a question with `display: table` "
+                           "and embed it with {% card id=… %}.")
               table   "| Table | Rows |\n|---|---|\n| users | 5,000 |"
               created (created! (call {:method "create" :name "Table test" :content_markdown "No table"}))
               doc-id  (:id created)]
@@ -380,7 +393,8 @@
                       {"entityId" secret-id "model" "collection" "label" nil "href" "/"}]
                      (written-smart-link-attrs
                       created!
-                      (format "{%% entity id=\"%d\" model=\"dashboard\" %%} and {%% entity id=\"%d\" model=\"collection\" %%}"
+                      (format (str "{%% entity id=\"%d\" model=\"dashboard\" %%} and "
+                                   "{%% entity id=\"%d\" model=\"collection\" %%}")
                               hidden-id secret-id)))))
             (testing "a readable target still resolves its label and href"
               (is (= [{"entityId" readable-id "model" "card" "label" "Open Question"
@@ -406,9 +420,10 @@
                   (mt/with-temporary-setting-values [user-visibility :none]
                     (is (= [{"entityId" (mt/user->id :crowberto) "model" "user" "label" nil "href" "/"}
                             {"entityId" (mt/user->id :rasta) "model" "user" "label" "Rasta Toucan" "href" "/"}]
-                           (written-smart-link-attrs created!
-                                                     (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
-                                                             (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
+                           (written-smart-link-attrs
+                            created!
+                            (format "{%% entity id=\"%d\" model=\"user\" %%} {%% entity id=\"%d\" model=\"user\" %%}"
+                                    (mt/user->id :crowberto) (mt/user->id :rasta))))))))))
           (testing "an admin resolves what a non-admin could not"
             (mt/with-current-user (mt/user->id :crowberto)
               (is (= [{"entityId" hidden-id "model" "dashboard" "label" "CONFIDENTIAL Layoffs"
@@ -416,6 +431,39 @@
                      (written-smart-link-attrs created!
                                                (format "{%% entity id=\"%d\" model=\"dashboard\" %%}"
                                                        hidden-id)))))))))))
+
+(defn- read-with-layout
+  "The `get_content` result for document `doc-id` with the `layout` include, as the decoded result row."
+  [doc-id]
+  (-> (registry/call-tool v2.tu/all-scopes "test-session" "get_content"
+                          {:items [{:type "document" :id doc-id}] :include ["layout"]})
+      (get-in [:result :content 0 :text])
+      v2.tu/strip-data-boundary
+      json/decode+kw
+      :results
+      first))
+
+(deftest smart-link-to-a-transform-folder-resolves-like-a-missing-id-test
+  (testing "GHY-4746: MCP v2 has no transforms, so an entity token naming a transform folder resolves as one
+            naming a missing collection does: the link stays unlabelled, and the folder's name is neither
+            stored nor read back"
+    (mt/with-temp [:model/Collection {folder-id :id} {:name "Rollups folder" :namespace "transforms"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (with-tool-documents
+          (fn [created!]
+            (let [token (fn [id] (format "{%% entity id=\"%d\" model=\"collection\" %%}" id))]
+              (testing "a missing collection id"
+                (is (= [{"entityId" 999999999 "model" "collection" "label" nil "href" "/"}]
+                       (written-smart-link-attrs created! (token 999999999)))))
+              (testing "a transform folder"
+                (is (= [{"entityId" folder-id "model" "collection" "label" nil "href" "/"}]
+                       (written-smart-link-attrs created! (token folder-id)))))
+              (testing "get_content does not name the folder"
+                (let [doc-id (:id (created! (call {:method           "create"
+                                                   :name             "Folder link"
+                                                   :content_markdown (str "See " (token folder-id) " here.")})))
+                      read   (json/encode (read-with-layout doc-id))]
+                  (is (not (str/includes? read "Rollups folder")) read))))))))))
 
 (deftest edit-keeps-the-label-of-a-smart-link-the-editor-cannot-read-test
   (testing "editing other text in a block must not wipe the label of a smart link pointing at
@@ -701,16 +749,17 @@
   (testing "a dynamically-registered client can discover and call document_write. Registration is
             not enough on its own: the tool's scope also has to reach the DCR default grant, or the
             client lists a tool every call then 403s on."
-    (let [grant (set (registry/registered-scopes))
-          named (fn [scopes] (some #(= "document_write" (:name %)) (registry/list-tools scopes)))]
+    (let [grant (set (registry/registered-scopes))]
       (testing "its scope is in the default grant"
         (is (contains? grant "agent:content:write")))
-      (testing "so a default-grant client sees it"
-        (is (named grant)))
-      (testing "and it is hidden from a token holding only the read scope"
-        (is (not (named #{"agent:content:read"}))))
+      (testing "GHY-4543: it is listed whatever the token's scopes"
+        (is (some #(= "document_write" (:name %)) (registry/list-tools))))
+      (testing "a token holding only the read scope is refused at call time"
+        (is (str/starts-with? (message/render (-> (registry/call-tool #{"agent:content:read"} nil "document_write" {})
+                                                  :error :message))
+                              "Insufficient scope to call tool: \"document_write\".")))
       (testing "the manifest carries a description and an input schema that advertises `clear`"
-        (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools grant)))]
+        (let [tool (first (filter #(= "document_write" (:name %)) (registry/list-tools)))]
           (is (seq (:description tool)))
           (is (str/includes? (:description tool) "No Markdown tables - embed a table-display question instead."))
           (is (get-in tool [:inputSchema :properties :clear])))))))

@@ -2,9 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   ;; load-bearing: the advertised scope sets are derived from the agent-api routes and the v2 tool
-   ;; registry, so both must be loaded for these assertions to see the real surface
-   [metabase.agent-api.api]
    [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.api :as v2.api]
    [metabase.oauth-server.core :as oauth-server]
@@ -13,8 +10,6 @@
    [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
 
-(comment metabase.agent-api.api/keep-me)
-
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
                       (thunk)
@@ -22,12 +17,12 @@
 
 (deftest mb-full-is-advertised-nowhere-test
   (testing "GHY-4226: `mb:full` grants full user-equivalent REST access, and advertising it put that
-            in front of every client reading discovery metadata. It is now absent from all three
-            advertised sets and from the default DCR grant, so no client is led toward it and none
-            can request it without having registered for it explicitly."
+            in front of every client reading discovery metadata. It is now absent from both advertised
+            sets, from the set the MCP resource accepts, and from the default DCR grant, so no client is
+            led toward it and none can request it without having registered for it explicitly."
     (is (not (contains? (set (oauth-server/supported-scopes)) "mb:full")))
     (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))) "mb:full")))
-    (is (not (contains? (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path))) "mb:full")))
+    (is (not (contains? (set (oauth-server/mcp-resource-advertised-scopes (mcp/mcp-canonical-path))) "mb:full")))
     (is (not (contains? (set (oauth-server/default-grant-scopes)) "mb:full")))))
 
 (deftest default-grant-covers-everything-advertised-test
@@ -38,24 +33,25 @@
             what Claude and ChatGPT both do.
 
             Iterated over every endpoint path rather than over the sets `default-grant-scopes` is
-            built from: asserting a set covers the sets it is defined as the union of cannot fail.
-            The per-path arities are the ones a client actually meets, and the v1 aliases are inside
-            the ceiling only incidentally today, because `all-scopes` also feeds `supported-scopes`."
+            built from: asserting a set covers the sets it is defined as the union of cannot fail."
     (let [ceiling (set (oauth-server/default-grant-scopes))]
       (doseq [path (mcp/mcp-endpoint-paths)]
         (testing path
-          (is (empty? (remove ceiling (oauth-server/mcp-resource-scopes path))))))
+          (is (empty? (remove ceiling (oauth-server/mcp-resource-scopes path))))
+          (is (empty? (remove ceiling (oauth-server/mcp-resource-advertised-scopes path))))))
       (testing "and the authorization-server metadata set"
         (is (empty? (remove ceiling (oauth-server/supported-scopes))))))))
 
-(deftest v2-default-ask-covers-the-surface-and-is-requestable-test
-  (testing "the v2 401 challenge asks an uninstructed client for every scope the surface accepts, and
-            nothing else. Asking for less does not degrade gracefully: `list-tools` filters by token
-            scopes, so an unasked-for write scope removes those tools from `tools/list` entirely, with
-            no in-product way for the user to request them afterwards."
-    (is (= (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
-           (set @#'v2.api/default-ask-scopes))
-        "the ask and the accepted set are the same — a scope in one but not the other is a bug in whichever moved")
+(deftest v2-default-ask-is-the-whole-surface-and-is-requestable-test
+  (testing "ENG-11089: the v2 401 challenge asks an uninstructed client for every v2 scope. A manual reconnect from
+            Claude's connector settings asks for exactly this, so a baseline-only challenge left SQL, writes and
+            delivery unreachable. The user can still untick each one outside the baseline on the consent page."
+    (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
+             "agent:sql:run" "agent:delivery:write"}
+           (set @#'v2.api/default-ask-scopes)))
+    (testing "the surface still accepts every scope asked for, or narrowing strips the ask at consent"
+      (is (empty? (remove (set (oauth-server/mcp-resource-scopes (mcp/mcp-canonical-path)))
+                          @#'v2.api/default-ask-scopes))))
     (testing "every asked scope is inside the ceiling, or the ask itself would be rejected"
       (let [ceiling (set (oauth-server/default-grant-scopes))]
         (doseq [scope @#'v2.api/default-ask-scopes]
@@ -67,22 +63,22 @@
           (is (not (contains? (set @#'v2.api/default-ask-scopes) scope))))))))
 
 (deftest advertised-scopes-are-distinct-test
-  (testing "GHY-4151: `scopes_supported` is a set of scope strings (RFC 8414), so no scope may be
+  (testing "GHY-4151: `scopes_supported` is a set of scope strings (RFC 8414, RFC 9728), so no scope may be
             advertised twice.
 
-            Asserted on the sources rather than on the output. Every advertised set is built through
-            a `sorted-set`, which makes the output distinct by construction no matter what goes in --
-            so counting the result can never fail. What can go wrong is upstream: the same scope
-            declared in both `v2-surface-scopes` and a v1 resource scope list, which the sorted-set
-            silently swallows."
-    (doseq [path (mcp/mcp-endpoint-paths)]
-      (testing path
-        (let [scopes (oauth-server/mcp-resource-scopes path)]
-          (is (= (count (distinct scopes)) (count scopes))
-              (str "duplicate scopes: "
-                   (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec))))))
-    (testing "the v2 surface literal has no duplicates of its own"
-      (is (= (count (distinct (mcp/v2-scopes))) (count (mcp/v2-scopes)))))))
+            GHY-4543: the protected-resource metadata advertises `mcp-resource-advertised-scopes`, a vector copied
+            from the `v2-surface-scopes` literal, so a scope repeated there is repeated on the wire. The accepted
+            set, `mcp-resource-scopes`, is built through a `sorted-set` and cannot repeat by construction; it is
+            checked too, alongside the literals both are built from, where a duplicate would be silently swallowed."
+    (let [duplicates (fn [scopes] (->> scopes frequencies (filter (fn [[_ n]] (> n 1))) (map key) sort vec))]
+      (doseq [path (mcp/mcp-endpoint-paths)]
+        (testing path
+          (doseq [[label scopes] {"advertised" (oauth-server/mcp-resource-advertised-scopes path)
+                                  "accepted"   (oauth-server/mcp-resource-scopes path)}]
+            (testing label
+              (is (empty? (duplicates scopes)))))))
+      (testing "the v2 surface literal has no duplicates of its own"
+        (is (empty? (duplicates (mcp/v2-scopes))))))))
 
 (deftest rationalized-scopes-are-in-the-default-grant-test
   (testing "GHY-4225: the five v2 scopes must all reach the default grant a dynamically-registered
@@ -95,16 +91,15 @@
         (testing scope
           (is (contains? granted scope)))))))
 
-(deftest mcp-resource-advertises-only-the-mcp-surface-test
-  (testing "RFC 9728 metadata answers \"what does *this* resource accept\". Every MCP endpoint path now
-            reaches the same v2 surface, so each advertises the rationalized scopes its tool registry
-            gates on and none of the agent-API per-entity scopes. While v1 was still served the aliases
-            that reached it had to advertise the wider set; with v1 retired that would list per-entity
+(deftest mcp-resource-accepts-only-the-mcp-surface-test
+  (testing "Every MCP endpoint path now reaches the same v2 surface, so each accepts the rationalized scopes
+            its tool registry gates on and none of the agent-API per-entity scopes. While v1 was still served
+            the aliases that reached it had to accept the wider set; with v1 retired that would list per-entity
             scopes on a consent screen for tools that no longer exist."
     (doseq [path (mcp/mcp-endpoint-paths)]
       (testing path
         (let [mcp (set (oauth-server/mcp-resource-scopes path))]
-          (testing "the rationalized scopes are advertised"
+          (testing "the rationalized scopes are accepted"
             (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
                            "agent:sql:run" "agent:delivery:write"]]
               (testing scope
@@ -118,6 +113,27 @@
     (testing "every path answers the same set, since every path reaches the same surface"
       (is (= 1 (count (set (map (comp set oauth-server/mcp-resource-scopes)
                                 (mcp/mcp-endpoint-paths)))))))))
+
+(deftest ^:parallel widen-to-grant-ceiling-test
+  (let [widen   #'oauth-server/widen-to-grant-ceiling
+        mcp     ["agent:content:read" "agent:sql:run"]
+        ceiling ["agent:content:read" "agent:sql:run" "agent:question:create"]]
+    (testing "GHY-4543: while registration is enabled, a dynamic client gains every ceiling scope it lacks, after the
+              scopes it registered with"
+      (is (= ["mb:full" "agent:content:read" "agent:sql:run" "agent:question:create"]
+             (:scopes (widen {:registration-type "dynamic" :scopes ["mb:full" "agent:content:read"]}
+                             true mcp ceiling)))))
+    (testing "GHY-4543: while registration is disabled, a dynamic client still gains the MCP scopes, so a client that
+              registered with the baseline can step up, but none of the other ceiling scopes"
+      (is (= ["agent:content:read" "agent:sql:run"]
+             (:scopes (widen {:registration-type "dynamic" :scopes ["agent:content:read"]} false mcp ceiling)))))
+    (testing "a static client is unchanged"
+      (let [client {:registration-type "static" :scopes ["profile"]}]
+        (is (= client (widen client true mcp ceiling)))
+        (is (= client (widen client false mcp ceiling)))))
+    (testing "a missing client stays missing"
+      (is (nil? (widen nil true mcp ceiling)))
+      (is (nil? (widen nil false mcp ceiling))))))
 
 (deftest get-provider-test
   (testing "get-provider returns a Provider instance"
@@ -174,12 +190,15 @@
                                 [mcp-uri]
                                 "agent:content:read agent:question:create agent:sql:execute agent:query:run"))]
           (is (= #{"agent:content:read" "agent:query:run"} narrowed))))
-      (testing "every scope the surface advertises survives narrowing — otherwise the resource doc would
-                advertise a scope its own consent flow strips"
-        (let [advertised (oauth-server/mcp-resource-scopes "/api/metabase-mcp")]
-          (is (= (set advertised)
-                 (scopes (oauth-server/narrow-scope-to-resource
-                          [mcp-uri] (str/join " " advertised)))))))
+      (testing "GHY-4543: every v2 scope survives narrowing on every alias — otherwise a first connect or a
+                step-up for a write scope is stripped at consent"
+        (let [v2-scopes ["agent:content:read" "agent:content:write" "agent:query:run"
+                         "agent:sql:run" "agent:delivery:write"]]
+          (doseq [path (mcp/mcp-endpoint-paths)]
+            (testing path
+              (is (= (set v2-scopes)
+                     (scopes (oauth-server/narrow-scope-to-resource
+                              [(str "http://localhost:3000" path)] (str/join " " v2-scopes)))))))))
       (testing "GHY-4226: `mb:full` is dropped like any other scope the surface does not accept. A
                 client naming the MCP resource wants a token for that surface, which accepts none of
                 the REST API that scope unlocks."

@@ -14,7 +14,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Button, Flex, Modal, Text, TextInput } from "metabase/ui";
+import { Button, Modal, Text, TextInput } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
 import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
@@ -78,7 +78,7 @@ const UserPasswordResetModalInner = ({
         opened
         title={t`Password reset link for ${user.common_name}`}
         onConfirm={onClose}
-        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
+        confirmButtonProps={{ color: "brand", variant: "filled" }}
         confirmButtonText={t`Done`}
         closeButtonText={null}
         onClose={onClose}
@@ -103,7 +103,7 @@ const UserPasswordResetModalInner = ({
         opened
         title={t`${user.common_name}'s password has been reset`}
         onConfirm={onClose}
-        confirmButtonProps={{ color: "core-brand", variant: "filled" }}
+        confirmButtonProps={{ color: "brand", variant: "filled" }}
         confirmButtonText={t`Done`}
         closeButtonText={null}
         onClose={onClose}
@@ -124,22 +124,20 @@ const UserPasswordResetModalInner = ({
       onClose={onClose}
       size="lg"
     >
-      <Flex direction="column" gap="xl" mt="lg">
-        <Text>{t`Are you sure you want to do this?`}</Text>
-        <Flex align="center" justify="flex-end" gap="lg">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            variant="filled"
-            color="core-brand"
-            onClick={handleGetResetLink}
-          >{t`Get reset link`}</Button>
-          <Button
-            color="feedback-negative"
-            variant="filled"
-            onClick={handleResetConfirm}
-          >{t`Reset password`}</Button>
-        </Flex>
-      </Flex>
+      <Text>{t`Are you sure you want to do this?`}</Text>
+      <Modal.Footer>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button
+          variant="filled"
+          color="brand"
+          onClick={handleGetResetLink}
+        >{t`Get reset link`}</Button>
+        <Button
+          color="negative"
+          variant="filled"
+          onClick={handleResetConfirm}
+        >{t`Reset password`}</Button>
+      </Modal.Footer>
     </Modal>
   );
 };

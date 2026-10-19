@@ -16,7 +16,7 @@ import {
   findEmptySelection,
   findRunnerFailure,
 } from "./check-unit-test-results";
-import { prepareUnitTestSelection } from "./prepare-unit-test-selection";
+import { prepareTestSelection } from "./prepare-test-selection";
 
 type Step = { name: string; run?: string; "continue-on-error"?: boolean };
 // js-yaml returns an untyped value, and this repository workflow defines the job's steps.
@@ -68,79 +68,6 @@ describe("frontend test plan handoff", () => {
   function writePlan(value: unknown) {
     writeFileSync(join(dir, "test-plan/test-plan.json"), JSON.stringify(value));
   }
-
-  it.each([{ files: ["one.spec.cjs"] }, { files: [] }])(
-    "preserves an explicit selection: $files",
-    ({ files }) => {
-      writePlan(plan(files));
-      prepareUnitTestSelection(env);
-      expect(readFileSync(join(dir, "output"), "utf8")).toContain(
-        "paths-file=",
-      );
-      expect(
-        JSON.parse(readFileSync(join(dir, "unit-specs.json"), "utf8")),
-      ).toEqual(files);
-    },
-  );
-
-  it("writes the selection when invoked through Bun in CI", () => {
-    writePlan(plan(["one.spec.cjs"]));
-    const result = spawnSync(
-      "bun",
-      [resolve(__dirname, "prepare-unit-test-selection.ts")],
-      { env, encoding: "utf8" },
-    );
-    expect(result.status === 0 ? "" : result.stderr).toBe("");
-    expect(result.status).toBe(0);
-    expect(readFileSync(join(dir, "output"), "utf8")).toBe(
-      `paths-file=${join(dir, "unit-specs.json")}\n`,
-    );
-    expect(
-      JSON.parse(readFileSync(join(dir, "unit-specs.json"), "utf8")),
-    ).toEqual(["one.spec.cjs"]);
-  });
-
-  it("bypasses the filter for a full selection", () => {
-    writePlan(plan(["one.spec.cjs", "two.spec.cjs"]));
-    prepareUnitTestSelection(env);
-    expect(readFileSync(join(dir, "output"), "utf8")).toBe("");
-  });
-
-  it.each([
-    null,
-    {},
-    { ...plan([]), fe_unit_specs_to_run: "[]" },
-    { ...plan([]), fe_unit_specs_to_run: [null] },
-    { ...plan([]), fe_unit_specs_to_run: ["one.spec.cjs"] },
-    plan(["one.spec.cjs"], 0),
-  ])("runs in full for an invalid plan: %j", (value) => {
-    writePlan(value);
-    prepareUnitTestSelection(env);
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining("::warning::"),
-    );
-    expect(readFileSync(join(dir, "output"), "utf8")).toBe("");
-  });
-
-  it.each(["missing", "truncated", "download failed"])(
-    "runs in full when the artifact is %s",
-    (scenario) => {
-      if (scenario === "truncated") {
-        writeFileSync(
-          join(dir, "test-plan/test-plan.json"),
-          '{"fe_unit_specs_to_run":[',
-        );
-      } else if (scenario === "download failed") {
-        writePlan(plan([])); // Even a partial download must not be trusted.
-        env.PLAN_DOWNLOADED = "failure";
-      }
-      prepareUnitTestSelection(env);
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("::warning::"),
-      );
-      expect(readFileSync(join(dir, "output"), "utf8")).toBe("");
-    },
-  );
 
   function jestCommand(useFilter: boolean) {
     return [
@@ -251,7 +178,7 @@ describe("frontend test plan handoff", () => {
     "loads the TypeScript filter natively with an empty selection: %s",
     (empty) => {
       writePlan(plan(empty ? [] : [join(dir, "pass.spec.cjs")]));
-      prepareUnitTestSelection(env);
+      prepareTestSelection("unit", env);
       env.JEST_TEST_PATHS_FILE = join(dir, "unit-specs.json");
       const result = runJest(
         {

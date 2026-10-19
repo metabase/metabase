@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useFormik } from "formik";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -19,24 +19,17 @@ import * as actions from "metabase/reference/reference";
 import { updateField } from "metabase/reference/update-actions";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
+  Field as ApiField,
   FieldId,
   IconName,
-  NormalizedField,
+  Segment,
+  Table,
   User,
 } from "metabase-types/api";
 
-import type { ReferenceRouteProps, StateWithReference } from "../selectors";
-import {
-  getFieldsBySegment,
-  getIsEditing,
-  getSegment,
-  getUser,
-} from "../selectors";
-import type {
-  FieldFormFieldsValues,
-  StubbedSegment,
-  StubbedTable,
-} from "../types";
+import type { StateWithReference } from "../selectors";
+import { getIsEditing, getUser } from "../selectors";
+import type { FieldFormFieldsValues } from "../types";
 
 type SegmentFieldListFormFields = Record<string, FieldFormFieldsValues>;
 
@@ -47,18 +40,10 @@ const emptyStateData = {
   icon: "fields" as const,
 };
 
-const mapStateToProps = (
-  state: StateWithReference,
-  props: ReferenceRouteProps,
-) => {
-  const data = getFieldsBySegment(state, props);
-  return {
-    segment: getSegment(state, props),
-    entities: data,
-    user: getUser(state),
-    isEditing: getIsEditing(state),
-  };
-};
+const mapStateToProps = (state: StateWithReference) => ({
+  user: getUser(state),
+  isEditing: getIsEditing(state),
+});
 
 const mapDispatchToProps = {
   updateField,
@@ -67,19 +52,18 @@ const mapDispatchToProps = {
 };
 
 interface SegmentFieldListProps {
-  segment: StubbedSegment;
+  segment: Segment | undefined;
   style: React.CSSProperties;
-  entities: Record<string, NormalizedField>;
   isEditing?: boolean;
   startEditing: () => void;
   endEditing: () => void;
   user: User | null;
-  table: StubbedTable;
+  table: Table | undefined;
   loading?: boolean;
   loadingError?: unknown;
   // The action handler in reference.ts types its own props parameter.
   onSubmit?: (
-    entities: Record<string, NormalizedField>,
+    entities: Record<string, ApiField>,
     fields: SegmentFieldListFormFields,
     props: any,
   ) => void;
@@ -89,7 +73,6 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
   const {
     segment,
     style,
-    entities,
     loadingError,
     loading,
     user,
@@ -101,6 +84,15 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
   } = props;
 
   const [saveError, setSaveError] = useState<unknown>(null);
+
+  // `rUpdateFields` looks each edited field up by id.
+  const entities = useMemo(
+    () =>
+      Object.fromEntries(
+        (table?.fields ?? []).map((field) => [String(field.id), field]),
+      ),
+    [table],
+  );
 
   const {
     isSubmitting,
@@ -150,7 +142,7 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
       <EditableReferenceHeader
         type="segment"
         headerIcon={modelIconMap.segment}
-        name={t`Fields in ${segment.name}`}
+        name={t`Fields in ${segment?.name}`}
         user={user}
         isEditing={isEditing}
         startEditing={startEditing}
@@ -160,7 +152,7 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
         error={saveError ?? loadingError}
       >
         {() =>
-          Object.keys(entities).length > 0 ? (
+          table != null && Object.keys(entities).length > 0 ? (
             <div className={CS.wrapper}>
               <div
                 className={cx(
@@ -193,9 +185,9 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
                       entity.name && (
                         <li className={CS.relative} key={String(entity.id)}>
                           <Field
-                            databaseId={table.db_id!}
+                            databaseId={table.db_id}
                             field={entity}
-                            url={`/reference/segments/${segment.id}/fields/${entity.id}`}
+                            url={`/reference/segments/${segment?.id}/fields/${entity.id}`}
                             // Unjustified type cast. FIXME
                             icon={getIconForField(entity) as IconName}
                             isEditing={isEditing}
@@ -219,11 +211,10 @@ const SegmentFieldList = (props: SegmentFieldListProps) => {
   );
 };
 
-// What the container has to supply: `params` feeds `mapStateToProps`, and
-// `table` is read here but selected by the container. Naming it keeps that
-// contract type-checked.
-type SegmentFieldListOwnProps = ReferenceRouteProps &
-  Pick<SegmentFieldListProps, "table" | "loading" | "loadingError">;
+type SegmentFieldListOwnProps = Pick<
+  SegmentFieldListProps,
+  "segment" | "table" | "loading" | "loadingError"
+>;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(

@@ -8,6 +8,7 @@
   (:refer-clojure :exclude [every? empty? get-in not-empty])
   (:require
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.analytics.settings :as analytics.settings]
@@ -83,7 +84,12 @@
         ;; processed the request (and its dynamic bindings and clock) is long gone. `include-sdk-info` also runs in
         ;; the `before-insert` hook as a safety net for any code path that inserts QueryExecution directly (where
         ;; dynamic vars would still be bound).
-        execution-info' (add-running-time (analytics.core/include-sdk-info execution-info))]
+        json-query      (:json_query execution-info)
+        execution-info' (-> execution-info
+                            (dissoc :json_query)
+                            analytics.core/include-sdk-info
+                            add-running-time
+                            (cond-> json-query (assoc :json_query json-query)))]
     (if qp.util/*execute-async?*
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))
@@ -94,12 +100,13 @@
   []
   (grouper/flush! @save-execution-metadata-queue))
 
-(defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
+(defn- save-successful-execution-metadata! [cache-details is-sandboxed? sandbox-details query-execution result-rows]
   (let [qe-map (assoc query-execution
                       :cache_hit       (boolean (:cached cache-details))
                       :cache_hash      (:hash cache-details)
                       :result_rows     result-rows
-                      :is_sandboxed    (boolean is-sandboxed?))]
+                      :is_sandboxed    (boolean is-sandboxed?)
+                      :sandbox_details sandbox-details)]
     (save-execution-metadata! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
@@ -117,8 +124,11 @@
    (-> query-execution
        add-running-time
        (dissoc :error :hash :executor_id :action_id :is_sandboxed :is_impersonated :is_db_routed :card_id :dashboard_id :transform_id :lens_id :lens_params :pulse_id :result_rows :native
-               :parameterized :parameters))
-   (dissoc result :cache/details)
+               :parameterized :parameters :sandbox_details))
+   ;; `[:data :sandbox_details]` exists only to be recorded in the QueryExecution row (see
+   ;; [[save-successful-execution-metadata!]]) — it has no business going back to the client
+   (-> (dissoc result :cache/details)
+       (m/update-existing :data dissoc :sandbox_details))
    {:cached                 (when (:cached cache) (:updated_at cache))
     :status                 :completed
     :average_execution_time (when (:cached cache)
@@ -139,7 +149,8 @@
                                                    :card-id (:card_id execution-info)
                                                    :context (:context execution-info)}))
        (save-successful-execution-metadata!
-        (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
+        (:cache/details acc) (get-in acc [:data :is_sandboxed]) (get-in acc [:data :sandbox_details])
+        execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
@@ -205,6 +216,7 @@
              :is_db_routed    (qp.middleware.enterprise/currently-db-routed?)}
       destination-db-id (assoc :database_id destination-db-id))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *execution-context-ref*
   "Bound to an atom by [[process-userland-query-middleware]] for each userland query.
   [[capture-execution-context-middleware]] writes the snapshotted impersonation/db-routing context here while the

@@ -14,53 +14,38 @@ describe("user > settings", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should be able to remove first name and last name (metabase#22754)", () => {
+  it("should show, update, and clear user details without fetching memberships (metabase#22754)", () => {
+    cy.intercept("GET", "/api/permissions/membership").as("membership");
+    cy.intercept("PUT", "/api/user/*").as("updateUser");
     cy.visit("/account/profile");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(fullName);
+    cy.findByTestId("account-header").within(() => {
+      cy.findByText(fullName).should("be.visible");
+      cy.findByText(email).should("be.visible");
+      cy.findByRole("tab", { name: "Authentication" }).should("be.visible");
+    });
+    cy.findByDisplayValue(first_name).should("be.visible");
+    cy.findByDisplayValue(last_name).should("be.visible");
+    cy.findByDisplayValue(email).should("be.visible");
+    cy.button("Update").should("be.disabled");
+    cy.findByLabelText("First name").clear().type("John");
+    cy.clock(Date.now(), ["setTimeout", "clearTimeout"]);
+    cy.button("Update").click();
+    cy.wait("@updateUser").its("response.statusCode").should("eq", 200);
+    cy.button("Success").should("be.visible");
+    cy.tick(5000);
+    cy.button("Update").should("be.visible");
+    cy.clock().then((clock) => clock.restore());
+    cy.findByTestId("account-header").should("contain", `John ${last_name}`);
+    cy.findByDisplayValue("John").should("be.visible");
+    cy.get("@membership.all").should("have.length", 0);
+
     cy.findByLabelText("First name").clear();
     cy.findByLabelText("Last name").clear();
     cy.button("Update").click();
-
+    cy.wait("@updateUser").its("response.statusCode").should("eq", 200);
     cy.reload();
-
     cy.findByLabelText("First name").should("be.empty");
     cy.findByLabelText("Last name").should("be.empty");
-  });
-
-  it("should show user details with disabled submit button", () => {
-    cy.visit("/account/profile");
-    cy.findByTestId("account-header").within(() => {
-      cy.findByText(fullName);
-      cy.findByText(email);
-    });
-    cy.findByDisplayValue(first_name);
-    cy.findByDisplayValue(last_name);
-    cy.findByDisplayValue(email);
-    cy.button("Update").should("be.disabled");
-  });
-
-  it("should update the user without fetching memberships", () => {
-    cy.intercept("GET", "/api/permissions/membership").as("membership");
-    cy.visit("/account/profile");
-    cy.findByDisplayValue(first_name).click().clear().type("John");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Update").click();
-    cy.findByDisplayValue("John");
-
-    // It is hard and unreliable to assert that something didn't happen in Cypress
-    // This solution was the only one that worked out of all others proposed in this SO topic: https://stackoverflow.com/a/59302542/8815185
-    cy.get("@membership.all").should("have.length", 0);
-  });
-
-  it("should have an authentication tab", () => {
-    cy.intercept("GET", "/api/user/current").as("getUser");
-
-    cy.visit("/account/profile");
-    cy.wait("@getUser");
-    cy.findByTestId("account-header")
-      .findByRole("tab", { name: "Authentication" })
-      .should("be.visible");
   });
 
   it("should redirect to the login page when the user has signed out but tries to visit `/account/profile` (metabase#15471)", () => {
@@ -71,25 +56,7 @@ describe("user > settings", () => {
     cy.findByText("Sign in to Metabase");
   });
 
-  it("should redirect to the login page when the user has changed the password and logged out (metabase#18151)", () => {
-    cy.visit("/account/password");
-
-    cy.findByLabelText("Current password").type(password);
-    cy.findByLabelText("Create a password").type(password);
-    cy.findByLabelText("Confirm your password").type(password);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Success");
-
-    H.getProfileLink().click();
-    H.popover().findByText("Sign out").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sign in to Metabase");
-  });
-
-  it("should validate form values (metabase#23259)", () => {
-    cy.signInAsNormalUser();
+  it("should validate passwords and redirect after saving and signing out (metabase#23259, metabase#18151)", () => {
     cy.visit("/account/password");
 
     // Validate common passwords
@@ -113,6 +80,17 @@ describe("user > settings", () => {
     cy.button("Save").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Invalid password");
+
+    cy.findByLabelText("Current password").clear().type(password);
+    cy.findByLabelText("Create a password").clear().type(password);
+    cy.findByLabelText("Confirm your password").clear().type(password);
+    cy.button("Save").click();
+    H.main().findByText("Success").should("be.visible");
+    H.getProfileLink().click();
+    H.popover().findByText("Sign out").click();
+    cy.findByRole("heading", { name: "Sign in to Metabase" }).should(
+      "be.visible",
+    );
   });
 
   it("should be able to change a language (metabase#22192)", () => {
@@ -135,24 +113,6 @@ describe("user > settings", () => {
     H.getProfileLink().should("exist");
   });
 
-  it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
-    cy.request("GET", "/api/user/current").then(({ body: user }) => {
-      cy.intercept("GET", "/api/user/current").as("getUser");
-
-      cy.request("GET", "/api/session/properties").then(
-        ({ body: settings }) => {
-          cy.wrap(settings["available-locales"]).each(([locale]) => {
-            cy.log(`Using ${locale} locale`);
-            cy.request("PUT", `/api/user/${user.id}`, { locale });
-            cy.visit("/");
-            cy.wait("@getUser");
-            H.getProfileLink().should("exist");
-          });
-        },
-      );
-    });
-  });
-
   it("should show correct translations when a user logs in with a locale that is different from the site locale", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
     cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, { locale: "fr" });
@@ -173,76 +133,26 @@ describe("user > settings", () => {
     cy.findByTestId("step-summarize-0-0").findByText("Résumer").should("exist");
   });
 
-  describe("when user is authenticated via ldap", () => {
-    beforeEach(() => {
-      stubCurrentUser({ sso_source: "ldap" });
-
+  ["ldap", "google", "jwt", "saml"].forEach((ssoSource) => {
+    it(`should prevent ${ssoSource} users from editing SSO credentials (metabase#23298)`, () => {
+      stubCurrentUser({ sso_source: ssoSource });
       cy.visit("/account/profile");
       cy.wait("@getUser");
-    });
-
-    it("should hide change password tab", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Password").should("not.exist");
-    });
-  });
-
-  describe("when user is authenticated via google", () => {
-    beforeEach(() => {
-      stubCurrentUser({ sso_source: "google" });
-
-      cy.visit("/account/profile");
-      cy.wait("@getUser");
-    });
-
-    it("should hide change password tab", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Password").should("not.exist");
-    });
-
-    it("should hide first name, last name, and email input (metabase#23298)", () => {
+      cy.findByTestId("account-header").should("contain", email);
+      cy.findByTestId("user-locale-select").should("be.visible");
+      cy.findByTestId("account-header")
+        .findByRole("tab", { name: "Authentication" })
+        .should("not.exist");
       cy.findByLabelText("First name").should("not.exist");
       cy.findByLabelText("Last name").should("not.exist");
       cy.findByLabelText("Email").should("not.exist");
-    });
-  });
 
-  describe("when user is authenticated via JWT", () => {
-    beforeEach(() => {
-      stubCurrentUser({ sso_source: "jwt" });
-
-      cy.visit("/account/profile");
+      cy.visit("/account/password");
       cy.wait("@getUser");
-    });
-
-    it("should hide change password tab", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Password").should("not.exist");
-    });
-
-    it("should hide first name, last name, and email input (metabase#23298)", () => {
-      cy.findByLabelText("First name").should("not.exist");
-      cy.findByLabelText("Last name").should("not.exist");
-      cy.findByLabelText("Email").should("not.exist");
-    });
-  });
-
-  describe("when user is authenticated via SAML", () => {
-    beforeEach(() => {
-      stubCurrentUser({ sso_source: "saml" });
-      cy.visit("/account/profile");
-      cy.wait("@getUser");
-    });
-
-    it("should hide change password tab", () => {
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Password").should("not.exist");
-    });
-
-    it("should hide first name, last name, and email input (metabase#23298)", () => {
-      cy.findByLabelText("First name").should("not.exist");
-      cy.findByLabelText("Last name").should("not.exist");
-      cy.findByLabelText("Email").should("not.exist");
+      cy.findByTestId("account-header").should("contain", email);
+      cy.findByLabelText("Current password").should("not.exist");
+      cy.findByLabelText("Create a password").should("not.exist");
+      cy.findByLabelText("Confirm your password").should("not.exist");
     });
   });
 

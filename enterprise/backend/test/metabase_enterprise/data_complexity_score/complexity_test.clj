@@ -13,17 +13,17 @@
    [metabase-enterprise.data-complexity-score.synonym-source :as synonym-source]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase-enterprise.data-complexity-score.test-util :as test-util]
-   [metabase-enterprise.embeddings.client :as embeddings]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   [metabase-enterprise.semantic-search.embedders :as ss.embedders]
-   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.search.embeddings.client :as embeddings]
+   [metabase-enterprise.search.semantic.core :as semantic-search]
+   [metabase-enterprise.search.semantic.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.search.semantic.embedders :as ss.embedders]
+   [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
-   [metabase.embeddings.provider :as embeddings.provider]
+   [metabase.search.embeddings.provider :as embeddings.provider]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -1165,8 +1165,33 @@
   [published?]
   (with-meta
    {:library {:score 0 :components {}} :universe {:score 0 :components {}}
-    :metabot {:score 0 :components {}} :meta {}}
+    :metabot {:score 0 :components {}}
+    :meta    {:formula-version 1 :format-version 1 :synonym-threshold 0.8 :weights complexity/weights}}
    {:metabase-enterprise.data-complexity-score.complexity/snowplow-published? published?}))
+
+(def ^:private zero-leaf
+  "A minimal, schema-valid `::data-complexity-score.leaf`."
+  {:measurement 0.0 :score 0})
+
+(def ^:private zero-catalog
+  "A minimal, schema-valid `::data-complexity-score.catalog` with all sub-scores zeroed out."
+  {:score 0
+   :components {:size      {:score 0 :components {:entity-count zero-leaf :field-count zero-leaf}}
+                :ambiguity {:score 0 :components {:name-collisions   zero-leaf
+                                                  :synonym-pairs     zero-leaf
+                                                  :repeated-measures zero-leaf}}}})
+
+(defn- labeled-score
+  "A full, valid `score-data` map carrying `label` in `:text-variant` so a test can tell rows apart."
+  [label]
+  {:library  zero-catalog
+   :universe zero-catalog
+   :metabot  zero-catalog
+   :meta     {:formula-version   1
+              :format-version    1
+              :synonym-threshold 0.8
+              :weights           complexity/weights
+              :text-variant      (keyword label)}})
 
 (deftest ^:synchronized latest-score-filters-by-fingerprint-test
   (testing "the overview cache only returns scores matching the current scoring fingerprint"
@@ -1175,14 +1200,29 @@
           fingerprint       "latest-score-test/current"]
       (try
         (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]])
-        (data-complexity-score/record-score! other-fingerprint "appdb" {:meta {:label "other"}})
-        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "older"}})
-        (data-complexity-score/record-score! fingerprint "appdb" {:meta {:label "newer"}})
+        (data-complexity-score/record-score! other-fingerprint "appdb" (labeled-score "other"))
+        (data-complexity-score/record-score! fingerprint "appdb" (labeled-score "older"))
+        (data-complexity-score/record-score! fingerprint "appdb" (labeled-score "newer"))
         (let [score (data-complexity-score/latest-score fingerprint)]
-          (is (= "newer" (get-in score [:meta :label])))
+          (is (= :newer (get-in score [:meta :text-variant])))
           (is (some? (get-in score [:meta :calculated-at]))))
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint [:in [other-fingerprint fingerprint]]))))))
+
+(deftest ^:synchronized record-score-persists-an-appdb-score-test
+  (testing "the score `complexity-scores` computes against the app DB, whose `:meta` carries no `:weights`, persists"
+    (mt/initialize-if-needed! :db)
+    (let [fingerprint "record-score-appdb-test/current"]
+      (try
+        (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
+        (let [result (complexity/complexity-scores :embedder nil :emit-snowplow? false)
+              stored (data-complexity-score/record-score! fingerprint "appdb" result)]
+          (is (not (contains? (:meta result) :weights)))
+          (is (= (select-keys result [:library :universe :metabot])
+                 (select-keys stored [:library :universe :metabot])))
+          (is (= (:meta result) (dissoc (:meta stored) :calculated-at))))
+        (finally
+          (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
 
 (deftest ^:synchronized latest-score-filters-by-source-test
   (testing "passing source filters out representation-derived rows that share the cron's fingerprint"
@@ -1195,13 +1235,13 @@
     (let [fingerprint "latest-score-source-test/shared"]
       (try
         (t2/delete! :model/DataComplexityScore :fingerprint fingerprint)
-        (data-complexity-score/record-score! fingerprint "appdb"                {:meta {:label "appdb-row"}})
-        (data-complexity-score/record-score! fingerprint "representation:abcd"  {:meta {:label "representation-row"}})
-        (is (= "appdb-row"
-               (get-in (data-complexity-score/latest-score fingerprint) [:meta :label]))
+        (data-complexity-score/record-score! fingerprint "appdb"                (labeled-score "appdb-row"))
+        (data-complexity-score/record-score! fingerprint "representation:abcd"  (labeled-score "representation-row"))
+        (is (= :appdb-row
+               (get-in (data-complexity-score/latest-score fingerprint) [:meta :text-variant]))
             "default source=\"appdb\" skips past the newer representation-tagged row")
-        (is (= "representation-row"
-               (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :label]))
+        (is (= :representation-row
+               (get-in (data-complexity-score/latest-score fingerprint "representation:abcd") [:meta :text-variant]))
             "an explicit representation source still resolves its own row")
         (finally
           (t2/delete! :model/DataComplexityScore :fingerprint fingerprint))))))
@@ -1534,7 +1574,7 @@
       (let [score {:library  {:score 0 :components {}}
                    :universe {:score 0 :components {}}
                    :metabot  {:score 0 :components {}}
-                   :meta     {:formula-version 1 :synonym-threshold 0.8 :weights {}}}]
+                   :meta     {:formula-version 1 :format-version 1 :synonym-threshold 0.8 :weights complexity/weights}}]
         (testing "publish succeeds → tagged true"
           (snowplow-test/with-fake-snowplow-collector
             (is (true? (::complexity/snowplow-published? (meta (complexity/republish-score! score)))))))
@@ -1555,8 +1595,9 @@
                        :universe {:score 2 :components {}}
                        :metabot  {:score 3 :components {}}
                        :meta     {:formula-version   1
+                                  :format-version    1
                                   :synonym-threshold 0.8
-                                  :weights           {}
+                                  :weights           complexity/weights
                                   :text-variant      :names-split
                                   :embedding-model   {:provider :ai-service :model-name "minilm" :model-dimensions 384}}}]
       (try

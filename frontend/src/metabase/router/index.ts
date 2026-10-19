@@ -37,4 +37,3 @@ export {
   notifyLocationListeners,
   subscribeLocation,
 } from "./navigator";
-export { getRawBrowserHistory } from "./raw-history";

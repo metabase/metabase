@@ -124,7 +124,7 @@ describe("getMcpDeserializedQuery", () => {
     const card = deserialized!.card;
     const metadata = createMockMetadata({});
 
-    const uiParameters = getCardUiParameters(card, metadata);
+    const uiParameters = getCardUiParameters(new Question(card, metadata));
     expect(uiParameters.map((parameter) => parameter.slug)).toEqual(["cat"]);
 
     const parameterValues = getParameterValuesByIdFromQueryParams(

@@ -22,14 +22,14 @@
 (mr/def ::table-spec
   "Schema for table identifier used in replacements. `:db` is the top-level qualifier for
   drivers that emit one (BigQuery project, ClickHouse database)."
-  [:map
+  [:map {:closed true}
    [:table :string]
    [:schema {:optional true} [:maybe :string]]
    [:db {:optional true} [:maybe :string]]])
 
 (mr/def ::column-spec
   "Schema for column identifier used in replacements."
-  [:map
+  [:map {:closed true}
    [:column :string]
    [:table {:optional true} [:maybe :string]]
    [:schema {:optional true} [:maybe :string]]
@@ -39,21 +39,21 @@
   "Schema for table replacement target - can be a string or a map with schema/table/db."
   [:or
    :string
-   [:map
+   [:map {:closed true}
     [:schema {:optional true} [:maybe :string]]
     [:table {:optional true} [:maybe :string]]
     [:db {:optional true} [:maybe :string]]]])
 
 (mr/def ::replacements
   "Schema for replace-names replacements map."
-  [:map
+  [:map {:closed true}
    [:schemas {:optional true} [:map-of :string :string]]
    [:tables {:optional true} [:map-of ::table-spec ::table-replacement-value]]
    [:columns {:optional true} [:map-of ::column-spec :string]]])
 
 (mr/def ::replace-names-opts
   "Schema for replace-names options."
-  [:map
+  [:map {:closed true}
    [:allow-unused? {:optional true} :boolean]])
 
 (mr/def ::simple-query-result
@@ -83,15 +83,16 @@
 (mu/defn returned-columns :- [:sequential :map]
   "Return appdb columns for the `native-query`."
   [driver :- :keyword
-   native-query]
+   native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "returned-columns"]
       (interface/returned-columns-impl parser driver native-query))))
 
 (mu/defn referenced-tables :- [:set :map]
-  "Return tables referenced by the `native-query`"
+  "Return the tables and transforms the `native-query` references, keeping each name that matches neither as
+  `{:unresolved-table spec}`."
   [driver :- :keyword
-   native-query]
+   native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "referenced-tables"]
       (interface/referenced-tables-impl parser driver native-query))))
@@ -102,7 +103,7 @@
   This includes fields in SELECT, WHERE, JOIN ON, GROUP BY, ORDER BY, etc.
   Returns a set of :metadata/column maps."
   [driver :- :keyword
-   native-query]
+   native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "referenced-fields"]
       (interface/referenced-fields-impl parser driver native-query))))
@@ -123,7 +124,7 @@
 (mu/defn validate-query :- [:set :map]
   "Validate native query. Returns a set of validation errors (empty set if valid)."
   [driver :- :keyword
-   native-query]
+   native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "validate-query"]
       (interface/validate-query-impl parser driver native-query))))
@@ -145,7 +146,9 @@
    without sanitization. Callers MUST ensure replacement values are system-generated
    (e.g., database metadata). Never pass
    user-controlled input as replacement values."
-  ([driver sql-string replacements]
+  ([driver :- [:maybe :keyword]
+    sql-string :- :string
+    replacements :- ::replacements]
    (replace-names driver sql-string replacements {}))
   ([driver :- [:maybe :keyword]
     sql-string :- :string
@@ -156,12 +159,18 @@
        (interface/replace-names-impl parser driver sql-string replacements opts)))))
 
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
-  "Given a driver and sql string, returns a sequence of {:schema <name> :table <name>} maps."
-  [driver :- :keyword
-   sql-str :- :string]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "referenced-tables-raw"]
-      (interface/referenced-tables-raw-impl parser driver sql-str))))
+  "Given a driver and SQL string, return table references. With `:fail-on-parse-error?`, propagate
+  SQLGlot parse errors instead of treating them as an empty set of references."
+  ([driver :- :keyword
+    sql-str :- [:maybe :string]]
+   (referenced-tables-raw driver sql-str {}))
+  ([driver :- :keyword
+    sql-str :- [:maybe :string]
+    opts :- [:map {:closed true}
+             [:fail-on-parse-error? {:optional true} :boolean]]]
+   (let [parser (sql-tools.settings/current-parser-backend)]
+     (metrics/with-operation-timing [parser "referenced-tables-raw"]
+       (interface/referenced-tables-raw-impl parser driver sql-str opts)))))
 
 (mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
@@ -200,8 +209,8 @@
 (defn find-table-or-transform
   "Given a table and schema parsed from a native query, find the matching table or transform.
   Returns {:table table-id} or {:transform transform-id}, or nil."
-  [driver tables transforms spec]
-  (common/find-table-or-transform driver tables transforms spec))
+  [driver database tables transforms spec]
+  (common/find-table-or-transform driver database tables transforms spec))
 
 (defn resolve-field
   "Resolve a field reference to one or more actual database fields.
@@ -228,3 +237,30 @@
   "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
   [driver sql stmt-type]
   (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))
+
+(mu/defn read-only-select? :- :boolean
+  "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,
+  lock or reach past the query: no `SELECT ... INTO`, no `FOR UPDATE` or `FOR SHARE`, no locking table hint, no
+  data-modifying CTE body, no sequence advanced, no script transform, and no call to a built-in function that locks,
+  waits or changes the session.
+  Comments and a trailing semicolon are allowed.
+  SQL that does not parse in `driver`'s dialect is not read-only, and neither is SQL too long to check or holding a
+  literal list too large to parse whole.
+  A function this does not name, a user-defined one included, passes: only the database's own permissions stop it."
+  [driver :- :keyword
+   sql    :- :string]
+  (true? (:allowed-stmt-type? (is-single-stmt-of-type? driver sql "read-only"))))
+
+(mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
+  "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
+  The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
+  `:session-function`, `:sql-executing-function`, `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`,
+  `:unicode-identifier`, `:large-literal-list`, `:too-long` and `:unparseable`.
+  For `:statement-word`, `:detail` is the word, and for `:session-function` and `:sql-executing-function` it is the
+  function's name."
+  [driver :- :keyword
+   sql    :- :string]
+  (let [{:keys [allowed-stmt-type? reason reason-detail]} (is-single-stmt-of-type? driver sql "read-only")]
+    (when-not (true? allowed-stmt-type?)
+      {:reason (keyword (or reason "unparseable"))
+       :detail reason-detail})))

@@ -16,7 +16,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.parameters.params :as params]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -252,9 +251,14 @@
 
 (defn- dashboard-parameters-summary
   "One row per dashboard parameter: id, name, type, and the ids of the dashcards it is wired
-   to (via [[params/dashboard->resolved-params]], the same resolution the QP uses)."
+   to through their `:parameter_mappings`, including the negative ids of a dry run's unsaved dashcards."
   [dash]
-  (let [resolved (params/dashboard->resolved-params dash)]
+  (let [param-id->dashcard-ids (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
+                                         (reduce #(update %1 (u/qualified-name (:parameter_id %2)) (fnil conj #{}) dashcard-id)
+                                                 acc
+                                                 parameter_mappings))
+                                       {}
+                                       (:dashcards dash))]
     (mapv (fn [{param-id :id :as param}]
             (m/remove-vals
              nil?
@@ -262,8 +266,7 @@
               :name         (:name param)
               :type         (:type param)
               :dashcard_ids (not-empty
-                             (vec (sort (distinct (keep (comp :id :dashcard)
-                                                        (:mappings (get resolved (u/qualified-name param-id))))))))}))
+                             (vec (sort (remove nil? (get param-id->dashcard-ids (u/qualified-name param-id))))))}))
           (:parameters dash))))
 
 (defn dashboard-row

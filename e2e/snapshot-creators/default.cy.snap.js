@@ -109,6 +109,7 @@ describe("snapshots", () => {
     updateSetting("enable-public-sharing", true);
     // interactive is not enabled in the snapshots as it requires a premium feature
     // updateSetting("enable-embedding-interactive", true);
+    updateSetting("enable-embedding-sdk", true);
     updateSetting("enable-embedding-modular", true).then(() => {
       updateSetting("embedding-secret-key", METABASE_SECRET_KEY);
     });

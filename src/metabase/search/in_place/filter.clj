@@ -32,6 +32,27 @@
 (def ^:private true-clause [:= [:inline 1] [:inline 1]])
 (def ^:private false-clause [:= [:inline 0] [:inline 1]])
 
+(def ^:private HoneySQLQuery
+  "A partially-built Honey SQL query map for the legacy (index-free) search query. Mirrors
+  `metabase.search.in-place.legacy/HoneySQLQuery` (duplicated here to avoid a circular require)."
+  [:schema
+   {:registry
+    {::expr  [:or :keyword :string number? :boolean nil?
+              [:sequential [:ref ::expr]]
+              [:set [:ref ::expr]]
+              [:ref ::query]]
+     ::query [:map {:closed true}
+              [:select    {:optional true} [:sequential [:ref ::expr]]]
+              [:from      {:optional true} [:sequential [:ref ::expr]]]
+              [:where     {:optional true} [:ref ::expr]]
+              [:with      {:optional true} [:sequential [:ref ::expr]]]
+              [:join      {:optional true} [:sequential [:ref ::expr]]]
+              [:left-join {:optional true} [:sequential [:ref ::expr]]]
+              [:union-all {:optional true} [:sequential [:ref ::expr]]]
+              [:order-by  {:optional true} [:sequential [:ref ::expr]]]
+              [:limit     {:optional true} [:ref ::expr]]]}}
+   [:ref ::query]])
+
 (def ^:private max-document-search-length
   "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.
   A leading-wildcard LIKE can't use an index, so this bounds the worst case for pathologically large
@@ -81,7 +102,7 @@
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user? search-context))
+         (and (= model "indexed-entity") (search.permissions/sandboxed-impersonated-or-routed-user? search-context))
          [:= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
@@ -215,6 +236,18 @@
                            [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
     (sql.helpers/where query (cond-> [:or authoritative]
                                published-final (conj published-final)))))
+
+(doseq [model ["measure" "segment"]]
+  (defmethod build-optional-filter-query [:curated model]
+    [_filter _model query curated?]
+    (assert (true? curated?) "filter for non-curated content is not supported")
+    ;; A measure or segment is curated when its parent table is published into the Library.
+    ;; This engine has no index row to read the table's root collection type from, so it only checks that the
+    ;; parent table is published, and only with the :library feature, like the table filter above.
+    ;; The legacy query joins the parent table as `table`; see metabase.search.in-place.legacy/search-query-for-model.
+    (sql.helpers/where query (if (premium-features/has-feature? :library)
+                               [:= :table.is_published true]
+                               false-clause))))
 
 ;; Created at filters
 
@@ -413,7 +446,7 @@
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
-  [honeysql-query :- :map
+  [honeysql-query :- HoneySQLQuery
    model          :- SearchableModel
    search-context :- SearchContext]
   (let [{:keys [models

@@ -331,7 +331,18 @@
          auxiliary-sync-steps     :never
          csv-file-prefix          "example csv file"}
     :as options}
-   f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
+   :- [:map {:closed true}
+       [:table-prefix          {:optional true} [:maybe :string]]
+       [:collection-id         {:optional true} [:maybe ::lib.schema.id/collection]]
+       [:grant-permission?     {:optional true} [:maybe :boolean]]
+       [:uploads-enabled       {:optional true} [:maybe :boolean]]
+       [:user-id               {:optional true} [:maybe ::lib.schema.id/user]]
+       [:db-id                 {:optional true} [:maybe ::lib.schema.id/database]]
+       [:auxiliary-sync-steps  {:optional true} [:maybe [:enum :asynchronous :synchronous :never]]]
+       [:csv-file-prefix       {:optional true} [:maybe :string]]
+       [:file                  {:optional true} [:maybe [:fn #(instance? File %)]]]
+       [:schema-name           {:optional true} [:maybe :string]]]
+   f :- fn?]
   {:pre [(keyword? driver/*driver*)]}
   (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
@@ -1302,14 +1313,14 @@
              java.lang.Exception
              #"^Uploads are not enabled\.$"
              (do-with-uploaded-example-csv!
-              {:uploads-enabled false :schema-name "public", :table-prefix "uploaded_magic_"}
+              {:uploads-enabled false :table-prefix "uploaded_magic_"}
               identity))))
       (testing "Database ID must be valid"
         (is (thrown-with-msg?
              java.lang.Exception
              #"^The uploads database does not exist\.$"
              (do-with-uploaded-example-csv!
-              {:db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"}
+              {:db-id Integer/MAX_VALUE, :table-prefix "uploaded_magic_"}
               identity))))
       (testing "Uploads must be supported"
         (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
@@ -1317,7 +1328,7 @@
                java.lang.Exception
                #"^Uploads are not supported on [\w-]+ databases\."
                (do-with-uploaded-example-csv!
-                {:schema-name "public", :table-prefix "uploaded_magic_"}
+                {:table-prefix "uploaded_magic_"}
                 identity)))))
       (testing "User must have write permissions on the collection"
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -1325,7 +1336,7 @@
                java.lang.Exception
                #"^You don't have permissions to do that\.$"
                (do-with-uploaded-example-csv!
-                {:user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"}
+                {:user-id (mt/user->id :lucky) :table-prefix "uploaded_magic_"}
                 identity)))))
       (testing "File type must be allowed"
         (is (thrown-with-msg?

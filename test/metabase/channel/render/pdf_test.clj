@@ -824,10 +824,10 @@
         assembled {:card     {:display                :pivot
                               :visualization_settings {:pivot_table.column_split {:rows ["R"] :columns ["C"] :values ["m"]}}}
                    :dashcard nil
-                   :result   {:data {:cols                 [{:name "R" :base_type :type/Text}
-                                                            {:name "C" :base_type :type/Text}
-                                                            {:name "pivot-grouping" :base_type :type/Integer}
-                                                            {:name "m" :base_type :type/Integer}]
+                   :result   {:data {:cols                 [{:name "R" :display_name "R" :base_type :type/Text}
+                                                            {:name "C" :display_name "C" :base_type :type/Text}
+                                                            {:name "pivot-grouping" :display_name "pivot-grouping" :base_type :type/Integer}
+                                                            {:name "m" :display_name "m" :base_type :type/Integer}]
                                      :rows                 [["a" "x" 0 10]
                                                             ["a" "y" 0 20]
                                                             ["b" "x" 0 30]
@@ -902,6 +902,17 @@
           (#'pdf/table-body-png nil part chart-type 400 300)))
       ;; :pivot's own renderer degrades to :table internally, hence the trailing :table
       (is (= [:table :pivot :table :object] @rendered)))))
+
+(deftest ^:parallel simple-pivot-body-chart-type-test
+  (let [cols [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text} {:name "m" :base_type :type/Integer}]
+        rows [["a" "x" 10] ["a" "y" 20]]
+        vs   {:table.pivot true :table.pivot_column "C" :table.cell_column "m"}]
+    (testing "a :table card with the \"Pivot table\" toggle on takes the pivot treatment: no row-count footer"
+      (is (= :pivot (#'pdf/body-chart-type :table {:cols cols :rows rows :viz-settings vs})))
+      (is (nil? (:footer (#'pdf/card-footer :pivot nil 20)))))
+    (testing "a :table card with the toggle off keeps its row-count footer"
+      (is (= :table (#'pdf/body-chart-type :table {:cols cols :rows rows :viz-settings (assoc vs :table.pivot false)})))
+      (is (some? (:footer (#'pdf/card-footer :table nil 20)))))))
 
 (deftest ^:parallel table-like-chart-types-test
   (testing "native table, pivot, and object-detail cards all classify into the framed table path"

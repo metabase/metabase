@@ -28,13 +28,23 @@
            :dispatch         :type}
    ["checkpoint" ::checkpoint-strategy]])
 
+(mr/def ::orphaned-query
+  "The MBQL 5 query of a transform whose source database was deleted, kept as a breadcrumb with its `:database` nulled."
+  [:map {:closed true}
+   [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :mbql/query]]
+   [:database :nil]
+   [:stages   [:ref :metabase.lib.schema/stages]]
+   [:lib/metadata {:optional true} [:ref :metabase.lib.schema.metadata/metadata-provider]]])
+
 (mr/def ::transform-source
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :type)}
    [:query
     [:map {:closed true}
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :query]]
-     [:query ::lib-be.schema/maybe-legacy-query]
+     [:query [:or
+              ::orphaned-query
+              ::lib-be.schema/maybe-legacy-query]]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
    [:python
     [:map {:closed true}
@@ -68,14 +78,14 @@
 
 (mr/def ::table-target
   [:map {:closed true}
-   [:database {:optional true} :int]
+   [:database {:optional true} [:maybe :int]]
    [:type [:= "table"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
    [:name :string]])
 
 (mr/def ::table-incremental-target
   [:map {:closed true}
-   [:database {:optional true} :int]
+   [:database {:optional true} [:maybe :int]]
    [:type [:= "table-incremental"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
    [:name :string]
@@ -91,37 +101,40 @@
 
 (mr/def ::transform.source
   "The `:source` column of a Transform, decoded."
-  :map)
+  ::transform-source)
 
 (mr/def ::transform.target
   "The `:target` column of a Transform, decoded."
-  :map)
+  ::transform-target)
 
 (mr/def ::transform.table-dependency
   "One entry of the `:table_dependencies` column of a Transform, decoded."
-  :map)
+  [:or
+   [:map {:closed true} [:table ::lib.schema.id/table]]
+   [:map {:closed true} [:transform ::lib.schema.id/transform]]])
+
+(mr/def ::transform.owner
+  "The `:owner` hydrated onto a Transform: its owning User, or just the `:email` of an owner outside Metabase."
+  [:or
+   :metabase.users.schema/user
+   [:map {:closed true} [:email :string]]])
 
 (mr/def ::transform
-  "A Transform as selected from the app DB: every column of `:transform`."
-  [:map {:closed true}
-   [:id                    ::lib.schema.id/transform]
-   [:name                  :string]
-   [:description           [:maybe :string]]
-   [:source                ::transform.source]
-   [:target                ::transform.target]
-   [:entity_id             :string]
-   [:created_at            ms/TemporalInstant]
-   [:updated_at            ms/TemporalInstant]
-   [:source_type           [:or :keyword :string]]
-   [:creator_id            ::lib.schema.id/user]
-   [:source_database_id    [:maybe ::lib.schema.id/database]]
-   [:collection_id         [:maybe ::lib.schema.id/collection]]
-   [:owner_user_id         [:maybe ::lib.schema.id/user]]
-   [:owner_email           [:maybe :string]]
-   [:target_db_id          [:maybe ::lib.schema.id/database]]
-   [:last_checkpoint_value [:maybe :string]]
-   [:target_table_id       [:maybe ::lib.schema.id/table]]
-   [:table_dependencies    [:maybe [:sequential ::transform.table-dependency]]]])
+  "A Transform as selected from the app DB: every column of `:transform`, plus `:creator`, `:table`, `:last_run`,
+  `:collection`, and `:owner` some callers hydrate onto it."
+  [:merge
+   ::transform.update
+   [:map {:closed true}
+    [:id                    ::lib.schema.id/transform]
+    [:creator               {:optional true} [:maybe :metabase.users.schema/user]]
+    [:table                 {:optional true} [:maybe [:ref :metabase.warehouse-schema.schema/table]]]
+    [:last_run              {:optional true} [:maybe ::transform-run]]
+    [:collection            {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
+    [:owner                 {:optional true} [:maybe ::transform.owner]]
+    [:can_read              {:optional true} :boolean]
+    [:can_write             {:optional true} :boolean]
+    [:can_execute           {:optional true} :boolean]
+    [:tag_ids               {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
 (mr/def ::transform.update
   "What an update (or insert) of a Transform accepts: every column of `:transform` except `id`, all optional, plus `:run_trigger` consumed by the model's hooks."
@@ -147,22 +160,10 @@
 
 (mr/def ::transform-dag-run
   "A TransformDagRun as selected from the app DB: every column of `:transform_dag_run`."
-  [:map {:closed true}
-   [:id                         ms/PositiveInt]
-   [:source_transform_id        [:maybe ::lib.schema.id/transform]]
-   [:source_transform_name      [:maybe :string]]
-   [:source_transform_entity_id [:maybe :string]]
-   [:direction                  [:or :keyword :string]]
-   [:transform_count            [:maybe :int]]
-   [:status                     [:or :keyword :string]]
-   [:is_active                  [:maybe :boolean]]
-   [:start_time                 ms/TemporalInstant]
-   [:end_time                   [:maybe ms/TemporalInstant]]
-   [:message                    [:maybe :string]]
-   [:user_id                    [:maybe ::lib.schema.id/user]]
-   [:last_heartbeat             ms/TemporalInstant]
-   [:created_at                 ms/TemporalInstant]
-   [:updated_at                 ms/TemporalInstant]])
+  [:merge
+   ::transform-dag-run.update
+   [:map {:closed true}
+    [:id                         ms/PositiveInt]]])
 
 (mr/def ::transform-dag-run.update
   "What an update (or insert) of a TransformDagRun accepts: every column of `:transform_dag_run` except `id`, all optional."
@@ -184,17 +185,10 @@
 
 (mr/def ::transform-job
   "A TransformJob as selected from the app DB: every column of `:transform_job`."
-  [:map {:closed true}
-   [:id              ms/PositiveInt]
-   [:name            [:or :string mu/localized-string-schema]]
-   [:description     [:maybe [:or :string mu/localized-string-schema]]]
-   [:schedule        :string]
-   [:entity_id       :string]
-   [:created_at      ms/TemporalInstant]
-   [:updated_at      ms/TemporalInstant]
-   [:built_in_type   [:maybe [:or :keyword :string]]]
-   [:ui_display_type [:or :keyword :string]]
-   [:active          :boolean]])
+  [:merge
+   ::transform-job.update
+   [:map {:closed true}
+    [:id              ms/PositiveInt]]])
 
 (mr/def ::transform-job.update
   "What an update (or insert) of a TransformJob accepts: every column of `:transform_job` except `id`, all optional."
@@ -211,20 +205,10 @@
 
 (mr/def ::transform-job-run
   "A TransformJobRun as selected from the app DB: every column of `:transform_job_run`."
-  [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:job_id         ms/PositiveInt]
-   [:run_method     [:or :keyword :string]]
-   [:status         [:or :keyword :string]]
-   [:is_active      [:maybe :boolean]]
-   [:start_time     ms/TemporalInstant]
-   [:end_time       [:maybe ms/TemporalInstant]]
-   [:message        [:maybe :string]]
-   [:created_at     ms/TemporalInstant]
-   [:updated_at     ms/TemporalInstant]
-   [:last_heartbeat ms/TemporalInstant]
-   [:job_name       [:maybe :string]]
-   [:job_entity_id  [:maybe :string]]])
+  [:merge
+   ::transform-job-run.update
+   [:map {:closed true}
+    [:id             ms/PositiveInt]]])
 
 (mr/def ::transform-job-run.update
   "What an update (or insert) of a TransformJobRun accepts: every column of `:transform_job_run` except `id`, all optional."
@@ -244,12 +228,10 @@
 
 (mr/def ::transform-job-transform-tag
   "A TransformJobTransformTag as selected from the app DB: every column of `:transform_job_transform_tag`."
-  [:map {:closed true}
-   [:id        ms/PositiveInt]
-   [:job_id    ms/PositiveInt]
-   [:tag_id    ms/PositiveInt]
-   [:entity_id :string]
-   [:position  :int]])
+  [:merge
+   ::transform-job-transform-tag.update
+   [:map {:closed true}
+    [:id        ms/PositiveInt]]])
 
 (mr/def ::transform-job-transform-tag.update
   "What an update (or insert) of a TransformJobTransformTag accepts: every column of `:transform_job_transform_tag` except `id`, all optional."
@@ -261,25 +243,10 @@
 
 (mr/def ::transform-run
   "A TransformRun as selected from the app DB: every column of `:transform_run`."
-  [:map {:closed true}
-   [:id                         ms/PositiveInt]
-   [:transform_id               [:maybe ::lib.schema.id/transform]]
-   [:run_method                 [:or :keyword :string]]
-   [:status                     [:or :keyword :string]]
-   [:is_active                  [:maybe :boolean]]
-   [:start_time                 ms/TemporalInstant]
-   [:end_time                   [:maybe ms/TemporalInstant]]
-   [:message                    [:maybe :string]]
-   [:user_id                    [:maybe ::lib.schema.id/user]]
-   [:transform_name             [:maybe :string]]
-   [:transform_entity_id        [:maybe :string]]
-   [:checkpoint_filter_field_id [:maybe ::lib.schema.id/field]]
-   [:checkpoint_lo_value        [:maybe :string]]
-   [:checkpoint_hi_value        [:maybe :string]]
-   [:metered_as                 [:maybe :string]]
-   [:last_heartbeat             ms/TemporalInstant]
-   [:job_run_id                 [:maybe ms/PositiveInt]]
-   [:dag_run_id                 [:maybe ms/PositiveInt]]])
+  [:merge
+   ::transform-run.update
+   [:map {:closed true}
+    [:id                         ms/PositiveInt]]])
 
 (mr/def ::transform-run.update
   "What an update (or insert) of a TransformRun accepts: every column of `:transform_run` except `id`, all optional."
@@ -304,9 +271,9 @@
 
 (mr/def ::transform-run-cancelation
   "A TransformRunCancelation as selected from the app DB: every column of `:transform_run_cancelation`."
-  [:map {:closed true}
-   [:run_id ms/PositiveInt]
-   [:time   ms/TemporalInstant]])
+  [:merge
+   ::transform-run-cancelation.update
+   [:map {:closed true}]])
 
 (mr/def ::transform-run-cancelation.update
   "What an update (or insert) of a TransformRunCancelation accepts: every column of `:transform_run_cancelation` except `id`, all optional."
@@ -316,13 +283,10 @@
 
 (mr/def ::transform-tag
   "A TransformTag as selected from the app DB: every column of `:transform_tag`."
-  [:map {:closed true}
-   [:id            ms/PositiveInt]
-   [:name          [:or :string mu/localized-string-schema]]
-   [:entity_id     :string]
-   [:created_at    ms/TemporalInstant]
-   [:updated_at    ms/TemporalInstant]
-   [:built_in_type [:maybe [:or :keyword :string]]]])
+  [:merge
+   ::transform-tag.update
+   [:map {:closed true}
+    [:id            ms/PositiveInt]]])
 
 (mr/def ::transform-tag.update
   "What an update (or insert) of a TransformTag accepts: every column of `:transform_tag` except `id`, all optional."
@@ -335,12 +299,10 @@
 
 (mr/def ::transform-transform-tag
   "A TransformTransformTag as selected from the app DB: every column of `:transform_transform_tag`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:transform_id ::lib.schema.id/transform]
-   [:tag_id       ms/PositiveInt]
-   [:entity_id    :string]
-   [:position     :int]])
+  [:merge
+   ::transform-transform-tag.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::transform-transform-tag.update
   "What an update (or insert) of a TransformTransformTag accepts: every column of `:transform_transform_tag` except `id`, all optional."

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
@@ -14,9 +14,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(comment
-  metabase-enterprise.dependencies.events/keep-me)
 
 ;;; ------------------------------------------------ Card --------------------------------------------------------
 
@@ -161,7 +158,7 @@
               query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
           (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
                                                               :source {:type "query" :query query}
-                                                              :target {:database (mt/id) :table "out"}}]
+                                                              :target {:database (mt/id) :type "table" :name "out"}}]
             (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
             (replacement.source-swap/swap-source! [:transform transform-id]
                                                   [:table (mt/id :orders)]
@@ -178,7 +175,7 @@
           (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
                                                               :source {:type  "query"
                                                                        :query (lib/native-query mp "SELECT 1")}
-                                                              :target {:database (mt/id) :table "out"}}]
+                                                              :target {:database (mt/id) :type "table" :name "out"}}]
             (t2/query-one {:update :transform
                            :set    {:source "{\"type\":\"query\",\"query\":{}}"}
                            :where  [:= :id transform-id]})
@@ -506,7 +503,7 @@
               query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
           (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
                                                               :source {:type "query" :query query}
-                                                              :target {:database (mt/id) :table "out"}}]
+                                                              :target {:database (mt/id) :type "table" :name "out"}}]
             (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
             (mt/with-model-cleanup [:model/Dependency]
               (events/publish-event! :event/transform-create {:object (t2/select-one :model/Transform transform-id)

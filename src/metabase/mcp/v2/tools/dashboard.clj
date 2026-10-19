@@ -17,9 +17,11 @@
   (:require
    [malli.error :as me]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
@@ -27,7 +29,6 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
-   [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -70,8 +71,7 @@
   (doseq [[idx op] (map-indexed vector ops)
           card-id  (concat [(:card_id op)] (:series op) (:card_ids op))
           :when    (and card-id (not (contains? cards card-id)))]
-    (dashboard-ops/op-error!
-     idx (format "%s): no card with id %s that you can read." (:op op) card-id))))
+    (dashboard-ops/op-error! idx (:op op) (message/msg ["no card with id %s that you can read."] card-id))))
 
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
@@ -113,15 +113,15 @@
   [payload]
   (cond-> payload
     (seq (:parameters payload))
-    (update :parameters #(try (parameters/normalize-parameters %) (catch Exception _ %)))))
+    (update :parameters #(try (lib/normalize :metabase.parameters.schema/parameters %) (catch Exception _ %)))))
 
 (defn- validate-payload!
   "Reject a payload the real save would reject, so a dry run is worth trusting."
   [payload]
   (when-let [explanation (mr/explain dashboards.write/DashUpdates payload)]
     (common/throw-teaching-error
-     (format "The requested ops produce an invalid dashboard: %s"
-             (pr-str (me/humanize explanation))))))
+     (message/msg ["The requested ops produce an invalid dashboard: %s"]
+                  (common/humanize-detail (me/humanize explanation))))))
 
 ;;; ------------------------------------------------- Schema -------------------------------------------------------
 
@@ -462,13 +462,14 @@
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
   clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on every referenced card."
-  {:name         "dashboard_write"
-   :scope        metabot.scope/agent-content-write
+  {:name           "dashboard_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the dashboard, and `remove`/`remove_tab`/`remove_parameter` drop
    ;; cards, tabs, and subscriptions — not the additive-only update `destructiveHint false`
    ;; would assert.
-   :annotations  {:readOnlyHint false :destructiveHint true}
-   :args         dashboard-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           dashboard-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [dispatched (v2.write/dispatch-write dashboard-write-entry args)]
     (common/success-content
@@ -483,7 +484,8 @@
                                  validate-only? (boolean (:validate_only body))]
                              (when (contains? body :archived)
                                (common/throw-teaching-error
-                                "`archived` applies to method \"update\" only — remove it from this create call."))
+                                (message/msg [(str "\"archived\" applies to method \"update\" "
+                                                   "only — remove it from this create call.")])))
                              (cond
                                validate-only? (apply-ops! (blank-dashboard attrs) (or ops []) attrs true)
                                (seq ops)      (do

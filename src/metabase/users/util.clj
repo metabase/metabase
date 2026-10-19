@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -15,6 +16,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn check-self-or-superuser
@@ -36,9 +38,9 @@
 
 (mu/defn maybe-set-user-group-memberships!
   "Implementation for `POST /api/user` and friends; set the PermissionsGroupMemberships for a `user-or-id`."
-  [user-or-id
+  [user-or-id :- ::lib.schema.id/user
    new-user-group-memberships :- [:maybe [:sequential ::users.schema/user-group-membership]]
-   & [is-superuser?]]
+   & [is-superuser?] :- [:* [:maybe :boolean]]]
   (when new-user-group-memberships
     ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
     ;; agrees with is_superuser -- don't want to have ambiguous behavior
@@ -64,8 +66,16 @@
            source
            tenant-id
            invite-target]
-    :as   attributes} :- [:map
-                          [:source {:optional true, :default :admin} [:enum :setup :admin]]]]
+    :as   attributes} :- [:map {:closed true}
+                          [:first-name              {:optional true} [:maybe ms/NonBlankString]]
+                          [:last-name               {:optional true} [:maybe ms/NonBlankString]]
+                          [:email                   ms/Email]
+                          [:password                {:optional true} [:maybe ms/NonBlankString]]
+                          [:user-group-memberships  {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
+                          [:login-attributes        {:optional true} [:maybe users.schema/LoginAttributes]]
+                          [:source                  {:optional true, :default :admin} [:enum :setup :admin]]
+                          [:tenant-id               {:optional true} [:maybe ms/PositiveInt]]
+                          [:invite-target           {:optional true} [:maybe users.schema/InviteTarget]]]]
   (api/check-superuser)
   (api/check-400 (not (users.db/user-email-exists? (u/lower-case-en email)))
                  {:errors     {:email (tru "Email address already in use.")}

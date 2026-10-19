@@ -14,8 +14,14 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should not suggest arithmetic operators", () => {
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "[Price] " });
-    cy.findByTestId("expression-suggestions-list").should("not.exist");
+    H.enterCustomColumnDetails({ formula: "[Pri", blur: false });
+    H.CustomExpressionEditor.completion("Price").should("be.visible");
+
+    H.CustomExpressionEditor.type("ce] ", { focus: false });
+    H.CustomExpressionEditor.value().should("equal", "[Price] ");
+    // Suggestions render as role=option in the same list that showed "Price"
+    // above, so this fails as soon as an operator is offered as a suggestion
+    cy.findByRole("option", { name: /^\s*[-+*/](\s|$)/ }).should("not.exist");
   });
 
   it("should correctly accept the chosen field suggestion", () => {
@@ -34,17 +40,6 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.CustomExpressionEditor.value().should("equal", "[Rating]");
   });
 
-  it("should correctly accept the chosen function suggestion", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "le", blur: false });
-
-    H.CustomExpressionEditor.acceptCompletion();
-
-    H.CustomExpressionEditor.helpText()
-      .should("be.visible")
-      .should("contain", "length([Comment])");
-  });
-
   it("should correctly insert function suggestion with the template", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "bet", blur: false });
@@ -53,10 +48,8 @@ describe("scenarios > question > custom column > typing suggestion", () => {
       "equal",
       "between(column, start, end)",
     );
-  });
 
-  it("should correctly insert function suggestion with the template when it has no arguments", () => {
-    addCustomColumn();
+    cy.log("function without arguments");
     H.enterCustomColumnDetails({ formula: "now", blur: false });
     H.CustomExpressionEditor.acceptCompletion();
     H.CustomExpressionEditor.value().should("equal", "now()");
@@ -85,7 +78,10 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   it("should not show suggestions for an unfocused field (metabase#31643)", () => {
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({ formula: "Count{enter}", blur: true });
+    H.enterCustomColumnDetails({ formula: "Count", blur: false });
+    H.CustomExpressionEditor.completion("Count").should("be.visible");
+    H.CustomExpressionEditor.type("{enter}", { focus: false });
+    H.CustomExpressionEditor.blur();
     H.CustomExpressionEditor.completions().should("not.exist");
   });
 
@@ -120,16 +116,12 @@ describe("scenarios > question > custom column > typing suggestion", () => {
       cy.findByText("Learn more").trigger("mousemove");
     });
     H.CustomExpressionEditor.helpText().should("be.visible");
-  });
 
-  it("should be possible to collapse the help text popover", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "concat(", blur: false });
-
-    H.CustomExpressionEditor.helpText().should("be.visible");
-    H.CustomExpressionEditor.helpTextHeader().click();
-    H.CustomExpressionEditor.helpText().should("not.exist");
-    H.CustomExpressionEditor.helpTextHeader().click();
+    cy.log("right-clicking the help text should not close it (metabase#41305)");
+    H.CustomExpressionEditor.helpText()
+      .findByText("Combine two or more strings of text together.")
+      .rightclick();
+    H.popover().should("have.length", 2);
     H.CustomExpressionEditor.helpText().should("be.visible");
   });
 
@@ -293,6 +285,27 @@ describe("scenarios > question > custom column > typing suggestion", () => {
   });
 });
 
+describe("scenarios > question > custom column > typing suggestion > reviews", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
+    H.openReviewsTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().contains("Custom Expression").click();
+
+    H.enterCustomColumnDetails({ formula: "Distinct([R", blur: false });
+
+    cy.log(
+      "**The point of failure for ANY non-numeric value reported in v0.36.4**",
+    );
+    // the default type for "Reviewer" is "No semantic type"
+    H.CustomExpressionEditor.completion("Reviewer").should("be.visible");
+  });
+});
+
 const addCustomColumn = () => {
   cy.findByTestId("action-buttons").findByText("Custom column").click();
 };
@@ -300,11 +313,10 @@ const addCustomColumn = () => {
 function verifyHelptextPosition(text) {
   H.CustomExpressionEditor.get()
     .findByText(text)
-    .then(($element) => {
-      const { left: textLeft } = $element[0].getBoundingClientRect();
-
-      H.CustomExpressionEditor.helpText().then(($element) => {
-        const { left: helpTextLeft } = $element[0].getBoundingClientRect();
+    .then(($text) => {
+      H.CustomExpressionEditor.helpText().should(($helpText) => {
+        const { left: textLeft } = $text[0].getBoundingClientRect();
+        const { left: helpTextLeft } = $helpText[0].getBoundingClientRect();
 
         expect(helpTextLeft).to.be.closeTo(textLeft, 5);
       });

@@ -94,6 +94,9 @@ dataset_query:
       - {base-type: type/Boolean, effective-type: type/Boolean}
       - [Internal Metabase Database, public, v_query_log, is_sandboxed]
     - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_query_log, sandbox_details]
+    - - field
       - {base-type: type/Boolean, effective-type: type/Boolean}
       - [Internal Metabase Database, public, v_query_log, is_impersonated]
     - - field
@@ -515,6 +518,21 @@ result_metadata:
   semantic_type: type/Category
   settings: null
   visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Sandbox Details
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, sandbox_details]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, sandbox_details]
+  name: sandbox_details
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
 - base_type: type/Boolean
   coercion_strategy: null
   description: null
@@ -680,6 +698,7 @@ visualization_settings:
   - {enabled: true, name: metabase_version}
   - {enabled: true, name: auth_method}
   - {enabled: true, name: is_sandboxed}
+  - {enabled: true, name: sandbox_details}
   - {enabled: true, name: is_impersonated}
   - {enabled: true, name: is_db_routed}
   - {enabled: true, name: parameters}

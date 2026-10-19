@@ -32,7 +32,7 @@ Let us know your plans with Metabase so that we can best guide you.
 - A bit of both
 - Not sure yet
 
-Don't worry about picking the wrong option. If you say you're interested in embedding, Metabase will display a card with a link to the embedding settings when you (the admin) first log in to your instance. Just a little convenience thing, that's all.
+Don't worry about picking the wrong option. If you say you're interested in embedding, Metabase will display a card about embedding when you (the admin) first log in to your instance. On Pro and Enterprise plans, Metabase displays the embedding setup guide instead. Just a little convenience thing, that's all.
 
 ## Gathering your database info
 
@@ -86,7 +86,7 @@ Once you're done here simply follow the link to **Take me to Metabase**. And if 
 
 If you click **Set up AI**, Metabase walks you through [connecting an AI provider](../ai/settings.md).
 
-The providers you set up in AI settings power Metabase's built-in AI functionality, not the MCP server. With the MCP server, [your client provides the AI](../ai/mcp.md#with-the-mcp-server-your-client-provides-the-ai).
+The providers you set up here power Metabase's built-in AI features. The [MCP server](../ai/mcp.md#turn-on-the-mcp-server) doesn't use them; your MCP client brings its own model.
 
 ## Getting started with Metabase
 

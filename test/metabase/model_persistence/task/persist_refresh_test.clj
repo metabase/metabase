@@ -273,9 +273,9 @@
       (let [task-name (mt/random-name)]
         (#'task.persist-refresh/save-task-history! task-name (mt/id)
                                                    (fn []
-                                                     {:foo "bar"}))
+                                                     {:success 1 :error 0}))
         (is (=? {:task         task-name
-                 :task_details {:foo "bar"}
+                 :task_details {:success 1 :error 0}
                  :status       :success}
                 (t2/select-one :model/TaskHistory :task task-name)))))))
 
@@ -285,9 +285,11 @@
       (let [task-name (mt/random-name)]
         (#'task.persist-refresh/save-task-history! task-name (mt/id)
                                                    (fn []
-                                                     {:error-details ["some-error"]}))
+                                                     {:success       0
+                                                      :error         1
+                                                      :error-details [{:persisted-info-id 1 :error "some-error"}]}))
         (is (=? {:task         task-name
-                 :task_details {:error-details ["some-error"]}
+                 :task_details {:error-details [{:persisted-info-id 1 :error "some-error"}]}
                  :status       :failed}
                 (t2/select-one :model/TaskHistory :task task-name)))))))
 
@@ -300,7 +302,9 @@
                                                                                         (reset! email-sent true))]
           (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
                                                      (fn []
-                                                       {:error-details ["some-error"]}))
+                                                       {:success       0
+                                                        :error         1
+                                                        :error-details [{:persisted-info-id 1 :error "some-error"}]}))
           (is (true? @email-sent)))))))
 
 (deftest persisted-model-refresh-error-event-accepts-quartz-trigger-test

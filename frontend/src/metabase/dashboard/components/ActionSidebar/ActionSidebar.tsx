@@ -1,9 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { FormField } from "metabase/common/components/FormField/FormField";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import ActionViz from "metabase/dashboard/components/ActionViz";
@@ -16,6 +16,7 @@ import {
   Divider,
   Ellipsified,
   Flex,
+  Input,
   Modal,
   Stack,
   Title,
@@ -100,13 +101,7 @@ export function ActionSidebar() {
             />
           </Form>
         </FormProvider>
-        <Box>
-          <FormField.LabelContainer
-            orientation="vertical"
-            hasDescription={false}
-          >
-            <FormField.Label hasError={false}>{t`Action`}</FormField.Label>
-          </FormField.LabelContainer>
+        <Input.Wrapper label={t`Action`}>
           {!dashcard.action ? (
             <Button
               variant="filled"
@@ -117,14 +112,14 @@ export function ActionSidebar() {
             <Flex justify="space-between" py="xxs">
               <Ellipsified fw="bold">{dashcard.action.name}</Ellipsified>
               <Button
-                h="auto"
+                size="compact-md"
                 variant="transparent"
                 onClick={openActionModal}
                 flex="0 0 auto"
               >{t`Change action`}</Button>
             </Flex>
           )}
-        </Box>
+        </Input.Wrapper>
 
         <Modal.Root
           opened={actionModalOpened}
@@ -132,7 +127,7 @@ export function ActionSidebar() {
           size="auto"
         >
           <Modal.Overlay />
-          <Modal.Content>
+          <Modal.Content className={cx(CS.flex, CS.flexColumn)}>
             <ActionDashcardSettings
               dashboard={dashboard}
               dashcard={dashcard}

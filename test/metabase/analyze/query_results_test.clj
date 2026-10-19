@@ -38,7 +38,7 @@
   "Return the desired storage format for the column metadata coming back from `results` and fingerprint the `results`."
   [{:keys [rows], :as result}]
   {:pre [(map? result) (:cols result)]}
-  (add-insights rows result))
+  (add-insights rows (select-keys result [:cols])))
 
 (defn- query->result-metadata
   [query-map]

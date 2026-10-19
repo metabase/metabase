@@ -41,6 +41,7 @@ export const VisualizeButton = ({
   return (
     <Button
       variant="filled"
+      size="lg"
       style={{ minWidth: 220 }}
       onClick={visualizeQuestion}
     >

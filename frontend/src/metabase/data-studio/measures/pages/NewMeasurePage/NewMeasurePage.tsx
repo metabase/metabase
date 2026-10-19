@@ -18,9 +18,10 @@ import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
 
 import { MeasureEditor } from "../../components/MeasureEditor";
-import { NewMeasureHeader } from "../../components/NewMeasureHeader";
 import { useMeasureQuery } from "../../hooks/use-measure-query";
 import { createInitialQueryForTable } from "../../utils/measure-query";
+
+import { NewMeasureHeader } from "./NewMeasureHeader";
 
 // Hoisted: the metadata selector memoises on the options object, so a fresh
 // literal each render would defeat it.

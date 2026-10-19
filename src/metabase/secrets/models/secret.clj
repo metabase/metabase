@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.secrets.db :as secrets.db]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -233,14 +234,14 @@
   (when-let [{source :source secret-value :value} (resolve-secret-map driver details secret-property)]
     (let [s (unresolved-value-string secret-value)]
       (if (= :file-path source)
-        (slurp s)
+        (slurp (system/ensure-readable-path! s))
         s))))
 
 (defn- value-as-file*
   [driver details secret-property & [ext]]
   (when-let [{source :source secret-value :value secret-id :id} (resolve-secret-map driver details secret-property)]
     (if (= :file-path source)
-      (let [secret-value (unresolved-value-string secret-value)
+      (let [secret-value (system/ensure-readable-path! (unresolved-value-string secret-value))
             ^File existing-file (File. ^String secret-value)]
         (if (.exists existing-file)
           existing-file
@@ -330,7 +331,9 @@
    Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property.
    Operates on `:details`, `:write_data_details`, and `:admin_details`."
   [database]
-  (let [driver  (driver.u/database->driver database)
+  (let [driver  (if-let [engine (:engine database)]
+                  (keyword engine)
+                  (driver.u/database->driver (:id database)))
         hydrate (fn [details]
                   (reduce-over-details-secret-values driver details hydrate-redacted-secret))]
     ;; Very low-level operation here, so not using driver.conn/* utils:
@@ -355,7 +358,7 @@
   "Ensures that all possible secret property values are removed from `:details`, `:write_data_details`, and
    `:admin_details`. This is a transformation on `:model/Database` `results-transform`."
   [database]
-  (let [clean #(clean-secret-properties-from-details % (driver.u/database->driver database))]
+  (let [clean #(clean-secret-properties-from-details % (keyword (:engine database)))]
     ;; Very low-level operation here, so not using driver.conn/* utils:
     (-> database
         (m/update-existing :details clean)
@@ -369,7 +372,7 @@
   (if-let [details (get database details-key)]
     (let [original-details (get (t2/original database) details-key)
           updated-details  (reduce-over-details-secret-values
-                            (driver.u/database->driver database)
+                            (keyword (:engine database))
                             details
                             (fn [db-details conn-prop-nm conn-prop]
                               (let [kws             (->possible-secret-property-names conn-prop-nm)

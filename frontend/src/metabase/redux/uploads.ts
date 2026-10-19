@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { Api, cardApi, tableApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch, State } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
@@ -167,7 +168,7 @@ export const uploadFile = createThunkAction(
         dispatch(
           uploadError({
             id,
-            error: err?.data?.message ?? err?.data,
+            error: findErrorMessage(err) ?? err?.data,
           }),
         );
       }

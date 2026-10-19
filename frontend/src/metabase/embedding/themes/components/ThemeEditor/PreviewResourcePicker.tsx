@@ -40,7 +40,6 @@ export function PreviewResourcePicker({
   return (
     <>
       <Button
-        variant="default"
         rightSection={<Icon name="chevrondown" size={12} />}
         onClick={openPicker}
         aria-label={t`Change preview resource`}

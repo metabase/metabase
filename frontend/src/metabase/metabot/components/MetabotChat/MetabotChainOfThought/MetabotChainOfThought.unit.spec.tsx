@@ -149,6 +149,34 @@ describe("MetabotChainOfThought", () => {
     expect(screen.queryByText(/Worked/)).not.toBeInTheDocument();
   });
 
+  it("displays thinking >= 60 seconds in minutes and seconds", () => {
+    setup(
+      chain({
+        steps: [{ kind: "reasoning", text: "Weighing the join order" }],
+        startedAtMs: 1000,
+        endedAtMs: 697000,
+      }),
+      false,
+    );
+    expect(
+      screen.getAllByText("Thought for 11 minutes 36 seconds").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("displays even minute thinking durations without seconds", () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "t1", name: "analyze_data", status: "ended" },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 61000,
+      }),
+      false,
+    );
+    expect(screen.getByText("Worked for 1 minute")).toBeInTheDocument();
+  });
+
   it("rolls a sub-5s thinking-only turn up to Thought briefly", () => {
     setup(
       chain({
@@ -236,7 +264,7 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("Searched for sales data")).toBeInTheDocument();
   });
 
-  it("renders a metabase:// link title as a clickable entity link with an icon", async () => {
+  it("renders a metabase:// link title as a clickable entity link", async () => {
     setup(
       chain({
         steps: [
@@ -256,10 +284,10 @@ describe("MetabotChainOfThought", () => {
     await userEvent.click(screen.getByRole("button"));
     // the row reads past tense with the entity inline ("Read Orders")
     expect(await screen.findByText("Read")).toHaveTextContent("Read Orders");
-    expect(await screen.findByText("Orders")).toBeInTheDocument();
-    expect(
-      await screen.findByRole("img", { name: /dashboard icon/ }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Orders" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/dashboard/123"),
+    );
   });
 
   it("labels a settled save_entity step with a clickable Saved link", async () => {
@@ -381,6 +409,52 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("PUBLIC", { exact: false })).toBeInTheDocument();
   });
 
+  it("links measures to the explorer and segments through their base table", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "search",
+            title: "revenue",
+            status: "ended",
+            searchResults: {
+              totalCount: 2,
+              results: [
+                {
+                  id: 7,
+                  type: "measure",
+                  name: "Total revenue",
+                  database_id: 1,
+                  table_id: 9,
+                },
+                {
+                  id: 8,
+                  type: "segment",
+                  name: "Big orders",
+                  database_id: 1,
+                  table_id: 9,
+                },
+              ],
+            },
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    await userEvent.click(screen.getByText("2 results"));
+    expect(
+      screen.getByRole("link", { name: /Total revenue/, hidden: true }),
+    ).toHaveAttribute("href", "/explore?measureId=7");
+    expect(
+      screen.getByRole("link", { name: /Big orders/, hidden: true }),
+    ).not.toHaveAttribute("href", "/404");
+  });
+
   it("labels an empty search with No results", async () => {
     setup(
       chain({
@@ -494,6 +568,25 @@ describe("MetabotChainOfThought", () => {
     await expandChain();
     expect(screen.getByText("Read 3 resources")).toBeInTheDocument();
     expect(screen.queryByText("Reading resource")).not.toBeInTheDocument();
+  });
+
+  it("keeps a failed resource read out of the aggregated row", async () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "r1", name: "read_resource", status: "ended" },
+          { kind: "tool", id: "r2", name: "read_resource", status: "ended" },
+          { kind: "tool", id: "r3", name: "read_resource", status: "errored" },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    expect(screen.getByText("Read 2 resources")).toBeInTheDocument();
+    expect(screen.getByText("Reading resource")).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toBeInTheDocument();
   });
 
   it("keeps reasoning and entity names out of embedded sessions", async () => {

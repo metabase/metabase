@@ -14,6 +14,12 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card card-id))
 
+(mu/defn active-card
+  "The non-archived Card with `card-id`, or nil. A trashed Card keeps its DashboardCard rows, so the dashcard routes
+  select it as absent rather than checking `:archived` after the fact."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id :archived false))
+
 (mu/defn card-embedding-params
   "The embedding parameters of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
@@ -81,3 +87,12 @@
   "Delete the EmbeddingTheme with `id`."
   [id :- ms/PositiveInt]
   (t2/delete! :model/EmbeddingTheme :id id))
+
+(mu/defn sdk-react-18-hosts-last-seen-after :- [:sequential ::embedding.schema/sdk-react-18-host]
+  "The EmbeddingSdkReact18Hosts last seen after `cutoff`, newest first, at most `limit`."
+  [cutoff :- ms/TemporalInstant
+   limit  :- ms/PositiveInt]
+  (t2/select :model/EmbeddingSdkReact18Host {:select   [:id :host :created_at :last_seen_at]
+                                             :where    [:> :last_seen_at [:auto/param cutoff]]
+                                             :order-by [[:last_seen_at :desc] [:id :desc]]
+                                             :limit    limit}))

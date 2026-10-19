@@ -22,6 +22,7 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
@@ -48,7 +49,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/dependencies))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -77,7 +79,9 @@
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
     (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
-    (dashboards.db/delete-dashboard-revisions! dashboard-id)))
+    (dashboards.db/delete-dashboard-revisions! dashboard-id)
+    ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
+    (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
@@ -105,9 +109,7 @@
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
-      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
-      (when (:archived changes)
-        (dashboards.db/delete-pulses-for-dashboard! (u/the-id dashboard))))))
+      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
@@ -198,11 +200,11 @@
    don't drift. Call inside the same transaction as the dashboard update itself."
   [current-dash updates]
   (let [id (:id current-dash)]
-    (when (api/column-will-change? :archived current-dash updates)
+    (when (api/column-will-change? (:archived current-dash) (get updates :archived ::api/not-provided))
       (if (:archived updates)
         (dashboards.db/archive-dashboard-questions! id)
         (dashboards.db/unarchive-dashboard-questions! id)))
-    (when (api/column-will-change? :collection_id current-dash updates)
+    (when (api/column-will-change? (:collection_id current-dash) (get updates :collection_id ::api/not-provided))
       (dashboards.db/move-dashboard-questions! id (:collection_id updates)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -242,21 +244,19 @@
       (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
         (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids)))))
 
-(def ^:private DashboardWithSeriesAndCard
-  [:map
-   [:id ms/PositiveInt]
-   [:dashcards [:sequential [:map
-                             [:card_id {:optional true} [:maybe ms/PositiveInt]]
-                             [:card {:optional true} [:maybe [:map
-                                                              [:id ms/PositiveInt]]]]]]]])
-
 (mu/defn update-dashcards!
   "Update the `dashcards` belonging to `dashboard`.
    This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
-  [dashboard     :- DashboardWithSeriesAndCard
-   new-dashcards :- [:sequential :map]]
+  [dashboard     :- ::dashboards.schema/dashboard
+   new-dashcards :- [:sequential [:merge
+                                  ::dashboards.schema/dashboard-card.update
+                                  [:map {:closed true}
+                                   [:id                         ms/PositiveInt]
+                                   [:series                     {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]
+                                   [:card                       {:optional true} [:maybe ::queries.schema/card]]
+                                   [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]]]]]
   (let [old-dashcards    (:dashcards dashboard)
         id->old-dashcard (m/index-by :id old-dashcards)
         old-dashcard-ids (set (keys id->old-dashcard))
@@ -330,20 +330,22 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (queries/check-parameter-source-card-permissions (:parameters dashboard))
+  (queries/check-parameter-source-card-permissions
+   (lib/normalize [:maybe [:sequential :metabase.parameters.schema/parameter]] (:parameters dashboard)))
   (t2/with-transaction [_conn]
     (let [{dashcards      :dashcards
            tabs           :tabs
            :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
           dashboard  (dashboards.db/insert-dashboard!
-                      (-> dashboard
-                          (dissoc :dashcards :tabs :rule :related
-                                  :transient_name :transient_filters :param_fields :more
-                                  :public_uuid :made_public_by_id
-                                  :enable_embedding :embedding_params)
-                          (assoc :description description
-                                 :collection_id parent-collection-id
-                                 :creator_id api/*current-user-id*)))
+                      (->> (-> dashboard
+                               (dissoc :dashcards :tabs :rule :related
+                                       :transient_name :transient_filters :param_fields :more
+                                       :public_uuid :made_public_by_id
+                                       :enable_embedding :embedding_params)
+                               (assoc :description description
+                                      :collection_id parent-collection-id
+                                      :creator_id api/*current-user-id*))
+                           (lib/normalize ::dashboards.schema/dashboard.update)))
           {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)
           dashcards-to-add (for [dashcard dashcards]
                              (let [card     (some-> dashcard :card
@@ -446,6 +448,17 @@
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps allow-int-ids? parameters))))
 
+(defn- without-unloaded-action-dashcards
+  "`ingested` without the dashcards whose action has no local row."
+  [{:keys [dashcards] :as ingested}]
+  (if-let [action-eids (not-empty (into #{} (keep :action_id) dashcards))]
+    (let [loaded (dashboards.db/action-entity-ids-in action-eids)]
+      (assoc ingested :dashcards (filterv #(or (nil? (:action_id %)) (contains? loaded (:action_id %))) dashcards)))
+    ingested))
+
+(defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
+  (serdes/default-load-one! (without-unloaded-action-dashcards ingested) maybe-local))
+
 (defmethod serdes/deserialization-dependencies "Dashboard" [dashboard]
   (dashboard-deps false dashboard))
 
@@ -535,7 +548,8 @@
   ^:allow-subquery {:select [:report_dashboard.id
                              [(h2x/literal "Dashboard") :model]
                              [:report_dashboard.name :name]
-                             [:last_viewed_at :last_used_at]]
+                             [:last_viewed_at :last_used_at]
+                             :report_dashboard.collection_id]
                     :from :report_dashboard
                     :left-join [:pulse [:and
                                         [:= :pulse.archived false]
@@ -557,7 +571,4 @@
                               [:= :report_dashboard.enable_embedding false])
                             (when (setting/get :enable-public-sharing)
                               [:= :report_dashboard.public_uuid nil])
-                            [:or
-                             (when (contains? (:collection-ids args) nil)
-                               [:is :report_dashboard.collection_id nil])
-                             [:in :report_dashboard.collection_id (-> args :collection-ids)]]]})
+                            (staleness/collection-filter :report_dashboard.collection_id args)]})

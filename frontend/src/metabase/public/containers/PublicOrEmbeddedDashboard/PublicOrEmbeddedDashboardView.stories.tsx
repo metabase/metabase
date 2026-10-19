@@ -222,6 +222,15 @@ export const NarrowWithManyTabs = {
   decorators: [NarrowDecorator],
 };
 
+export const NarrowWithManyTabsDarkTheme = {
+  render: Template,
+  args: {
+    ...NarrowWithManyTabs.args,
+    theme: "night",
+  },
+  decorators: [NarrowDecorator, DarkBackgroundDecorator],
+};
+
 export const LightThemeDefault = {
   render: Template,
   args: defaultArgs,

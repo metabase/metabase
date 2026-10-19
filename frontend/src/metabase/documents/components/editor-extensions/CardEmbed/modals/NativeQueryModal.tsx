@@ -8,7 +8,7 @@ import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { getMetabotVisible } from "metabase/metabot/state";
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
@@ -111,7 +111,7 @@ export const NativeQueryModal = ({
 }: NativeQueryModalProps) => {
   const dispatch = useDispatch();
   const host = useEditorHost();
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
@@ -321,7 +321,6 @@ export const NativeQueryModal = ({
       onClose={onClose}
       size="95%"
       title={t`Edit SQL Query`}
-      padding="xl"
       classNames={{
         content: S.modalContent,
         body: S.modalBody,
@@ -474,7 +473,7 @@ export const NativeQueryModal = ({
           bg="background_page-primary"
           className={S.footer}
         >
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" color="neutral" onClick={onClose}>
             {t`Cancel`}
           </Button>
           <Button

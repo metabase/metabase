@@ -15,17 +15,10 @@
 
 (mr/def ::model-index
   "A ModelIndex as selected from the app DB: every column of `:model_index`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:model_id   [:maybe :int]]
-   [:pk_ref     ::model-index.pk-ref]
-   [:value_ref  ::model-index.value-ref]
-   [:schedule   :string]
-   [:state      :string]
-   [:indexed_at [:maybe ms/TemporalInstant]]
-   [:error      [:maybe :string]]
-   [:created_at ms/TemporalInstant]
-   [:creator_id ::lib.schema.id/user]])
+  [:merge
+   ::model-index.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::model-index.update
   "What an update (or insert) of a ModelIndex accepts: every column of `:model_index` except `id`, all optional."
@@ -42,10 +35,9 @@
 
 (mr/def ::model-index-value
   "A ModelIndexValue as selected from the app DB: every column of `:model_index_value`."
-  [:map {:closed true}
-   [:model_index_id [:maybe ms/PositiveInt]]
-   [:model_pk       :int]
-   [:name           :string]])
+  [:merge
+   ::model-index-value.update
+   [:map {:closed true}]])
 
 (mr/def ::model-index-value.update
   "What an update (or insert) of a ModelIndexValue accepts: every column of `:model_index_value` except `id`, all optional."

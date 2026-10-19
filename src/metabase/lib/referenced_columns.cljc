@@ -8,6 +8,7 @@
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
@@ -35,10 +36,12 @@
 
   Throws if `x` is neither an MBQL clause nor a `:metadata/column` map. Schema validation is
   off in production, so the runtime check is the gate."
-  ([query x] (referenced-columns query -1 x))
+  ([query :- ::lib.schema/query
+    x     :- [:or ::lib.schema.metadata/column ::lib.schema.expression/expression]]
+   (referenced-columns query -1 x))
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x            :- [:or ::lib.schema.metadata/column ::lib.schema.expression/expression]]
    (when-not (or (column-metadata? x) (lib.util/clause? x))
      (throw (ex-info "referenced-columns: expected an MBQL clause or :metadata/column"
                      {:dispatch-value (lib.dispatch/dispatch-value x)

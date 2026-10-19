@@ -285,6 +285,7 @@
     (do-with-lock-wait-timeout conn timeout #(acquire-lock-row!* conn lock-name-str timeout mode ambient-transaction?))
     (acquire-lock-row!* conn lock-name-str timeout mode ambient-transaction?)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *detached-locks-held*
   "Lock-name strings currently held by [[do-with-detached-cluster-lock]] in this dynamic scope. A detached
   hold lives on a dedicated connection, so re-acquiring the same name from this scope — detached or
@@ -416,11 +417,11 @@
   rolled-back deadlock undoes only the db writes, not external calls)."
   [opts :- [:or
             :keyword
-            [:map
+            [:map {:closed true}
              [:lock             {:optional true} :keyword]
              [:locks            {:optional true} [:sequential
                                                   [:or :keyword
-                                                   [:map
+                                                   [:map {:closed true}
                                                     [:lock :keyword]
                                                     [:mode {:optional true} [:enum :exclusive :share]]]]]]
              [:mode             {:optional true} [:enum :exclusive :share]]
@@ -471,7 +472,7 @@
   "Impl for [[with-detached-cluster-lock]]."
   [{:keys [lock timeout-seconds retry-config]
     :or   {timeout-seconds cluster-lock-timeout-seconds}}
-   :- [:map
+   :- [:map {:closed true}
        [:lock            :keyword]
        [:timeout-seconds {:optional true} :int]
        [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]

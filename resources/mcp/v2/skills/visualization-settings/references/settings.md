@@ -22,7 +22,7 @@ Goal & trend: `graph.show_goal` (bool), `graph.goal_value` (number), `graph.goal
 
 Data labels: `graph.show_values` (bool), `graph.label_value_frequency` (`"fit"`/`"all"`), `graph.show_stack_values` (`"total"`/`"series"`/`"all"`, stacked bars), `graph.label_value_formatting` (`"auto"`/`"compact"`/`"full"`).
 
-Axes: `graph.x_axis.scale` (`"timeseries"` `"linear"` `"pow"` `"log"` `"histogram"` `"ordinal"`), `graph.y_axis.scale` (`"linear"` `"pow"` `"log"`), `graph.x_axis.axis_enabled` (`true`/`false`/`"compact"`/`"rotate-45"`/`"rotate-90"`), `graph.y_axis.axis_enabled` (bool), `graph.y_axis.auto_range` (bool) with `graph.y_axis.min`/`.max`, `graph.y_axis.unpin_from_zero` (bool), `graph.y_axis.auto_split` (bool), `graph.x_axis.title_text` / `graph.y_axis.title_text`.
+Axes: `graph.x_axis.scale` (`"timeseries"` `"linear"` `"pow"` `"log"` `"histogram"` `"ordinal"`), `graph.y_axis.scale` (`"linear"` `"pow"` `"log"`), `graph.x_axis.axis_enabled` (`true`/`false`/`"compact"`/`"rotate-45"`/`"rotate-90"`), `graph.y_axis.axis_enabled` (bool), `graph.y_axis.auto_range` (bool) with `graph.y_axis.min`/`.max`, `graph.y_axis.unpin_from_zero` (bool), `graph.y_axis.auto_split` (bool), `graph.x_axis.title_text` / `graph.y_axis.title_text`, and `graph.y_axis.right.title_text` for the right axis of a split chart (unset or blank falls back to `graph.y_axis.title_text`).
 
 Tooltip: `graph.tooltip_columns` (string[] — extra columns on hover).
 

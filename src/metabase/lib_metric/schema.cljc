@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [some])
   (:require
    [metabase.lib-metric.operators :as operators]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
@@ -44,7 +45,7 @@
 
 (mr/def ::binning-option
   "Schema for a binning option as presented to the UI."
-  [:map
+  [:map {:closed true}
    [:lib/type [:= :option/binning]]
    [:display-name :string]
    [:mbql [:maybe ::binning]]
@@ -55,23 +56,16 @@
 
 (mr/def ::dimension-id
   "UUID string identifying a dimension."
-  ::lib.schema.common/uuid)
+  ::lib.schema.metadata/dimension-id)
 
 (mr/def ::dimension-group
-  "Group descriptor for a dimension, indicating which table it belongs to."
-  [:map {:closed true}
-   [:id :string]
-   [:type [:enum "main" "connection"]]
-   [:display-name :string]])
+  ::lib.schema.metadata/dimension-group)
 
 (mr/def ::dimension-source.type
-  [:enum :field])
+  ::lib.schema.metadata/dimension-source.type)
 
 (mr/def ::dimension-source
-  [:map {:closed true}
-   [:type     ::dimension-source.type]
-   [:field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   [:binning  {:optional true} [:maybe :boolean]]])
+  ::lib.schema.metadata/dimension-source)
 
 (mr/def ::dimension
   "Schema for a dimension definition, plus what the metrics module annotates a dimension with before handing it to a
@@ -94,12 +88,10 @@
    [:description               {:optional true} [:maybe :string]]])
 
 (mr/def ::dimension-mapping.type
-  "Type of dimension mapping."
-  [:enum :table])
+  ::lib.schema.metadata/dimension-mapping.type)
 
 (mr/def ::dimension-mapping.target
-  "Target field reference for a dimension mapping, e.g. [:field {:source-field 1} 2]."
-  [:ref :mbql.clause/field])
+  ::lib.schema.metadata/dimension-mapping.target)
 
 (mr/def ::dimension-mapping
   "Schema for a dimension mapping."
@@ -338,17 +330,11 @@
 ;;; These schemas are used for storage format in the database.
 
 (mr/def ::dimension-status
-  "Status of a dimension indicating whether it's active or has issues.
-   - :status/active   - Column exists, dimension is usable
-   - :status/orphaned - Column was removed from schema, dimension preserved for reference"
-  [:enum :status/active :status/orphaned])
+  ::lib.schema.metadata/dimension-status)
 
 (mr/def ::persisted-dimension
-  "Schema for a persisted dimension definition with status tracking.
-   Persisted dimensions include additional metadata about their status
-   and any issues that prevent them from being used.
-   Note: target field references are stored in dimension-mappings, not here."
-  [:map
+  "Schema for a persisted dimension definition with status tracking."
+  [:map {:closed true}
    [:id               ::dimension-id]
    [:name             {:optional true} [:maybe :string]]
    [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
@@ -360,8 +346,8 @@
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
+   [:lib/source       {:optional true} [:maybe [:or ::lib.schema.metadata/column.source :string]]]
    [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
-   ;; At most one dimension per entity may be the default.
    [:default          {:optional true} [:maybe :boolean]]])
 
 (mr/def ::persisted-dimensions
@@ -379,12 +365,12 @@
 
    Metadata is loaded lazily from the provider in the AST builder,
    not stored in the definition."
-  [:map
+  [:map {:closed true}
    [:lib/type          [:= :metric/definition]]
    [:expression        ::metric-math-expression]
    [:filters           ::instance-filters]
    [:projections       ::typed-projections]
-   [:metadata-provider [:maybe :some]]])
+   [:metadata-provider [:maybe ::lib.metadata.protocols/metadata-providerable]]])
 
 ;;; ------------------------------------------------- Fetchable Dimension Metadata -------------------------------------------------
 ;;; These schemas support dimensions as first-class metadata entities
@@ -398,11 +384,12 @@
   "Schema for dimension metadata fetchable via metadata provider.
    Dimensions are extracted from metrics/measures at fetch time, with source
    tracking to identify their parent entity."
-  [:map
+  [:map {:closed true}
    [:lib/type         [:= :metadata/dimension]]
    [:id               ::dimension-id]  ; UUID string
    [:name             {:optional true} [:maybe :string]]
    [:display-name     {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:description      {:optional true} [:maybe :string]]
    [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic-type    {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
@@ -410,13 +397,15 @@
    [:status-message   {:optional true} [:maybe :string]]
    [:sources          {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group            {:optional true} [:maybe ::dimension-group]]
+   [:lib/source       {:optional true} [:maybe [:or ::lib.schema.metadata/column.source :string]]]
    [:default-temporal-unit {:optional true} ::lib.schema.temporal-bucketing/unit]
    [:default          {:optional true} [:maybe :boolean]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
    [:source-id        pos-int?]
    ;; Optional mapping for field resolution
-   [:dimension-mapping {:optional true} [:maybe ::dimension-mapping]]])
+   [:dimension-mapping {:optional true} [:maybe ::dimension-mapping]]
+   [:projection-positions {:optional true} [:maybe [:sequential :int]]]])
 
 (mr/def ::dimension-spec
   "Spec for fetching dimensions from metadata provider.
@@ -434,7 +423,7 @@
 (mr/def ::computed-dimension
   "A dimension computed from a visible column, before reconciliation.
    The :id is nil until assigned during reconciliation."
-  [:map
+  [:map {:closed true}
    [:id [:maybe ::dimension-id]]
    [:name :string]
    [:display-name {:optional true} [:maybe :string]]
@@ -442,13 +431,14 @@
    [:semantic-type {:optional true} [:maybe :keyword]]
    [:has-field-values {:optional true} [:maybe [:enum :list :search :none]]]
    [:lib/source {:optional true} [:maybe :keyword]]
+   [:sources {:optional true} [:maybe [:sequential ::dimension-source]]]
    [:group {:optional true} [:maybe ::dimension-group]]])
 
 (mr/def ::computed-pair
   "A computed dimension paired with its mapping (before ID assignment)."
-  [:map
+  [:map {:closed true}
    [:dimension ::computed-dimension]
-   [:mapping [:map
+   [:mapping [:map {:closed true}
               [:type ::dimension-mapping.type]
               [:table-id {:optional true} [:maybe ::lib.schema.id/table]]
               [:target ::dimension-mapping.target]]]])

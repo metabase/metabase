@@ -130,6 +130,37 @@ describe("metabot > tool calls", () => {
     });
   });
 
+  it("should show a tool call that errored as failed", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        {
+          type: "tool-input-available",
+          toolCallId: "x",
+          toolName: "search",
+          input: {},
+        },
+        {
+          type: "tool-output-error",
+          toolCallId: "x",
+          errorText: "Search is unavailable",
+        },
+        { type: "finish", finishReason: "stop" },
+      ],
+    });
+
+    await enterChatMessage("Find the revenue dashboard");
+    expect(
+      await screen.findByText(/Worked (briefly|for|on)/),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByTestId("metabot-chain-of-thought-header"),
+    );
+
+    await waitFor(() => expect(screen.getByText("Searching")).toBeVisible());
+    expect(screen.getByText("Failed")).toBeVisible();
+  });
+
   it("should start a new message if there's tool calls between streamed text parts", async () => {
     setup();
     mockAgentEndpoint({

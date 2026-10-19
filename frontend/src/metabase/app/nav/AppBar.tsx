@@ -10,7 +10,7 @@ import {
   getIsNewButtonVisible,
   getIsQuestionLineageVisible,
   getIsSearchVisible,
-} from "metabase/app/selectors";
+} from "metabase/app/nav/selectors";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { getUser } from "metabase/current-user";
 import { getIsSidebarOpen } from "metabase/documents/selectors";
@@ -20,7 +20,7 @@ import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcr
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
 import { getOriginalQuestion, getQuestion } from "metabase/query_builder";
 import { useDispatch, useSelector } from "metabase/redux";
-import { closeNavbar, toggleNavbar } from "metabase/redux/app";
+import { closeNavbar, openNavbar, toggleNavbar } from "metabase/redux/app";
 import { useLocation, useNavigate, useParams } from "metabase/router";
 import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { modelToUrl } from "metabase/urls";
@@ -132,6 +132,7 @@ export function AppBarContainer() {
       detailView={detailView}
       isMetricsViewer={isMetricsViewer}
       onToggleNavbar={() => dispatch(toggleNavbar())}
+      onOpenNavbar={() => dispatch(openNavbar())}
       onCloseNavbar={() => dispatch(closeNavbar())}
       collectionId={collectionId}
       collectionBreadcrumbs={

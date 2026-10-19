@@ -24,6 +24,7 @@ import type {
   SeriesCard,
   TimelineEvent,
   TimelineEventId,
+  TimelineEventsVisibility,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -57,7 +58,6 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
-  autoAdjustSettings?: boolean;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;
@@ -86,6 +86,7 @@ export interface VisualizationProps {
   clicked?: ClickObject | null;
   className?: string;
   timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility;
   selectedTimelineEventIds?: TimelineEventId[];
   queryBuilderMode?: QueryBuilderMode;
 
@@ -119,6 +120,8 @@ export interface VisualizationProps {
   onDeselectTimelineEvents?: () => void;
   onOpenTimelines?: (eventIds?: number[]) => void;
   onSeeAllEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onTimelineEventsShown?: () => void;
+  onTimelineEventsEnabledChange?: (isEnabled: boolean) => void;
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;

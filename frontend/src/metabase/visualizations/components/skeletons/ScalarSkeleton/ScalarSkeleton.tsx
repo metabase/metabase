@@ -7,8 +7,7 @@ import SkeletonCaption from "metabase/visualizations/components/skeletons/Skelet
 
 import S from "./ScalarSkeleton.module.css";
 
-// the title renders at fz "md" / lh "md", which is a 17px line
-const TITLE_LINE_HEIGHT = 17;
+const TITLE_LINE_HEIGHT = { sm: 14, md: 17 };
 const PILL_RADIUS = 8;
 const TITLE_PILL_HEIGHT = 8;
 
@@ -67,7 +66,12 @@ const ScalarSkeleton = ({
       data-testid="scalar-skeleton"
     >
       {actionMenu && <Box className={S.actionMenu}>{actionMenu}</Box>}
-      <Stack align="center" gap={tier.valueTitleGap}>
+      <Stack
+        align="center"
+        gap={tier.valueTitleGap}
+        maw="100%"
+        px={tier.xPadding}
+      >
         <Flex align="center" justify="center" h={tier.valueFontSize}>
           <Skeleton
             radius={PILL_RADIUS}
@@ -76,17 +80,21 @@ const ScalarSkeleton = ({
           />
         </Flex>
         {name ? (
-          <SkeletonCaption name={name} description={description} size="large" />
+          <SkeletonCaption name={name} description={description} />
         ) : (
-          tier.showsTitle && (
-            <Flex align="center" justify="center" h={TITLE_LINE_HEIGHT}>
-              <Skeleton
-                radius={PILL_RADIUS}
-                w={tier.skeleton.titleWidth}
-                h={TITLE_PILL_HEIGHT}
-              />
-            </Flex>
-          )
+          <Flex
+            align="center"
+            justify="center"
+            h={TITLE_LINE_HEIGHT[tier.size < 200 ? "sm" : "md"]}
+            maw="100%"
+          >
+            <Skeleton
+              radius={PILL_RADIUS}
+              w={tier.skeleton.titleWidth}
+              h={TITLE_PILL_HEIGHT}
+              maw="100%"
+            />
+          </Flex>
         )}
       </Stack>
     </Flex>

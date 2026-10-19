@@ -22,6 +22,4 @@ description: Uses Total Revenue and Order Count measures
 entity_id: dc8eiyLh9S0IKwV_UuvTz
 name: Average Revenue Per Order
 serdes/meta:
-- id: dc8eiyLh9S0IKwV_UuvTz
-  label: average_revenue_per_order
-  model: Measure
+- model: Measure

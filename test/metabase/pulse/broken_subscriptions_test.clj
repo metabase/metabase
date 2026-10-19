@@ -70,7 +70,7 @@
                       :creator_id   (mt/user->id :trashbird)
                       :id           bad-pulse-id
                       :parameters
-                      [{:name "Source" :slug "source" :id "_SOURCE_PARAM_ID_" :type "string/=" :value ["Twitter" "Facebook"]}]
+                      [{:name "Source" :slug "source" :id "_SOURCE_PARAM_ID_" :type :string/= :value ["Twitter" "Facebook"]}]
                       :dashboard_id dash-id}
                      {:archived     false
                       :name         "Bad Slack Pulse"
@@ -79,7 +79,7 @@
                       :parameters   [{:name  "Source"
                                       :slug  "source"
                                       :id    "_SOURCE_PARAM_ID_"
-                                      :type  "string/="
+                                      :type  :string/=
                                       :value ["LinkedIn"]}],
                       :dashboard_id dash-id}]
                     ;; `broken-pulses` doesn't order its results, so sort them for a stable comparison
@@ -113,7 +113,7 @@
                         :bad-parameters    [{:name  "Source"
                                              :slug  "source"
                                              :id    "_SOURCE_PARAM_ID_"
-                                             :type  "string/="
+                                             :type  :string/=
                                              :value ["LinkedIn"]}]
                         :dashboard-name    "My Awesome Dashboard"}]
                       bad-pulses))))

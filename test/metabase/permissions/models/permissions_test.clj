@@ -114,20 +114,17 @@
 (deftest ^:parallel perms-objects-set-for-parent-collection-test
   (are [input expected] (= expected
                            (apply perms/perms-objects-set-for-parent-collection input))
-    [{:collection_id 1337} :read]  #{"/collection/1337/read/"}
-    [{:collection_id 1337} :write] #{"/collection/1337/"}
-    [{:collection_id nil} :read]   #{"/collection/root/read/"}
-    [{:collection_id nil} :write]  #{"/collection/root/"})
+    [1337 :read]  #{"/collection/1337/read/"}
+    [1337 :write] #{"/collection/1337/"}
+    [nil :read]   #{"/collection/root/read/"}
+    [nil :write]  #{"/collection/root/"})
   (testing "invalid input"
-    (doseq [[reason inputs] {"map must have `:collection_id` key"
-                             [[{} :read]]
-
-                             "must be a map"
-                             [[100 :read]
-                              [nil :read]]
+    (doseq [[reason inputs] {"must be a positive int or nil"
+                             [[-1 :read]
+                              ["100" :read]]
 
                              "read-or-write must be `:read` or `:write`"
-                             [[{:collection_id nil} :readwrite]]}
+                             [[nil :readwrite]]}
             input inputs]
       (testing reason
         (testing (pr-str (cons 'perms-objects-set-for-parent-collection input))
@@ -310,6 +307,18 @@
           (is (true? (mi/can-create? :model/Dashboard {:collection_id (:id coll)}))))
         (testing "admin can create dashboard in root collection"
           (is (true? (mi/can-create? :model/Dashboard {}))))))))
+
+(deftest content-of-a-data-apps-collection-is-read-only-test
+  (testing "Nobody writes what takes its permissions from a collection of the data apps namespace, administrators included"
+    (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}]
+      (mt/with-test-user :crowberto
+        ;; unsaved, since the namespace refuses both
+        (doseq [model [:model/Dashboard :model/Timeline]
+                :let  [instance (t2/instance model {:collection_id collection-id})]]
+          (testing model
+            (is (false? (mi/can-write? instance)))
+            (testing "while reading still follows the collection's permissions"
+              (is (true? (mi/can-read? instance))))))))))
 
 (deftest ^:parallel can-read-via-parent-collection?-test
   (testing "read perm is true iff the current user has read on the parent collection"

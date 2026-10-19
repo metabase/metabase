@@ -3,11 +3,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { exploreMetricDimensionUrl } from "metabase/common/metrics-viewer";
 import {
   DEFAULT_DISPLAY_TYPE_BY_DIMENSION,
   type DefaultDimensionDisplayType,
 } from "metabase/common/metrics/utils/dimension-types";
-import { exploreMetricDimensionUrl } from "metabase/common/metrics-viewer";
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
 import { useNavigate } from "metabase/router";

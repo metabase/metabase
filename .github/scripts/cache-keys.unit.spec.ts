@@ -3,7 +3,7 @@ import { join } from "path";
 
 const SCRIPT = join(__dirname, "cache-keys.sh");
 
-const CACHES = ["m2", "bun-store", "cypress", "eslint"];
+const CACHES = ["m2", "bun-store", "cypress"];
 
 // stderr is inherited by default, so the deliberate-failure case below would print a literal
 // `::error::` line - which GitHub Actions reads as an annotation directive, making a passing run
@@ -70,11 +70,5 @@ describe("cache-keys.sh", () => {
   // invalidate a 200MB download.
   it("keys the Cypress binary on the resolved version, not the lockfile", () => {
     expect(get("cypress-key")).toMatch(/^cypress-Linux-\d+\.\d+\.\d+/);
-  });
-
-  it("keys the ESLint cache on the commit", () => {
-    expect(get("eslint-key", { GITHUB_SHA: "deadbeef" })).toEqual(
-      "eslint-Linux-deadbeef",
-    );
   });
 });

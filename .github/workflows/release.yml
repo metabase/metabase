@@ -45,7 +45,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: |
           release
@@ -87,13 +87,61 @@ jobs:
           });
 
           return versions
+    # Everything after this job fetches the uberjars Release 1 built for this commit, so check they
+    # exist before any of it starts, and say which commit Release 1 built if they don't.
+    - name: Check the release uberjars exist for this commit
+      uses: actions/github-script@v9
+      env:
+        VERSION: ${{ inputs.version }}
+        COMMIT: ${{ inputs.commit }}
+        SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      with:
+        script: | # js
+          const {
+            checkReleaseArtifacts,
+            buildReleaseArtifactMismatchMessage,
+            sendPublishFailureMessage,
+            slackLink,
+          } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const { VERSION: version, COMMIT: commit } = process.env;
+          const { owner, repo } = context.repo;
+
+          let error;
+          let slackError;
+          try {
+            const result = await checkReleaseArtifacts({ github, owner, repo, version, commit });
+
+            if (result.ok) {
+              console.log(`Found the release uberjars for ${version} at ${commit}`);
+              return;
+            }
+
+            error = buildReleaseArtifactMismatchMessage(result);
+            slackError = buildReleaseArtifactMismatchMessage(result, slackLink);
+          } catch (err) {
+            // e.g. a short SHA: still worth telling the release thread
+            error = slackError = err.message;
+          }
+
+          await sendPublishFailureMessage({
+            owner,
+            repo,
+            version,
+            runId: context.runId,
+            channelName: process.env.SLACK_RELEASE_CHANNEL,
+            details: slackError,
+          }).catch(console.error);
+
+          core.setFailed(error);
 
   publish-start-message:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [check-version]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -126,7 +174,7 @@ jobs:
       matrix:
         edition: [oss, ee]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: .github
     - name: Retrieve release uberjar artifact for ${{ matrix.edition }}
@@ -201,7 +249,7 @@ jobs:
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: |
           release
@@ -299,7 +347,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: |
           release
@@ -334,7 +382,7 @@ jobs:
     outputs:
       extra_tags: ${{ steps.taglist.outputs.extra_tags }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -388,7 +436,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -468,7 +516,7 @@ jobs:
       DOCKERHUB_OWNER: ${{ vars.DOCKERHUB_OWNER }}
       DOCKERHUB_REPO: ${{ vars.DOCKERHUB_REPO }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
@@ -546,7 +594,7 @@ jobs:
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: |
           release
@@ -594,7 +642,7 @@ jobs:
     needs: [add-extra-tags]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release

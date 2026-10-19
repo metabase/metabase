@@ -191,6 +191,16 @@
   [topic event]
   (audit-log/record-event! topic event))
 
+;; session events
+
+(events/derive! ::session-event ::event)
+(events/derive! :event/session-revoked ::session-event)
+(events/derive! :event/sessions-revoked ::session-event)
+
+(methodical/defmethod events/publish-event! ::session-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
 (events/derive! ::user-update-event ::event)
 (events/derive! :event/user-update ::user-update-event)
 
@@ -334,6 +344,11 @@
 (events/derive! :event/transform-run-start ::transform-event)
 (events/derive! :event/transform-run-canceled ::transform-event)
 (events/derive! :event/transform-run-timeout ::transform-event)
+(events/derive! :event/transform-test-create ::transform-event)
+(events/derive! :event/transform-test-update ::transform-event)
+(events/derive! :event/transform-test-delete ::transform-event)
+(events/derive! :event/transform-test-run-start ::transform-event)
+(events/derive! :event/transform-test-run-timeout ::transform-event)
 (events/derive! :event/transform-inspect-discover ::transform-event)
 (events/derive! :event/transform-inspect-lens ::transform-event)
 

@@ -28,12 +28,9 @@ dataset_query:
         type: text
     lib/type: mbql.stage/native
   lib/type: mbql/query
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
-- id: FTxpeL9vY5pyb6Lc6lCDK
-  label: top_products_by_revenue
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

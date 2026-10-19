@@ -80,6 +80,20 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)unexpected response"
                                 (slackbot.client/download-file-stream client "https://files.slack.com/files-pri/T1-F1/data.csv")))
           (is (= 2 @calls) "one hop only"))))
+    (testing "a Location that will not resolve is no redirect, and the response body is still closed"
+      (let [calls  (atom 0)
+            closed (atom false)]
+        (with-redefs [http/get (fn [_url _options]
+                                 (swap! calls inc)
+                                 {:status  302
+                                  :headers {"location" "http://[not a uri"}
+                                  :body    (proxy [java.io.ByteArrayInputStream] [(.getBytes "")]
+                                             (close []
+                                               (reset! closed true)))})]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?i)unexpected response"
+                                (slackbot.client/download-file-stream client "https://files.slack.com/files-pri/T1-F1/data.csv")))
+          (is (= 1 @calls) "the malformed target is never requested")
+          (is (true? @closed) "the response stream is closed"))))
     (testing "behind a JVM proxy the dns-resolver is omitted, leaving the target to the proxy"
       (let [opts (atom nil)]
         (with-redefs [u.http/jvm-proxied-url? (constantly true)

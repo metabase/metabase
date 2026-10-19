@@ -200,18 +200,21 @@
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
-  (let [rff (qp.add-remaps/remap-results query qp.reducible/default-rff)
+  (let [query (merge (lib/query (qp.store/metadata-provider) (lib.metadata/table (qp.store/metadata-provider) (meta/id :venues)))
+                     query)
+        rff   (qp.add-remaps/remap-results query qp.reducible/default-rff)
         rf  (rff metadata)]
     (transduce identity rf rows)))
 
 (defn venues-column-metadata []
-  (lib.metadata/bulk-metadata-or-throw
-   (qp.store/metadata-provider)
-   :metadata/column
-   [(meta/id :venues :id)
-    (meta/id :venues :name)
-    (meta/id :venues :category-id)
-    (meta/id :venues :price)]))
+  (mapv lib/lib-metadata-column->legacy-metadata-column
+        (lib.metadata/bulk-metadata-or-throw
+         (qp.store/metadata-provider)
+         :metadata/column
+         [(meta/id :venues :id)
+          (meta/id :venues :name)
+          (meta/id :venues :category-id)
+          (meta/id :venues :price)])))
 
 (deftest ^:parallel remap-human-readable-values-test
   (testing "remapping columns with `human_readable_values`"
@@ -392,13 +395,16 @@
               metadata     (lib.tu.macros/$ids venues
                              {:cols [{:name         "NAME"
                                       :id           %name
+                                      :base_type    :type/Text
                                       :display_name "Name"}
                                      {:name         "CATEGORY_ID"
                                       :id           %category-id
+                                      :base_type    :type/Integer
                                       :display_name "Category ID"
                                       :options      {::qp.add-remaps/original-field-dimension-id dimension-id}}
                                      {:name         "NAME_2"
                                       :id           %categories.name
+                                      :base_type    :type/Text
                                       :display_name "Category → Name"
                                       :fk_field_id  %category-id
                                       :options      {::qp.add-remaps/new-field-dimension-id dimension-id}}]})]
@@ -473,22 +479,27 @@
         (let [metadata (lib.tu.macros/$ids venues
                          {:cols [{:name         "CATEGORY_ID"
                                   :id           %category-id
+                                  :base_type    :type/Integer
                                   :display_name "Category ID"
                                   :options      {::qp.add-remaps/original-field-dimension-id category-id-dimension-id}}
                                  {:name         "ID"
                                   :id           %id
+                                  :base_type    :type/BigInteger
                                   :display_name "ID"
                                   :options      {::qp.add-remaps/original-field-dimension-id id-dimension-id}}
                                  {:name         "NAME"
                                   :id           %name
+                                  :base_type    :type/Text
                                   :display_name "Name"}
                                  {:name         "NAME_2"
                                   :id           %categories.name
+                                  :base_type    :type/Text
                                   :display_name "Categories → Name"
                                   :fk_field_id  %category-id
                                   :options      {::qp.add-remaps/new-field-dimension-id category-id-dimension-id}}
                                  {:name         "NAME_3"
                                   :id           %categories.name
+                                  :base_type    :type/Text
                                   :display_name "Categories → Name"
                                   :fk_field_id  %id
                                   :options      {::qp.add-remaps/new-field-dimension-id id-dimension-id}}]})]

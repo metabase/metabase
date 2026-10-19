@@ -21,6 +21,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.sensitive-fields :as qp.sensitive-fields]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
@@ -28,6 +29,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
@@ -44,7 +46,8 @@
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
                     :actual-permissions   (perms/permissions-for-user api/*current-user-id*)
-                    :permissions-error?   true}
+                    :permissions-error?   true
+                    :response/keys        #{:required-permissions}}
                    additional-ex-data))))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
@@ -65,6 +68,10 @@
 ;;           {:perms/view-data {table-id :unrestricted}}  source-card-read-perms
 ;;
 
+(mr/def ::query
+  "A query at any stage of QP processing, carrying the internal keys that QP middleware, drivers, and sandboxing own."
+  [:map {:closed false, ::mr/deliberately-open true, :description "a query at any stage of QP processing"}])
+
 (defn- merge-source-ids
   "Merge function which takes the union of two sets of IDs, if they are both sets"
   [val1 val2]
@@ -80,6 +87,41 @@
     ;; Safeguard; should not be hit
     :else (throw (ex-info "Don't know how to merge values!"
                           {:val1 val1 :val2 val2}))))
+
+(defn- source-ids*
+  "Recursive walk backing [[query->source-ids]], over legacy or MBQL 5 queries and the nested-query maps it dissocs its way into."
+  [query parent-source-card-id in-sandbox?]
+  (if (:lib/type query)
+    ;; convert MBQL 5 to legacy
+    ;;
+    ;; legacy usage -- don't do things like this going forward
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
+    ;; already legacy MBQL
+    (apply merge-with merge-source-ids
+           (match/match-many query
+             (:and m {:qp/stage-is-from-source-card (id :guard identity)})
+             (merge-with merge-source-ids
+                         {:card-ids #{id}}
+                         (source-ids* (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
+
+             (:and m {:query-permissions/sandboxed-table (id :guard identity)})
+             (merge-with merge-source-ids
+                         {:table-ids #{id}}
+                         (when-not (or parent-source-card-id in-sandbox?)
+                           {:table-query-ids #{id}})
+                         (source-ids* (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
+
+             {:native &truthy}
+             (when-not parent-source-card-id
+               {:native? true})
+
+             (:and m {:source-table (id :guard pos-int?)})
+             (merge-with merge-source-ids
+                         {:table-ids #{id}}
+                         (when-not (or parent-source-card-id in-sandbox?)
+                           {:table-query-ids #{id}})
+                         (source-ids* (dissoc m :source-table) parent-source-card-id in-sandbox?))))))
 
 (mu/defn query->source-ids :- [:maybe
                                [:map
@@ -116,51 +158,17 @@
 
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set, then continue the match."
-  ([query]
-   (query->source-ids query nil false))
-
-  ([query                 :- :map ; this works on either legacy or MBQL 5 but also on inner queries or other nested maps (it calls itself recursively)
-    parent-source-card-id :- [:maybe ::lib.schema.id/card]
-    in-sandbox?           :- :any]
-   (if (:lib/type query)
-     ;; convert MBQL 5 to legacy
-     ;;
-     ;; legacy usage -- don't do things like this going forward
-     #_{:clj-kondo/ignore [:discouraged-var]}
-     (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
-     ;; already legacy MBQL
-     (apply merge-with merge-source-ids
-            (match/match-many query
-              (:and m {:qp/stage-is-from-source-card (id :guard identity)})
-              (merge-with merge-source-ids
-                          {:card-ids #{id}}
-                          (query->source-ids (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
-
-              (:and m {:query-permissions/sandboxed-table (id :guard identity)})
-              (merge-with merge-source-ids
-                          {:table-ids #{id}}
-                          (when-not (or parent-source-card-id in-sandbox?)
-                            {:table-query-ids #{id}})
-                          (query->source-ids (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
-
-              {:native &truthy}
-              (when-not parent-source-card-id
-                {:native? true})
-
-              (:and m {:source-table (id :guard pos-int?)})
-              (merge-with merge-source-ids
-                          {:table-ids #{id}}
-                          (when-not (or parent-source-card-id in-sandbox?)
-                            {:table-query-ids #{id}})
-                          (query->source-ids (dissoc m :source-table) parent-source-card-id in-sandbox?)))))))
+  [query :- ::query]
+  (source-ids* query nil false))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
   only table ID information is needed. "
-  [query :- :map]
+  [query :- ::query]
   (when (seq query)
     (:table-ids (query->source-ids query))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).
   Useful when bulk loading cards from different databases."
@@ -219,13 +227,13 @@
   ([[preprocess-without-per-user-lens]]), so the result is identical for every user. THROWS when the
   query cannot be preprocessed — e.g. a card in the source chain has been deleted — so callers
   gating cached reads on it can fail closed instead of treating the query as touching nothing."
-  [query :- :map]
+  [query :- ::query]
   (when (seq query)
     (query->source-ids (preprocess-without-per-user-lens query))))
 
 (mu/defn query->resolved-source-table-ids :- [:maybe [:set ::lib.schema.id/table]]
   "The Table IDs of [[query->resolved-source-ids]]. Throws on an unpreprocessable query, as it does."
-  [query :- :map]
+  [query :- ::query]
   (:table-ids (query->resolved-source-ids query)))
 
 (defn- referenced-card-ids
@@ -370,7 +378,7 @@
                       :unrestricted
                       database-id
                       %)
-             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
+             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." (str %))
                                      {database-id {:perms/view-data {% :unrestricted}}})))
           table-ids)))
 
@@ -380,10 +388,25 @@
   (let [result-metadata (:result_metadata (card database-id card-id))]
     (check-result-metadata-data-perms database-id result-metadata)))
 
+(mr/def ::perm-value
+  "A required (or granted) permission level: either a single level, or a level per Table (Table 0 is a sentinel used
+  by [[legacy-mbql-required-perms]] for \"no such Table\" when perms calculation itself fails)."
+  [:or :keyword [:map-of [:or ::lib.schema.id/table [:= 0]] :keyword]])
+
+(mr/def ::required-perms
+  "The permissions required to run a query, as returned by [[required-perms-for-query]]."
+  [:map {:closed true}
+   [:paths                 {:optional true} [:set :string]]
+   [:card-ids              {:optional true} [:set ::lib.schema.id/card]]
+   [:perms/view-data       {:optional true} ::perm-value]
+   [:perms/create-queries  {:optional true} ::perm-value]])
+
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
   entire DB, false otherwise. Only throws if the permission format is incorrect."
-  [{db-id :database :as _query} perm-type required-perms]
+  [{db-id :database :as _query} :- ::query
+   perm-type                    :- [:enum :perms/view-data :perms/create-queries]
+   required-perms               :- ::required-perms]
   (boolean
    (if-let [db-or-table-perms (perm-type required-perms)]
      (cond
@@ -423,6 +446,11 @@
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
       (throw (perms-exception required-perms)))
+    ;; Native queries bypass sandboxing, so a user with an enforced sandbox on the database can't run them there, even
+    ;; if one of their groups grants native access.
+    (when (and (= :query-builder-and-native (:perms/create-queries required-perms))
+               (perms/sandboxed-user-for-db? (:database query)))
+      (throw (perms-exception required-perms)))
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
@@ -436,14 +464,14 @@
   being answered as one: a failure to work out which permissions `query` needs (otherwise logged at
   error and folded into the answer), and any other error the checks raise, such as a missing Card in
   [[check-card-read-perms]]. A denial still returns `false`."
-  ([query]
+  ([query :- ::query]
    (can-run-query? query false))
 
-  ([query :- :map
+  ([query :- ::query
     already-preprocessed? :- :boolean]
    (can-run-query? query already-preprocessed? false))
 
-  ([{database-id :database :as query} :- :map
+  ([{database-id :database :as query} :- ::query
     already-preprocessed?                :- :boolean
     throw-non-permission-errors?         :- :boolean]
    (try
@@ -485,27 +513,36 @@
 
 (mu/defn check-run-permissions-for-query
   "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
-  queries they wouldn't be allowed to run!"
-  [query :- :map]
-  {:pre [(map? query)]}
-  (let [query    (dissoc query :query-permissions/perms)
-        expanded (try
-                   (preprocess-query query)
-                   (catch Throwable _
-                     nil))
-        query    (or expanded query)
-        expanded? (some? expanded)]
-    (when-not (can-run-query? query expanded?)
-      (let [required-perms (try
-                             (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)
-                             (catch Throwable e
-                               e))]
-        (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                        {:status-code    403
-                         :query          query
-                         :required-perms (if (instance? Throwable required-perms)
-                                           :error
-                                           required-perms)
-                         :actual-perms   @api/*current-user-permissions-set*}
-                        (when (instance? Throwable required-perms)
-                          required-perms)))))))
+  queries they wouldn't be allowed to run!
+
+  Also rejects queries that reference `:sensitive` columns, unless `allow-sensitive-fields?` is set because `query`
+  is saved content being restored rather than a new query."
+  ([query :- ::query]
+   (check-run-permissions-for-query query nil))
+  ([query                             :- ::query
+    {:keys [allow-sensitive-fields?]} :- [:maybe [:map {:closed true}
+                                                  [:allow-sensitive-fields? {:optional true} :boolean]]]]
+   {:pre [(map? query)]}
+   (when-not allow-sensitive-fields?
+     (qp.sensitive-fields/check-query-can-be-saved! query))
+   (let [query    (dissoc query :query-permissions/perms)
+         expanded (try
+                    (preprocess-query query)
+                    (catch Throwable _
+                      nil))
+         query    (or expanded query)
+         expanded? (some? expanded)]
+     (when-not (can-run-query? query expanded?)
+       (let [required-perms (try
+                              (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)
+                              (catch Throwable e
+                                e))]
+         (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                         {:status-code    403
+                          :query          query
+                          :required-perms (if (instance? Throwable required-perms)
+                                            :error
+                                            required-perms)
+                          :actual-perms   @api/*current-user-permissions-set*}
+                         (when (instance? Throwable required-perms)
+                           required-perms))))))))

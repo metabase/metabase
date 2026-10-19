@@ -2,6 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.action-v2.execute-form :as data-editing.execute-form]
+   [metabase-enterprise.action-v2.schema :as action-v2.schema]
    [metabase.actions.core :as actions]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]
@@ -59,20 +60,7 @@
    [:fn {:error/message "value must be a scalar, or a sequence of scalars"}
     #(mr/validate strict-action-value-map %)]])
 
-(mr/def ::action-expression
-  "The internal representation used by our APIs, after we've parsed the relevant ids and fetched their configuration."
-  ;; Expected extensions:
-  ;; - data app actions (with their mappings)
-  ;; - action expressions (e.g., unsaved data app actions. might not need these with auto save)
-  ;; - dashboard buttons (unless we deprecate them instead)
-  [:or
-   [:map {:closed true}
-    [:model-action-id ms/PositiveInt]]
-   [:map {:closed true}
-    [:action-kw :keyword]
-    [:mapping [:maybe :map]]]])
-
-(mu/defn- fetch-unified-action :- ::action-expression
+(mu/defn- fetch-unified-action :- ::action-v2.schema/action-expression
   "Resolve various flavors of action-id into plain data, making it easier to dispatch on. Fetch config etc."
   [scope :- ::types/scope.hydrated
    raw   :- ::api-action-id-or-expression]

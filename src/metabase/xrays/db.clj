@@ -257,7 +257,7 @@
 
 (mu/defn other-card-ids-on-dashboards
   "The Card ids other than `card-id` of the DashboardCards of the Dashboards with `dashboard-ids`."
-  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
+  [dashboard-ids :- [:set ::lib.schema.id/dashboard]
    card-id       :- ::lib.schema.id/card]
   (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in dashboard-ids] :card_id [:not= card-id]))
 
@@ -274,9 +274,3 @@
   "The ModelIndex with `model-index-id`, or nil."
   [model-index-id :- ms/PositiveInt]
   (t2/select-one :model/ModelIndex model-index-id))
-
-(mu/defn model-index-value
-  "The ModelIndexValue of the ModelIndex with `model-index-id` for the model primary key `model-pk`, or nil."
-  [model-index-id :- ms/PositiveInt
-   model-pk       :- :int]
-  (t2/select-one :model/ModelIndexValue :model_index_id model-index-id :model_pk model-pk))

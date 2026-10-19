@@ -224,7 +224,6 @@ const elements = [
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
   createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
   createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
@@ -385,8 +384,6 @@ const elements = [
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
-    "frontend/src/metabase/app/selectors.ts",
-    "frontend/src/metabase/app/selectors.unit.spec.ts",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
@@ -400,6 +397,8 @@ const elements = [
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
+    "frontend/src/metabase/ScrollToTop.tsx",
+    "frontend/src/metabase/ScrollToTop.unit.spec.tsx",
     "frontend/src/metabase/static-viz/index.tsx",
     "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
@@ -428,12 +427,6 @@ const elements = [
         mode: "full",
       }),
   ),
-  createElement({
-    type: "shared",
-    name: "error-boundary",
-    pattern: "frontend/src/metabase/ErrorBoundary.tsx",
-    mode: "full",
-  }),
   createElement({
     type: "app",
     name: "routes-stable-id-aware",
@@ -587,4 +580,15 @@ export {
   enforcedRules,
   getFeatureModules,
   getPublicApiModules,
+};
+
+export const boundarySettings = {
+  "boundaries/elements": elements,
+  "boundaries/ignore": ["**/e2e/**", "test/**"],
+  "boundaries/dependency-nodes": ["import", "dynamic-import"],
+};
+export const boundaryOptions = {
+  default: "disallow",
+  rules: enforcedRules,
+  message: "${file.type} cannot import from ${dependency.type}",
 };

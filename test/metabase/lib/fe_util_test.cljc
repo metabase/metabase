@@ -166,7 +166,7 @@
         segments-db  {:segments [{:id          segment-id
                                   :name        segment-name
                                   :table-id    (meta/id :venues)
-                                  :definition  {}
+                                  :definition  nil
                                   :description segment-description}]}
         metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider segments-db)
         query (lib/query metadata-provider (meta/table-metadata :venues))
@@ -192,7 +192,7 @@
         metrics-db  {:segments [{:id          metric-id
                                  :name        metric-name
                                  :table-id    (meta/id :venues)
-                                 :definition  {}
+                                 :definition  nil
                                  :description metric-description}]}
         metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db)
         query (lib/query metadata-provider (meta/table-metadata :venues))
@@ -1193,7 +1193,8 @@
               "2024-05-13T16:35"]]
     (testing "Expandable temporal units"
       (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
-                                (#'lib.fe-util/expand-temporal-expression (update-temporal-unit expr unit)))
+                                (#'lib.fe-util/expand-temporal-expression {:start-of-week :sunday}
+                                                                          (update-temporal-unit expr unit)))
         :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
         :week "2024-05-12" "2024-05-18"
         :month "2024-05-01" "2024-05-31"
@@ -1216,7 +1217,7 @@
                                             (field-with-unit unit) value])]
       (are [unit value start end]
            (=? [:between map? [:field {:temporal-unit unit} int?] start end]
-               (#'lib.fe-util/expand-temporal-expression (expr-with unit value)))
+               (#'lib.fe-util/expand-temporal-expression {:start-of-week :sunday} (expr-with unit value)))
         :day   "2024-05-13T00:00:00Z"      "2024-05-13" "2024-05-13"
         :day   "2024-05-13T00:00:00+08:00" "2024-05-13" "2024-05-13"
         :day   "2024-05-13T00:00:00-08:00" "2024-05-13" "2024-05-13"
