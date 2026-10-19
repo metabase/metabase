@@ -1,14 +1,21 @@
 import { useDebouncedValue } from "@mantine/hooks";
-import { type ReactNode, useMemo } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import {
-  LIVE_FILTER_PREVIEW,
   LIVE_FILTER_PREVIEW_ANIMATION,
   LIVE_FILTER_PREVIEW_ANIMATION_MS,
   LIVE_FILTER_PREVIEW_DELAY_MS,
+  LIVE_FILTER_PREVIEW_MODE,
   LIVE_FILTER_PREVIEW_SLOW_DATA,
   usePrototypeSetting,
 } from "metabase/prototype";
@@ -18,112 +25,219 @@ import {
   type FilterPreviewProps,
 } from "metabase/querying/filters/components/FilterPicker/FilterPreviewContext";
 import { useSetting } from "metabase/settings";
-import { Box, Center, Flex, Loader, Stack, Text } from "metabase/ui";
-import { ChartAnimationContext } from "metabase/visualizations/components/EChartsRenderer/ChartAnimationContext";
+import { Box, Center, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
+import {
+  type ChartAnimation,
+  ChartAnimationContext,
+} from "metabase/visualizations/components/EChartsRenderer/ChartAnimationContext";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { PrototypeDataInfo, RawSeries } from "metabase-types/api";
+import type { Dataset, PrototypeDataInfo, RawSeries } from "metabase-types/api";
 
-const PREVIEW_WIDTH = 440;
-const CHART_HEIGHT = 280;
+const POPOVER_PREVIEW_WIDTH = 440;
+const POPOVER_CHART_HEIGHT = 280;
+
+interface MainChartPreview {
+  question: Question;
+  result: Dataset | null;
+  previewQuery: Lib.Query | null;
+}
+
+const MainChartPreviewContext = createContext<MainChartPreview | null>(null);
 
 interface FilterLivePreviewProviderProps {
   question: Question;
+  result: Dataset | null;
   children: ReactNode;
 }
 
 /**
- * Prototype: filter pickers inside this provider show a small live preview of
- * the question, with the filter they edit applied.
+ * Prototype: filter pickers inside this provider show a live preview of the
+ * question, with the filter they edit applied. Depending on the prototype
+ * setting, the preview shows next to the filter controls, or on the main
+ * chart (see [[useMainChartFilterPreview]]).
  */
 export function FilterLivePreviewProvider({
   question,
+  result,
   children,
 }: FilterLivePreviewProviderProps) {
-  const value = useMemo<FilterPreviewContextValue>(
+  const [mainPreviewQuery, setMainPreviewQuery] = useState<Lib.Query | null>(
+    null,
+  );
+
+  const filterPreview = useMemo<FilterPreviewContextValue>(
     () => ({
       renderPreview: (props) => (
-        <FilterLivePreview question={question} {...props} />
+        <FilterPreviewSlot
+          {...props}
+          question={question}
+          result={result}
+          onMainPreviewQueryChange={setMainPreviewQuery}
+        />
+      ),
+      renderFooterLabel: (props) => (
+        <MainChartPreviewFooterLabel {...props} question={question} />
       ),
     }),
-    [question],
+    [question, result],
+  );
+
+  const mainChartPreview = useMemo<MainChartPreview>(
+    () => ({ question, result, previewQuery: mainPreviewQuery }),
+    [question, result, mainPreviewQuery],
   );
 
   return (
-    <FilterPreviewContext.Provider value={value}>
-      {children}
+    <FilterPreviewContext.Provider value={filterPreview}>
+      <MainChartPreviewContext.Provider value={mainChartPreview}>
+        {children}
+      </MainChartPreviewContext.Provider>
     </FilterPreviewContext.Provider>
   );
 }
 
-interface FilterLivePreviewProps extends FilterPreviewProps {
+interface FilterPreviewSlotProps extends FilterPreviewProps {
+  question: Question;
+  result: Dataset | null;
+  onMainPreviewQueryChange: (query: Lib.Query | null) => void;
+}
+
+function FilterPreviewSlot({
+  question,
+  result,
+  query,
+  stageIndex,
+  filter,
+  draftFilter,
+  onMainPreviewQueryChange,
+}: FilterPreviewSlotProps) {
+  const previewQuery = useMemo(
+    () => getPreviewQuery(query, stageIndex, filter, draftFilter),
+    [query, stageIndex, filter, draftFilter],
+  );
+  const mode = usePreviewMode(previewQuery);
+
+  if (mode === "off") {
+    return null;
+  }
+
+  if (mode === "main-chart") {
+    return (
+      <MainChartPreviewReporter
+        previewQuery={previewQuery}
+        onChange={onMainPreviewQueryChange}
+      />
+    );
+  }
+
+  return (
+    <PopoverFilterPreview
+      question={question}
+      result={result}
+      previewQuery={previewQuery}
+      hasDraft={draftFilter != null}
+    />
+  );
+}
+
+/** The preview mode from the prototype setting, or "off" for slow data. */
+function usePreviewMode(previewQuery: Lib.Query): string {
+  const [mode] = usePrototypeSetting(LIVE_FILTER_PREVIEW_MODE);
+  const [isEnabledForSlowData] = usePrototypeSetting(
+    LIVE_FILTER_PREVIEW_SLOW_DATA,
+  );
+  const prototypeData = useSetting("prototype-data");
+  const isSlow = useMemo(
+    () => readsSlowTable(previewQuery, prototypeData),
+    [previewQuery, prototypeData],
+  );
+  return isSlow && !isEnabledForSlowData ? "off" : mode;
+}
+
+interface MainChartPreviewFooterLabelProps extends FilterPreviewProps {
   question: Question;
 }
 
-function FilterLivePreview({
+// In the main chart mode, the label tells that the main chart shows a preview.
+// It keeps its space while hidden, so the footer does not move.
+function MainChartPreviewFooterLabel({
   question,
   query,
   stageIndex,
   filter,
   draftFilter,
-}: FilterLivePreviewProps) {
-  const [isEnabled] = usePrototypeSetting(LIVE_FILTER_PREVIEW);
-  const [delayMs] = usePrototypeSetting(LIVE_FILTER_PREVIEW_DELAY_MS);
-  const [isEnabledForSlowData] = usePrototypeSetting(
-    LIVE_FILTER_PREVIEW_SLOW_DATA,
-  );
-  const [isAnimated] = usePrototypeSetting(LIVE_FILTER_PREVIEW_ANIMATION);
-  const [animationMs] = usePrototypeSetting(LIVE_FILTER_PREVIEW_ANIMATION_MS);
-  const chartAnimation = useMemo(
-    () => (isAnimated ? { durationMs: animationMs } : null),
-    [isAnimated, animationMs],
-  );
-  const prototypeData = useSetting("prototype-data");
-
+}: MainChartPreviewFooterLabelProps) {
   const previewQuery = useMemo(
     () => getPreviewQuery(query, stageIndex, filter, draftFilter),
     [query, stageIndex, filter, draftFilter],
   );
-  const isSlow = useMemo(
-    () => readsSlowTable(previewQuery, prototypeData),
-    [previewQuery, prototypeData],
-  );
-  const isVisible = isEnabled && (!isSlow || isEnabledForSlowData);
-
-  const [debouncedQuery] = useDebouncedValue(previewQuery, delayMs);
-  const isDebouncing = debouncedQuery !== previewQuery;
-  const jsQuery = useMemo(
-    () => Lib.toJsQuery(debouncedQuery),
-    [debouncedQuery],
+  const mode = usePreviewMode(previewQuery);
+  const isPreview = useMemo(
+    () => !areQueriesEqual(previewQuery, question.query()),
+    [previewQuery, question],
   );
 
-  const { data, error, isFetching } = useGetAdhocQueryQuery(
-    isVisible ? { ...jsQuery, ignore_error: true } : skipToken,
-  );
-
-  const rawSeries = useMemo((): RawSeries | undefined => {
-    if (!data?.data || data.status === "failed") {
-      return undefined;
-    }
-    const card = question.setQuery(debouncedQuery).card();
-    return [{ card, data: data.data }];
-  }, [data, question, debouncedQuery]);
-
-  if (!isVisible) {
+  if (mode !== "main-chart") {
     return null;
   }
 
-  const errorMessage = error
-    ? getErrorMessage(error)
-    : data?.status === "failed"
-      ? t`The preview query failed`
-      : undefined;
-  const isUpdating = isFetching || isDebouncing;
+  return (
+    <Flex
+      align="center"
+      gap="xs"
+      c="core-brand"
+      style={{ visibility: isPreview ? "visible" : "hidden" }}
+      data-testid="main-chart-preview-label"
+    >
+      <Icon name="eye" />
+      <Text c="core-brand" fw="bold" size="sm">
+        {t`Live preview until you apply`}
+      </Text>
+    </Flex>
+  );
+}
+
+interface MainChartPreviewReporterProps {
+  previewQuery: Lib.Query;
+  onChange: (query: Lib.Query | null) => void;
+}
+
+// While the filter picker is open, the main chart shows its preview. When the
+// picker closes, with or without applying the filter, the main chart comes back.
+function MainChartPreviewReporter({
+  previewQuery,
+  onChange,
+}: MainChartPreviewReporterProps) {
+  useEffect(() => {
+    onChange(previewQuery);
+  }, [previewQuery, onChange]);
+
+  useEffect(() => () => onChange(null), [onChange]);
+
+  return null;
+}
+
+interface PopoverFilterPreviewProps {
+  question: Question;
+  result: Dataset | null;
+  previewQuery: Lib.Query;
+  hasDraft: boolean;
+}
+
+function PopoverFilterPreview({
+  question,
+  result,
+  previewQuery,
+  hasDraft,
+}: PopoverFilterPreviewProps) {
+  const { rawSeries, errorMessage, isUpdating, chartAnimation } =
+    usePreviewSeries(question, result, previewQuery);
 
   return (
     <Stack
-      w={PREVIEW_WIDTH}
+      w={POPOVER_PREVIEW_WIDTH}
       p="md"
       gap="sm"
       bg="background_page-secondary"
@@ -132,39 +246,26 @@ function FilterLivePreview({
     >
       <Flex justify="space-between" align="center">
         <Text fw="bold" size="sm" c="text-secondary">
-          {draftFilter ? t`Preview` : t`Current result`}
+          {hasDraft ? t`Preview` : t`Current result`}
         </Text>
         {isUpdating && <Loader size="xs" />}
       </Flex>
       <Box
-        h={CHART_HEIGHT}
+        h={POPOVER_CHART_HEIGHT}
         pos="relative"
         bg="background_page-primary"
         style={{
           borderRadius: "var(--mantine-radius-md)",
-          opacity: isUpdating && rawSeries && !isAnimated ? 0.6 : 1,
+          opacity: isUpdating && rawSeries && !chartAnimation ? 0.6 : 1,
           transition: "opacity 150ms",
         }}
       >
-        {errorMessage ? (
-          <Center h="100%" p="md">
-            <Text c="text-secondary" ta="center">
-              {errorMessage}
-            </Text>
-          </Center>
-        ) : rawSeries ? (
-          <ChartAnimationContext.Provider value={chartAnimation}>
-            <Visualization
-              rawSeries={rawSeries}
-              isDashboard
-              showTitle={false}
-            />
-          </ChartAnimationContext.Provider>
-        ) : (
-          <Center h="100%">
-            <Loader />
-          </Center>
-        )}
+        <PreviewChart
+          rawSeries={rawSeries}
+          errorMessage={errorMessage}
+          chartAnimation={chartAnimation}
+          isDashboard
+        />
       </Box>
       {rawSeries && (
         <Text size="xs" c="text-secondary">
@@ -173,6 +274,247 @@ function FilterLivePreview({
       )}
     </Stack>
   );
+}
+
+// How long to wait, after the picker closes, for the question to change to the
+// previewed query. updateQuestion is async, so it can come a render later.
+const APPLY_GRACE_MS = 150;
+
+interface HeldPreview {
+  series: RawSeries;
+  result: Dataset | null;
+}
+
+export interface MainChartFilterPreviewState {
+  /** The series for the main chart, or undefined to show its own result. */
+  rawSeries: RawSeries | undefined;
+  /** Chart animation for the main chart while the preview changes it. */
+  chartAnimation: ChartAnimation | null;
+  isUpdating: boolean;
+}
+
+/**
+ * Prototype: what the main chart of the query builder shows while a filter
+ * picker previews on it. The main chart keeps its own result until the preview
+ * differs from it, so that opening a filter picker does not change the chart.
+ * When the picker closes without applying, the chart animates back. When it
+ * closes because the filter was applied, the preview stays until the new
+ * result of the question arrives, so the chart does not jump back first.
+ */
+export function useMainChartFilterPreview(): MainChartFilterPreviewState {
+  const mainChartPreview = useContext(MainChartPreviewContext);
+  const question = mainChartPreview?.question ?? null;
+  const result = mainChartPreview?.result ?? null;
+  const previewQuery = mainChartPreview?.previewQuery ?? null;
+
+  const { rawSeries, isQuestionQuery, isUpdating, chartAnimation } =
+    usePreviewSeries(question, result, previewQuery);
+  const previewSeries =
+    previewQuery != null && !isQuestionQuery ? rawSeries : undefined;
+
+  // The last preview the main chart showed, while it differs from the question.
+  const [shownSeries, setShownSeries] = useState<RawSeries>();
+  // A preview that stays on screen after the filter was applied, until the
+  // question has its new result.
+  const [held, setHeld] = useState<HeldPreview | null>(null);
+  // The picker closed: wait a moment to see if it applied the filter.
+  const [isClosing, setIsClosing] = useState(false);
+  const [isAnimatingBack, setIsAnimatingBack] = useState(false);
+  const [lastQuestion, setLastQuestion] = useState(question);
+  const [lastPreviewQuery, setLastPreviewQuery] = useState(previewQuery);
+
+  // These run during render on purpose: the chart must keep the preview in the
+  // same render in which the filter is applied, or it jumps back for a frame.
+  if (previewSeries != null && previewSeries !== shownSeries) {
+    setShownSeries(previewSeries);
+  }
+  if (previewQuery != null && previewSeries == null && shownSeries != null) {
+    // Back to the question's own query while the picker is still open.
+    if (question === lastQuestion) {
+      setShownSeries(undefined);
+    }
+  }
+  if (question !== lastQuestion) {
+    const isApplied =
+      shownSeries != null &&
+      lastQuestion != null &&
+      question != null &&
+      !areQueriesEqual(question.query(), lastQuestion.query());
+    if (isApplied) {
+      setHeld({ series: shownSeries, result });
+      setShownSeries(undefined);
+      setIsClosing(false);
+    }
+    setLastQuestion(question);
+  }
+  if (previewQuery !== lastPreviewQuery) {
+    if (previewQuery == null && shownSeries != null && held == null) {
+      setIsClosing(true);
+    }
+    setLastPreviewQuery(previewQuery);
+  }
+
+  // Applied: release the preview when the question has its new result.
+  useEffect(() => {
+    if (held != null && result != null && result !== held.result) {
+      setHeld(null);
+    }
+  }, [held, result]);
+
+  // Closed without applying: the chart animates back to its own result.
+  useEffect(() => {
+    if (!isClosing) {
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      setIsClosing(false);
+      setShownSeries(undefined);
+      setIsAnimatingBack(true);
+    }, APPLY_GRACE_MS);
+    return () => clearTimeout(timeoutId);
+  }, [isClosing]);
+
+  useEffect(() => {
+    if (!isAnimatingBack) {
+      return;
+    }
+    const timeoutId = setTimeout(
+      () => setIsAnimatingBack(false),
+      (chartAnimation?.durationMs ?? 0) + 100,
+    );
+    return () => clearTimeout(timeoutId);
+  }, [isAnimatingBack, chartAnimation]);
+
+  const isActive =
+    previewQuery != null || held != null || isClosing || isAnimatingBack;
+  return {
+    rawSeries:
+      previewSeries ??
+      held?.series ??
+      (isClosing || previewQuery != null ? shownSeries : undefined),
+    chartAnimation: isActive ? chartAnimation : null,
+    isUpdating: previewQuery != null && isUpdating,
+  };
+}
+
+interface PreviewChartProps {
+  rawSeries: RawSeries | undefined;
+  errorMessage: string | undefined;
+  chartAnimation: ChartAnimation | null;
+  isDashboard?: boolean;
+}
+
+function PreviewChart({
+  rawSeries,
+  errorMessage,
+  chartAnimation,
+  isDashboard,
+}: PreviewChartProps) {
+  if (errorMessage) {
+    return (
+      <Center h="100%" p="md">
+        <Text c="text-secondary" ta="center">
+          {errorMessage}
+        </Text>
+      </Center>
+    );
+  }
+  if (!rawSeries) {
+    return (
+      <Center h="100%">
+        <Loader />
+      </Center>
+    );
+  }
+  return (
+    <ChartAnimationContext.Provider value={chartAnimation}>
+      <Visualization
+        rawSeries={rawSeries}
+        isDashboard={isDashboard}
+        showTitle={false}
+      />
+    </ChartAnimationContext.Provider>
+  );
+}
+
+/**
+ * The series to show for `previewQuery`: the question's own result while the
+ * query is unchanged (or there is no preview query), otherwise the result of an
+ * ad-hoc query, after the prototype delay. While a new result loads, the last
+ * one stays on screen.
+ */
+function usePreviewSeries(
+  question: Question | null,
+  result: Dataset | null,
+  previewQuery: Lib.Query | null,
+) {
+  const [delayMs] = usePrototypeSetting(LIVE_FILTER_PREVIEW_DELAY_MS);
+  const [isAnimated] = usePrototypeSetting(LIVE_FILTER_PREVIEW_ANIMATION);
+  const [animationMs] = usePrototypeSetting(LIVE_FILTER_PREVIEW_ANIMATION_MS);
+  const chartAnimation = useMemo(
+    () => (isAnimated ? { durationMs: animationMs } : null),
+    [isAnimated, animationMs],
+  );
+
+  const [debouncedQuery] = useDebouncedValue(previewQuery, delayMs);
+  const isDebouncing = debouncedQuery !== previewQuery;
+  const isQuestionQuery = useMemo(
+    () =>
+      question == null ||
+      debouncedQuery == null ||
+      areQueriesEqual(debouncedQuery, question.query()),
+    [debouncedQuery, question],
+  );
+  const jsQuery = useMemo(
+    () =>
+      !isQuestionQuery && debouncedQuery != null
+        ? Lib.toJsQuery(debouncedQuery)
+        : null,
+    [isQuestionQuery, debouncedQuery],
+  );
+
+  const { data, error, isFetching } = useGetAdhocQueryQuery(
+    jsQuery != null ? { ...jsQuery, ignore_error: true } : skipToken,
+  );
+
+  const rawSeries = useMemo((): RawSeries | undefined => {
+    if (question == null) {
+      return undefined;
+    }
+    if (isQuestionQuery || debouncedQuery == null) {
+      return result?.data
+        ? [{ card: question.card(), data: result.data }]
+        : undefined;
+    }
+    if (!data?.data || data.status === "failed") {
+      return undefined;
+    }
+    return [
+      { card: question.setQuery(debouncedQuery).card(), data: data.data },
+    ];
+  }, [isQuestionQuery, result, data, question, debouncedQuery]);
+
+  const [lastRawSeries, setLastRawSeries] = useState(rawSeries);
+  useEffect(() => {
+    if (rawSeries) {
+      setLastRawSeries(rawSeries);
+    }
+  }, [rawSeries]);
+
+  const errorMessage =
+    !isQuestionQuery && error
+      ? getErrorMessage(error)
+      : !isQuestionQuery && data?.status === "failed"
+        ? t`The preview query failed`
+        : undefined;
+
+  return {
+    rawSeries: rawSeries ?? lastRawSeries,
+    isQuestionQuery: isQuestionQuery && !isDebouncing,
+    errorMessage,
+    isUpdating: isDebouncing || (!isQuestionQuery && isFetching),
+    chartAnimation,
+  };
 }
 
 function getPreviewQuery(
@@ -189,6 +531,15 @@ function getPreviewQuery(
       ? Lib.replaceClause(query, stageIndex, filter, draftFilter)
       : Lib.filter(query, stageIndex, draftFilter);
   return Lib.dropEmptyStages(queryWithFilter);
+}
+
+// Pickers build new clauses, with new ids and slightly different field refs,
+// so the same filter must be compared by meaning, not by value.
+function areQueriesEqual(query1: Lib.Query, query2: Lib.Query): boolean {
+  return Lib.areLegacyQueriesEqual(
+    Lib.toJsQuery(query1),
+    Lib.toJsQuery(query2),
+  );
 }
 
 function readsSlowTable(

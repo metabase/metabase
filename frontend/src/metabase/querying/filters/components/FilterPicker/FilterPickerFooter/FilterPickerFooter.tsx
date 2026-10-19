@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { isValidElement } from "react";
+import { isValidElement, useContext } from "react";
 
 import { Box, Flex } from "metabase/ui";
 
+import { FilterFooterLabelContext } from "../FilterPreviewContext";
 import { FilterSubmitButton } from "../FilterSubmitButton";
 
 import S from "./FilterPickerFooter.module.css";
@@ -24,6 +25,8 @@ export function FilterPickerFooter({
   children,
   onAddButtonClick,
 }: FilterPickerFooterProps) {
+  const footerLabel = useContext(FilterFooterLabelContext);
+
   if (!isValidElement(children) && !withSubmitButton) {
     return null;
   }
@@ -35,7 +38,7 @@ export function FilterPickerFooter({
       justify="space-between"
       data-filter-picker-footer
     >
-      {isValidElement(children) ? children : <Box />}
+      {isValidElement(children) ? children : (footerLabel ?? <Box />)}
 
       {withSubmitButton && (
         <FilterSubmitButton

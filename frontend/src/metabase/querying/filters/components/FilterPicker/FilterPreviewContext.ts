@@ -13,6 +13,8 @@ export interface FilterPreviewProps {
 
 export interface FilterPreviewContextValue {
   renderPreview: (props: FilterPreviewProps) => ReactNode;
+  /** Shown at the left of the picker footer, next to the submit button. */
+  renderFooterLabel?: (props: FilterPreviewProps) => ReactNode;
 }
 
 /**
@@ -21,3 +23,6 @@ export interface FilterPreviewContextValue {
  */
 export const FilterPreviewContext =
   createContext<FilterPreviewContextValue | null>(null);
+
+/** The footer label from [[FilterPreviewContextValue]] for the current picker. */
+export const FilterFooterLabelContext = createContext<ReactNode>(null);

@@ -2,15 +2,21 @@ import type {
   BooleanPrototypeSetting,
   NumberPrototypeSetting,
   PrototypeSetting,
+  SegmentedPrototypeSetting,
 } from "./types";
 
-export const LIVE_FILTER_PREVIEW: BooleanPrototypeSetting = {
-  type: "boolean",
-  key: "live-filter-preview",
+export const LIVE_FILTER_PREVIEW_MODE: SegmentedPrototypeSetting = {
+  type: "segmented",
+  key: "live-filter-preview-mode",
   label: "Live filter preview",
   description:
-    "Show the question next to the filter controls, with the filter applied as you change it",
-  defaultValue: true,
+    "Where to show the question with the filter applied as you change it: next to the filter controls, or instead of the main chart",
+  options: [
+    { value: "off", label: "Off" },
+    { value: "popover", label: "Popover" },
+    { value: "main-chart", label: "Main chart" },
+  ],
+  defaultValue: "popover",
 };
 
 export const LIVE_FILTER_PREVIEW_DELAY_MS: NumberPrototypeSetting = {
@@ -56,7 +62,7 @@ export const LIVE_FILTER_PREVIEW_ANIMATION_MS: NumberPrototypeSetting = {
  * reads them with `usePrototypeSetting`. See PROTOTYPE.md.
  */
 export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
-  LIVE_FILTER_PREVIEW,
+  LIVE_FILTER_PREVIEW_MODE,
   LIVE_FILTER_PREVIEW_DELAY_MS,
   LIVE_FILTER_PREVIEW_SLOW_DATA,
   LIVE_FILTER_PREVIEW_ANIMATION,
