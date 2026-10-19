@@ -9,6 +9,9 @@ import type { IconName } from "metabase-types/api";
 
 import S from "./Breadcrumb.module.css";
 
+/** For a single-line flex trail: its direct `Breadcrumb` children truncate the longest crumbs first. */
+export const BREADCRUMB_TRAIL_CLASS_NAME = S.trail;
+
 interface Props {
   children: ReactNode;
   className?: string;

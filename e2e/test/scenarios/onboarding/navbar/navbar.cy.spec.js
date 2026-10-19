@@ -6,7 +6,7 @@ import {
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > navigation > navbar", () => {
   describe("Normal user", () => {
@@ -83,6 +83,54 @@ describe("scenarios > navigation > navbar", () => {
     });
   });
 
+  describe("app bar breadcrumbs", () => {
+    const LONG_COLLECTION_NAME = "A collection with a very long name "
+      .repeat(4)
+      .trim();
+
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should keep short breadcrumbs readable next to a very long one (#79984)", () => {
+      H.createCollection({ name: "Examples" })
+        .then(({ body: parent }) =>
+          H.createCollection({
+            name: LONG_COLLECTION_NAME,
+            parent_id: parent.id,
+          }),
+        )
+        .then(({ body: collection }) =>
+          H.createQuestion(
+            {
+              name: "People model",
+              type: "model",
+              collection_id: collection.id,
+              query: { "source-table": PEOPLE_ID },
+            },
+            { wrapId: true, idAlias: "modelId" },
+          ),
+        );
+
+      cy.log("Collection path on the model page");
+      cy.get("@modelId").then((modelId) => H.visitModel(modelId));
+      assertBreadcrumbIsNotTruncated("Examples");
+      assertBreadcrumbIsTruncated(LONG_COLLECTION_NAME);
+      H.appBar().findByText(LONG_COLLECTION_NAME).realHover();
+      H.tooltip().should("be.visible").and("have.text", LONG_COLLECTION_NAME);
+
+      cy.log("Full trail in the object detail view");
+      cy.get("@modelId").then((modelId) => H.DetailView.visitModel(modelId, 1));
+      assertBreadcrumbIsNotTruncated("Examples");
+      assertBreadcrumbIsNotTruncated("People model");
+      assertBreadcrumbIsNotTruncated("Hudson Borer");
+      assertBreadcrumbIsTruncated(LONG_COLLECTION_NAME);
+      H.appBar().findByText(LONG_COLLECTION_NAME).realHover();
+      H.tooltip().should("be.visible").and("have.text", LONG_COLLECTION_NAME);
+    });
+  });
+
   describe("EE", () => {
     beforeEach(() => {
       H.restore();
@@ -123,3 +171,17 @@ describe("scenarios > navigation > navbar", () => {
     });
   });
 });
+
+function assertBreadcrumbIsNotTruncated(name) {
+  H.appBar()
+    .findByText(name)
+    .should("be.visible")
+    .and(($element) => H.assertIsNotEllipsified($element[0]));
+}
+
+function assertBreadcrumbIsTruncated(name) {
+  H.appBar()
+    .findByText(name)
+    .should("be.visible")
+    .and(($element) => H.assertIsEllipsified($element[0]));
+}

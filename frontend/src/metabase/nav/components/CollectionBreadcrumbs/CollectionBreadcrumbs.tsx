@@ -15,6 +15,7 @@ export interface CollectionBreadcrumbsProps {
   dashboard?: Dashboard;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
+  truncateLongestFirst?: boolean;
 }
 
 export const CollectionBreadcrumbs = ({
@@ -22,6 +23,7 @@ export const CollectionBreadcrumbs = ({
   dashboard,
   onClick,
   baseCollectionId = null,
+  truncateLongestFirst,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const tc = useTranslateContent();
 
@@ -43,6 +45,7 @@ export const CollectionBreadcrumbs = ({
             }
           : undefined
       }
+      truncateLongestFirst={truncateLongestFirst}
     />
   );
 };
