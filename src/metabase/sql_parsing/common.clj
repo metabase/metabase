@@ -1,6 +1,7 @@
 (ns metabase.sql-parsing.common
   "Shared helpers for pooled sqlglot parsers (see [[metabase.sql-parsing.graal]]): the python-sources
-  locations, the lazy dev sqlglot install, and the protocol reify over a transport function."
+  locations, the lazy dev sqlglot install, and the protocol reify over a transport function. Also
+  [[call-failed-ex]], which every parser backend throws."
   (:require
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
@@ -109,9 +110,9 @@
 ;;; ------------------------------------------------- parser ----------------------------------------------
 
 (defn call-failed-ex
-  "The uniform exception for a Python-side sqlglot failure, thrown by every transport so callers can
-  handle parse errors without knowing which backend ran ([[metabase.sql-parsing.core/parse-error?]]).
-  `error` is the Python error rendered as `ErrorType: message`."
+  "The uniform exception for a failed sqlglot call, thrown by every backend so callers can handle parse
+  errors without knowing which ran ([[metabase.sql-parsing.core/parse-error?]]). `error` is rendered as
+  `ErrorType: message`, with the Python error name where one applies."
   ([error]
    (call-failed-ex error nil))
   ([error cause]

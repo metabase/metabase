@@ -1,18 +1,18 @@
 (ns metabase.sql-tools.settings
   "Settings for the sql-tools module.
 
-  ## Swapping Between Macaw and SQLGlot
+  ## Choosing the SQL parser backend
 
   The SQL parser backend can be switched using the `MB_SQL_TOOLS_PARSER_BACKEND` env var:
 
   ```bash
-  # Use SQLGlot (default)
+  # SQLGlot on GraalPy (default)
   MB_SQL_TOOLS_PARSER_BACKEND=sqlglot
 
-  # Use the Java SQLGlot port
+  # SQLGlot, Java port (opt-in)
   MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java
 
-  # Use Macaw (legacy)
+  # Macaw (legacy)
   MB_SQL_TOOLS_PARSER_BACKEND=macaw
   ```
 
