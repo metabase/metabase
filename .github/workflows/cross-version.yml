@@ -20,6 +20,9 @@ on:
         required: true
         type: string
 
+env:
+  MIGRATION_GRACE_DAYS: 3
+
 jobs:
   generate-test-matrix:
     if: inputs.source_version == '' && github.repository == 'metabase/metabase'
@@ -60,7 +63,13 @@ jobs:
             const supportedMajors = await getSupportedMajors();
             console.log("supported majors:", supportedMajors);
 
-            await generateCrossVersionMatrix({ core, github, context, supportedMajors });
+            await generateCrossVersionMatrix({
+              core,
+              github,
+              context,
+              supportedMajors,
+              graceDays: process.env.MIGRATION_GRACE_DAYS,
+            });
 
   notify-unreleased-migrations:
     needs: generate-test-matrix
@@ -92,6 +101,7 @@ jobs:
               context,
               core,
               changesets: JSON.parse(process.env.CHANGESETS),
+              graceDays: process.env.MIGRATION_GRACE_DAYS,
               channelName: process.env.SLACK_RELEASE_CHANNEL,
               findSlackMessage,
               sendSlackMessage,

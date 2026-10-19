@@ -79,24 +79,19 @@ function excludeBlockedDowngrades(config, blockedMajors) {
 
 const MIGRATIONS_DIR = "resources/migrations";
 const MASTER_BRANCH = "master";
-const DEFAULT_GRACE_DAYS = 3;
 const GRAPHQL_BATCH_SIZE = 50;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function releaseBranch(major) {
-  return `release-x.${major}.x`;
+function releaseTag(major) {
+  return `v0.${major}.x`;
 }
 
 function locationKey({ ref, path }) {
   return `${ref}:${path}`;
 }
 
-function uniqueLocations(locations) {
-  return [
-    ...new Map(
-      locations.map((location) => [locationKey(location), location]),
-    ).values(),
-  ];
+function isMigrationFile(filePath) {
+  return /\.ya?ml$/.test(filePath);
 }
 
 function parseChangesetIds(text) {
@@ -109,21 +104,14 @@ function changesetIdSet(text) {
   return new Set(text ? parseChangesetIds(text).map(({ id }) => id) : []);
 }
 
-function latestReleaseTag(tagNames, major) {
-  const pattern = new RegExp(`^v0\\.${major}\\.(\\d+)(?:\\.(\\d+))?(-beta)?$`);
-  const versions = tagNames.flatMap((name) => {
-    const match = name.match(pattern);
-    if (!match) {
-      return [];
-    }
-    const [, patch, build = "0", beta] = match;
-    return [{ name, key: [Number(patch), Number(build), beta ? 0 : 1] }];
-  });
-  const compareVersions = (a, b) => {
-    const index = a.key.findIndex((part, i) => part !== b.key[i]);
-    return index === -1 ? 0 : a.key[index] - b.key[index];
-  };
-  return versions.sort((a, b) => compareVersions(b, a))[0]?.name ?? null;
+function parseGraceDays(value) {
+  const graceDays = Number(value);
+  if (value === undefined || value === "" || !(graceDays >= 0)) {
+    throw new Error(
+      `Invalid grace period: ${JSON.stringify(value)}. Set MIGRATION_GRACE_DAYS to a number of days.`,
+    );
+  }
+  return graceDays;
 }
 
 function readHeadMigrations(repoRoot = path.join(__dirname, "../..")) {
@@ -137,9 +125,7 @@ function readHeadMigrations(repoRoot = path.join(__dirname, "../..")) {
   } catch (error) {
     throw new Error(
       `Could not list ${MIGRATIONS_DIR} at HEAD: ${error.message}`,
-      {
-        cause: error,
-      },
+      { cause: error },
     );
   }
   return listing
@@ -152,7 +138,7 @@ function readHeadMigrations(repoRoot = path.join(__dirname, "../..")) {
     })
     .filter(
       ({ type, path: filePath }) =>
-        type === "blob" && /\.ya?ml$/.test(filePath),
+        type === "blob" && isMigrationFile(filePath),
     )
     .map(({ oid, path: filePath }) => ({
       path: filePath,
@@ -161,20 +147,18 @@ function readHeadMigrations(repoRoot = path.join(__dirname, "../..")) {
     }));
 }
 
-function flattenTree(tree) {
-  const oids = new Map();
-  for (const entry of tree.entries) {
-    if (entry.type === "blob") {
-      oids.set(entry.path, entry.oid);
-    } else if (entry.type === "tree") {
-      for (const child of entry.object?.entries ?? []) {
-        if (child.type === "blob") {
-          oids.set(child.path, child.oid);
-        }
-      }
-    }
-  }
-  return oids;
+function migrationFileOids(tree) {
+  const entries = tree.entries.flatMap((entry) =>
+    entry.type === "tree" ? (entry.object?.entries ?? []) : [entry],
+  );
+  return new Map(
+    entries
+      .filter(
+        ({ type, path: filePath }) =>
+          type === "blob" && isMigrationFile(filePath),
+      )
+      .map(({ path: filePath, oid }) => [filePath, oid]),
+  );
 }
 
 function createGithubReader({ github, owner, repo }) {
@@ -209,22 +193,6 @@ function createGithubReader({ github, owner, repo }) {
     `object(expression: ${JSON.stringify(expression)}) { ${selection} }`;
 
   return {
-    async tagNames(majors) {
-      const results = await queryRepository(
-        "release tags",
-        majors.map(
-          (major) =>
-            `refs(refPrefix: "refs/tags/", query: ${JSON.stringify(`v0.${major}.`)}, first: 100, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) { nodes { name } }`,
-        ),
-      );
-      return new Map(
-        majors.map((major, index) => [
-          major,
-          results[index].refs.nodes.map(({ name }) => name),
-        ]),
-      );
-    },
-
     async trees(refs) {
       const results = await queryRepository(
         `${MIGRATIONS_DIR} trees`,
@@ -238,7 +206,7 @@ function createGithubReader({ github, owner, repo }) {
       return new Map(
         refs.map((ref, index) => {
           const tree = results[index].object;
-          return [ref, tree ? flattenTree(tree) : null];
+          return [ref, tree ? migrationFileOids(tree) : null];
         }),
       );
     },
@@ -261,13 +229,13 @@ function createGithubReader({ github, owner, repo }) {
       );
     },
 
-    async histories(locations) {
+    async histories(locations, since) {
       const results = await queryRepository(
         "migration file history",
         locations.map(({ ref, path: filePath }) =>
           objectAt(
             ref,
-            `... on Commit { history(path: ${JSON.stringify(filePath)}, first: 100) { nodes { oid committedDate associatedPullRequests(first: 5) { nodes { number url mergedAt baseRefName } } } } }`,
+            `... on Commit { recent: history(path: ${JSON.stringify(filePath)}, since: ${JSON.stringify(since)}, first: 100) { nodes { oid associatedPullRequests(first: 5) { nodes { number url mergedAt baseRefName } } } } before: history(path: ${JSON.stringify(filePath)}, until: ${JSON.stringify(since)}, first: 1) { nodes { oid } } }`,
           ),
         ),
       );
@@ -279,11 +247,13 @@ function createGithubReader({ github, owner, repo }) {
           }
           return [
             locationKey(location),
-            commit.history.nodes.map((node) => ({
-              sha: node.oid,
-              committedDate: node.committedDate,
-              prs: node.associatedPullRequests.nodes,
-            })),
+            {
+              before: commit.before.nodes[0]?.oid ?? null,
+              recent: commit.recent.nodes.map((node) => ({
+                sha: node.oid,
+                prs: node.associatedPullRequests.nodes,
+              })),
+            },
           ];
         }),
       );
@@ -302,173 +272,97 @@ function majorsToCheck({ supportedMajors, headFiles }) {
   return Array.from({ length: newest - oldest + 1 }, (_, i) => oldest + i);
 }
 
-async function resolveReleases({ majors, newestSupportedMajor, reader }) {
-  const tagNames = await reader.tagNames(majors);
-  const failures = {};
+async function readReleases({ majors, newestSupportedMajor, reader }) {
+  const trees = await reader.trees(majors.map(releaseTag));
   const releases = [];
+  const failures = {};
   for (const major of majors) {
-    const tag = latestReleaseTag(tagNames.get(major) ?? [], major);
-    if (tag) {
-      releases.push({ major, tag, branch: releaseBranch(major) });
+    const tag = releaseTag(major);
+    const tree = trees.get(tag);
+    if (tree) {
+      releases.push({ major, tag, tree });
     } else if (major <= newestSupportedMajor) {
-      failures[major] = `No v0.${major}.x release tag found`;
+      failures[major] = `Could not read ${MIGRATIONS_DIR} at ${tag}`;
     }
   }
-
-  const trees = await reader.trees(
-    releases.flatMap(({ tag, branch }) => [tag, branch]),
-  );
-  const resolved = [];
-  for (const release of releases) {
-    const missingRef = [release.tag, release.branch].find(
-      (ref) => !trees.get(ref),
-    );
-    if (missingRef) {
-      failures[release.major] =
-        `Could not read ${MIGRATIONS_DIR} at ${missingRef}`;
-    } else {
-      resolved.push({
-        ...release,
-        tagTree: trees.get(release.tag),
-        branchTree: trees.get(release.branch),
-      });
-    }
-  }
-  return { releases: resolved, failures };
-}
-
-function isMigrationFile(filePath) {
-  return /\.ya?ml$/.test(filePath);
+  return { releases, failures };
 }
 
 async function findPendingIds({ headFiles, releases, reader }) {
-  const headOids = new Map(headFiles.map((file) => [file.path, file.oid]));
-  const headIds = new Map(
-    headFiles.map((file) => [file.path, changesetIdSet(file.text)]),
+  const idsByOid = new Map(
+    headFiles.map((file) => [file.oid, changesetIdSet(file.text)]),
   );
-  const headChangesets = headFiles.flatMap((file) =>
-    parseChangesetIds(file.text).map(({ id, major }) => ({
-      id,
-      major,
-      file: file.path,
-    })),
-  );
-
-  const refs = releases.flatMap(
-    ({ major, tag, branch, tagTree, branchTree }) => {
-      const headPaths = new Set(
-        headChangesets
-          .filter((changeset) => changeset.major === major)
-          .map(({ file }) => file),
-      );
-      return [
-        [tag, tagTree],
-        [branch, branchTree],
-      ].map(([ref, tree]) => {
-        const releaseOnlyPaths = [...tree.keys()].filter(
-          (filePath) => isMigrationFile(filePath) && !headOids.has(filePath),
-        );
-        const paths = [...headPaths, ...releaseOnlyPaths].filter((filePath) =>
-          tree.has(filePath),
-        );
-        return { ref, tree, paths };
-      });
-    },
-  );
-
   const texts = await reader.blobTexts(
-    uniqueLocations(
-      refs.flatMap(({ ref, tree, paths }) =>
-        paths
-          .filter((filePath) => tree.get(filePath) !== headOids.get(filePath))
-          .map((filePath) => ({ ref, path: filePath })),
-      ),
+    releases.flatMap(({ tag, tree }) =>
+      [...tree]
+        .filter(([, oid]) => !idsByOid.has(oid))
+        .map(([filePath]) => ({ ref: tag, path: filePath })),
     ),
   );
 
-  const idPaths = new Map(
-    refs.map(({ ref, tree, paths }) => [
-      ref,
-      new Map(
-        paths.flatMap((filePath) => {
-          const ids =
-            tree.get(filePath) === headOids.get(filePath)
-              ? headIds.get(filePath)
-              : changesetIdSet(texts.get(locationKey({ ref, path: filePath })));
-          return [...ids].map((id) => [id, filePath]);
-        }),
-      ),
-    ]),
-  );
-
-  return releases.flatMap(({ major, tag, branch }) =>
-    headChangesets
-      .filter(
-        (changeset) =>
-          changeset.major === major && !idPaths.get(tag).has(changeset.id),
-      )
-      .map((changeset) => ({
-        ...changeset,
-        branch,
-        branchFile: idPaths.get(branch).get(changeset.id) ?? null,
-      })),
-  );
+  return releases.flatMap(({ major, tag, tree }) => {
+    const releaseIds = new Set(
+      [...tree].flatMap(([filePath, oid]) => [
+        ...(idsByOid.get(oid) ??
+          changesetIdSet(texts.get(locationKey({ ref: tag, path: filePath })))),
+      ]),
+    );
+    return headFiles.flatMap((file) =>
+      parseChangesetIds(file.text)
+        .filter(
+          (changeset) =>
+            changeset.major === major && !releaseIds.has(changeset.id),
+        )
+        .map(({ id }) => ({ major, id, file: file.path })),
+    );
+  });
 }
 
-function mergedPrs(prs, base) {
+function mergedPrs(prs) {
   return prs
-    .filter((pr) => pr.mergedAt && pr.baseRefName === base)
+    .filter((pr) => pr.mergedAt && pr.baseRefName === MASTER_BRANCH)
     .map(({ number, url }) => ({ number, url }));
 }
 
-async function findAddingCommits({ pendingIds, headRef, reader }) {
-  const historyLocations = uniqueLocations(
-    pendingIds.flatMap(({ file, branch, branchFile }) => [
-      { ref: headRef, path: file },
-      ...(branchFile ? [{ ref: branch, path: branchFile }] : []),
-    ]),
-  );
-  const histories = await reader.histories(historyLocations);
+async function findRecentCommits({ files, headRef, since, reader }) {
+  const locations = files.map((filePath) => ({ ref: headRef, path: filePath }));
+  const histories = await reader.histories(locations, since);
   const texts = await reader.blobTexts(
-    uniqueLocations(
-      historyLocations.flatMap((location) =>
-        histories
-          .get(locationKey(location))
-          .map(({ sha }) => ({ ref: sha, path: location.path })),
-      ),
-    ),
+    locations.flatMap((location) => {
+      const { before, recent } = histories.get(locationKey(location));
+      const shas = recent.length > 0 && before ? [before] : [];
+      return [...shas, ...recent.map(({ sha }) => sha)].map((sha) => ({
+        ref: sha,
+        path: location.path,
+      }));
+    }),
   );
 
-  return ({ ref, path: file, id, base }) => {
-    const commit = histories
-      .get(locationKey({ ref, path: file }))
-      .findLast(({ sha }) =>
-        changesetIdSet(texts.get(locationKey({ ref: sha, path: file }))).has(
-          id,
-        ),
-      );
-    return commit
-      ? {
-          sha: commit.sha,
-          committedDate: commit.committedDate,
-          prs: mergedPrs(commit.prs, base),
-        }
-      : null;
+  return ({ id, file }) => {
+    const { before, recent } = histories.get(
+      locationKey({ ref: headRef, path: file }),
+    );
+    const hasId = (sha) =>
+      changesetIdSet(texts.get(locationKey({ ref: sha, path: file }))).has(id);
+    if (recent.length === 0 || (before && hasId(before))) {
+      return null;
+    }
+    const commit = recent.findLast(({ sha }) => hasId(sha));
+    return commit ? { sha: commit.sha, prs: mergedPrs(commit.prs) } : null;
   };
 }
 
 /**
- * Finds the changesets on HEAD that the latest release of their major does not
- * have yet. It checks every major from the oldest supported one up to the
- * newest major on HEAD, because a downgrade goes through each of them. A major
- * newer than every supported major that has no release yet is left out.
+ * Finds the changesets on HEAD that the latest release of their major
+ * (the `v0.N.x` tag) does not have yet. It checks every major from the oldest
+ * supported one up to the newest major on HEAD, because a downgrade goes
+ * through each of them. A major newer than every supported major that has no
+ * release yet is left out.
  *
  * Each changeset has a status:
- * - `awaiting-release`: the release branch has it, so the next release will too.
- * - `awaiting-backport`: the release branch does not have it, and it reached
- *   master less than `graceDays` ago.
- * - `missing`: the release branch does not have it, and it reached master
- *   earlier than that, or its master commit could not be found.
+ * - `in-grace-period`: it reached master less than `graceDays` ago. `commit`
+ *   is the master commit that added it.
+ * - `past-grace-period`: it reached master earlier than that. `commit` is null.
  *
  * @returns {Promise<{ pending: Record<number, object[]>, failures: Record<number, string> }>}
  *   `failures` has a reason for each major that could not be checked.
@@ -478,10 +372,10 @@ async function findUnreleasedChangesets({
   headFiles,
   headRef,
   reader,
+  graceDays,
   now = Date.now(),
-  graceDays = DEFAULT_GRACE_DAYS,
 }) {
-  const { releases, failures } = await resolveReleases({
+  const { releases, failures } = await readReleases({
     majors: majorsToCheck({ supportedMajors, headFiles }),
     newestSupportedMajor: Math.max(...supportedMajors),
     reader,
@@ -491,38 +385,26 @@ async function findUnreleasedChangesets({
     return { pending: {}, failures };
   }
 
-  const addingCommit = await findAddingCommits({ pendingIds, headRef, reader });
+  const recentCommit = await findRecentCommits({
+    files: [...new Set(pendingIds.map(({ file }) => file))],
+    headRef,
+    since: new Date(now - graceDays * DAY_MS).toISOString(),
+    reader,
+  });
   const pending = {};
-  for (const { major, id, file, branch, branchFile } of pendingIds) {
-    const onBranch = branchFile !== null;
-    const commit = addingCommit({
-      ref: headRef,
-      path: file,
-      id,
-      base: MASTER_BRANCH,
-    });
-    const backport = onBranch
-      ? addingCommit({ ref: branch, path: branchFile, id, base: branch })
-      : null;
-    const status = onBranch
-      ? "awaiting-release"
-      : commit && now - Date.parse(commit.committedDate) <= graceDays * DAY_MS
-        ? "awaiting-backport"
-        : "missing";
-    (pending[major] ??= []).push({
-      major,
-      id,
-      file,
-      status,
-      commit: commit && { sha: commit.sha, prs: commit.prs },
-      backport: backport && { sha: backport.sha, prs: backport.prs },
+  for (const changeset of pendingIds) {
+    const commit = recentCommit(changeset);
+    (pending[changeset.major] ??= []).push({
+      ...changeset,
+      status: commit ? "in-grace-period" : "past-grace-period",
+      commit,
     });
   }
   return { pending, failures };
 }
 
 function isBlocking({ status }) {
-  return status !== "missing";
+  return status === "in-grace-period";
 }
 
 function buildGatedCrossVersionMatrix({ supportedMajors, pending }) {
@@ -564,7 +446,7 @@ async function writeSummary({ core, pending, skipped, failures }) {
         `v${major}`,
         id,
         status,
-        commit?.sha.slice(0, 10) ?? "not found",
+        commit?.sha.slice(0, 10) ?? "before the grace period",
       ]),
     ]);
   }
@@ -589,11 +471,12 @@ async function generateCrossVersionMatrix({
   github,
   context,
   supportedMajors,
+  graceDays,
   headFiles,
   reader,
   now,
-  graceDays,
 }) {
+  const validGraceDays = parseGraceDays(graceDays);
   let pending = {};
   let failures = {};
   try {
@@ -602,8 +485,8 @@ async function generateCrossVersionMatrix({
       headFiles: headFiles ?? readHeadMigrations(),
       headRef: context.sha,
       reader: reader ?? createGithubReader({ github, ...context.repo }),
+      graceDays: validGraceDays,
       now,
-      graceDays,
     }));
   } catch (error) {
     failures = Object.fromEntries(
@@ -635,7 +518,7 @@ async function generateCrossVersionMatrix({
 
 function groupByMasterCommit({ changesets, warn }) {
   const commits = new Map();
-  for (const { major, id, commit, backport } of changesets) {
+  for (const { major, id, commit } of changesets) {
     if (!commit) {
       warn(`Could not find the master commit that added ${id}`);
       continue;
@@ -645,11 +528,9 @@ function groupByMasterCommit({ changesets, warn }) {
     }
     const { majors } = commits.get(commit.sha);
     if (!majors.has(major)) {
-      majors.set(major, { major, ids: [], backport: null });
+      majors.set(major, { major, ids: [] });
     }
-    const entry = majors.get(major);
-    entry.ids.push(id);
-    entry.backport ??= backport;
+    majors.get(major).ids.push(id);
   }
   return [...commits.values()].map(({ majors, ...commit }) => ({
     ...commit,
@@ -667,19 +548,21 @@ function commitLink({ owner, repo, sha, prs }) {
   return `<${commitUrl({ owner, repo, sha })}|${sha.slice(0, 10)}> (${prLinks})`;
 }
 
-function formatReleaseNeededMessage({ owner, repo, runUrl, commit }) {
+function formatReleaseNeededMessage({
+  owner,
+  repo,
+  runUrl,
+  commit,
+  graceDays,
+}) {
   const ids = commit.majors.flatMap((entry) => entry.ids);
   const versions = commit.majors.map(({ major }) => `v${major}`).join(", ");
+  const days = graceDays === 1 ? "1 day" : `${graceDays} days`;
 
   return [
     `:warning: *${commitLink({ owner, repo, ...commit })} breaks cross version tests!*`,
     `It added migrations ${ids.map((id) => `\`${id}\``).join(", ")} to master, but no release of ${versions} has them yet. Please backport and release these changes!`,
-    ...commit.majors.map(({ major, backport }) =>
-      backport
-        ? `• v${major}: backported in ${commitLink({ owner, repo, ...backport })}, but not released yet`
-        : `• v${major}: not backported yet`,
-    ),
-    `Cross-version downgrades from master to versions older than ${versions} are skipped until a release has them. <${runUrl}|Run>`,
+    `Cross-version downgrades from master to versions older than ${versions} are skipped for ${days} after this commit. After that, they run again and fail until a release has these migrations. <${runUrl}|Run>`,
   ].join("\n");
 }
 
@@ -687,12 +570,14 @@ async function notifyReleaseNeeded({
   context,
   core,
   changesets,
+  graceDays,
   channelName,
   findSlackMessage,
   sendSlackMessage,
 }) {
   const { owner, repo } = context.repo;
   const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+  const validGraceDays = parseGraceDays(graceDays);
   const commits = groupByMasterCommit({ changesets, warn: core.warning });
 
   for (const commit of commits) {
@@ -705,7 +590,13 @@ async function notifyReleaseNeeded({
       continue;
     }
 
-    const message = formatReleaseNeededMessage({ owner, repo, runUrl, commit });
+    const message = formatReleaseNeededMessage({
+      owner,
+      repo,
+      runUrl,
+      commit,
+      graceDays: validGraceDays,
+    });
     console.log(message);
     await sendSlackMessage({ channelName, message }).catch(console.error);
   }
@@ -715,7 +606,6 @@ module.exports = {
   buildCrossVersionMatrix,
   excludeBlockedDowngrades,
   parseChangesetIds,
-  latestReleaseTag,
   readHeadMigrations,
   createGithubReader,
   findUnreleasedChangesets,

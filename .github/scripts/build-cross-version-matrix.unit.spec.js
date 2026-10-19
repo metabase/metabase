@@ -7,7 +7,6 @@ const {
   formatReleaseNeededMessage,
   generateCrossVersionMatrix,
   groupByMasterCommit,
-  latestReleaseTag,
   notifyReleaseNeeded,
   parseChangesetIds,
   readHeadMigrations,
@@ -275,36 +274,6 @@ describe("parseChangesetIds", () => {
   });
 });
 
-describe("latestReleaseTag", () => {
-  it("picks the highest release tag of the major", () => {
-    expect(
-      latestReleaseTag(
-        [
-          "v0.63.9",
-          "v0.63.20.1",
-          "v0.63.20",
-          "v0.63.x",
-          "v0.63.20.x",
-          "v0.630.1",
-          "v0.63.2",
-        ],
-        63,
-      ),
-    ).toBe("v0.63.20.1");
-  });
-
-  it("prefers a release over the beta of the same version", () => {
-    expect(latestReleaseTag(["v0.65.0-beta", "v0.65.0"], 65)).toBe("v0.65.0");
-    expect(
-      latestReleaseTag(["v0.65.0.6-beta", "v0.65.0-beta", "v0.65.x"], 65),
-    ).toBe("v0.65.0.6-beta");
-  });
-
-  it("returns null when the major has no release tag", () => {
-    expect(latestReleaseTag(["v0.66.x"], 66)).toBeNull();
-  });
-});
-
 describe("readHeadMigrations", () => {
   it("reads the migration files at HEAD with their blob ids", () => {
     const { execFileSync } = require("child_process");
@@ -346,6 +315,15 @@ describe("readHeadMigrations", () => {
   });
 });
 
+function historySince(commits, since) {
+  return {
+    before: commits.find(({ date }) => date < since)?.sha ?? null,
+    recent: commits
+      .filter(({ date }) => date >= since)
+      .map(({ sha, prs }) => ({ sha, prs })),
+  };
+}
+
 describe("findUnreleasedChangesets", () => {
   const crypto = require("crypto");
   const oidOf = (text) => crypto.createHash("sha1").update(text).digest("hex");
@@ -362,48 +340,42 @@ describe("findUnreleasedChangesets", () => {
     baseRefName: base,
   });
 
-  const makeReader = ({ tags, snapshots, histories = {} }) => {
-    const reader = {
-      tagNames: jest.fn(
-        async (majors) => new Map(majors.map((major) => [major, tags])),
-      ),
-      trees: jest.fn(
-        async (refs) =>
-          new Map(
-            refs.map((ref) => [
-              ref,
-              snapshots[ref]
-                ? new Map(
-                    Object.entries(snapshots[ref]).map(([path, text]) => [
-                      path,
-                      oidOf(text),
-                    ]),
-                  )
-                : null,
-            ]),
-          ),
-      ),
-      blobTexts: jest.fn(
-        async (locations) =>
-          new Map(
-            locations.map(({ ref, path }) => [
-              `${ref}:${path}`,
-              snapshots[ref]?.[path] ?? null,
-            ]),
-          ),
-      ),
-      histories: jest.fn(
-        async (locations) =>
-          new Map(
-            locations.map(({ ref, path }) => [
-              `${ref}:${path}`,
-              histories[`${ref}:${path}`] ?? [],
-            ]),
-          ),
-      ),
-    };
-    return reader;
-  };
+  const makeReader = ({ snapshots, histories = {} }) => ({
+    trees: jest.fn(
+      async (refs) =>
+        new Map(
+          refs.map((ref) => [
+            ref,
+            snapshots[ref]
+              ? new Map(
+                  Object.entries(snapshots[ref]).map(([path, text]) => [
+                    path,
+                    oidOf(text),
+                  ]),
+                )
+              : null,
+          ]),
+        ),
+    ),
+    blobTexts: jest.fn(
+      async (locations) =>
+        new Map(
+          locations.map(({ ref, path }) => [
+            `${ref}:${path}`,
+            snapshots[ref]?.[path] ?? null,
+          ]),
+        ),
+    ),
+    histories: jest.fn(
+      async (locations, since) =>
+        new Map(
+          locations.map(({ ref, path }) => [
+            `${ref}:${path}`,
+            historySince(histories[`${ref}:${path}`] ?? [], since),
+          ]),
+        ),
+    ),
+  });
 
   const headFilesOf = (files) =>
     Object.entries(files).map(([path, text]) => ({
@@ -412,63 +384,57 @@ describe("findUnreleasedChangesets", () => {
       text,
     }));
 
-  const unchanged = changelog("v63.old");
-  const added = changelog("v63.old", "v63.new");
-
-  it("finds nothing and reads no file contents when the release has the same files", async () => {
-    const files = { [migrations("063/a.yaml")]: unchanged };
-    const reader = makeReader({
-      tags: ["v0.63.1"],
-      snapshots: { "v0.63.1": files, "release-x.63.x": files },
-    });
-    const result = await findUnreleasedChangesets({
-      supportedMajors: [63],
-      headFiles: headFilesOf(files),
+  const find = ({ supportedMajors = [63], headFiles, reader }) =>
+    findUnreleasedChangesets({
+      supportedMajors,
+      headFiles: headFilesOf(headFiles),
       headRef: "head",
       reader,
+      graceDays: 3,
       now,
     });
+
+  const unchanged = changelog("v63.old");
+  const added = changelog("v63.old", "v63.new");
+  const file = migrations("063/a.yaml");
+
+  it("reads the v0.N.x tag of each major and no file contents when the release has the same files", async () => {
+    const files = { [file]: unchanged };
+    const reader = makeReader({ snapshots: { "v0.63.x": files } });
+    const result = await find({ headFiles: files, reader });
+
     expect(result).toEqual({ pending: {}, failures: {} });
+    expect(reader.trees).toHaveBeenCalledWith(["v0.63.x"]);
     expect(reader.blobTexts).toHaveBeenCalledWith([]);
     expect(reader.histories).not.toHaveBeenCalled();
   });
 
-  it("marks a changeset that is on the release branch as awaiting-release, with its backport", async () => {
-    const file = migrations("063/a.yaml");
-    const reader = makeReader({
-      tags: ["v0.63.1"],
+  const historyReader = (commits) =>
+    makeReader({
       snapshots: {
-        "v0.63.1": { [file]: unchanged },
-        "release-x.63.x": { [file]: added },
+        "v0.63.x": { [file]: unchanged },
         "master-commit": { [file]: added },
-        "backport-commit": { [file]: added },
+        "edit-commit": { [file]: added + "  # edit\n" },
         "older-commit": { [file]: unchanged },
       },
-      histories: {
-        [`head:${file}`]: [
-          {
-            sha: "master-commit",
-            committedDate: daysAgo(30),
-            prs: [pr(1, "master"), pr(9, "release-x.63.x")],
-          },
-          { sha: "older-commit", committedDate: daysAgo(90), prs: [] },
-        ],
-        [`release-x.63.x:${file}`]: [
-          {
-            sha: "backport-commit",
-            committedDate: daysAgo(2),
-            prs: [pr(2, "release-x.63.x")],
-          },
-        ],
+      histories: { [`head:${file}`]: commits },
+    });
+
+  it("marks a changeset that reached master in the grace period as in-grace-period, with its master commit", async () => {
+    const reader = historyReader([
+      {
+        sha: "master-commit",
+        date: daysAgo(1),
+        prs: [pr(1, "master"), pr(9, "release-x.63.x")],
       },
-    });
-    const result = await findUnreleasedChangesets({
-      supportedMajors: [63],
-      headFiles: headFilesOf({ [file]: added }),
-      headRef: "head",
-      reader,
-      now,
-    });
+      { sha: "older-commit", date: daysAgo(90), prs: [] },
+    ]);
+    const result = await find({ headFiles: { [file]: added }, reader });
+
+    expect(reader.histories).toHaveBeenCalledWith(
+      [{ ref: "head", path: file }],
+      daysAgo(3),
+    );
     expect(result).toEqual({
       pending: {
         63: [
@@ -476,11 +442,15 @@ describe("findUnreleasedChangesets", () => {
             major: 63,
             id: "v63.new",
             file,
-            status: "awaiting-release",
-            commit: { sha: "master-commit", prs: [pr(1, "master")].map(link) },
-            backport: {
-              sha: "backport-commit",
-              prs: [pr(2, "release-x.63.x")].map(link),
+            status: "in-grace-period",
+            commit: {
+              sha: "master-commit",
+              prs: [
+                {
+                  number: 1,
+                  url: "https://github.com/metabase/metabase/pull/1",
+                },
+              ],
             },
           },
         ],
@@ -489,64 +459,40 @@ describe("findUnreleasedChangesets", () => {
     });
   });
 
-  it.each([
-    [1, "awaiting-backport"],
-    [5, "missing"],
-  ])(
-    "marks a changeset that reached master %i days ago and is not on the release branch as %s",
-    async (days, status) => {
-      const file = migrations("063/a.yaml");
-      const reader = makeReader({
-        tags: ["v0.63.1"],
-        snapshots: {
-          "v0.63.1": { [file]: unchanged },
-          "release-x.63.x": { [file]: unchanged },
-          "master-commit": { [file]: added },
-        },
-        histories: {
-          [`head:${file}`]: [
-            {
-              sha: "master-commit",
-              committedDate: daysAgo(days),
-              prs: [pr(1, "master")],
-            },
-          ],
-        },
-      });
-      const result = await findUnreleasedChangesets({
-        supportedMajors: [63],
-        headFiles: headFilesOf({ [file]: added }),
-        headRef: "head",
-        reader,
-        now,
-        graceDays: 3,
-      });
-      expect(result.pending[63]).toEqual([
-        expect.objectContaining({ id: "v63.new", status, backport: null }),
-      ]);
-    },
-  );
+  it("marks a changeset that reached master before the grace period as past-grace-period", async () => {
+    const reader = historyReader([
+      { sha: "master-commit", date: daysAgo(5), prs: [pr(1, "master")] },
+      { sha: "older-commit", date: daysAgo(90), prs: [] },
+    ]);
+    const result = await find({ headFiles: { [file]: added }, reader });
 
-  it("marks a changeset as missing when no master commit added it", async () => {
-    const file = migrations("063/a.yaml");
+    expect(result.pending[63]).toEqual([
+      expect.objectContaining({ status: "past-grace-period", commit: null }),
+    ]);
+  });
+
+  it("does not count a recent edit of the file as the commit that added an older changeset", async () => {
+    const reader = historyReader([
+      { sha: "edit-commit", date: daysAgo(1), prs: [pr(2, "master")] },
+      { sha: "master-commit", date: daysAgo(5), prs: [pr(1, "master")] },
+    ]);
+    const result = await find({ headFiles: { [file]: added }, reader });
+
+    expect(result.pending[63]).toEqual([
+      expect.objectContaining({ status: "past-grace-period", commit: null }),
+    ]);
+  });
+
+  it("marks a changeset as past the grace period when no master commit added it", async () => {
     const reader = makeReader({
-      tags: ["v0.63.1"],
-      snapshots: {
-        "v0.63.1": { [file]: unchanged },
-        "release-x.63.x": { [file]: unchanged },
-      },
+      snapshots: { "v0.63.x": { [file]: unchanged } },
     });
-    const result = await findUnreleasedChangesets({
-      supportedMajors: [63],
-      headFiles: headFilesOf({ [file]: added }),
-      headRef: "head",
-      reader,
-      now,
-    });
+    const result = await find({ headFiles: { [file]: added }, reader });
+
     expect(result.pending[63]).toEqual([
       expect.objectContaining({
         id: "v63.new",
-        status: "missing",
+        status: "past-grace-period",
         commit: null,
       }),
     ]);
@@ -554,97 +500,76 @@ describe("findUnreleasedChangesets", () => {
 
   it("finds a changeset that a release has in another file", async () => {
     const reader = makeReader({
-      tags: ["v0.62.1"],
       snapshots: {
-        "v0.62.1": { [migrations("062/a.yaml")]: changelog("v62.a") },
-        "release-x.62.x": { [migrations("062/a.yaml")]: changelog("v62.a") },
+        "v0.62.x": { [migrations("062/a.yaml")]: changelog("v62.a") },
       },
     });
-    const result = await findUnreleasedChangesets({
+    const result = await find({
       supportedMajors: [62],
-      headFiles: headFilesOf({
-        [migrations("063/a.yaml")]: changelog("v62.a", "v63.a"),
-      }),
-      headRef: "head",
+      headFiles: { [migrations("063/a.yaml")]: changelog("v62.a", "v63.a") },
       reader,
-      now,
     });
+
     expect(result).toEqual({ pending: {}, failures: {} });
   });
 
   it("only checks the changesets of each major against that major's release", async () => {
-    const file = migrations("064/a.yaml");
-    const files = { [file]: changelog("v64.a", "v65.a") };
+    const files = { [migrations("064/a.yaml")]: changelog("v64.a", "v65.a") };
     const reader = makeReader({
-      tags: ["v0.64.1", "v0.65.1"],
       snapshots: {
-        "v0.64.1": { [file]: changelog("v64.a") },
-        "release-x.64.x": { [file]: changelog("v64.a") },
-        "v0.65.1": files,
-        "release-x.65.x": files,
+        "v0.64.x": { [migrations("064/a.yaml")]: changelog("v64.a") },
+        "v0.65.x": files,
       },
     });
-    const result = await findUnreleasedChangesets({
+    const result = await find({
       supportedMajors: [65, 64],
-      headFiles: headFilesOf(files),
-      headRef: "head",
+      headFiles: files,
       reader,
-      now,
     });
+
     expect(result).toEqual({ pending: {}, failures: {} });
   });
 
   it("checks the majors between the supported ones and up to the newest major on HEAD", async () => {
-    const files = {
-      [migrations("063/a.yaml")]: changelog("v63.a"),
-      [migrations("066/a.yaml")]: changelog("v66.a"),
-    };
     const reader = makeReader({
-      tags: ["v0.62.1", "v0.63.1", "v0.64.1", "v0.65.1"],
-      snapshots: Object.fromEntries(
-        [62, 63, 64, 65].flatMap((major) => [
-          [`v0.${major}.1`, {}],
-          [`release-x.${major}.x`, {}],
-        ]),
-      ),
+      snapshots: { "v0.62.x": {}, "v0.63.x": {}, "v0.64.x": {}, "v0.65.x": {} },
     });
-    const result = await findUnreleasedChangesets({
+    const result = await find({
       supportedMajors: [64, 62],
-      headFiles: headFilesOf(files),
-      headRef: "head",
+      headFiles: {
+        [migrations("063/a.yaml")]: changelog("v63.a"),
+        [migrations("066/a.yaml")]: changelog("v66.a"),
+      },
       reader,
-      now,
     });
-    expect(reader.tagNames).toHaveBeenCalledWith([62, 63, 64, 65, 66]);
+
+    expect(reader.trees).toHaveBeenCalledWith([
+      "v0.62.x",
+      "v0.63.x",
+      "v0.64.x",
+      "v0.65.x",
+      "v0.66.x",
+    ]);
     expect(Object.keys(result.pending)).toEqual(["63"]);
     expect(result.failures).toEqual({});
   });
 
-  it("reports a reason for each major that cannot be checked", async () => {
-    const file = migrations("063/a.yaml");
+  it("reports a reason for each released major that cannot be checked", async () => {
     const reader = makeReader({
-      tags: ["v0.63.1", "v0.64.1"],
-      snapshots: { "v0.63.1": { [file]: unchanged } },
+      snapshots: { "v0.63.x": { [file]: unchanged } },
     });
-    const result = await findUnreleasedChangesets({
-      supportedMajors: [66, 64, 63],
-      headFiles: headFilesOf({ [file]: unchanged }),
-      headRef: "head",
+    const result = await find({
+      supportedMajors: [65, 63],
+      headFiles: { [file]: unchanged },
       reader,
-      now,
     });
+
     expect(result.failures).toEqual({
-      66: "No v0.66.x release tag found",
-      65: "No v0.65.x release tag found",
-      64: "Could not read resources/migrations at v0.64.1",
-      63: "Could not read resources/migrations at release-x.63.x",
+      64: "Could not read resources/migrations at v0.64.x",
+      65: "Could not read resources/migrations at v0.65.x",
     });
   });
 });
-
-function link({ number, url }) {
-  return { number, url };
-}
 
 describe("createGithubReader", () => {
   it("sends one aliased query for many refs and maps the answers back", async () => {
@@ -669,6 +594,11 @@ describe("createGithubReader", () => {
                       oid: "b",
                       type: "blob",
                     },
+                    {
+                      path: "resources/migrations/063/x.sql",
+                      oid: "c",
+                      type: "blob",
+                    },
                   ],
                 },
               },
@@ -683,27 +613,27 @@ describe("createGithubReader", () => {
       owner: "metabase",
       repo: "metabase",
     });
-    const trees = await reader.trees(["v0.63.1", "release-x.63.x"]);
+    const trees = await reader.trees(["v0.63.x", "v0.64.x"]);
 
     expect(github.graphql).toHaveBeenCalledTimes(1);
     const [query, variables] = github.graphql.mock.calls[0];
     expect(query).toContain(
-      'r0: repository(owner: $owner, name: $repo) { object(expression: "v0.63.1:resources/migrations")',
+      'r0: repository(owner: $owner, name: $repo) { object(expression: "v0.63.x:resources/migrations")',
     );
     expect(query).toContain(
-      'r1: repository(owner: $owner, name: $repo) { object(expression: "release-x.63.x:resources/migrations")',
+      'r1: repository(owner: $owner, name: $repo) { object(expression: "v0.64.x:resources/migrations")',
     );
     expect(variables).toEqual({ owner: "metabase", repo: "metabase" });
     expect(trees).toEqual(
       new Map([
         [
-          "v0.63.1",
+          "v0.63.x",
           new Map([
             ["resources/migrations/001.yaml", "a"],
             ["resources/migrations/063/x.yaml", "b"],
           ]),
         ],
-        ["release-x.63.x", null],
+        ["v0.64.x", null],
       ]),
     );
   });
@@ -721,14 +651,14 @@ describe("createGithubReader", () => {
     };
     const reader = createGithubReader({ github, owner: "o", repo: "r" });
     const locations = Array.from({ length: 120 }, (_, index) => ({
-      ref: "v0.63.1",
+      ref: "v0.63.x",
       path: `f${index}.yaml`,
     }));
     const texts = await reader.blobTexts(locations);
 
     expect(github.graphql).toHaveBeenCalledTimes(3);
     expect(texts.size).toBe(120);
-    expect(texts.get("v0.63.1:f119.yaml")).toBe("r19");
+    expect(texts.get("v0.63.x:f119.yaml")).toBe("r19");
   });
 
   it("explains a failed request", async () => {
@@ -738,8 +668,8 @@ describe("createGithubReader", () => {
       }),
     };
     const reader = createGithubReader({ github, owner: "o", repo: "r" });
-    await expect(reader.tagNames([63])).rejects.toThrow(
-      "GitHub GraphQL request for release tags failed: Bad credentials",
+    await expect(reader.trees(["v0.63.x"])).rejects.toThrow(
+      "GitHub GraphQL request for resources/migrations trees failed: Bad credentials",
     );
   });
 
@@ -751,8 +681,8 @@ describe("createGithubReader", () => {
     };
     const reader = createGithubReader({ github, owner: "o", repo: "r" });
     await expect(
-      reader.blobTexts([{ ref: "v0.63.1", path: "big.yaml" }]),
-    ).rejects.toThrow("Could not read v0.63.1:big.yaml");
+      reader.blobTexts([{ ref: "v0.63.x", path: "big.yaml" }]),
+    ).rejects.toThrow("Could not read v0.63.x:big.yaml");
   });
 });
 
@@ -763,15 +693,13 @@ describe("buildGatedCrossVersionMatrix", () => {
     status,
     file: "a.yaml",
     commit: null,
-    backport: null,
   });
 
   it("returns the gated matrix, the skipped entries and the unreleased changesets", () => {
-    const awaitingRelease = changeset(63, "v63.a", "awaiting-release");
-    const awaitingBackport = changeset(63, "v63.b", "awaiting-backport");
+    const recent = changeset(63, "v63.a", "in-grace-period");
     const result = buildGatedCrossVersionMatrix({
       supportedMajors: [63, 62],
-      pending: { 63: [awaitingRelease, awaitingBackport] },
+      pending: { 63: [recent] },
     });
     expect(result).toEqual({
       config: [
@@ -780,14 +708,14 @@ describe("buildGatedCrossVersionMatrix", () => {
         { source: "v1.62.x", target: "HEAD" },
       ],
       skipped: [{ source: "HEAD", target: "v1.62.x" }],
-      unreleased: [awaitingRelease, awaitingBackport],
+      unreleased: [recent],
     });
   });
 
-  it("does not skip or report missing changesets", () => {
+  it("does not skip or report changesets past the grace period", () => {
     const result = buildGatedCrossVersionMatrix({
       supportedMajors: [63, 62],
-      pending: { 63: [changeset(63, "v63.a", "missing")] },
+      pending: { 63: [changeset(63, "v63.a", "past-grace-period")] },
     });
     expect(result.skipped).toEqual([]);
     expect(result.unreleased).toEqual([]);
@@ -796,7 +724,7 @@ describe("buildGatedCrossVersionMatrix", () => {
   it("does not report changesets of the oldest major, which skip nothing", () => {
     const result = buildGatedCrossVersionMatrix({
       supportedMajors: [64, 63],
-      pending: { 63: [changeset(63, "v63.a", "awaiting-release")] },
+      pending: { 63: [changeset(63, "v63.a", "in-grace-period")] },
     });
     expect(result.skipped).toEqual([]);
     expect(result.unreleased).toEqual([]);
@@ -816,41 +744,57 @@ describe("generateCrossVersionMatrix", () => {
   const context = { sha: "head", repo: { owner: "o", repo: "r" } };
   const file = "resources/migrations/063/a.yaml";
   const headFiles = [{ path: file, oid: "new", text: "id: v63.a\n" }];
+  const now = Date.parse("2026-10-19T12:00:00Z");
 
   const readerWith = ({ releaseText = "", fail = false } = {}) => ({
-    tagNames: async (majors) => {
+    trees: async (refs) => {
       if (fail) {
-        throw new Error("GitHub GraphQL request for release tags failed: 502");
+        throw new Error(
+          "GitHub GraphQL request for resources/migrations trees failed: 502",
+        );
       }
-      return new Map(majors.map((major) => [major, [`v0.${major}.1`]]));
+      return new Map(refs.map((ref) => [ref, new Map([[file, "old"]])]));
     },
-    trees: async (refs) =>
-      new Map(refs.map((ref) => [ref, new Map([[file, "old"]])])),
     blobTexts: async (locations) =>
       new Map(
-        locations.map((location) => [
-          `${location.ref}:${location.path}`,
-          location.ref === "release-x.63.x" ? "id: v63.a\n" : releaseText,
+        locations.map(({ ref, path }) => [
+          `${ref}:${path}`,
+          ref === "commit" ? "id: v63.a\n" : releaseText,
         ]),
       ),
-    histories: async (locations) =>
+    histories: async (locations, since) =>
       new Map(
-        locations.map((location) => [`${location.ref}:${location.path}`, []]),
+        locations.map(({ ref, path }) => [
+          `${ref}:${path}`,
+          historySince(
+            [{ sha: "commit", date: "2026-10-18T12:00:00.000Z", prs: [] }],
+            since,
+          ),
+        ]),
       ),
   });
 
+  const generate = (options) =>
+    generateCrossVersionMatrix({
+      context,
+      headFiles,
+      graceDays: "3",
+      now,
+      ...options,
+    });
+
+  const output = (core, name) =>
+    core.setOutput.mock.calls.find(([outputName]) => outputName === name)[1];
+
   it("sets the outputs and writes no summary when nothing is pending", async () => {
     const core = makeCore();
-    await generateCrossVersionMatrix({
+    await generate({
       core,
-      context,
       supportedMajors: [63],
-      headFiles,
       reader: readerWith({ releaseText: "id: v63.a\n" }),
     });
-    expect(core.setOutput).toHaveBeenCalledWith("unreleased-changesets", "[]");
-    expect(core.setOutput).toHaveBeenCalledWith(
-      "matrix",
+    expect(output(core, "unreleased-changesets")).toBe("[]");
+    expect(output(core, "matrix")).toBe(
       JSON.stringify({ include: buildCrossVersionMatrix([63]).config }),
     );
     expect(core.summary.write).not.toHaveBeenCalled();
@@ -858,52 +802,67 @@ describe("generateCrossVersionMatrix", () => {
 
   it("warns and writes a summary when downgrades are skipped", async () => {
     const core = makeCore();
-    await generateCrossVersionMatrix({
-      core,
-      context,
-      supportedMajors: [63, 62],
-      headFiles,
-      reader: readerWith(),
-    });
+    await generate({ core, supportedMajors: [63, 62], reader: readerWith() });
     expect(core.warning).toHaveBeenCalledWith(
       "Skipping HEAD → v1.62.x: master has migrations that these releases do not have yet",
     );
     expect(core.summary.addList).toHaveBeenCalledWith(["HEAD → v1.62.x"]);
     expect(core.summary.write).toHaveBeenCalled();
-    expect(
-      JSON.parse(
-        core.setOutput.mock.calls.find(
-          ([name]) => name === "unreleased-changesets",
-        )[1],
-      ),
-    ).toEqual([
+    expect(JSON.parse(output(core, "unreleased-changesets"))).toEqual([
       expect.objectContaining({
         major: 63,
         id: "v63.a",
-        status: "awaiting-release",
+        status: "in-grace-period",
       }),
     ]);
   });
 
+  it("uses the grace period it is given", async () => {
+    const core = makeCore();
+    await generate({
+      core,
+      supportedMajors: [63, 62],
+      reader: readerWith(),
+      graceDays: "0.5",
+    });
+    expect(output(core, "unreleased-changesets")).toBe("[]");
+    expect(output(core, "matrix")).toBe(
+      JSON.stringify({ include: buildCrossVersionMatrix([63, 62]).config }),
+    );
+  });
+
+  it.each([undefined, "", "three", "-1"])(
+    "fails with an explanation when the grace period is %p",
+    async (graceDays) => {
+      await expect(
+        generate({
+          core: makeCore(),
+          supportedMajors: [63],
+          reader: readerWith(),
+          graceDays,
+        }),
+      ).rejects.toThrow(
+        `Invalid grace period: ${JSON.stringify(graceDays)}. Set MIGRATION_GRACE_DAYS to a number of days.`,
+      );
+    },
+  );
+
   it("explains a failed check, runs every downgrade and lists the failure in the summary", async () => {
     const core = makeCore();
-    await generateCrossVersionMatrix({
+    await generate({
       core,
-      context,
       supportedMajors: [63, 62],
-      headFiles,
       reader: readerWith({ fail: true }),
     });
     expect(core.warning).toHaveBeenCalledWith(
-      "Could not check v63 for unreleased migrations, so no downgrade is skipped for it: GitHub GraphQL request for release tags failed: 502",
+      "Could not check v63 for unreleased migrations, so no downgrade is skipped for it: GitHub GraphQL request for resources/migrations trees failed: 502",
     );
-    expect(core.setOutput).toHaveBeenCalledWith(
-      "matrix",
+    expect(output(core, "matrix")).toBe(
       JSON.stringify({ include: buildCrossVersionMatrix([63, 62]).config }),
     );
     expect(core.summary.addList).toHaveBeenCalledWith([
-      "v62: GitHub GraphQL request for release tags failed: 502",
-      "v63: GitHub GraphQL request for release tags failed: 502",
+      "v62: GitHub GraphQL request for resources/migrations trees failed: 502",
+      "v63: GitHub GraphQL request for resources/migrations trees failed: 502",
     ]);
     expect(core.summary.write).toHaveBeenCalled();
   });
@@ -913,35 +872,32 @@ describe("release notification", () => {
   const owner = "metabase";
   const repo = "metabase";
   const masterSha = "50e4cd4250ef7bd054b9a798267f06881424c7bc";
-  const backportSha = "8ae0ae3ee3a0a349a4e48ba1aeb1a6891e694957";
   const masterUrl = `https://github.com/metabase/metabase/commit/${masterSha}`;
 
-  const pr = (number) => ({
-    number,
-    url: `https://github.com/metabase/metabase/pull/${number}`,
-  });
-
-  const masterCommit = { sha: masterSha, prs: [pr(84259)] };
-  const backport = { sha: backportSha, prs: [pr(84525)] };
+  const masterCommit = {
+    sha: masterSha,
+    prs: [
+      { number: 84259, url: "https://github.com/metabase/metabase/pull/84259" },
+    ],
+  };
 
   const changeset = (major, id, extra = {}) => ({
     major,
     id,
-    status: "awaiting-release",
+    status: "in-grace-period",
     file: "resources/migrations/063/x.yaml",
     commit: masterCommit,
-    backport,
     ...extra,
   });
 
   const context = { repo: { owner, repo }, runId: 1, sha: "head" };
 
-  it("groups changesets by the master commit that added them, with their backport", () => {
+  it("groups changesets by the master commit that added them", () => {
     const commits = groupByMasterCommit({
       changesets: [
         changeset(63, "v63.a"),
         changeset(63, "v63.b"),
-        changeset(62, "v62.a", { backport: null }),
+        changeset(62, "v62.a"),
       ],
       warn: jest.fn(),
     });
@@ -949,8 +905,8 @@ describe("release notification", () => {
       {
         ...masterCommit,
         majors: [
-          { major: 63, ids: ["v63.a", "v63.b"], backport },
-          { major: 62, ids: ["v62.a"], backport: null },
+          { major: 63, ids: ["v63.a", "v63.b"] },
+          { major: 62, ids: ["v62.a"] },
         ],
       },
     ]);
@@ -968,16 +924,17 @@ describe("release notification", () => {
     );
   });
 
-  it("links the master commit, its PR and the backport in the message", () => {
+  it("links the master commit and its PR, and says how long downgrades are skipped", () => {
     const message = formatReleaseNeededMessage({
       owner,
       repo,
       runUrl: "https://run",
+      graceDays: 3,
       commit: {
         ...masterCommit,
         majors: [
-          { major: 63, ids: ["v63.a"], backport },
-          { major: 62, ids: ["v62.a"], backport: null },
+          { major: 63, ids: ["v63.a"] },
+          { major: 62, ids: ["v62.a"] },
         ],
       },
     });
@@ -985,9 +942,7 @@ describe("release notification", () => {
       [
         `:warning: *<${masterUrl}|50e4cd4250> (<https://github.com/metabase/metabase/pull/84259|#84259>) breaks cross version tests!*`,
         "It added migrations `v63.a`, `v62.a` to master, but no release of v63, v62 has them yet. Please backport and release these changes!",
-        `• v63: backported in <https://github.com/metabase/metabase/commit/${backportSha}|8ae0ae3ee3> (<https://github.com/metabase/metabase/pull/84525|#84525>), but not released yet`,
-        "• v62: not backported yet",
-        "Cross-version downgrades from master to versions older than v63, v62 are skipped until a release has them. <https://run|Run>",
+        "Cross-version downgrades from master to versions older than v63, v62 are skipped for 3 days after this commit. After that, they run again and fail until a release has these migrations. <https://run|Run>",
       ].join("\n"),
     );
   });
@@ -999,6 +954,7 @@ describe("release notification", () => {
       context,
       core: { warning: jest.fn() },
       changesets: [changeset(63, "v63.a"), changeset(63, "v63.b")],
+      graceDays: "3",
       channelName: "release",
       findSlackMessage,
       sendSlackMessage,
@@ -1010,7 +966,9 @@ describe("release notification", () => {
     expect(sendSlackMessage).toHaveBeenCalledTimes(1);
     expect(sendSlackMessage).toHaveBeenCalledWith({
       channelName: "release",
-      message: expect.stringContaining("breaks cross version tests!"),
+      message: expect.stringContaining(
+        "are skipped for 3 days after this commit",
+      ),
     });
   });
 
@@ -1020,6 +978,7 @@ describe("release notification", () => {
       context,
       core: { warning: jest.fn() },
       changesets: [changeset(63, "v63.a")],
+      graceDays: "3",
       channelName: "release",
       findSlackMessage: jest.fn(async ({ text }) =>
         text === masterUrl ? { id: "1", body: "" } : null,
