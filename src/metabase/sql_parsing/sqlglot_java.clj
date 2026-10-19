@@ -26,6 +26,25 @@
 
 (set! *warn-on-reflection* true)
 
+(defonce ^{:doc "The port's java.util.logging loggers, each with a filter that drops every record.
+
+  The port's parser warns with the SQL it falls back on (\"'<sql>' contains unsupported syntax. Falling back to
+  parsing as a 'Command'.\"), and Metabase bridges java.util.logging into its own log. sql_tools.py silences sqlglot's
+  logger so customer SQL never reaches server logs; this does the same for the port. A filter rather than a level,
+  since the Log4j bridge resets java.util.logging levels whenever the Log4j configuration changes. The names are the
+  port's `Logger/getLogger` calls (rc.3). The loggers are held in this var because java.util.logging keeps loggers
+  only weakly, and a collected one would lose its filter."}
+  port-loggers
+  (mapv (fn [logger-name]
+          (doto (java.util.logging.Logger/getLogger ^String logger-name)
+            (.setFilter (reify java.util.logging.Filter
+                          (isLoggable [_ _] false)))))
+        ["com.metabase.sqlglot.reference.Parser"
+         "com.metabase.sqlglot.reference.Generator"
+         "com.metabase.sqlglot.reference.TypeAnnotator"
+         ;; the BigQuery generator's
+         "sqlglot"]))
+
 (defn- error-type
   "The error name `e` is reported under: the Python name where the shim knows it, else the Java class name."
   [^Throwable e]
