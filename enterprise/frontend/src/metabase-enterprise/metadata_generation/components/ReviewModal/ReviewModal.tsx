@@ -1259,9 +1259,12 @@ function ProposedValue({ runId, suggestion, decide }: ProposedValueProps) {
     );
   }
 
+  const proposal = formatSuggestionValue(attribute, proposed_value);
+
   return (
-    <Stack
-      gap={4}
+    <Group
+      gap={8}
+      wrap="nowrap"
       align="flex-start"
       data-testid="metadata-generation-proposed"
     >
@@ -1272,19 +1275,16 @@ function ProposedValue({ runId, suggestion, decide }: ProposedValueProps) {
         onChange={save}
       />
       {isEdited && (
-        <Group gap={4} wrap="nowrap">
-          <EditedBadge suggestion={suggestion} />
-          <Button
-            size="compact-sm"
-            variant="subtle"
-            leftSection={<Icon name="undo" size={12} />}
+        <Tooltip label={t`Use AI proposal: ${proposal}`} maw="25rem" multiline>
+          <ActionIcon
+            aria-label={t`Use the AI proposal for ${attributeLabel} of ${fieldLabel}`}
             onClick={() => save(null)}
           >
-            {t`Use AI proposal`}
-          </Button>
-        </Group>
+            <Icon name="revert" />
+          </ActionIcon>
+        </Tooltip>
       )}
-    </Stack>
+    </Group>
   );
 }
 
