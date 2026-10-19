@@ -1,7 +1,9 @@
 (ns metabase.metabot.tools.shared.instructions
   "Instruction constants for LLM tool results.
    These guide the LLM on how to interpret and use tool outputs.
-   Matches Python AI Service InstructionResultSchema patterns exactly.")
+   Matches Python AI Service InstructionResultSchema patterns exactly."
+  (:require
+   [metabase.util.quoting :as quoting]))
 
 (def search-result-instructions
   "Instructions for LLM when processing search results."
@@ -126,7 +128,7 @@ Reference items using: [name](metabase://type/id)")
   (str "The SQL query has a syntax error for the " dialect " dialect.\n"
        "\n"
        "Error details:\n"
-       error-message "\n"
+       (quoting/quoted error-message) "\n"
        "\n"
        "Common issues to check:\n"
        "- Dialect-specific function names (e.g., DATE_TRUNC vs TRUNC, ILIKE vs LIKE)\n"
