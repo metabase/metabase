@@ -15,6 +15,7 @@ import {
   CanAccessContentDiagnostics,
   CanAccessDependencyDiagnostics,
   CanAccessMonitor,
+  CanAccessSessionManagement,
 } from "./route-guards";
 
 describe("monitor route-guards", () => {
@@ -298,6 +299,50 @@ describe("monitor route-guards", () => {
       expect(screen.queryByText("alerts page")).not.toBeInTheDocument();
     });
   });
+
+  describe("CanAccessSessionManagement", () => {
+    const setup = (currentUser: ReturnType<typeof createMockUser>) =>
+      renderWithProviders(
+        <>
+          <Route element={<CanAccessSessionManagement />}>
+            <Route
+              path="/monitor/oauth-clients"
+              element={<div>oauth clients page</div>}
+            />
+          </Route>
+          <Route path="/unauthorized" element={<div>unauthorized</div>} />
+        </>,
+        {
+          storeInitialState: createMockState({
+            currentUser,
+            settings: createMockSettingsState({ "has-user-setup": true }),
+          }),
+          withRouter: true,
+          initialRoute: "/monitor/oauth-clients",
+        },
+      );
+
+    it("renders the page for superusers", async () => {
+      setup(createMockUser({ is_superuser: true }));
+
+      expect(await screen.findByText("oauth clients page")).toBeInTheDocument();
+    });
+
+    it("redirects a non-admin to unauthorized", async () => {
+      const { router } = setup(
+        createMockUser({
+          is_superuser: false,
+          permissions: { can_access_monitoring: true },
+        }),
+      );
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/unauthorized");
+      });
+      expect(screen.queryByText("oauth clients page")).not.toBeInTheDocument();
+    });
+  });
+
   describe("CanAccessAiAuditing", () => {
     interface SetupOpts {
       currentUser?: ReturnType<typeof createMockUser>;

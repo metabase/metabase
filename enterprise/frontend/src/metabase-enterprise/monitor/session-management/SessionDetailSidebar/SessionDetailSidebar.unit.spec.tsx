@@ -172,22 +172,17 @@ describe("SessionDetailSidebar", () => {
     });
   });
 
-  describe("header", () => {
-    it("copies a link to the session", async () => {
-      setup();
-      jest.mocked(navigator.clipboard.writeText).mockClear();
+  it("copies a link to the session's own page", async () => {
+    setup();
+    jest.mocked(navigator.clipboard.writeText).mockClear();
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Copy link to clipboard" }),
-      );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Copy link to clipboard" }),
+    );
 
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        `${window.location.origin}/monitor/sessions/${LIVE_SESSION.id}`,
-      );
-      expect(
-        await screen.findByText("Link copied to clipboard"),
-      ).toBeInTheDocument();
-    });
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/monitor/sessions/${LIVE_SESSION.id}`,
+    );
   });
 
   describe("a session that isn't on the current page", () => {

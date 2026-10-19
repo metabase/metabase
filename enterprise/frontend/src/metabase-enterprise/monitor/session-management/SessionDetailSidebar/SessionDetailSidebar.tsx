@@ -2,13 +2,19 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getUser } from "metabase/current-user";
+import {
+  DetailSidebarHeader,
+  DetailSidebarShell,
+  DetailSidebarTitle,
+} from "metabase/monitor/components/DetailSidebar";
 import { useSelector } from "metabase/redux";
-import { Flex, Stack, Text } from "metabase/ui";
+import { Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
+
+import { getSessionUserName } from "../utils";
 
 import { SessionDetails } from "./SessionDetails";
-import { SessionTitle } from "./SessionTitle";
 import { SidebarFooter } from "./SidebarFooter";
-import { SidebarHeader } from "./SidebarHeader";
 import type { SessionDetailSidebarProps } from "./types";
 import { useShownSession } from "./use-shown-session";
 
@@ -35,52 +41,44 @@ export const SessionDetailSidebar = ({
     session !== undefined && session.user.id !== currentUser?.id;
 
   return (
-    <Flex
-      direction="column"
-      h="100%"
-      flex="1 1 auto"
-      miw={0}
-      style={{
-        borderLeft: "1px solid var(--mb-color-border-neutral)",
-      }}
-      bg="background_page-primary"
+    <DetailSidebarShell
       data-testid="session-detail-sidebar"
+      footer={
+        session &&
+        (canRevokeSession || canRevokeUserSessions) && (
+          <SidebarFooter
+            session={session}
+            isRevoking={isRevoking}
+            canRevokeSession={canRevokeSession}
+            canRevokeUserSessions={canRevokeUserSessions}
+            onRevokeSession={onRevokeSession}
+            onRevokeUserSessions={onRevokeUserSessions}
+          />
+        )
+      }
     >
-      <Stack
-        flex="1 1 auto"
-        mih={0}
-        p="xl"
-        gap="xl"
-        style={{ overflowY: "auto" }}
-      >
-        <SidebarHeader
-          sessionId={sessionId}
-          prevSessionId={prevSessionId}
-          nextSessionId={nextSessionId}
-          onNavigate={onNavigate}
-          onClose={onClose}
-        />
-        <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-          {session ? (
-            <>
-              <SessionTitle user={session.user} />
-              <SessionDetails session={session} />
-            </>
-          ) : (
-            <Text c="text-secondary">{t`This session is no longer active.`}</Text>
-          )}
-        </LoadingAndErrorWrapper>
-      </Stack>
-      {session && (canRevokeSession || canRevokeUserSessions) && (
-        <SidebarFooter
-          session={session}
-          isRevoking={isRevoking}
-          canRevokeSession={canRevokeSession}
-          canRevokeUserSessions={canRevokeUserSessions}
-          onRevokeSession={onRevokeSession}
-          onRevokeUserSessions={onRevokeUserSessions}
-        />
-      )}
-    </Flex>
+      <DetailSidebarHeader
+        prevId={prevSessionId}
+        nextId={nextSessionId}
+        previousLabel={t`Previous session`}
+        nextLabel={t`Next session`}
+        detailPath={Urls.monitorSessionDetail(sessionId)}
+        onNavigate={onNavigate}
+        onClose={onClose}
+      />
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+        {session ? (
+          <>
+            <DetailSidebarTitle
+              typeLabel={t`Session`}
+              title={getSessionUserName(session.user)}
+            />
+            <SessionDetails session={session} />
+          </>
+        ) : (
+          <Text c="text-secondary">{t`This session is no longer active.`}</Text>
+        )}
+      </LoadingAndErrorWrapper>
+    </DetailSidebarShell>
   );
 };

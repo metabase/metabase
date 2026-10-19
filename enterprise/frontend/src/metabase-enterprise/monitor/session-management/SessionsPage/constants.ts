@@ -1,3 +1,4 @@
+import type { TabSortConfig } from "metabase/monitor/tab-change";
 import type {
   SessionSortColumn,
   SessionStatusFilter,
@@ -22,4 +23,10 @@ export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 export const TAB_SORT_COLUMNS: Record<SessionsTab, SessionSortColumn[]> = {
   active: ["created_at", "user_email", "provider"],
   ended: ["created_at", "user_email"],
+};
+
+export const TAB_SORT_CONFIG: TabSortConfig<SessionsTab, SessionSortColumn> = {
+  tabSortColumns: TAB_SORT_COLUMNS,
+  defaultSortColumn: DEFAULT_SORT_COLUMN,
+  defaultSortDirection: DEFAULT_SORT_DIRECTION,
 };

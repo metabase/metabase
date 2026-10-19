@@ -10,6 +10,7 @@ export type MonitorSection =
   | "logs"
   | "model-caching"
   | "session-management"
+  | "oauth-clients"
   | "ai-auditing-usage-stats"
   | "ai-auditing-conversations"
   | "ai-auditing-mcp"

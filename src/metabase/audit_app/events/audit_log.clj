@@ -201,6 +201,16 @@
   [topic event]
   (audit-log/record-event! topic event))
 
+;; OAuth client events
+
+(events/derive! ::oauth-client-event ::event)
+(events/derive! :event/oauth-client-revoked ::oauth-client-event)
+(events/derive! :event/oauth-clients-revoked ::oauth-client-event)
+
+(methodical/defmethod events/publish-event! ::oauth-client-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
 (events/derive! ::user-update-event ::event)
 (events/derive! :event/user-update ::user-update-event)
 

@@ -1,15 +1,11 @@
 import { t } from "ttag";
 
-import type { OAuthClientEventType } from "metabase-types/api";
+import {
+  OAUTH_CLIENT_EVENT_TYPES,
+  type OAuthClientEventType,
+} from "metabase-types/api";
 
-export const OAUTH_PAGE_SIZE = 50;
-
-export const OAUTH_EVENT_TYPES: OAuthClientEventType[] = [
-  "registered",
-  "approved",
-  "denied",
-];
-
+/** What to call an event in a client's history. Shared: the OSS Authorization logs page and Monitor both show it. */
 export function getOAuthEventTypeLabel(
   eventType: OAuthClientEventType,
 ): string {
@@ -20,9 +16,11 @@ export function getOAuthEventTypeLabel(
       return t`Approved`;
     case "denied":
       return t`Denied`;
+    case "revoked":
+      return t`Revoked`;
   }
 }
 
 export function isOAuthEventType(value: string): value is OAuthClientEventType {
-  return OAUTH_EVENT_TYPES.some((v) => v === value);
+  return OAUTH_CLIENT_EVENT_TYPES.some((eventType) => eventType === value);
 }

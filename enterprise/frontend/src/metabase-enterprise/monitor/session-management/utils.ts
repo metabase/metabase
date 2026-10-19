@@ -7,8 +7,6 @@ import type {
   SessionUser,
 } from "metabase-types/api";
 
-import type { SessionsTimePreset } from "./SessionsPage/types";
-
 export const getSessionUserName = (user: SessionUser): string =>
   user.common_name ?? user.email;
 
@@ -29,14 +27,6 @@ export const getSessionTypeLabel = (type: SessionType): string =>
   match(type)
     .with("normal", () => t`Normal`)
     .with("full-app-embed", () => t`Embedded`)
-    .exhaustive();
-
-export const getTimePresetLabel = (preset: SessionsTimePreset): string =>
-  match(preset)
-    .with("hour", () => t`Past hour`)
-    .with("day", () => t`Past day`)
-    .with("week", () => t`Past week`)
-    .with("month", () => t`Past month`)
     .exhaustive();
 
 export const getEndReasonLabel = (reason: SessionEndReason): string =>

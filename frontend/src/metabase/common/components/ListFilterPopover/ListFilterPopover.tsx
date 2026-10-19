@@ -4,6 +4,7 @@ import { t } from "ttag";
 import {
   Button,
   type ButtonProps,
+  type ComboboxProps,
   Flex,
   Group,
   Icon,
@@ -14,6 +15,13 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+
+/** `comboboxProps` for a Select rendered in a popover, so picking an option doesn't close it */
+export const FILTER_POPOVER_COMBOBOX: Partial<ComboboxProps> = {
+  withinPortal: false,
+  floatingStrategy: "fixed",
+  position: "bottom-start",
+};
 
 type ListFilterPopoverProps = {
   hasActiveFilters: boolean;

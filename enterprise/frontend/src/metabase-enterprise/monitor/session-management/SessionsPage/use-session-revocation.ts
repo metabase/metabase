@@ -1,20 +1,11 @@
 import { useCallback } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
-import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useDispatch } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
+import { useRevocation } from "metabase/monitor/hooks";
 import { useRevokeSessionsMutation } from "metabase-enterprise/api";
 import type { RevokeSessionsRequest, Session } from "metabase-types/api";
 
 import { getSessionUserName } from "../utils";
-
-type RevokeConfirmation = {
-  title: string;
-  message: string;
-  request: RevokeSessionsRequest;
-};
 
 type UseSessionRevocationOptions = {
   onRevoked: (request: RevokeSessionsRequest) => void;
@@ -23,60 +14,28 @@ type UseSessionRevocationOptions = {
 export function useSessionRevocation({
   onRevoked,
 }: UseSessionRevocationOptions) {
-  const dispatch = useDispatch();
   const [revokeSessions, { isLoading: isRevoking }] =
     useRevokeSessionsMutation();
-  const { modalContent: confirmModal, show: showConfirm } = useConfirmation();
 
-  const revoke = useCallback(
-    async (request: RevokeSessionsRequest) => {
-      try {
-        const { revoked, remaining } = await revokeSessions(request).unwrap();
-        dispatch(
-          addUndo({
-            message: ngettext(
-              msgid`Revoked ${revoked} session`,
-              `Revoked ${revoked} sessions`,
-              revoked,
-            ),
-          }),
-        );
-        if (remaining > 0) {
-          dispatch(
-            addUndo({
-              variant: "warning",
-              message: ngettext(
-                msgid`${remaining} new session started while revoking`,
-                `${remaining} new sessions started while revoking`,
-                remaining,
-              ),
-            }),
-          );
-        }
-        onRevoked(request);
-      } catch (error) {
-        dispatch(
-          addUndo({
-            variant: "negative",
-            message: getErrorMessage(error, t`Could not revoke sessions.`),
-          }),
-        );
-      }
+  const { confirmModal, confirmRevoke } = useRevocation<RevokeSessionsRequest>({
+    revoke: revokeSessions,
+    messages: {
+      revoked: (count) =>
+        ngettext(
+          msgid`Revoked ${count} session`,
+          `Revoked ${count} sessions`,
+          count,
+        ),
+      raced: (count) =>
+        ngettext(
+          msgid`${count} new session started while revoking`,
+          `${count} new sessions started while revoking`,
+          count,
+        ),
+      failed: t`Could not revoke sessions.`,
     },
-    [dispatch, onRevoked, revokeSessions],
-  );
-
-  const confirmRevoke = useCallback(
-    ({ title, message, request }: RevokeConfirmation) => {
-      showConfirm({
-        title,
-        message,
-        confirmButtonText: t`Revoke`,
-        onConfirm: () => revoke(request),
-      });
-    },
-    [revoke, showConfirm],
-  );
+    onRevoked,
+  });
 
   const revokeSelected = useCallback(
     (sessions: Session[]) => {

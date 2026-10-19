@@ -1,0 +1,58 @@
+## Revoking a registered OAuth client is a soft-disable: the row is stamped rather than deleted, so the
+## admin surface and the client event log keep the name and redirect URIs of what was revoked.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-02T14:40:00
+      author: johnswanson
+      comment: Add revoked_at to oauth_client
+      changes:
+        - addColumn:
+            tableName: oauth_client
+            columns:
+              - column:
+                  name: revoked_at
+                  type: ${timestamp_type}
+                  remarks: When an admin revoked this client; null for an active client
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: oauth_client
+            columnName: revoked_at
+
+  - changeSet:
+      id: v65.2026-10-02T14:40:01
+      author: johnswanson
+      comment: Add revoked_by_user_id to oauth_client
+      changes:
+        - addColumn:
+            tableName: oauth_client
+            columns:
+              - column:
+                  name: revoked_by_user_id
+                  type: int
+                  remarks: FK to core_user.id of the admin who revoked this client; nulled out if that user is deleted
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: oauth_client
+            columnName: revoked_by_user_id
+
+  - changeSet:
+      id: v65.2026-10-02T14:40:02
+      author: johnswanson
+      comment: Add FK on oauth_client.revoked_by_user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: oauth_client
+            baseColumnNames: revoked_by_user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_oauth_client_revoked_by_user_id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: oauth_client
+            constraintName: fk_oauth_client_revoked_by_user_id

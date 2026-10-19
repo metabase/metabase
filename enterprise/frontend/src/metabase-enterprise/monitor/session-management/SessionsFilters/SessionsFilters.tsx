@@ -2,11 +2,14 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import {
+  FILTER_POPOVER_COMBOBOX,
   FilterPill,
   FilterSection,
   ListFilterPopover,
 } from "metabase/common/components/ListFilterPopover";
-import { type ComboboxProps, Select } from "metabase/ui";
+import { TimePresetFilter } from "metabase/monitor/components/TimePresetFilter";
+import type { MonitorTimePreset } from "metabase/monitor/time-presets";
+import { Select } from "metabase/ui";
 import {
   SESSION_END_REASONS,
   SESSION_PROVIDERS,
@@ -14,17 +17,9 @@ import {
   type SessionProvider,
 } from "metabase-types/api";
 
-import {
-  SESSIONS_TIME_PRESETS,
-  type SessionsTimePreset,
-  type SessionsUrlState,
-} from "../SessionsPage/types";
-import { isEndReason, isTimePreset } from "../SessionsPage/utils";
-import {
-  getEndReasonLabel,
-  getProviderLabel,
-  getTimePresetLabel,
-} from "../utils";
+import type { SessionsUrlState } from "../SessionsPage/types";
+import { isEndReason } from "../SessionsPage/utils";
+import { getEndReasonLabel, getProviderLabel } from "../utils";
 
 type SessionsFiltersProps = {
   state: SessionsUrlState;
@@ -33,8 +28,8 @@ type SessionsFiltersProps = {
 
 type FilterDraft = {
   provider: SessionProvider[];
-  last_active: SessionsTimePreset | null;
-  ended: SessionsTimePreset | null;
+  last_active: MonitorTimePreset | null;
+  ended: MonitorTimePreset | null;
   reason: SessionEndReason | null;
 };
 
@@ -59,12 +54,6 @@ export const hasActiveFilters = (state: SessionsUrlState): boolean =>
     ? state.ended !== null || state.reason !== null
     : state.last_active !== null);
 
-const FILTER_SELECT_COMBOBOX: Partial<ComboboxProps> = {
-  withinPortal: false,
-  floatingStrategy: "fixed",
-  position: "bottom-start",
-};
-
 export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
   const [draft, setDraft] = useState<FilterDraft>(() => stateToDraft(state));
   const isEndedTab = state.tab === "ended";
@@ -78,18 +67,12 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
     }));
   };
 
-  const handleLastActiveChange = (value: string | null) => {
-    setDraft((prev) => ({
-      ...prev,
-      last_active: value !== null && isTimePreset(value) ? value : null,
-    }));
+  const handleLastActiveChange = (last_active: MonitorTimePreset | null) => {
+    setDraft((prev) => ({ ...prev, last_active }));
   };
 
-  const handleEndedChange = (value: string | null) => {
-    setDraft((prev) => ({
-      ...prev,
-      ended: value !== null && isTimePreset(value) ? value : null,
-    }));
+  const handleEndedChange = (ended: MonitorTimePreset | null) => {
+    setDraft((prev) => ({ ...prev, ended }));
   };
 
   const handleReasonChange = (value: string | null) => {
@@ -119,39 +102,19 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
       </FilterSection>
 
       {!isEndedTab && (
-        <FilterSection label={t`Last active`}>
-          <Select
-            w="100%"
-            data={SESSIONS_TIME_PRESETS.map((preset) => ({
-              value: preset,
-              label: getTimePresetLabel(preset),
-            }))}
-            value={draft.last_active}
-            aria-label={t`Last active`}
-            placeholder={t`Any time`}
-            clearable
-            comboboxProps={FILTER_SELECT_COMBOBOX}
-            onChange={handleLastActiveChange}
-          />
-        </FilterSection>
+        <TimePresetFilter
+          label={t`Last active`}
+          value={draft.last_active}
+          onChange={handleLastActiveChange}
+        />
       )}
 
       {isEndedTab && (
-        <FilterSection label={t`Ended`}>
-          <Select
-            w="100%"
-            data={SESSIONS_TIME_PRESETS.map((preset) => ({
-              value: preset,
-              label: getTimePresetLabel(preset),
-            }))}
-            value={draft.ended}
-            aria-label={t`Ended`}
-            placeholder={t`Any time`}
-            clearable
-            comboboxProps={FILTER_SELECT_COMBOBOX}
-            onChange={handleEndedChange}
-          />
-        </FilterSection>
+        <TimePresetFilter
+          label={t`Ended`}
+          value={draft.ended}
+          onChange={handleEndedChange}
+        />
       )}
 
       {isEndedTab && (
@@ -166,7 +129,7 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
             aria-label={t`Reason`}
             placeholder={t`Any reason`}
             clearable
-            comboboxProps={FILTER_SELECT_COMBOBOX}
+            comboboxProps={FILTER_POPOVER_COMBOBOX}
             onChange={handleReasonChange}
           />
         </FilterSection>

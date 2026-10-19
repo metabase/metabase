@@ -40,6 +40,7 @@ export * from "./model-indexes";
 export * from "./multi-factor-auth";
 export * from "./native-query-snippet";
 export * from "./oauth";
+export * from "./oauth-client-management";
 export * from "./performance";
 export * from "./permissions";
 export * from "./premium-features";

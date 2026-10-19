@@ -59,6 +59,10 @@ function getActiveSection(pathname: string): ActiveSection {
       () => "session-management",
     )
     .with(
+      P.string.startsWith(Urls.monitorOAuthClients()),
+      () => "oauth-clients",
+    )
+    .with(
       P.string.startsWith(Urls.monitorAiAuditingMcp()),
       () => "ai-auditing-mcp",
     )
@@ -208,16 +212,28 @@ export function MonitorLayout() {
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("model-caching")}
           />
+          {/* OAuth clients ships and licenses with session management, so it shares both of its gates */}
           {canAccessSessions && (
-            <AreaTab
-              label={t`Session management`}
-              icon="group"
-              to={Urls.monitorSessions()}
-              isSelected={activeSection === "session-management"}
-              showLabel={isNavbarOpened}
-              isGated={!hasSessionManagementFeature}
-              onClick={() => trackMonitorSectionClicked("session-management")}
-            />
+            <>
+              <AreaTab
+                label={t`Session management`}
+                icon="group"
+                to={Urls.monitorSessions()}
+                isSelected={activeSection === "session-management"}
+                showLabel={isNavbarOpened}
+                isGated={!hasSessionManagementFeature}
+                onClick={() => trackMonitorSectionClicked("session-management")}
+              />
+              <AreaTab
+                label={t`OAuth clients`}
+                icon="connections"
+                to={Urls.monitorOAuthClients()}
+                isSelected={activeSection === "oauth-clients"}
+                showLabel={isNavbarOpened}
+                isGated={!hasSessionManagementFeature}
+                onClick={() => trackMonitorSectionClicked("oauth-clients")}
+              />
+            </>
           )}
           {canAccessApiKeyUsageTab && (
             <AreaTab

@@ -3,26 +3,45 @@ import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { Select } from "metabase/ui";
+import { Select, type SelectProps } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import type { UserOption } from "./types";
 
-type Props = {
+type BaseProps = {
   value: UserOption | null;
-  onChange: (next: UserOption) => void;
   label?: string;
+  "aria-label"?: string;
   placeholder?: string;
   flex?: number | string;
+  comboboxProps?: SelectProps["comboboxProps"];
 };
 
-export const UserPicker = ({
-  value,
-  onChange,
-  label,
-  placeholder,
-  flex,
-}: Props) => {
+type Props = BaseProps &
+  (
+    | { clearable: true; onChange: (next: UserOption | null) => void }
+    | { clearable?: false; onChange: (next: UserOption) => void }
+  );
+
+export const UserPicker = (props: Props) => {
+  const {
+    value,
+    label,
+    "aria-label": ariaLabel,
+    placeholder,
+    flex,
+    clearable,
+    comboboxProps,
+  } = props;
+  // Mantine reports null even when not clearable, so drop it for callers that can't take one
+  const notify: (next: UserOption | null) => void = props.clearable
+    ? props.onChange
+    : (next) => {
+        if (next !== null) {
+          props.onChange(next);
+        }
+      };
+
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_DURATION);
   const trimmedSearch = debouncedSearch.trim();
@@ -56,9 +75,13 @@ export const UserPicker = ({
       : fetchedOptions;
 
   const handleChange = (next: string | null) => {
+    if (next === null) {
+      notify(null);
+      return;
+    }
     const option = options.find((o) => o.value === next);
     if (option) {
-      onChange({ id: Number(option.value), label: option.label });
+      notify({ id: Number(option.value), label: option.label });
     }
   };
 
@@ -66,10 +89,13 @@ export const UserPicker = ({
     <Select
       flex={flex}
       label={label}
+      aria-label={ariaLabel}
       placeholder={placeholder ?? t`Select a user`}
       data={options}
-      value={selectedOption?.value}
+      value={selectedOption?.value ?? null}
       onChange={handleChange}
+      clearable={clearable}
+      comboboxProps={comboboxProps}
       searchable
       searchValue={search}
       onSearchChange={setSearch}

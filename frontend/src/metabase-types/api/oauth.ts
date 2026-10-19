@@ -1,13 +1,19 @@
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 
-export type OAuthClientEventType = "registered" | "approved" | "denied";
+export const OAUTH_CLIENT_EVENT_TYPES = [
+  "registered",
+  "approved",
+  "denied",
+  "revoked",
+] as const;
+export type OAuthClientEventType = (typeof OAUTH_CLIENT_EVENT_TYPES)[number];
 
 /** One row of the OAuth client audit log. Client columns are `null` once the client is deleted. */
 export interface OAuthAuthorization {
   id: number;
   oauth_client_id: number | null;
   client_id: string | null;
-  /** The deciding user; null for `registered` events. */
+  /** The deciding user, or the admin for a `revoked` event; null for `registered` events. */
   user_id: number | null;
   event_type: OAuthClientEventType;
   created_at: string;

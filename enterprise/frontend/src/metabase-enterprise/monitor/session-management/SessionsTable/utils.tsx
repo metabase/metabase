@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { DateTime } from "metabase/common/components/DateTime";
+import { MonitorDateCell } from "metabase/monitor/components/MonitorDateCell";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { Badge, Ellipsified, Flex } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -15,12 +15,6 @@ import {
 
 const ACTIVE_COLUMN_WIDTHS = [0.34, 0.3, 0.16, 0.2];
 const ENDED_COLUMN_WIDTHS = [0.26, 0.22, 0.17, 0.18, 0.17];
-
-const DateCell = ({ value }: { value: string }) => (
-  <Ellipsified>
-    <DateTime value={value} unit="minute" />
-  </Ellipsified>
-);
 
 const getUserColumn = (): TreeTableColumnDef<Session> => ({
   id: "user_email",
@@ -78,7 +72,7 @@ const getSignedInColumn = (): TreeTableColumnDef<Session> => ({
   enableSorting: true,
   sortDescFirst: true,
   accessorFn: (session) => session.created_at,
-  cell: ({ row }) => <DateCell value={row.original.created_at} />,
+  cell: ({ row }) => <MonitorDateCell value={row.original.created_at} />,
 });
 
 const getEndedColumn = (): TreeTableColumnDef<Session> => ({
@@ -90,7 +84,7 @@ const getEndedColumn = (): TreeTableColumnDef<Session> => ({
   accessorFn: (session) => session.ended_at ?? "",
   cell: ({ row }) =>
     row.original.ended_at ? (
-      <DateCell value={row.original.ended_at} />
+      <MonitorDateCell value={row.original.ended_at} />
     ) : (
       EMPTY_CELL_PLACEHOLDER
     ),

@@ -1,4 +1,34 @@
-import { parseSortColumn, parseSortDirection } from "./utils";
+import {
+  parsePage,
+  parseQuery,
+  parseSortColumn,
+  parseSortDirection,
+} from "./utils";
+
+describe("parsePage", () => {
+  it("reads a page number", () => {
+    expect(parsePage("3")).toBe(3);
+    expect(parsePage(["2", "5"])).toBe(2);
+  });
+
+  it("falls back to the first page for a missing, negative or non-numeric value", () => {
+    expect(parsePage(undefined)).toBe(0);
+    expect(parsePage("-1")).toBe(0);
+    expect(parsePage("abc")).toBe(0);
+  });
+});
+
+describe("parseQuery", () => {
+  it("trims the search", () => {
+    expect(parseQuery("  claude  ")).toBe("claude");
+    expect(parseQuery(["  ann ", "bob"])).toBe("ann");
+  });
+
+  it("reads a missing search as searching for nothing", () => {
+    expect(parseQuery(undefined)).toBe("");
+    expect(parseQuery(null)).toBe("");
+  });
+});
 
 describe("parseSortColumn", () => {
   const columns = ["name", "created_at"] as const;
