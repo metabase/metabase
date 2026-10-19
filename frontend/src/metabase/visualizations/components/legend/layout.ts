@@ -115,8 +115,6 @@ interface GetLegendLayoutOptions {
   alwaysVisible?: boolean;
 }
 
-const sum = (values: number[]) => values.reduce((total, v) => total + v, 0);
-
 export const getOverflowLabel = (count: number) =>
   c("{0} is the number of hidden legend items").t`+ ${count} more`;
 
@@ -153,7 +151,9 @@ export function getLegendLayout({
     availableWidth,
     horizontalWidth - LEGEND_PADDING * 2,
   );
-  const itemsWidth = sum(itemWidths) + config.itemGap * (items.length - 1);
+  const itemsWidth =
+    itemWidths.reduce((total, width) => total + width, 0) +
+    config.itemGap * (items.length - 1);
   if (itemsWidth <= availableHorizontalWidth) {
     return { type: "horizontal" };
   }

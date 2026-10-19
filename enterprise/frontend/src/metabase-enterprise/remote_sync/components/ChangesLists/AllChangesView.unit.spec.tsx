@@ -348,7 +348,7 @@ describe("AllChangesView", () => {
       const tableEntity = createMockRemoteSyncEntity({
         id: 100,
         name: "Orders Table",
-        model: "table",
+        model: "tableusersettings",
         collection_id: 1,
         sync_status: "update",
       });
@@ -415,7 +415,7 @@ describe("AllChangesView", () => {
       const fieldEntity = createMockRemoteSyncEntity({
         id: 400,
         name: "email",
-        model: "field",
+        model: "fieldusersettings",
         collection_id: 1,
         sync_status: "update",
         table_id: 100,
@@ -439,6 +439,54 @@ describe("AllChangesView", () => {
       expect(screen.getByText("Users Table")).toBeInTheDocument();
       expect(screen.getByText("email")).toBeInTheDocument();
       expect(screen.getByText("Total Users")).toBeInTheDocument();
+    });
+  });
+
+  describe("table user settings", () => {
+    it("should link a table's user settings and its fields' user settings and dimensions to Data Studio", async () => {
+      const tableEntity = createMockRemoteSyncEntity({
+        id: 100,
+        name: "Orders Table",
+        model: "tableusersettings",
+        collection_id: 1,
+        sync_status: "update",
+        table_id: 100,
+        table_name: "Orders Table",
+      });
+      const fieldEntity = createMockRemoteSyncEntity({
+        id: 400,
+        name: "email",
+        model: "fieldusersettings",
+        collection_id: 1,
+        sync_status: "update",
+        table_id: 100,
+        table_name: "Orders Table",
+      });
+      const dimensionEntity = createMockRemoteSyncEntity({
+        id: 401,
+        name: "user_id",
+        model: "dimension",
+        collection_id: 1,
+        sync_status: "update",
+        table_id: 100,
+        table_name: "Orders Table",
+      });
+
+      setup({
+        entities: [tableEntity, fieldEntity, dimensionEntity],
+      });
+
+      expect(
+        await screen.findByRole("link", { name: /Orders Table/ }),
+      ).toHaveAttribute("href", "/data-studio/library/tables/100");
+      expect(screen.getByRole("link", { name: /email/ })).toHaveAttribute(
+        "href",
+        "/data-studio/library/tables/100/fields/400",
+      );
+      expect(screen.getByRole("link", { name: /user_id/ })).toHaveAttribute(
+        "href",
+        "/data-studio/library/tables/100/fields/401",
+      );
     });
   });
 
