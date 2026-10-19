@@ -63,7 +63,8 @@ export type SdkIframeEmbedSetSettingsMessage = {
 export type SdkIframeEmbedSubmitSessionTokenMessage = {
   type: "metabase.embed.submitSessionToken";
   data: {
-    authMethod: MetabaseAuthMethod;
+    /** Omitted when the React SDK provider owns session caching. */
+    authMethod?: MetabaseAuthMethod;
     sessionToken: MetabaseEmbeddingSessionToken;
   };
 };

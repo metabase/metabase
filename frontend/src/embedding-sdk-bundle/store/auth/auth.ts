@@ -1,11 +1,16 @@
 import type { Dispatch } from "@reduxjs/toolkit";
 
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { createAsyncThunk } from "metabase/redux/utils";
 
 // This is an SDK-only plugin and we co-locate it with its OSS usage for convenience and better three-shaking.
 export const PLUGIN_EMBEDDING_SDK_AUTH = {
+  getOrRefreshSession: async (
+    _config: MetabaseAuthConfig,
+    _store: SdkStore,
+  ): Promise<MetabaseEmbeddingSessionToken | null> => null,
   initAuth: async (
     _config: any, // should be `MetabaseAuthConfig & { isLocalHost?: boolean }` but we can't import it for now (it's EE code)
     _dispatch: { dispatch: Dispatch },

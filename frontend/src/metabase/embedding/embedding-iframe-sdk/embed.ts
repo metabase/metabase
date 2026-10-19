@@ -1,6 +1,7 @@
 import type { SqlParameterValues } from "embedding-sdk-bundle/types";
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
 import * as MetabaseErrors from "embedding-sdk-shared/errors";
+import { getDataAppEmbedUrl } from "embedding-sdk-shared/lib/data-app-embed";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
@@ -387,15 +388,13 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     // Without it multiple EmbedJS iframes on a page loaded sequentially.
     // We don't cache the iframe content, so random query parameter does not break caching.
     const settings = this.properties;
-    const route =
+    const iframeUrl =
       settings.componentName === "metabase-data-app"
-        ? `embed/apps/${settings.path}`
-        : EMBEDDING_ROUTE;
-    const iframeUrl = new URL(`${this.globalSettings.instanceUrl}/${route}`);
+        ? getDataAppEmbedUrl(this.globalSettings.instanceUrl, settings.path)
+        : new URL(`${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}`);
 
     if (settings.componentName === "metabase-data-app") {
       this._dataAppPath = settings.path;
-      iframeUrl.searchParams.set("modular", "true");
     }
 
     iframeUrl.searchParams.set(
