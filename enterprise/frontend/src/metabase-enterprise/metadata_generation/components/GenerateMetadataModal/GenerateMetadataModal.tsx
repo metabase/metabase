@@ -55,6 +55,8 @@ type ScopeType = (typeof SCOPE_TYPES)[number];
 type GenerateMetadataModalProps = {
   databaseId: DatabaseId;
   initialTableIds?: ConcreteTableId[];
+  /** When true, the run covers exactly `initialTableIds` and the form offers no scope choice. */
+  isScopeFixed?: boolean;
   /** A run to show the progress of, instead of the form. The owner keeps it, so it decides what reopening shows. */
   runId?: MetadataGenerationRunId | null;
   opened: boolean;
@@ -67,6 +69,7 @@ type GenerateMetadataModalProps = {
 export function GenerateMetadataModal({
   databaseId,
   initialTableIds,
+  isScopeFixed = false,
   runId: externalRunId,
   opened,
   onClose,
@@ -103,6 +106,7 @@ export function GenerateMetadataModal({
         <GenerateMetadataForm
           databaseId={databaseId}
           initialTableIds={initialTableIds}
+          isScopeFixed={isScopeFixed}
           onStarted={(runId) => onRunStarted?.(runId)}
           onCancel={onClose}
         />
@@ -124,6 +128,7 @@ function getTitle(
 type GenerateMetadataFormProps = {
   databaseId: DatabaseId;
   initialTableIds?: ConcreteTableId[];
+  isScopeFixed?: boolean;
   onStarted: (runId: MetadataGenerationRunId) => void;
   onCancel: () => void;
 };
@@ -131,6 +136,7 @@ type GenerateMetadataFormProps = {
 export function GenerateMetadataForm({
   databaseId,
   initialTableIds,
+  isScopeFixed = false,
   onStarted,
   onCancel,
 }: GenerateMetadataFormProps) {
@@ -146,13 +152,18 @@ export function GenerateMetadataForm({
   const [startRun, { isLoading: isStarting, error: startError }] =
     useStartMetadataGenerationRunMutation();
 
+  // The tables and schemas are only needed to offer a scope choice.
   const { data: database, isLoading: isLoadingDatabase } =
-    useGetDatabaseMetadataQuery({
-      id: databaseId,
-      include_hidden: true,
-      remove_inactive: true,
-      skip_fields: true,
-    });
+    useGetDatabaseMetadataQuery(
+      isScopeFixed
+        ? skipToken
+        : {
+            id: databaseId,
+            include_hidden: true,
+            remove_inactive: true,
+            skip_fields: true,
+          },
+    );
   const tables = useMemo(() => database?.tables ?? [], [database]);
   const schemaOptions = useMemo(
     () =>
@@ -226,17 +237,19 @@ export function GenerateMetadataForm({
         {t`An AI model reads the metadata, sample values and a few rows of each table and proposes values. Nothing changes until you review and accept the proposals.`}
       </Text>
 
-      <Stack gap="xs">
-        <Text fw="bold">{t`Scope`}</Text>
-        <SegmentedControl
-          data={scopeOptions}
-          value={scopeType}
-          onChange={setScopeType}
-          aria-label={t`Scope`}
-        />
-      </Stack>
+      {!isScopeFixed && (
+        <Stack gap="xs">
+          <Text fw="bold">{t`Scope`}</Text>
+          <SegmentedControl
+            data={scopeOptions}
+            value={scopeType}
+            onChange={setScopeType}
+            aria-label={t`Scope`}
+          />
+        </Stack>
+      )}
 
-      {scopeType === "schemas" && (
+      {!isScopeFixed && scopeType === "schemas" && (
         <MultiSelect
           label={t`Schemas`}
           placeholder={t`Pick one or more schemas`}
@@ -247,7 +260,7 @@ export function GenerateMetadataForm({
           disabled={isLoadingDatabase}
         />
       )}
-      {scopeType === "tables" && (
+      {!isScopeFixed && scopeType === "tables" && (
         <MultiSelect
           label={t`Specific tables`}
           placeholder={t`Pick one or more tables`}

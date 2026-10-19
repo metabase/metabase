@@ -40,6 +40,7 @@ export function TableButton({ table }: MetadataGenerationTableButtonProps) {
       <GenerateMetadataModal
         databaseId={table.db_id}
         initialTableIds={[table.id]}
+        isScopeFixed
         runId={runId}
         opened={isModalOpen}
         onClose={handleClose}
