@@ -724,13 +724,14 @@
     (let [running  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
           cut-off  (test-util/parts->aisdk-chunks
-                    [{:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Paris"}}])
+                    [{:type :tool-input :id "call-2" :function "convert-currency"
+                      :arguments {:amount 100, :from "EUR", :to "USD"}}])
           streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
       (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
         (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
                 (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
         (testing "and a warning names the call that never ran"
-          (is (=? [{:level :warn :message #".*call-2.*get-time.*"}] (messages))))))))
+          (is (=? [{:level :warn :message #".*call-2 convert-currency.*"}] (messages))))))))
 
 ;;; tool argument validation tests
 
@@ -793,6 +794,32 @@
       (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
              (:output result)))
       (is (= {:class :validation :code :invalid-json} (:error result))))))
+
+(deftest ^:parallel tool-unparseable-arguments-warning-test
+  (testing "invalid JSON logs one warning with the tool name, the call ID and the length, but not the parse error"
+    (let [raw "{\"tz\": jane_doe_4165551234}"]
+      (doseq [[tool-name logged-name] [["get-time" "get-time"] ["analyze_chart" "unknown"]]]
+        (testing tool-name
+          (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+            (run! identity (eduction (self.core/tool-executor-xf test-util/TOOLS)
+                                     (self.core/lite-aisdk-xf)
+                                     [{:type :tool-input-start :toolName tool-name :toolCallId "call-j"}
+                                      {:type :tool-input-delta :toolCallId "call-j" :inputTextDelta raw}
+                                      {:type :tool-input-available :toolName tool-name :toolCallId "call-j"}]))
+            (is (=? [{:level   :warn
+                      :message (str "Failed to parse tool arguments as JSON {:tool-name " logged-name
+                                    ", :tool-call-id call-j, :raw-len " (count raw) "}")}]
+                    (messages)))))))))
+
+(deftest ^:parallel tool-sentinel-key-arguments-test
+  (testing "valid JSON that sets the raw-arguments sentinel key gets a validation outcome"
+    (doseq [[tool-name code] [["get-time" :invalid-json] ["analyze_chart" :unknown-tool]]]
+      (testing tool-name
+        (let [chunks (test-util/parts->aisdk-chunks
+                      [{:type :tool-input :id "call-k" :function tool-name
+                        :arguments {::self.core/raw-arguments 1}}])]
+          (is (= {:class :validation :code code}
+                 (-> (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks) last :result :error))))))))
 
 (deftest ^:parallel tool-non-object-arguments-test
   (let [received (atom ::not-called)
@@ -2004,22 +2031,26 @@
 (deftest call-llm-snowplow-test
   (llm.tu/with-default-connections
     (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with tool calls"
-      (let [rasta-id (mt/user->id :rasta)]
-        ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
-        ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
-        ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
+      (let [rasta-id (mt/user->id :rasta)
+            ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
+            ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
+            ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
+            chunks   (test-util/parts->aisdk-chunks
+                      [{:type :start :id "msg-1"}
+                       {:type :tool-input :id "call-1" :function "get-time"
+                        :arguments {:tz "UTC"}}
+                       {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
+                        :arguments {}}
+                       {:type :usage :usage {:promptTokens        950
+                                             :completionTokens    20
+                                             :cacheCreationTokens 50
+                                             :cacheReadTokens     800}
+                        :model "test-model" :id "msg-1"}
+                       {:type :tool-input :id "call-3" :function "lookup_jane_doe_4165551234"
+                        :arguments {:tz "UTC"}}])]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                    (constantly (test-util/mock-llm-response
-                                                 [{:type :start :id "msg-1"}
-                                                  {:type :tool-input :id "call-1" :function "get-time"
-                                                   :arguments {:tz "UTC"}}
-                                                  {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
-                                                   :arguments {}}
-                                                  {:type :usage :usage {:promptTokens        950
-                                                                        :completionTokens    20
-                                                                        :cacheCreationTokens 50
-                                                                        :cacheReadTokens     800}
-                                                   :model "test-model" :id "msg-1"}]))]
+                                    (constantly (concat (drop-last 2 chunks)
+                                                        [{:type :error :errorText "Overloaded"}]))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
               (let [[spans logs] (tracing.tu/with-span-exporter [exporter]
@@ -2057,6 +2088,8 @@
                         tool-events))
                 (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
                 (is (some #(str/includes? (:message %) "call-2") logs))
+                (is (some #(str/includes? (:message %) "call-3 unknown") logs))
+                (is (some #(str/includes? (:message %) ":tool-call-id call-3") logs))
                 (is (not (str/includes? (pr-str [events spans logs]) "jane_doe"))
                     "a name the model made up never reaches analytics, spans or logs")))))))))
 

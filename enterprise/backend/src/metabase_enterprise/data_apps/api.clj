@@ -72,7 +72,6 @@
    [:enabled         :boolean]
    [:allowed_hosts   [:sequential :string]]
    [:resource_collection_id ms/PositiveInt]
-   [:table_ids       [:sequential ms/PositiveInt]]
    [:bundle_hash     [:maybe :string]]
    [:created_at      :any]
    [:updated_at      :any]])

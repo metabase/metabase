@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-surface :as mcp.ui-surface]
@@ -80,10 +81,9 @@
 (defn v2-scopes
   "The scopes the v2 MCP surface itself gates on."
   []
-  mcp.paths/v2-surface-scopes)
+  mcp.scope/v2-surface-scopes)
 
-(defn v2-baseline-scopes
-  "The subset of [[v2-scopes]] that the consent page locks: when a client requests one of these, the user cannot untick
-  it."
-  []
-  mcp.paths/v2-baseline-scopes)
+(defn v2-baseline-scope?
+  "Is `scope` locked on the consent page?"
+  [scope]
+  (mcp.scope/v2-baseline-scope? scope))

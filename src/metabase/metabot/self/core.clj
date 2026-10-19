@@ -390,10 +390,10 @@
           (nil? arguments) nil
           :else            {::non-object-arguments arguments}))
       (catch Exception e
-        (log/warn "Failed to parse tool arguments as JSON, passing raw string"
-                  {:tool    (:toolName (first chunks))
-                   :error   (.getMessage e)
-                   :raw-len (count raw)})
+        (log/debug "Failed to parse tool arguments as JSON, passing raw string"
+                   {:tool-call-id (:toolCallId (first chunks))
+                    :error        (.getMessage e)
+                    :raw-len      (count raw)})
         ;; Return a sentinel map so the model gets a repair message from [[reject-unparsed-arguments!]]
         ;; rather than a cryptic JSON parse stacktrace.
         {::raw-arguments raw}))))
@@ -481,9 +481,7 @@
                                       :function  (:toolName chunk)
                                       :arguments (parse-tool-arguments chunks)}
                                pm (assoc :provider-metadata pm)))
-    ;; No `:error` on the part. A failed call carries its `:error` inside `:result`, which is the one
-    ;; place anything asks — the agent loop, the SSE writer, persistence and telemetry all read it
-    ;; there. A second copy here is what let a failure reach the client as a success.
+    ;; A failed call carries its `:error` inside `:result`, not on the part.
     :tool-output-available {:type        :tool-output
                             :id          (:toolCallId chunk)
                             :function    (:toolName chunk)
@@ -1017,10 +1015,17 @@
                          (fn [chunk]
                            (cond-> chunk
                              (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-              outcome  (if-not tool
-                         (do (log/debugf "Tool call %s: unknown tool" tool-call-id)
-                             (tools.runtime/unknown-tool-outcome tool-name (keys tools)))
-                         (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)]
+              outcome  (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                             raw                 (::raw-arguments arguments)]
+                         ;; Valid JSON can set `::raw-arguments` too, to a value that isn't a string.
+                         (when (string? raw)
+                           (log/warn "Failed to parse tool arguments as JSON"
+                                     {:tool-name    safe-name
+                                      :tool-call-id tool-call-id
+                                      :raw-len      (count raw)}))
+                         (if-not tool
+                           (do (log/debugf "Tool call %s: unknown tool" tool-call-id)
+                               (tools.runtime/unknown-tool-outcome tool-name (keys tools)))
                            ;; Checked before coercion: `coerce-stringified-json` would decode a
                            ;; double-encoded `{::non-object-arguments "{…}"}` into an object and
                            ;; garble the message.
@@ -1091,12 +1096,14 @@
                    (vswap! active assoc toolCallId {:task task})))
 
                :error
-               (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
+               (let [cut-off (u/for-map [[id {:keys [task chunks]}] @active
+                                         :when (not task)
+                                         :let  [tool-name (:toolName (first chunks))]]
+                               [id (if (contains? tools tool-name) tool-name "unknown")])]
                  (vreset! errored? true)
                  (when (seq cut-off)
-                   (log/warn "Dropping tool calls that a stream error cut off"
-                             {:tool-calls (into {} (map (juxt identity #(get-in @active [% :chunks 0 :toolName]))) cut-off)})
-                   (vswap! active #(apply dissoc % cut-off))))
+                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (vswap! active #(apply dissoc % (keys cut-off)))))
 
                ;; otherwise: do nothing
                nil)
