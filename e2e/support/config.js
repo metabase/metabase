@@ -194,6 +194,23 @@ const assetsResolverPlugin = {
   },
 };
 
+// tsconfig maps cljs/* to the generated declarations, which carry no runtime code,
+// so esbuild needs the compiled output instead.
+const cljsResolverPlugin = {
+  name: "cljsResolver",
+  setup(build) {
+    build.onResolve({ filter: /^cljs\// }, (args) => {
+      return {
+        path: path.join(
+          __dirname,
+          "../../target/cljs_dev",
+          `${args.path.slice("cljs/".length)}.js`,
+        ),
+      };
+    });
+  },
+};
+
 const defaultConfig = {
   // Expose non-sensitive environment variables synchronously via Cypress.expose()
   // These are safe to expose in the browser and are used for configuration
@@ -257,6 +274,7 @@ const defaultConfig = {
         plugins: [
           NodeModulesPolyfillPlugin(),
           assetsResolverPlugin,
+          cljsResolverPlugin,
           sideEffectFreeModulesPlugin,
         ],
         sourcemap: "inline",
