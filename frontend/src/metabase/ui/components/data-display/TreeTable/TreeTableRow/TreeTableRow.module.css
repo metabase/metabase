@@ -29,7 +29,7 @@
 
 .content {
   display: flex;
-  cursor: pointer;
+  user-select: none;
 
   &:hover {
     background-color: var(--mb-color-background_surface-hover);
@@ -43,6 +43,10 @@
   &:focus-visible {
     box-shadow: inset 0 0 0 2px var(--mb-color-input-focus);
   }
+}
+
+.clickable {
+  cursor: pointer;
 }
 
 .content.active {
@@ -65,12 +69,14 @@
 
 .treeCell {
   overflow: hidden;
+  user-select: text;
 }
 
 .cell {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  user-select: text;
 }
 
 .link {

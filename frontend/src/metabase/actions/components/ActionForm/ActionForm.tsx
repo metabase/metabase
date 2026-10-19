@@ -7,13 +7,14 @@ import {
   getSubmitButtonColor,
   getSubmitButtonLabel,
 } from "metabase/actions/utils";
+import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
 } from "metabase/forms";
-import { Button, Flex } from "metabase/ui";
+import { Button, Stack, useIsInModal } from "metabase/ui";
 import type {
   ActionFormInitialValues,
   ParameterId,
@@ -51,6 +52,8 @@ function ActionForm({
   onSubmit,
   onClose,
 }: ActionFormProps): JSX.Element {
+  const isInModal = useIsInModal();
+
   const { initialValues, form, validationSchema, getCleanValues } =
     useActionForm({
       action,
@@ -78,11 +81,13 @@ function ActionForm({
       enableReinitialize
     >
       <Form role="form" data-testid="action-form">
-        {editableFields.map((field) => (
-          <ActionFormFieldWidget key={field.name} formField={field} />
-        ))}
-
-        <Flex justify="flex-end" gap="sm">
+        <Stack gap={isInModal ? "xl" : "lg"}>
+          {editableFields.map((field) => (
+            <ActionFormFieldWidget key={field.name} formField={field} />
+          ))}
+        </Stack>
+        <FormFooter pageProps={{ mt: "lg" }}>
+          {isInModal && <FormErrorMessage flex={1} />}
           {onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
@@ -92,9 +97,8 @@ function ActionForm({
             color={getSubmitButtonColor(action)}
             fullWidth={submitButtonFullWidth}
           />
-        </Flex>
-
-        <FormErrorMessage mt="md" />
+        </FormFooter>
+        {!isInModal && <FormErrorMessage mt="lg" />}
       </Form>
     </FormProvider>
   );

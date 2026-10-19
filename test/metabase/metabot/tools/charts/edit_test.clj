@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.charts :as tools.charts]
    [metabase.metabot.tools.charts.edit :as edit-chart]
    [metabase.metabot.tools.construct :as tools.construct]
@@ -40,7 +41,7 @@
     (let [mp (mt/metadata-provider)
           charts-state {"chart-456" {:chart-id "chart-456"
                                      :queries [(lib/native-query mp "SELECT * FROM orders")]}}]
-      (doseq [new-type [:pie :table :scatter :area :sunburst :treemap]]
+      (doseq [new-type [:pie :table :scatter :area :sunburst :treemap :boxplot]]
         (let [{:keys [result]} (edit-chart/edit-chart
                                 {:chart-id "chart-456"
                                  :new-chart-type new-type
@@ -65,12 +66,80 @@
            :new-chart-type :bar
            :charts-state {}})))))
 
+(deftest ^:parallel edit-chart-result-carries-query-id-test
+  (testing "edit-chart's :result carries the source chart's query-id and query"
+    ;; Regression: without :query-id on the result, `chart->xml` renders an empty
+    ;; `query-id=""` attribute and `agent/extract-charts` (which requires BOTH
+    ;; :chart-id and :query-id — see commit 6d5721c5853) never captures the edited
+    ;; chart into `:charts` state. `create-chart` includes :query-id; `edit-chart`
+    ;; must match. But :query-id alone isn't enough: `extract-charts` rebuilds
+    ;; `:queries` from :query, so omitting :query overwrites the chart's real
+    ;; queries with `[nil]` the moment `update-memory` runs (see the next test).
+    (let [mp           (mt/metadata-provider)
+          query        (lib/native-query mp "SELECT * FROM orders")
+          charts-state {"chart-abc" {:chart_id                "chart-abc"
+                                     :query_id                "query-xyz"
+                                     :queries                 [query]
+                                     :visualization_settings  {:chart_type :bar}}}
+          {:keys [result]} (edit-chart/edit-chart
+                            {:chart-id       "chart-abc"
+                             :new-chart-type :line
+                             :charts-state   charts-state})]
+      (is (contains? result :query-id))
+      (is (= "query-xyz" (:query-id result)))
+      (is (= query (:query result))))))
+
+(deftest ^:parallel edit-chart-falls-back-to-caller-resolved-query-test
+  (testing "uses the :query param when the chart's own :queries is empty"
+    ;; Regression: edit-chart-tool resolves the query from either the chart or
+    ;; queries-state (`(or (first (:queries chart)) (get queries-state
+    ;; (:query_id chart)))`), but edit-chart itself only looked at charts-state.
+    ;; A chart with a :query_id but no :queries (the query lives in
+    ;; current-queries-state) produced :query-id set and :query nil on the
+    ;; result — the same [nil]-in-memory bug the tests above cover, just via a
+    ;; different path. The caller now passes its resolved query through.
+    (let [mp           (mt/metadata-provider)
+          query        (lib/native-query mp "SELECT * FROM orders")
+          charts-state {"chart-abc" {:chart_id "chart-abc"
+                                     :query_id "query-xyz"
+                                     :queries  []
+                                     :visualization_settings {:chart_type :bar}}}
+          {:keys [result]} (edit-chart/edit-chart
+                            {:chart-id       "chart-abc"
+                             :new-chart-type :line
+                             :charts-state   charts-state
+                             :query          query})]
+      (is (= {:query-id "query-xyz" :query query}
+             (select-keys result [:query-id :query]))))))
+
+(deftest ^:parallel edit-chart-result-survives-update-memory-test
+  (testing "update-memory stores the edited chart's real query, not [nil]"
+    (let [mp           (mt/metadata-provider)
+          query        (lib/native-query mp "SELECT * FROM orders")
+          charts-state {"chart-abc" {:chart_id                "chart-abc"
+                                     :query_id                "query-xyz"
+                                     :queries                 [query]
+                                     :visualization_settings  {:chart_type :bar}}}
+          {:keys [result]} (edit-chart/edit-chart
+                            {:chart-id       "chart-abc"
+                             :new-chart-type :line
+                             :charts-state   charts-state})
+          memory (#'agent/update-memory
+                  {:state {:charts charts-state}}
+                  [{:type :tool-output
+                    :result {:structured-output result}}])
+          stored (get-in memory [:state :charts (:chart-id result)])]
+      (is (= query (get-in stored [:queries 0]))))))
+
 (deftest edit-chart-of-constructed-query-test
   (mt/with-current-user (test.users/user->id :crowberto)
     (let [table-fields-uri (str "metabase://table/" (mt/id :products) "/fields")
 
-          {[{{table :structured-output} :content}] :resources}
-          (tools.resources/read-resource-tool {:uris [table-fields-uri]})
+          ;; One URI, so the composed `:structured-output` is a one-element vector. The per-URI
+          ;; `:resources` list this used to read is the Agent API's shape and the tool no longer
+          ;; builds it.
+          {[table] :structured-output}
+          (test-util/call-tool tools.resources/read-resource-tool {:uris [table-fields-uri]})
 
           ;; Representations-format query: LLM-facing code should prefer the portable_fk path
           ;; over numeric field ids. Take them straight from the read_resource response.
@@ -89,11 +158,11 @@
                                    "aggregation"  [["count" {}]]
                                    "breakout"     [["field" {} category-field-fk]]}]}
           external-query (walk/keywordize-keys query-data)
-          construct-result (tools.construct/construct-notebook-query-tool
-                            {:query         external-query
-                             :title         "Counts by category"
-                             :description   "Counts by category."
-                             :visualization {:chart_type "bar"}})
+          construct-result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                                {:query         external-query
+                                                 :title         "Counts by category"
+                                                 :description   "Counts by category."
+                                                 :visualization {:chart_type "bar"}})
           query-id (get-in construct-result [:structured-output :query-id])
           query (get-in construct-result [:structured-output :query])
           chart-id (get-in construct-result [:structured-output :chart-id])]
@@ -140,11 +209,11 @@
                                                        ["field" {}
                                                         [db-name "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})
+            result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                        {:query         external-query
+                                         :title         "Test chart"
+                                         :description   "Test chart description."
+                                         :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])]
         (testing "order-by inner clause is now an aggregation reference, not :sum"
           (let [first-ord (first (get-in query [:stages 0 :order-by]))
@@ -185,23 +254,21 @@
                                                        ["field" {}
                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})]
-        (testing "tool returns a clear, agent-targeted error rather than producing a chart"
-          ;; The outer `construct-notebook-query-tool` catches the ex-info and returns
-          ;; `{:output <message>}` (no `:structured-output`). That's the LLM-visible signal.
-          (is (nil? (:structured-output result))
-              (str "expected no structured-output, got: " (pr-str result)))
-          (is (string? (:output result)))
-          (is (re-find #"Sample" (:output result))
-              (str "error message should mention the offending DB name; got: "
-                   (:output result)))
-          (is (re-find #"read_resource|Unknown database" (:output result))
-              (str "error message should hint at the recovery path; got: "
-                   (:output result))))))))
+            {:keys [class code text]}
+            (test-util/tool-failure tools.construct/construct-notebook-query-tool
+                                    {:query         external-query
+                                     :title         "Test chart"
+                                     :description   "Test chart description."
+                                     :visualization {:chart_type "bar"}}
+                                    #{"read_resource"})]
+        (testing "tool raises a declared, agent-targeted error rather than producing a chart"
+          (is (= :recoverable class))
+          (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-database code))
+          (is (re-find #"Sample" text)
+              (str "error message should mention the offending DB name; got: " text))
+          (testing "and the declaration's recovery step says where a database name comes from"
+            (is (re-find #"portable FK" text)
+                (str "error message should hint at the recovery path; got: " text))))))))
 
 (deftest construct-notebook-query-llm-uses-canonical-db-name-end-to-end-test
   (testing (str "Symmetric to the previous test: the LLM writes `database: Sample Database`\n"
@@ -219,11 +286,11 @@
                                      "breakout"     [["field" {}
                                                       [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
             external-query (walk/keywordize-keys query-data)
-            result (tools.construct/construct-notebook-query-tool
-                    {:query         external-query
-                     :title         "Test chart"
-                     :description   "Test chart description."
-                     :visualization {:chart_type "bar"}})
+            result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                        {:query         external-query
+                                         :title         "Test chart"
+                                         :description   "Test chart description."
+                                         :visualization {:chart_type "bar"}})
             query (get-in result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])]
         (testing "the chart was constructed successfully"
@@ -245,13 +312,13 @@
                 "a JOIN and executes successfully against the app DB.")
     (mt/with-current-user (test.users/user->id :crowberto)
       (let [;; Discover portable FKs the same way the LLM does: via read_resource /fields.
-            {[{{orders-details :structured-output} :content}] :resources}
-            (tools.resources/read-resource-tool
-             {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
+            {[orders-details] :structured-output}
+            (test-util/call-tool tools.resources/read-resource-tool
+                                 {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
 
-            {[{{products-details :structured-output} :content}] :resources}
-            (tools.resources/read-resource-tool
-             {:uris [(str "metabase://table/" (mt/id :products) "/fields")]})
+            {[products-details] :structured-output}
+            (test-util/call-tool tools.resources/read-resource-tool
+                                 {:uris [(str "metabase://table/" (mt/id :products) "/fields")]})
 
             orders-fk           (:portable_fk orders-details)
             product-id-field    (some (fn [{:keys [display_name] :as f}]
@@ -275,11 +342,11 @@
                                      "breakout"     [["field" {} category-field-fk]]}]}
             external-query (walk/keywordize-keys query-data)
 
-            construct-result (tools.construct/construct-notebook-query-tool
-                              {:query         external-query
-                               :title         "Test chart"
-                               :description   "Test chart description."
-                               :visualization {:chart_type "bar"}})
+            construct-result (test-util/call-tool tools.construct/construct-notebook-query-tool
+                                                  {:query         external-query
+                                                   :title         "Test chart"
+                                                   :description   "Test chart description."
+                                                   :visualization {:chart_type "bar"}})
             query (get-in construct-result [:structured-output :query])
             breakout-field (get-in query [:stages 0 :breakout 0])
             field-opts (second breakout-field)]

@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 import { useState } from "react";
 
 import { render, screen } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 
 import { TimeInput } from "./TimeInput";
 

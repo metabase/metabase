@@ -16,6 +16,7 @@
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -40,6 +41,7 @@
     [initial-metadata row-1 row-2 ... row-n final-metadata]"
   3)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *backend*
   "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
@@ -72,6 +74,7 @@
 (defn- schedule-purge! [backend]
   (grouper/submit! @purge-queue backend))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."
   nil)
@@ -84,6 +87,7 @@
                (m/update-existing object :json_query lib/prepare-for-serialization)
                object))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *result-fn*
   "The `result-fn` provided by [[impl/do-with-serialization]]."
   nil)
@@ -127,7 +131,7 @@
                              (m/dissoc-in result [:data :rows])
                              {}))
      (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
-           min-duration-ms (:min-duration-ms strategy 0)
+           min-duration-ms (:min_duration_ms strategy 0)
            ;; cache any query that ran long enough -- including ones that returned no rows, so a slow empty result
            ;; doesn't get re-run at full cost on every request
            eligible?       (> duration-ms min-duration-ms)]
@@ -201,6 +205,7 @@
         (u/prog1 (qp.pipeline/*reduce* (cached-results-rff rff query-hash) metadata reducible-rows)
           (log/trace "All cached rows reduced"))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *refresh-lease-duration-ms*
   "How long a claimed stale-while-revalidate refresh lease is honored before another process may take it over (e.g. if
   the claiming process crashed mid-refresh). Should comfortably exceed a normal query's run time."
@@ -236,13 +241,14 @@
   A fraction rather than a fixed lead time so it scales with each strategy's own duration: a lead time longer than
   the duration would put an entry in the refresh zone the moment it was written. Returns false when `window-ms` is
   nil, since a strategy whose boundary doesn't slide (`:schedule`) has no \"about to expire\"."
-  [updated-at invalidated-at window-ms early-refresh-ratio]
+  [updated-at window-ms early-refresh-ratio]
   (boolean (and updated-at
                 window-ms
-                ;; how much of the window is left: the boundary slides with the clock, so the distance from it to
-                ;; `updated-at` is the time until this entry falls behind it
-                (let [remaining-ms (.toMillis (t/duration (t/instant invalidated-at) (t/instant updated-at)))]
-                  (< remaining-ms (* early-refresh-ratio window-ms))))))
+                ;; how much of the window is left, measured from the clock rather than from the strategy's
+                ;; `invalidated-at`: an explicit invalidation pins that boundary to a fixed instant, and the distance
+                ;; from a pinned boundary is the entry's age since the invalidation, not its remaining freshness
+                (let [age-ms (.toMillis (t/duration (t/instant updated-at) (t/instant)))]
+                  (< (- window-ms age-ms) (* early-refresh-ratio window-ms))))))
 
 (defn- not-too-stale?
   "Whether an entry last written at `updated-at` is close enough to `invalidated-at` (the strategy's freshness
@@ -271,9 +277,9 @@
     - `[::miss nil]`     -- no entry; or it's expired, or nearly so, and *this* process won the lease; or it's too
                             stale to serve to anyone. The caller must recompute.
     - `[::canceled nil]` -- the request was canceled."
-  [ignore-cache?
-   query-hash :- bytes?
-   strategy   :- :map
+  [ignore-cache? :- [:maybe :boolean]
+   query-hash    :- bytes?
+   strategy   :- ::lib.schema/cache-strategy
    rff        :- ::qp.schema/rff]
   (if ignore-cache?
     [::miss nil]
@@ -294,7 +300,6 @@
                    (and (cache-fresh? updated-at invalidated-at)
                         (due-for-early-refresh?
                          updated-at
-                         invalidated-at
                          (fresh-duration-ms strategy)
                          (cache/query-caching-early-refresh-ratio))
                         (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*))
@@ -342,7 +347,6 @@
     (log/trace "Running query and saving cached results (if eligible)...")
     (binding [qp.pipeline/*reduce* (fn reduce'
                                      [rff metadata rows]
-                                     {:post [(some? %)]}
                                      (impl/do-with-serialization
                                       (fn [in-fn result-fn]
                                         (binding [*in-fn*     in-fn
@@ -352,8 +356,9 @@
           (fn [metadata]
             (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
 
-(mu/defn- run-query-with-cache :- :some
-  [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
+(mu/defn- run-query-with-cache :- :any
+  [qp                                                 :- fn?
+   {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
    rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see

@@ -107,10 +107,13 @@
 
 (deftest ^:parallel variable-value-test-10
   (testing "BigInteger value"
-    (is (= 9223372036854775808
-           (value-for-tag
-            {:name "id", :id test-uuid, :display-name "ID", :type :number}
-            [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
+    (let [v (value-for-tag
+             {:name "id", :id test-uuid, :display-name "ID", :type :number}
+             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])]
+      (is (= 9223372036854775808 v))
+      ;; `=` does not distinguish BigInteger from BigInt; drivers dispatch parameter binding on class.
+      ;; Unimportant to the product that it's a BigInteger, but if not this test isn't testing what was intended:
+      (is (instance? java.math.BigInteger v)))))
 
 (deftest ^:parallel variable-multiple-values-test
   (testing "Allows multiple bindings of the same tag"
@@ -359,7 +362,7 @@
                nil))))))
 
 (mu/defn- query->params-map
-  ([inner-query]
+  ([inner-query :- ::mbql.s/SourceQuery]
    (query->params-map meta/metadata-provider inner-query))
   ([metadata-provider :- ::lib.schema.metadata/metadata-provider
     inner-query       :- ::mbql.s/SourceQuery]
@@ -385,7 +388,7 @@
             mp         (lib.tu/metadata-provider-with-cards-for-queries
                         meta/metadata-provider
                         [{:database (meta/id)
-                          :type     "native"
+                          :type     :native
                           :native   {:query test-query}}])]
         (is (=? {:card-id 1, :query test-query, :parameters nil}
                 (value-for-tag
@@ -401,8 +404,7 @@
     (testing "Card query template tag generates native query for MBQL query"
       (driver/with-driver :h2
         (let [mbql-query   (lib.tu.macros/mbql-query venues
-                             {:database (meta/id)
-                              :filter   [:< [:field $price nil] 3]})
+                             {:filter [:< $price 3]})
               expected-sql (str "SELECT "
                                 "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
                                 "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
@@ -439,6 +441,7 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [mp         (mt/metadata-provider)
                 mbql-query (lib/query mp (lib.metadata/table mp (mt/id :categories)))]
+            ;; persist-models! and the persistence job machinery need real app-db rows
             #_{:clj-kondo/ignore [:discouraged-var]}
             (mt/with-temp [:model/Card model {:name          "model"
                                               :type          :model
@@ -504,7 +507,7 @@
                              :template-tags {"#1" {:id           "#1"
                                                    :name         "#1"
                                                    :display-name "#1"
-                                                   :type         "card"
+                                                   :type         :card
                                                    :card-id      1}}}
                   :database (meta/id)}])
             tag      {:name         "card-template-tag-test"
@@ -698,17 +701,20 @@
            (query->params-map query))))))
 
 (deftest ^:parallel dont-be-too-strict-test
-  (testing "values-for-tag should allow unknown keys (used only by FE) (#13868)"
-    (testing "\nUnknown key 'filteringParameters'"
+  (testing "values-for-tag should allow the extra keys the FE sends along (#13868)"
+    ;; `:filteringParameters` used to stand in for "some key the FE tacked on". Template tags and parameters are
+    ;; closed schemas now, and the request decoder drops whatever they do not declare before a query gets here, so
+    ;; the keys that actually have to survive are the *declared* ones nothing in this code path reads.
+    (testing "\nExtra declared key 'id'"
       (testing "in tag"
         (is (= "2"
                (value-for-tag
-                {:name                "id"
-                 :display-name        "ID"
-                 :type                :text
-                 :required            true
-                 :default             "100"
-                 :filteringParameters "222b245f"}
+                {:name         "id"
+                 :display-name "ID"
+                 :type         :text
+                 :required     true
+                 :default      "100"
+                 :id           "222b245f"}
                 [{:type   :category
                   :target [:variable [:template-tag "id"]]
                   :value  "2"}]))))
@@ -720,10 +726,10 @@
                  :type         :text
                  :required     true
                  :default      "100"}
-                [{:type                :category
-                  :target              [:variable [:template-tag "id"]]
-                  :value               "2"
-                  :filteringParameters "222b245f"}])))))))
+                [{:type   :category
+                  :target [:variable [:template-tag "id"]]
+                  :value  "2"
+                  :id     "222b245f"}])))))))
 
 (deftest ^:parallel parse-card-include-parameters-test
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"

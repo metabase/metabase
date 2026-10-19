@@ -2,8 +2,8 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Button,
   Combobox,
@@ -91,8 +91,7 @@ export const BranchSwitcher = ({
         return;
       }
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: errorMessage ?? t`Sorry, we were unable to switch branches.`,
       });
     }
@@ -132,7 +131,7 @@ export const BranchSwitcher = ({
 
   return (
     <>
-      <Group gap="md" align="center">
+      <Group gap="lg" align="center">
         <Combobox
           store={combobox}
           position="bottom-start"
@@ -141,7 +140,6 @@ export const BranchSwitcher = ({
         >
           <Combobox.Target>
             <Button
-              variant="default"
               disabled={disabled || isLoading}
               loading={isLoading}
               onClick={() => combobox.toggleDropdown()}
@@ -199,20 +197,23 @@ export const BranchSwitcher = ({
       {branchMismatch && (
         <Modal
           opened
-          padding="xl"
           title={t`This view is out of date`}
           withCloseButton={false}
           onClose={() => setBranchMismatch(null)}
         >
-          <Text mt="md">{branchMismatch}</Text>
-          <Group gap="sm" justify="end" mt="xl">
-            <Button variant="subtle" onClick={() => setBranchMismatch(null)}>
+          <Text>{branchMismatch}</Text>
+          <Modal.Footer>
+            <Button
+              variant="subtle"
+              color="neutral"
+              onClick={() => setBranchMismatch(null)}
+            >
               {t`Cancel`}
             </Button>
             <Button variant="filled" onClick={() => window.location.reload()}>
               {t`Refresh`}
             </Button>
-          </Group>
+          </Modal.Footer>
         </Modal>
       )}
     </>

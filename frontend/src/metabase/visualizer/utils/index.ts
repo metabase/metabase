@@ -7,7 +7,6 @@ export * from "./drag-and-drop";
 export * from "./get-initial-state-for-visualizer-card";
 export * from "./get-initial-state-for-card-data-source";
 export * from "./get-initial-state-for-multiple-series";
-export * from "./is-visualizer-dashboard-card";
 export * from "./merge-data";
 export * from "./split-series";
 export * from "./get-visualization-columns";

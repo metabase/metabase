@@ -1,14 +1,16 @@
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
-  ComputedVisualizationSettings,
   OnChangeCardAndRun,
   OnChangeCardAndRunOpts,
-  RenderingContext,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import {
+  type ComputedVisualizationSettings,
+  type RenderingContext,
+  getComputedSettingsForSeries,
+} from "metabase/viz-core";
 import type { RawSeries } from "metabase-types/api";
 
 export type TransformSeries = (
@@ -44,10 +46,6 @@ export const TransformedVisualization = ({
   const handleChangeCardCandRun: OnChangeCardAndRun = useCallback(
     (options: OnChangeCardAndRunOpts) => {
       const cards = rawSeries.map((series) => series.card);
-      const previousCard =
-        options.previousCard != null
-          ? cards.find((c) => c.id === options.previousCard?.id)
-          : undefined;
       const nextCard = cards.find((c) => c.id === options.nextCard.id);
 
       if (!nextCard) {
@@ -61,7 +59,6 @@ export const TransformedVisualization = ({
       const transformedOptions: OnChangeCardAndRunOpts = {
         ...options,
         nextCard,
-        previousCard,
       };
 
       onChangeCardAndRun?.(transformedOptions);

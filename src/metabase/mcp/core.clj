@@ -3,11 +3,27 @@
    rather than reaching into internal namespaces like [[metabase.mcp.settings]]."
   (:require
    [clojure.string :as str]
-   [metabase.api.macros :as api.macros]
-   [metabase.mcp.resources :as mcp.resources]
-   [metabase.mcp.settings :as mcp.settings]))
+   [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.scope :as mcp.scope]
+   [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.ui-surface :as mcp.ui-surface]
+   [metabase.mcp.usage :as mcp.usage]
+   [metabase.mcp.v2.message :as message]
+   [metabase.mcp.v2.registry :as registry]))
 
 (set! *warn-on-reflection* true)
+
+(defn mcp-canonical-path
+  "The advertised MCP URL path, relative to site-url (see [[metabase.mcp.paths/canonical-path]])."
+  []
+  mcp.paths/canonical-path)
+
+(defn mcp-endpoint-paths
+  "Every path serving MCP, canonical plus back-compat aliases
+   (see [[metabase.mcp.paths/endpoint-paths]])."
+  []
+  mcp.paths/endpoint-paths)
 
 (defn cors-origins
   "Returns space-separated CORS origins from both common and custom MCP client settings."
@@ -18,6 +34,35 @@
   "Whether the MCP server is enabled (composes [[metabase.llm.settings/ai-features-enabled?]])."
   []
   (mcp.settings/mcp-enabled?))
+
+(defn resolve-ui-credential
+  "Resolves a credential issued for an MCP UI resource."
+  [credential]
+  (mcp.session/resolve-ui-credential credential))
+
+(defn ui-credential-on-surface?
+  "Whether an MCP Apps UI credential may authenticate `method` + `uri` at all."
+  [method uri]
+  (mcp.ui-surface/on-surface? method uri))
+
+(defn ui-credential-scope-satisfied?
+  "Whether a UI credential with `claims` holds what `method` + `uri` costs."
+  [method uri claims]
+  (mcp.ui-surface/scope-satisfied? method uri claims))
+
+(defn inline-ui-enabled-for-client?
+  "Whether the admin allows the client named `client-info-name` (from the `initialize` handshake) to render
+   MCP Apps UI. See [[metabase.mcp.settings/inline-ui-enabled-for-client?]]."
+  [client-info-name]
+  (mcp.settings/inline-ui-enabled-for-client? (mcp.usage/detect-client client-info-name)))
+
+(defn check-execute-sql-allowed!
+  "Throw a 403 unless the current user's groups allow the `execute_sql` tool, for raw SQL reaching the REST API other
+   than through that tool."
+  []
+  (when-let [denial (registry/tool-denial "execute_sql" (message/raw "Running a native (SQL) query"))]
+    ;; Not a teaching error: the message record in its ex-data would turn this REST 403 into a stack trace.
+    (throw (ex-info (message/render denial) {:status-code 403}))))
 
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."
@@ -33,11 +78,12 @@
       "vscode-webview://" (vscode-webview-enabled?)
       false)))
 
-(defn all-scopes
-  "All supported OAuth scopes: those declared on agent-api endpoints via
-   defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query)."
+(defn v2-scopes
+  "The scopes the v2 MCP surface itself gates on."
   []
-  (into (mcp.resources/resource-scopes)
-        (comp (keep #(get-in % [:form :metadata :scope]))
-              (filter string?))
-        (vals (api.macros/ns-routes 'metabase.agent-api.api))))
+  mcp.scope/v2-surface-scopes)
+
+(defn v2-baseline-scope?
+  "Is `scope` locked on the consent page?"
+  [scope]
+  (mcp.scope/v2-baseline-scope? scope))

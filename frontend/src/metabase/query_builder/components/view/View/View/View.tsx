@@ -17,23 +17,23 @@ import {
 } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import {
-  rememberLastUsedDatabase,
-  runOrCancelQuestionOrSelectedQuery,
-  setArchivedQuestion,
-} from "metabase/query_builder/actions";
-import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
-import type { QueryModalType } from "metabase/querying/constants";
+import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { connect, useDispatch } from "metabase/redux";
 import { updateQuestionCard } from "metabase/redux/cards";
-import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
-import type { Dispatch } from "metabase/redux/store";
+import { questionUpdated } from "metabase/redux/query-builder";
+import type { Dispatch, QueryModalType } from "metabase/redux/store";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, CardId, DatabaseId, Dataset } from "metabase-types/api";
 
+import {
+  rememberLastUsedDatabase,
+  runOrCancelQuestionOrSelectedQuery,
+  setArchivedQuestion,
+} from "../../../../actions";
+import { SIDEBAR_SIZES } from "../../../../constants";
 import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
@@ -77,7 +77,6 @@ type ViewProps = Omit<
   onDismissToast: () => void;
   onConfirmToast: () => void;
   modal: QueryModalType;
-  modalContext: number;
   card: Card;
   originalQuestion: Question;
   reportTimezone: string;
@@ -123,17 +122,15 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               };
         const updated = await setCollection(item, destination);
         // keep the QB in sync with where the question now lives
-        dispatch({ type: API_UPDATE_QUESTION, payload: updated });
+        dispatch(questionUpdated(updated));
       },
     };
     const {
       question,
       result,
       rawSeries,
-      databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
-      isShowingAIQuestionAnalysisSidebar,
       queryBuilderMode,
       closeQbNewbModal,
       onDismissToast,
@@ -159,7 +156,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       onSave,
       onChangeLocation,
       modal,
-      modalContext,
       card,
       onCloseModal,
       onOpenModal,
@@ -172,8 +168,8 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       isShowingSnippetSidebar,
     } = props;
 
-    // if we don't have a question at all or no databases then we are initializing, so keep it simple
-    if (!question || !databases) {
+    // no question yet means we are still initializing, so keep it simple
+    if (!question) {
       return (
         <LoadingAndErrorWrapper className={CS.fullHeight} loading ref={ref} />
       );
@@ -200,6 +196,9 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
               isDirty={isDirty}
               isResultDirty={isResultDirty}
               isRunning={isRunning}
+              noResultsAction={
+                !isDirty && <HasResultsAlertPrompt question={question} />
+              }
               onChange={updateQuestion}
               onCreate={async (question) => {
                 const result = await onCreate(question);
@@ -227,7 +226,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
             onSave={onSave}
             onCreate={onCreate}
             modal={modal}
-            modalContext={modalContext}
             card={card}
             question={question}
             onCloseModal={onCloseModal}
@@ -246,7 +244,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
     const showLeftSidebar =
       isShowingChartSettingsSidebar || isShowingChartTypeSidebar;
     const showRightSidebar =
-      isShowingAIQuestionAnalysisSidebar ||
       isShowingTimelineSidebar ||
       isShowingQuestionInfoSidebar ||
       isShowingQuestionSettingsSidebar ||
@@ -324,7 +321,6 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
           onSave={onSave}
           onCreate={onCreate}
           modal={modal}
-          modalContext={modalContext}
           card={card}
           question={question}
           onCloseModal={onCloseModal}

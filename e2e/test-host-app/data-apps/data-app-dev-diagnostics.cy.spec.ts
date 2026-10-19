@@ -111,21 +111,38 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
     });
 
     it("serves the report to shell agents, with cursor filtering", () => {
+      // Retry the full read-then-cursor pair until no POST sneaks between
+      // the two GETs. Under CPU throttling the reporter's batched timer can
+      // jitter enough to land a POST in that gap, so a single-pass idle
+      // guard before the first GET is not enough.
+      const verifyStableCursor = (attempt = 0): Cypress.Chainable<void> => {
+        return cy.request(DIAGNOSTICS_URL).then(({ body: report }) => {
+          expect(report.manifest?.errors).to.have.length(0);
+          expect(report.clients).to.be.gte(1);
+
+          return cy
+            .request(`${DIAGNOSTICS_URL}?startEventId=${report.nextEventId}`)
+            .then(({ body: filtered }) => {
+              if (filtered.entries.length === 0) {
+                return;
+              }
+              if (attempt >= 20) {
+                throw new Error("Cursor never stabilized");
+              }
+              return cy
+                .wait(250, { log: false })
+                .then(() => verifyStableCursor(attempt + 1));
+            });
+        });
+      };
+
       readDiagnosticsUntil(
         DIAGNOSTICS_URL,
         "a blocked-network entry and a healthy connection",
         (report) =>
           report.entries.some((entry) => entry.kind === "blocked-network") &&
           report.connection?.reachable === true,
-      ).then((report) => {
-        expect(report.manifest?.errors).to.have.length(0);
-        expect(report.clients).to.be.gte(1);
-
-        // A reader that has consumed everything sees an empty page, not a replay.
-        cy.request(`${DIAGNOSTICS_URL}?startEventId=${report.nextEventId}`)
-          .its("body.entries")
-          .should("be.empty");
-      });
+      ).then(() => verifyStableCursor());
     });
 
     it("keeps the buffer across a page reload, with continuous event ids", () => {
@@ -135,6 +152,16 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         (report) =>
           report.entries.some((entry) => entry.kind === "blocked-network"),
       ).then((before) => {
+        // The first page goes on reporting past this snapshot — its reporter
+        // batches, and the blocked entry waited for above lands while the app's
+        // requests are still in flight. So "the buffer grew" does not mean the
+        // reloaded page has said anything yet; a batch from the page about to
+        // be replaced grows it too. Wait for a session this snapshot has never
+        // seen instead.
+        const sessionsBefore = new Set(
+          before.entries.map((entry) => entry.sessionId),
+        );
+
         cy.reload();
         cy.findByTestId("dev-app-content", { timeout: TIMEOUT_MS }).should(
           "exist",
@@ -146,8 +173,11 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         // consumed up to N never skips or re-reads anything.
         readDiagnosticsUntil(
           DIAGNOSTICS_URL,
-          "the reloaded page's events appended after the first session's",
-          (report) => report.entries.length > before.entries.length,
+          "the reloaded page's own events appended after the first session's",
+          (report) =>
+            report.entries.some(
+              (entry) => !sessionsBefore.has(entry.sessionId),
+            ),
         ).then((after) => {
           const beforeIds = before.entries.map((entry) => entry.eventId);
           const afterIds = after.entries.map((entry) => entry.eventId);
@@ -249,10 +279,12 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
         .findByText(/allowed_hosts changed since the dev server started/)
         .should("not.exist");
 
-      // `allowed_hosts` is the manifest's last key, so appending stays valid YAML.
       cy.writeFile(
         DATA_APP_DEV_MANIFEST_PATH,
-        `${originalManifest}  - https://added.example\n`,
+        originalManifest.replace(
+          "  - https://allowed.data-app.test\n",
+          "  - https://allowed.data-app.test\n  - https://added.example\n",
+        ),
       );
 
       // No reload and no dev-server restart: the watcher re-validates and the
@@ -330,6 +362,52 @@ describe("Embedding SDK: data-app dev diagnostics", () => {
             (report) =>
               report.lastRebuildAt != null &&
               report.lastRebuildAt !== rebuiltAtBefore,
+          );
+        });
+    });
+
+    it("withholds what a build reported once a rebuild has replaced it", () => {
+      visitDataAppDevApp(CLIENT_HOST);
+
+      cy.findByTestId("dev-app-error-probe").click();
+      readDiagnosticsUntil(
+        DIAGNOSTICS_URL,
+        "the probe error under the build that is running",
+        (report) =>
+          report.entries.some(
+            (entry) => entry.summary === "dev-app probe error",
+          ),
+      );
+
+      cy.writeFile(
+        DATA_APP_DEV_APP_SRC_PATH,
+        originalAppSrc.replace("Vite 6 data app", "Vite 6 data app — rebuilt"),
+      );
+      cy.findByTestId("dev-app-content")
+        .findByText("Vite 6 data app — rebuilt", { timeout: TIMEOUT_MS })
+        .should("be.visible");
+
+      // A mid-edit save is how the buffer fills with failures of code the
+      // preview has already dropped. The rebuild re-ran the app from scratch
+      // and nothing re-reported the probe error, so the default read is about
+      // the bundle that is actually running.
+      readDiagnosticsUntil(
+        DIAGNOSTICS_URL,
+        "the previous build's entries withheld",
+        (report) =>
+          report.staleEntries > 0 &&
+          report.entries.every(
+            (entry) => entry.summary !== "dev-app probe error",
+          ),
+      );
+
+      // Withheld, not dropped: a reader comparing what a change fixed asks for
+      // them and gets them back.
+      cy.request(`${DIAGNOSTICS_URL}?includeStale=true`)
+        .its("body.entries")
+        .then((entries: { summary: string }[]) => {
+          expect(entries.map((entry) => entry.summary)).to.include(
+            "dev-app probe error",
           );
         });
     });

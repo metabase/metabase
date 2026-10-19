@@ -1,7 +1,10 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/ui/colors";
-import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
-import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
+import {
+  CHART_STYLE,
+  GOAL_LINE_DASH,
+  TREND_LINE_WIDTH,
+} from "metabase/viz-core";
 
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 
@@ -35,9 +38,14 @@ export function goalLine() {
   );
 }
 
+export function goalLineMarker() {
+  return echartsContainer().find("path[fill-opacity='0']");
+}
+
 export function trendLine() {
+  // Goal marker rings share the stroke width, but only line series use bevel joins.
   return echartsContainer().find(
-    `path[stroke-dasharray='${TREND_LINE_DASH.join(",")}']`,
+    `path[stroke-width='${TREND_LINE_WIDTH}'][stroke-linejoin='bevel']`,
   );
 }
 
@@ -56,14 +64,28 @@ export function timelineEventChip(label) {
   return cy.get(`[data-testid="timeline-event-chip"][aria-label="${label}"]`);
 }
 
+export function timelineEventMarkerLine() {
+  const lineWidth = CHART_STYLE.timelineEvents.selectionLineWidth;
+  return echartsContainer()
+    .find(`path[stroke-width='${lineWidth}'][fill='none']`)
+    .filter((_, element) => {
+      // a vertical line is drawn as "M x y1 L x y2" — two points with the same x
+      const coordinates = (element.getAttribute("d") ?? "")
+        .split(/[ML\s,]+/)
+        .filter(Boolean);
+      const [x1, , x2] = coordinates;
+      return coordinates.length === 4 && x1 === x2;
+    });
+}
+
 export function chartGridLines() {
   return echartsContainer().find(
-    "path[stroke='var(--mb-color-cartesian-grid-line)'][fill='none']",
+    "path[stroke='var(--mb-color-chart-axis)'][fill='none']:not([stroke-linecap='round'])",
   );
 }
 
-export function splitPanelAxisLines() {
-  const borderStrong = getColor("border-strong");
+export function splitPanelSeparators() {
+  const borderStrong = getColor("border-neutral-strong");
   return echartsContainer().find(`path[stroke="${borderStrong}"]`);
 }
 
@@ -98,6 +120,12 @@ export function cartesianChartCircleWithColor(color) {
 
 export function cartesianChartCircleWithColors(colors) {
   return colors.map((color) => cartesianChartCircleWithColor(color));
+}
+
+export function cartesianChartCircleWithFillColor(color) {
+  return echartsContainer()
+    .find(`path[d="${CIRCLE_PATH}"]`)
+    .filter((_, element) => getComputedStyle(element).fill === color);
 }
 
 export function otherSeriesChartPaths() {
@@ -279,4 +307,36 @@ export function applyBrush(left, right) {
     .trigger("mousedown", left, 100)
     .trigger("mousemove", right, 100)
     .trigger("mouseup", right, 100);
+}
+
+/**
+ * Select an inclusive range of distinct x positions, independent of chart padding.
+ * @param {number} startIndex
+ * @param {number} endIndex
+ * @param {Cypress.Chainable<JQuery<HTMLElement>>} elements
+ */
+export function applyBrushToPoints(
+  startIndex,
+  endIndex,
+  elements = cartesianChartCircles(),
+) {
+  elements.should("have.length.greaterThan", endIndex).then(($elements) => {
+    const positions = [
+      ...new Set(
+        $elements.toArray().map((element) => {
+          const { left, width } = element.getBoundingClientRect();
+          return Math.round((left + width / 2) * 100) / 100;
+        }),
+      ),
+    ].sort((left, right) => left - right);
+    expect(positions).to.have.length.greaterThan(endIndex);
+
+    echartsContainer().then(($container) => {
+      const { left } = $container[0].getBoundingClientRect();
+      applyBrush(
+        positions[startIndex] - left - 1,
+        positions[endIndex] - left + 1,
+      );
+    });
+  });
 }

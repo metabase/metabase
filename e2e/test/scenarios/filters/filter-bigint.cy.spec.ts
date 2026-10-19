@@ -228,7 +228,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     });
   });
 
-  it("dashboards + mbql query + id parameters", { tags: "external" }, () => {
+  it("dashboards + mbql query + id parameters", { tags: "@external" }, () => {
     function setupDashboard({
       tableName,
       baseType,
@@ -1031,99 +1031,81 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     },
   );
 
-  it("query builder + expression editor", { tags: "@external" }, () => {
-    function setupQuestion({ tableName }: { tableName: string }) {
-      const getQuestionDetails = (tableId: TableId) => ({
-        database: WRITABLE_DB_ID,
-        query: {
-          "source-table": tableId,
-        },
-      });
-
-      H.getTableId({ name: tableName }).then((tableId) => {
-        H.createQuestion(getQuestionDetails(tableId), { visitQuestion: true });
-      });
-    }
-
-    function testExpression({ value }: { value: string }) {
-      H.assertQueryBuilderRowCount(3);
-
-      H.openNotebook();
-      H.getNotebookStep("data").button("Filter").click();
-      H.popover().findByText("Custom Expression").click();
-      H.enterCustomColumnDetails({ formula: `[ID] = ${value}` });
-      cy.button("Done").click();
-      H.visualize();
-      H.assertQueryBuilderRowCount(1);
-
-      H.openNotebook();
-      H.getNotebookStep("filter").findByText(`ID is ${value}`).click();
-      H.popover().within(() => {
-        cy.findByLabelText("Back").click();
-        cy.findByText("Custom Expression").click();
-      });
-      H.enterCustomColumnDetails({ formula: `[ID] != ${value}` });
-      cy.button("Update").click();
-      H.visualize();
-      H.assertQueryBuilderRowCount(2);
-    }
-
-    cy.log("setup");
-    setupTables();
-
-    cy.log("BIGINT");
-    setupQuestion({ tableName: BIGINT_PK_TABLE_NAME });
-    testExpression({ value: MAX_BIGINT_VALUE });
-
-    cy.log("DECIMAL");
-    setupQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
-    testExpression({ value: NEGATIVE_DECIMAL_VALUE });
-  });
-
-  it("query builder + object detail", { tags: "@external" }, () => {
-    function setupQuestion({ tableName }: { tableName: string }) {
-      H.getTableId({ name: tableName }).then((tableId) =>
-        H.createQuestion(
-          {
-            database: WRITABLE_DB_ID,
-            query: { "source-table": tableId },
+  it(
+    "query builder + object detail + expression editor",
+    { tags: "@external" },
+    () => {
+      function setupQuestion({ tableName }: { tableName: string }) {
+        const getQuestionDetails = (tableId: TableId) => ({
+          database: WRITABLE_DB_ID,
+          query: {
+            "source-table": tableId,
           },
-          { visitQuestion: true },
-        ),
-      );
-    }
+        });
 
-    function testObjectDetail({
-      idValue,
-      nameValue,
-    }: {
-      idValue: string;
-      nameValue: string;
-    }) {
-      H.tableInteractive().findByText(idValue).click();
-      H.modal().within(() => {
-        cy.findAllByText(idValue).should("have.length.gte", 1);
-        cy.findAllByText(nameValue).should("have.length.gte", 1);
+        H.getTableId({ name: tableName }).then((tableId) => {
+          H.createQuestion(getQuestionDetails(tableId), {
+            visitQuestion: true,
+          });
+        });
+      }
+
+      function testObjectDetail({
+        value,
+        nameValue,
+      }: {
+        value: string;
+        nameValue: string;
+      }) {
+        H.tableInteractive().findByText(value).click();
+        H.modal().within(() => {
+          cy.findAllByText(value).should("have.length.gte", 1);
+          cy.findAllByText(nameValue).should("have.length.gte", 1);
+          cy.findByLabelText("Close").click();
+        });
+        H.modal().should("not.exist");
+      }
+
+      function testExpression({ value }: { value: string }) {
+        H.assertQueryBuilderRowCount(3);
+
+        H.openNotebook();
+        H.getNotebookStep("data").button("Filter").click();
+        H.popover().findByText("Custom Expression").click();
+        H.enterCustomColumnDetails({ formula: `[ID] = ${value}` });
+        cy.button("Done").click();
+        H.visualize();
+        H.assertQueryBuilderRowCount(1);
+
+        H.openNotebook();
+        H.getNotebookStep("filter").findByText(`ID is ${value}`).click();
+        H.popover().within(() => {
+          cy.findByLabelText("Back").click();
+          cy.findByText("Custom Expression").click();
+        });
+        H.enterCustomColumnDetails({ formula: `[ID] != ${value}` });
+        cy.button("Update").click();
+        H.visualize();
+        H.assertQueryBuilderRowCount(2);
+      }
+
+      cy.log("setup");
+      setupTables();
+
+      cy.log("BIGINT");
+      setupQuestion({ tableName: BIGINT_PK_TABLE_NAME });
+      testObjectDetail({ value: MAX_BIGINT_VALUE, nameValue: "Positive" });
+      testExpression({ value: MAX_BIGINT_VALUE });
+
+      cy.log("DECIMAL");
+      setupQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
+      testObjectDetail({
+        value: NEGATIVE_DECIMAL_VALUE,
+        nameValue: "Negative",
       });
-    }
-
-    cy.log("setup");
-    setupTables();
-
-    cy.log("BIGINT");
-    setupQuestion({ tableName: BIGINT_PK_TABLE_NAME });
-    testObjectDetail({
-      idValue: MAX_BIGINT_VALUE,
-      nameValue: "Positive",
-    });
-
-    cy.log("DECIMAL");
-    setupQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
-    testObjectDetail({
-      idValue: NEGATIVE_DECIMAL_VALUE,
-      nameValue: "Negative",
-    });
-  });
+      testExpression({ value: NEGATIVE_DECIMAL_VALUE });
+    },
+  );
 
   it("query builder + drills", () => {
     function setupQuestion({
@@ -1223,13 +1205,18 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       });
     }
 
-    function testExport() {
+    function testExport({ values }: { values: string[] }) {
       cy.get("@questionId").then((questionId) => {
         H.downloadAndAssert({
           fileType: "csv",
           questionId: Number(questionId),
           isDashboard: false,
           enableFormatting: true,
+          assertResponseBody: (body) => {
+            // formatted numbers carry thousands separators
+            const digits = body.replaceAll(",", "");
+            values.forEach((value) => expect(digits).to.include(value));
+          },
         });
       });
     }
@@ -1238,16 +1225,18 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     setupTables();
 
     cy.log("BIGINT");
+    const bigIntValues = [MIN_BIGINT_VALUE, MAX_BIGINT_VALUE];
     setupTableQuestion({ tableName: BIGINT_PK_TABLE_NAME });
-    testExport();
+    testExport({ values: bigIntValues });
     setupNestedQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
-    testExport();
+    testExport({ values: bigIntValues });
 
     cy.log("DECIMAL");
+    const decimalValues = [NEGATIVE_DECIMAL_VALUE, POSITIVE_DECIMAL_VALUE];
     setupTableQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
-    testExport();
+    testExport({ values: decimalValues });
     setupNestedQuestion({ sourceQuestionDetails: decimalQuestionDetails });
-    testExport();
+    testExport({ values: decimalValues });
   });
 
   it("dashboards + click behavior", () => {

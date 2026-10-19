@@ -4,13 +4,13 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { useEffect, useMemo } from "react";
 
+import { createMockState } from "__support__/state";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { PrintContext } from "metabase/documents/contexts/PrintContext";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { mainReducers } from "metabase/reducers-main";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -18,7 +18,7 @@ import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
 
-import { getStore } from "./entities-store";
+import { getMainStore, getStore } from "./entities-store";
 import { TestWrapper } from "./ui";
 
 export const ReduxProvider = ({
@@ -44,7 +44,8 @@ export const VisualizationWrapper = ({
   displayTheme?: "light" | "dark";
   initialStore?: State;
 }) => {
-  const store = getStore(mainReducers, initialStore);
+  // Visualizations call RTK Query hooks, which need the `Api` reducer and middleware.
+  const store = getMainStore(initialStore);
 
   return (
     <TestWrapper

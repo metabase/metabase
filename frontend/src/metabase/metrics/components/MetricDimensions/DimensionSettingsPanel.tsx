@@ -1,12 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
   useSetDefaultMetricDimensionMutation,
   useUpdateMetricDimensionMutation,
 } from "metabase/api/metric";
-import { getDimensionIcon } from "metabase/common/metrics/utils/dimensions";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { getDimensionIcon } from "metabase/common/utils/columns";
+import {
+  trackMetricDimensionRemoveDefault,
+  trackMetricDimensionSetDefault,
+  trackMetricDimensionUpdated,
+} from "metabase/metrics/analytics";
 import {
   Button,
   Group,
@@ -22,9 +27,11 @@ import type {
   CardQueryMetadata,
   MetricDimension,
   MetricId,
+  TemporalUnit,
   UpdateMetricDimensionRequest,
 } from "metabase-types/api";
 
+import { DimensionTimeGroupingSelect } from "./DimensionTimeGroupingSelect";
 import S from "./MetricDimensions.module.css";
 import {
   getDimensionTypeLabel,
@@ -56,11 +63,20 @@ export function DimensionSettingsPanel({
 
   const [displayName, setDisplayName] = useState(dimension.display_name);
   const [description, setDescription] = useState(dimension.description ?? "");
+  const [defaultTemporalUnit, setDefaultTemporalUnit] = useState(
+    dimension.default_temporal_unit,
+  );
 
   const { sendErrorToast } = useMetadataToasts();
 
   const sourceColumnLabel = getSourceColumnLabel(dimension, queryMetadata);
-  const showSetAsDefaultButton = !isOrphaned(dimension) && !dimension.default;
+  // An orphaned dimension can't be made the default, but one that already is
+  // still needs a way out.
+  const showDefaultButton = !isOrphaned(dimension) || dimension.default;
+
+  useEffect(() => {
+    setDefaultTemporalUnit(dimension.default_temporal_unit);
+  }, [dimension.default_temporal_unit]);
 
   const persist = async (changes: DimensionChanges) => {
     try {
@@ -69,8 +85,10 @@ export function DimensionSettingsPanel({
         dimensionId: dimension.id,
         ...changes,
       }).unwrap();
+      trackMetricDimensionUpdated(metricId, dimension.id, "success");
       return true;
     } catch {
+      trackMetricDimensionUpdated(metricId, dimension.id, "failure");
       sendErrorToast(t`Couldn't update ${dimension.display_name}`);
       return false;
     }
@@ -98,14 +116,37 @@ export function DimensionSettingsPanel({
     }
   };
 
+  const handleTimeGroupingChange = async (unit: TemporalUnit) => {
+    const previousUnit = defaultTemporalUnit;
+    setDefaultTemporalUnit(unit);
+    const isPersisted = await persist({ default_temporal_unit: unit });
+    if (!isPersisted) {
+      setDefaultTemporalUnit(previousUnit);
+    }
+  };
+
   const handleSetDefault = async () => {
     try {
       await setDefaultDimension({
         metricId,
         dimension_id: dimension.id,
       }).unwrap();
+      trackMetricDimensionSetDefault(metricId, dimension.id, "success");
     } catch {
+      trackMetricDimensionSetDefault(metricId, dimension.id, "failure");
       sendErrorToast(t`Couldn't make ${dimension.display_name} the default`);
+    }
+  };
+
+  const handleRemoveDefault = async () => {
+    try {
+      await setDefaultDimension({ metricId, dimension_id: null }).unwrap();
+      trackMetricDimensionRemoveDefault(metricId, dimension.id, "success");
+    } catch {
+      trackMetricDimensionRemoveDefault(metricId, dimension.id, "failure");
+      sendErrorToast(
+        t`Couldn't remove ${dimension.display_name} as the default`,
+      );
     }
   };
 
@@ -113,34 +154,42 @@ export function DimensionSettingsPanel({
     <Stack
       className={S.column}
       data-testid="dimension-settings-panel"
-      gap="lg"
-      pt="lg"
+      gap="xl"
+      pt="xl"
     >
       <Group
         align="center"
-        flex="0 0 2.25rem"
+        flex="0 0 2rem"
         justify="space-between"
         wrap="nowrap"
       >
         <Title order={4}>{t`Settings for ${dimension.display_name}`}</Title>
-        {showSetAsDefaultButton && (
+        {showDefaultButton && (
           <Button
             loading={isSettingDefault || isFetching}
-            onClick={handleSetDefault}
-            size="sm"
-            variant="default"
+            onClick={dimension.default ? handleRemoveDefault : handleSetDefault}
           >
-            {t`Set as default`}
+            {dimension.default ? t`Remove default` : t`Set as default`}
           </Button>
         )}
       </Group>
 
-      <TextInput
-        label={t`Display name`}
-        value={displayName}
-        onChange={(event) => setDisplayName(event.currentTarget.value)}
-        onBlur={handleNameBlur}
-      />
+      <Group align="flex-end" wrap="nowrap">
+        <TextInput
+          flex={1}
+          miw={0}
+          label={t`Display name`}
+          value={displayName}
+          onChange={(event) => setDisplayName(event.currentTarget.value)}
+          onBlur={handleNameBlur}
+        />
+        <DimensionTimeGroupingSelect
+          metricId={metricId}
+          dimension={dimension}
+          value={defaultTemporalUnit}
+          onChange={handleTimeGroupingChange}
+        />
+      </Group>
 
       <Textarea
         label={t`Description`}
@@ -166,8 +215,8 @@ export function DimensionSettingsPanel({
       )}
 
       {dimension.default && (
-        <Group gap="xs">
-          <Icon name="star_filled" c="brand" />
+        <Group gap="xxs">
+          <Icon name="star_filled" c="core-brand" />
           <Text fw="bold">{t`Default dimension`}</Text>
         </Group>
       )}

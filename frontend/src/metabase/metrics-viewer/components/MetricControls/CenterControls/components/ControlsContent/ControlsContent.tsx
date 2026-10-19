@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDimensionBreakoutProjectionConfig } from "metabase/metrics-viewer/types";
 import {
   type DimensionFilterValue,
   getDimensionBreakoutLabel,
-  getDimensionIcon,
   getProjectionInfo,
 } from "metabase/metrics-viewer/utils";
 import { Box, Button, Flex, Icon } from "metabase/ui";
@@ -122,10 +122,9 @@ export function ControlsContent(props: ControlsContentProps) {
                     <Button
                       className={S.controlButton}
                       justify="space-between"
-                      fw="bold"
                       aria-label={t`Change column`}
                       variant="subtle"
-                      color="text-primary"
+                      color="neutral"
                       leftSection={
                         columnPickerIcon ? (
                           <Icon

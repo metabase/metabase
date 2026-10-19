@@ -6,7 +6,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Center, Flex, Group } from "metabase/ui";
 
 import { toBackendStartedAt } from "../../utils";
@@ -21,7 +21,7 @@ import { PAGE_SIZE } from "./constants";
 import { urlStateConfig } from "./utils";
 
 export const TaskRunsPage = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const [
     {
       page,
@@ -71,7 +71,7 @@ export const TaskRunsPage = () => {
 
   return (
     <TasksTabs>
-      <Group gap="md" align="center" wrap="wrap">
+      <Group gap="lg" align="center" wrap="wrap">
         <TaskRunTypePicker
           value={runType}
           onChange={(runType) =>
@@ -146,8 +146,12 @@ export const TaskRunsPage = () => {
             itemsLength={taskRuns.length}
             total={total}
             showTotal
-            onPreviousPage={() => patchUrlState({ page: page - 1 })}
-            onNextPage={() => patchUrlState({ page: page + 1 })}
+            onPreviousPage={() =>
+              patchUrlState({ page: page - 1 }, { immediate: true })
+            }
+            onNextPage={() =>
+              patchUrlState({ page: page + 1 }, { immediate: true })
+            }
           />
         </Flex>
       )}

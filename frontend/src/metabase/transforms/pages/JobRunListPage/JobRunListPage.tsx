@@ -11,8 +11,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/redux";
-import { replace, useParams, useRouter } from "metabase/router";
+import { useLocation, useNavigate, useParams } from "metabase/router";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { useJobHeaderState } from "metabase/transforms/hooks/use-job-header-state";
 import { formatRunMethod, formatStatus } from "metabase/transforms/utils";
@@ -28,7 +27,11 @@ import {
 } from "metabase-types/api";
 
 import { JobHeader } from "../../components/JobHeader";
-import { JobMoreMenu } from "../../components/JobMoreMenu";
+import {
+  JobModal,
+  type JobModalState,
+  JobMoreMenu,
+} from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";
 
 import S from "./JobRunListPage.module.css";
@@ -41,7 +44,7 @@ import { getParsedParams, getSortOptions } from "./utils";
 const EMPTY_RUNS: TransformJobRun[] = [];
 
 export function JobRunListPage() {
-  const { location } = useRouter();
+  const location = useLocation();
   const params = useParams<{ jobId: string }>();
   usePageTitle(t`Run history`);
   const jobId = Urls.extractEntityId(params.jobId);
@@ -54,7 +57,8 @@ export function JobRunListPage() {
     TransformJobRunId | undefined
   >();
   const [isPolling, setIsPolling] = useState(false);
-  const dispatch = useDispatch();
+  const [jobModal, setJobModal] = useState<JobModalState>();
+  const navigate = useNavigate();
 
   const { data: job } = useGetTransformJobQuery(jobId ?? skipToken);
   const { readOnly, onNameChange } = useJobHeaderState(jobId);
@@ -100,10 +104,10 @@ export function JobRunListPage() {
   const handleParamsChange = useCallback(
     (newParams: Urls.TransformJobRunListParams) => {
       if (jobId != null) {
-        dispatch(replace(Urls.transformJobRuns(jobId, newParams)));
+        navigate(Urls.transformJobRuns(jobId, newParams), { replace: true });
       }
     },
-    [dispatch, jobId],
+    [jobId, navigate],
   );
 
   const handleStatusChange = useCallback(
@@ -158,14 +162,15 @@ export function JobRunListPage() {
       wrap="nowrap"
       data-testid="job-run-list"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
+      <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap={0}>
         {job !== undefined && (
           <JobHeader
             job={job}
-            menu={!readOnly && <JobMoreMenu job={job} />}
+            menu={
+              !readOnly && <JobMoreMenu job={job} onOpenModal={setJobModal} />
+            }
             tabs={<JobTabs jobId={job.id} />}
             readOnly={readOnly}
-            showMetabotButton
             onNameChange={onNameChange}
           />
         )}
@@ -174,7 +179,7 @@ export function JobRunListPage() {
             <LoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
+          <Stack flex="0 1 auto" mih={0} gap="xl" pt="2.5rem">
             <Group>
               <Select
                 data={getStatusOptions()}
@@ -249,6 +254,7 @@ export function JobRunListPage() {
           onClose={() => setSelectedRunId(undefined)}
         />
       )}
+      <JobModal modal={jobModal} onClose={() => setJobModal(undefined)} />
     </Flex>
   );
 }

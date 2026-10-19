@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { ActionItem } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Box, Flex, Icon, Menu, Text } from "metabase/ui";
 
 import S from "./ObjectDetailHeader.module.css";
 import type { ObjectId } from "./types";
-import type { ActionItem } from "./utils";
 
 export interface ObjectDetailHeaderProps {
   actionItems: ActionItem[];
@@ -52,7 +52,7 @@ export function ObjectDetailHeader({
           {canZoom && (
             <>
               <ActionIcon
-                variant="viewHeader"
+                variant="subtle"
                 data-testid="view-previous-object-detail"
                 disabled={!canZoomPreviousRow}
                 onClick={viewPreviousObjectDetail}
@@ -60,7 +60,7 @@ export function ObjectDetailHeader({
                 <Icon name="chevronup" />
               </ActionIcon>
               <ActionIcon
-                variant="viewHeader"
+                variant="subtle"
                 data-testid="view-next-object-detail"
                 disabled={!canZoomNextRow}
                 onClick={viewNextObjectDetail}
@@ -95,9 +95,9 @@ export function ObjectDetailHeader({
             </Menu>
           )}
 
-          <Flex ml="md" pl="md" className={S.closeButton}>
+          <Flex ml="lg" pl="lg" className={S.closeButton}>
             <ActionIcon
-              variant="viewHeader"
+              variant="subtle"
               data-testid="object-detail-close-button"
               onClick={closeObjectDetail}
             >

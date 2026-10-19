@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import type {
   DimensionPillBarItem,
   ExpressionDimensionItem,
@@ -11,14 +12,14 @@ import type {
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { isNotNull } from "metabase/utils/types";
 import {
+  MAX_SERIES,
   formatBreakoutValue,
   getBreakoutSeriesName,
-} from "metabase/visualizations/echarts/cartesian/model/series";
-import { MAX_SERIES } from "metabase/visualizations/lib/utils";
+} from "metabase/viz-core";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
-  Card,
   CardId,
   Dataset,
   DatasetColumn,
@@ -41,6 +42,7 @@ import {
   type MetricsViewerDefinitionEntry,
   type MetricsViewerDisplayType,
   type MetricsViewerFormulaEntity,
+  type MetricsViewerSeries,
   type SelectedMetric,
   type SourceBreakoutColorMap,
   type SourceColorMap,
@@ -56,7 +58,6 @@ import {
   getEntryBreakout,
 } from "./definition-entries";
 import { DISPLAY_TYPE_REGISTRY } from "./dimension-breakout-config";
-import { getDimensionIcon } from "./dimension-breakouts";
 import { type MetricSlot, slotsForEntity } from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 
@@ -94,7 +95,7 @@ export function buildSeries({
   sourceBreakoutColors,
   extraVizSettings,
 }: BuildSeriesParams): {
-  series: SingleSeries[];
+  series: MetricsViewerSeries[];
   cardIdToEntityIndex: Record<CardId, number>;
   activeBreakoutColors: SourceBreakoutColorMap;
 } {
@@ -142,15 +143,21 @@ export function buildSeries({
         definitions,
       });
       const cardId = nextSyntheticCardId();
-      const singleSeries: SingleSeries = {
-        card: createSeriesCard(cardId, name, display, {
-          ...vizSettings,
-          ...extraVizSettings,
-        }),
+      const singleSeries: MetricsViewerSeries = {
+        card: {
+          id: cardId,
+          name,
+          display,
+          visualization_settings: {
+            ...vizSettings,
+            ...extraVizSettings,
+          },
+          dataset_query: result.json_query ?? STRUCTURED_QUERY_TEMPLATE,
+        },
         data: result.data,
       };
 
-      let entrySeries: SingleSeries[];
+      let entrySeries: MetricsViewerSeries[];
       if (needsManualBreakoutSplit) {
         const { series, activeBreakoutColorMap } = splitByBreakout({
           entity,
@@ -394,7 +401,7 @@ function filterBreakoutColorsByData(
 
 export interface SplitByBreakoutParams {
   entity: MetricsViewerFormulaEntity;
-  series: SingleSeries;
+  series: MetricsViewerSeries;
   breakoutColorMap: BreakoutColorMap;
   isFirstSeries: boolean;
   hasMultipleSeries: boolean;
@@ -411,7 +418,7 @@ export function splitByBreakout({
   display,
   definitions,
 }: SplitByBreakoutParams): {
-  series: SingleSeries[];
+  series: MetricsViewerSeries[];
   activeBreakoutColorMap: BreakoutColorMap | string | undefined;
 } {
   const { card, data } = series;
@@ -488,21 +495,6 @@ export function splitByBreakout({
     })
     .filter((s) => s != null);
   return { series: breakoutSeries, activeBreakoutColorMap };
-}
-
-function createSeriesCard(
-  id: number,
-  name: string | null,
-  display: string,
-  vizSettings: VisualizationSettings,
-): Card {
-  // Unjustified type cast. FIXME
-  return {
-    id,
-    name,
-    display,
-    visualization_settings: vizSettings,
-  } as Card;
 }
 
 function computeAvailableOptions(

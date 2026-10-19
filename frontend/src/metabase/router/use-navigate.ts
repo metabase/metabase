@@ -1,63 +1,29 @@
-import { useCallback, useRef } from "react";
+import { useContext } from "react";
+import {
+  UNSAFE_NavigationContext,
+  useNavigate as useRouterNavigate,
+} from "react-router";
 
-import { getRoutePathnames, resolveTo } from "./resolve-to";
-import type { NavigateFunction, NavigateOptions, To } from "./types";
-import { useRouter } from "./use-router";
+import { navigate } from "./navigator";
+import type { NavigateFunction } from "./types";
 
 /**
- * react-router v7's `useNavigate`, implemented over react-router v3's imperative
- * router (`router.push/replace/go`).
+ * Like react-router's `useNavigate`, but falls back to the module-level
+ * `navigate` when rendered outside a router instead of throwing.
  *
- * - `navigate(to, { replace?, state?, relative? })` pushes (or replaces) the location.
- * - `navigate(delta)` moves through the history stack (e.g. `navigate(-1)`).
- *
- * A relative `to` (`".."`, `"child"`) resolves against the matched route branch,
- * which v3 does not do on its own. The branch comes from the router context, so
- * it always ends at the deepest matched route: unlike v7, a component rendered
- * by a parent route resolves `".."` as if it sat in the leaf route. Nothing
- * relies on that today, and the route context added with the engine swap removes
- * the difference.
- *
- * The returned function gets a new identity whenever the pathname changes, like
- * v7 (whose callback depends on the current pathname). Keeping it stable would
- * be nicer, but it would diverge: a mounted `<Navigate>` would stop re-asserting
- * its target, and effects keyed on `navigate` would run a different number of
- * times, so code written against the facade would behave differently after the
- * swap.
- *
- * @see https://reactrouter.com/7.18.1/api/hooks/useNavigate
+ * Much of the app is shared with the SDK, which mounts no router (see
+ * `useMaybeLocation`, which exists for the same reason). Navigation used to run
+ * through redux, which had no opinion on whether a router was mounted, so
+ * components rendered in both places never had to care. Keeping that means a
+ * router-less render is a no-op rather than a crash.
  */
 export function useNavigate(): NavigateFunction {
-  const { router, location, routes } = useRouter();
+  const hasRouter = useContext(UNSAFE_NavigationContext) != null;
 
-  // Read through a ref rather than listed as a dependency: v3 rebuilds `routes`
-  // on every transition, including a push to the pathname already showing. As a
-  // dependency it would hand back a new `navigate` after such a push, so a
-  // mounted `<Navigate>` would re-run its effect and push its target forever.
-  const routesRef = useRef(routes);
-  routesRef.current = routes;
-
-  return useCallback(
-    (to: To | number, options: NavigateOptions = {}) => {
-      if (typeof to === "number") {
-        router.go(to);
-        return;
-      }
-
-      const path = resolveTo(
-        to,
-        getRoutePathnames(routesRef.current),
-        location.pathname,
-        options.relative === "path",
-      );
-      const descriptor = { ...path, state: options.state };
-
-      if (options.replace) {
-        router.replace(descriptor);
-      } else {
-        router.push(descriptor);
-      }
-    },
-    [router, location.pathname],
-  );
+  // react-router's hook throws when there is no router, so it can only be called
+  // on the branch that has one. Safe despite the rule: a router appearing above
+  // a mounted component would change the tree shape and remount it, so
+  // `hasRouter` cannot flip between renders of the same mount.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return hasRouter ? useRouterNavigate() : navigate;
 }

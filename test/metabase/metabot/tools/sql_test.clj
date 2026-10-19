@@ -5,8 +5,14 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
+   [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.tools.sql.edit :as edit-sql-query-tools]
+   [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
 
 (deftest create-sql-query-output-test
@@ -32,6 +38,35 @@
             (testing "instructions contain actual query ID link"
               (is (str/includes? output (str "metabase://query/" query-id))))))))))
 
+(deftest create-sql-query-says-whether-its-results-can-be-read-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+        (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id (mt/user->id :crowberto)}
+                       :model/MetabotConversation {theirs :id} {:user_id (mt/user->id :rasta)}]
+          (doseq [:let [both #{"create_sql_query" "run_query"}]
+                  [situation tool-names query-on? sql-on? conversation readable?]
+                  [["run_query offered and SQL execution on"    both                  true  true  own    true]
+                   ["run_query offered and SQL execution off"   both                  true  false own    false]
+                   ["run_query offered and query execution off" both                  false true  own    false]
+                   ["no run_query in the session"               #{"create_sql_query"} true  true  own    false]
+                   ["a conversation someone else can read"      both                  true  true  theirs false]]]
+            (testing situation
+              (mt/with-temporary-setting-values [metabot-query-execution-enabled? query-on?
+                                                 metabot-sql-execution-enabled?   sql-on?]
+                (binding [shared/*memory-atom*                     (atom {:tool-names      tool-names
+                                                                          :conversation-id conversation
+                                                                          :state           {}})
+                          scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                          scope/*current-user-scope*               (scope/user-metabot-perms->scopes
+                                                                    scope/all-yes-permissions)]
+                  (let [instructions (:instructions (agent-sql/create-sql-query-tool {:database_id db-id
+                                                                                      :sql_query   "SELECT 1"
+                                                                                      :title       "Results"}))]
+                    (is (= [readable? (not readable?)]
+                           [(str/includes? instructions "Run the query with `run_query`")
+                            (str/includes? instructions "you cannot view the results directly yourself")]))))))))))))
+
 (deftest create-sql-query-validation-error-output-test
   (testing "create_sql_query output contains appropriate info on validation failure"
     (mt/test-drivers #{:postgres}
@@ -45,6 +80,39 @@
             (is (string? output))
             (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
             (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
+
+(defn- create-sql-query-in-code-editor
+  [args]
+  (binding [shared/*memory-atom* (atom {:context {:user_is_viewing [{:type    "code_editor"
+                                                                     :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}})]
+    (agent-sql/create-sql-query-code-edit-tool (merge {:sql_query "SELECT 1"
+                                                       :title     "Results"}
+                                                      args))))
+
+(deftest create-sql-query-code-edit-agent-error-output-test
+  (testing "create_sql_query in the code editor returns agent errors as output instead of throwing"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [{:keys [output]} (create-sql-query-in-code-editor {:database_id Integer/MAX_VALUE})]
+        (is (str/includes? output "not found"))))))
+
+(deftest create-sql-query-code-edit-permission-error-output-test
+  (testing "create_sql_query in the code editor returns a permission failure as terminal output with its status code"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [output status-code terminal-error?]} (create-sql-query-in-code-editor {:database_id db-id})]
+            (is (= 403 status-code))
+            (is (= "You do not have access to this database." output))
+            (is (true? terminal-error?))))))))
+
+(deftest create-sql-query-code-edit-unexpected-error-test
+  (testing "create_sql_query in the code editor rethrows non-agent errors so they stay tracked as failures"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                  (fn [& _] (throw (ex-info "boom" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"boom"
+             (create-sql-query-in-code-editor {:database_id 1})))))))
 
 (deftest edit-sql-query-output-test
   (testing "edit_sql_query output includes edit-specific instructions with query ID"
@@ -172,6 +240,96 @@
                   (is (= :native (get-in entity [:query :query :type])))))
               (testing "an open code-editor buffer wins"
                 (let [parts (:data-parts (run {:user_is_viewing [{:type    "code_editor"
-                                                                  :buffers [{:id "buf-1"}]}]}))]
+                                                                  :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}))]
                   (is (= 1 (count parts)))
                   (is (= "code_edit" (:data-type (first parts)))))))))))))
+
+(def ^:private no-native-permission-output
+  "You do not have permission to write SQL queries against this database. Native query permissions are required.")
+
+(deftest create-sql-query-refuses-database-without-native-permission-test
+  (testing "create_sql_query is allowed per database, not per instance"
+    (mt/with-temp [:model/Database {native-db :id} {:engine :h2}
+                   :model/Database {builder-db :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (doseq [db-id [native-db builder-db]]
+          (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted))
+        (perms/set-database-permission! (perms-group/all-users) native-db :perms/create-queries :query-builder-and-native)
+        (perms/set-database-permission! (perms-group/all-users) builder-db :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (testing "the database the user has native permission on is queried"
+            (is (str/includes? (:output (agent-sql/create-sql-query-tool
+                                         {:database_id native-db
+                                          :sql_query   "SELECT 1"
+                                          :title       "Results"}))
+                               "SQL query successfully constructed")))
+          (testing "a database the user can browse but not query natively is refused"
+            (let [result (agent-sql/create-sql-query-tool {:database_id builder-db
+                                                           :sql_query   "SELECT 1"
+                                                           :title       "Results"})]
+              (is (= no-native-permission-output (:output result)))
+              (is (true? (:terminal-error? result))
+                  "marked terminal so a forced-tool-call profile stops instead of retrying"))))))))
+
+(deftest create-sql-query-refuses-database-the-user-cannot-read-test
+  (testing "the read-check denial is terminal too, so the stricter permission is not the looser stop"
+    (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
+                   :model/Database {unreadable-db :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (doseq [db-id [native-db unreadable-db]]
+          (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted))
+        (perms/set-database-permission! (perms-group/all-users) native-db :perms/create-queries :query-builder-and-native)
+        (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result (agent-sql/create-sql-query-tool {:database_id unreadable-db
+                                                         :sql_query   "SELECT 1"
+                                                         :title       "Results"})]
+            (is (= "You do not have access to this database." (:output result)))
+            (is (true? (:terminal-error? result))))))))
+  (testing "a database that does not exist stays retryable -- the model can list databases again"
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [result (agent-sql/create-sql-query-tool {:database_id Integer/MAX_VALUE
+                                                     :sql_query   "SELECT 1"
+                                                     :title       "Results"})]
+        (is (str/includes? (:output result) "not found"))
+        (is (nil? (:terminal-error? result)))))))
+
+(deftest edit-and-replace-sql-query-refuse-database-without-native-permission-test
+  (testing "edit_sql_query and replace_sql_query refuse a query whose database the user cannot query natively"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [query-id "seeded-q"
+                memory   (atom {:state {:queries {query-id {:database db-id
+                                                            :type     :native
+                                                            :native   {:query "SELECT 1"}}}}})]
+            (binding [shared/*memory-atom* memory]
+              (is (= no-native-permission-output
+                     (:output (agent-sql/edit-sql-query-tool
+                               {:query_id  query-id
+                                :checklist "- [x] checked"
+                                :edits     [{:old_string "1" :new_string "2"}]
+                                :title     "Results"}))))
+              (is (= no-native-permission-output
+                     (:output (agent-sql/replace-sql-query-tool
+                               {:query_id  query-id
+                                :checklist "- [x] checked"
+                                :new_query "SELECT 2"
+                                :title     "Results"})))))))))))
+
+(deftest edit-and-replace-sql-query-unexpected-error-test
+  (testing "edit_sql_query and replace_sql_query rethrow non-agent errors so they stay tracked as failures"
+    (mt/with-dynamic-fn-redefs [edit-sql-query-tools/edit-sql-query       (fn [_] (throw (ex-info "boom" {})))
+                                replace-sql-query-tools/replace-sql-query (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (agent-sql/edit-sql-query-tool {:query_id  "q-1"
+                                                            :checklist "- [x] checked"
+                                                            :edits     [{:old_string "1" :new_string "2"}]
+                                                            :title     "Results"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (agent-sql/replace-sql-query-tool {:query_id  "q-1"
+                                                               :checklist "- [x] checked"
+                                                               :new_query "SELECT 2"
+                                                               :title     "Results"}))))))

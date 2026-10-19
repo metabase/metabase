@@ -32,11 +32,15 @@ export const JobInfoApp = () => {
         ) : (
           <>
             {data != null && data.scheduler.length > 0 && (
-              <Code block p="xl" style={{ flexShrink: 0 }}>
+              <Code block p="xxl" style={{ flexShrink: 0 }}>
                 {data.scheduler.join("\n")}
               </Code>
             )}
-            <JobsTable jobs={data?.jobs ?? []} isLoading={isLoading} />
+            <JobsTable
+              jobs={data?.jobs ?? []}
+              isFetching={isFetching}
+              isLoading={isLoading}
+            />
           </>
         )}
       </MonitorMain>

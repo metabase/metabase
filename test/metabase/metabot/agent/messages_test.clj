@@ -6,6 +6,8 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.test :as mt]))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -52,7 +54,14 @@
     (is (=? [{:type :tool-input :id "t1" :function "search" :arguments "{bad-json"}]
             (messages/input-message->parts
              {:role       :assistant
-              :tool_calls [{:id "t1" :name "search" :arguments "{bad-json"}]})))))
+              :tool_calls [{:id "t1" :name "search" :arguments "{bad-json"}]}))))
+  (testing "map tool_call arguments get keyword argument names and string keys below them"
+    (is (= {:query {"stages" [{"limit" 1}]}}
+           (-> (messages/input-message->parts
+                {:role       :assistant
+                 :tool_calls [{:id "t1" :name "search" :arguments {"query" {:stages [{:limit 1}]}}}]})
+               first
+               :arguments)))))
 
 (deftest ^:parallel input-message-tool-test
   (testing "tool result message"
@@ -72,6 +81,21 @@
              {:role    :user
               :content [{:type "tool_result" :tool_use_id "t1" :content "Result 1"}
                         {:type "tool_result" :tool_use_id "t2" :content "Result 2"}]})))))
+
+(deftest ^:parallel persisted-tool-call-replays-into-adapter-test
+  (testing "a stored tool call replays with keyword argument names and string nested keys, and the adapter accepts it"
+    (let [stored {:type       "tool-construct_notebook_query"
+                  :toolCallId "call-1"
+                  :state      "output-available"
+                  :input      {:query {:stages [{:source-table 1}]} :limit 5}
+                  :output     {:output "ok"}}
+          parts  (into [] (mapcat messages/input-message->parts)
+                       (metabot.persistence/tool-part->llm-messages stored))]
+      (is (= {:query {"stages" [{"source-table" 1}]} :limit 5}
+             (:arguments (first parts))))
+      (is (=? {:messages [{:role "assistant" :tool_calls [{:id "call-1" :function {:arguments string?}}]}
+                          {:role "tool" :tool_call_id "call-1"}]}
+              (chat-completions/request-body {:model "some/model" :input parts}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; build-message-history
@@ -309,6 +333,22 @@
          profile
          {})
         (is (zero? @calls))))))
+
+(deftest build-system-message-uses-profile-system-prompt-context-test
+  (testing "a profile's :system-prompt-context fn contributes extra, feature-specific template vars
+            to the system prompt — the generic agent stays unaware of what they are"
+    (let [profile {:prompt-template       "explorations.selmer"
+                   :model                 "claude-sonnet-4-5-20250929"
+                   ;; stand in for any feature hook; here it fills the template's {{research_plan}}
+                   :system-prompt-context (fn [ctx] {:research_plan (str "PLAN:" (:marker ctx))})}
+          content (:content (messages/build-system-message {:marker "abc123"} profile {}))]
+      (is (str/includes? content "PLAN:abc123")
+          "the hook receives the request context and its returned vars reach the template")))
+  (testing "a profile with no :system-prompt-context contributes nothing (and does not error)"
+    (let [profile {:prompt-template "explorations.selmer"
+                   :model           "claude-sonnet-4-5-20250929"}
+          content (:content (messages/build-system-message {} profile {}))]
+      (is (not (str/includes? content "Current research plan"))))))
 
 (deftest build-message-history-enriches-context-once-test
   (testing "one LLM call formats the user context exactly once (in build-message-history)"

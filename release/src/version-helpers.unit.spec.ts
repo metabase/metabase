@@ -509,6 +509,19 @@ describe("version-helpers", () => {
       expect(latest).toBe("v0.12.4-beta");
     });
 
+    it("should sort double digit pre release patches numerically", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.64.0-beta" },
+          { ref: "refs/tags/v0.64.0.1-beta" },
+          { ref: "refs/tags/v0.64.0.10-beta" },
+          { ref: "refs/tags/v0.64.0.2-beta" },
+          { ref: "refs/tags/v0.64.0.9-beta" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.64.0.10-beta");
+    });
+
     it("should ignore pre releases with a flag passeed", () => {
       const latest = getLastReleaseFromTags({
         tags: [
@@ -533,6 +546,19 @@ describe("version-helpers", () => {
           { ref: "refs/tags/v0.12.1" },
           { ref: "refs/tags/v0.12.2" },
           { ref: "refs/tags/v0.19.x" },
+        ] as Tag[],
+      });
+      expect(latest).toBe("v0.12.2");
+    });
+
+    it("should ignore lts releases", () => {
+      const latest = getLastReleaseFromTags({
+        tags: [
+          { ref: "refs/tags/v0.12.0" },
+          { ref: "refs/tags/v0.12.1" },
+          { ref: "refs/tags/v0.12.2" },
+          { ref: "refs/tags/v0.12-lts" },
+          { ref: "refs/tags/v1.12-lts" },
         ] as Tag[],
       });
       expect(latest).toBe("v0.12.2");
@@ -715,17 +741,39 @@ describe("version-helpers", () => {
 
   describe("getMajorVersionFromRef", () => {
     it("should get major version from a tag", () => {
-      expect(getMajorVersionFromRef("refs/tags/v0.56.x")).toEqual("56");
+      expect(getMajorVersionFromRef("refs/tags/v0.56.0")).toEqual("56");
 
       expect(getMajorVersionFromRef("refs/tags/v1.56.0")).toEqual("56");
 
-      expect(getMajorVersionFromRef("refs/tags/v0.51.2.x")).toEqual("51");
-
       expect(getMajorVersionFromRef("refs/tags/v0.51.0-beta")).toEqual("51");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.0-RC2")).toEqual("51");
 
       expect(getMajorVersionFromRef("refs/tags/v0.51.2.3")).toEqual("51");
 
       expect(getMajorVersionFromRef("refs/tags/v0.51.10")).toEqual("51");
+    });
+
+    it("should get major version from a rolling .x tag", () => {
+      expect(getMajorVersionFromRef("refs/tags/v0.56.x")).toEqual("56");
+
+      expect(getMajorVersionFromRef("refs/tags/v1.56.x")).toEqual("56");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.2.x")).toEqual("51");
+    });
+
+    it("should return an empty string for lts tags", () => {
+      expect(getMajorVersionFromRef("refs/tags/v0.58-lts")).toEqual("");
+      expect(getMajorVersionFromRef("refs/tags/v1.58-lts")).toEqual("");
+    });
+
+    it("should return an empty string for tags that are not version strings", () => {
+      expect(getMajorVersionFromRef("refs/tags/latest")).toEqual("");
+      expect(getMajorVersionFromRef("refs/tags/v0.56")).toEqual("");
+      expect(getMajorVersionFromRef("refs/tags/embedding-sdk-0.1.0")).toEqual(
+        "",
+      );
+      expect(getMajorVersionFromRef("refs/tags/v2.56.0")).toEqual("");
     });
 
     it("should get major version from a release branch", () => {

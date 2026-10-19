@@ -10,12 +10,14 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
@@ -24,6 +26,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test :as qp]
@@ -43,6 +46,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; one-time DB init; a :once fixture runs before any tests, parallel or not
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
@@ -147,13 +151,13 @@
   {:type             :ttl
    :multiplier       60
    :avg-execution-ms 1000
-   :min-duration-ms  *query-caching-min-ttl*})
+   :min_duration_ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
   (merge {:cache-strategy (ttl-strategy)
           :lib/type       :mbql/query
           :database       1
-          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2, :abc :def}]}
+          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2}]}
          query-kvs))
 
 (def ^:private ^:dynamic *rows*
@@ -241,6 +245,7 @@
 
 (deftest refresh-lease-test
   (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -257,6 +262,7 @@
                 "updated_at means 'when the results blob was last written' -- freshness, purging, and the EE refresh "
                 "scheduler all read it that way. Bumping it on lease claim makes a crashed refresh look freshly "
                 "written, so the stale row is treated as fresh for a full additional cache window.")
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (let [original-updated-at (t/offset-date-time "2020-01-01T00:00Z")]
       (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
@@ -272,6 +278,7 @@
 
 (deftest delete-entry-test
   (testing "delete-entry! (the db backend) removes the cache entry, and with it any held refresh lease"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -312,8 +319,21 @@
             (is (= :not-cached
                    (run-query :cache-strategy strategy)))))))))
 
+(deftest cancellation-mid-flight-does-not-throw-assertion-test
+  (testing (str "a cache-miss query canceled between the driver's respond callback and the reducer "
+                "returns nil silently #66655.")
+    (with-mock-cache! []
+      (let [qp (cache/maybe-return-cached-results qp.pipeline/*run*)]
+        (binding [driver.settings/*query-timeout-ms* 2000
+                  qp.pipeline/*canceled-chan*        (a/promise-chan)
+                  qp.pipeline/*execute*              (fn [_driver _query respond]
+                                                       (a/>!! qp.pipeline/*canceled-chan* ::test-cancel)
+                                                       (respond {} [[:toucan 1]]))]
+          (driver/with-driver :h2
+            (is (nil? (qp (test-query {}) qp.reducible/default-rff)))))))))
+
 (deftest not-eligible-refresh-deletes-outdated-entry-test
-  (testing "when the lease winner's rerun is no longer cache-eligible (ran under min-duration-ms), the expired entry
+  (testing "when the lease winner's rerun is no longer cache-eligible (ran under min_duration_ms), the expired entry
             is deleted so other processes recompute instead of serving it stale for the rest of the lease window"
     (with-mock-cache! [save-chan]
       (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
@@ -374,6 +394,16 @@
             (is (= :cached
                    (run-query))
                 "only the lease winner pays for the early refresh")))))
+    (testing "an entry written just after an explicit invalidation has its whole window left, not the sliver since
+              the invalidation"
+      (with-mock-cache! [save-chan]
+        (let [strategy (assoc (ttl-strategy) :invalidated-at (t/offset-date-time t0))]
+          (mt/with-clock (t/plus t0 (t/seconds 1))
+            (run-query :cache-strategy strategy)
+            (mt/wait-for-result save-chan))
+          (mt/with-clock (t/plus t0 (t/seconds 31))
+            (is (= :cached
+                   (run-query :cache-strategy strategy)))))))
     (testing "early refreshing is off when the ratio is 0"
       (with-mock-cache! [save-chan]
         (mt/with-temporary-setting-values [query-caching-early-refresh-ratio 0.0]
@@ -488,6 +518,25 @@
         (is (= :cached
                (run-query)))))))
 
+(deftest min-duration-honored-from-stored-config-test
+  (testing (str "a fast query is not cached when a stored `:ttl` config sets `min_duration_ms` above its runtime "
+                "(regression for #78340)")
+    (mt/with-model-cleanup [:model/CacheConfig]
+      (cache-config/store! (mt/user->id :crowberto)
+                           {:model    "root"
+                            :model_id 0
+                            :strategy {:type :ttl :multiplier 60 :min_duration_ms 20000}})
+      (with-mock-cache! [save-chan]
+        (let [strategy (-> (cache-config/root-strategy)
+                           cache-config/row->config
+                           :strategy
+                           (assoc :avg-execution-ms 1000))]
+          (run-query :cache-strategy strategy)
+          (is (= :metabase.test.util.async/timed-out
+                 (mt/wait-for-result save-chan)))
+          (is (= :not-cached
+                 (run-query :cache-strategy strategy))))))))
+
 (deftest invalid-cache-entry-test
   (testing "We should handle invalid cache entries gracefully"
     (with-mock-cache! [save-chan]
@@ -513,7 +562,7 @@
           (is (=? {:data          {}
                    :cache/details {:cached     true
                                    :updated_at #t "2020-02-19T02:31:07.798Z[UTC]"
-                                   :cache-hash some?}
+                                   :hash some?}
                    :row_count     8
                    :status        :completed}
                   result)))))))
@@ -609,9 +658,7 @@
                     cached-result   (qp/process-query query)]
                 (is (=? {:cache/details  {:cached     true
                                           :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                          :hash       some?
-                                          ;; TODO: this check is not working if the key is not present in the data
-                                          :cache-hash some?}
+                                          :hash       some?}
                          :row_count 5
                          :status    :completed}
                         (dissoc cached-result :data))
@@ -718,10 +765,7 @@
                         (testing "results should be cached"
                           (is (=? {:cache/details {:cached     true
                                                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                                   :hash       some?
-                                                   ;; TODO: this check is not working if the key is not present in the
-                                                   ;; data
-                                                   :cache-hash some?}
+                                                   :hash       some?}
                                    :row_count     5
                                    :status        :completed}
                                   (dissoc cached-results :data))))
@@ -743,9 +787,7 @@
                   (testing "\n\nOuter queries are cached *separately*"
                     (is (=? {:cache/details {:cached     true
                                              :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                             :hash       some?
-                                             ;; TODO: this check is not working if the key is not present in the data
-                                             :cache-hash some?}
+                                             :hash       some?}
                              :row_count     5
                              :status        :completed}
                             (dissoc rerun-outer1 :data))
@@ -815,10 +857,7 @@
                         (testing "results should be cached"
                           (is (=? {:cache/details  {:cached     true
                                                     :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                                                    :hash       some?
-                                                    ;; TODO: this check is not working if the key is not present in the
-                                                    ;; data
-                                                    :cache-hash some?}
+                                                    :hash       some?}
                                    :row_count 5
                                    :status    :completed}
                                   (dissoc cached-results :data))))
@@ -960,13 +999,41 @@
                 (request/with-current-user (mt/user->id :crowberto)
                   (is (=? {:cache/details {:cached     true
                                            :updated_at some?
-                                           :cache-hash some?}}
+                                           :hash some?}}
                           (run-forbidden-query)))))
               (testing "Run query as regular user, should get perms Exception even though result is cached"
                 (is (thrown-with-msg?
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query"
                      (run-forbidden-query)))))))))))
+
+(deftest cached-results-native-form-requires-native-query-perms-test
+  (testing "Cached results don't return the compiled query to a user without native query perms"
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+        (with-mock-cache! [save-chan]
+          (letfn [(run-query []
+                    (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                                             :cache-strategy (ttl-strategy))))]
+            (testing "Run query as superuser to populate the cache"
+              (request/with-current-user (mt/user->id :crowberto)
+                (is (=? {:data {:native_form some?}}
+                        (run-query)))))
+            (mt/wait-for-result save-chan)
+            (testing "Cached results for the superuser still include the compiled query"
+              (request/with-current-user (mt/user->id :crowberto)
+                (is (=? {:cache/details {:cached true}
+                         :data          {:native_form some?}}
+                        (run-query)))))
+            (testing "Cached results for a user without native query perms don't include the compiled query"
+              (mt/with-test-user :rasta
+                (let [result (run-query)]
+                  (is (=? {:cache/details {:cached true}
+                           :data          {:rows [[1000]]}}
+                          result))
+                  (is (nil? (get-in result [:data :native_form]))))))))))))
 
 (deftest ^:parallel cached-results-rff-preserves-fresh-accumulator-test
   (testing "On cache hit, the rff chain's accumulator (with any modifications from middlewares
@@ -977,18 +1044,18 @@
           ;; An rff that injects a sentinel `:fresh` into metadata, the same shape
           ;; `update-viz-settings` uses to inject fresh viz-settings on cache hit.
           fresh-injecting-rff (fn [metadata]
-                                (qp.reducible/default-rff (assoc metadata :fresh "fresh-value")))
+                                (qp.reducible/default-rff (assoc metadata :viz-settings {:fresh "fresh-value"})))
           rf ((cached-results-rff fresh-injecting-rff (byte-array 1))
-              {:last-ran (t/zoned-date-time) :cache-version "v1" :cols [{:name "x"}]})
+              {:last-ran (t/zoned-date-time) :cache-version 1 :cols [{:name "x"}]})
           ;; Simulate a cached replay: two actual row vectors, then the final cached
           ;; result map (which used to stomp acc).
           acc (reduce rf (rf)
                       [[1] [2]
-                       {:data {:cols [{:name "x"}] :stale "stale-value"}}])
+                       {:data {:cols [{:name "x"}] :results_timezone "stale-value"}}])
           result (rf acc)]
-      (is (= "fresh-value" (get-in result [:data :fresh]))
+      (is (= "fresh-value" (get-in result [:data :viz-settings :fresh]))
           "Fresh value injected by the rff chain must survive the cached-final-metadata replay")
-      (is (= "stale-value" (get-in result [:data :stale]))
+      (is (= "stale-value" (get-in result [:data :results_timezone]))
           "Stale-only keys from @final-metadata are still deep-merged in")
       (is (= [[1] [2]] (get-in result [:data :rows]))
           "Replayed cached rows are preserved"))))

@@ -7,8 +7,8 @@ import {
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
@@ -32,6 +32,9 @@ const { trackMonitorSectionClicked } = jest.requireMock(
 interface SetupOpts {
   isNavbarOpened?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  aiFeaturesEnabled?: boolean;
+  isConfigured?: boolean;
+  mcpEnabled?: boolean;
   initialRoute?: string;
   user?: ReturnType<typeof createMockUser>;
   children?: ReactNode;
@@ -77,18 +80,27 @@ function TestSidebarToggle({ onRender }: { onRender: () => void }) {
 const setup = ({
   isNavbarOpened = true,
   tokenFeatures,
+  aiFeaturesEnabled = true,
+  isConfigured = true,
+  mcpEnabled = true,
   initialRoute = "/monitor",
   user = createMockUser({ is_superuser: true }),
   children = <div data-testid="content">{"Content"}</div>,
 }: SetupOpts = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
+    "ai-features-enabled?": aiFeaturesEnabled,
+    "llm-metabot-configured?": isConfigured,
+    "mcp-enabled?": mcpEnabled,
   });
 
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(
     createMockSettings({
       "token-features": createMockTokenFeatures(tokenFeatures),
+      "ai-features-enabled?": aiFeaturesEnabled,
+      "llm-metabot-configured?": isConfigured,
+      "mcp-enabled?": mcpEnabled,
     }),
   );
   setupUserKeyValueEndpoints({
@@ -134,12 +146,15 @@ describe("MonitorLayout", () => {
 
     const expectedTabs: [string, string][] = [
       ["Dependency diagnostics", Urls.dependencyDiagnostics()],
+      ["Content diagnostics", Urls.contentDiagnostics()],
       ["Erroring questions", Urls.monitorErroringQuestions()],
       ["Alerts management", Urls.monitorNotifications()],
       ["Background tasks", Urls.monitorTasks()],
       ["Scheduled jobs", Urls.monitorJobs()],
       ["Application logs", Urls.monitorLogs()],
       ["Model persistence log", Urls.monitorModelPersistenceLog()],
+      ["Session management", Urls.monitorSessions()],
+      ["API key usage", Urls.monitorApiKeyUsage()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
@@ -152,6 +167,11 @@ describe("MonitorLayout", () => {
       label: "Dependency diagnostics",
       route: Urls.dependencyDiagnostics(),
       section: "diagnostics",
+    },
+    {
+      label: "Content diagnostics",
+      route: Urls.contentDiagnostics(),
+      section: "content-diagnostics",
     },
     {
       label: "Erroring questions",
@@ -182,6 +202,16 @@ describe("MonitorLayout", () => {
       label: "Model persistence log",
       route: Urls.monitorModelPersistenceLog(),
       section: "model-caching",
+    },
+    {
+      label: "Session management",
+      route: Urls.monitorSessions(),
+      section: "session-management",
+    },
+    {
+      label: "API key usage",
+      route: Urls.monitorApiKeyUsage(),
+      section: "api-key-usage",
     },
   ] as const;
 
@@ -214,8 +244,70 @@ describe("MonitorLayout", () => {
     },
   );
 
+  const AI_AUDITING_SECTION_CASES = [
+    {
+      label: "Usage stats",
+      route: Urls.monitorAiAuditingUsage(),
+      section: "ai-auditing-usage-stats",
+    },
+    {
+      label: "Conversations",
+      route: Urls.monitorAiAuditingConversations(),
+      section: "ai-auditing-conversations",
+    },
+    {
+      label: "MCP analytics",
+      route: Urls.monitorAiAuditingMcp(),
+      section: "ai-auditing-mcp",
+    },
+    {
+      label: "CLI analytics",
+      route: Urls.monitorAiAuditingCli(),
+      section: "ai-auditing-cli",
+    },
+  ] as const;
+
+  it.each([
+    ...AI_AUDITING_SECTION_CASES,
+    {
+      label: "Conversations",
+      route: Urls.monitorAiAuditingConversationDetail("convo-0"),
+    },
+  ])(
+    "marks $label as the current page for $route",
+    async ({ label, route }) => {
+      setup({
+        initialRoute: route,
+        tokenFeatures: { audit_app: true, ai_controls: true },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+      });
+
+      const activeLink = screen.getByRole("link", { name: label });
+      expect(activeLink).toHaveAttribute("aria-current", "page");
+      expect(screen.getAllByRole("link", { current: "page" })).toEqual([
+        activeLink,
+      ]);
+    },
+  );
+
+  it.each(AI_AUDITING_SECTION_CASES)(
+    "tracks opening the $label section",
+    async ({ label, section }) => {
+      trackMonitorSectionClicked.mockClear();
+      setup({ tokenFeatures: { audit_app: true, ai_controls: true } });
+
+      await userEvent.click(await screen.findByRole("link", { name: label }));
+
+      expect(trackMonitorSectionClicked).toHaveBeenCalledWith(section);
+    },
+  );
+
   it("hides the migrated Tools tabs for an analyst without the monitoring permission", async () => {
     setup({
+      tokenFeatures: { advanced_permissions: true },
       user: createMockUser({
         is_superuser: false,
         is_data_analyst: true,
@@ -231,9 +323,9 @@ describe("MonitorLayout", () => {
       screen.queryByRole("heading", { name: LOGS_AND_ACTIVITY_GROUP }),
     ).not.toBeInTheDocument();
 
-    expect(
-      screen.getByRole("link", { name: "Dependency diagnostics" }),
-    ).toBeInTheDocument();
+    ["Dependency diagnostics", "Content diagnostics"].forEach((name) => {
+      expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    });
     [
       "Background tasks",
       "Scheduled jobs",
@@ -246,7 +338,7 @@ describe("MonitorLayout", () => {
     });
   });
 
-  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management (admin-only)", async () => {
+  it("hides Dependency diagnostics for a monitoring-only user, and hides Alerts management and API key usage (admin-only)", async () => {
     setup({
       user: createMockUser({
         is_superuser: false,
@@ -259,10 +351,8 @@ describe("MonitorLayout", () => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
-    expect(
-      screen.queryByRole("link", { name: "Dependency diagnostics" }),
-    ).not.toBeInTheDocument();
     [
+      "Content diagnostics",
       "Background tasks",
       "Scheduled jobs",
       "Application logs",
@@ -270,13 +360,18 @@ describe("MonitorLayout", () => {
     ].forEach((name) => {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
     });
+    ["Alerts management", "Dependency diagnostics"].forEach((name) => {
+      expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+    });
+    // the page loads GET /api/api-key, which is superuser-only
     expect(
-      screen.queryByRole("link", { name: "Alerts management" }),
+      screen.queryByRole("link", { name: "API key usage" }),
     ).not.toBeInTheDocument();
   });
 
   it("hides Alerts management for an analyst even with the monitoring permission", async () => {
     setup({
+      tokenFeatures: { advanced_permissions: true },
       user: createMockUser({
         is_superuser: false,
         is_data_analyst: true,
@@ -351,11 +446,44 @@ describe("MonitorLayout", () => {
     expect(onRender).toHaveBeenCalledTimes(renderCount);
   });
 
+  it.each([
+    {
+      description: "an analyst",
+      user: createMockUser({ is_superuser: false, is_data_analyst: true }),
+    },
+    {
+      description: "a non-admin with the monitoring permission",
+      user: createMockUser({
+        is_superuser: false,
+        permissions: { can_access_monitoring: true },
+      }),
+    },
+  ])(
+    "hides Session management (admin-only) for $description",
+    async ({ user }) => {
+      setup({ user });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole("link", { name: "Session management" }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   const getTabGem = (name: string) =>
     within(screen.getByRole("link", { name })).queryByTestId("upsell-gem");
 
   it("gates only Erroring questions when audit_app is unavailable", async () => {
-    setup({ tokenFeatures: { dependencies: true, audit_app: false } });
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: true,
+        audit_app: false,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
@@ -363,27 +491,234 @@ describe("MonitorLayout", () => {
 
     expect(getTabGem("Erroring questions")).toBeInTheDocument();
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
   });
 
   it("gates only Dependency diagnostics when dependencies is unavailable", async () => {
-    setup({ tokenFeatures: { dependencies: false, audit_app: true } });
+    setup({
+      tokenFeatures: {
+        dependencies: false,
+        content_diagnostics: true,
+        audit_app: true,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
     expect(getTabGem("Dependency diagnostics")).toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
   });
 
-  it("gates neither when both features are available", async () => {
-    setup({ tokenFeatures: { dependencies: true, audit_app: true } });
+  it("gates only Content diagnostics when content_diagnostics is unavailable", async () => {
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: false,
+        audit_app: true,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
+  });
+
+  it("gates none of the token-feature tabs when all features are available", async () => {
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: true,
+        audit_app: true,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      expectation:
+        "gates Session management without the session-management feature",
+      hasFeature: false,
+      isGated: true,
+    },
+    {
+      expectation:
+        "does not gate Session management with the session-management feature",
+      hasFeature: true,
+      isGated: false,
+    },
+  ])("$expectation", async ({ hasFeature, isGated }) => {
+    setup({ tokenFeatures: { "session-management": hasFeature } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(getTabGem("Session management") !== null).toBe(isGated);
+  });
+
+  const AI_AUDITING_GROUP = "AI Auditing";
+
+  it("shows ungated Usage stats, Conversations, and MCP analytics when audit_app and ai_controls are both enabled", async () => {
+    setup({ tokenFeatures: { audit_app: true, ai_controls: true } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("heading", { name: AI_AUDITING_GROUP }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Usage stats" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingUsage(),
+    );
+    expect(getTabGem("Usage stats")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Conversations" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingConversations(),
+    );
+    expect(screen.getByRole("link", { name: "MCP analytics" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingMcp(),
+    );
+    expect(screen.getByRole("link", { name: "CLI analytics" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingCli(),
+    );
+  });
+
+  it.each([
+    { label: "Usage stats", icon: "lineandbar" },
+    { label: "Conversations", icon: "comment" },
+    { label: "MCP analytics", icon: "mcp" },
+    { label: "CLI analytics", icon: "code_block" },
+  ])("shows the $icon icon for $label", async ({ label, icon }) => {
+    setup({ tokenFeatures: { audit_app: true, ai_controls: true } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      within(screen.getByRole("link", { name: label })).getByRole("img", {
+        name: `${icon} icon`,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("gates Usage stats and hides Conversations when ai_controls is unavailable", async () => {
+    setup({ tokenFeatures: { audit_app: true, ai_controls: false } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(getTabGem("Usage stats")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("link", { name: "Usage stats" })).getByRole(
+        "img",
+        { name: "lineandbar icon" },
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Conversations" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "CLI analytics" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingCli(),
+    );
+    expect(getTabGem("CLI analytics")).not.toBeInTheDocument();
+  });
+
+  it("hides the whole AI Auditing group when audit_app is unavailable", async () => {
+    setup({ tokenFeatures: { audit_app: false, ai_controls: true } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: AI_AUDITING_GROUP }),
+    ).not.toBeInTheDocument();
+    ["Usage stats", "Conversations", "MCP analytics", "CLI analytics"].forEach(
+      (name) => {
+        expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+      },
+    );
+  });
+
+  it("keeps MCP analytics available when the MCP server toggle is off", async () => {
+    setup({
+      tokenFeatures: { audit_app: true, ai_controls: true },
+      mcpEnabled: false,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("link", { name: "MCP analytics" })).toHaveAttribute(
+      "href",
+      Urls.monitorAiAuditingMcp(),
+    );
+  });
+
+  it.each([
+    ["AI features are disabled", { aiFeaturesEnabled: false }],
+    ["the AI provider is not configured", { isConfigured: false }],
+  ])(
+    "keeps Metabot analytics links visible when %s",
+    async (_label, settings) => {
+      setup({
+        tokenFeatures: { audit_app: true, ai_controls: true },
+        ...settings,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole("link", { name: "Usage stats" })).toHaveAttribute(
+        "href",
+        Urls.monitorAiAuditingUsage(),
+      );
+      expect(
+        screen.getByRole("link", { name: "Conversations" }),
+      ).toHaveAttribute("href", Urls.monitorAiAuditingConversations());
+    },
+  );
+
+  it("hides the AI Auditing group for a non-admin user", async () => {
+    setup({
+      tokenFeatures: { audit_app: true, ai_controls: true },
+      user: createMockUser({
+        is_superuser: false,
+        is_data_analyst: true,
+        permissions: { can_access_monitoring: true },
+      }),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("heading", { name: AI_AUDITING_GROUP }),
+    ).not.toBeInTheDocument();
   });
 });

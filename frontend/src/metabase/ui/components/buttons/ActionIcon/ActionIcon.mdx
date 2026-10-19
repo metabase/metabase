@@ -1,0 +1,57 @@
+import { Canvas, Meta } from "@storybook/blocks";
+import * as ActionIconStories from "./ActionIcon.stories";
+
+<Meta of={ActionIconStories} />
+
+# ActionIcon
+
+Our themed wrapper around [Mantine ActionIcon](https://mantine.dev/core/action-icon/).
+
+## When to use ActionIcon
+
+- Icon-only actions in toolbars, headers, table rows, and other compact places.
+- Always pass `aria-label` (or wrap in a `Tooltip` with a string label) since there's no visible text.
+
+Not to use:
+
+- If the action needs a text label, use `Button`.
+- If the button shows a counter or other content next to the icon, use `Button`.
+
+## Docs
+
+- [Figma File](https://www.figma.com/design/qYbAmJHUJ2Tkb01WFegUKp/Component-Library?node-id=22-1453)
+- [Mantine ActionIcon Docs](https://mantine.dev/core/action-icon/)
+
+## Examples
+
+<Canvas of={ActionIconStories.Default} />
+
+### Variant: Filled
+
+<Canvas of={ActionIconStories.VariantFilled} />
+
+### Variant: Default
+
+Pass `radius="xl"` for the rounded corners.
+
+<Canvas of={ActionIconStories.VariantDefault} />
+
+### Variant: Light
+
+<Canvas of={ActionIconStories.VariantLight} />
+
+### Variant: Subtle
+
+`xs` is available for `subtle` only. Any other variant with `size="xs"` falls back to `sm`.
+
+<Canvas of={ActionIconStories.VariantSubtle} />
+
+### Variant: On Dark
+
+<Canvas of={ActionIconStories.VariantOnDark} />
+
+### Selectable
+
+`light` and `subtle` have a selected state. Pass `selected={isSelected}` (and `aria-pressed` for toggle buttons). To force the hover or pressed look, pass `mod={{ hovered: true }}` or `mod={{ pressed: true }}`.
+
+<Canvas of={ActionIconStories.Selectable} />

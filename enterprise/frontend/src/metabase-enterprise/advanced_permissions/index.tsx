@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { modalRoute } from "metabase/common/components/ModalRoute";
+import { hasFeature } from "metabase/databases";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
@@ -13,7 +14,7 @@ import {
   PLUGIN_REDUCERS,
   type PermissionOption,
 } from "metabase/plugins";
-import { push } from "metabase/router";
+import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { DataPermissionValue } from "metabase-types/api";
 
@@ -27,19 +28,21 @@ import { getImpersonations } from "./selectors";
 import { getEditImpersonationUrl } from "./utils";
 
 const IMPERSONATED_PERMISSION_OPTION = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Impersonated`,
+  get label() {
+    return t`Impersonated`;
+  },
   value: DataPermissionValue.IMPERSONATED,
   icon: "database",
-  iconColor: "warning",
+  iconColor: "feedback-warning",
 } satisfies PermissionOption;
 
 const BLOCK_PERMISSION_OPTION = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Blocked`,
+  get label() {
+    return t`Blocked`;
+  },
   value: DataPermissionValue.BLOCKED,
   icon: "close",
-  iconColor: "danger",
+  iconColor: "feedback-negative",
 } satisfies PermissionOption;
 
 /**
@@ -70,7 +73,7 @@ export function initializePlugin() {
       database,
     ) => [
       ...options,
-      ...(database.hasFeature("connection-impersonation")
+      ...(hasFeature(database, "connection-impersonation")
         ? [IMPERSONATED_PERMISSION_OPTION]
         : []),
       BLOCK_PERMISSION_OPTION,
@@ -135,15 +138,17 @@ export function initializePlugin() {
     PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS[
       DataPermissionValue.IMPERSONATED
     ].push({
-      label: t`Edit Impersonated`,
-      iconColor: "warning",
+      get label() {
+        return t`Edit Impersonated`;
+      },
+      iconColor: "feedback-warning",
       icon: "database",
-      actionCreator: (entityId, groupId, view) => {
+      onSelect: (entityId, groupId, view) => {
         if (entityId == null) {
           throw new Error("Impersonation can only be configured for databases");
         }
 
-        return push(getEditImpersonationUrl(entityId, groupId, view));
+        navigate(getEditImpersonationUrl(entityId, groupId, view));
       },
     });
 

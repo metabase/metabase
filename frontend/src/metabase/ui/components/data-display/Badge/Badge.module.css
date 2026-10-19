@@ -7,6 +7,10 @@
   letter-spacing: 0;
 }
 
+.section {
+  --badge-section-margin: calc(var(--mantine-spacing-xxs) / 2);
+}
+
 .root[data-indicator] {
   width: 0.5rem; /* 8px */
   height: 0.5rem;

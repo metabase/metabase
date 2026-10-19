@@ -1,5 +1,5 @@
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import type { LocationDescriptorObject } from "metabase/router";
+import type { Path } from "metabase/router";
 
 type LocationQBModeResult = {
   queryBuilderMode: QueryBuilderMode;
@@ -7,7 +7,7 @@ type LocationQBModeResult = {
 };
 
 export function getQueryBuilderModeFromLocation(
-  location: LocationDescriptorObject,
+  location: Partial<Path>,
 ): LocationQBModeResult {
   const { pathname } = location;
   const lastPathSegment = pathname?.split("/").pop();

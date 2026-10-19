@@ -42,7 +42,6 @@
    #'driver.u/memoized-features*
    #'mi/cached-encrypted-json-out
    #'collection/can-access-root-collection?
-   #'collection/visible-collection-ids*
    #'serialization.dump/serialization-sorted-map])
 
 (defn- cache-object

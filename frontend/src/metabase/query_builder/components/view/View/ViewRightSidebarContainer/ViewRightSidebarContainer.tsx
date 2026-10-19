@@ -1,19 +1,16 @@
 import type { ComponentProps } from "react";
 
-import { NativeQueryRightSidebar } from "metabase/query_builder/components/view/View/NativeQueryRightSidebar/NativeQueryRightSidebar";
-import { StructuredQueryRightSidebar } from "metabase/query_builder/components/view/View/StructuredQueryRightSidebar/StructuredQueryRightSidebar";
 import * as Lib from "metabase-lib";
+
+import { NativeQueryRightSidebar } from "../NativeQueryRightSidebar/NativeQueryRightSidebar";
+import { StructuredQueryRightSidebar } from "../StructuredQueryRightSidebar/StructuredQueryRightSidebar";
 
 type ViewRightSidebarContainerProps = ComponentProps<
   typeof NativeQueryRightSidebar
 > &
   Pick<
     ComponentProps<typeof StructuredQueryRightSidebar>,
-    | "isShowingSummarySidebar"
-    | "onCloseSummary"
-    | "onOpenModal"
-    | "updateQuestion"
-    | "xDomain"
+    "isShowingSummarySidebar" | "onCloseSummary" | "updateQuestion"
   >;
 
 export const ViewRightSidebarContainer = (
@@ -21,25 +18,13 @@ export const ViewRightSidebarContainer = (
 ) => {
   const {
     question,
-    deselectTimelineEvents,
-    hideTimelineEvents,
     isShowingQuestionInfoSidebar,
     isShowingQuestionSettingsSidebar,
-    isShowingAIQuestionAnalysisSidebar,
     isShowingSummarySidebar,
     isShowingTimelineSidebar,
-    onCloseAIQuestionAnalysisSidebar,
     onCloseSummary,
-    onCloseTimelines,
-    onOpenModal,
     onSave,
-    selectTimelineEvents,
-    selectedTimelineEventIds,
-    showTimelineEvents,
-    timelines,
     updateQuestion,
-    visibleTimelineEventIds,
-    xDomain,
   } = props;
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -48,26 +33,14 @@ export const ViewRightSidebarContainer = (
     <NativeQueryRightSidebar {...props} />
   ) : (
     <StructuredQueryRightSidebar
-      deselectTimelineEvents={deselectTimelineEvents}
-      hideTimelineEvents={hideTimelineEvents}
       isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
       isShowingQuestionSettingsSidebar={isShowingQuestionSettingsSidebar}
-      isShowingAIQuestionAnalysisSidebar={isShowingAIQuestionAnalysisSidebar}
       isShowingSummarySidebar={isShowingSummarySidebar}
       isShowingTimelineSidebar={isShowingTimelineSidebar}
-      onCloseAIQuestionAnalysisSidebar={onCloseAIQuestionAnalysisSidebar}
       onCloseSummary={onCloseSummary}
-      onCloseTimelines={onCloseTimelines}
-      onOpenModal={onOpenModal}
       onSave={onSave}
       question={question}
-      selectTimelineEvents={selectTimelineEvents}
-      selectedTimelineEventIds={selectedTimelineEventIds}
-      showTimelineEvents={showTimelineEvents}
-      timelines={timelines}
       updateQuestion={updateQuestion}
-      visibleTimelineEventIds={visibleTimelineEventIds}
-      xDomain={xDomain}
     />
   );
 };

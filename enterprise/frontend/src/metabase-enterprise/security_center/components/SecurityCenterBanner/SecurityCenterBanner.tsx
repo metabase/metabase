@@ -1,15 +1,12 @@
 import { jt, t } from "ttag";
 
-import {
-  useGetChannelInfoQuery,
-  useListSecurityAdvisoriesQuery,
-} from "metabase/api";
+import { useGetChannelInfoQuery } from "metabase/api";
 import { Banner } from "metabase/common/components/Banner";
-import { useSetting } from "metabase/common/hooks";
-import { getPlan } from "metabase/common/utils/plan";
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
+import { getPlan, useSetting } from "metabase/settings";
 import { Anchor, Text } from "metabase/ui";
 
+import { useListSecurityAdvisoriesQuery } from "../../api";
 import { isAffected } from "../../utils";
 
 export function SecurityCenterBanner() {
@@ -64,7 +61,7 @@ export function SecurityCenterBanner() {
       icon="warning_round_filled"
       bg="feedback-negative"
       body={<Text lh="inherit">{body}</Text>}
-      py="md"
+      py="lg"
     />
   );
 }

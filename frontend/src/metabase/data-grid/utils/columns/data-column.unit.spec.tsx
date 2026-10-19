@@ -1,8 +1,10 @@
+import type { ColumnDef } from "@tanstack/react-table";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
 
-import { getDataColumn } from "./data-column";
+import { getDataColumn, getIsColumnTruncated } from "./data-column";
 
 const setup = ({
   columnSize,
@@ -18,32 +20,46 @@ const setup = ({
   columnWrap?: boolean;
 }) => {
   const onExpand = jest.fn();
-  const column = getDataColumn(
-    {
-      id: "test-column",
-      name: "Test Column",
-      accessorFn: (row: { value: string }) => row.value,
-      wrap: columnWrap,
+  const columnOptions = {
+    id: "test-column",
+    name: "Test Column",
+    accessorFn: (row: { value: string }) => row.value,
+    wrap: columnWrap,
+  };
+  const dataColumn = getDataColumn(columnOptions);
+
+  // Mirrors how the hook overlays width-dependent values onto meta
+  const column: ColumnDef<{ value: string }, string> = {
+    ...dataColumn,
+    meta: {
+      ...dataColumn.meta,
+      isTruncated: getIsColumnTruncated({
+        columnId: columnOptions.id,
+        columnSizing: { "test-column": columnSize },
+        measuredColumnSizing: { "test-column": measuredColumnSize },
+        expandedColumns: { "test-column": expandColumn },
+        truncateWidth,
+      }),
+      onExpand,
     },
-    { "test-column": columnSize },
-    { "test-column": measuredColumnSize },
-    { "test-column": expandColumn },
-    truncateWidth,
-    onExpand,
-  );
+  };
 
   // Unjustified type cast. FIXME
   const CellComponent = column.cell as React.ComponentType<{
     getValue: () => string;
     row: { index: number; original: { value: string } };
+    column: { columnDef: typeof column };
   }>;
 
   renderWithProviders(
     <CellComponent
       getValue={() => "test value"}
       row={{ index: 0, original: { value: "test value" } }}
+      column={{ columnDef: column }}
     />,
   );
+
+  return { onExpand };
 };
 
 describe("getDataColumn", () => {
@@ -103,6 +119,17 @@ describe("getDataColumn", () => {
       });
 
       expect(screen.queryByTestId("expand-column")).not.toBeInTheDocument();
+    });
+
+    it("calls onExpand when the expand button is clicked", async () => {
+      const { onExpand } = setup({
+        columnSize: 150,
+        measuredColumnSize: 300,
+      });
+
+      await userEvent.click(screen.getByTestId("expand-column"));
+
+      expect(onExpand).toHaveBeenCalledWith("test-column", "test value");
     });
   });
 });

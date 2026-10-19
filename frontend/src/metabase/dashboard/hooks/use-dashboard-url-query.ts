@@ -1,19 +1,22 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
 import { isEmbedPreview } from "metabase/embedding/config";
 import { useDispatch, useSelector } from "metabase/redux";
 import { selectTab } from "metabase/redux/dashboard";
 import {
-  type InjectedRouter,
   type Location,
-  push,
   queryToSearch,
-  replace,
+  subscribeLocation,
+  useIsNavigating,
+  useIsNavigationHeld,
+  useNavigate,
 } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
+import { parseSearchQuery } from "metabase/utils/browser";
+import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { DashboardTab } from "metabase-types/api";
 
@@ -25,17 +28,17 @@ import {
 } from "../selectors";
 import { createTabSlug, resolveTabId } from "../utils";
 
-export function useDashboardUrlQuery(
-  router: InjectedRouter,
-  location: Location,
-) {
+export function useDashboardUrlQuery(location: Location) {
   const dashboardId = useSelector((state) => getDashboard(state)?.id);
   const tabs = useSelector(getTabs);
   const selectedTab = useSelector(getSelectedTab);
   const parameters = useSelector(getValuePopulatedParameters);
   const siteUrl = useSetting("site-url");
+  const isNavigationHeld = useIsNavigationHeld();
+  const isNavigating = useIsNavigating();
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const parameterValuesBySlug = useMemo(
     () => getParameterValuesBySlug(parameters),
@@ -54,6 +57,7 @@ export function useDashboardUrlQuery(
   }, [parameterValuesBySlug, tabs, selectedTab]);
 
   const previousQueryParams = usePrevious(queryParams);
+  const hasDeferredSyncRef = useRef(false);
 
   useEffect(() => {
     /**
@@ -66,7 +70,30 @@ export function useDashboardUrlQuery(
       return;
     }
 
-    const pathname = location.pathname.replace(siteUrl, "");
+    /**
+     * A leave prompt is up, and the router holds a single pending navigation.
+     * Syncing now would replace the destination the user is being asked about,
+     * and letting them through would then take them somewhere else. Note that
+     * the sync was skipped, because `previousQueryParams` still advances and
+     * would otherwise swallow it once the prompt is answered.
+     */
+    if (isNavigationHeld) {
+      hasDeferredSyncRef.current = true;
+      return;
+    }
+
+    /**
+     * The router is on its way somewhere else and has not committed it yet,
+     * which a `route.lazy` destination makes possible. Syncing now would replace
+     * that pending navigation and strand the user on the dashboard. Note the
+     * skip the same way, so the sync still happens if we stay put.
+     */
+    if (isNavigating) {
+      hasDeferredSyncRef.current = true;
+      return;
+    }
+
+    const pathname = getPathnameWithoutSubPath(location.pathname, siteUrl);
     const isDashboardUrl = pathname.startsWith("/dashboard/");
     if (isDashboardUrl) {
       const dashboardSlug = pathname.replace("/dashboard/", "");
@@ -77,11 +104,15 @@ export function useDashboardUrlQuery(
       }
     }
 
-    if (_.isEqual(previousQueryParams, queryParams)) {
+    if (
+      !hasDeferredSyncRef.current &&
+      _.isEqual(previousQueryParams, queryParams)
+    ) {
       return;
     }
+    hasDeferredSyncRef.current = false;
 
-    const currentQuery = location?.query ?? {};
+    const currentQuery = parseSearchQuery(location.search);
 
     const nextQueryParams = toLocationQuery(queryParams);
     const currentQueryParams = _.omit(currentQuery, ...QUERY_PARAMS_ALLOW_LIST);
@@ -95,8 +126,10 @@ export function useDashboardUrlQuery(
         previousQueryParams?.tab &&
         queryParams.tab !== previousQueryParams.tab;
 
-      const action = isDashboardTabChange ? push : replace;
-      dispatch(action({ ...location, search: queryToSearch(nextQuery) }));
+      navigate(
+        { ...location, search: queryToSearch(nextQuery) },
+        { replace: !isDashboardTabChange, state: location.state },
+      );
     }
   }, [
     dashboardId,
@@ -104,12 +137,13 @@ export function useDashboardUrlQuery(
     previousQueryParams,
     location,
     siteUrl,
-    dispatch,
+    navigate,
+    isNavigationHeld,
+    isNavigating,
   ]);
 
   useEffect(() => {
-    // @ts-expect-error missing type declaration
-    const unsubscribe = router.listen((nextLocation) => {
+    return subscribeLocation((nextLocation) => {
       const isSamePath = nextLocation.pathname === location.pathname;
       if (!isSamePath) {
         return;
@@ -122,19 +156,16 @@ export function useDashboardUrlQuery(
         dispatch(selectTab({ tabId: nextTabId }));
       }
     });
-
-    return () => unsubscribe();
-  }, [router, location, selectedTab, tabs, dispatch]);
+  }, [location, selectedTab, tabs, dispatch]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId", "returnToEmbeddingSetupGuide"];
 
 function parseTabId(location: Location, tabs: DashboardTab[]) {
-  const slug = location.query?.tab;
-  if (typeof slug === "string" && slug.length > 0) {
-    return resolveTabId(slug, tabs);
-  }
-  return null;
+  const slugs = new URLSearchParams(location.search).getAll("tab");
+  // A repeated `tab` is ambiguous, so treat it as no tab at all.
+  const slug = slugs.length === 1 ? slugs[0] : "";
+  return resolveTabId(slug, tabs);
 }
 
 function toLocationQuery(object: Record<string, any>) {

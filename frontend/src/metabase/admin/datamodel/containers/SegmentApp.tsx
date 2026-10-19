@@ -10,10 +10,9 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { trackSegmentCreated } from "metabase/common/data-studio/analytics";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/redux";
-import { push, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import type {
   CreateSegmentRequest,
   Segment,
@@ -31,7 +30,7 @@ type UpdateSegmentFormProps = {
 };
 
 function UpdateSegmentForm({ segmentId }: UpdateSegmentFormProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [isDirty, setIsDirty] = useState(false);
   const [updateSegment] = useUpdateSegmentMutation();
 
@@ -57,9 +56,9 @@ function UpdateSegmentForm({ segmentId }: UpdateSegmentFormProps) {
         setIsDirty(isDirty);
         return;
       }
-      dispatch(push("/admin/datamodel/segments"));
+      navigate("/admin/datamodel/segments");
     },
-    [dispatch, segmentId, updateSegment, isDirty],
+    [segmentId, updateSegment, isDirty, navigate],
   );
 
   const isLoading = isLoadingSegment || isLoadingTable;
@@ -83,7 +82,7 @@ function UpdateSegmentForm({ segmentId }: UpdateSegmentFormProps) {
 }
 
 function CreateSegmentForm() {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [isDirty, setIsDirty] = useState(false);
   const { sendErrorToast } = useMetadataToasts();
   const [createSegment] = useCreateSegmentMutation();
@@ -113,10 +112,10 @@ function CreateSegmentForm() {
           "admin_datamodel_segments",
           result.data?.id,
         );
-        dispatch(push("/admin/datamodel/segments"));
+        navigate("/admin/datamodel/segments");
       });
     },
-    [scheduleCallback, createSegment, dispatch, sendErrorToast, isDirty],
+    [scheduleCallback, createSegment, navigate, sendErrorToast, isDirty],
   );
 
   return (

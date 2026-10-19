@@ -28,16 +28,7 @@
       (< 1)))
 
 (defn- check-entities!
-  "Drain the currently-stale entities, analyzing each one.
-
-  Staleness is propagated up front, at the moment an entity changes (see the dependencies event handlers, which mark the
-  whole affected subtree via [[deps.findings/mark-entity-and-transitive-dependents-stale!]]). The drain therefore works through a
-  fixed set that only shrinks — it never re-marks anything stale during draining — so it always terminates, even when the
-  dependency graph has cycles.
-
-  As a safety net, the loop also stops as soon as a pass fails to reduce the stale count (e.g. an entity whose analysis
-  can't be persisted). That keeps a single unprocessable entity from spinning the loop forever; the next scheduled run
-  retries it."
+  "Analyze stale entities in batches until none are left or a pass stops reducing their count."
   []
   (when (premium-features/has-feature? :dependencies)
     (loop [prev-stale nil]
@@ -49,21 +40,31 @@
 
 (declare schedule-run!)
 
-(task/defjob
-  ^{:doc "Check all entities for validity"
-    org.quartz.DisallowConcurrentExecution true}
-  DependencyEntityCheck [ctx]
+(defn- reschedule-after-run!
+  "Schedule the next run of the entity check job unless the `:dependencies` feature is definitively absent."
+  [scheduler]
+  (if (false? (premium-features/canonically-has-feature? :dependencies))
+    (log/debug "Not rescheduling job Dependency Entity Check: the dependencies feature is not enabled")
+    (schedule-run! scheduler
+                   (deps.task-util/job-delay
+                    (deps.settings/dependency-entity-check-delay-minutes)
+                    (deps.settings/dependency-entity-check-variance-minutes)))))
+
+(task/defjob DependencyEntityCheck
+  "Check all entities for validity"
+  {:saved-class "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
+   :concurrent? false}
+  [ctx]
   (log/info "Executing DependencyEntityCheck job...")
   (check-entities!)
-  (let [delay-in-seconds (deps.task-util/job-delay
-                          (deps.settings/dependency-entity-check-delay-minutes)
-                          (deps.settings/dependency-entity-check-variance-minutes))]
-    (schedule-run! (.getScheduler ctx) delay-in-seconds)))
+  (reschedule-after-run! (.getScheduler ctx)))
 
 (def ^:private job-key     "metabase.dependencies.task.entity-check.job")
 (def ^:private trigger-key "metabase.dependencies.task.entity-check.trigger")
 
-(defn- schedule-run! [scheduler delay-in-seconds]
+(defn- schedule-run!
+  "Schedule a run of the entity check job `delay-in-seconds` from now."
+  [scheduler delay-in-seconds]
   (let [start-at (-> (t/instant)
                      (t/+ (t/duration delay-in-seconds :seconds))
                      java.util.Date/from)
@@ -76,16 +77,21 @@
     (task/schedule-task! scheduler job trigger)))
 
 (defmethod task/init! ::DependencyEntityCheck [_]
-  (if (pos? (deps.settings/dependency-entity-check-batch-size))
-    (schedule-run!
-     (task/scheduler)
-     (deps.task-util/job-initial-delay
-      (deps.settings/dependency-entity-check-variance-minutes)))
-    (log/info "Not starting dependency entity check job because the batch size is not positive")))
+  (when-not (pos? (deps.settings/dependency-entity-check-batch-size))
+    (log/info "Dependency entity check batch size is not positive; the job will run but process nothing"))
+  (schedule-run!
+   (task/scheduler)
+   (deps.task-util/job-initial-delay
+    (deps.settings/dependency-entity-check-variance-minutes))))
 
 (defn trigger-entity-check-job!
-  "Trigger the DependencyEntityCheck job to run after a brief delay.
-  The 1-second delay ensures the calling transaction has committed before
-  the job checks for stale entities."
+  "Trigger the DependencyEntityCheck job to run after a brief delay, unless the batch size disables it.
+
+  The 1-second delay ensures the calling transaction has committed before the job checks for stale entities. Entity
+  changes fire this, so leaving it ungated is what made a disabled job wake roughly once a second; the job's own
+  periodic schedule is left alone so it still resumes if the batch size becomes positive.
+
+  Disable with MB_DEPENDENCY_ENTITY_CHECK_BATCH_SIZE=0"
   []
-  (schedule-run! (task/scheduler) 1))
+  (when (pos? (deps.settings/dependency-entity-check-batch-size))
+    (schedule-run! (task/scheduler) 1)))

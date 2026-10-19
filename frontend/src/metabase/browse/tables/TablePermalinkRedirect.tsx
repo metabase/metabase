@@ -4,8 +4,7 @@ import { useListDatabasesQuery, useListTablesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { findDatabaseByName } from "metabase/common/utils/database";
-import { useDispatch } from "metabase/redux";
-import { replace, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { DatabaseId, Table } from "metabase-types/api";
 import { isConcreteTableId } from "metabase-types/api";
@@ -30,7 +29,7 @@ export const TablePermalinkRedirect = () => {
     tableName = "",
   } = useParams<{ dbName: string; schemaName: string; tableName: string }>();
 
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const {
     data: databasesData,
     error: databasesError,
@@ -61,9 +60,9 @@ export const TablePermalinkRedirect = () => {
 
   useEffect(() => {
     if (targetUrl) {
-      dispatch(replace(targetUrl));
+      navigate(targetUrl, { replace: true });
     }
-  }, [targetUrl, dispatch]);
+  }, [targetUrl, navigate]);
 
   const error = databasesError ?? tablesError;
 

@@ -35,42 +35,40 @@ const MULTI_SCHEMA_SALES = createMockDatabase({
 describe("BrowseSchemas name-based permalinks", () => {
   describe("resolving the database from the url segment", () => {
     it("shows the database's schemas under the name url, without redirecting", async () => {
-      const { history } = setup({
+      const { router } = setup({
         databases: [MULTI_SCHEMA_SALES],
         initialRoute: "/browse/databases/Sales",
       });
 
       expect(await screen.findByText("PUBLIC")).toBeInTheDocument();
       expect(screen.getByText("ANALYTICS")).toBeInTheDocument();
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/browse/databases/Sales",
-      );
+      expect(router?.location.pathname).toBe("/browse/databases/Sales");
     });
   });
 
   describe("preserving the url form when drilling into a schema", () => {
     it("stays on the name url", async () => {
-      const { history } = setup({
+      const { router } = setup({
         databases: [MULTI_SCHEMA_SALES],
         initialRoute: "/browse/databases/Sales",
       });
 
       await userEvent.click(await screen.findByText("PUBLIC"));
 
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         "/browse/databases/Sales/schema/PUBLIC",
       );
     });
 
     it("stays on the id url", async () => {
-      const { history } = setup({
+      const { router } = setup({
         databases: [MULTI_SCHEMA_SALES],
         initialRoute: "/browse/databases/7-sales",
       });
 
       await userEvent.click(await screen.findByText("PUBLIC"));
 
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         "/browse/databases/7-sales/schema/PUBLIC",
       );
     });

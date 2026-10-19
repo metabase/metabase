@@ -3,24 +3,52 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { dayjs } from "metabase/dayjs";
 
-import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
+import * as DateFilter from "../native/helpers/e2e-date-filter-helpers";
 
-import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
+const DASHBOARD_DATE_FILTERS = {
+  "Month and Year": {
+    value: {
+      month: "Nov",
+      year: "2025",
+    },
+    representativeResult: "85.88",
+  },
+  "Quarter and Year": {
+    value: {
+      quarter: "Q2",
+      year: "2025",
+    },
+    representativeResult: "44.43",
+  },
+  "Single Date": {
+    value: "05/23/2025",
+    representativeResult: "49.54",
+  },
+  "Date Range": {
+    value: {
+      startDate: "05/25/2025",
+      endDate: "06/01/2025",
+    },
+    representativeResult: "75.41",
+  },
+  "All Options": {
+    value: "06/01/2025",
+    representativeResult: "53.6",
+  },
+};
 
 describe("scenarios > dashboard > filters > date", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
-
     H.restore();
     cy.signInAsAdmin();
-
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.editDashboard();
   });
 
   it("should work when set through the filter widget", () => {
+    cy.signInAsNormalUser();
+    visitOrdersDashboardInEditMode();
+
     // Add and connect every single available date filter type
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
@@ -31,6 +59,7 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     H.saveDashboard();
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
     // Go through each of the filters and make sure they work individually
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(
@@ -42,50 +71,102 @@ describe("scenarios > dashboard > filters > date", () => {
           filterType: filter,
           filterValue: value,
         });
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.findByTestId("dashcard").within(() => {
-          cy.findByText(representativeResult);
-        });
+        cy.findByTestId("dashcard")
+          .should("contain", representativeResult)
+          .and("not.contain", "39.72");
 
         H.clearFilterWidget(index);
         cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
-  });
 
-  // Rather than going through every single filter type,
-  // make sure the default filter works for just one of the available options
-  it("should work when set as the default filter", () => {
-    H.setFilter("Date picker", "Month and Year");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Default value").next().click();
+    const allOptionsWidget = () => H.filterWidget().eq(4);
 
-    DateFilter.setMonthAndYear({
-      month: "Nov",
-      year: "2025",
+    cy.log("Round the relative date range preview (metabase#22482)");
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Relative date range…").click();
+      cy.findByLabelText("Interval").clear().type(15);
+      cy.findByRole("textbox", { name: "Unit" }).click();
+    });
+    H.selectDropdown().findByText("months").click();
+
+    const expectedRange = getFormattedRange(
+      dayjs().startOf("month").add(-15, "month"),
+      dayjs().add(-1, "month").endOf("month"),
+    );
+    H.popover().findByText(expectedRange).should("be.visible");
+    cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
+    cy.log("Remove the last excluded hour (metabase#27579)");
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Exclude…").click();
+      cy.findByText("Hours of the day…").click();
+      cy.findByText("Select all").click();
+      cy.findByLabelText("12 AM").should("be.checked");
+
+      cy.findByText("Select all").click();
+      cy.findByLabelText("12 AM").should("not.be.checked");
+    });
+    cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
+    cy.log(
+      "Block an exclude filter with all options selected (metabase#24235)",
+    );
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Exclude…").click();
+      cy.findByText("Days of the week…").click();
+      cy.findByText("Select all").click();
+      cy.findByText("Add filter").click();
     });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…").click();
-    H.popover().contains("Created At").first().click();
-
-    H.saveDashboard();
-
-    // The default value should immediately be applied
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("85.88");
+    allOptionsWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Select all").click();
+      cy.button("Update filter").should("be.disabled");
     });
-
-    // Make sure we can override the default value
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 2025").click();
-    H.popover().contains("Jun").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("33.9");
   });
 
   it("should support being required", () => {
+    visitOrdersDashboardInEditMode();
+
+    cy.log("show sub-day resolutions in relative date filter (metabase#6660)");
+    H.setFilter("Date picker", "All Options");
+    H.dashboardParameterSidebar().findByText("No default").click();
+
+    cy.log("re-position the default value popover on resize (metabase#52918)");
+    H.popover().within(() => {
+      cy.findByText("Fixed date range…").click();
+      cy.findByText("Between").should("be.visible");
+    });
+    H.popover().should(([element]) => {
+      expect(element.offsetWidth).to.gte(element.scrollWidth);
+    });
+    H.popover().button("Back").click();
+
+    H.popover().within(() => {
+      cy.findByText("Relative date range…").click();
+      cy.findByText("Next").click();
+      cy.findByDisplayValue("days").click();
+    });
+    H.selectDropdown().within(() => {
+      cy.findByText("hours").should("be.visible");
+      cy.findByText("minutes").click();
+    });
+    H.popover()
+      .findByLabelText(/Include this minute/)
+      .should("not.be.checked")
+      .click()
+      .should("be.checked");
+    H.dashboardParameterSidebar().button("Remove").click();
+
     H.setFilter("Date picker", "Month and Year", "Month and Year");
 
     // Can't save without a default value
@@ -114,44 +195,18 @@ describe("scenarios > dashboard > filters > date", () => {
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Created At");
     H.saveDashboard();
 
+    H.ensureDashboardCardHasText("27.74");
+
     // Updates the filter value
     H.filterWidget().should("contain.text", "November 2026").click();
     H.popover().findByText("Dec").click();
     H.filterWidget().findByText("December 2026");
-    H.ensureDashboardCardHasText("76.83");
+    H.getDashboardCard().should("contain", "76.83").and("not.contain", "27.74");
 
     // Resets the value back by clicking widget icon
     H.resetFilterWidgetToDefault();
     H.filterWidget().findByText("November 2026");
-    H.ensureDashboardCardHasText("27.74");
-  });
-
-  it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.editDashboard();
-
-    H.setFilter("Date picker", "All Options");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No default").click();
-    // click on Relative date range…, to open the relative date filter type tabs
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative date range…").click();
-    // choose Next, under which the new options should be available
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Next").click();
-    // click on Days (the default value), which should open the resolution dropdown
-    cy.findByDisplayValue("days").click();
-    // Hours should appear in the selection box (don't click it)
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("hours");
-    // Minutes should appear in the selection box; click it
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("minutes").click();
-    // also check the "Include this minute" checkbox
-    // which is actually "Include" followed by "this minute" wrapped in <strong>, so has to be clicked this way
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Include this minute").click();
+    H.getDashboardCard().should("contain", "27.74").and("not.contain", "76.83");
   });
 
   it("correctly serializes exclude filter on non-English locales (metabase#29122)", () => {
@@ -184,6 +239,15 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 });
 
+function getFormattedRange(start, end) {
+  return `${start.format("MMM D, YYYY")} – ${end.format("MMM D, YYYY")}`;
+}
+
+function visitOrdersDashboardInEditMode() {
+  H.visitDashboard(ORDERS_DASHBOARD_ID);
+  H.editDashboard();
+}
+
 function dateFilterSelector({ filterType, filterValue } = {}) {
   switch (filterType) {
     case "Month and Year":
@@ -205,12 +269,13 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
       cy.findByText("Add filter").click();
       break;
 
-    case "Relative Date":
-      DateFilter.setRelativeDate(filterValue);
-      break;
-
     case "All Options":
-      DateFilter.setAdHocFilter(filterValue);
+      H.popover().within(() => {
+        cy.findByText("Fixed date range…").click();
+        cy.findByText("Before").click();
+        cy.findByLabelText("Date").clear().type(filterValue).blur();
+        cy.button("Add filter").click();
+      });
       break;
 
     default:

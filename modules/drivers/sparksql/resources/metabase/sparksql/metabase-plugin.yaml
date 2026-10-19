@@ -33,7 +33,7 @@ driver:
       - merge:
           - additional-options
           - name: jdbc-flags
-            placeholder: ';transportMode=http'
+            placeholder: ';transportMode=binary'
       - default-advanced-options
 init:
   - step: load-namespace

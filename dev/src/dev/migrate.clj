@@ -43,7 +43,6 @@
   ;; do we really use this in dev?
   ([direction & [version]]
    (mdb/migrate! (mdb/data-source) direction version)
-   #_{:clj-kondo/ignore [:discouraged-var]}
    (println (format "Migrated %s. Latest migration: %s" (name direction) (latest-migration)))))
 
 (defn- rollback-n-migrations!
@@ -57,11 +56,12 @@
   [id]
   (->> (t2/query-one {:select [[:%count.* :count]]
                       :from   [databasechangelog-name]
-                      :where  [:> :orderexecuted {:select   [:orderexecuted]
-                                                  :from     [databasechangelog-name]
-                                                  :where    [:like :id (format "%s%%" id)]
-                                                  :order-by [[:orderexecuted :desc]]
-                                                  :limit    1}]
+                      :where  [:> :orderexecuted ^:allow-subquery
+                               {:select   [:orderexecuted]
+                                :from     [databasechangelog-name]
+                                :where    [:like :id (format "%s%%" id)]
+                                :order-by [[:orderexecuted :desc]]
+                                :limit    1}]
                       :limit 1})
        :count
        ;; includes the selected id
@@ -83,10 +83,11 @@
       0 ;; don't rollback if there was just one deployment of everything
       (:count (t2/query-one {:select [[:%count.* :count]]
                              :from   [databasechangelog-name]
-                             :where  [:= :deployment_id {:select   [:deployment_id]
-                                                         :from     [databasechangelog-name]
-                                                         :order-by [[:orderexecuted :desc]]
-                                                         :limit    1}]})))))
+                             :where  [:= :deployment_id ^:allow-subquery
+                                      {:select   [:deployment_id]
+                                       :from     [databasechangelog-name]
+                                       :order-by [[:orderexecuted :desc]]
+                                       :limit    1}]})))))
 
 (defn reset-checksums!
   []
@@ -115,22 +116,19 @@
    (let [n (case (keyword k)
              :last-deployment (last-deployment))]
      (rollback-n-migrations! n)
-     #_{:clj-kondo/ignore [:discouraged-var]}
      (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
 
-  ([k :- [:enum :id :count "id" "count"]
-    target]
+  ([k      :- [:enum :id :count "id" "count"]
+    target :- [:or :int :string]]
    (let [n (case (keyword k)
              :id               (migration-since target)
              :count            (maybe-parse-long target))]
      (rollback-n-migrations! n)
-     #_{:clj-kondo/ignore [:discouraged-var]}
      (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration))))))
 
 (defn migration-status
   "Print the latest migration ID."
   []
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (println "Current migration:" (latest-migration)))
 
 (defn -main
@@ -189,9 +187,10 @@
     ;; =>
       {:forward \"DROP INDEX public.idx_user_id_device_id;\",
        :rollback \"CREATE INDEX idx_user_id_device_id ON public.login_history(session_id, device_id);\"}"
-  ([id]
+  ([id :- :string]
    (migration-sql-by-id id (mdb/db-type)))
-  ([id db-type :- [:enum :postgres :mysql :mariadb :h2]]
+  ([id      :- :string
+    db-type :- [:enum :postgres :mysql :mariadb :h2]]
    (t2/with-connection [conn]
      (liquibase/with-liquibase [^Liquibase liquibase conn]
        (let [database              (liquibase-database db-type)
@@ -203,7 +202,7 @@
              ^ChangeSet change-set (first (filter #(= id (.getId ^ChangeSet %)) (.getSeenChangeSets list-visitor)))
              sql-generator-factory (SqlGeneratorFactory/getInstance)]
          (reduce (fn [acc data]
-                  ;; merge all changes in one change set into one single :forward and :rollback
+                   ;; merge all changes in one change set into one single :forward and :rollback
                    (merge-with (fn [x y]
                                  (str x "\n" y)) acc data))
                  {}

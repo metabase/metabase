@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [java-time.clock]
    [metabase.app-db.core :as mdb]
+   [metabase.llm.settings :as llm.settings]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.session.api :as session.api]
@@ -127,3 +128,29 @@
         (is (empty? @(:attempts throttler))))
       (finally
         (reset! (:attempts throttler) nil)))))
+
+(deftest replace-llm-providers-test
+  (mt/with-temporary-setting-values [llm.settings/llm-providers []]
+    (let [connections [{:key    "anthropic"
+                        :type   "anthropic"
+                        :name   "Anthropic"
+                        :config {:api-key "sk-ant-test-key"}}]]
+      (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value connections})))
+      (is (= connections (vec (llm.settings/llm-providers))))
+      (testing "unknown connection fields cannot reach storage"
+        (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers"
+                                        {:value [(assoc (first connections) :unknown "value")]})))
+        (is (= connections (vec (llm.settings/llm-providers)))))
+      (testing "unknown provider config fields are rejected"
+        (is (some? (mt/user-http-request :rasta :put 400 "testing/llm-providers"
+                                         {:value [(update (first connections) :config assoc :unknown "value")]})))
+        (is (= connections (vec (llm.settings/llm-providers)))))
+      (testing "provider-internal stored config fields are accepted"
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+          (let [vllm [{:key    "vllm"
+                       :type   "vllm"
+                       :name   "vLLM"
+                       :config {:base-url       "http://localhost:8000/v1"
+                                :model-reasoning "true"}}]]
+            (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value vllm})))
+            (is (= vllm (vec (llm.settings/llm-providers))))))))))

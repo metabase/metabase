@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { PLUGIN_ENTITY_ICON } from "metabase/hooks/plugins";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
@@ -41,7 +42,7 @@ export function initializePlugin() {
     PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
     PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
     PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
-    PLUGIN_COLLECTIONS.useGetIcon = useGetIcon;
+    PLUGIN_ENTITY_ICON.useGetIcon = useGetIcon;
 
     PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
       collection: Collection,
@@ -96,6 +97,7 @@ export function initializePlugin() {
     PLUGIN_COLLECTIONS.useGetDefaultCollectionId = useGetDefaultCollectionId;
     PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
       CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID;
-    PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE = t`This instance analytics collection is read-only for admin users`;
+    PLUGIN_COLLECTIONS.getInstanceAnalyticsAdminReadonlyMessage = () =>
+      t`This instance analytics collection is read-only for admin users`;
   }
 }

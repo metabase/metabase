@@ -2,16 +2,20 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import {
   type MonitorSection,
   trackMonitorSectionClicked,
 } from "metabase/common/monitor/analytics";
 import {
+  canAccessAiAuditing,
   canAccessAlertsManagement,
-  canAccessMonitorDiagnostics,
+  canAccessApiKeyUsage,
+  canAccessContentDiagnostics,
+  canAccessDependencyDiagnostics,
   canAccessMonitoringTools,
+  canAccessSessionManagement,
 } from "metabase/common/monitor/selectors";
+import { useUserKeyValue } from "metabase/current-user";
 import {
   AreaLayout,
   AreaTab,
@@ -24,12 +28,18 @@ import * as Urls from "metabase/urls";
 
 import { MonitorContent } from "./MonitorContent";
 
-function getActiveSection(pathname: string): MonitorSection | null {
+type ActiveSection = MonitorSection | null;
+
+function getActiveSection(pathname: string): ActiveSection {
   return match(pathname)
-    .returnType<MonitorSection | null>()
+    .returnType<ActiveSection>()
     .with(
       P.string.startsWith(Urls.dependencyDiagnostics()),
       () => "diagnostics",
+    )
+    .with(
+      P.string.startsWith(Urls.contentDiagnostics()),
+      () => "content-diagnostics",
     )
     .with(
       P.string.startsWith(Urls.monitorErroringQuestions()),
@@ -42,6 +52,27 @@ function getActiveSection(pathname: string): MonitorSection | null {
     .with(
       P.string.startsWith(Urls.monitorModelPersistenceLog()),
       () => "model-caching",
+    )
+    .with(P.string.startsWith(Urls.monitorApiKeyUsage()), () => "api-key-usage")
+    .with(
+      P.string.startsWith(Urls.monitorSessions()),
+      () => "session-management",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorAiAuditingMcp()),
+      () => "ai-auditing-mcp",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorAiAuditingCli()),
+      () => "ai-auditing-cli",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorAiAuditingConversations()),
+      () => "ai-auditing-conversations",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorAiAuditingUsage()),
+      () => "ai-auditing-usage-stats",
     )
     .otherwise(() => null);
 }
@@ -59,15 +90,31 @@ export function MonitorLayout() {
 
   const { pathname } = useLocation();
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
+  const hasContentDiagnosticsFeature = useHasTokenFeature(
+    "content_diagnostics",
+  );
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
-  const canAccessDiagnostics = useSelector(canAccessMonitorDiagnostics);
+  const hasAiControlsFeature = useHasTokenFeature("ai_controls");
+  const hasSessionManagementFeature = useHasTokenFeature("session-management");
+  const canAccessDependencyDiagnosticsPage = useSelector(
+    canAccessDependencyDiagnostics,
+  );
+  const canAccessContentDiagnosticsPage = useSelector(
+    canAccessContentDiagnostics,
+  );
   const canAccessTools = useSelector(canAccessMonitoringTools);
   const canAccessAlerts = useSelector(canAccessAlertsManagement);
+  const canAccessSessions = useSelector(canAccessSessionManagement);
+  const canAccessAiAuditingTab = useSelector(canAccessAiAuditing);
+  const canAccessApiKeyUsageTab = useSelector(canAccessApiKeyUsage);
 
   const activeSection = getActiveSection(pathname);
 
   const hasContentManagement =
-    canAccessDiagnostics || canAccessTools || canAccessAlerts;
+    canAccessDependencyDiagnosticsPage ||
+    canAccessContentDiagnosticsPage ||
+    canAccessTools ||
+    canAccessAlerts;
   const hasLogsAndActivity = canAccessTools;
 
   const upperNav = (
@@ -76,9 +123,9 @@ export function MonitorLayout() {
         <AreaTabGroup
           label={t`Content management`}
           showLabel={isNavbarOpened}
-          mb="md"
+          mb="lg"
         >
-          {canAccessDiagnostics && (
+          {canAccessDependencyDiagnosticsPage && (
             <AreaTab
               label={t`Dependency diagnostics`}
               icon="search_check"
@@ -87,6 +134,17 @@ export function MonitorLayout() {
               showLabel={isNavbarOpened}
               isGated={!hasDependenciesFeature}
               onClick={() => trackMonitorSectionClicked("diagnostics")}
+            />
+          )}
+          {canAccessContentDiagnosticsPage && (
+            <AreaTab
+              label={t`Content diagnostics`}
+              icon="document"
+              to={Urls.contentDiagnostics()}
+              isSelected={activeSection === "content-diagnostics"}
+              showLabel={isNavbarOpened}
+              isGated={!hasContentDiagnosticsFeature}
+              onClick={() => trackMonitorSectionClicked("content-diagnostics")}
             />
           )}
           {canAccessTools && (
@@ -113,7 +171,11 @@ export function MonitorLayout() {
         </AreaTabGroup>
       )}
       {hasLogsAndActivity && (
-        <AreaTabGroup label={t`Logs and activity`} showLabel={isNavbarOpened}>
+        <AreaTabGroup
+          label={t`Logs and activity`}
+          showLabel={isNavbarOpened}
+          mb="lg"
+        >
           <AreaTab
             label={t`Background tasks`}
             icon="clipboard"
@@ -146,6 +208,71 @@ export function MonitorLayout() {
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("model-caching")}
           />
+          {canAccessSessions && (
+            <AreaTab
+              label={t`Session management`}
+              icon="group"
+              to={Urls.monitorSessions()}
+              isSelected={activeSection === "session-management"}
+              showLabel={isNavbarOpened}
+              isGated={!hasSessionManagementFeature}
+              onClick={() => trackMonitorSectionClicked("session-management")}
+            />
+          )}
+          {canAccessApiKeyUsageTab && (
+            <AreaTab
+              label={t`API key usage`}
+              icon="key"
+              to={Urls.monitorApiKeyUsage()}
+              isSelected={activeSection === "api-key-usage"}
+              showLabel={isNavbarOpened}
+              isGated={!hasAuditAppFeature}
+              onClick={() => trackMonitorSectionClicked("api-key-usage")}
+            />
+          )}
+        </AreaTabGroup>
+      )}
+      {canAccessAiAuditingTab && hasAuditAppFeature && (
+        <AreaTabGroup label={t`AI Auditing`} showLabel={isNavbarOpened}>
+          <AreaTab
+            label={t`Usage stats`}
+            icon="lineandbar"
+            to={Urls.monitorAiAuditingUsage()}
+            isSelected={activeSection === "ai-auditing-usage-stats"}
+            showLabel={isNavbarOpened}
+            isGated={!hasAiControlsFeature}
+            onClick={() =>
+              trackMonitorSectionClicked("ai-auditing-usage-stats")
+            }
+          />
+          {hasAiControlsFeature && (
+            <AreaTab
+              label={t`Conversations`}
+              icon="comment"
+              to={Urls.monitorAiAuditingConversations()}
+              isSelected={activeSection === "ai-auditing-conversations"}
+              showLabel={isNavbarOpened}
+              onClick={() =>
+                trackMonitorSectionClicked("ai-auditing-conversations")
+              }
+            />
+          )}
+          <AreaTab
+            label={t`MCP analytics`}
+            icon="mcp"
+            to={Urls.monitorAiAuditingMcp()}
+            isSelected={activeSection === "ai-auditing-mcp"}
+            showLabel={isNavbarOpened}
+            onClick={() => trackMonitorSectionClicked("ai-auditing-mcp")}
+          />
+          <AreaTab
+            label={t`CLI analytics`}
+            icon="code_block"
+            to={Urls.monitorAiAuditingCli()}
+            isSelected={activeSection === "ai-auditing-cli"}
+            showLabel={isNavbarOpened}
+            onClick={() => trackMonitorSectionClicked("ai-auditing-cli")}
+          />
         </AreaTabGroup>
       )}
     </>
@@ -162,7 +289,7 @@ export function MonitorLayout() {
           align="center"
           justify="center"
         >
-          <FixedSizeIcon name="pulse" size={14} c="brand" />
+          <FixedSizeIcon name="pulse" size={14} c="core-brand" />
         </Flex>
       }
       testId="monitor-nav"

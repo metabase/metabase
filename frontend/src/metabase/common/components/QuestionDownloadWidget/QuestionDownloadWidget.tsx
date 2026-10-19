@@ -3,16 +3,13 @@ import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import { Link } from "metabase/common/components/Link";
-import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import type {
-  ExportFormat,
-  TableExportFormat,
-} from "metabase/common/types/export";
-import { exportFormatPng, exportFormats } from "metabase/common/types/export";
+import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { useUserKeyValue } from "metabase/current-user";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { useUserSetting } from "metabase/settings";
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
@@ -23,9 +20,14 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { canSavePng } from "metabase/visualizations";
+import { canSavePng } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import type { Dataset } from "metabase-types/api";
+import type {
+  Dataset,
+  ExportFormat,
+  TableExportFormat,
+} from "metabase-types/api";
+import { exportFormatPng, exportFormats } from "metabase-types/api";
 
 export type FormatPreference = {
   last_download_format: ExportFormat;
@@ -114,17 +116,31 @@ export const QuestionDownloadWidget = ({
 
   const handleFormatChange = (newFormat: ExportFormat) => {
     setUserSelectedFormat(newFormat);
+  };
 
-    // Save preference if user is logged in
-    if (newFormat && setFormatPreference) {
-      setFormatPreference({
-        last_download_format: newFormat,
-        last_table_download_format:
-          newFormat !== "png"
-            ? newFormat
-            : formatPreference.last_table_download_format || "csv",
-      });
+  const persistExportFormat = (exportFormat: ExportFormat) => {
+    if (!setFormatPreference) {
+      return;
     }
+
+    const preference: FormatPreference = {
+      last_download_format: exportFormat,
+      last_table_download_format:
+        exportFormat !== "png"
+          ? exportFormat
+          : formatPreference.last_table_download_format || "csv",
+    };
+
+    const isUnchanged =
+      preference.last_download_format ===
+        formatPreference.last_download_format &&
+      preference.last_table_download_format ===
+        formatPreference.last_table_download_format;
+    if (isUnchanged) {
+      return;
+    }
+
+    setFormatPreference(preference);
   };
 
   const { url: pivotExcelExportsDocsLink, showMetabaseLinks } = useDocsUrl(
@@ -139,6 +155,8 @@ export const QuestionDownloadWidget = ({
 
   const handleDownload = async () => {
     setLoading(true);
+
+    persistExportFormat(format);
 
     await onDownload({
       type: format,
@@ -157,7 +175,7 @@ export const QuestionDownloadWidget = ({
 
   return (
     <FocusTrap>
-      <Stack {...stackProps} w={336} p="0.75rem" gap="lg">
+      <Stack {...stackProps} w={336} p="0.75rem" gap="xl">
         <Title order={5}>{t`Download data`}</Title>
         <ExportSettingsWidget
           selectedFormat={format}
@@ -172,7 +190,7 @@ export const QuestionDownloadWidget = ({
         />
         {showPivotXlsxExportHint && (
           <Flex
-            p="md"
+            p="lg"
             bg="background_page-secondary"
             align="center"
             justify="space-between"
@@ -188,21 +206,15 @@ export const QuestionDownloadWidget = ({
                 {t`Read the docs`}
               </Link>
             </Text>
-            <Button
+            <ActionIcon
               aria-label={t`Close hint`}
-              pl={8}
-              pr={0}
               variant="subtle"
-              size="compact-md"
+              size="sm"
               style={{ flexShrink: 0 }}
+              onClick={() => setDismissedExcelPivotExportsBanner(true)}
             >
-              <Icon
-                name="close"
-                c="text-secondary"
-                tooltip={t`Don't show me this again.`}
-                onClick={() => setDismissedExcelPivotExportsBanner(true)}
-              />
-            </Button>
+              <Icon name="close" tooltip={t`Don't show me this again.`} />
+            </ActionIcon>
           </Flex>
         )}
         {hasTruncatedResults && (

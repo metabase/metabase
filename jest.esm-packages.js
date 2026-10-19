@@ -6,6 +6,7 @@
  */
 const esmPackages = [
   "@metabase\\+track",
+  "@modelcontextprotocol\\+ext-apps",
   "bail",
   "ccount",
   "character-entities.*",
@@ -42,6 +43,7 @@ const esmPackages = [
   "marked",
   "mdast.*",
   "micromark.*",
+  "oxlint",
   "parse-entities",
   "property-information",
   "react-markdown",

@@ -7,8 +7,8 @@ import {
   setupAIControlsTenantLimitsEndpoint,
   setupUpdateAIControlsGroupLimitEndpoint,
 } from "__support__/server-mocks/metabot";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { MetabotGroupLimit } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 

@@ -14,10 +14,16 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private byok-credentials
+  "What a resolved OpenAI connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "sk-byok" :base-url "https://api.openai.com"})
+
 (defn- fixture
   "Load cached OpenAI raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
-  (metabot.tu/raw-fixture fixture-name #(openai/openai-raw (merge {:model "gpt-4.1-mini"} opts))))
+  (metabot.tu/raw-fixture
+   fixture-name
+   #(openai/openai-raw (merge {:model "gpt-4.1-mini" :credentials byok-credentials} opts))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -192,14 +198,31 @@
           parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)]
       (is (=? [{:type :start}
                {:type :text :text string?}
-               {:type  :usage
-                :usage {:promptTokens        pos-int?
-                        :completionTokens    pos-int?
-                        :cacheCreationTokens nat-int?
-                        :cacheReadTokens     nat-int?}}]
+               {:type              :usage
+                ;; a truncated response must not report as a clean completion
+                :finish-reason     "length"
+                :raw-finish-reason "max_output_tokens"
+                :usage             {:promptTokens        pos-int?
+                                    :completionTokens    pos-int?
+                                    :cacheCreationTokens nat-int?
+                                    :cacheReadTokens     nat-int?}}]
               parts))
       (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
         (is (empty? (filter #(= :error (:type %)) parts)))))))
+
+(deftest ^:parallel openai-response-completed-reports-stop-test
+  (testing "a terminal response.completed event reports a \"stop\" finish reason on its usage part"
+    ;; Without it, a normal step would leave an earlier step's content-filter in place as the turn's reason.
+    (doseq [[fixture-name opts] [["openai-text"
+                                  {:input [{:role :user :content "Say hello briefly, in under 10 words."}]}]
+                                 ["openai-tool-calls"
+                                  {:input [{:role :user :content "What time is it in Kyiv?"}]
+                                   :tools [(metabot.tu/get-time-tool)]}]]]
+      (testing fixture-name
+        (is (=? {:type              :usage
+                 :finish-reason     "stop"
+                 :raw-finish-reason "completed"}
+                (last (into [] (openai/openai->aisdk-chunks-xf) (fixture fixture-name opts)))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Usage normalization tests
@@ -359,13 +382,22 @@
 (deftest ^:parallel openai-request-body-reasoning-gating-test
   (testing "reasoning models ask for a summary; others don't"
     (let [reasoning #(:reasoning (openai/openai-request-body {:model % :input []}))]
-      (is (= {:summary "auto"} (reasoning "gpt-5.4")))
+      (is (= {:summary "auto"} (reasoning "gpt-5.5")))
       (is (= {:summary "auto"} (reasoning "gpt-5.6-sol")))
+      (is (= {:summary "auto"} (reasoning "gpt-6-astra")))
       (is (= {:summary "auto"} (reasoning "o3")))
+      (is (= {:summary "auto"} (reasoning "gpt-5.4-pro")))
       (testing "bedrock/azure vendor prefix is stripped"
-        (is (= {:summary "auto"} (reasoning "openai.gpt-5.4"))))
+        (is (= {:summary "auto"} (reasoning "openai.gpt-5.5"))))
       (testing "non-reasoning models get no reasoning param"
         (is (nil? (reasoning "gpt-4.1"))))))
+  (testing "GPT-5.4, its mini and its nano default to no reasoning, so chat requests ask for low effort"
+    (are [model] (= {:summary "auto" :effort "low"}
+                    (:reasoning (openai/openai-request-body {:model model :input []})))
+      "gpt-5.4" "gpt-5.4-mini" "gpt-5.4-nano" "gpt-5.4-2026-03-05" "openai.gpt-5.4" "GPT-5.4")
+    (testing "but structured output keeps the model's default"
+      (is (= {:summary "auto"}
+             (:reasoning (openai/openai-request-body {:model "gpt-5.4" :input [] :schema {:type "object"}}))))))
   (testing "reasoning requests ask for encrypted content so items can be replayed"
     (is (= ["reasoning.encrypted_content"]
            (:include (openai/openai-request-body {:model "gpt-5.4" :input []}))))
@@ -385,20 +417,21 @@
 ;;; list-models filtering tests
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest ^:parallel supported-model?-test
+(deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
-    (doseq [id ["gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini"]]
-      (is (true? (#'openai/supported-model? {:id id})) id)))
+    (doseq [id ["gpt-6-astra" "gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini"]]
+      (is (contains? openai/supported-models id) id)))
   (testing "non-white-listed models are not supported"
     (doseq [id ["gpt-5" "gpt-4.1" "gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
-      (is (false? (#'openai/supported-model? {:id id})) id))))
+      (is (not (contains? openai/supported-models id)) id))))
 
 (deftest list-models-filters-catalog-to-whitelist-test
   (testing "list-models keeps only whitelisted models sorted by id"
     (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
       (with-redefs [http/request (fn [_]
                                    {:status 200
-                                    :body   {:data [{:id "gpt-5.6-sol"            :created 40}
+                                    :body   {:data [{:id "gpt-6-astra"            :created 41}
+                                                    {:id "gpt-5.6-sol"            :created 40}
                                                     {:id "gpt-5.6-luna"           :created 39}
                                                     {:id "gpt-5-mini"             :created 30}
                                                     {:id "gpt-5"                  :created 28}
@@ -411,8 +444,34 @@
                                                     {:id "whisper-1"              :created 7}]}})]
         (is (= [{:id "gpt-5.4" :display_name "GPT-5.4"}
                 {:id "gpt-5.6-luna" :display_name "GPT-5.6 Luna"}
-                {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}]
-               (:models (openai/list-models))))))))
+                {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}
+                {:id "gpt-6-astra" :display_name "GPT-6 Astra"}]
+               (:models (openai/list-models {:credentials byok-credentials}))))))))
+
+(deftest openai-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key      "sk-setting"
+                                       llm.settings/llm-openai-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/v1/responses"
+                                                          :headers {"Authorization" "Bearer sk-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (openai/openai-raw {:input       [{:role :user :content "hi"}]
+                                 :credentials {:api-key  "sk-explicit"
+                                               :base-url "https://explicit.example"}})))))))
+
+(deftest openai-raw-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenAI API key is set"
+           (openai/openai-raw {:input       [{:role :user :content "hi"}]
+                               :credentials {:api-key ""}}))))))
 
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
@@ -424,15 +483,13 @@
         (is (= {:models []}
                (openai/list-models {:credentials {:api-key "sk-explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (testing "a blank passed-in api-key falls back to the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-setting"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:headers {"Authorization" "Bearer sk-setting"}}
-                                                         req))
-                                                 {:status 200 :body {:data []}})]
-        (is (= {:models []}
-               (openai/list-models {:credentials {:api-key ""}})))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No OpenAI API key is set"
+           (openai/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
   (testing "throws when the passed-in api-key is blank and no key is configured"
@@ -451,8 +508,8 @@
     (doseq [model ["gpt-4.1-mini" "gpt-4.1" "gpt-4o" "gpt-3.5-turbo"]]
       (is (true? (#'openai/model-supports-temperature? model))
           model)))
-  (testing "GPT-5 family and o-series reasoning models do not"
-    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07" "gpt-5.6-sol"
+  (testing "GPT-5 and GPT-6 families and o-series reasoning models do not"
+    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07" "gpt-5.6-sol" "gpt-6-astra"
                    "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
       (is (false? (#'openai/model-supports-temperature? model))
           model))))
@@ -465,45 +522,54 @@
     (is (true? (#'openai/model-supports-temperature? "openai.gpt-4.1-mini")))))
 
 (deftest temperature-omitted-for-reasoning-models-test
-  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
-    (let [request-body (fn [opts]
-                         (with-redefs [self.core/sse-reducible identity
-                                       debug/capture-stream    (fn [r _] r)
-                                       http/request            (fn [req] {:body req})]
-                           (json/decode+kw (:body (openai/openai-raw
-                                                   (merge {:input [{:role :user :content "hi"}]
-                                                           :temperature 0.3}
-                                                          opts))))))]
-      (testing "temperature is sent for a non-reasoning model"
-        (is (= 0.3 (:temperature (request-body {:model "gpt-4.1-mini"})))))
-      (testing "temperature is omitted for a GPT-5 model"
-        (is (not (contains? (request-body {:model "gpt-5"}) :temperature))))
-      (testing "temperature is omitted for an o-series model"
-        (is (not (contains? (request-body {:model "o3-mini"}) :temperature)))))))
+  (let [request-body (fn [opts]
+                       (with-redefs [self.core/sse-reducible             identity
+                                     self.core/reducible-with-api-errors (fn [r _ _] r)
+                                     debug/capture-stream                (fn [r _] r)
+                                     http/request                        (fn [req] {:body req})]
+                         (json/decode+kw (:body (openai/openai-raw
+                                                 (merge {:input       [{:role :user :content "hi"}]
+                                                         :temperature 0.3
+                                                         :credentials byok-credentials}
+                                                        opts))))))]
+    (testing "temperature is sent for a non-reasoning model"
+      (is (= 0.3 (:temperature (request-body {:model "gpt-4.1-mini"})))))
+    (testing "temperature is omitted for a GPT-5 model"
+      (is (not (contains? (request-body {:model "gpt-5"}) :temperature))))
+    (testing "temperature is omitted for a GPT-6 model"
+      (is (not (contains? (request-body {:model "gpt-6-astra"}) :temperature))))
+    (testing "temperature is omitted for an o-series model"
+      (is (not (contains? (request-body {:model "o3-mini"}) :temperature))))))
 
 (deftest openai-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-ant-byok"
-                                         llm.settings/llm-proxy-base-url "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://api.openai.com/v1/responses"
-                     :headers {"Authorization" "Bearer sk-ant-byok"}
+                     :headers {"Authorization" "Bearer sk-byok"}
                      :body    string?}
-                    (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+                    (openai/openai-raw {:input       [{:role :user :content "hi"}]
+                                        :credentials byok-credentials})))))
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No OpenAI API key is set"
+               (openai/openai-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenAI API key is set"
-                 (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
+                 (openai/openai-raw {:input       [{:role :user :content "hi"}]
+                                     :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil
-                                             llm.settings/llm-proxy-base-url nil]
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No OpenAI API key is set"

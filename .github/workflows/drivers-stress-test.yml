@@ -64,11 +64,12 @@ jobs:
       MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
       MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Athena driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-athena-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-bigquery-cloud-sdk-ee:
@@ -86,11 +87,12 @@ jobs:
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test BigQuery Cloud SDK driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-druid-ee:
@@ -108,11 +110,12 @@ jobs:
         env:
           CLUSTER_SIZE: nano-quickstart
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Druid driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mariadb-10-6-ee:
@@ -137,11 +140,12 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MariaDB driver (10.6)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-10-6-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mariadb-latest-ee:
@@ -166,11 +170,12 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MariaDB driver (latest)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-latest-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-4-4-ee:
@@ -188,11 +193,12 @@ jobs:
         ports:
           - "27017:27017"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MongoDB driver (4.4)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-4-4-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-4-4-ssl-ee:
@@ -206,7 +212,7 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
       MB_TEST_MONGO_REQUIRES_SSL: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Spin up Mongo docker container
         run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.4 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
       - name: Wait until the port 27017 is ready
@@ -227,6 +233,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-mongo-4-4-ee'
+          granular-rerun: 'false'
           test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-5-0-ee:
@@ -244,11 +251,12 @@ jobs:
         ports:
           - "27017:27017"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MongoDB driver (5.0)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-5-0-ssl-ee:
@@ -262,7 +270,7 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
       MB_TEST_MONGO_REQUIRES_SSL: true
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Spin up Mongo docker container
       run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-5.0 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
     - name: Wait until the port 27017 is ready
@@ -283,6 +291,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mongo-latest-ee:
@@ -303,11 +312,12 @@ jobs:
           MONGO_INITDB_ROOT_USERNAME: metabase
           MONGO_INITDB_ROOT_PASSWORD: metasample123
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MongoDB driver (latest)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-latest-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-8-0-ee:
@@ -332,11 +342,12 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MySQL driver (8.0)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-9-ee:
@@ -361,11 +372,12 @@ jobs:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MySQL driver (9)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-9-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-latest-ee:
@@ -399,11 +411,12 @@ jobs:
         ports:
         - "3306:3306"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MySQL driver (latest)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-latest-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-oracle-18-4-ee:
@@ -425,11 +438,12 @@ jobs:
         ports:
           - "1521:1521"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Oracle driver (18.4)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-18-4-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-oracle-21-3-ee:
@@ -460,11 +474,12 @@ jobs:
         ports:
           - "2484:2484"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Oracle driver (21.3)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-21-3-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-postgres-ee:
@@ -490,11 +505,12 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Postgres driver (14)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-postgres-latest-ee:
@@ -523,11 +539,12 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Postgres driver (latest)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-latest-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-presto-jdbc-ee:
@@ -553,12 +570,12 @@ jobs:
         env:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Wait for port ${{ env.MB_PRESTO_JDBC_TEST_PORT }} to be ready
       run: while ! nc -z localhost ${{ env.MB_PRESTO_JDBC_TEST_PORT }}; do sleep 0.1; done
       timeout-minutes: 15
     - name: Create temp cacerts file based on bundled JDK one
-      run: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+      run: cp "$JAVA_HOME/lib/security/cacerts" /tmp/cacerts-with-presto-ssl.jks
     - name: Capture Presto server self signed CA
       run: |
           while [[ ! -s /tmp/presto-ssl-ca.pem ]];
@@ -577,6 +594,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-redshift-ee:
@@ -591,11 +609,12 @@ jobs:
       MB_REDSHIFT_TEST_HOST: ${{ secrets.MB_REDSHIFT_TEST_HOST }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Redshift driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-snowflake-ee:
@@ -622,11 +641,12 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Snowflake driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-sparksql-ee:
@@ -642,11 +662,12 @@ jobs:
         ports:
           - "10000:10000"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Spark driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sparksql-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-sqlite-ee:
@@ -657,11 +678,12 @@ jobs:
       CI: 'true'
       DRIVERS: sqlite
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test SQLite driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlite-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-sqlserver-2017-ee:
@@ -684,11 +706,12 @@ jobs:
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MS SQL Server 2017 driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-sqlserver-2022-ee:
@@ -711,11 +734,12 @@ jobs:
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MS SQL Server 2022 driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-2022-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-starburst-ee:
@@ -734,18 +758,19 @@ jobs:
           - "8080:8080"
     name: Starburst
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Starburst driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-starburst-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   login-to-ecr:
     if: inputs.driver == 'Vertica'
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 15
     permissions:
       id-token: write
@@ -764,9 +789,11 @@ jobs:
 
         REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com"
 
-        echo "docker_username=AWS" >> $GITHUB_OUTPUT
-        echo "docker_password=$PASSWORD" >> $GITHUB_OUTPUT
-        echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+        {
+          echo "docker_username=AWS"
+          echo "docker_password=$PASSWORD"
+          echo "registry=$REGISTRY"
+        } >> "$GITHUB_OUTPUT"
     outputs:
       registry: ${{ steps.login-ecr.outputs.registry }}
       docker_username: ${{ steps.login-ecr.outputs.docker_username }}
@@ -789,11 +816,12 @@ jobs:
           username: ${{ needs.login-to-ecr.outputs.docker_username }}
           password: ${{ needs.login-to-ecr.outputs.docker_password }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Vertica driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-vertica-ee'
+        granular-rerun: 'false'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"

@@ -1,9 +1,6 @@
+import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderHookWithProviders } from "__support__/ui";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
-import type { LocationDescriptorObject } from "metabase/router";
+import type { Path } from "metabase/router";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
@@ -18,7 +15,7 @@ const DASHCARD_ENTITY_ID = createMockEntityId();
 const UNKNOWN_ENTITY_ID = createMockEntityId();
 
 function setup(hash: string) {
-  const location: LocationDescriptorObject = {
+  const location: Partial<Path> = {
     pathname: "/dashboard/1",
     hash,
   };

@@ -2,7 +2,7 @@ import { updateIn } from "icepick";
 import { type ComponentType, useState } from "react";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -18,7 +18,7 @@ import type {
 } from "metabase/databases/types";
 import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
 import { Text } from "metabase/ui";
 import type {
   DatabaseData,
@@ -57,7 +57,7 @@ export const DatabaseEditConnectionForm = ({
   formLocation: Extract<FormLocation, "admin" | "full-page">;
 }) => {
   const dispatch = useDispatch();
-  const { location } = useRouter();
+  const location = useLocation();
 
   const [isDirty, setIsDirty] = useState(false);
 
@@ -107,7 +107,7 @@ export const DatabaseEditConnectionForm = ({
             onEngineChange={onEngineChange}
           />
         ) : (
-          <Text my="md">{getDbNotModifiableMessage(database)}</Text>
+          <Text my="lg">{getDbNotModifiableMessage(database)}</Text>
         )}
       </LoadingAndErrorWrapper>
       <LeaveRouteConfirmModal isEnabled={isDirty && !isCallbackScheduled} />

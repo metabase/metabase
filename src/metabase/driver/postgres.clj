@@ -59,7 +59,14 @@
 ;; default `LIKE` escape character is already `\`, so an explicit `ESCAPE '\'` clause is
 ;; redundant *and* the literal `'\'` is unparseable by the PG JDBC driver when the server has
 ;; `standard_conforming_strings = off` (#73721).
-(driver/register! :postgres, :parent #{:sql-mbql5 :sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+(driver/register! :postgres, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+
+(defmethod driver/host-carrying-parameters :postgres [_driver] ["host" "PGHOST"])
+
+(defmethod driver/non-host-parameters :postgres
+  [_driver]
+  ["assumeMinServerVersion" "hostRecheckSeconds" "loadBalanceHosts" "logServerErrorDetail" "tcpNoDelay"
+   "targetServerType" "localSocketAddress" "kerberosServerName" "sslhostnameverifier"])
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
@@ -92,6 +99,7 @@
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
+                              :transforms/testing             true
                               :uploads                        true
                               :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
@@ -485,6 +493,10 @@
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
 
+(defmethod sql.qp/use-ctes-for-stages? :postgres
+  [_driver]
+  true)
+
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
@@ -530,7 +542,7 @@
 
 (mu/defn- date-trunc
   [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
-   expr]
+   expr :- ::h2x/expr]
   ;; Branches are ordered most-specific-first because `database-or-effective-type-isa?` checks `isa?` on the effective
   ;; type fallback: `:type/TimeWithTZ` is a descendant of `:type/Time`, so the timetz branch must run first to avoid a
   ;; nested-source-query `timetz` column being routed to the plain-time path (#75193, #68065).
@@ -549,8 +561,8 @@
 
     :else
     (let [expr' (h2x/->pg-timestamp expr)]
-      (-> [:date_trunc (h2x/literal unit) expr']
-          (h2x/with-database-type-info (h2x/database-type expr'))))))
+      (cond-> [:date_trunc (h2x/literal unit) expr']
+        (h2x/type-info expr') (h2x/with-type-info (h2x/type-info expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
   (extract unit (h2x/->pg-timestamp expr)))
@@ -590,8 +602,21 @@
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
 (mu/defn- quoted? [database-type :- driver-api/schema.common.non-blank-string]
-  (and (str/starts-with? database-type "\"")
+  (and (>= (count database-type) 2)
+       (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
+
+(mu/defn- enum-type-components :- [:sequential {:min 1} :string]
+  [database-type :- driver-api/schema.common.non-blank-string]
+  (if (quoted? database-type)
+    (str/split (subs database-type 1 (dec (count database-type))) #"\"\.\"" -1)
+    [database-type]))
+
+(mu/defn- enum-cast
+  [database-type :- driver-api/schema.common.non-blank-string
+   raw-value      :- ::h2x/expr]
+  (-> [:cast raw-value (apply h2x/identifier :type-name (enum-type-components database-type))]
+      (h2x/with-database-type-info database-type)))
 
 (defmethod sql.qp/date [:postgres :day]
   [_ _ expr]
@@ -605,26 +630,54 @@
                          (h2x/is-of-type? expr "timestamptz")
                          (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
+        ;; `TIMEZONE(zone, date)` implicitly promotes a `DATE` to `TIMESTAMPTZ` using the session (report) time zone
+        ;; before converting. Cast dates to a plain `TIMESTAMP` first so the source timezone gets applied (#27186).
+        expr (cond-> expr
+               (or (instance? java.time.LocalDate expr)
+                   (h2x/is-of-type? expr "date"))
+               h2x/->timestamp)
         expr         [:timezone target-timezone (if (not timestamptz?)
                                                   [:timezone source-timezone expr]
                                                   expr)]]
-    (h2x/with-database-type-info expr "timestamp")))
+    (h2x/with-type-info expr {:database-type "timestamp"
+                              ::target-timezone target-timezone})))
+
+(defn- current-datetime-in-parent-lhs-timezone
+  "Return a HoneySQL form for the current datetime that shares the wall-clock frame of the enclosing filter's LHS.
+  When the LHS is a convertTimezone expression targeting `target-tz`, wrap the driver's default NOW() with
+  `TIMEZONE(target-tz, ...)` so both sides compare as plain timestamps in the same zone (#80155). Otherwise
+  return the driver's default unchanged."
+  [driver]
+  (let [now (sql.qp/current-datetime-honeysql-form driver)]
+    (if-let [target-tz (::target-timezone sql.qp/*parent-honeysql-col-type-info*)]
+      (h2x/with-database-type-info [:timezone target-tz now] "timestamp")
+      now)))
+
+(defmethod sql.qp/->honeysql [:postgres :relative-datetime]
+  [driver [_ _opts amount unit]]
+  (let [now (current-datetime-in-parent-lhs-timezone driver)]
+    (sql.qp/date driver unit (if (zero? amount)
+                               now
+                               (sql.qp/add-interval-honeysql-form driver now amount unit)))))
+
+(defmethod sql.qp/->honeysql [:postgres :now]
+  [driver _clause]
+  (current-datetime-in-parent-lhs-timezone driver))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
-  [driver [_ {:keys [base-type database-type]} raw-value]]
+  [driver [_ {:keys [base-type database-type] :as opts} raw-value]]
   (when (some? raw-value)
+    (sql.qp/check-value-literal driver raw-value)
     (condp #(isa? %2 %1) base-type
       :type/PostgresBitString (h2x/cast :varbit raw-value)
       :type/IPAddress    (h2x/cast :inet raw-value)
-      :type/PostgresEnum (if (quoted? database-type)
-                           (h2x/cast database-type raw-value)
-                           (h2x/quoted-cast database-type raw-value))
-      ((get-method sql.qp/->honeysql [:sql-mbql5 :value])
-       driver (sql.qp/mbql-clause-with-opts driver :value {:base_type base-type :database_type database-type} raw-value)))))
+      :type/PostgresEnum (enum-cast database-type raw-value)
+      ((get-method sql.qp/->honeysql [:sql :value])
+       driver [:value opts raw-value]))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ _opts arg]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
+  (sql.qp/->honeysql driver [:percentile {} arg 0.5]))
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
@@ -680,7 +733,7 @@
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ _opts arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
-    [::regex-match-first identifier pattern]))
+    [::regex-match-first identifier (sql.qp/->honeysql driver pattern)]))
 
 (defmethod sql.qp/->honeysql [:postgres :split-part]
   [driver [_ _opts text divider position]]
@@ -749,8 +802,13 @@
   [_fn [parent-identifier field-type names]]
   (let [names-text-array                 (into [::text-array] names)
         [parent-id-sql & parent-id-args] (sql/format-expr parent-identifier {:nested true})
-        [path-sql & path-args]           (sql/format-expr names-text-array {:nested true})]
-    (into [(format "(%s#>> (%s))::%s" parent-id-sql path-sql field-type)]
+        [path-sql & path-args]           (sql/format-expr names-text-array {:nested true})
+        ;; same rule as [[h2x/cast]]: a plain type name is spliced as-is, anything else (the field's synced
+        ;; `database-type`, which we can't trust to be a plain type name) is quoted as an identifier
+        [type-sql]                       (if (h2x/raw-type-name? field-type)
+                                           [field-type]
+                                           (sql/format-expr (h2x/identifier :type-name field-type) {:nested true}))]
+    (into [(format "(%s#>> (%s))::%s" parent-id-sql path-sql type-sql)]
           cat
           [parent-id-args path-args])))
 
@@ -769,7 +827,7 @@
   [driver [_ opts id-or-name :as clause]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
-        parent-method (get-method sql.qp/->honeysql [:sql-mbql5 :field])
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
     (cond
       (= (:database-type stored-field) "money")
@@ -810,7 +868,7 @@
         stored-fields    (map #(when (integer? %)
                                  (driver-api/field (driver-api/metadata-provider) %))
                               stored-field-ids)
-        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql-mbql5 :breakout])
+        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
                                   driver clause honeysql-form)
         qualified        (parent-method query)
         unqualified      (parent-method (update query
@@ -837,7 +895,7 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
-    ((get-method sql.qp/->honeysql [:sql-mbql5 :desc]) driver (sql.qp/mbql-clause-with-opts driver :desc opts ordered-clause))))
+    ((get-method sql.qp/->honeysql [:sql :desc]) driver [:desc opts ordered-clause])))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
@@ -845,7 +903,7 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)
         [_ opts ordered-clause] new-clause]
-    ((get-method sql.qp/->honeysql [:sql-mbql5 :asc]) driver (sql.qp/mbql-clause-with-opts driver :asc opts ordered-clause))))
+    ((get-method sql.qp/->honeysql [:sql :asc]) driver [:asc opts ordered-clause])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -1474,7 +1532,3 @@
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
   "metabot/prompts/dialects/postgresql.md")
-
-(defmethod driver/validate-impersonated-query :postgres
-  [driver query]
-  (driver.sql/validate-impersonated-query* driver query))

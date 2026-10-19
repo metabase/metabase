@@ -8,7 +8,8 @@
   [req]
   (case (:request-method req)
     :get  (get-in req [:params :jwt])
-    :post (get-in req [:body :jwt])
+    :post (or (get-in req [:body "jwt"])
+              (get-in req [:body :jwt]))
     nil))
 
 (defn- select-sso-backend
@@ -64,8 +65,9 @@
 (defn- throw-not-configured-error []
   (throw
    (ex-info (tru "SSO has not been enabled and/or configured")
-            {:status-code 400
-             :status      "error-sso-disabled"})))
+            {:status-code   400
+             :status        "error-sso-disabled"
+             :response/keys #{:status}})))
 
 (defmethod sso-get :default
   [_]

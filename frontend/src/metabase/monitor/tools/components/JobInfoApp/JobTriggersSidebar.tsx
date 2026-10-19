@@ -2,8 +2,7 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import { useGetTasksInfoQuery } from "metabase/api";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import { ActionIcon, Divider, Flex, Icon, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
@@ -17,28 +16,32 @@ type JobTriggersSidebarProps = {
 
 export const JobTriggersSidebar = ({ jobKey }: JobTriggersSidebarProps) => {
   const { data } = useGetTasksInfoQuery();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const job = data?.jobs.find((job) => job.key === jobKey);
   const triggers = job?.triggers ?? [];
 
   const handleClose = () => {
-    dispatch(push(Urls.monitorJobs()));
+    navigate(Urls.monitorJobs());
   };
 
   return (
     <Stack
       className={S.sidebar}
-      p="lg"
-      gap="lg"
+      p="xl"
+      gap="xl"
       bg="background_page-primary"
       data-testid="job-triggers-sidebar"
     >
-      <Flex align="flex-start" justify="space-between" gap="md" wrap="nowrap">
+      <Flex align="flex-start" justify="space-between" gap="lg" wrap="nowrap">
         <Text fw="bold" style={{ wordBreak: "break-all" }}>
           {t`Triggers for ${jobKey}`}
         </Text>
-        <ActionIcon aria-label={t`Close`} onClick={handleClose}>
+        <ActionIcon
+          variant="subtle"
+          aria-label={t`Close`}
+          onClick={handleClose}
+        >
           <Icon name="close" />
         </ActionIcon>
       </Flex>
@@ -99,7 +102,7 @@ type TriggerAttributeProps = {
 
 function TriggerAttribute({ label, value }: TriggerAttributeProps) {
   return (
-    <Flex gap="md">
+    <Flex gap="lg">
       <Text component="dt" fw="bold" w="8rem" flex="0 0 auto">
         {label}
       </Text>

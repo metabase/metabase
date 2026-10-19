@@ -3,7 +3,9 @@ import fetchMock from "fetch-mock";
 
 import {
   setupCancelJobRunEndpoint,
+  setupGetTransformEndpoint,
   setupListDagRunTransformRunsEndpoint,
+  setupListDatabaseSchemasEndpoint,
   setupListJobRunTransformRunsEndpoint,
   setupListTransformGraphRunsEndpoint,
   setupListTransformsEndpoint,
@@ -20,11 +22,17 @@ import { Route } from "metabase/router";
 import type { TransformGraphRun } from "metabase-types/api";
 import {
   createMockListTransformGraphRunsResponse,
+  createMockTransform,
   createMockTransformGraphRun,
   createMockTransformRunForJobRun,
+  createMockTransformTarget,
 } from "metabase-types/api/mocks";
 
 import { TransformGraphRunListPage } from "./TransformGraphRunListPage";
+
+const DATABASE_ID = 1;
+const MEMBER_TRANSFORM_ID = 1;
+const STANDALONE_TRANSFORM_ID = 20;
 
 type SetupOpts = {
   runs?: TransformGraphRun[];
@@ -35,17 +43,26 @@ function setup({
   runs = [],
   initialRoute = "/data-studio/transforms/runs",
 }: SetupOpts = {}) {
+  const transforms = [MEMBER_TRANSFORM_ID, STANDALONE_TRANSFORM_ID].map((id) =>
+    createMockTransform({
+      id,
+      target: createMockTransformTarget({ database: DATABASE_ID }),
+    }),
+  );
+
   setupUserMetabotPermissionsEndpoint();
-  setupListTransformsEndpoint([]);
+  setupListTransformsEndpoint(transforms);
   setupListTransformGraphRunsEndpoint(
     createMockListTransformGraphRunsResponse({
       data: runs,
       total: runs.length,
     }),
   );
+  transforms.forEach((transform) => setupGetTransformEndpoint(transform));
+  setupListDatabaseSchemasEndpoint(DATABASE_ID, []);
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path="/data-studio/transforms/runs"
       element={<TransformGraphRunListPage />}
@@ -53,7 +70,7 @@ function setup({
     { withRouter: true, initialRoute },
   );
 
-  return { history };
+  return { router };
 }
 
 const JOB_RUN = createMockTransformGraphRun({
@@ -77,7 +94,7 @@ const DAG_RUN = createMockTransformGraphRun({
 const TRANSFORM_RUN = createMockTransformGraphRun({
   run_type: "transform",
   id: 301,
-  entity_id: 20,
+  entity_id: STANDALONE_TRANSFORM_ID,
   name: "Products normalized",
 });
 
@@ -101,7 +118,7 @@ describe("TransformGraphRunListPage", () => {
   });
 
   it("preserves shared filters (and drops view-specific params) when toggling to the detailed view", async () => {
-    const { history } = setup({
+    const { router } = setup({
       runs: [],
       initialRoute:
         "/data-studio/transforms/runs?statuses=failed&transform-ids=7&start-time=2024-01-01&run-methods=cron&sort-column=start_time&sort-direction=desc&page=2",
@@ -109,7 +126,7 @@ describe("TransformGraphRunListPage", () => {
 
     await userEvent.click(await screen.findByLabelText("Detailed view"));
 
-    const location = history?.getCurrentLocation();
+    const location = router?.location;
     expect(location?.pathname).toBe("/data-studio/transforms/runs/individual");
 
     const search = new URLSearchParams(location?.search);

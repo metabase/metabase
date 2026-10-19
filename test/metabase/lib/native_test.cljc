@@ -58,8 +58,7 @@
 
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
-    (let [snippet           {:type :snippet
-                             :name "foo"
+    (let [snippet           {:name "foo"
                              :id   1}
           metadata-provider (lib.tu/mock-metadata-provider
                              {:native-query-snippets [snippet]})]
@@ -134,12 +133,10 @@
                         :type    :card
                         :card-id 321})
           metadata-provider (lib.tu/mock-metadata-provider
-                             {:native-query-snippets [{:name         "first snippet"
-                                                       :id           123
-                                                       :snippet-name "first snippet"}
-                                                      {:name         "another snippet"
-                                                       :id           124
-                                                       :snippet-name "another snippet"}]})]
+                             {:native-query-snippets [{:name "first snippet"
+                                                       :id   123}
+                                                      {:name "another snippet"
+                                                       :id   124}]})]
       (is (=? [c1 v1 s1]
               (lib.native/extract-template-tags
                metadata-provider
@@ -314,7 +311,6 @@
                  meta/metadata-provider
                  {:native-query-snippets [{:id            1
                                            :name          "snippet1"
-                                           :type          :snippet
                                            :content       "{{var}}"
                                            :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
                                                                   :name         "var"
@@ -355,11 +351,9 @@
               meta/metadata-provider
               {:native-query-snippets [{:id            1
                                         :name          "snippet1"
-                                        :type          :snippet
                                         :content       "SELECT"}
                                        {:id            2
                                         :name          "snippet2"
-                                        :type          :snippet
                                         :content       "{{var}}"
                                         :template-tags {"var" {:id           "ac8a19f0-e125-418a-81dc-aa7f4f2c3e76"
                                                                :name         "var"
@@ -885,6 +879,28 @@
               (lib.native/replace-template-tag-names
                query
                {"#133-bh-population-model" "#1206-bh-population-model"}))))))
+
+(deftest ^:parallel rename-template-tags-test
+  (testing "a tag map and its text are renamed the way a query's native stage is"
+    (let [renames {"#133-bh-population-model" "#1206-bh-population-model"}]
+      (is (= "select * from {{#1206-bh-population-model}} where {{ state }}"
+             (lib.native/rename-template-tags-in-text
+              "select * from {{ #133-bh-population-model }} where {{ state }}" renames)))
+      (is (=? {"#1206-bh-population-model" {:name         "#1206-bh-population-model"
+                                            :display-name "#1206 Bh Population Model"
+                                            :card-id      1206}
+               "state"                     {:name "state" :display-name "State"}}
+              (lib.native/rename-template-tags
+               {"#133-bh-population-model" {:type         :card
+                                            :name         "#133-bh-population-model"
+                                            :display-name "#133 Bh Population Model"
+                                            :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                            :card-id      1206}
+                "state"                    {:type         :text
+                                            :name         "state"
+                                            :display-name "State"
+                                            :id           "6ebf6c2e-d6e2-449e-97b7-7005047928e5"}}
+               renames))))))
 
 (deftest ^:parallel replace-template-tag-names-noop-test
   (let [query (card-tag-query "select * from {{#133-some-old-slug}}"

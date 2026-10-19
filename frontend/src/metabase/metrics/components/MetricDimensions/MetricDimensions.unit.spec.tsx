@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupMetricDimensionsEndpoints } from "__support__/server-mocks";
+import {
+  setupMetricDimensionsEndpoints,
+  setupMetricEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -19,6 +22,7 @@ import {
 import {
   createMockAddableDimensionGroup,
   createMockAddableMetricDimension,
+  createMockMetric,
   createMockMetricDimension,
   createMockMetricDimensionGroup,
 } from "metabase-types/api/mocks/metric";
@@ -129,6 +133,24 @@ function setup(response?: Partial<ListMetricDimensionsResponse>) {
     ...response,
   };
   setupMetricDimensionsEndpoints(METRIC_ID, fullResponse);
+  setupMetricEndpoint(
+    createMockMetric({
+      id: METRIC_ID,
+      dimensions: fullResponse.added,
+      dimension_mappings: [
+        {
+          dimension_id: CREATED_AT_ID,
+          table_id: 1,
+          target: ["field", {}, 101],
+        },
+        {
+          dimension_id: COUNTRY_ID,
+          table_id: 1,
+          target: ["field", {}, 102],
+        },
+      ],
+    }),
+  );
   const { store } = renderWithProviders(
     <MetricDimensions metricId={METRIC_ID} queryMetadata={QUERY_METADATA} />,
   );
@@ -410,6 +432,101 @@ describe("MetricDimensions", () => {
     });
   });
 
+  it("shows an unset time grouping without selecting an effective default", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Created At/));
+    const groupingSelect = await settings.findByLabelText("Time grouping");
+
+    expect(groupingSelect).toHaveValue("");
+    expect(groupingSelect).toHaveAttribute(
+      "placeholder",
+      "Select a time grouping",
+    );
+  });
+
+  it("updates a temporal dimension's time grouping immediately", async () => {
+    setup({
+      added: [
+        createMockMetricDimension({
+          ...CREATED_AT,
+          default_temporal_unit: "week",
+        }),
+      ],
+    });
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Created At/));
+    const groupingSelect = await settings.findByLabelText("Time grouping");
+    expect(groupingSelect).toHaveValue("Week");
+
+    await userEvent.click(groupingSelect);
+    await userEvent.click(screen.getByRole("option", { name: "Month" }));
+
+    await waitFor(async () => {
+      const body = await getPostBody(
+        `path:/api/metric/${METRIC_ID}/dimension/${CREATED_AT_ID}`,
+      );
+      expect(body.default_temporal_unit).toBe("month");
+    });
+    expect(groupingSelect).toHaveValue("Month");
+  });
+
+  it("restores the persisted time grouping when an update fails", async () => {
+    setup({
+      added: [
+        createMockMetricDimension({
+          ...CREATED_AT,
+          default_temporal_unit: "week",
+        }),
+      ],
+    });
+    fetchMock.modifyRoute(
+      `metric-${METRIC_ID}-dimension-${CREATED_AT_ID}-update`,
+      { response: { status: 500 } },
+    );
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Created At/));
+    const groupingSelect = await settings.findByLabelText("Time grouping");
+    await userEvent.click(groupingSelect);
+    await userEvent.click(screen.getByRole("option", { name: "Month" }));
+
+    await waitFor(() => {
+      expect(groupingSelect).toHaveValue("Week");
+    });
+  });
+
+  it("does not show a time grouping for non-date dimensions", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Country/));
+
+    expect(settings.queryByLabelText("Time grouping")).not.toBeInTheDocument();
+  });
+
+  it("shows only type-compatible time groupings for Date dimensions", async () => {
+    setup({
+      added: [
+        createMockMetricDimension({
+          ...CREATED_AT,
+          effective_type: "type/Date",
+        }),
+      ],
+    });
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Created At/));
+    await userEvent.click(await settings.findByLabelText("Time grouping"));
+
+    expect(screen.getByRole("option", { name: "Month" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Hour" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("sets a dimension as the default", async () => {
     setup();
     await waitForLoaderToBeRemoved();
@@ -428,7 +545,7 @@ describe("MetricDimensions", () => {
     });
   });
 
-  it("does not offer set-default for the current default dimension", async () => {
+  it("removes the default from the current default dimension", async () => {
     setup();
     await waitForLoaderToBeRemoved();
 
@@ -437,6 +554,18 @@ describe("MetricDimensions", () => {
     expect(
       settings.queryByRole("button", { name: "Set as default" }),
     ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      settings.getByRole("button", { name: "Remove default" }),
+    );
+
+    await waitFor(async () => {
+      expect(
+        await getPostBody(
+          `path:/api/metric/${METRIC_ID}/dimension/set-default`,
+        ),
+      ).toEqual({ dimension_id: null });
+    });
   });
 
   it("does not offer set-default for orphaned dimensions", async () => {
@@ -447,6 +576,33 @@ describe("MetricDimensions", () => {
     expect(
       settings.queryByRole("button", { name: "Set as default" }),
     ).not.toBeInTheDocument();
+    expect(
+      settings.queryByRole("button", { name: "Remove default" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still offers remove-default for an orphaned default dimension", async () => {
+    setup({
+      added: [
+        { ...CREATED_AT, default: false },
+        COUNTRY,
+        { ...SUSPEND_AT, default: true },
+      ],
+    });
+    await waitForLoaderToBeRemoved();
+
+    const settings = within(await openSettings(/Suspend At/));
+    await userEvent.click(
+      settings.getByRole("button", { name: "Remove default" }),
+    );
+
+    await waitFor(async () => {
+      expect(
+        await getPostBody(
+          `path:/api/metric/${METRIC_ID}/dimension/set-default`,
+        ),
+      ).toEqual({ dimension_id: null });
+    });
   });
 
   it("shows a loading state while setting a default dimension", async () => {

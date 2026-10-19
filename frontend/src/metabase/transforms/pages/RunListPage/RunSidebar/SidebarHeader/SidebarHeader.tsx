@@ -50,13 +50,14 @@ export function SidebarHeader({ run, onClose }: SidebarHeaderProps) {
       >
         {label}
       </Anchor>
-      <Group gap="xs" wrap="nowrap">
+      <Group gap="xxs" wrap="nowrap">
         {transform != null && (
           <Tooltip
             label={t`View this transform`}
             openDelay={TOOLTIP_OPEN_DELAY_MS}
           >
             <ActionIcon
+              variant="subtle"
               component={ForwardRefLink}
               to={Urls.transform(transform.id)}
               target="_blank"
@@ -72,6 +73,7 @@ export function SidebarHeader({ run, onClose }: SidebarHeaderProps) {
             openDelay={TOOLTIP_OPEN_DELAY_MS}
           >
             <ActionIcon
+              variant="subtle"
               component={ForwardRefLink}
               to={Urls.dependencyGraph({
                 entry: { id: transform.id, type: "transform" },
@@ -85,7 +87,7 @@ export function SidebarHeader({ run, onClose }: SidebarHeaderProps) {
             </ActionIcon>
           </Tooltip>
         )}
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type { SetupStep } from "metabase/redux/store";
 import type { SetupVersion } from "metabase-types/analytics/setup";
 import type { UsageReason } from "metabase-types/api";
@@ -9,7 +9,7 @@ import type { UsageReason } from "metabase-types/api";
  * entry to the corresponding Notion doc:
  * {@link https://www.notion.so/metabase/Set-up-step-seen-19f39925938d401da2111f8a3d0dc36c}.
  */
-const ONBOARDING_VERSION: SetupVersion = "1.4.0";
+const ONBOARDING_VERSION: SetupVersion = "1.5.0";
 
 export const trackStepSeen = ({
   stepName,
@@ -55,6 +55,28 @@ export const trackAddDataLaterClicked = (engine?: string) => {
     event: "add_data_later_clicked",
     version: ONBOARDING_VERSION,
     source: engine ? "post_selection" : "pre_selection",
+  });
+};
+
+export const trackAiSetupStarted = () => {
+  trackSimpleEvent({
+    event: "ai_setup_started",
+    triggered_from: "setup",
+  });
+};
+
+export const trackAiProviderConnected = (provider?: string) => {
+  trackSimpleEvent({
+    event: "ai_provider_connected",
+    event_detail: provider ?? null,
+    triggered_from: "setup",
+  });
+};
+
+export const trackAiSetupLaterClicked = () => {
+  trackSimpleEvent({
+    event: "ai_setup_later_clicked",
+    triggered_from: "setup",
   });
 };
 

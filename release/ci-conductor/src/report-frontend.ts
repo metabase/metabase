@@ -20,7 +20,10 @@ async function main(): Promise<void> {
   // the shard number is deliberately NOT part of the suite, or a test would re-key in
   // ci-conductor whenever sharding changes. Falls back to a generic `frontend`.
   const testSuite = env.CI_CONDUCTOR_TEST_SUITE || "frontend";
-  await reportTestFailures(normalizeFrontendJunit(), testSuite);
+  // If re-running tests we report failures AND passing tests so that ci-conductor can
+  // determine flaky tests. We should not ignore passing tests in this case.
+  const ignorePassingTests = env.IS_RERUN === "true" ? false : true;
+  await reportTestFailures(normalizeFrontendJunit(ignorePassingTests), testSuite);
 }
 
 main().catch((error) => {

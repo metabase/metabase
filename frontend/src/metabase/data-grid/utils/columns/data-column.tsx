@@ -3,40 +3,46 @@ import type {
   ColumnDef,
   ColumnSizingState,
 } from "@tanstack/react-table";
-import type React from "react";
 import { memo } from "react";
 
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
 import { HeaderCell } from "metabase/data-grid/components/HeaderCell/HeaderCell";
 import { MIN_COLUMN_WIDTH } from "metabase/data-grid/constants";
+import { useDataGridTheme } from "metabase/data-grid/hooks";
 import type {
   ColumnOptions,
   ExpandedColumnsState,
 } from "metabase/data-grid/types";
+import { getDefaultCellBackgroundColor } from "metabase/data-grid/utils/striped-background-color";
 
-const getDefaultCellTemplate = <TRow, TValue>(
-  {
-    id,
-    align,
-    getBackgroundColor,
-    formatter,
-    cellVariant,
-    wrap,
-    getCellClassName,
-    getCellStyle,
-    getIsEditing,
-    editingCell: EditingCellComponent,
-  }: ColumnOptions<TRow, TValue>,
-  isTruncated: boolean,
-  onExpand: (columnName: string, content: React.ReactNode) => void,
-) => {
+const getDefaultCellTemplate = <TRow, TValue>({
+  id,
+  align,
+  getBackgroundColor,
+  formatter,
+  cellVariant,
+  wrap,
+  getCellClassName,
+  getCellStyle,
+  getIsEditing,
+  editingCell: EditingCellComponent,
+}: ColumnOptions<TRow, TValue>) => {
   return function Cell(
-    props: CellContext<TRow, TValue> & { isSelected?: boolean },
+    props: CellContext<TRow, TValue> & {
+      isSelected?: boolean;
+      isStriped?: boolean;
+    },
   ) {
-    const { getValue, row, isSelected } = props;
+    const { getValue, row, column, isSelected, isStriped } = props;
+    const theme = useDataGridTheme();
     const value = getValue();
-    const backgroundColor = getBackgroundColor?.(value, row?.index);
+    const backgroundColor =
+      getBackgroundColor?.(value, row?.index) ??
+      getDefaultCellBackgroundColor(theme, isStriped);
     const isEditing = getIsEditing?.(id, row.index);
+    // Read from column meta so the component identity can stay stable across
+    // column width changes (metabase#78557)
+    const { isTruncated = false, onExpand } = column.columnDef.meta ?? {};
 
     if (isEditing && EditingCellComponent) {
       return <EditingCellComponent {...props} />;
@@ -80,14 +86,39 @@ const getDefaultHeaderTemplate = <TRow, TValue>({
   };
 };
 
+// getDataColumn always sets the id, unlike tanstack's ColumnDef where it is optional
+export type DataColumnDef<TRow, TValue> = ColumnDef<TRow, TValue> & {
+  id: string;
+};
+
+type ColumnTruncationOptions = {
+  columnId: string;
+  columnSizing: ColumnSizingState;
+  measuredColumnSizing: ColumnSizingState;
+  expandedColumns: ExpandedColumnsState;
+  truncateWidth: number;
+};
+
+export const getIsColumnTruncated = ({
+  columnId,
+  columnSizing,
+  measuredColumnSizing,
+  expandedColumns,
+  truncateWidth,
+}: ColumnTruncationOptions) => {
+  const columnWidth = columnSizing[columnId] ?? 0;
+  const measuredColumnWidth = measuredColumnSizing[columnId] ?? 0;
+
+  return (
+    !expandedColumns[columnId] &&
+    columnWidth < measuredColumnWidth &&
+    measuredColumnWidth > truncateWidth
+  );
+};
+
 export const getDataColumn = <TRow, TValue>(
   columnOptions: ColumnOptions<TRow, TValue>,
-  columnSizing: ColumnSizingState,
-  measuredColumnSizing: ColumnSizingState,
-  expandedColumns: ExpandedColumnsState,
-  truncateWidth: number,
-  onExpand: (columnName: string, content: React.ReactNode) => void,
-): ColumnDef<TRow, TValue> => {
+): DataColumnDef<TRow, TValue> => {
   const {
     id,
     accessorFn,
@@ -97,15 +128,8 @@ export const getDataColumn = <TRow, TValue>(
     headerClickTargetSelector,
     sortingFn,
   } = columnOptions;
-  const columnWidth = columnSizing[id] ?? 0;
-  const measuredColumnWidth = measuredColumnSizing[id] ?? 0;
 
-  const isTruncated =
-    !expandedColumns[id] &&
-    columnWidth < measuredColumnWidth &&
-    measuredColumnWidth > truncateWidth;
-
-  const columnDefinition: ColumnDef<TRow, TValue> = {
+  const columnDefinition: DataColumnDef<TRow, TValue> = {
     accessorFn,
     id,
     ...(sortingFn != null ? { sortingFn } : {}),
@@ -115,10 +139,7 @@ export const getDataColumn = <TRow, TValue>(
         : header,
     cell:
       typeof cell !== "string"
-        ? memo(
-            cell ??
-              getDefaultCellTemplate(columnOptions, isTruncated, onExpand),
-          )
+        ? memo(cell ?? getDefaultCellTemplate(columnOptions))
         : cell,
     minSize: MIN_COLUMN_WIDTH,
     enableResizing: true,

@@ -12,11 +12,9 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { Link } from "metabase/common/components/Link";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import { Link } from "metabase/router";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
 import {
@@ -53,6 +51,7 @@ import { RunDagConfirmModal } from "./RunDagConfirmModal";
 type RunSectionProps = {
   transform: Transform;
   readOnly?: boolean;
+  permissionsReadOnly?: boolean;
   noTitle?: boolean;
 };
 
@@ -99,35 +98,34 @@ function useScheduledDagRun(transform: Transform) {
   };
 }
 
-export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
-  const isRemoteSyncReadOnly = useSelector(
-    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
-  );
+export function RunSection({
+  transform,
+  readOnly,
+  permissionsReadOnly,
+  noTitle,
+}: RunSectionProps) {
   const { isScheduled, schedule } = useScheduledDagRun(transform);
 
   const content = (
     <>
       <Stack>
-        <Group p="lg" justify="space-between">
+        <Group p="xl" justify="space-between">
           <RunStatusSection transform={transform} isScheduled={isScheduled} />
           <RunButtonSection
             transform={transform}
-            readOnly={readOnly}
+            permissionsReadOnly={permissionsReadOnly}
             onScheduled={schedule}
           />
         </Group>
         <RunOutputSection transform={transform} />
       </Stack>
       <Divider />
-      <Group p="lg" gap="lg">
+      <Group p="xl" gap="xl">
         <Stack gap="sm">
           <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
           <Box>{t`Jobs will run all transforms with their tags.`}</Box>
         </Stack>
-        <TagSection
-          transform={transform}
-          readOnly={readOnly || isRemoteSyncReadOnly}
-        />
+        <TagSection transform={transform} readOnly={readOnly} />
       </Group>
     </>
   );
@@ -164,7 +162,7 @@ function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
   const runExtra = status === "succeeded" && previousStatus === "canceling" && (
     <Box
       c="text-disabled"
-      ml="lg"
+      ml="xl"
     >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );
 
@@ -200,13 +198,13 @@ function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
 
 type RunButtonSectionProps = {
   transform: Transform;
-  readOnly?: boolean;
+  permissionsReadOnly?: boolean;
   onScheduled: (dagRunId: TransformDagRunId) => void;
 };
 
 function RunButtonSection({
   transform,
-  readOnly,
+  permissionsReadOnly,
   onScheduled,
 }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
@@ -268,9 +266,9 @@ function RunButtonSection({
         allowCancellation
         onRun={handleRun}
         onCancel={openConfirmModal}
-        isDisabled={readOnly}
+        isDisabled={permissionsReadOnly}
         menuItems={
-          readOnly ? undefined : (
+          permissionsReadOnly ? undefined : (
             <>
               <Menu.Item onClick={() => setDagDirection("upstream")}>
                 {t`Run this and all upstream transforms`}

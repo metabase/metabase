@@ -1,13 +1,11 @@
 import cx from "classnames";
 import type { ButtonHTMLAttributes, Ref } from "react";
-import { forwardRef, useCallback, useMemo } from "react";
+import { forwardRef, useCallback } from "react";
 import * as React from "react";
 
-import {
-  SelectButtonContent,
-  SelectButtonIcon,
-  SelectButtonRoot,
-} from "./SelectButton.styled";
+import { Icon } from "metabase/ui";
+
+import S from "./SelectButton.module.css";
 
 export interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   left?: React.ReactNode;
@@ -56,46 +54,50 @@ const SelectButtonInner = forwardRef(function SelectButton(
     [onClear],
   );
 
-  const rightIcon = useMemo(() => {
-    if (hasValue && onClear) {
-      return "close";
-    }
-    return "chevrondown";
-  }, [hasValue, onClear]);
+  const showClear = hasValue && !!onClear;
+
+  const iconClassName = cx(
+    S.icon,
+    {
+      [S.iconHighlighted]: hasValue && highlighted,
+      [S.iconDisabled]: disabled,
+    },
+    classNames.icon,
+  );
 
   return (
-    <SelectButtonRoot
+    <button
       type="button"
       data-testid={`${dataTestId ? `${dataTestId}-` : ""}select-button`}
       ref={ref}
-      className={cx(classNames.root, className)}
+      className={cx(
+        S.root,
+        {
+          [S.fullWidth]: fullWidth,
+          [S.noValue]: !hasValue,
+          [S.highlighted]: hasValue && highlighted,
+        },
+        classNames.root,
+        className,
+      )}
       style={style}
-      hasValue={hasValue}
       disabled={disabled}
-      highlighted={highlighted}
-      fullWidth={fullWidth}
       onClick={onClick}
       {...rest}
     >
       {React.isValidElement(left) && left}
-      <SelectButtonContent data-testid="select-button-content">
+      <span
+        className={cx(S.content, { [S.contentClearable]: showClear })}
+        data-testid="select-button-content"
+      >
         {children}
-      </SelectButtonContent>
-      <SelectButtonIcon
-        className={classNames.icon}
-        name={rightIcon}
-        size={12}
-        hasValue={hasValue}
-        highlighted={highlighted}
-        onClick={rightIcon === "close" ? handleClear : undefined}
-        style={{ flexShrink: 0 }}
-      />
-    </SelectButtonRoot>
+      </span>
+      {showClear && (
+        <Icon className={iconClassName} name="close" onClick={handleClear} />
+      )}
+      <Icon className={iconClassName} name="chevrondown" />
+    </button>
   );
 });
 
-export const SelectButton = Object.assign(SelectButtonInner, {
-  Root: SelectButtonRoot,
-  Content: SelectButtonContent,
-  Icon: SelectButtonIcon,
-});
+export const SelectButton = SelectButtonInner;

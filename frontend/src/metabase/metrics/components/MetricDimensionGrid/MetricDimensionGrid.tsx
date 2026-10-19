@@ -3,14 +3,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { exploreMetricDimensionUrl } from "metabase/common/metrics-viewer";
 import {
   DEFAULT_DISPLAY_TYPE_BY_DIMENSION,
   type DefaultDimensionDisplayType,
 } from "metabase/common/metrics/utils/dimension-types";
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import {
   Button,
   Flex,
@@ -20,12 +20,11 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { MetricDefinition } from "metabase-lib/metric";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
-  Card,
   CardDisplayType,
   Dataset,
   MetricDimension,
@@ -101,8 +100,8 @@ export function MetricDimensionGrid({
   }
 
   return (
-    <Flex direction="column" gap="lg" flex={1}>
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+    <Flex direction="column" gap="xl" flex={1}>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
         {cards.map((card) => (
           <MetricDimensionCard
             key={card.dimensionId}
@@ -149,7 +148,7 @@ function MetricDimensionCard({
   dimension,
   displayType,
 }: MetricDimensionCardProps) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { data } = useMetricDimensionQuery(definition, dimension.dimensionId);
 
   const rawSeries = useMemo(
@@ -158,23 +157,21 @@ function MetricDimensionCard({
   );
 
   const handleClick = useCallback(() => {
-    dispatch(
-      push(
-        Urls.exploreMetricDimension({
-          metricId,
-          dimensionId: dimension.dimensionId,
-          dimensionType: dimension.dimensionType,
-          displayType,
-          label: dimension.label,
-        }),
-      ),
+    navigate(
+      exploreMetricDimensionUrl({
+        metricId,
+        dimensionId: dimension.dimensionId,
+        dimensionType: dimension.dimensionType,
+        displayType,
+        label: dimension.label,
+      }),
     );
-  }, [dispatch, metricId, dimension, displayType]);
+  }, [metricId, dimension, displayType, navigate]);
 
   return (
     <Paper withBorder shadow="none" className={S.card} onClick={handleClick}>
       <Stack h="100%">
-        <Text fw="bold" size="md" truncate="end" px="md" pt="sm">
+        <Text fw="bold" size="md" truncate="end" px="lg" pt="sm">
           {t`By ${dimension.label}`}
         </Text>
         <div className={S.chartArea}>
@@ -206,14 +203,14 @@ function buildSingleSeries(
 
   return [
     {
-      // Unjustified type cast. FIXME
       card: {
         display: displayType,
         visualization_settings: {
           ...(dimensionName ? { "graph.dimensions": [dimensionName] } : {}),
           ...(metricName ? { "graph.metrics": [metricName] } : {}),
         },
-      } as Card,
+        dataset_query: dataset.json_query ?? STRUCTURED_QUERY_TEMPLATE,
+      },
       data: dataset.data,
     },
   ];
@@ -221,7 +218,7 @@ function buildSingleSeries(
 
 function DimensionGridSkeleton({ count }: { count: number }) {
   return (
-    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
       {Array.from({ length: count }, (_, index) => (
         <Paper key={index} withBorder shadow="none" className={S.skeletonCard}>
           <ChartSkeleton display="bar" />

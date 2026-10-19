@@ -1,5 +1,4 @@
-import dayjs from "dayjs";
-
+import { dayjs } from "metabase/dayjs";
 import type {
   Engine,
   EngineField,
@@ -7,6 +6,7 @@ import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
   FontFile,
+  MajorVersionSupport,
   SettingDefinition,
   Settings,
   TokenFeatures,
@@ -83,6 +83,16 @@ export const createMockVersionInfo = (
   ...opts,
 });
 
+export const createMockMajorVersionSupport = (
+  opts?: Partial<MajorVersionSupport>,
+): MajorVersionSupport => ({
+  major: 56,
+  released: "2025-04-15",
+  lts: false,
+  eol: "2027-06-01",
+  ...opts,
+});
+
 export const createMockTokenStatus = (
   opts?: Partial<TokenStatus>,
 ): TokenStatus => ({
@@ -105,6 +115,7 @@ export const createMockTokenFeatures = (
   "schema-viewer": false,
   disable_password_login: false,
   cloud_custom_smtp: false,
+  content_diagnostics: false,
   content_translation: false,
   content_verification: false,
   "custom-viz": false,
@@ -147,9 +158,11 @@ export const createMockTokenFeatures = (
   "data-apps": false,
   "transforms-basic": false,
   "transforms-python": false,
+  "transforms-testing": false,
   library: false,
   library_retrieval: false,
   "support-users": false,
+  "session-management": false,
   tenants: false,
   writable_connection: false,
   admin_security_center: false,
@@ -200,13 +213,6 @@ export const createMockSettings = (
     ["zh_HK", "Chinese (Hong Kong SAR China)"],
     ["zh_TW", "Chinese (Taiwan)"],
   ],
-  "available-timezones": [
-    // this is a subset of the timezones we have in the real app
-    "Europe/Paris",
-    "Pacific/Auckland",
-    "US/Mountain",
-    "UTC",
-  ],
   "bug-reporting-enabled": false,
   "bcc-enabled?": true,
   "smtp-override-enabled": false,
@@ -244,7 +250,6 @@ export const createMockSettings = (
   "disable-cors-on-localhost": false,
   "llm-openai-model": "",
   "llm-openai-api-key": "",
-  "llm-anthropic-model": "",
   "email-configured?": false,
   "email-smtp-host": null,
   "email-smtp-port": null,
@@ -259,10 +264,10 @@ export const createMockSettings = (
   "embedding-app-origins-interactive": "",
   "enable-embedding": false,
   "non-table-chart-generated": true,
-  "enable-embedding-static": false,
+  "enable-embedding-modular": false,
   "enable-embedding-sdk": false,
-  "enable-embedding-simple": false,
   "enable-embedding-interactive": false,
+  "enable-embedding-sidecar": false,
   "enable-nested-queries": true,
   "enable-pivoted-exports": true,
   "enable-sandboxes?": true,
@@ -273,7 +278,6 @@ export const createMockSettings = (
   "enable-password-login": true,
   "enable-public-sharing": false,
   "enable-xrays": false,
-  engines: createMockEngines(),
   "example-dashboard-id": 1,
   gsheets: {},
   "humanization-strategy": "simple",
@@ -288,8 +292,7 @@ export const createMockSettings = (
   "hide-embed-branding?": true,
   "instance-creation": dayjs().toISOString(),
   "show-static-embed-terms": true,
-  "show-sdk-embed-terms": true,
-  "show-simple-embed-terms": true,
+  "show-modular-embed-terms": true,
   "google-auth-auto-create-accounts-domain": null,
   "google-auth-client-id": null,
   "google-auth-configured": false,
@@ -326,7 +329,6 @@ export const createMockSettings = (
   "ldap-group-mappings": null,
   "ldap-group-membership-filter": "(member={dn})",
   "loading-message": "doing-science",
-  "llm-anthropic-api-key-configured?": false,
   "mcp-enabled?": true,
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "native-query-autocomplete-match-style": "substring",
@@ -367,14 +369,13 @@ export const createMockSettings = (
   "saml-group-sync": null,
   "saml-group-mappings": null,
   "jwt-group-mappings": null,
-  "oidc-group-mappings": null,
   "scim-enabled": false,
   "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",
   "search-engine": "appdb",
   "search-typeahead-enabled": true,
   "setup-token": null,
-  "session-cookies": null,
+  "session-cookies": false,
   "session-cookie-samesite": "lax",
   "session-timeout": null,
   "slack-bug-report-channel": null,
@@ -448,5 +449,6 @@ export const createMockSettings = (
   "mcp-apps-cors-custom-origins": "",
   "transforms-meter-locked": null,
   "mfa-enforcement": "off",
+  "mfa-requirement-deadline": null,
   ...opts,
 });

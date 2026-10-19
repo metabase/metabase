@@ -17,6 +17,7 @@
     :model/AnalysisFinding                   metabase-enterprise.dependencies.models.analysis-finding
     :model/AnalysisFindingError              metabase-enterprise.dependencies.models.analysis-finding-error
     :model/ApiKey                            metabase.api-keys.models.api-key
+    :model/ApiKeyUsageLog                    metabase.api-keys.models.api-key-usage-log
     :model/ApplicationPermissionsRevision    metabase.permissions.models.application-permissions-revision
     :model/AuditLog                          metabase.audit-app.models.audit-log
     :model/AuthIdentity metabase.auth-identity.models.auth-identity
@@ -33,9 +34,11 @@
     :model/Comment                           metabase.comments.models.comment
     :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
+    :model/ContentDiagnosticsFinding         metabase-enterprise.content-diagnostics.models.finding
     :model/ContentTranslation                metabase.content-translation.models
     :model/CustomVizPlugin                   metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
     :model/DataApp                           metabase-enterprise.data-apps.models.data-app
+    :model/DataAppGroupAssignment            metabase-enterprise.data-apps.models.data-app-group-assignment
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
@@ -49,16 +52,26 @@
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
+    :model/EmbeddingSdkReact18Host           metabase.embedding.models.sdk-react-18-host
     :model/EmbeddingTheme                    metabase.embedding.models.theme
+    :model/Exploration                       metabase.explorations.models.exploration
+    :model/ExplorationBlock                  metabase.explorations.models.exploration-block
+    :model/ExplorationBookmark               metabase.bookmarks.models.bookmark
+    :model/ExplorationPage                   metabase.explorations.models.exploration-page
+    :model/ExplorationQuery                  metabase.explorations.models.exploration-query
+    :model/ExplorationQueryResult            metabase.explorations.models.exploration-query-result
+    :model/ExplorationThread                 metabase.explorations.models.exploration-thread
+    :model/ExplorationThreadTimeline         metabase.explorations.models.exploration-thread-timeline
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
+    :model/TableUserSettings                 metabase.warehouse-schema.models.table-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
-    :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
+    :model/McpGroupPermission                metabase.mcp.models.mcp-group-permission
     :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
     :model/McpSessionLog                     metabase.mcp.models.mcp-session-log
     :model/McpToolCallLog                    metabase.mcp.models.mcp-tool-call-log
@@ -118,10 +131,12 @@
     :model/Secret                            metabase.secrets.models.secret
     :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
-    :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
+    :model/SemanticSearchTokenTracking       metabase-enterprise.search.semantic.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
+    :model/StoredResult                      metabase.queries.models.stored-result
+    :model/StoredResultUse                   metabase.queries.models.stored-result-use
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
@@ -137,6 +152,8 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
+    :model/TransformTest                     metabase-enterprise.transform-testing.models
+    :model/TransformTestRun                  metabase-enterprise.transform-testing.models.transform-test-run
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
@@ -164,7 +181,8 @@
     ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
     ;; before side effects like `deftransforms` and `define-before-insert` have run
     (when-let [nspace (get model->namespace x)]
-      ;; [[classloader/require]] for thread safety
+      ;; The registry selects the namespace dynamically; use [[classloader/require]] for thread safety.
+      #_{:clj-kondo/ignore [:metabase/modules]}
       (classloader/require nspace)))
   x)
 
@@ -177,6 +195,7 @@
        (t2.model/resolve-model metabase-models-keyword)))
    (next-method symb)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *table-name-resolved* false)
 
 (methodical/defmethod t2.model/table-name :around :default

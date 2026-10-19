@@ -9,7 +9,7 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { push, replace, useParams } from "metabase/router";
+import { useNavigate, useParams } from "metabase/router";
 import { Flex, Icon, Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useCreateDestinationDatabaseMutation } from "metabase-enterprise/api";
@@ -26,6 +26,7 @@ export const DestinationDatabaseConnectionModal = () => {
     destinationDatabaseId: string;
   }>();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: docsUrl } = useDocsUrl("permissions/database-routing");
@@ -56,9 +57,9 @@ export const DestinationDatabaseConnectionModal = () => {
   const handleCloseModal = (method = "push") => {
     const dbId = parseInt(databaseId, 10);
     if (method === "push") {
-      dispatch(push(Urls.viewDatabase(dbId)));
+      navigate(Urls.viewDatabase(dbId));
     } else {
-      dispatch(replace(Urls.viewDatabase(dbId)));
+      navigate(Urls.viewDatabase(dbId), { replace: true });
     }
   };
 
@@ -96,6 +97,7 @@ export const DestinationDatabaseConnectionModal = () => {
 
   return (
     <Modal
+      density="relaxed"
       title={
         addingNewDatabase
           ? t`Add destination database`
@@ -103,7 +105,6 @@ export const DestinationDatabaseConnectionModal = () => {
       }
       opened
       onClose={handleCloseModal}
-      padding="xl"
       classNames={{
         content: S.modalRoot,
         header: S.modalHeader,
@@ -114,9 +115,8 @@ export const DestinationDatabaseConnectionModal = () => {
         <>
           <Flex
             py="sm"
-            px="md"
-            mx="xl"
-            my="md"
+            px="lg"
+            my="lg"
             bg="background_page-secondary"
             align="center"
             justify="space-between"

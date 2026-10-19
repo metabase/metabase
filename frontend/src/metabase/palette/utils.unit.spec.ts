@@ -1,9 +1,9 @@
-import type { LocationDescriptor } from "metabase/router";
+import type { To } from "metabase/router";
 
 import type { PaletteActionImpl } from "./types";
 import {
-  locationDescriptorToURL,
   navigateActionIndex,
+  navigationTargetToURL,
   processResults,
   processSection,
 } from "./utils";
@@ -254,49 +254,45 @@ describe("command palette utils", () => {
     });
   });
 
-  describe("locationDescriptorToURL", () => {
-    it(`should return the string if locationDescriptor is a string`, () => {
-      expect(locationDescriptorToURL("/a/b/c")).toBe(`/a/b/c`);
+  describe("navigationTargetToURL", () => {
+    it(`should return the string if the target is a string`, () => {
+      expect(navigationTargetToURL("/a/b/c")).toBe(`/a/b/c`);
     });
 
-    it("should return the correct URL when a LocationDescriptor is provided", () => {
-      const locationDescriptor: LocationDescriptor = { pathname: "/a/b/c" };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c`);
+    it("should return the correct URL when an object target is provided", () => {
+      const target: To = { pathname: "/a/b/c" };
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c`);
     });
 
     it("should return the correct URL when search is provided", () => {
-      const locationDescriptor = {
+      const target = {
         pathname: "/a/b/c",
         search: "?en=hello&es=hola",
       };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(
-        `/a/b/c?en=hello&es=hola`,
-      );
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c?en=hello&es=hola`);
     });
 
     it("should return the correct URL when pathname and hash are provided", () => {
-      const locationDescriptor = { pathname: "/a/b/c", hash: "top" };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c#top`);
+      const target = { pathname: "/a/b/c", hash: "top" };
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c#top`);
     });
 
     it("should return the correct URL with pathname, search, and hash", () => {
-      const locationDescriptor = {
+      const target = {
         pathname: "/a/b/c",
         search: "?en=hello&es=hola",
         hash: "top",
       };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(
-        `/a/b/c?en=hello&es=hola#top`,
-      );
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c?en=hello&es=hola#top`);
     });
 
     it("should handle empty values appropriately", () => {
-      const locationDescriptor: LocationDescriptor = {
+      const target: To = {
         pathname: "/a/b/c",
         search: undefined,
         hash: undefined,
       };
-      expect(locationDescriptorToURL(locationDescriptor)).toBe(`/a/b/c`);
+      expect(navigationTargetToURL(target)).toBe(`/a/b/c`);
     });
   });
 });

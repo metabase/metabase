@@ -584,7 +584,7 @@ describe("RemoteSyncSettingsForm", () => {
       });
     });
 
-    it("should still call the endpoint when the connection fails so the user gets feedback", async () => {
+    it("should show the connection error in the failure icon's tooltip", async () => {
       setup({
         remoteSyncType: "read-only",
         remoteSyncUrl: "https://github.com/test/repo.git",
@@ -610,11 +610,10 @@ describe("RemoteSyncSettingsForm", () => {
         expect(testRequest).toBeDefined();
       });
 
-      // Failures must not crash the form — the button stays enabled afterward
-      // and the URL field keeps its value.
-      expect(
-        screen.getByRole("button", { name: /Test connection/i }),
-      ).toBeEnabled();
+      await userEvent.hover(await screen.findByLabelText("Connection failed"));
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Authentication failed: Please check your git credentials",
+      );
       expect(screen.getByLabelText(/Repository URL/i)).toHaveValue(
         "https://github.com/test/repo.git",
       );

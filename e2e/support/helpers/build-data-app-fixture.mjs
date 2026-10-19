@@ -43,9 +43,29 @@ const { dataAppConfig } = await import(pathToFileURL(dataAppDevEntry).href);
 
 process.chdir(appDir);
 
+const buildInfoDefine = Object.fromEntries(
+  [
+    "VERSION",
+    "GIT_BRANCH",
+    "GIT_COMMIT_SHA",
+    "BUILD_TIME",
+    "EMBEDDING_SDK_BUNDLE_HOST",
+  ].map((key) => [`process.env.${key}`, '""']),
+);
+
 await build({
   root: appDir,
   configFile: false,
   logLevel: "warn",
-  plugins: dataAppConfig().plugins,
+  define: {
+    ...buildInfoDefine,
+    "process.env.IS_EMBEDDING_SDK": '"true"',
+  },
+  // A fixture's definitions come from `testEnv` or from files a spec writes, so
+  // the resource check that guards an author's build is covered by the resource
+  // specs instead. `dataAppConfig` nests its plugins in an array, so flatten
+  // before filtering.
+  plugins: dataAppConfig()
+    .plugins.flat(Infinity)
+    .filter((plugin) => plugin?.name !== "metabase-resource-check"),
 });

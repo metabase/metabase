@@ -5,12 +5,13 @@ import { expect, userEvent, within } from "@storybook/test";
 import { VisualizationWrapper } from "__support__/storybook";
 import { NumberColumn } from "__support__/visualizations";
 import { Box, SimpleGrid } from "metabase/ui";
-import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualization } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockSegmentFormatting,
+  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 import { Scalar } from "./Scalar";
@@ -21,6 +22,54 @@ export default {
 };
 
 registerVisualization(Scalar);
+
+const COMPACT_CARD_SIZES = [
+  { width: 82, height: 82 },
+  { width: 106, height: 82 },
+  { width: 126, height: 82 },
+  { width: 170, height: 82 },
+  { width: 82, height: 126 },
+];
+
+export const CompactSizes = () => (
+  <VisualizationWrapper>
+    <SimpleGrid cols={5} spacing="lg" p="lg" w={1000}>
+      {[
+        { name: "Revenue", description: null },
+        { name: "Revenue", description: "Total revenue" },
+        { name: "Revenue from all orders", description: "Total revenue" },
+      ].flatMap(({ name, description }) =>
+        COMPACT_CARD_SIZES.map(({ width, height }) => (
+          <Box
+            key={`${name}-${description}-${width}-${height}`}
+            w={width}
+            h={height}
+            style={{
+              borderRadius: 12,
+              border: "1px solid var(--mb-color-border-neutral)",
+            }}
+          >
+            <Visualization
+              rawSeries={[
+                createMockSingleSeries(
+                  { name, description, display: "scalar" },
+                  {
+                    data: {
+                      cols: [NumberColumn({ name: "Count" })],
+                      rows: [[1510621.68]],
+                    },
+                  },
+                ),
+              ]}
+              showTitle
+              width={width}
+            />
+          </Box>
+        )),
+      )}
+    </SimpleGrid>
+  </VisualizationWrapper>
+);
 
 // Unjustified type cast. FIXME
 const MOCK_SERIES = [

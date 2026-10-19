@@ -5,8 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { Form, FormInlineUpdater, FormProvider } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { IncrementalSettingsFormValues } from "metabase/transforms/components/IncrementalTransform";
 import {
   IncrementalTransformSettings,
@@ -19,11 +19,13 @@ import { ResetCheckpointSection } from "./ResetCheckpointSection";
 type UpdateIncrementalSettingsProps = {
   transform: Transform;
   readOnly?: boolean;
+  remoteSyncReadOnly?: boolean;
 };
 
 const IncrementalTransformSettingsWrapper = ({
   transform,
   readOnly,
+  remoteSyncReadOnly,
 }: UpdateIncrementalSettingsProps) => {
   const { values, setFieldValue } =
     useFormikContext<IncrementalSettingsFormValues>();
@@ -44,6 +46,7 @@ const IncrementalTransformSettingsWrapper = ({
       onIncrementalChange={handleIncrementalChange}
       variant="standalone"
       readOnly={readOnly}
+      remoteSyncReadOnly={remoteSyncReadOnly}
       targetTableId={transform.table?.id}
       extraActions={
         !readOnly && transform.last_checkpoint_value != null ? (
@@ -57,6 +60,7 @@ const IncrementalTransformSettingsWrapper = ({
 function UpdateIncrementalSettingsContent({
   transform,
   readOnly,
+  remoteSyncReadOnly,
   updateIncrementalSettings,
 }: UpdateIncrementalSettingsProps & {
   updateIncrementalSettings: (
@@ -85,6 +89,7 @@ function UpdateIncrementalSettingsContent({
       <IncrementalTransformSettingsWrapper
         transform={transform}
         readOnly={readOnly}
+        remoteSyncReadOnly={remoteSyncReadOnly}
       />
     </>
   );
@@ -93,6 +98,7 @@ function UpdateIncrementalSettingsContent({
 export function UpdateIncrementalSettings({
   transform,
   readOnly,
+  remoteSyncReadOnly,
 }: UpdateIncrementalSettingsProps) {
   const { initialValues, validationSchema, updateIncrementalSettings } =
     useUpdateIncrementalSettings(transform);
@@ -108,6 +114,7 @@ export function UpdateIncrementalSettings({
         <UpdateIncrementalSettingsContent
           transform={transform}
           readOnly={readOnly}
+          remoteSyncReadOnly={remoteSyncReadOnly}
           updateIncrementalSettings={updateIncrementalSettings}
         />
       </Form>

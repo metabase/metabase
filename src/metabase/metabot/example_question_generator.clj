@@ -74,9 +74,9 @@
 (def ^:private questions-json-schema
   "JSON Schema for the structured output tool, matching Python's ExampleQuestionGenerationSchema."
   {:type       "object"
-   :properties {:questions {:type  "array"
-                            :items {:type "string"}
-                            :description "List of example questions. No additional explanation."}}
+   :properties {"questions" {:type  "array"
+                             :items {:type "string"}
+                             :description "List of example questions. No additional explanation."}}
    :required   ["questions"]
    :additionalProperties false})
 
@@ -113,10 +113,11 @@
    questions-json-schema
    temperature
    max-tokens
-   {:request-id (str (random-uuid))
+   {:request-id          (str (random-uuid))
     ;; example_question_generation_batch was the name of the old ai-service api endpoint
-    :source     "example_question_generation_batch"
-    :tag        "example-question-generation"}))
+    :source              "example_question_generation_batch"
+    :tag                 "example-question-generation"
+    :required-permission :permission/metabot-other-tools}))
 
 ;;; Per-item generation (mirrors Python generate_table_example_questions / generate_metric_example_questions)
 

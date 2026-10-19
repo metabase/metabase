@@ -1,19 +1,22 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetVersionInfoQuery, useUpdateSettingMutation } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { useSelector } from "metabase/redux";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
+import {
+  useGetVersionInfoQuery,
+  useSetting,
+  useUpdateSettingMutation,
+} from "metabase/settings";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import Sparkles from "./sparkles.svg?component";
 import { getLatestEligibleReleaseNotes } from "./utils";
 
 export function WhatsNewNotification() {
   const [updateSetting] = useUpdateSettingMutation();
-  const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
+  const isEmbeddingIframe = isWithinIframe();
   const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSetting("version");
   const lastAcknowledgedVersion = useSetting("last-acknowledged-version");

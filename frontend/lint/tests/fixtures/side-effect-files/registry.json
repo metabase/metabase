@@ -1,0 +1,16 @@
+{
+  "facades": ["frontend/lint/tests/fixtures/side-effect-files/facade/"],
+  "packages": {
+    "leaflet-draw": "global",
+    "@mantine/core/styles.css": "global"
+  },
+  "files": {
+    "frontend/lint/tests/fixtures/side-effect-files/effects/global.ts": "global",
+    "frontend/lint/tests/fixtures/side-effect-files/effects/entry.ts": "entry",
+    "frontend/lint/tests/fixtures/side-effect-files/effects/self.ts": "self",
+    "frontend/lint/tests/fixtures/side-effect-files/effects/registration.ts": "global"
+  },
+  "unclassified": [
+    "frontend/lint/tests/fixtures/side-effect-files/effects/unclassified.ts"
+  ]
+}

@@ -5,16 +5,10 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { getDefaultTimeline } from "metabase/common/utils/timelines";
-import { useDispatch } from "metabase/redux";
-import { push } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import * as Urls from "metabase/urls";
-import type {
-  Collection,
-  CreateTimelineEventRequest,
-  CreateTimelineRequest,
-  TimelineEvent,
-} from "metabase-types/api";
+import type { Collection, TimelineEventData } from "metabase-types/api";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
@@ -27,7 +21,7 @@ interface NewEventWithTimelineModalContainerProps {
 function NewEventWithTimelineModalContainer(
   props: NewEventWithTimelineModalContainerProps,
 ) {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [createTimeline] = useCreateTimelineMutation();
   const [createTimelineEvent] = useCreateTimelineEventMutation();
   const collectionId = Urls.extractCollectionId(props.params.slug);
@@ -40,22 +34,20 @@ function NewEventWithTimelineModalContainer(
   );
 
   const onSubmit = async (
-    values: Partial<TimelineEvent>,
+    values: TimelineEventData,
     collection?: Collection,
   ) => {
     if (!collection) {
       return;
     }
     const timeline = await createTimeline(
-      // Unjustified type cast. FIXME
-      getDefaultTimeline(collection) as CreateTimelineRequest,
+      getDefaultTimeline(collection),
     ).unwrap();
-    // Unjustified type cast. FIXME
     await createTimelineEvent({
       ...values,
       timeline_id: timeline.id,
-    } as CreateTimelineEventRequest).unwrap();
-    dispatch(push(Urls.timelinesInCollection(collection)));
+    }).unwrap();
+    navigate(Urls.timelinesInCollection(collection));
   };
 
   if (isLoading || error || !collection) {

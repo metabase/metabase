@@ -1,29 +1,46 @@
 import { useLayoutEffect } from "react";
 
-import { useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
-import { Outlet, replace } from "metabase/router";
+import { Outlet, useNavigate } from "metabase/router";
+import { useSetting } from "metabase/settings";
 
 const FALLBACK_PATH = "/admin/metabot/";
 
-/** Redirects Metabot admin sub-pages to the index until AI is configured. */
-export const RequireMetabotConfigured = ({
+function RequireEnabled({
+  isEnabled,
   children = <Outlet />,
 }: {
+  isEnabled: boolean;
   children?: React.ReactNode;
-}) => {
-  const isConfigured = useSetting("llm-metabot-configured?");
-  const dispatch = useDispatch();
+}) {
+  const navigate = useNavigate();
 
   useLayoutEffect(() => {
-    if (!isConfigured) {
-      dispatch(replace(FALLBACK_PATH));
+    if (!isEnabled) {
+      navigate(FALLBACK_PATH, { replace: true });
     }
-  }, [isConfigured, dispatch]);
+  }, [isEnabled, navigate]);
 
-  if (!isConfigured) {
+  if (!isEnabled) {
     return null;
   }
 
   return <>{children}</>;
+}
+
+export const RequireMetabotConfigured = ({
+  children,
+}: {
+  children?: React.ReactNode;
+}) => {
+  const isConfigured = useSetting("llm-metabot-configured?");
+  return <RequireEnabled isEnabled={!!isConfigured}>{children}</RequireEnabled>;
+};
+
+export const RequireMcpEnabled = ({
+  children,
+}: {
+  children?: React.ReactNode;
+}) => {
+  const isMcpEnabled = useSetting("mcp-enabled?");
+  return <RequireEnabled isEnabled={isMcpEnabled}>{children}</RequireEnabled>;
 };

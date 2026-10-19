@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
+   [metabase.notification.task.send-trigger :as notification.task.send-trigger]
    [metabase.notification.test-util :as notification.tu]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -66,13 +67,13 @@
         (testing "sanity check that it has triggers to begin with"
           (is (not-empty notification-triggers)))
         (testing "init send notification triggers are idempotent if the subscription doesn't change"
-          (task.notification/init-send-notification-triggers!)
+          (notification.task.send-trigger/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))
         (testing "Re-create triggers if it's not existed"
           (task/delete-trigger! (TriggerKey. (-> notification-triggers first :key)))
           (testing "sanity check that the trigger is deleted"
             (is (empty? (notification.tu/send-notification-triggers subscription-id))))
-          (task.notification/init-send-notification-triggers!)
+          (notification.task.send-trigger/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))
         (testing "deletes triggers for subscriptions that no longer exist"
           (let [subscription-id (first (t2/select-pks-vec :model/NotificationSubscription
@@ -80,7 +81,7 @@
             (t2/delete! :notification_subscription subscription-id)
             (testing "sanity check that it has trigger before"
               (is (not-empty (notification.tu/send-notification-triggers subscription-id))))
-            (task.notification/init-send-notification-triggers!)
+            (notification.task.send-trigger/init-send-notification-triggers!)
             (is (empty? (notification.tu/send-notification-triggers subscription-id)))))))))
 
 (deftest init-send-notification-triggers-inactive-test
@@ -100,12 +101,12 @@
         (testing "skips triggers for inactive notifications"
           ;; Deactivate the notification
           (t2/update! :model/Notification (:id notification) {:active false})
-          (task.notification/init-send-notification-triggers!)
+          (notification.task.send-trigger/init-send-notification-triggers!)
           (is (empty? (notification.tu/send-notification-triggers subscription-id))))
         (testing "recreates triggers when notification is reactivated"
           ;; Reactivate the notification
           (t2/update! :model/Notification (:id notification) {:active true})
-          (task.notification/init-send-notification-triggers!)
+          (notification.task.send-trigger/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))))))
 
 (deftest update-send-notification-triggers-timezone-test
@@ -128,7 +129,7 @@
               ;; Change the report timezone
               (driver/report-timezone! new-timezone)
               ;; Call the function under test
-              (task.notification/update-send-notification-triggers-timezone!)
+              (notification.task.send-trigger/update-send-notification-triggers-timezone!)
               ;; Verify the timezone was updated
               (let [updated-triggers (notification.tu/send-notification-triggers subscription-id)]
                 (is (not-empty updated-triggers))

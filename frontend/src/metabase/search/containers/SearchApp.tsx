@@ -16,37 +16,27 @@ import {
   SearchContextTypes,
   SearchFilterKeys,
 } from "metabase/common/search/constants";
-import type {
-  SearchAwareLocation,
-  URLSearchFilterQueryParams,
-} from "metabase/common/search/types";
+import type { URLSearchFilterQueryParams } from "metabase/common/search/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
-import { push, queryToSearch, useRouter } from "metabase/router";
+import type { Location, To } from "metabase/router";
+import { queryToSearch, useLocation, useNavigate } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
-import {
-  SearchBody,
-  SearchControls,
-  SearchMain,
-  SearchResultContainer,
-} from "metabase/search/containers/SearchApp.styled";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { Box, Group, Paper, Text } from "metabase/ui";
+import { Box, Flex, Group, Paper, Stack, Text } from "metabase/ui";
 import type { SearchRequest } from "metabase-types/api";
 
-const getPageFromLocation = (location: SearchAwareLocation) => {
-  const maybePage = location.query?.page
-    ? parseInt(location.query.page, 10)
-    : 0;
+import S from "./SearchApp.module.css";
+
+const getPageFromLocation = (location: Location) => {
+  const page = new URLSearchParams(location.search).get("page");
+  const maybePage = page ? parseInt(page, 10) : 0;
   return maybePage || 0;
 };
 
 export function SearchApp() {
-  // Unjustified type cast. FIXME
-  const location = useRouter().location as SearchAwareLocation;
-  const dispatch = useDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   usePageTitle(t`Search`);
 
@@ -77,14 +67,14 @@ export function SearchApp() {
   } as SearchRequest;
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject) => dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: To) => navigate(nextLocation),
+    [navigate],
   );
 
   const onFilterChange = useCallback(
     (newFilters: URLSearchFilterQueryParams) => {
       onChangeLocation({
-        pathname: "search",
+        pathname: "/search",
         search: queryToSearch({ q: searchText.trim(), ...newFilters }),
       });
     },
@@ -93,7 +83,7 @@ export function SearchApp() {
 
   const advancePage = (howMany = 1) => {
     onChangeLocation({
-      pathname: "search",
+      pathname: "/search",
       search: queryToSearch({
         q: searchText.trim(),
         ...searchFilters,
@@ -106,15 +96,15 @@ export function SearchApp() {
   const list = useMemo(() => data?.data ?? [], [data?.data]);
 
   return (
-    <SearchMain direction="column" gap="2rem" m="auto" data-testid="search-app">
+    <Flex className={S.main} data-testid="search-app">
       <Text size="xl" fw={700}>
         {jt`Results for "${searchText}"`}
       </Text>
-      <SearchBody justify="center">
-        <SearchControls pb="lg">
+      <Flex className={S.body}>
+        <Stack className={S.controls}>
           <SearchSidebar value={searchFilters} onChange={onFilterChange} />
-        </SearchControls>
-        <SearchResultContainer>
+        </Stack>
+        <Box flex={1}>
           {(error || isFetching) && (
             <LoadingAndErrorWrapper error={error} loading={isFetching} />
           )}
@@ -153,8 +143,8 @@ export function SearchApp() {
               </Group>
             </Box>
           )}
-        </SearchResultContainer>
-      </SearchBody>
-    </SearchMain>
+        </Box>
+      </Flex>
+    </Flex>
   );
 }

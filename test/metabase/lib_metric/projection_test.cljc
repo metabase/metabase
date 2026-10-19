@@ -216,6 +216,11 @@
           result     (lib-metric.projection/project-dimension definition-with-provider dimension)
           projection (get-in result [:projections 0 :projection 0])]
       (is (= :hour (:temporal-unit (second projection))))))
+  (testing "A dimension's configured default temporal bucket overrides the fallback"
+    (let [dimension  (assoc dimension-1 :default-temporal-unit :week)
+          result     (lib-metric.projection/project-dimension definition-with-provider dimension)
+          projection (get-in result [:projections 0 :projection 0])]
+      (is (= :week (:temporal-unit (second projection))))))
   (testing "Field-backed numeric dimensions use the default binning strategy"
     (let [dimension  (assoc dimension-3 :sources [{:type :field :field-id 3}])
           result     (lib-metric.projection/project-dimension definition-with-provider dimension)

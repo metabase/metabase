@@ -4,6 +4,8 @@
    [metabase.search.spec :as search.spec]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel test-qualify-column
   (is (= [:table.column :column] (#'search.spec/qualify-column :table :column)))
   (is (= :qualified.column (#'search.spec/qualify-column :table :qualified.column)))
@@ -96,7 +98,7 @@
 (deftest ^:parallel search-model-hooks-test-2
   ;; TODO replace real specs with frozen test ones once things have stabilized
   (is (= #:model{:Table      #{{:search-model "segment",
-                                :fields       #{:description :schema :name :db_id :display_name}
+                                :fields       #{:collection_id :db_id :description :display_name :is_published :name :schema}
                                 :where        [:= :updated.id :this.table_id]}
                                {:search-model "table",
                                 :fields
@@ -116,11 +118,48 @@
                                 :where        [:= :updated.id :this.id]}
                                {:search-model "table"
                                 :fields       #{:authority_level :name :type :location}
-                                :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}}}
+                                :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}
+                               {:search-model "segment"
+                                :fields       #{:location :type}
+                                :where        [:and
+                                               [:= [:coalesce :settings.is_published :table.is_published] true]
+                                               [:= :updated.id [:case
+                                                                [:not= :settings.is_published nil] :settings.collection_id
+                                                                :else :table.collection_id]]]}}
+                 :TableUserSettings #{{:search-model "table"
+                                       :fields       #{:updated_at}
+                                       :where        [:= :updated.table_id :this.id]}
+                                      {:search-model "segment"
+                                       :fields       #{:collection_id :is_published}
+                                       :where        [:= :updated.table_id :this.table_id]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
            (#'search.spec/search-model-hooks (search.spec/spec "segment"))
            (#'search.spec/search-model-hooks (search.spec/spec "collection"))]))))
+
+(deftest ^:parallel measure-parent-table-hooks-test
+  (testing "a measure is reindexed when its parent table, that table's user settings, or its collection changes"
+    (is (= #:model{:Table      #{{:search-model "measure"
+                                  :fields       #{:collection_id
+                                                  :db_id
+                                                  :description
+                                                  :display_name
+                                                  :is_published
+                                                  :name
+                                                  :schema}
+                                  :where        [:= :updated.id :this.table_id]}}
+                   :Collection #{{:search-model "measure"
+                                  :fields       #{:location :type}
+                                  :where        [:and
+                                                 [:= [:coalesce :settings.is_published :table.is_published] true]
+                                                 [:= :updated.id [:case
+                                                                  [:not= :settings.is_published nil] :settings.collection_id
+                                                                  :else :table.collection_id]]]}}
+                   :TableUserSettings #{{:search-model "measure"
+                                         :fields       #{:collection_id :is_published}
+                                         :where        [:= :updated.table_id :this.table_id]}}}
+           (select-keys (#'search.spec/merge-hooks [(#'search.spec/search-model-hooks (search.spec/spec "measure"))])
+                        [:model/Table :model/Collection :model/TableUserSettings])))))
 
 (deftest ^:parallel search-models-to-update-test
   (is (= #{}
@@ -145,6 +184,36 @@
           (is (actual-models em))))
       (testing "... and nothing else does"
         (is (empty? (sort-by name (remove expected-models actual-models))))))))
+
+(deftest ^:parallel model-hooks-are-cached-test
+  ;; The first call resolves lazily loaded models, which registers more spec methods and changes the cache key.
+  (search.spec/model-hooks)
+  (is (identical? (search.spec/model-hooks) (search.spec/model-hooks))))
+
+(deftest ^:synchronized model-hooks-cache-invalidates-on-spec-redefinition-test
+  (testing "replacing a spec method invalidates the cached model-hooks"
+    ;; Registering a throwaway spec would derive a fake model into :hook/search-index and break
+    ;; every-model-is-hooked-test, so probe by swapping an existing method out and back.
+    (let [spec-multifn search.spec/spec*
+          ;; The first call resolves lazily loaded models, registering spec methods as it goes, so it caches
+          ;; under a key that is stale by the time it returns. The second call warms the settled method table.
+          _            (search.spec/model-hooks)
+          warm         (search.spec/model-hooks)
+          original     (get-method spec-multifn "card")]
+      ;; Without a hit here the probe below would miss whatever the cache key did, proving nothing.
+      (is (identical? warm (search.spec/model-hooks)))
+      (try
+        (.addMethod ^clojure.lang.MultiFn spec-multifn
+                    "card"
+                    (fn [_]
+                      (update (original "card") :render-terms assoc :cache-probe :cache_probe)))
+        (is (contains? (->> (get (search.spec/model-hooks) :model/Card)
+                            (filter #(= "card" (:search-model %)))
+                            first
+                            :fields)
+                       :cache_probe))
+        (finally
+          (.addMethod ^clojure.lang.MultiFn spec-multifn "card" original))))))
 
 (deftest ^:parallel index-version-hash-test
   (testing "index-version-hash returns a consistent value"

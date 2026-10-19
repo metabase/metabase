@@ -3,16 +3,17 @@ import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { isReturningToDataStudio } from "metabase/common/data-studio/utils/return-to";
 import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
-import { clickBehaviorIsValid } from "metabase/visualizations/lib/formatting/click-data";
 import type {
   DashCardId,
   ParameterId,
   UpdateCardRequest,
 } from "metabase-types/api";
+import { clickBehaviorIsValid } from "metabase-types/guards";
 
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
@@ -68,6 +69,7 @@ export const updateDashboardAndCards = createThunkAction(
         );
 
         if (!cardsHaveChanged && !dashboardHasChanged) {
+          dispatch(setEditingDashboard(null, location));
           return;
         }
       }
@@ -213,6 +215,11 @@ export const updateDashboardAndCards = createThunkAction(
       }
 
       dispatch(setEditingDashboard(null, location));
+
+      // Returning to Data Studio unmounts the dashboard, which resets its state
+      if (isReturningToDataStudio(location)) {
+        return;
+      }
 
       // Reset the dashboard state from the save response instead of re-fetching
       // it. Re-using the just-returned dashboard avoids an extra round-trip and

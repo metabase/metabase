@@ -41,12 +41,27 @@ interface TreeTableRowContentProps<
   isLoading?: boolean;
   isExpanded: boolean;
   canExpand: boolean;
-  getSelectionState?: (row: Row<TData>) => SelectionState;
+  selectionState: SelectionState;
+  isCheckboxDisabled: boolean;
   onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
   onRowClick?: (row: Row<TData>, event: MouseEvent) => void;
   onRowDoubleClick?: (row: Row<TData>, event: MouseEvent) => void;
   rowProps?: Record<string, unknown>;
   hierarchical?: boolean;
+  isClickable?: boolean;
+}
+
+function getRowSelectionState<TData extends TreeNodeData>(
+  row: Row<TData>,
+  getSelectionState?: (row: Row<TData>) => SelectionState,
+): SelectionState {
+  if (getSelectionState) {
+    return getSelectionState(row);
+  }
+  if (row.getIsSelected()) {
+    return "all";
+  }
+  return row.getIsSomeSelected() ? "some" : "none";
 }
 
 // Memoized component that does not depend on virtualItem for performance reasons
@@ -67,7 +82,8 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   isLoading,
   isExpanded,
   canExpand,
-  getSelectionState,
+  selectionState,
+  isCheckboxDisabled,
   onCheckboxClick,
   onRowClick,
   onRowDoubleClick,
@@ -75,23 +91,13 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
   styles,
   rowProps,
   hierarchical = false,
+  isClickable,
 }: TreeTableRowContentProps<TData>) {
   const isKeyboardFocused = activeRowId === row.id;
   const isSelected = selectedRowId === row.id;
   const isActive = isKeyboardFocused || isSelected;
   const indent = row.depth * indentWidth;
   const visibleCells = row.getVisibleCells();
-
-  const selectionState = getSelectionState
-    ? getSelectionState(row)
-    : row.getIsSelected()
-      ? "all"
-      : row.getIsSomeSelected()
-        ? "some"
-        : "none";
-
-  const isCheckboxDisabled =
-    isDisabled || (!getSelectionState && !row.getCanSelect());
 
   const handleCheckboxToggle = (event: MouseEvent) => {
     event.stopPropagation();
@@ -113,6 +119,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
       data-keyboard-active={isKeyboardFocused ? true : undefined}
       data-disabled={isDisabled ? true : undefined}
       className={cx(S.content, classNames?.row, {
+        [S.clickable]: isClickable,
         [S.active]: isActive,
         [classNames?.rowActive ?? ""]: isActive && classNames?.rowActive,
         [S.disabled]: isDisabled,
@@ -249,8 +256,15 @@ export function TreeTableRow<TData extends TreeNodeData>({
   renderRowLink,
   renderSubRow,
   hierarchical = true,
+  isClickable,
 }: TreeTableRowProps<TData>) {
   const rowProps = useMemo(() => getRowProps?.(row), [getRowProps, row]);
+
+  // Selection is read outside the memoized content: a row keeps its identity when only its selection changes
+  const selectionState = getRowSelectionState(row, getSelectionState);
+  const isCheckboxDisabled = Boolean(
+    isDisabled || (!getSelectionState && !row.getCanSelect()),
+  );
 
   const content = (
     <TreeTableRowContent
@@ -268,7 +282,8 @@ export function TreeTableRow<TData extends TreeNodeData>({
       isLoading={isLoading}
       isExpanded={isExpanded}
       canExpand={canExpand}
-      getSelectionState={getSelectionState}
+      selectionState={selectionState}
+      isCheckboxDisabled={isCheckboxDisabled}
       onCheckboxClick={onCheckboxClick}
       onRowClick={onRowClick}
       onRowDoubleClick={onRowDoubleClick}
@@ -276,6 +291,7 @@ export function TreeTableRow<TData extends TreeNodeData>({
       styles={styles}
       rowProps={rowProps}
       hierarchical={hierarchical}
+      isClickable={isClickable}
     />
   );
 

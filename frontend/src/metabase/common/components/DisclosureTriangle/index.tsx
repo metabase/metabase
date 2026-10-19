@@ -1,1 +1,0 @@
-export { DisclosureTriangle } from "./DisclosureTriangle";

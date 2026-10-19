@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { BrowseSchemas } from "metabase/browse/schemas/BrowseSchemas";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
@@ -44,7 +44,10 @@ describe("BrowseDatabases", () => {
   });
 
   describe("opening a database through the UI", () => {
-    const renderBrowseDatabasesWithRouter = (databases: Database[]) => {
+    const renderBrowseDatabasesWithRouter = (
+      databases: Database[],
+      { isAdmin = false }: setupOpts = {},
+    ) => {
       setupDatabasesEndpoints(databases);
       return renderWithProviders(
         <>
@@ -52,7 +55,9 @@ describe("BrowseDatabases", () => {
           <Route path="/browse/databases/:slug" element={<BrowseSchemas />} />
         </>,
         {
-          storeInitialState: createMockState({ currentUser: createMockUser() }),
+          storeInitialState: createMockState({
+            currentUser: createMockUser({ is_superuser: isAdmin }),
+          }),
           withRouter: true,
           initialRoute: "/browse/databases",
         },
@@ -73,16 +78,14 @@ describe("BrowseDatabases", () => {
       });
 
     it("opens the database under its name url when the name is unique", async () => {
-      const { history } = renderBrowseDatabasesWithRouter([
+      const { router } = renderBrowseDatabasesWithRouter([
         databaseWithSchemas(7, "Sales", ["PUBLIC", "ANALYTICS"]),
       ]);
 
       await userEvent.click(await screen.findByText("Sales"));
 
       expect(await screen.findByText("PUBLIC")).toBeInTheDocument();
-      expect(history?.getCurrentLocation().pathname).toBe(
-        "/browse/databases/Sales",
-      );
+      expect(router?.location.pathname).toBe("/browse/databases/Sales");
     });
 
     it.each([
@@ -103,18 +106,32 @@ describe("BrowseDatabases", () => {
       },
     );
 
+    it("opens the database options menu without opening the database", async () => {
+      const { router } = renderBrowseDatabasesWithRouter(
+        [databaseWithSchemas(7, "Sales", ["PUBLIC", "ANALYTICS"])],
+        { isAdmin: true },
+      );
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Database options" }),
+      );
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Edit metadata/ }),
+      ).toBeInTheDocument();
+      expect(router?.location.pathname).toBe("/browse/databases");
+    });
+
     it("opens a database whose name starts with a digit", async () => {
       // "7-sales" as a url segment would be read back as database 7
-      const { history } = renderBrowseDatabasesWithRouter([
+      const { router } = renderBrowseDatabasesWithRouter([
         databaseWithSchemas(3, "7-sales", ["ONE", "TWO"]),
       ]);
 
       await userEvent.click(await screen.findByText("7-sales"));
 
       expect(await screen.findByText("ONE")).toBeInTheDocument();
-      expect(history?.getCurrentLocation().pathname).not.toBe(
-        "/browse/databases/7-sales",
-      );
+      expect(router?.location.pathname).not.toBe("/browse/databases/7-sales");
     });
   });
 
@@ -123,6 +140,26 @@ describe("BrowseDatabases", () => {
     expect(
       await screen.findByText("No databases here yet"),
     ).toBeInTheDocument();
+  });
+
+  describe("database options menu", () => {
+    it("should not render for regular users", async () => {
+      renderBrowseDatabases(2, { isAdmin: false });
+      await waitForLoaderToBeRemoved();
+
+      expect(
+        screen.queryByRole("button", { name: "Database options" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render on each database card for admins", async () => {
+      renderBrowseDatabases(2, { isAdmin: true });
+      await waitForLoaderToBeRemoved();
+
+      expect(
+        screen.getAllByRole("button", { name: "Database options" }),
+      ).toHaveLength(2);
+    });
   });
 
   describe("Add database card", () => {

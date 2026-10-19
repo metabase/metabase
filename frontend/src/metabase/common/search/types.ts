@@ -1,7 +1,6 @@
 import type { ComponentType } from "react";
 
 import type { SearchFilterKeys } from "metabase/common/search/constants";
-import type { Location } from "metabase/router";
 import type { EnabledSearchModel, IconName, UserId } from "metabase-types/api";
 
 export type TypeFilterProps = EnabledSearchModel[];
@@ -33,9 +32,6 @@ export type FilterTypeKeys = keyof SearchFilterPropTypes;
 export type SearchQueryParamValue = string | string[] | null | undefined;
 export type URLSearchFilterQueryParams = Partial<
   Record<FilterTypeKeys, SearchQueryParamValue>
->;
-export type SearchAwareLocation = Location<
-  { q?: string; page?: string } & URLSearchFilterQueryParams
 >;
 
 export type SearchFilters = Partial<SearchFilterPropTypes>;

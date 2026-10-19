@@ -7,15 +7,13 @@ import { useValidatePassword } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
 import { resetPassword } from "metabase/redux/auth";
-import { replace, useParams, useRouter } from "metabase/router";
-import { Button } from "metabase/ui";
+import { useNavigate, useParams, useSearchParams } from "metabase/router";
+import { Box, Button, Flex, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import type { ResetPasswordData } from "../../types";
 import { AuthLayout } from "../AuthLayout";
 import { ResetPasswordForm } from "../ResetPasswordForm";
-
-import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
 
 type ResetPasswordQueryParams = {
   token: string;
@@ -23,11 +21,12 @@ type ResetPasswordQueryParams = {
 };
 
 export const ResetPassword = (): JSX.Element | null => {
-  const { location } = useRouter();
+  const [searchParams] = useSearchParams();
   const { token = "" } = useParams<ResetPasswordQueryParams>();
-  const redirectUrl = location.query?.redirect;
-  const email = location.query?.email;
+  const redirectUrl = searchParams.get("redirect") ?? undefined;
+  const email = searchParams.get("email") ?? undefined;
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [sendToast] = useToast();
   const validatePassword = useValidatePassword();
   const { data: status, isLoading } =
@@ -38,12 +37,12 @@ export const ResetPassword = (): JSX.Element | null => {
       const { sessionCreated } = await dispatch(
         resetPassword({ token, password }),
       ).unwrap();
-      dispatch(
-        replace(sessionCreated ? redirectUrl || "/" : Urls.login(redirectUrl)),
-      );
+      navigate(sessionCreated ? redirectUrl || "/" : Urls.login(redirectUrl), {
+        replace: true,
+      });
       sendToast({ message: t`You've updated your password.` });
     },
-    [token, dispatch, redirectUrl, sendToast],
+    [token, dispatch, redirectUrl, sendToast, navigate],
   );
 
   if (isLoading) {
@@ -76,14 +75,20 @@ const ResetPasswordExpired = ({
     : "/auth/forgot_password";
 
   return (
-    <InfoBody>
-      <InfoTitle>{t`Whoops, that's an expired link`}</InfoTitle>
-      <InfoMessage>
+    <Flex direction="column" align="center">
+      <Title
+        order={1}
+        size="h3"
+        c="text-primary"
+        ta="center"
+        mb="lg"
+      >{t`Whoops, that's an expired link`}</Title>
+      <Box c="text-primary" ta="center" mb="xxxl">
         {t`For security reasons, password reset links expire after a little while. If you still need to reset your password, you can request a new reset email.`}
-      </InfoMessage>
+      </Box>
       <Button component={Link} variant="filled" to={forgotPasswordUrl}>
         {t`Request a new reset email`}
       </Button>
-    </InfoBody>
+    </Flex>
   );
 };

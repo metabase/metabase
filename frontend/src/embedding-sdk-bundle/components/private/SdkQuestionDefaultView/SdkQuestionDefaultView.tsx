@@ -45,6 +45,7 @@ import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
 import { FilterDropdown } from "../SdkQuestion/components/Filter/FilterDropdown";
 import { QuestionSettingsDropdown } from "../SdkQuestion/components/QuestionSettings";
+import { RefreshButton } from "../SdkQuestion/components/RefreshButton";
 import { ResultToolbar } from "../SdkQuestion/components/ResultToolbar/ResultToolbar";
 import {
   SaveButton,
@@ -204,7 +205,7 @@ export const SdkQuestionDefaultView = ({
         component={Stack}
         className={InteractiveQuestionS.TopBar}
         gap="sm"
-        p="md"
+        p="lg"
       >
         <RenderIfHasContent
           component={Group}
@@ -212,7 +213,7 @@ export const SdkQuestionDefaultView = ({
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
         >
-          <RenderIfHasContent component={Group} gap="xs">
+          <RenderIfHasContent component={Group} gap="xxs">
             <Stack align="flex-start">
               <SdkInternalNavigationBackButton />
               <DefaultViewTitle title={title} />
@@ -225,7 +226,7 @@ export const SdkQuestionDefaultView = ({
             component={ResultToolbar}
             data-testid="interactive-question-result-toolbar"
           >
-            <RenderIfHasContent component={Group} gap="xs">
+            <RenderIfHasContent component={Group} gap="xxs">
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
@@ -246,7 +247,7 @@ export const SdkQuestionDefaultView = ({
 
                       {!isNativeQuestion && !isMobile && (
                         <Divider
-                          mx="xs"
+                          mx="xxs"
                           orientation="vertical"
                           style={{
                             color: "var(--mb-color-border-neutral) !important",
@@ -273,6 +274,7 @@ export const SdkQuestionDefaultView = ({
                   <QuestionAlertsButton />
                 </>
               )}
+              {!isEditorOpen && <RefreshButton />}
               {withEditorButton && (
                 <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
               )}

@@ -8,6 +8,8 @@ import type {
   TestPythonTransformResponse,
 } from "metabase-types/api";
 
+import { canRunPythonTransformSource } from "../../utils";
+
 type TestPythonScriptState = {
   isRunning: boolean;
   isDirty: boolean;
@@ -28,7 +30,7 @@ export function useTestPythonTransform(
   const isDirty = originalArgs?.code !== source.body;
 
   const run = async () => {
-    if (source["source-database"] === undefined) {
+    if (!canRunPythonTransformSource(source)) {
       return null;
     }
 

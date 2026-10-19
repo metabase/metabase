@@ -96,18 +96,18 @@
 (mu/defn- referenced-tables
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
-  (let [db-tables (lib.metadata/tables query)
+  (let [specs         (-> query
+                          lib/raw-native-query
+                          (parsed-query driver)
+                          (macaw/query->components {:strip-contexts? true})
+                          :tables
+                          (->> (map :component))
+                          (->> (map split-compound-table-spec))
+                          (->> (mapv #(sql-tools.common/normalize-table-spec driver %))))
+        table-ids     (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table specs))
+        db-tables     (lib.metadata/bulk-metadata query :metadata/table table-ids)
         db-transforms (lib.metadata/transforms query)]
-    (-> query
-        lib/raw-native-query
-        (parsed-query driver)
-        (macaw/query->components {:strip-contexts? true})
-        :tables
-        (->> (map :component))
-        (->> (map split-compound-table-spec))
-        (->> (into #{}
-                   (keep #(->> (sql-tools.common/normalize-table-spec driver %)
-                               (sql-tools.common/find-table-or-transform driver db-tables db-transforms))))))))
+    (sql-tools.common/resolve-table-specs driver (lib.metadata/database query) db-tables db-transforms specs)))
 
 (defmethod sql-tools/referenced-tables-impl :macaw
   [_parser driver query]
@@ -139,7 +139,7 @@
   (sql-tools.common/validate-query parser driver query))
 
 (defmethod sql-tools/referenced-tables-raw-impl :macaw
-  [_parser _driver sql-str]
+  [_parser _driver sql-str _opts]
   (-> sql-str
       (macaw/parsed-query)
       (macaw/query->components {:strip-contexts? true})

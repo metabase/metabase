@@ -32,7 +32,7 @@ jobs:
       MB_DB_TYPE: h2
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -58,7 +58,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -84,7 +84,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -103,13 +103,15 @@ jobs:
     services:
       mysql:
         image: mysql:8.0
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -129,13 +131,15 @@ jobs:
     services:
       mysql:
         image: mysql:9
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
         ports:
           - "3306:3306"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -164,7 +168,7 @@ jobs:
   #       ports:
   #         - "3306:3306"
   #   steps:
-  #     - uses: actions/checkout@v6
+  #     - uses: actions/checkout@v7
   #     - uses: ./.github/actions/cross-branch-migration-test
   #       with:
   #         base-ref: ${{ env.BASE_REF }}
@@ -183,13 +187,15 @@ jobs:
     services:
       mariadb:
         image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -208,13 +214,15 @@ jobs:
     services:
       mariadb:
         image: mariadb:latest
+        # disposable CI database: a RAM-backed datadir makes migration fsyncs free
+        options: --tmpfs /var/lib/mysql:rw
         ports:
           - "3306:3306"
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}

@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { Api, cardApi, tableApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch, State } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
@@ -51,6 +52,24 @@ export interface UploadFileProps {
   onUploadComplete?: () => void;
 }
 
+async function fetchTableName(
+  dispatch: Dispatch,
+  tableId: TableId,
+): Promise<string | undefined> {
+  try {
+    const table: { name?: string } = await runRtkEndpoint(
+      { id: tableId },
+      dispatch,
+      tableApi.endpoints.getTable,
+      { forceRefetch: false },
+    );
+    return table.name;
+  } catch (error) {
+    console.error(error);
+    return undefined;
+  }
+}
+
 export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
   ({
@@ -64,6 +83,12 @@ export const uploadFile = createThunkAction(
     async (dispatch: Dispatch) => {
       const id = Date.now();
 
+      // Resolved before the upload starts, so the status has its destination
+      // on its first render. Fetching it alongside the upload would race the
+      // upload itself, and the status would miss the window it reports on.
+      const tableName =
+        tableId == null ? undefined : await fetchTableName(dispatch, tableId);
+
       const clear = () =>
         setTimeout(() => {
           dispatch(clearUpload({ id }));
@@ -75,6 +100,7 @@ export const uploadFile = createThunkAction(
           name: file.name,
           collectionId,
           tableId,
+          tableName,
         }),
       );
 
@@ -142,7 +168,7 @@ export const uploadFile = createThunkAction(
         dispatch(
           uploadError({
             id,
-            error: err?.data?.message ?? err?.data,
+            error: findErrorMessage(err) ?? err?.data,
           }),
         );
       }

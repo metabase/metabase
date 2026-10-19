@@ -6,16 +6,18 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.core :as actions]
+   [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.render.core :as channel.render]
-   [metabase.collections-rest.api :as api.collection]
+   [metabase.collections.children :as collections.children]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.dashboards-rest.db :as dashboards-rest.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
@@ -24,10 +26,12 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
-   [metabase.parameters.core :as parameters]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -35,6 +39,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -46,12 +51,9 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.core :as xrays]
    [ring.util.codec :as codec]
@@ -60,25 +62,10 @@
 
 (set! *warn-on-reflection* true)
 
-;;; TODO -- why don't we use [[metabase.util.malli.schema/Parameter]] for this? Are the parameters passed here
-;;; different?
-(def ParameterWithID
-  "Schema for a parameter map with an string `:id`. This is the shape of runtime parameter *overrides* the FE sends
-  when running a dashcard query or exporting a dashboard -- distinct from the stored parameter declarations
-  (`::parameters.schema/parameters`), which also require `:type`."
-  (mu/with-api-error-message
-   [:and
-    [:map
-     [:id ms/NonBlankString]]
-    [:map-of :keyword :any]]
-   (deferred-tru "value must be a parameter map with an ''id'' key")))
-
 (defn- dashboards-list [filter-option]
-  (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
-                                                       (:all :archived)  true
-                                                       :mine [:= :creator_id api/*current-user-id*])
-                                                [:= :archived (= (keyword filter-option) :archived)]]
-                                     :order-by [:%lower.name]}) <>
+  (as-> (dashboards-rest.db/dashboards (= (keyword filter-option) :archived)
+                                       (when (= (keyword filter-option) :mine)
+                                         api/*current-user-id*)) <>
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
@@ -96,7 +83,7 @@
   *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
   {:deprecated true}
   [_route-params
-   {:keys [f]} :- [:map
+   {:keys [f]} :- [:map {:closed true}
                    [:f {:optional true} [:maybe [:enum "all" "mine" "archived"]]]]]
   (let [dashboards (dashboards-list f)
         edit-infos (:dashboard (revisions/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
@@ -106,6 +93,16 @@
                    (assoc dashboard :last-edit-info edit-info)
                    dashboard)))
           dashboards)))
+
+(defn- remove-unreadable-actions
+  [dashboard]
+  (m/update-existing dashboard :dashcards
+                     (fn [dashcards]
+                       (mapv (fn [dashcard]
+                               (cond-> dashcard
+                                 (and (:action dashcard) (not (mi/can-read? (:action dashcard))))
+                                 (dissoc :action)))
+                             dashcards))))
 
 (defn- hydrate-dashboard-details
   "Get dashboard details for the complete dashboard, including tabs, dashcards, params, etc."
@@ -118,11 +115,11 @@
      :attributes {:dashboard/id dashboard-id}}
     (binding [params/*field-id-context* (atom params/empty-field-id-context)]
       (cond->>  [[:dashcards
-                  ;; disabled :can_run_adhoc_query for performance reasons in 50 release
-                  [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                  [:series :can_write #_:can_run_adhoc_query]
+                  [:card :can_write [:moderation_reviews :moderator_details]]
+                  [:series :can_write]
                   :dashcard/action
                   :dashcard/linkcard-info]
+                 :creator
                  :can_restore
                  :can_delete
                  :tabs
@@ -134,7 +131,37 @@
                  [:moderation_reviews :moderator_details]
                  [:collection :is_personal :effective_location]]
         (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
-        true (apply t2/hydrate dashboard)))))
+        true (apply t2/hydrate dashboard)
+        true remove-unreadable-actions))))
+
+(defn- dashcard-card-ids [dashcard]
+  (concat (when-let [card-id (:card_id dashcard)]
+            [card-id])
+          (keep :id (:series dashcard))))
+
+(defn- references
+  [{:keys [dashcards parameters]}]
+  {:cards   (into (set (queries/values-source-card-ids parameters))
+                  (comp (mapcat dashcard-card-ids) (filter pos-int?))
+                  dashcards)
+   :actions (into #{} (keep :action_id) dashcards)})
+
+(defn- stored-references
+  [dashboard-id]
+  {:cards   (into (set (dashboards-rest.db/parameter-card-ids "dashboard" dashboard-id))
+                  (concat (dashboards-rest.db/dashboard-card-ids dashboard-id)
+                          (dashboards-rest.db/dashboard-series-card-ids dashboard-id)))
+   :actions (set (dashboards-rest.db/dashboard-action-ids dashboard-id))})
+
+(def ^:private no-references {:cards #{} :actions #{}})
+
+(defn- check-new-references
+  [stored dashboard]
+  (let [new-references (references dashboard)]
+    (doseq [card-id (set/difference (:cards new-references) (:cards stored))]
+      (api/read-check :model/Card card-id))
+    (doseq [action-id (set/difference (:actions new-references) (:actions stored))]
+      (api/read-check :model/Action action-id))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -145,7 +172,7 @@
   [_route-params
    _query-params
    {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard}
-   :- [:map
+   :- [:map {:closed true}
        [:name                ms/NonBlankString]
        [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]
@@ -154,6 +181,7 @@
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (api/create-check :model/Dashboard {:collection_id collection_id})
+  (check-new-references no-references {:parameters parameters})
   (let [dashboard-data {:name                name
                         :description         description
                         :parameters          (or parameters [])
@@ -164,9 +192,9 @@
         dash           (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
-                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
+                         (dashboards-rest.db/insert-dashboard! dashboard-data))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/dashboard
                             {:event        :dashboard-created
@@ -256,7 +284,7 @@
   another, and thus do not work as one would expect when used as map keys.)"
   [hashes]
   (when (seq hashes)
-    (into {} (for [[k v] (t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in hashes])]
+    (into {} (for [[k v] (dashboards-rest.db/query-average-execution-times hashes)]
                {(vec k) v}))))
 
 (defn- add-query-average-duration-to-card
@@ -282,7 +310,7 @@
 (defn add-query-average-durations
   "Add a `average_execution_time` field to each card (and series) belonging to `dashboard`."
   [dashboard]
-  ;; Doall is needed to fetch the average durations in this thread, in the context of *dashboard-load-id*.
+  ;; Doall is needed to fetch the average durations in this thread, in the context of *dashboard-load-key*.
   ;; Otherwise it happens on other threads without the MetadataProvider caching and makes many more AppDB requests.
   (update dashboard :dashcards (comp doall add-query-average-duration-to-dashcards)))
 
@@ -305,13 +333,24 @@
   "Using 10 seconds for the cache TTL."
   (* 10 1000))
 
-(def ^:private ^:dynamic *dashboard-load-id* nil)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *dashboard-load-key*
+  "`[current-user-id dashboard-load-id]` for the dashboard load in progress, or nil when nothing should be cached."
+  nil)
+
+(defn- dashboard-load-key
+  "Cache key for a dashboard load: the client-supplied `dashboard-load-id` scoped to the current user.
+
+  Returns nil, disabling caching, when there is no load ID or no current user."
+  [dashboard-load-id]
+  (when (and dashboard-load-id api/*current-user-id*)
+    [api/*current-user-id* dashboard-load-id]))
 
 ;; This is a kind of two-layer memoization:
-;; - The outer layer is a 10-second TTL cache on *dashboard-load-id*.
+;; - The outer layer is a 10-second TTL cache on *dashboard-load-key*.
 ;; - Its value is the *function* to use to get the dashboard by ID!
-;; If *dashboard-load-id* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
-;; If *dashboard-load-id* is nil, it returns the unwrapped get-dashboard*.
+;; If *dashboard-load-key* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
+;; If *dashboard-load-key* is nil, it returns the unwrapped get-dashboard*.
 
 (defn- set-download-perms-on-dashcards
   "Set each dashcard's nested :card map :download_perms based on the current user's actual permissions."
@@ -323,7 +362,7 @@
                            (fn [card]
                              (when card
                                (let [dataset-query (or (:dataset_query card)
-                                                       (t2/select-one-fn :dataset_query :model/Card :id (:id card)))
+                                                       (dashboards-rest.db/card-query (:id card)))
                                      download-level (when (seq dataset-query)
                                                       (perms/download-perms-level dataset-query api/*current-user-id*))]
                                  (assoc card :download_perms (case download-level
@@ -342,14 +381,14 @@
       add-query-average-durations
       set-download-perms-on-dashcards))
 
-;; TODO: This indirect memoization by *dashboard-load-id* could probably be turned into a macro for reuse elsewhere.
+;; TODO: This indirect memoization by *dashboard-load-key* could probably be turned into a macro for reuse elsewhere.
 (defn- get-dashboard*
   "Get Dashboard with ID."
   [id]
   (span/with-span!
     {:name       "get-dashboard"
      :attributes {:dashboard/id id}}
-    (-> (t2/select-one :model/Dashboard :id id)
+    (-> (dashboards-rest.db/dashboard id)
         api/read-check
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
@@ -357,21 +396,21 @@
         (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
 
 (def ^:private get-dashboard-fn
-  (memoize/ttl (fn [dashboard-load-id]
-                 (if dashboard-load-id
-                   (memoize/memo get-dashboard*) ; If dashboard-load-id is set, return a memoized get-dashboard*.
-                   get-dashboard*))         ; If unset, just call through to get-dashboard*.
+  (memoize/ttl (fn [dashboard-load-key]
+                 (if dashboard-load-key
+                   (memoize/memo get-dashboard*) ; If dashboard-load-key is set, return a memoized get-dashboard*.
+                   get-dashboard*))          ; If unset, just call through to get-dashboard*.
                :ttl/threshold dashboard-load-cache-ttl))
 
 (def ^:private dashboard-load-metadata-provider-cache
-  (memoize/ttl (fn [_dashboard-load-id]
+  (memoize/ttl (fn [_dashboard-load-key]
                  (atom (cache/basic-cache-factory {})))
                :ttl/threshold dashboard-load-cache-ttl))
 
 (defn- do-with-dashboard-load-id [dashboard-load-id body-fn]
-  (if dashboard-load-id
-    (binding [*dashboard-load-id* dashboard-load-id]
-      (lib-be/with-existing-metadata-provider-cache (dashboard-load-metadata-provider-cache dashboard-load-id)
+  (if-let [load-key (dashboard-load-key dashboard-load-id)]
+    (binding [*dashboard-load-key* load-key]
+      (lib-be/with-existing-metadata-provider-cache (dashboard-load-metadata-provider-cache load-key)
         (log/debugf "Using dashboard_load_id %s" dashboard-load-id)
         (body-fn)))
     (do
@@ -384,9 +423,9 @@
 (defn- get-dashboard
   "Get Dashboard with ID.
 
-  Memoized per `*dashboard-load-id*` with a TTL of 10 seconds."
+  Memoized per `*dashboard-load-key*` with a TTL of 10 seconds."
   [id]
-  ((get-dashboard-fn *dashboard-load-id*) id))
+  ((get-dashboard-fn *dashboard-load-key*) id))
 
 (mu/defn- cards-to-copy :- [:map
                             [:discard [:sequential :any]]
@@ -400,7 +439,7 @@
   Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
   permissions)."
   [deep-copy? :- ms/MaybeBooleanValue
-   dashcards :- [:sequential :any]]
+   dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
         readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
         card->decision (fn [parent-card card]
@@ -430,6 +469,14 @@
              :discard []}
             (filter :card_id dashcards))))
 
+(defn- reference-metrics
+  "Moves the metrics in `cards`' `:copy` to `:reference`, since a dashboards-only collection can't hold copies of them."
+  [{:keys [copy] :as cards}]
+  (let [metric? (fn [[_ card]] (= :metric (keyword (:type card))))]
+    (-> cards
+        (assoc :copy (into {} (remove metric?) copy))
+        (update :reference merge (into {} (filter metric?) copy)))))
+
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
 
@@ -438,28 +485,33 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+        dashboards-only?                 (collections/library-dashboards-collection? dest-coll-id)
+        {:keys [copy discard reference]} (cond-> (cards-to-copy deep-copy? (:dashcards old-dashboard))
+                                           dashboards-only? reference-metrics)]
     {:copied     (into {} (for [[id to-copy] copy]
-                            [id (queries/create-card!
-                                 (cond-> to-copy
-                                   true                    (assoc :collection_id dest-coll-id)
-                                   same-collection?        (update :name #(str % " - " (tru "Duplicate")))
-                                   (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
-                                 @api/*current-user*
-                                 ;; creating cards from a transaction. wait until tx complete to signal event
-                                 true
-                                 ;; do not autoplace these cards. we will create the dashboard cards ourselves.
-                                 false)]))
+                            [id (queries/with-copy-source-card to-copy
+                                  (queries/create-card!
+                                   (cond-> to-copy
+                                     true                    (assoc :collection_id dest-coll-id)
+                                     same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                     (or (:dashboard_id to-copy)
+                                         dashboards-only?)   (-> (assoc :dashboard_id (u/the-id new-dashboard))
+                                                                 (dissoc :collection_position)))
+                                   @api/*current-user*
+                                   ;; creating cards from a transaction. wait until tx complete to signal event
+                                   true
+                                   ;; do not autoplace these cards. we will create the dashboard cards ourselves.
+                                   false))]))
      :discarded  discard
      :referenced reference}))
 
 (defn- duplicate-tabs
   [new-dashboard existing-tabs]
-  (let [new-tab-ids (t2/insert-returning-pks! :model/DashboardTab
-                                              (for [tab existing-tabs]
-                                                (-> tab
-                                                    (assoc :dashboard_id (:id new-dashboard))
-                                                    (dissoc :id :entity_id :created_at :updated_at))))]
+  (let [new-tab-ids (dashboards-rest.db/insert-dashboard-tabs!
+                     (for [tab existing-tabs]
+                       (-> tab
+                           (assoc :dashboard_id (:id new-dashboard))
+                           (dissoc :id :entity_id :created_at :updated_at))))]
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
 (defn- update-colvalmap-setting
@@ -541,11 +593,11 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:from-dashboard-id/copy"
   "Copy a Dashboard."
-  [{:keys [from-dashboard-id]} :- [:map
+  [{:keys [from-dashboard-id]} :- [:map {:closed true}
                                    [:from-dashboard-id ms/PositiveInt]]
    _query-params
    {:keys [name description collection_id collection_position
-           is_deep_copy], :as _dashboard} :- [:map
+           is_deep_copy], :as _dashboard} :- [:map {:closed true}
                                               [:name                {:optional true} [:maybe ms/NonBlankString]]
                                               [:description         {:optional true} [:maybe :string]]
                                               [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
@@ -554,9 +606,7 @@
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (api/create-check :model/Dashboard {:collection_id collection_id})
   (api/check-400 (not (and (= is_deep_copy false)
-                           (t2/exists? :model/Card
-                                       :dashboard_id from-dashboard-id
-                                       :archived false)))
+                           (dashboards-rest.db/unarchived-dashboard-question-exists? from-dashboard-id)))
                  (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
   (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
@@ -570,9 +620,9 @@
         dashboard      (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                          ;; Ok, now save the Dashboard
-                         (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
+                         (let [dash (dashboards-rest.db/insert-dashboard! dashboard-data)
                                {id->new-card :copied
                                 id->referenced-card :referenced
                                 uncopied :discarded}
@@ -599,7 +649,7 @@
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
         (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})))
-    (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object (dissoc dashboard :uncopied) :user-id api/*current-user-id*})
     dashboard))
 
 ;;; --------------------------------------------- List public and embeddable dashboards ------------------------------
@@ -614,7 +664,7 @@
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (dashboards-rest.db/public-dashboards))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -625,20 +675,24 @@
   endpoints and a signed JWT."
   []
   (perms/check-has-application-permission :setting)
-  (embedding.validation/check-embedding-enabled)
-  (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
+  ;; Not gated on `enable-embedding-modular`: an admin who turned guest embeds off still needs to see what is already
+  ;; published. Publishing itself stays gated.
+  (dashboards-rest.db/embeddable-dashboards))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
-  [{:keys [id]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {dashboard-load-id :dashboard_load_id}]
+   {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
   (with-dashboard-load-id dashboard-load-id
     (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
           dashboard (get-dashboard resolved-id)]
@@ -654,29 +708,19 @@
   action drive the download). Parameters left unspecified fall back to the dashboard's own defaults.
 
   `paper_size` is `\"a4\"` (default) or `\"letter\"`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [parameters paper_size]} :- [:map
-                                       [:parameters {:optional true} [:maybe [:or
-                                                                              [:sequential ParameterWithID]
-                                                                              ;; JSON-string form for <form>-driven
-                                                                              ;; downloads, mirroring the dashcard
-                                                                              ;; export-format endpoint
-                                                                              ms/JSONString]]]
+   {:keys [parameters paper_size]} :- [:map {:closed true}
+                                       [:parameters {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                                        [:paper_size {:default "a4"} [:maybe [:enum "a4" "letter"]]]]
    _request
    respond
    raise]
   (try
     (let [dashboard (api/read-check :model/Dashboard id)
-          params    (cond-> parameters
-                      (string? parameters) json/decode+kw)
-          ;; the array form is validated by the endpoint schema, but a JSON string only proves it's *valid JSON* --
-          ;; once decoded it must still be a well-formed parameter list, or it's a 400 (not a 500)
-          _         (api/check-400 (mr/validate [:maybe [:sequential ParameterWithID]] params))
           pdf-bytes (channel.render/render-dashboard-to-pdf id api/*current-user-id*
-                                                            (or params [])
+                                                            (or parameters [])
                                                             (keyword (or paper_size "a4")))
           filename  (str (or (not-empty (u/slugify (:name dashboard)))
                              (str "dashboard-" id))
@@ -694,43 +738,16 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/items"
   "Get Dashboard with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   ;; Output should match the shape of api/collection/<:id|root>/items. There's a test that asserts that this remains
   ;; the case, but if you change one, you'll want to change both.
   (let [dashboard  (api/read-check :model/Dashboard id)
-        query      (merge
-                    {:select [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                              :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
-                              :c.dashboard_id
-                              [nil :location]
-                              [(h2x/literal "card")  :model]
-                              [{:select   [:status]
-                                :from     [:moderation_review]
-                                :where    [:and
-                                           [:= :moderated_item_type "card"]
-                                           [:= :moderated_item_id :c.id]
-                                           [:= :most_recent true]]
-                                ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                                ;; protecting against potential bugs
-                                :order-by [[:id :desc]]
-                                :limit    1}
-                               :moderated_status]]
-                     :from      [[:report_card :c]]
-                     :where     [:and
-                                 [:= :c.dashboard_id id]
-                                 [:exists {:select 1
-                                           :from [[:report_dashboardcard :dc]]
-                                           :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
-                                 [:= :c.archived false]]}
-                    (when (request/paged?)
-                      {:limit (request/limit)
-                       :offset (request/offset)}))
-        cards      (app-db/query query)]
+        cards      (dashboards-rest.db/dashboard-item-cards id (request/paged?) (request/limit) (request/offset))]
     {:total  (count cards)
-     :data   (api.collection/post-process-rows {}
-                                               (t2/select-one :model/Collection :id (:collection_id dashboard))
-                                               cards)
+     :data   (collections.children/post-process-rows {}
+                                                     (dashboards-rest.db/collection (:collection_id dashboard))
+                                                     cards)
      :limit  (request/limit)
      :offset (request/offset)
      :models (if (seq cards) ["card"] [])}))
@@ -739,9 +756,9 @@
   "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
   enabled."
   [dash-before-update dash-updates]
-  (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
-            (api/column-will-change? :embedding_type dash-before-update dash-updates)
-            (api/column-will-change? :embedding_params dash-before-update dash-updates))
+  (when (or (api/column-will-change? (:enable_embedding dash-before-update) (get dash-updates :enable_embedding ::api/not-provided))
+            (api/column-will-change? (:embedding_type dash-before-update) (get dash-updates :embedding_type ::api/not-provided))
+            (api/column-will-change? (:embedding_params dash-before-update) (get dash-updates :embedding_params ::api/not-provided)))
     (embedding.validation/check-embedding-enabled)
     (api/check-superuser)))
 
@@ -753,56 +770,43 @@
   "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
   This will remove also any questions/models/segments/metrics that use this database."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [dashboard (api/write-check :model/Dashboard id)]
-    (t2/delete! :model/Dashboard :id id)
+    (dashboards-rest.db/delete-dashboard! id)
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 (mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
-  [target query]
+  [target :- ::lib.schema.parameter/target
+   query  :- [:maybe ::queries.schema/card.dataset-query]]
   (params/param-target->field-id target {:dataset_query query}))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]]
+  [parameter-mappings :- [:sequential [:merge
+                                       ::parameters.schema/parameter-mapping
+                                       [:map {:closed true}
+                                        [:dashcard-id {:optional true} [:maybe ms/PositiveInt]]
+                                        [:card-id     {:optional true} [:maybe ms/PositiveInt]]]]]]
   (when (seq parameter-mappings)
-    ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
-    ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues
-    ;; if there happen to be a lot of parameters
-    (let [card-ids              (into #{}
-                                      (comp (map :card-id)
-                                            (remove nil?))
-                                      parameter-mappings)]
-      (when (seq card-ids)
-        (let [card-id->query        (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids])
-              field-ids             (set (for [{:keys [target card-id]} parameter-mappings
-                                               :when                    card-id
-                                               :let                     [query    (or (card-id->query card-id)
-                                                                                      (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
-                                                                                                           card-id)
-                                                                                                      {:status-code 404
-                                                                                                       :card-id     card-id})))
-                                                                         field-id (param-target->field-id target query)]
-                                               :when                    field-id]
-                                           field-id))
-              table-ids             (when (seq field-ids)
-                                      (t2/select-fn-set :table_id :model/Field :id [:in field-ids]))
-              table-id->database-id (when (seq table-ids)
-                                      (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))]
-          (doseq [table-id table-ids
-                  :let     [database-id (table-id->database-id table-id)]]
-            ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
-            (when-not (query-perms/can-query-table? database-id table-id)
-              (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
-                                   (pr-str (t2/select-one-fn :name :model/Table :id table-id)))
-                              {:status-code        403
-                               :database-id        database-id
-                               :table-id           table-id
-                               :actual-permissions @api/*current-user-permissions-set*})))))))))
+    (let [card-ids       (into #{} (keep :card-id) parameter-mappings)
+          card-id->query (when (seq card-ids)
+                           (dashboards-rest.db/card-queries card-ids))
+          field-ids      (into []
+                               (keep (fn [{:keys [target card-id]}]
+                                       (when target
+                                         (let [query (when card-id
+                                                       (or (card-id->query card-id)
+                                                           (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
+                                                                                card-id)
+                                                                           {:status-code 404
+                                                                            :card-id     card-id}))))]
+                                           (param-target->field-id target query)))))
+                               parameter-mappings)]
+      (query-perms/check-parameter-field-permissions field-ids))))
 
 (defn- existing-parameter-mappings
   "Returns a map of DashboardCard ID -> parameter mappings for a Dashboard of the form
@@ -812,7 +816,7 @@
   [dashboard-id]
   (m/map-vals (fn [mappings]
                 (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
-              (t2/select-pk->fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id)))
+              (dashboards-rest.db/dashcard-parameter-mappings dashboard-id)))
 
 (defn- check-updated-parameter-mapping-permissions
   "In 0.41.0+ you now require data permissions for the Table in question to add or modify Dashboard parameter mappings.
@@ -821,7 +825,7 @@
   [dashboard-id dashcards]
   (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
         existing-mapping?              (fn [dashcard-id mapping]
-                                         (let [mapping (parameters/normalize-parameter-mapping mapping)
+                                         (let [mapping (lib/normalize ::parameters.schema/parameter-mapping mapping)
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
@@ -830,18 +834,15 @@
                                          (assoc mapping :dashcard-id dashcard-id))
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
-                                         (t2/select-pk->fn :card_id :model/DashboardCard
-                                                           :dashboard_id dashboard-id
-                                                           :id           [:in (set (map :dashcard-id new-mappings))]))
+                                         (dashboards-rest.db/dashcard-card-ids-by-id dashboard-id (set (map :dashcard-id new-mappings))))
         new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
 
 (defn- create-dashcards!
   [dashboard dashcards]
-  (doseq [{:keys [card_id]} dashcards
-          :when  (pos-int? card_id)]
-    (api/check-not-archived (api/read-check :model/Card card_id)))
+  (doseq [card-id (into #{} (comp (mapcat dashcard-card-ids) (filter pos-int?)) dashcards)]
+    (api/check-not-archived (dashboards-rest.db/card card-id)))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
@@ -855,14 +856,9 @@
   dashcards)
 
 (defn- delete-dashcards! [dashcard-ids]
-  (let [dashboard-cards (t2/select :model/DashboardCard :id [:in dashcard-ids])]
+  (let [dashboard-cards (dashboards-rest.db/dashcards-by-ids dashcard-ids)]
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
-
-(defn- dashcard-card-ids [dashcard]
-  (concat (when-let [card-id (:card_id dashcard)]
-            [card-id])
-          (keep :id (:series dashcard))))
 
 (defn- assert-dashcards-are-not-internal-to-other-dashboards
   "Reject `new-dashcards` that newly reference a question internal to another dashboard. Card ids the
@@ -872,15 +868,13 @@
   [existing-dashboard new-dashcards]
   (let [grandfathered-ids (into #{} (mapcat dashcard-card-ids) (:dashcards existing-dashboard))]
     (when-let [card-ids (seq (remove grandfathered-ids (mapcat dashcard-card-ids new-dashcards)))]
-      (api/check-400 (not (t2/exists? :model/Card
-                                      {:where [:and
-                                               [:not= :dashboard_id (u/the-id existing-dashboard)]
-                                               [:not= :dashboard_id nil]
-                                               [:in :id (set card-ids)]]}))))))
+      (api/check-400 (not (dashboards-rest.db/card-internal-to-other-dashboard-exists? (u/the-id existing-dashboard) (set card-ids)))))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
+    (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard (:dashcards dashboard) (concat to-create to-update))
     (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
@@ -894,22 +888,28 @@
                           (create-dashcards! dashboard to-create))}))
 
 (def ^:private UpdatedDashboardCard
-  [:map
+  [:map {:closed true}
    ;; id can be negative, it indicates a new card and BE should create them
-   [:id                                  int?]
-   [:size_x                              ms/PositiveInt]
-   [:size_y                              ms/PositiveInt]
-   [:row                                 ms/IntGreaterThanOrEqualToZero]
-   [:col                                 ms/IntGreaterThanOrEqualToZero]
-   [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
-   [:inline_parameters  {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-   [:series             {:optional true} [:maybe [:sequential map?]]]])
+   [:id                                      int?]
+   [:size_x                                  ms/PositiveInt]
+   [:size_y                                  ms/PositiveInt]
+   [:row                                     ms/IntGreaterThanOrEqualToZero]
+   [:col                                     ms/IntGreaterThanOrEqualToZero]
+   [:card_id                {:optional true} [:maybe ms/PositiveInt]]
+   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe int?]]
+   [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]
+   [:inline_parameters      {:optional true} [:maybe [:sequential ms/NonBlankString]]]
+   [:series                 {:optional true} [:maybe [:sequential [:map {:closed true} [:id ms/PositiveInt]]]]]])
 
 (def ^:private UpdatedDashboardTab
-  [:map
+  [:map {:closed true}
    ;; id can be negative, it indicates a new card and BE should create them
-   [:id   ms/Int]
-   [:name ms/NonBlankString]])
+   [:id       ms/Int]
+   [:name     ms/NonBlankString]
+   ;; tab order -- `metabase.dashboards.models.dashboard-tab/do-update-tabs!` writes it alongside `:name`
+   [:position {:optional true} ms/IntGreaterThanOrEqualToZero]])
 
 (defn- track-dashcard-and-tab-events!
   [{dashboard-id :id :as dashboard}
@@ -951,7 +951,7 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)]
+  (let [creator (dashboards-rest.db/user-name-and-email creator_id)]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
@@ -959,20 +959,17 @@
      :affected-users (flatten
                       (for [{pulse-channel-id  :id
                              channel-type      :channel_type
-                             {:keys [channel]} :details} (t2/select [:model/PulseChannel :id :channel_type :details]
-                                                                    :pulse_id [:= bad-pulse-id])]
+                             {:keys [channel]} :details} (dashboards-rest.db/pulse-channels-for-pulse bad-pulse-id)]
                         (case channel-type
                           :email (let [pulse-channel-recipients (when (= :email channel-type)
-                                                                  (t2/select :model/PulseChannelRecipient
-                                                                             :pulse_channel_id pulse-channel-id))]
+                                                                  (dashboards-rest.db/pulse-channel-recipients pulse-channel-id))]
                                    (when (seq pulse-channel-recipients)
                                      (map
                                       (fn [{:keys [common_name] :as recipient}]
                                         (assoc recipient
                                                :notification-type channel-type
                                                :recipient common_name))
-                                      (t2/select [:model/User :first_name :last_name :email]
-                                                 :id [:in (map :user_id pulse-channel-recipients)]))))
+                                      (dashboards-rest.db/user-names-and-emails (map :user_id pulse-channel-recipients)))))
                           :slack {:notification-type channel-type
                                   :recipient         channel}
                           nil)))}))
@@ -981,11 +978,10 @@
   "Identify and return any pulses used in a subscription that contain parameters that are no longer on the dashboard."
   [dashboard-id original-dashboard-params]
   (when (seq original-dashboard-params)
-    (let [{:keys [resolved-params]} (t2/hydrate
-                                     (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
-                                     :resolved-params)
+    (let [{:keys [resolved-params]} (t2/hydrate (dashboards-rest.db/dashboard-parameters dashboard-id) :resolved-params)
           dashboard-params (set (keys resolved-params))]
-      (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)
+      ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
+      (->> (dashboards-rest.db/unarchived-pulses-for-dashboard dashboard-id)
            (keep (fn [{:keys [parameters] :as pulse}]
                    (let [bad-params (filterv
                                      (fn [{param-id :id}] (not (contains? dashboard-params param-id)))
@@ -1005,9 +1001,7 @@
   (when-some [broken-pulses (broken-pulses dashboard-id original-dashboard-params)]
     (let [{dashboard-name        :name
            dashboard-description :description
-           dashboard-creator     :creator} (t2/hydrate
-                                            (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id)
-                                            :creator)]
+           dashboard-creator     :creator} (t2/hydrate (dashboards-rest.db/dashboard-name-columns dashboard-id) :creator)]
       (for [broken-pulse broken-pulses]
         (assoc
          (bad-pulse-notification-data broken-pulse)
@@ -1036,14 +1030,12 @@
   (span/with-span!
     {:name       "update-dashboard"
      :attributes {:dashboard/id id}}
+    (check-new-references (stored-references id) dash-updates)
     (let [current-dash                       (api/write-check :model/Dashboard id)
           ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
           ;; the notifications were broken by the update.
           {original-params :resolved-params} (when parameters
-                                               (t2/hydrate
-                                                (t2/select-one :model/Dashboard id)
-                                                [:dashcards :card]
-                                                :resolved-params))
+                                               (t2/hydrate (dashboards-rest.db/dashboard id) [:dashcards :card] :resolved-params))
           changes-stats                      (atom nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
@@ -1056,7 +1048,7 @@
          (t2/with-transaction [_conn]
            ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
            ;; adjust the collection position of other dashboards in the collection
-           (api/maybe-reconcile-collection-position! current-dash dash-updates)
+           (api/maybe-reconcile-collection-position! (select-keys current-dash [:collection_id :collection_position]) (select-keys dash-updates [:collection_id :collection_position]))
            (when-let [updates (not-empty
                                (u/select-keys-when
                                 dash-updates
@@ -1064,7 +1056,7 @@
                                 :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                            :embedding_params :archived :auto_apply_filters}))]
              (dashboard/cascade-card-state-from-dashboard-update! current-dash dash-updates)
-             (t2/update! :model/Dashboard id updates)
+             (dashboards-rest.db/update-dashboard! id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
              ;; Handle broken subscriptions, if any, when parameters changed
@@ -1109,7 +1101,7 @@
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
            (collections/check-for-remote-sync-update current-dash))
          true))
-      (let [dashboard (t2/select-one :model/Dashboard id)]
+      (let [dashboard (dashboards-rest.db/dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position
         (when-not (= #{:collection_position}
                      (set (keys dash-updates)))
@@ -1123,7 +1115,7 @@
 
 (def ^:private DashUpdates
   "Schema for Dashboard Updates."
-  [:map
+  [:map {:closed true}
    [:name                    {:optional true} [:maybe ms/NonBlankString]]
    [:description             {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
@@ -1136,6 +1128,7 @@
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]
+   [:auto_apply_filters      {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position     {:optional true} [:maybe ms/PositiveInt]]
    [:cache_ttl               {:optional true} [:maybe ms/PositiveInt]]
@@ -1149,7 +1142,7 @@
 (api.macros/defendpoint :put "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    dash-updates :- DashUpdates]
@@ -1174,10 +1167,10 @@
                      ...]
      :tabs [{:id       ... ; DashboardTab ID
                      :name     ...}]}"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [cards tabs]} :- [:map
+   {:keys [cards tabs]} :- [:map {:closed true}
                             [:cards (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
                             [:tabs  {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]]]
   (log/warn
@@ -1192,12 +1185,15 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
-  [{:keys [id]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {dashboard-load-id :dashboard_load_id}]
+   {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
+                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]]
   (with-dashboard-load-id dashboard-load-id
     (perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
@@ -1217,20 +1213,23 @@
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
-  [{:keys [dashboard-id]} :- [:map
+  [{:keys [dashboard-id]} :- [:map {:closed true}
                               [:dashboard-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
-  (let [existing-public-uuid (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
+  (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/dashboard-public-link-created
-                                          {:object-id dashboard-id
-                                           :user-id api/*current-user-id*})
-                   (t2/update! :model/Dashboard dashboard-id
-                               {:public_uuid       <>
-                                :made_public_by_id api/*current-user-id*})))]
+                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                   (t2/with-transaction [_conn]
+                     (dashboards-rest.db/update-dashboard! dashboard-id
+                                                           {:public_uuid       <>
+                                                            :made_public_by_id api/*current-user-id*})
+                     (events/publish-event! :event/dashboard-public-link-created
+                                            {:object    (dashboards-rest.db/dashboard dashboard-id)
+                                             :object-id dashboard-id
+                                             :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1242,17 +1241,19 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
-  [{:keys [dashboard-id]} :- [:map
+  [{:keys [dashboard-id]} :- [:map {:closed true}
                               [:dashboard-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
-  (t2/update! :model/Dashboard dashboard-id
-              {:public_uuid       nil
-               :made_public_by_id nil})
-  (events/publish-event! :event/dashboard-public-link-deleted
-                         {:object-id dashboard-id
-                          :user-id api/*current-user-id*})
+  (t2/with-transaction [_conn]
+    (dashboards-rest.db/update-dashboard! dashboard-id
+                                          {:public_uuid       nil
+                                           :made_public_by_id nil})
+    (events/publish-event! :event/dashboard-public-link-deleted
+                           {:object    (dashboards-rest.db/dashboard dashboard-id)
+                            :object-id dashboard-id
+                            :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1261,11 +1262,42 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Dashboard :id id) api/read-check xrays/related))
+  (-> (dashboards-rest.db/dashboard id) api/read-check xrays/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
+
+(def ^:private TransientCard
+  [:map {:closed true}
+   [:id                     {:optional true} [:maybe [:or ms/PositiveInt ms/NonBlankString]]]
+   [:name                   {:optional true} [:maybe ms/NonBlankString]]
+   [:description            {:optional true} [:maybe :string]]
+   [:display                {:optional true} [:maybe ms/NonBlankString]]
+   [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+
+(def ^:private TransientDashboardCard
+  [:map {:closed true}
+   [:card                   {:optional true} [:maybe TransientCard]]
+   [:series                 {:optional true} [:maybe [:sequential TransientCard]]]
+   [:row                    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:col                    {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:size_x                 {:optional true} [:maybe ms/PositiveInt]]
+   [:size_y                 {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/Int]]
+   [:parameter_mappings     {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
+   [:visualization_settings {:optional true} [:maybe ms/VisualizationSettings]]])
+
+(def ^:private TransientDashboard
+  [:map {:closed true}
+   [:name               {:optional true} [:maybe ms/NonBlankString]]
+   [:description        {:optional true} [:maybe :string]]
+   [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
+   [:auto_apply_filters {:optional true} [:maybe :boolean]]
+   [:width              {:optional true} [:maybe [:enum "fixed" "full"]]]
+   [:dashcards          {:optional true} [:maybe [:sequential TransientDashboardCard]]]
+   [:tabs               {:optional true} [:maybe [:sequential UpdatedDashboardTab]]]])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1273,10 +1305,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/save/collection/:parent-collection-id"
   "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
-  [{:keys [parent-collection-id]} :- [:map
+  [{:keys [parent-collection-id]} :- [:map {:closed true}
                                       [:parent-collection-id ms/PositiveInt]]
    _query-params
-   dashboard]
+   dashboard :- TransientDashboard]
   (api/create-check :model/Dashboard {:collection_id parent-collection-id})
   (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
@@ -1290,13 +1322,13 @@
   "Save a denormalized description of dashboard."
   [_route-params
    _query-params
-   dashboard]
+   dashboard :- TransientDashboard]
   (let [parent-collection-id (:id (xrays/get-or-create-container-collection
                                    (if api/*is-superuser?*
                                      "/"
                                      (collection/children-location
-                                      (t2/select-one :model/Collection :personal_owner_id api/*current-user-id*)))))
-        dashboard (dashboard/save-transient-dashboard! (assoc dashboard :creator_id api/*current-user-id*) parent-collection-id)]
+                                      (dashboards-rest.db/personal-collection-for-user api/*current-user-id*)))))
+        dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
 
@@ -1312,10 +1344,11 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
-  [{:keys [id param-key]}      :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [id param-key]}      :- [:map {:closed true}
                                    [:id ms/PositiveInt]
                                    [:param-key ms/NonBlankString]]
-   constraint-param-key->value :- [:map-of string? any?]]
+   constraint-param-key->value :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
@@ -1334,11 +1367,12 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
-  [{:keys [id param-key query]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [id param-key query]} :- [:map {:closed true}
                                     [:id    ms/PositiveInt]
                                     [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
-   constraint-param-key->value  :- [:map-of string? any?]]
+   constraint-param-key->value  :- (ms/string-keyed-map [:ref ::lib.schema.parameter/parameter.value])]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true
@@ -1354,10 +1388,11 @@
 
     ;; fetch the remapped value for Dashboard 1 parameter 'abc' for value 100
     GET /api/dashboard/1/params/abc/remapping?value=100"
-  [{:keys [id param-key]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ms/PositiveInt]
                               [:param-key ms/NonBlankString]]
-   {:keys [value]}        :- [:map [:value :string]]]
+   {:keys [value]}        :- [:map {:closed true} [:value :string]]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value)))))
@@ -1387,8 +1422,9 @@
   Results are returned as a map of
 
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
+  {:scope api-scope/data-app}
   [_route-params
-   {:keys [filtered filtering]} :- [:map
+   {:keys [filtered filtering]} :- [:map {:closed true}
                                     [:filtered  (ms/QueryVectorOf ::lib.schema.id/field)]
                                     [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
@@ -1404,16 +1440,18 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  [{:keys [dashboard-id dashcard-id]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
+   {:keys [parameters]} :- [:map {:closed true}
+                            [:parameters {:optional true} ::actions.schema/prefetch-parameter-values]]]
   (api/read-check :model/Dashboard dashboard-id)
-  (actions/fetch-values
-   (api/check-404 (actions/dashcard->action dashcard-id))
-   parameters))
+  (let [dashcard (api/check-404 (dashboards-rest.db/dashcard-in-dashboard dashcard-id dashboard-id))]
+    (actions/fetch-values
+     (api/check-404 (actions/dashcard->action dashcard))
+     parameters)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1424,14 +1462,15 @@
 
    `parameters` should be the mapped dashboard parameters with values.
    `extra_parameters` should be the extra, user entered parameter values."
-  [{:keys [dashboard-id dashcard-id]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [dashboard-id dashcard-id]} :- [:map {:closed true}
                                           [:dashboard-id ms/PositiveInt]
                                           [:dashcard-id  ms/PositiveInt]]
    _query-params
-   {:keys [parameters]} :- [:map
-                            [:parameters {:optional true} [:maybe [:map-of :string :any]]]]]
+   {:keys [parameters]} :- [:map {:closed true}
+                            [:parameters {:optional true}
+                             [:maybe ::actions.schema/execute-parameter-values.string-keys]]]]
   (api/read-check :model/Dashboard dashboard-id)
-  ;; Undo middleware string->keyword coercion
   (actions/execute-dashcard! dashboard-id dashcard-id parameters))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
@@ -1442,21 +1481,22 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  [{:keys [dashboard-id dashcard-id card-id]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
                                                   [:card-id      ms/PositiveInt]]
    _query-params
-   {:keys [dashboard_load_id], :as body} :- [:map
+   {:keys [dashboard_load_id], :as body} :- [:map {:closed true}
                                              [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
-                                             [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+                                             [:parameters        {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
-               body
-               {:dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-                :card      (api/check-404 (t2/select-one :model/Card card-id))
-                :dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))}))))
+               (dissoc body :dashboard_load_id)
+               {:dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
+                :card      (api/check-404 (dashboards-rest.db/card card-id))
+                :dashcard  (api/check-404 (dashboards-rest.db/dashcard dashcard-id))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1468,7 +1508,8 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [dashboard-id dashcard-id card-id export-format]} :- [:map {:closed true}
                                                                 [:dashboard-id  ms/PositiveInt]
                                                                 [:dashcard-id   ms/PositiveInt]
                                                                 [:card-id       ms/PositiveInt]
@@ -1477,21 +1518,16 @@
    {:keys          [parameters]
     format-rows?   :format_rows
     pivot-results? :pivot_results}
-   :- [:map
-       [:parameters    {:optional true} [:maybe [:or
-                                                 [:sequential ParameterWithID]
-                                                 ;; support <form> encoded params for backwards compatibility... see
-                                                 ;; https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-                                                 ms/JSONString]]]
+   :- [:map {:closed true}
+       [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
-            {:dashboard     (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-             :card          (api/check-404 (t2/select-one :model/Card card-id))
-             :dashcard      (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+            {:dashboard     (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
+             :card          (api/check-404 (dashboards-rest.db/card card-id))
+             :dashcard      (api/check-404 (dashboards-rest.db/dashcard dashcard-id))
              :export-format export-format
-             :parameters    (cond-> parameters
-                              (string? parameters) json/decode+kw)
+             :parameters    parameters
              :context       (api.dataset/export-format->context export-format)
              :constraints   nil
              ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
@@ -1510,17 +1546,18 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
-  [{:keys [dashboard-id dashcard-id card-id]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [dashboard-id dashcard-id card-id]} :- [:map {:closed true}
                                                   [:dashboard-id ms/PositiveInt]
                                                   [:dashcard-id  ms/PositiveInt]
                                                   [:card-id ms/PositiveInt]]
    _query-params
-   body :- [:map
-            [:parameters {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+   body :- [:map {:closed true}
+            [:parameters {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
-             {:dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
-              :card      (api/check-404 (t2/select-one :model/Card card-id))
-              :dashcard  (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+             {:dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
+              :card      (api/check-404 (dashboards-rest.db/card card-id))
+              :dashcard  (api/check-404 (dashboards-rest.db/dashcard dashcard-id))
               :qp        qp.pivot/run-pivot-query})))

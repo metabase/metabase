@@ -1,6 +1,7 @@
 import type { ConnectedProps } from "react-redux";
 
 import { deletePermanently } from "metabase/archive/actions";
+import { canManageSubscriptions, getUserIsAdmin } from "metabase/current-user";
 import {
   addCardToDashboard,
   addHeadingDashCardToDashboard,
@@ -43,12 +44,13 @@ import {
 } from "metabase/dashboard/actions";
 import {
   createNewTab,
-  deleteTab,
-  duplicateTab,
   moveTab,
   renameTab,
-  undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
+import {
+  deleteTab,
+  duplicateTab,
+} from "metabase/dashboard/actions/tabs-thunks";
 import { connect } from "metabase/redux";
 import {
   initialize,
@@ -57,12 +59,7 @@ import {
   showAddParameterPopover,
 } from "metabase/redux/dashboard";
 import type { State } from "metabase/redux/store";
-import { push } from "metabase/router";
-import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import {
-  canManageSubscriptions,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 import {
   getClickBehaviorSidebarDashcard,
@@ -120,7 +117,7 @@ export const mapStateToProps = (state: State) => ({
   isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   isLoading: getIsLoading(state),
   isLoadingWithoutCards: getIsLoadingWithoutCards(state),
-  isEmbeddingIframe: getIsEmbeddingIframe(state),
+  isEmbeddingIframe: isWithinIframe(),
 });
 
 export const mapDispatchToProps = {
@@ -161,7 +158,6 @@ export const mapDispatchToProps = {
   hideAddParameterPopover,
   fetchDashboard,
   fetchDashboardCardData,
-  onChangeLocation: push,
   reset,
   closeDashboard,
   setArchivedDashboard,
@@ -174,7 +170,6 @@ export const mapDispatchToProps = {
   moveTab,
   renameTab,
   selectTab,
-  undoDeleteTab,
 };
 
 export const connector = connect(mapStateToProps, mapDispatchToProps, null, {

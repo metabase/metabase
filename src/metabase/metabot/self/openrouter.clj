@@ -9,310 +9,178 @@
   adapter converts those directly to Chat Completions messages."
   (:require
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
-   [metabase.llm.settings :as llm]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
-   [metabase.metabot.self.schema :as schema]
-   [metabase.util :as u]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- openrouter-usage->aisdk-usage
-  "Convert an OpenRouter Chat Completions `usage` block into the AISDK `:usage` shape.
+(def ^:private default-model "anthropic/claude-haiku-4.5")
 
-  OpenRouter normalizes usage to the OpenAI shape regardless of the upstream
-  provider: `prompt_tokens` is the total input count, and the cache buckets are
-  a subset breakdown of it under `prompt_tokens_details`:
+(def ^:private provider
+  (adapter/provider
+   {:slug              "openrouter"
+    :display-name      "OpenRouter"
+    ;; attribution headers OpenRouter shows on the account's activity page
+    :headers           {"HTTP-Referer" "https://metabase.com"
+                        "X-Title"      "Metabase"}
+    :error-fallback    #(tru "OpenRouter API error (HTTP {0})" %)
+    :errors            {401 #(tru "OpenRouter API key expired or invalid")
+                        402 #(tru "OpenRouter has insufficient credits")
+                        403 #(tru "OpenRouter API key has insufficient permissions")
+                        404 #(tru "OpenRouter model listing endpoint is unavailable")
+                        429 #(tru "OpenRouter has rate limited us")
+                        500 #(tru "OpenRouter returned an internal server error")
+                        502 #(tru "OpenRouter upstream provider returned an error")
+                        503 #(tru "OpenRouter service is unavailable")}}))
 
-      cached_tokens      — input tokens read from the provider cache
-      cache_write_tokens — input tokens written to the provider cache;
-                           Anthropic models only. OpenAI caching is
-                           automatic, its writes are free and reported
-                           as 0 (or omitted entirely)."
-  [u]
-  (let [details (:prompt_tokens_details u)]
-    {:promptTokens        (:prompt_tokens u 0)
-     :completionTokens    (:completion_tokens u 0)
-     :cacheCreationTokens (or (:cache_write_tokens details) 0)
-     :cacheReadTokens     (or (:cached_tokens details) 0)}))
-
-;;; AISDK parts → Chat Completions messages
-
-(defn- merge-consecutive-assistant-messages
-  "Merge consecutive assistant messages.
-
-  Chat Completions allows text + tool_calls on a single assistant message, so
-  when we see a :text part followed by :tool-input parts we fold them together."
-  [messages]
-  (into [] (comp (partition-by :role)
-                 (mapcat (fn [group]
-                           (if (and (< 1 (count group))
-                                    (= "assistant" (:role (first group))))
-                             (let [text       (->> group (keep :content) (str/join ""))
-                                   tool-calls (into [] (mapcat :tool_calls) group)]
-                               ;; :content should be always there, even if empty/nil
-                               [(cond-> {:role "assistant" :content text}
-                                  (seq tool-calls) (assoc :tool_calls tool-calls))])
-                             group))))
-        messages))
-
-(defn parts->cc-messages
-  "Convert a sequence of AISDK parts into Chat Completions messages.
-
-  Input: flat sequence of AISDK parts and user messages:
-    {:role :user, :content \"...\"}
-    {:type :text, :text \"...\"}
-    {:type :tool-input, :id ..., :function ..., :arguments ...}
-    {:type :tool-output, :id ..., :result ...}
-
-  Output: Chat Completions messages (user, assistant with tool_calls, tool)."
-  [parts]
-  (->> parts
-       (keep (fn [part]
-               (case (:type part)
-                 ;; reasoning is not replayable over Chat Completions
-                 :reasoning   nil
-                 :text        {:role "assistant" :content (:text part)}
-                 :tool-input  {:role       "assistant"
-                               :content    nil
-                               :tool_calls [{:id       (:id part)
-                                             :type     "function"
-                                             :function {:name      (:function part)
-                                                        :arguments (let [args (:arguments part)]
-                                                                     (if (string? args) args (json/encode (or args {}))))}}]}
-                 :tool-output {:role         "tool"
-                               :tool_call_id (:id part)
-                               :content      (or (get-in part [:result :output])
-                                                 (when-let [err (:error part)]
-                                                   (str "Error: " (:message err)))
-                                                 (pr-str (:result part)))}
-                 ;; User messages pass through
-                 {:role    (name (or (:role part) "user"))
-                  :content (or (:content part) "")})))
-       merge-consecutive-assistant-messages))
-
-;;; Tool definition format
-
-(defn- tool->openai-chat
-  "Convert a tool definition map to Chat Completions tool format.
-  Accepts a ToolEntry map with :tool-name, :doc, :schema, :fn."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params     (schema/filter-schema-by-features params)
-        doc        (if (str/starts-with? (or doc "") "Inputs: ")
-                     (second (str/split doc #"\n\n  " 2))
-                     doc)]
-    {:type     "function"
-     :function {:name        tool-name
-                :description doc
-                :parameters  (mjs/transform params {:additionalProperties false})}}))
-
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for OpenRouter")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
-
-(defn- openrouter-error-msg
-  "Canonical, status-specific OpenRouter error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      401 (tru "OpenRouter API key expired or invalid")
-      402 (tru "OpenRouter has insufficient credits")
-      403 (tru "OpenRouter API key has insufficient permissions")
-      404 (tru "OpenRouter model listing endpoint is unavailable")
-      429 (tru "OpenRouter has rate limited us")
-      500 (tru "OpenRouter returned an internal server error")
-      502 (tru "OpenRouter upstream provider returned an error")
-      503 (tru "OpenRouter service is unavailable")
-      (tru "OpenRouter API error (HTTP {0})" status))))
-
-(def ^:private supported-models
-  "OpenRouter models offered in the Metabot model picker, as a map of model id -> display name.
+(def supported-models
+  "OpenRouter models offered in the Metabot model picker, keyed by model id.
   `list-models` returns the intersection of this map with the `/v1/models` catalog.
   Mirrors the models whitelisted for the direct anthropic and openai providers; note that
   OpenRouter model IDs use dots in version numbers (`claude-haiku-4.5`), unlike the
-  Anthropic API's hyphenated IDs (`claude-haiku-4-5`)."
-  {"anthropic/claude-fable-5"    "Claude Fable 5"
-   "anthropic/claude-opus-5"     "Claude Opus 5"
-   "anthropic/claude-opus-4.8"   "Claude Opus 4.8"
-   "anthropic/claude-opus-4.7"   "Claude Opus 4.7"
-   "anthropic/claude-opus-4.6"   "Claude Opus 4.6"
-   "anthropic/claude-opus-4.5"   "Claude Opus 4.5"
-   "anthropic/claude-opus-4.1"   "Claude Opus 4.1"
-   "anthropic/claude-sonnet-5"   "Claude Sonnet 5"
-   "anthropic/claude-sonnet-4.6" "Claude Sonnet 4.6"
-   "anthropic/claude-sonnet-4.5" "Claude Sonnet 4.5"
-   "anthropic/claude-haiku-4.5"  "Claude Haiku 4.5"
-   "openai/gpt-5.6-sol"          "GPT-5.6 Sol"
-   "openai/gpt-5.6-terra"        "GPT-5.6 Terra"
-   "openai/gpt-5.6-luna"         "GPT-5.6 Luna"
-   "openai/gpt-5.5"              "GPT-5.5"
-   "openai/gpt-5.5-pro"          "GPT-5.5 Pro"
-   "openai/gpt-5.4"              "GPT-5.4"
-   "openai/gpt-5.4-pro"          "GPT-5.4 Pro"
-   "openai/gpt-5.4-mini"         "GPT-5.4 Mini"})
+  Anthropic API's hyphenated IDs (`claude-haiku-4-5`). Context windows are OpenRouter's
+  serving limits, which can differ from the model's direct-provider window; they come from
+  https://openrouter.ai/api/v1/models, taking the lower of `context_length` and
+  `top_provider.context_length` since a request can be routed to any backing provider.
+  OpenAI rows subtract the 128k max output from that total, recording max input like
+  the direct openai adapter.
 
-(defn- supported-model?
-  "Whether a `/v1/models` catalog entry is one of the [[supported-models]]."
-  [{:keys [id]}]
-  (contains? supported-models id))
+  `:reasoning` classifies what each model streams back, probed live against OpenRouter on
+  2026-08-31 (all 26 models then in the catalog; rows added or renamed since carry their own
+  probe notes) and cross-checked with the `reasoning` metadata in
+  `GET /v1/models` (https://openrouter.ai/docs/use-cases/reasoning-tokens):
+  `:renderable` streams reasoning text under an explicit `reasoning {:enabled true}`;
+  `:renderable-default` streams reasoning summaries under the server default but must receive
+  NO directive — an explicit enable verifiably suppresses gpt-5.6's reasoning entirely;
+  `:budget-only` (`supported_efforts` nil in the catalog) silently ignores the unified enable
+  and would need an explicit token budget.
+  `:reasoning-mandatory?` marks models where `reasoning {:enabled false}` is rejected with a 400.
+  `:required-tool-choice? false` marks models that don't support `:tool_choice \"required\"`; absent means they do."
+  {"anthropic/claude-fable-5.1"      {:display-name "Claude Fable 5.1"        :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true :required-tool-choice? false}
+   "anthropic/claude-fable-5"        {:display-name "Claude Fable 5"          :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
+   "anthropic/claude-opus-5"         {:display-name "Claude Opus 5"           :context-window 1000000 :reasoning :renderable}
+   "anthropic/claude-opus-4.8"       {:display-name "Claude Opus 4.8"         :context-window 1000000 :reasoning :renderable}
+   "anthropic/claude-opus-4.7"       {:display-name "Claude Opus 4.7"         :context-window 1000000 :reasoning :renderable}
+   "anthropic/claude-opus-4.6"       {:display-name "Claude Opus 4.6"         :context-window 1000000 :reasoning :renderable}
+   "anthropic/claude-opus-4.5"       {:display-name "Claude Opus 4.5"         :context-window  200000 :reasoning :budget-only}
+   "anthropic/claude-sonnet-5"       {:display-name "Claude Sonnet 5"         :context-window 1000000 :reasoning :renderable}
+   "anthropic/claude-sonnet-4.6"     {:display-name "Claude Sonnet 4.6"       :context-window 1000000 :reasoning :renderable}
+   "anthropic/claude-sonnet-4.5"     {:display-name "Claude Sonnet 4.5"       :context-window 1000000 :reasoning :budget-only}
+   "anthropic/claude-haiku-4.5"      {:display-name "Claude Haiku 4.5"        :context-window  200000 :reasoning :budget-only}
+   "deepseek/deepseek-v4-pro"        {:display-name "DeepSeek V4 Pro 0423"    :context-window 1048576 :reasoning :renderable}
+   "deepseek/deepseek-v4-pro-0813"   {:display-name "DeepSeek V4 Pro 0813"    :context-window 1048575 :reasoning :renderable}
+   "deepseek/deepseek-v4-flash-0731" {:display-name "DeepSeek V4 Flash 0731"  :context-window 1048576 :reasoning :renderable}
+   ;; Gemma 4 (`google/gemma-4-31b-it`, `google/gemma-4-26b-a4b-it`) is deliberately not listed:
+   ;; through OpenRouter both 31B and 26B failed Metabot smoke tests with results changing between backing hosts.
+   ;; See https://linear.app/metabase/issue/BOT-1932 for details
+   ;; Probed 2026-10-06. The listing passes. A chat turn passes. A title-shaped forced tool call
+   ;; completes at the floored budget. A 4-round Metabot tool turn passes. OpenRouter rejects the
+   ;; disable with a 400. Plain chat streams `reasoning.text`. Tool-call steps carry only
+   ;; `reasoning.encrypted`. The adapter does not replay `reasoning.encrypted`, and the 4-round
+   ;; tool turn worked without it on 2026-10-06.
+   ;; Max output: 65,536 tokens (`max_completion_tokens`, https://openrouter.ai/api/v1/models).
+   "google/gemini-3.8-flash"         {:display-name "Gemini 3.8 Flash"        :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
+   "mistralai/mistral-medium-3-5"    {:display-name "Mistral Medium 3.5"      :context-window  262144 :reasoning :renderable}
+   ;; probed 2026-09-08: OpenRouter honors `reasoning {:enabled false}` for kimi-k3 even though the
+   ;; native Moonshot API cannot turn k3's thinking off — a title-shaped forced tool call under the
+   ;; disable reports 0 reasoning_tokens in usage and completes within 48 completion tokens, so the
+   ;; structured path needs neither a low effort nor the mandatory max_tokens floor
+   "moonshotai/kimi-k3"              {:display-name "Kimi K3"                 :context-window 1048576 :reasoning :renderable}
+   "openai/gpt-5.6-sol"              {:display-name "GPT-5.6 Sol"             :context-window  922000 :reasoning :renderable-default}
+   "openai/gpt-5.6-terra"            {:display-name "GPT-5.6 Terra"           :context-window  922000 :reasoning :renderable-default}
+   "openai/gpt-5.6-luna"             {:display-name "GPT-5.6 Luna"            :context-window  922000 :reasoning :renderable-default}
+   "openai/gpt-5.5"                  {:display-name "GPT-5.5"                 :context-window  922000 :reasoning :renderable-default}
+   "openai/gpt-5.5-pro"              {:display-name "GPT-5.5 Pro"             :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
+   ;; re-probed 2026-09-04 (classed :encrypted-only on 2026-08-31): under the explicit enable
+   ;; both stream `reasoning.summary` text through the shared xf (~100 deltas on a hard prompt)
+   ;; and accept the disable; without a directive OpenAI's default is no reasoning at all —
+   ;; 0 reasoning tokens, and the mini answered the probe wrong
+   "openai/gpt-5.4"                  {:display-name "GPT-5.4"                 :context-window  922000 :reasoning :renderable}
+   "openai/gpt-5.4-mini"             {:display-name "GPT-5.4 Mini"            :context-window  272000 :reasoning :renderable}
+   "openai/gpt-5.4-pro"              {:display-name "GPT-5.4 Pro"             :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
+   ;; classified from the 2026-08-31 and 2026-09-03 probes of the undated `qwen/qwen3.8-max`, which OpenRouter
+   ;; has retired in favor of this dated id (see `:retired-models` in `metabase.llm.provider`)
+   "qwen/qwen3.8-max-0902"           {:display-name "Qwen3.8 Max 0902"        :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true :required-tool-choice? false}
+   ;; probed 2026-09-04 (post-dating the 2026-08-31 run): the enable streams reasoning, the
+   ;; disable is rejected with a 400 (thinking-only upstream, as on native z.ai), and a forced
+   ;; tool call at the floored budget completes
+   "z-ai/glm-5.3"                    {:display-name "GLM-5.3"                 :context-window 1048576 :reasoning :renderable :reasoning-mandatory? true}
+   ;; Probed 2026-10-06. The enable streams reasoning. OpenRouter rejects the disable with a 400.
+   ;; It honors tool_choice "required". A title-shaped forced tool call completes at the floored
+   ;; budget.
+   "z-ai/glm-5.3-flash"              {:display-name "GLM-5.3-Flash"           :context-window 1048575 :reasoning :renderable :reasoning-mandatory? true}
+   "z-ai/glm-5.2"                    {:display-name "GLM-5.2"                 :context-window 1048576 :reasoning :renderable}})
 
-(defn- list-all-models
-  "Fetch the full OpenRouter model catalog (`GET /v1/models`).
-  `:ai-proxy?` is not supported for OpenRouter and throws when true."
-  [{:keys [credentials ai-proxy?]}]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (try
-    (let [auth (core/resolve-auth "openrouter" "OpenRouter"
-                                  (when-let [k (or (not-empty (:api-key credentials))
-                                                   (not-empty (llm/llm-openrouter-api-key)))]
-                                    {:url     (llm/llm-openrouter-api-base-url)
-                                     :headers {"Authorization" (str "Bearer " k)}})
-                                  ai-proxy?)
-          res  (core/request auth {:method  :get
-                                   :url     "/v1/models"
-                                   :as      :json
-                                   :headers {"Content-Type" "application/json"
-                                             "HTTP-Referer" "https://metabase.com"
-                                             "X-Title"      "Metabase"}})]
-      (get-in res [:body :data]))
-    (catch Exception e
-      (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))
+(mu/defn context-window-tokens :- [:maybe :int]
+  "The input context window for `model`, or nil when it isn't one we know."
+  [model :- [:maybe :string]]
+  (get-in supported-models [model :context-window]))
 
-(defn list-models
+(defn- reasoning-class
+  "The `:reasoning` class [[supported-models]] records for `model`, or nil."
+  [model]
+  (get-in supported-models [(str model) :reasoning]))
+
+(defn reasoning-model?
+  "Whether `model` streams renderable reasoning back to us through OpenRouter.
+
+  True for the `:renderable` and `:renderable-default` classes (see [[supported-models]]).
+  Excluded: the budget-only Claudes, which silently ignore the unified enable
+  (https://openrouter.ai/docs/use-cases/reasoning-tokens)."
+  [model]
+  (contains? #{:renderable :renderable-default} (reasoning-class model)))
+
+(mu/defn streams-reasoning? :- :boolean
+  "Registry capability. OpenRouter answers from the model name."
+  [{:keys [model]} :- adapter/ResolvedRef]
+  (reasoning-model? model))
+
+(defn- reasoning-mandatory?
+  "Whether OpenRouter rejects `reasoning {:enabled false}` for `model` with a 400.
+
+  Probed live; the catalog's `mandatory` flag documents the same restriction:
+  https://openrouter.ai/docs/use-cases/reasoning-tokens."
+  [model]
+  (boolean (get-in supported-models [(str model) :reasoning-mandatory?])))
+
+(mu/defn list-models :- adapter/ModelListing
   "List the OpenRouter models supported by this adapter (see [[supported-models]]).
-  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`.
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request,
+  and throws when they are missing.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
   ([] (list-models {}))
-  ([opts]
-   {:models (->> (list-all-models opts)
-                 (filter supported-model?)
-                 (sort-by :id)
-                 (mapv (fn [{:keys [id] :as model}]
-                         {:id id :display_name (or (:name model) (supported-models id))})))}))
+  ([opts :- adapter/ListOpts]
+   (adapter/model-listing supported-models
+                          (adapter/fetch-catalog provider opts "/v1/models")
+                          :name)))
 
 ;;; Streaming response → AISDK v5 chunks
+
+(def ^:private stop-reasons
+  "OpenRouter normalizes each upstream model's reason into the Chat Completions set (the raw value stays in
+  `native_finish_reason`), and adds `error` for a mid-generation upstream failure."
+  (assoc chat-completions/stop-reasons "error" "error"))
 
 (defn openrouter->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
-  Chat Completions streaming format:
-    {\"id\":\"chatcmpl-xxx\",
-     \"object\":\"chat.completion.chunk\",
-     \"model\":\"...\",
-     \"choices\":[{\"index\":0,
-                   \"delta\":{\"role\":\"assistant\",\"content\":\"Hello\"},
-                   \"finish_reason\":null}],
-     \"usage\":{...}}
-
-  Emits the same internal chunk types as claude.clj and openai.clj:
-    :start, :text-start, :text-delta, :text-end,
-    :tool-input-start, :tool-input-delta, :tool-input-available,
-    :usage
-
-  Chat Completions has no explicit start/stop events per content block like
-  Claude or OpenAI Responses do — we infer transitions from the delta shape.
-  Parallel tool calls arrive with different `index` values; when a new index
-  appears the previous tool is complete."
+  OpenRouter streams the generic Chat Completions dialect; see
+  [[chat-completions/chat-completions->aisdk-chunks-xf]]. Reasoning arrives as a flat
+  `delta.reasoning` string (verified identical to the concatenation of the structured
+  `reasoning_details` text blocks) and is forwarded as reasoning chunks. A delta carrying both
+  `reasoning` and non-empty `content` would drop its reasoning — the shared xf classifies
+  content first; accepted, unprobed risk, no such chunk observed. Display-only: the
+  structured `reasoning_details` (signatures included) are not captured, so tool rounds
+  re-derive their reasoning rather than continuing it — extending that would touch both this
+  xf and the dialect-level replay; see the \"Preserving Reasoning\" section of
+  https://openrouter.ai/docs/use-cases/reasoning-tokens."
   []
-  (fn [rf]
-    (let [current-type (volatile! nil) ;; :text | :function_call | nil
-          current-id   (volatile! nil) ;; active chunk id (text-id or tool call_id)
-          message-id   (volatile! nil)
-          model-name   (volatile! nil)
-          payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
-          close!       (fn [result]
-                         (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text          :text-end
-                                                             :function_call :tool-input-available)}
-                                                    @payload))
-                           (vreset! current-type nil)
-                           (vreset! current-id nil)
-                           (vreset! payload {})))]
-      (fn
-        ([result]
-         (cond-> result
-           @current-type (close!)
-           true          (rf)))
-
-        ([result {:keys [id model choices usage] :as _chunk}]
-         (let [choice        (first choices)
-               delta         (:delta choice)
-               finish-reason (:finish_reason choice)
-               tool-call     (first (:tool_calls delta))
-               ;; Determine what kind of content this chunk carries.
-               ;; Empty-string content (common between tool calls) is ignored
-               ;; to avoid spurious text blocks that would close open tools.
-               chunk-type    (cond
-                               (not-empty (:content delta)) :text
-                               (some? tool-call)            :function_call
-                               :else                        nil)
-               ;; For new tool calls, the id comes from the chunk; for deltas
-               ;; on the same tool, we keep current-id.
-               chunk-id      (or (:id tool-call) @current-id (core/mkid))]
-           (cond-> result
-             ;; Emit :start on first chunk
-             (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
-                                                                  (u/prog1
-                                                                    (vreset! message-id id)
-                                                                    (vreset! model-name model)))
-             ;; Close previous block when type changes, or when a new tool
-             ;; call arrives (different id = different tool in parallel)
-             (and @current-type
-                  (or (and chunk-type
-                           (not= chunk-type @current-type))
-                      (and (= chunk-type :function_call)
-                           (not= chunk-id @current-id))))     (close!)
-             ;; Start a new text block
-             (and (= chunk-type :text)
-                  (not= @current-type :text))                 (-> (u/prog1
-                                                                    (let [tid (core/mkid)]
-                                                                      (vreset! current-type :text)
-                                                                      (vreset! current-id tid)
-                                                                      (vreset! payload {:id tid})))
-                                                                  (rf (merge {:type :text-start} @payload)))
-             ;; Text delta
-             (and (= chunk-type :text)
-                  (some? (:content delta)))                   (rf {:type  :text-delta
-                                                                   :id    @current-id
-                                                                   :delta (:content delta)})
-             ;; Start a new tool call block
-             (and (= chunk-type :function_call)
-                  (:id tool-call)
-                  (:name (:function tool-call)))              (-> (u/prog1
-                                                                    (vreset! current-type :function_call)
-                                                                    (vreset! current-id (:id tool-call))
-                                                                    (vreset! payload {:toolCallId (:id tool-call)
-                                                                                      :toolName   (:name (:function tool-call))}))
-                                                                  (rf (merge {:type :tool-input-start} @payload))
-                                                                  ;; Emit initial arguments if present
-                                                                  (cond-> (not (str/blank? (:arguments (:function tool-call))))
-                                                                    (rf {:type           :tool-input-delta
-                                                                         :toolCallId     (:id tool-call)
-                                                                         :inputTextDelta (:arguments (:function tool-call))})))
-             ;; Tool argument delta (continuation of existing tool call)
-             (and (= chunk-type :function_call)
-                  (not (:id tool-call))
-                  (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
-                                                                   :toolCallId     (:toolCallId @payload)
-                                                                   :inputTextDelta (:arguments (:function tool-call))})
-             ;; Finish reason — close whatever is open
-             (some? finish-reason)                            (cond->
-                                                               @current-type (close!))
-             ;; Usage (often on a separate final chunk with empty choices)
-             (some? usage)                                    (rf {:type  :usage
-                                                                   :usage (openrouter-usage->aisdk-usage usage)
-                                                                   :id    @message-id
-                                                                   :model @model-name}))))))))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons {:forward-reasoning? true}))
 
 ;;; HTTP request
 
@@ -321,90 +189,164 @@
   [model]
   (str/starts-with? (str model) "anthropic/"))
 
-(defn- system->cc-message
-  "Build the Chat Completions system message for `system`.
+(defn- model-supports-temperature?
+  "Whether an OpenRouter model id accepts an explicit `temperature`. Two families reject it: OpenAI's
+  GPT-5 and o-series, and current-generation Claude ([[claude/model-current-gen?]] once the `anthropic/`
+  prefix is off)."
+  [model]
+  (let [model (str model)]
+    (not (or (str/starts-with? model "openai/gpt-5")
+             (re-find #"^openai/o\d" model)
+             (and (anthropic-model? model)
+                  (claude/model-current-gen? (subs model (count "anthropic/"))))))))
 
-  Anthropic models get explicit prompt-cache breakpoints: the content becomes
-  Anthropic-style text blocks with `cache_control` markers (see
-  [[claude/system->cached-content-blocks]]), which OpenRouter passes through to
-  Anthropic unchanged. Anthropic's cache prefix orders tools before system, so a
-  breakpoint on the system blocks caches the tool definitions too; OpenRouter
-  doesn't document `cache_control` on tool definitions, so unlike claude.clj we
-  don't put a separate breakpoint there.
+(defn- supports-required-tool-choice?
+  "Whether `model` accepts `:tool_choice \"required\"`: true unless its [[supported-models]] row says otherwise."
+  [model]
+  (get-in supported-models [(str model) :required-tool-choice?] true))
 
-  Other models (OpenAI) get a plain string system message: OpenAI prompt caching
-  is automatic server-side and takes no request markup."
-  [system model]
-  {:role    "system"
-   :content (cond-> system
-              (anthropic-model? model) claude/system->cached-content-blocks)})
+(defn- required-tool-choice->auto
+  "Downgrade `:tool_choice \"required\"` to `\"auto\"`."
+  [req]
+  (cond-> req
+    (= "required" (:tool_choice req)) (assoc :tool_choice "auto")))
+
+(def ^:private forced-tool-call-token-floor
+  "Smallest `max_tokens` a forced tool call on a mandatory-reasoning model may be capped at.
+
+  A safety net: in theory the un-disableable reasoning bills against the same `max_tokens` budget as the tool call
+  (\"max_tokens must be strictly higher than the reasoning budget\" —
+  https://openrouter.ai/docs/use-cases/reasoning-tokens), so a small caller cap (the conversation-title path sends
+  512) could hit `length` before the mandatory tool call is emitted. Earlier models did not need the floor. Probed
+  2026-09-03, qwen3.8-max reasons only ~150 tokens on title-shaped structured calls and fits the 512 cap. Probed
+  2026-09-03, claude-fable-5 emits zero reasoning under a forced tool choice. Probed 2026-09-08, gpt-5.4-pro and
+  gpt-5.5-pro finish the same calls at the 512 cap with the tool call. They used 242–375 and 22 completion tokens
+  across runs.
+
+  gemini-3.8-flash has little headroom at a 512 cap. Probed 2026-10-06, a title call capped at 512 completed with 478
+  completion tokens (454 reasoning). With the floor (sent as 2048), the same call used 638 completion tokens (615
+  reasoning). The floor also guards against a model update or a longer-thinking mandatory model. Matches vLLM's
+  probe-proven floor."
+  2048)
+
+(defn- with-reasoning-directive
+  "Add OpenRouter's unified `reasoning` directive to a built request `body`.
+
+  `:renderable`-class models get an explicit enable, or an explicit disable for structured
+  output and forced tool calls — probed live: forced tool choice yields zero reasoning tokens on
+  Anthropic upstreams even when enabled, so the disable mirrors what actually happens
+  (https://openrouter.ai/docs/use-cases/reasoning-tokens). Mandatory-reasoning models reject the
+  disable with a 400 and get no directive instead. `:renderable-default` models (the gpt-5.5/5.6
+  family) never get one either way — they stream summaries under the server default, and an
+  explicit enable verifiably suppresses gpt-5.6's reasoning entirely. Other models never get
+  one: the server default rules, and the gate answers false. Independently of the class, a
+  mandatory-reasoning model's forced tool calls get a `max_tokens` floor (see
+  [[forced-tool-call-token-floor]]) — gpt-5.5-pro and gpt-5.4-pro are mandatory but
+  `:renderable-default`, so the floor cannot live inside the `:renderable` branch. Reads the
+  body's own `:tool_choice` so it sees the [[required-tool-choice->auto]] downgrade, not the
+  incoming opts."
+  [body {:keys [model reasoning? schema] :or {reasoning? true}}]
+  (let [forced? (or (some? schema) (= "required" (:tool_choice body)))
+        ;; Safety net: the mandatory tool call must survive the un-disableable thinking spend
+        ;; (theory vs practice in [[forced-tool-call-token-floor]]); the cap is raised only
+        ;; where a tool call is actually forced.
+        body    (cond-> body
+                  (and (reasoning-mandatory? model) forced?)
+                  (update :max_tokens max forced-tool-call-token-floor))]
+    (if-not (= :renderable (reasoning-class model))
+      body
+      (let [thinking? (and reasoning? (not forced?))]
+        (cond
+          thinking?                    (cond-> (assoc body :reasoning {:enabled true})
+                                         ;; Anthropic rejects an explicit temperature while
+                                         ;; thinking (same interlock as claude.clj); sonnet-4.6
+                                         ;; and opus-4.6 keep :temperature past
+                                         ;; [[model-supports-temperature?]], so drop it here
+                                         (anthropic-model? model) (dissoc :temperature))
+          (reasoning-mandatory? model) body
+          :else                        (assoc body :reasoning {:enabled false}))))))
+
+(defn- estimated-prompt-tokens
+  "The estimated prompt tokens of the Chat Completions `body`: its JSON `messages` and `tools` in characters,
+  divided by 4 and rounded up. For example, 700,000 characters of JSON give 175,000.
+
+  OpenRouter's own admission check estimates tokens as characters ÷ 4 (probed in
+  https://github.com/metabase/metabase/pull/82436), and it rejects a request whose prompt plus `max_tokens` exceeds
+  the context length (https://openrouter.ai/docs/api-reference/parameters)."
+  [body]
+  (quot (+ (count (json/encode (select-keys body [:messages :tools]))) 3)
+        4))
+
+(defn- without-unfitting-default-cap
+  "Remove the default `:max_tokens` from `body` when it does not fit the context window of `model`.
+
+  For example, on Claude Haiku 4.5, a prompt estimated at 175,000 tokens plus the 32,000 default exceeds the
+  200,000 window, so the body gets no cap.
+
+  Only the default cap is removed: a caller's `max-tokens` is always sent. A model with no known window keeps the
+  default. The bound is inclusive: an estimate plus cap equal to the window keeps the cap."
+  [body max-tokens model]
+  (let [window (context-window-tokens model)]
+    (cond-> body
+      (and (nil? max-tokens)
+           window
+           (> (+ (estimated-prompt-tokens body) (:max_tokens body 0)) window))
+      ;; With no cap, OpenRouter uses its own per-endpoint default (64000 measured on claude-haiku-4.5).
+      (dissoc :max_tokens))))
 
 (mu/defn openrouter-request-body
-  "Build the Chat Completions request body for an LLM request."
-  [{:keys [model system input tools temperature max-tokens tool_choice schema]
-    :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
-  (let [messages  (cond-> (parts->cc-messages input)
-                    system (as-> msgs (into [(system->cc-message system model)] msgs)))
-        all-tools (or (when schema
-                        ;; Structured output: force a tool call with the given JSON schema
-                        [{:type     "function"
-                          :function {:name        "structured_output"
-                                     :description "Output structured data"
-                                     :parameters  schema}}])
-                      (seq (mapv tool->openai-chat tools)))]
-    (cond-> {:model             model
-             :stream            true
-             :stream_options    {:include_usage true}
-             :messages          messages}
-      all-tools   (assoc :tools       (vec all-tools)
-                         :tool_choice (cond
-                                        schema      "required"
-                                        tool_choice tool_choice
-                                        :else       "auto"))
-      temperature (assoc :temperature temperature)
-      max-tokens  (assoc :max_tokens max-tokens))))
+  "Build the Chat Completions request body for an LLM request.
+
+  Delegates to the shared [[chat-completions/request-body]]. Anthropic models get explicit prompt-cache breakpoints
+  [[claude/system->cached-content-blocks]].  OpenRouter doesn't document `cache_control` on tool definitions, so
+  unlike claude.clj we don't put a separate breakpoint there.
+
+  Other models (OpenAI) keep the generic plain string system message: OpenAI prompt caching is automatic server-side
+  and takes no request markup.
+
+  `:temperature` is dropped for models that reject it (see [[model-supports-temperature?]]). Gating it in the shared
+  builder instead would apply these OpenRouter-specific rules to every Chat Completions adapter, including vLLM,
+  whose model names are customer-chosen free text.
+
+  A caller that names no `:max-tokens` gets [[core/chat-max-output-tokens]], but only when it fits the context
+  window with the prompt (see [[without-unfitting-default-cap]])."
+  [{:keys [model system max-tokens] :as opts
+    :or   {model default-model}} :- core/LLMRequestOpts]
+  ;; `openai/*` models get the default too: the rate-limit metering that keeps
+  ;; [[metabase.metabot.self.openai/openai-request-body]] from sending one is OpenAI's and Azure's, and uncapped,
+  ;; OpenRouter substitutes a per-endpoint default (probed 2026-09-17 on deepseek/deepseek-v4-pro: 16384 on one
+  ;; endpoint, 32768 on another). The fit check runs last, on the final body: the forced-call floor in
+  ;; [[with-reasoning-directive]] needs a `:max_tokens` to raise.
+  (-> (cond-> (chat-completions/request-body
+               (assoc opts :model model :max-tokens (or max-tokens core/chat-max-output-tokens)))
+        (and system (anthropic-model? model))
+        (update-in [:messages 0 :content] claude/system->cached-content-blocks)
+
+        (not (model-supports-temperature? model))
+        (dissoc :temperature)
+
+        (not (supports-required-tool-choice? model))
+        required-tool-choice->auto)
+      (with-reasoning-directive (assoc opts :model model))
+      (without-unfitting-default-cap max-tokens model)))
 
 (mu/defn openrouter-raw
   "Perform a streaming request to the Chat Completions API.
 
   Works with OpenRouter, or any OpenAI-compatible endpoint that supports
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.).
+  Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
+  throws when they are missing.
   `:ai-proxy?` is not supported for OpenRouter and throws when true."
-  [{:keys [model tools ai-proxy?] :as opts
-    :or   {model "anthropic/claude-haiku-4.5"}} :- core/LLMRequestOpts]
-  (when ai-proxy?
-    (throw (ai-proxy-unsupported-ex)))
-  (let [req (openrouter-request-body opts)]
-    (log/debug "OpenRouter request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-    (with-span :info {:name       :metabot.openrouter/request
-                      :model      model
-                      :msg-count  (count (:messages req))
-                      :tool-count (count (or tools []))}
-      (try
-        (let [api-key  (not-empty (llm/llm-openrouter-api-key))
-              auth     (core/resolve-auth "openrouter" "OpenRouter"
-                                          (when api-key
-                                            {:url     (llm/llm-openrouter-api-base-url)
-                                             :headers {"Authorization" (str "Bearer " api-key)}})
-                                          ai-proxy?)
-              response (core/request auth
-                                     {:method  :post
-                                      :url     "/v1/chat/completions"
-                                      :as      :stream
-                                      :headers {"Content-Type" "application/json"
-                                                "HTTP-Referer" "https://metabase.com"
-                                                "X-Title"      "Metabase"}
-                                      :body    (json/encode req)})]
-          (-> (core/sse-reducible (:body response))
-              (debug/capture-stream {:provider "openrouter"
-                                     :model    model
-                                     :url      "/v1/chat/completions"
-                                     :request  req})))
-        (catch Exception e
-          (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))))
+  [{:keys [model] :as opts
+    :or   {model default-model}} :- core/LLMRequestOpts]
+  (let [opts (assoc opts :model model)]
+    (adapter/stream! provider opts
+                     {:path "/v1/chat/completions"
+                      :body (openrouter-request-body opts)})))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply openrouter-raw args)]
-    (eduction (openrouter->aisdk-chunks-xf) raw)))
+    (eduction (openrouter->aisdk-chunks-xf) (chat-completions/usage-once raw))))

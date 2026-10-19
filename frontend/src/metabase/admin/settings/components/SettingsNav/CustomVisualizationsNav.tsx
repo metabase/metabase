@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
 import { UpsellGem } from "metabase/common/components/upsells/components";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useLocation } from "metabase/router";
+import { useSetting } from "metabase/settings";
 import { Flex } from "metabase/ui";
 import * as Urls from "metabase/urls";
 

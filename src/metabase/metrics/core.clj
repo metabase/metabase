@@ -3,26 +3,36 @@
    Contains persistence multimethod and orchestration logic."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.metrics.db :as metrics.db]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.metrics.transforms :as metrics.transforms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.namespaces :as shared.ns]))
 
 ;;; ------------------------------------------------- Re-exports --------------------------------
 
 (shared.ns/import-fns
  [metrics.dimension
+  annotate-dimensions-with-field-data
   dimension-values
   dimension-search-values
-  dimension-remapped-value]
+  dimension-remapped-value
+  ->api-dimension
+  ->api-dimensions
+  ->api-dimension-mapping
+  ->api-dimension-mappings]
  [metrics.perms
   filter-dimensions-for-user
+  filter-dimensions-for-user-batch
   sandbox-restricted-fields]
  [metrics.transforms
   normalize-dimension
@@ -36,19 +46,44 @@
   import-dimension-mappings
   dimension-mappings-deps])
 
+;;; ------------------------------------------------- Re-exported schemas -------------------------------------------
+
+;;; The wire-annotated dimension schemas, re-exported so other modules can reference them without
+;;; reaching past this module's `:api` namespaces into `metabase.metrics.dimension`. Referencing
+;;; these by keyword is what makes `defendpoint` apply the snake_case/kebab-case conversion at the
+;;; edge, so a consumer must `require` this namespace to guarantee the definitions are registered.
+
+(mr/def ::dimension
+  "A metric dimension in its internal kebab-case shape, annotated with the rules that convert it to
+   and from the snake_case wire shape. See [[metabase.metrics.dimension/dimension]]."
+  ::metrics.dimension/dimension)
+
+(mr/def ::dimension-mapping
+  "A dimension mapping in its internal kebab-case shape, annotated with the rules that convert it to
+   and from the snake_case wire shape. See [[metabase.metrics.dimension/dimension-mapping]]."
+  ::metrics.dimension/dimension-mapping)
+
 ;;; ------------------------------------------------- Query Utilities -------------------------------------------------
+
+(defn query-aggregation-column-name
+  "Extract the result column name for the first aggregation in an already-built Lib `query`.
+   Prefer this over [[aggregation-column-name]] when the caller already holds the query —
+   normalizing a `dataset_query` into a Lib query is the expensive half."
+  [query]
+  (try
+    (->> (lib/returned-columns query)
+         (filter lib/aggregation-sourced?)
+         first
+         :name)
+    (catch Exception _ nil)))
 
 (defn aggregation-column-name
   "Extract the result column name for the first aggregation in a query.
    `database-id` is the ID of the database, `query-map` is the dataset_query or definition."
   [database-id query-map]
   (try
-    (let [mp    (lib-be/application-database-metadata-provider database-id)
-          query (lib/query mp query-map)
-          agg   (->> (lib/returned-columns query)
-                     (filter #(= (:lib/source %) :source/aggregations))
-                     first)]
-      (:name agg))
+    (query-aggregation-column-name
+     (lib/query (lib-be/application-database-metadata-provider database-id) query-map))
     (catch Exception _ nil)))
 
 ;;; ------------------------------------------------- Persistence Multimethod -------------------------------------------------
@@ -67,6 +102,18 @@
 (defmethod dimensions-initialized? :default
   [entity]
   (some? (lib-metric/get-persisted-dimensions entity)))
+
+(defn- dimension-owner-key
+  "The salt that scopes an entity's computed dimension ids to that entity; see
+   [[metabase.lib-metric.dimension.jvm/compute-dimension-pairs]].
+
+   Metrics are Cards and use their `:entity-id`, which survives an export/import round trip. Measures have no
+   `:entity-id` on their metadata (`:metabase.lib.schema.metadata/measure` is closed), so they fall back to their
+   local id — enough, since these ids are never required to agree across instances."
+  [entity]
+  (case (:lib/type entity)
+    :metadata/measure (str "measure/" (:id entity))
+    (:entity-id entity)))
 
 ;;; ------------------------------------------------- Hydration -------------------------------------------------
 
@@ -98,38 +145,118 @@
                                         (or (:display-name dimension) (:name dimension))))
     dimension))
 
+(defn- breakout-default-match
+  "Returns `{:dimension-id ..., :breakout ...}` for the first of the `breakouts` that is mapped to a dimension.
+
+  The matching ignores the temporal bucketing or binning of the breakouts, since the dimension mappings don't
+  set those options. **However**, note that the *original* breakout is returned, so it still has its temporal unit
+  and binning attached (if any)."
+  [dimension-mappings breakouts]
+  (let [key->dimension-id (into {} (map (juxt #(-> % :target lib-metric/field-ref->key)
+                                              :dimension-id))
+                                dimension-mappings)]
+    (some (fn [breakout]
+            (when-let [dimension-id (-> breakout
+                                        (lib/with-temporal-bucket nil)
+                                        (lib/with-binning nil)
+                                        lib-metric/field-ref->key
+                                        key->dimension-id)]
+              {:dimension-id dimension-id
+               :breakout     breakout}))
+          breakouts)))
+
+(defn- recover-pre-curation-default-dimension*
+  "Recover the `:default` dimension for a pre-curation metric. The default used to be the dimension mapped to
+  the same column as the first breakout on the query. That breakout is passed as `the-breakout`, and this function
+  works backwards to figure out which dimension is mapped to that breakout column.
+
+  Returns `dimensions` (the seq of dimensions on this metric) with the `:default` marked accordingly. Returns the
+  `dimensions` unchanged if there is no breakout, or the first breakout was not mapped to a dimension.
+
+  **Precondition:** None of the `dimensions` currently has a `:default`."
+  [dimensions dimension-mappings query]
+  (if-let [{:keys [dimension-id breakout]} (breakout-default-match dimension-mappings (lib/breakouts query))]
+    (let [{:keys [effective-type]} (m/find-first #(= dimension-id (:id %)) dimensions)
+          unit                     (lib/raw-temporal-bucket breakout)
+          dimensions               (lib-metric/set-default-dimension dimensions dimension-id)]
+      (if (lib-metric/valid-temporal-unit-for-type? effective-type unit)
+        (:dimensions (lib-metric/update-dimension dimensions dimension-mappings dimension-id
+                                                  {:default-temporal-unit unit}))
+        dimensions))
+    dimensions))
+
 (defn compute-full-dimension-set
-  "Compute the FULL dimension set for a metric's `query` — its own-table columns PLUS every
+  "Compute the FULL dimension set for a pre-curation metric's `query` — its own-table columns PLUS every
    implicitly-joined (FK-reachable) column — in the persisted `{:dimensions ... :dimension-mappings ...}`
    shape (or `nil` when `query` is blank).
 
-   Unlike the seeded default (own-table and explicitly-joined columns only), this includes every
-   FK-reachable column."
-  [query]
+   **Precondition:** This is only meant to be called on a metric from before `:card_schema` 24 which has no
+   `:dimensions` set at all. This treats the query as SoT and would overwrite any existing `:dimensions`.
+   See [[recover-pre-curation-default-dimension]] in that case.
+
+   A newly created post-curation metric gets its own-table and explicitly joined columns as dimensions.
+   In contrast, this function preserves the pre-curation behaviour, and returns every implicitly joinable
+   column.
+
+   `owner-key` seeds the computed dimension ids; pass the metric Card's `:entity_id`. See
+   [[metabase.lib-metric.dimension.jvm/compute-dimension-pairs]]."
+  [owner-key query]
   (when (seq query)
-    (let [computed-pairs (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+    (let [mp             (lib-metric/metadata-provider)
+          computed-pairs (lib-metric/compute-dimension-pairs mp owner-key query)
           {:keys [dimensions dimension-mappings]}
-          (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)
-          dimensions (mapv table-prefixed-dimension dimensions)]
-      {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
+          (lib-metric/reconcile-dimensions-and-mappings computed-pairs nil nil)]
+      {:dimensions         (-> (mapv table-prefixed-dimension dimensions)
+                               lib-metric/extract-persisted-dimensions
+                               (recover-pre-curation-default-dimension* dimension-mappings (lib/query mp query)))
        :dimension-mappings dimension-mappings})))
+
+(defn modernize-pre-curation-dimensions
+  "Given the `:dimensions` of an old `:type :metric` card from schema <= 23, modernize it to schema 24.
+
+  In practice this means that implicitly joined dimensions (those with `:group {:type \"connection\"}`) need to use
+  a `:display-name` that includes the group's `:display-name`, not just the base field's name."
+  [dimensions]
+  (mapv table-prefixed-dimension dimensions))
+
+(defn recover-pre-curation-default-dimension
+  "Prior to the Metric Dimensions project that shipped in 64, the `:dimensions` were automatically populated and
+  could not be edited. The *default* dimension was set implicitly as the single *breakout* on the metric card's
+  `:dataset_query`.
+
+  This function will modernize a metric card from before 64 into the 64+ style.
+
+  **Code Health: Single-use.** This is intended to be called only from the `:card_schema` upgrade to version 24."
+  [dimensions dimension-mappings query]
+  (if (or (empty? query)
+          (some :default dimensions))
+    dimensions
+    (recover-pre-curation-default-dimension* dimensions dimension-mappings
+                                             (lib/query (lib-metric/metadata-provider) query))))
+
+(defn- metric-seed-pairs
+  "The computed pairs a v2 metric seeds from: the entity's own columns and explicit query joins,
+   leaving implicitly-joinable FK columns out."
+  [computed-pairs]
+  (filterv #(or (lib-metric/main-group? %)
+                (= :source/joins (get-in % [:dimension :lib/source])))
+           computed-pairs))
 
 (defn- seed-metric-dimensions!
   "First initialization of a v2 metric: seed dimensions from the entity's own columns and explicit
-   query joins, leaving implicitly-joinable FK columns out."
+   query joins, leaving implicitly-joinable FK columns out.
+
+   When nothing could be computed (e.g. the metric's source model has no `result_metadata` yet),
+   persists nothing and leaves `:dimensions` NULL so a later read retries — writing an empty vector
+   would mark the metric initialized and permanently freeze it at zero dimensions."
   [entity computed-pairs]
-  (let [seed-pairs (filterv #(or (lib-metric/main-group? %)
-                                 (= :source/joins (get-in % [:dimension :lib/source])))
-                            computed-pairs)
-        {:keys [dimensions dimension-mappings]}
-        (lib-metric/reconcile-dimensions-and-mappings seed-pairs nil nil)
-        dimensions (lib-metric/extract-persisted-dimensions dimensions)
-        default-dimension (lib-metric/pick-default-dimension dimensions)
-        dimensions (cond-> dimensions
-                     default-dimension (lib-metric/set-default-dimension (:id default-dimension)))]
-    (save-dimensions! entity
-                      dimensions
-                      dimension-mappings)))
+  (when (seq computed-pairs)
+    (let [{:keys [dimensions dimension-mappings]}
+          (lib-metric/reconcile-dimensions-and-mappings (metric-seed-pairs computed-pairs) nil nil)]
+      (save-dimensions! entity
+                        (lib-metric/extract-persisted-dimensions
+                         dimensions)
+                        dimension-mappings))))
 
 (defn- refresh-metric-dimensions!
   "A v2 metric that already has curated dimensions: the stored dimensions/mappings are authoritative
@@ -139,6 +266,45 @@
   (let [{:keys [dimensions dimension-mappings]}
         (lib-metric/reconcile-existing-dimensions computed-pairs persisted-dims persisted-mappings)]
     (save-dimensions-if-changed! entity persisted-dims persisted-mappings dimensions dimension-mappings)))
+
+(defn compute-dimensions
+  "Reconcile an entity's freshly-computed dimensions against what is persisted and return the
+   result WITHOUT writing anything — the read-only sibling of [[sync-dimensions!]]. Returns
+   `{:dimensions … :dimension_mappings …}` in the same shape [[sync-dimensions!]] persists (and
+   [[filter-dimensions-for-user]] consumes), or nil when the entity has no dimensionable query.
+
+   `metadata-type` is `:metadata/metric` or `:metadata/measure`; `id` is the entity id."
+  [metadata-type id]
+  (when-let [entity (first (lib.metadata.protocols/metadatas
+                            (lib-metric/metadata-provider)
+                            {:lib/type metadata-type :id #{id}}))]
+    (when-let [query (lib-metric/dimensionable-query entity)]
+      (let [mp                 (lib-metric/metadata-provider)
+            computed-pairs     (lib-metric/compute-dimension-pairs mp (dimension-owner-key entity) query)
+            persisted-dims     (lib-metric/get-persisted-dimensions entity)
+            persisted-mappings (lib-metric/get-persisted-dimension-mappings entity)
+
+            {:keys [dimensions dimension-mappings]}
+            ;; Branch exactly as `sync-dimensions!` does, or a read reports something the REST
+            ;; endpoint never would. A curated metric's persisted set is authoritative, so
+            ;; reconciling it the measure way re-adds dimensions its owner removed and mints a fresh
+            ;; random id for every computed pair with no persisted mapping, on every read. An
+            ;; uninitialized one seeds from its own table, so reconciling every computed pair
+            ;; reports the implicitly-joinable FK columns seeding leaves out — and because this
+            ;; read never persists, it would keep reporting them until something else seeds.
+            (if (= metadata-type :metadata/metric)
+              (cond
+                (dimensions-initialized? entity)
+                (lib-metric/reconcile-existing-dimensions computed-pairs persisted-dims persisted-mappings)
+
+                (nil? persisted-dims)
+                (lib-metric/reconcile-dimensions-and-mappings (metric-seed-pairs computed-pairs) nil nil)
+
+                :else
+                {:dimensions persisted-dims :dimension-mappings persisted-mappings})
+              (lib-metric/reconcile-dimensions-and-mappings computed-pairs persisted-dims persisted-mappings))]
+        {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
+         :dimension_mappings dimension-mappings}))))
 
 (defn sync-dimensions!
   "Sync an entity's dimensions to the database. Behaviour differs by entity type:
@@ -157,7 +323,7 @@
                             (lib-metric/metadata-provider)
                             {:lib/type metadata-type :id #{id}}))]
     (when-let [query (lib-metric/dimensionable-query entity)]
-      (let [computed-pairs     (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+      (let [computed-pairs     (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) (dimension-owner-key entity) query)
             persisted-dims     (lib-metric/get-persisted-dimensions entity)
             persisted-mappings (lib-metric/get-persisted-dimension-mappings entity)]
         (case metadata-type
@@ -172,6 +338,16 @@
               (save-dimensions! entity
                                 (lib-metric/extract-persisted-dimensions persisted-dims)
                                 persisted-mappings))))))))
+
+(defn sync-metric-dimensions-for-database!
+  "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."
+  [database-id]
+  (doseq [{:keys [id dimensions]} (metrics.db/raw-metric-cards-for-database database-id)
+          :when (empty? dimensions)]
+    (try
+      (sync-dimensions! :metadata/metric id)
+      (catch Throwable e
+        (log/warnf e "Failed to sync dimensions for metric card %d" id)))))
 
 (defn without-orphaned-dimensions
   "Remove orphaned dimensions and their mappings from an API response without changing persistence."
@@ -203,7 +379,7 @@
   "All computed dimension pairs (main + connection groups) for an entity's query, or `[]`."
   [entity]
   (if-let [query (lib-metric/dimensionable-query entity)]
-    (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) query)
+    (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) (dimension-owner-key entity) query)
     []))
 
 (defn- pair->field-id
@@ -288,14 +464,7 @@
                                       :mapping   (assoc (:mapping pair) :dimension-id (:id d))}))
                                  api-dims)
         {:keys [dimensions dimension-mappings]}
-        (lib-metric/add-dimensions persisted-dims persisted-mappings pairs)
-        added?              (> (count dimensions) (count persisted-dims))
-        default-dimension   (when (and added? (not-any? :default dimensions))
-                              (lib-metric/pick-default-dimension
-                               (remove #(= :status/orphaned (:status %)) dimensions)))
-        dimensions          (cond-> dimensions
-                              default-dimension
-                              (lib-metric/set-default-dimension (:id default-dimension)))]
+        (lib-metric/add-dimensions persisted-dims persisted-mappings pairs)]
     (save-dimensions! entity dimensions dimension-mappings)
     (added-dimensions dimensions dimension-mappings)))
 
@@ -305,15 +474,8 @@
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
         persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
-        removed-ids        (set dimension-ids)
-        removed-default?   (some #(and (:default %) (removed-ids (:id %))) persisted-dims)
         {:keys [dimensions dimension-mappings]}
-        (lib-metric/remove-dimensions persisted-dims persisted-mappings dimension-ids)
-        next-default       (when removed-default?
-                             (lib-metric/pick-default-dimension
-                              (remove #(= :status/orphaned (:status %)) dimensions)))
-        dimensions         (cond-> dimensions
-                             next-default (lib-metric/set-default-dimension (:id next-default)))]
+        (lib-metric/remove-dimensions persisted-dims persisted-mappings dimension-ids)]
     (save-dimensions! entity dimensions dimension-mappings)
     (added-dimensions dimensions dimension-mappings)))
 
@@ -329,16 +491,30 @@
     (save-dimensions! entity dimensions persisted-mappings)
     (added-dimensions dimensions persisted-mappings)))
 
+(defn- validate-default-temporal-unit!
+  "Throw a 400 unless `unit` is a bucket the picker offers for `dimension`'s column type. Guards against
+   persisting a `:default-temporal-unit` that the dimension's own bucket list would not contain."
+  [dimension unit]
+  (when-not (lib-metric/valid-temporal-unit-for-type? (:effective-type dimension) unit)
+    ;; Names the rejected value: this fires both for a non-unit ("not-a-unit") and for a real unit the
+    ;; column cannot take (`:hour` on a date), and the generic phrasing made the first case baffling.
+    (throw (ex-info (tru "{0} is not a temporal unit this dimension can be bucketed by."
+                         (pr-str unit))
+                    {:status-code 400}))))
+
 (defn update-dimension!
-  "Update a single dimension's `display_name`, `description`, and/or source column (`source` is a
-   `{:type :field-id}`). Changing the source column is only allowed to a column of the same effective
-   type. Returns the updated API dimension."
-  [metadata-type id dimension-id {:keys [display_name source] :as body}]
+  "Update a single dimension's `display_name`, `description`, `default_temporal_unit`, and/or source
+   column (`source` is a `{:type :field-id}`). Changing the source column is only allowed to a column
+   of the same effective type. Returns the updated API dimension."
+  [metadata-type id dimension-id {:keys [display_name default_temporal_unit source] :as body}]
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
         persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
         current            (or (u/seek #(= dimension-id (:id %)) persisted-dims)
                                (throw (ex-info (tru "Dimension not found.") {:status-code 404})))
+        temporal-unit      (some-> default_temporal_unit keyword)
+        _                  (when (contains? body :default_temporal_unit)
+                             (validate-default-temporal-unit! current temporal-unit))
         source-pair        (when source
                              (let [pair (u/seek #(= (:field-id source) (pair->field-id %))
                                                 (entity-computed-pairs entity))]
@@ -352,9 +528,10 @@
                                                  {:status-code 400})))
                                pair))
         updates            (cond-> {}
-                             (some? display_name)          (assoc :display-name display_name)
-                             (contains? body :description) (assoc :description (:description body))
-                             source-pair                   (assoc :source-pair source-pair))
+                             (some? display_name)                    (assoc :display-name display_name)
+                             (contains? body :description)           (assoc :description (:description body))
+                             (contains? body :default_temporal_unit) (assoc :default-temporal-unit temporal-unit)
+                             source-pair                             (assoc :source-pair source-pair))
         {:keys [dimensions dimension-mappings]}
         (lib-metric/update-dimension persisted-dims persisted-mappings dimension-id updates)]
     (save-dimensions! entity dimensions dimension-mappings)
@@ -362,18 +539,20 @@
             metrics.dimension/->api-dimension)))
 
 (defn set-default-dimension!
-  "Mark `dimension-id` as the entity's sole default dimension, clearing any previous default.
-   Throws a 404 when the dimension does not exist and a 400 when it is orphaned.
+  "Mark `dimension-id` as the entity's sole default dimension, clearing any previous default. A nil
+   `dimension-id` clears the default without setting a new one, leaving the entity to render as a
+   scalar. Throws a 404 when the dimension does not exist and a 400 when it is orphaned.
    Returns the updated `:added` list."
   [metadata-type id dimension-id]
   (let [entity             (dimension-entity metadata-type id)
         persisted-dims     (or (lib-metric/get-persisted-dimensions entity) [])
-        persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])
-        current            (or (u/seek #(= dimension-id (:id %)) persisted-dims)
-                               (throw (ex-info (tru "Dimension not found.") {:status-code 404})))
-        _                  (when (= :status/orphaned (:status current))
-                             (throw (ex-info (tru "Cannot set an orphaned dimension as the default.")
-                                             {:status-code 400})))
-        dimensions         (lib-metric/set-default-dimension persisted-dims dimension-id)]
-    (save-dimensions! entity dimensions persisted-mappings)
-    (added-dimensions dimensions persisted-mappings)))
+        persisted-mappings (or (lib-metric/get-persisted-dimension-mappings entity) [])]
+    (when dimension-id
+      (let [current (or (u/seek #(= dimension-id (:id %)) persisted-dims)
+                        (throw (ex-info (tru "Dimension not found.") {:status-code 404})))]
+        (when (= :status/orphaned (:status current))
+          (throw (ex-info (tru "Cannot set an orphaned dimension as the default.")
+                          {:status-code 400})))))
+    (let [dimensions (lib-metric/set-default-dimension persisted-dims dimension-id)]
+      (save-dimensions! entity dimensions persisted-mappings)
+      (added-dimensions dimensions persisted-mappings))))

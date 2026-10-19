@@ -1,12 +1,8 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { sessionApi } from "metabase/api/session";
 import type { DispatchFn } from "metabase/redux/hooks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting, settingsApi } from "metabase/settings";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { RedirectIfSetup } from "./RedirectIfSetup";
@@ -35,15 +31,13 @@ describe("RedirectIfSetup", () => {
   });
 
   it("redirects to the home page once the instance is set up", async () => {
-    const { history } = setup(true);
-    await waitFor(() =>
-      expect(history?.getCurrentLocation().pathname).toBe("/"),
-    );
+    const { router } = setup(true);
+    await waitFor(() => expect(router?.location.pathname).toBe("/"));
     expect(screen.queryByText("setup page")).not.toBeInTheDocument();
   });
 
   it("stays on setup when has-user-setup flips to true mid-wizard", async () => {
-    const { history, store } = setup(false);
+    const { router, store } = setup(false);
     expect(screen.getByText("setup page")).toBeInTheDocument();
 
     // The wizard's user step calls /api/setup, then reloads settings via
@@ -53,7 +47,7 @@ describe("RedirectIfSetup", () => {
       // The store's test-harness dispatch type isn't thunk-aware,
       // the app DispatchFn is.
       await (store.dispatch as DispatchFn)(
-        sessionApi.util.upsertQueryData(
+        settingsApi.util.upsertQueryData(
           "getSessionProperties",
           undefined,
           createMockSettings({ "has-user-setup": true }),
@@ -64,7 +58,7 @@ describe("RedirectIfSetup", () => {
     // Guards against the setting not actually flipping and voiding this test.
     expect(getSetting(store.getState(), "has-user-setup")).toBe(true);
 
-    expect(history?.getCurrentLocation().pathname).toBe("/setup");
+    expect(router?.location.pathname).toBe("/setup");
     expect(screen.getByText("setup page")).toBeInTheDocument();
   });
 });

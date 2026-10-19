@@ -2,8 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { useListOAuthAuthorizationsQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -15,7 +13,8 @@ import {
   useUrlState,
 } from "metabase/common/hooks/use-url-state";
 import CS from "metabase/css/core/index.css";
-import { useRouter } from "metabase/router";
+import { useLocation } from "metabase/router";
+import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   Badge,
   type BadgeColor,
@@ -32,6 +31,8 @@ import type {
   OAuthAuthorization,
   OAuthClientEventType,
 } from "metabase-types/api";
+
+import { useListOAuthAuthorizationsQuery } from "../settings/api/oauth";
 
 import S from "./OAuthAuthorizationsPage.module.css";
 import {
@@ -78,7 +79,7 @@ function parseEventType(param: QueryParam): EventTypeFilter {
 }
 
 export const OAuthAuthorizationsPage = () => {
-  const { location } = useRouter();
+  const location = useLocation();
   const [{ page, eventType }, { patchUrlState }] = useUrlState(
     location,
     urlStateConfig,
@@ -105,7 +106,7 @@ export const OAuthAuthorizationsPage = () => {
       w="100%"
       maw="60rem"
       mx="auto"
-      p="xl"
+      p="xxl"
     >
       <Select
         data={[
@@ -238,7 +239,7 @@ function AuthorizationsTable({
         classNames={{ row: S.staticRow }}
         ariaLabel={t`OAuth authorizations`}
         emptyState={
-          <Box p="xl" ta="center" data-testid="oauth-authorizations-empty">
+          <Box p="xxl" ta="center" data-testid="oauth-authorizations-empty">
             <EmptyState
               title={t`No events`}
               illustrationElement={<img src={NoResults} />}

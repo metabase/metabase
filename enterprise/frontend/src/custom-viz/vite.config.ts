@@ -23,6 +23,7 @@ export default defineConfig({
     rolldownOptions: {
       external: [
         "commander",
+        "tar-stream",
         "react",
         "react/jsx-runtime",
         "react-dom",

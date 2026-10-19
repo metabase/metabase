@@ -60,7 +60,7 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
   const getSuccessUrl = (segment: { id: number }) =>
     `${successUrl}/${segment.id}`;
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     // Catch-all so the page stays mounted after a successful save navigates to
     // the deep success URL; the test asserts the form survived the save.
     <Route
@@ -85,7 +85,7 @@ function setup({ table = TEST_TABLE }: SetupOpts = {}) {
     },
   );
 
-  return { history, successUrl };
+  return { router, successUrl };
 }
 
 async function addFilter() {
@@ -110,7 +110,9 @@ describe("NewSegmentPage", () => {
 
     expect(screen.getByTestId("new-segment-page")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("New segment")).toHaveValue("");
-    expect(screen.getByLabelText("Give it a description")).toHaveValue("");
+    expect(
+      screen.getByPlaceholderText("Only if it really needs it"),
+    ).toHaveValue("");
     expect(
       screen.queryByRole("button", { name: "Save" }),
     ).not.toBeInTheDocument();
@@ -139,7 +141,7 @@ describe("NewSegmentPage", () => {
     setup();
 
     await userEvent.type(
-      screen.getByLabelText("Give it a description"),
+      screen.getByPlaceholderText("Only if it really needs it"),
       "Test description",
     );
 
@@ -224,7 +226,7 @@ describe("NewSegmentPage", () => {
 
     fetchMock.post("path:/api/segment", createdSegment);
 
-    const { history, successUrl } = setup();
+    const { router, successUrl } = setup();
 
     await userEvent.type(
       screen.getByPlaceholderText("New segment"),
@@ -244,7 +246,7 @@ describe("NewSegmentPage", () => {
     });
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         `${successUrl}/${createdSegment.id}`,
       );
     });
@@ -264,7 +266,7 @@ describe("NewSegmentPage", () => {
 
     fetchMock.post("path:/api/segment", createdSegment);
 
-    const { history, successUrl } = setup();
+    const { router, successUrl } = setup();
 
     await userEvent.type(
       screen.getByPlaceholderText("New segment"),
@@ -277,7 +279,7 @@ describe("NewSegmentPage", () => {
     await userEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(history?.getCurrentLocation().pathname).toBe(
+      expect(router?.location.pathname).toBe(
         `${successUrl}/${createdSegment.id}`,
       );
     });

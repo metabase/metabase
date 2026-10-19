@@ -9,6 +9,7 @@ import {
   hasDatabaseActionsEnabled,
   hasInlineParameters,
   isDashcardLoading,
+  resolveTabId,
   setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
@@ -29,6 +30,7 @@ import {
   createMockTextDashboardCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
   id: 1,
@@ -492,6 +494,41 @@ describe("Dashboard utils", () => {
           dashcard: visibleDashcard,
         },
       ]);
+    });
+  });
+
+  describe("resolveTabId", () => {
+    const tabs = [
+      { id: 10, entity_id: createMockEntityId("tabEntityId10________") },
+      { id: 20, entity_id: createMockEntityId("tabEntityId20________") },
+    ];
+
+    it("resolves a numeric `<id>-<slug>` tab param to its numeric id", () => {
+      expect(resolveTabId("20-portfolio", tabs)).toBe(20);
+    });
+
+    it("resolves a bare numeric tab param", () => {
+      expect(resolveTabId("20", tabs)).toBe(20);
+    });
+
+    it("resolves a tab entity_id to its numeric id", () => {
+      expect(resolveTabId("tabEntityId20________", tabs)).toBe(20);
+    });
+
+    it("returns null for an entity_id that matches no tab", () => {
+      expect(resolveTabId("unknownTabEid________", tabs)).toBe(null);
+    });
+
+    it("treats a numeric `<id>-<slug>` that looks like an entity_id as numeric", () => {
+      // `1-my-pizzas-dashboard` is 21 chars and matches the NanoID alphabet, so
+      // it passes isBaseEntityID, but it names tab 1, not a tab entity_id.
+      expect(resolveTabId("1-my-pizzas-dashboard", tabs)).toBe(1);
+    });
+
+    it("returns null for an empty or missing tab param", () => {
+      expect(resolveTabId("", tabs)).toBe(null);
+      expect(resolveTabId(null, tabs)).toBe(null);
+      expect(resolveTabId(undefined, tabs)).toBe(null);
     });
   });
 

@@ -1,10 +1,11 @@
-import type { Dispatch, GetState } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockLocation,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import { navigate } from "metabase/router";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -29,11 +30,17 @@ import {
   updateDashboardAndCards,
 } from "./";
 
+jest.mock("metabase/router", () => ({
+  ...jest.requireActual("metabase/router"),
+  navigate: jest.fn(),
+}));
+
 describe("dashboard actions", () => {
   let dispatch: jest.MockedFunction<Dispatch>;
   let getState: GetState;
 
   beforeEach(() => {
+    jest.mocked(navigate).mockClear();
     dispatch = jest.fn();
     getState = () =>
       createMockState({
@@ -170,7 +177,7 @@ describe("dashboard actions", () => {
   });
 
   describe("updateDashboardAndCards", () => {
-    it("should not save anything if the dashboard has not changed", async () => {
+    it("should only leave edit mode if the dashboard has not changed", async () => {
       const dashcard1 = createMockDashboardCard({ id: 1, card_id: 1 });
       const dashcard2 = createMockDashboardCard({ id: 2, card_id: 2 });
 
@@ -201,14 +208,14 @@ describe("dashboard actions", () => {
 
       await updateDashboardAndCards()(dispatch, getState);
 
-      // createThunkAction dispatches the result action once;
-      // no additional dispatches means the dashboard was not saved
-      expect(dispatch).toHaveBeenCalledTimes(1);
+      // Leaving edit mode, then createThunkAction's result action; saving
+      // would dispatch more
+      expect(dispatch).toHaveBeenCalledTimes(2);
     });
   });
 
   describe("setEditingDashboard", () => {
-    it("should remove any hash parameters from url when not editing", () => {
+    it("should remove any hash parameters from url when leaving edit mode", () => {
       const location = createMockLocation({
         pathname: "/dashboard/1",
         hash: "#hashparam",
@@ -216,13 +223,7 @@ describe("dashboard actions", () => {
 
       setEditingDashboard(null, location)(dispatch);
 
-      expect(dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: ["/dashboard/1"],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
-      });
+      expect(navigate).toHaveBeenCalledWith("/dashboard/1");
     });
 
     // The v3 history rebuilds `search` from `query`, so pushing a location
@@ -236,13 +237,7 @@ describe("dashboard actions", () => {
 
       setEditingDashboard(null, location)(dispatch);
 
-      expect(dispatch).toHaveBeenCalledWith({
-        payload: {
-          args: ["/dashboard/1?tab=2-tab-two"],
-          method: "push",
-        },
-        type: "@@router/CALL_HISTORY_METHOD",
-      });
+      expect(navigate).toHaveBeenCalledWith("/dashboard/1?tab=2-tab-two");
     });
 
     // The location is captured when the caller rendered, so navigating with no
@@ -256,12 +251,25 @@ describe("dashboard actions", () => {
 
       setEditingDashboard(null, location)(dispatch);
 
-      expect(dispatch).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: "@@router/CALL_HISTORY_METHOD" }),
-      );
+      expect(navigate).not.toHaveBeenCalled();
       expect(dispatch).toHaveBeenCalledWith({
         type: SET_EDITING_DASHBOARD,
         payload: null,
+      });
+    });
+
+    it("should return to Data Studio instead of stripping the hash", () => {
+      const location = createMockLocation({
+        pathname: "/dashboard/1",
+        hash: "#hashparam",
+        state: { returnTo: "/data-studio/dashboards/1" },
+      });
+
+      setEditingDashboard(null, location)(dispatch);
+
+      expect(navigate).toHaveBeenCalledTimes(1);
+      expect(navigate).toHaveBeenCalledWith("/data-studio/dashboards/1", {
+        replace: true,
       });
     });
   });

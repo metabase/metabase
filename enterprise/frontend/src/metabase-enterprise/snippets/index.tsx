@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import {
   PLUGIN_SNIPPET_FOLDERS,
@@ -13,6 +12,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CollectionRow } from "./components/CollectionRow";
 import { MoveSnippetModal } from "./components/MoveSnippetModal";
+import { SnippetCollectionHeaderMenu } from "./components/SnippetCollectionHeaderMenu";
 import { SnippetCollectionPermissionsModal } from "./components/SnippetCollectionPermissionsModal";
 import { SnippetCollectionPickerModal } from "./components/SnippetCollectionPickerModal";
 
@@ -55,7 +55,7 @@ export function initializePlugin() {
     PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar) => {
       const collection = snippetSidebar.props.snippetCollection;
       return (
-        <CollectionRowMenu
+        <SnippetCollectionHeaderMenu
           key="snippet-collection-row-menu"
           collection={collection}
         />

@@ -3,8 +3,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { trackSMTPSetupClick } from "metabase/admin/settings/components/Email/analytics";
-import { useAdminSetting } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+import { useAdminSetting, useSetting } from "metabase/settings";
 import {
   Box,
   Button,
@@ -55,12 +54,12 @@ export const CloudSMTPConnectionCard = () => {
 
   return (
     <div className={S.root} data-testid="cloud-smtp-connection-card">
-      <Paper radius="md" className={S.card}>
+      <Paper radius="sm" className={S.card}>
         <Radio.Group
           value={localValue ? "custom" : "metabase"}
           onChange={handleChange}
         >
-          <Box p={"lg"}>
+          <Box p={"xl"}>
             {isSMTPOverrideConfigured ? (
               <Radio
                 key={"metabase"}
@@ -75,7 +74,7 @@ export const CloudSMTPConnectionCard = () => {
                 }}
               />
             ) : (
-              <Flex gap={"md"}>
+              <Flex gap={"lg"}>
                 <Icon name="check" c="feedback-positive" size={20} />
                 <Stack gap={0}>
                   <Text
@@ -90,7 +89,7 @@ export const CloudSMTPConnectionCard = () => {
           </Box>
           <Divider />
           {isSMTPOverrideConfigured && (
-            <Group p="lg" justify="space-between" style={{ cursor: "pointer" }}>
+            <Group p="xl" justify="space-between" style={{ cursor: "pointer" }}>
               <Radio
                 key={"custom"}
                 value={"custom"}

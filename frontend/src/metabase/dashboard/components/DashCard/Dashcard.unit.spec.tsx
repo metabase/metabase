@@ -1,7 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupLastDownloadFormatEndpoints,
+  setupTimelinesEndpoints,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockDashboardState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
@@ -18,14 +24,15 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import * as dashboardSelectors from "metabase/dashboard/selectors";
-import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
+import { reinitialize } from "metabase/plugins";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { DashCardDataMap } from "metabase-types/api";
+import {
+  type DashCardDataMap,
+  DataPermissionValue,
+  type DownloadPermission,
+} from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
@@ -35,15 +42,20 @@ import {
   createMockDatabase,
   createMockDataset,
   createMockDatasetData,
+  createMockDatetimeColumn,
   createMockHeadingDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
   createMockNativeCard,
+  createMockNumericColumn,
   createMockParameter,
   createMockPlaceholderDashboardCard,
   createMockStructuredDatasetQuery,
   createMockTable,
   createMockTextDashboardCard,
+  createMockTimeline,
+  createMockTimelineEvent,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import type { DashCardProps } from "./DashCard";
@@ -106,9 +118,13 @@ function setup({
   isEditing,
   withMetadata = false,
   dashcardMenu,
+  withTimelineEvents = false,
   ...props
 }: Partial<DashCardProps> &
-  Pick<MockDashboardContextProps, "dashcardMenu" | "isEditing"> & {
+  Pick<
+    MockDashboardContextProps,
+    "dashcardMenu" | "isEditing" | "withTimelineEvents"
+  > & {
     dashboard?: NonNullable<MockDashboardContextProps["dashboard"]>;
     dashcardData?: DashCardDataMap;
     withMetadata?: boolean;
@@ -159,6 +175,7 @@ function setup({
       isEditing={isEditing}
       isEditingParameter={false}
       dashcardMenu={dashcardMenu}
+      withTimelineEvents={withTimelineEvents}
       reportAutoScrolledToDashcard={jest.fn()}
     >
       <DashCard
@@ -234,6 +251,198 @@ describe("DashCard", () => {
     expect(within(visualizationRoot).getByText("NAME")).toBeVisible();
     expect(within(visualizationRoot).getByText("Davy Crocket")).toBeVisible();
     expect(within(visualizationRoot).getByText("Daniel Boone")).toBeVisible();
+  });
+
+  describe("timeline event availability", () => {
+    it.each([
+      { name: "a supported chart", display: "line", eventsVisible: true },
+      { name: "an unsupported chart", display: "table", eventsVisible: false },
+    ] as const)(
+      "shows the appropriate event controls for $name",
+      async ({ display, eventsVisible }) => {
+        const user = userEvent.setup({
+          advanceTimers: jest.advanceTimersByTime,
+        });
+        const event = createMockTimelineEvent({
+          id: 100,
+          timeline_id: 10,
+          timestamp: "2024-02-15T00:00:00Z",
+        });
+        setupTimelinesEndpoints([
+          createMockTimeline({ id: 10, events: [event] }),
+        ]);
+        const card = createMockCard({
+          name: "Bird sightings",
+          display,
+          visualization_settings: { "timeline.selected_timeline_ids": [10] },
+        });
+        const dashcard = createMockDashboardCard({ card });
+        setup({
+          dashcard,
+          withTimelineEvents: true,
+          dashcardData: {
+            [dashcard.id]: {
+              [card.id]: createMockDataset({
+                data: createMockDatasetData({
+                  cols: [
+                    createMockDatetimeColumn({
+                      name: "CREATED_AT",
+                      unit: "month",
+                    }),
+                    createMockNumericColumn({ name: "count" }),
+                  ],
+                  rows: [
+                    ["2024-01-01", 1],
+                    ["2024-03-01", 2],
+                  ],
+                }),
+              }),
+            },
+          },
+        });
+
+        expect(await screen.findByText("Bird sightings")).toBeVisible();
+        const chart =
+          display === "table"
+            ? await screen.findByRole("grid")
+            : await screen.findByTestId("chart-container");
+        expect(chart).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "More options" }));
+        expect(await screen.findByText("Download results")).toBeInTheDocument();
+        await waitFor(() =>
+          expect({
+            eventMenuItems: screen.queryAllByRole("menuitem", {
+              name: "Events",
+            }).length,
+            eventBands: screen.queryAllByTestId("timeline-events-band").length,
+          }).toEqual({
+            eventMenuItems: eventsVisible ? 1 : 0,
+            eventBands: eventsVisible ? 1 : 0,
+          }),
+        );
+      },
+    );
+
+    const visualizerCard = createMockCard({
+      id: 51,
+      name: "Bird sightings",
+      display: "line",
+      visualization_settings: { "timeline.selected_timeline_ids": [10] },
+    });
+
+    const visualizerDashcard = createMockDashboardCard({
+      id: 52,
+      card_id: visualizerCard.id,
+      card: visualizerCard,
+      visualization_settings: {
+        visualization: {
+          display: "line",
+          columnValuesMapping: {
+            COLUMN_1: [
+              {
+                sourceId: `card:${visualizerCard.id}`,
+                originalName: "CREATED_AT",
+                name: "COLUMN_1",
+              },
+            ],
+            COLUMN_2: [
+              {
+                sourceId: `card:${visualizerCard.id}`,
+                originalName: "count",
+                name: "COLUMN_2",
+              },
+            ],
+          },
+          settings: {
+            "graph.dimensions": ["COLUMN_1"],
+            "graph.metrics": ["COLUMN_2"],
+          },
+        },
+      },
+    });
+
+    const visualizerDashcardData: DashCardDataMap = {
+      [visualizerDashcard.id]: {
+        [visualizerCard.id]: createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockDatetimeColumn({ name: "CREATED_AT", unit: "month" }),
+              createMockNumericColumn({ name: "count" }),
+            ],
+            rows: [
+              ["2024-01-01", 1],
+              ["2024-03-01", 2],
+            ],
+          }),
+        }),
+      },
+    };
+
+    it.each([
+      {
+        name: "a text card",
+        dashcard: createMockTextDashboardCard({ text: "Just a note" }),
+        dashcardData: {},
+        findRenderedCard: () => screen.findByText("Just a note"),
+      },
+      {
+        name: "a link card",
+        dashcard: createMockLinkDashboardCard({ url: "https://xkcd.com/327" }),
+        dashcardData: {},
+        findRenderedCard: () => screen.findByText("https://xkcd.com/327"),
+      },
+      {
+        name: "an action card",
+        dashcard: createMockActionDashboardCard(),
+        dashcardData: {},
+        findRenderedCard: () =>
+          screen.findByTestId("action-button-full-container"),
+      },
+      {
+        name: "a visualizer card",
+        dashcard: visualizerDashcard,
+        dashcardData: visualizerDashcardData,
+        findRenderedCard: () => screen.findByTestId("chart-container"),
+      },
+    ])(
+      "never shows event controls on $name",
+      async ({ dashcard, dashcardData, findRenderedCard }) => {
+        const user = userEvent.setup({
+          advanceTimers: jest.advanceTimersByTime,
+        });
+        setupTimelinesEndpoints([
+          createMockTimeline({
+            id: 10,
+            events: [
+              createMockTimelineEvent({
+                id: 100,
+                timeline_id: 10,
+                timestamp: "2024-02-15T00:00:00Z",
+              }),
+            ],
+          }),
+        ]);
+
+        setup({ dashcard, dashcardData, withTimelineEvents: true });
+
+        expect(await findRenderedCard()).toBeInTheDocument();
+
+        const menuButton = screen.queryByRole("button", {
+          name: "More options",
+        });
+        if (menuButton) {
+          await user.click(menuButton);
+          await screen.findByRole("menu");
+        }
+
+        expect(
+          screen.queryByRole("menuitem", { name: "Events" }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId("timeline-events-band"),
+        ).not.toBeInTheDocument();
+      },
+    );
   });
 
   it("should show a text card", () => {
@@ -540,6 +749,114 @@ describe("DashCard", () => {
     expect(JSON.parse(body.get("parameters") ?? "[]")).toEqual([
       dashboardParameter,
     ]);
+  });
+
+  describe("visualizer dashcard download permissions", () => {
+    const sourceCard = createMockCard({
+      id: 42,
+      name: "Products by Category",
+      display: "table",
+      dataset_query: {
+        type: "query",
+        database: TEST_DATABASE_ID,
+        query: {
+          "source-table": TEST_TABLE_ID,
+        },
+      },
+    });
+    const visualizerDashcard = createMockDashboardCard({
+      card_id: sourceCard.id,
+      card: sourceCard,
+      visualization_settings: {
+        visualization: {
+          display: "bar",
+          columnValuesMapping: {
+            COLUMN_1: [
+              {
+                sourceId: `card:${sourceCard.id}`,
+                originalName: "CATEGORY",
+                name: "COLUMN_1",
+              },
+            ],
+            COLUMN_2: [
+              {
+                sourceId: `card:${sourceCard.id}`,
+                originalName: "count",
+                name: "COLUMN_2",
+              },
+            ],
+          },
+          settings: {
+            "graph.dimensions": ["COLUMN_1"],
+            "graph.metrics": ["COLUMN_2"],
+          },
+        },
+      },
+    });
+
+    function setupWithDownloadPermission(downloadPerms: DownloadPermission) {
+      mockSettings({
+        "token-features": createMockTokenFeatures({
+          advanced_permissions: true,
+        }),
+      });
+      setupEnterpriseOnlyPlugin("feature_level_permissions");
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [visualizerDashcard],
+        },
+        dashcard: visualizerDashcard,
+        dashcardData: {
+          [visualizerDashcard.id]: {
+            [sourceCard.id]: createMockDataset({
+              data: createMockDatasetData({
+                cols: [
+                  createMockColumn({
+                    name: "CATEGORY",
+                    display_name: "Category",
+                  }),
+                  createMockColumn({
+                    name: "count",
+                    display_name: "Count",
+                    base_type: "type/Integer",
+                  }),
+                ],
+                rows: [["Gadget", 53]],
+                download_perms: downloadPerms,
+              }),
+              status: "completed",
+            }),
+          },
+        },
+        withMetadata: true,
+      });
+    }
+
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("should not render the dashcard menu when the source card cannot be downloaded (#64333)", async () => {
+      setupWithDownloadPermission(DataPermissionValue.NONE);
+
+      expect(
+        await screen.findByText("Products by Category"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("dashcard-menu")).not.toBeInTheDocument();
+    });
+
+    it("should offer downloading results when the source card can be downloaded", async () => {
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      setupWithDownloadPermission(DataPermissionValue.FULL);
+
+      await user.click(getIcon("ellipsis"));
+
+      expect(await screen.findByText("Download results")).toBeInTheDocument();
+    });
   });
 
   describe("edit mode", () => {
@@ -856,7 +1173,7 @@ describe("DashCard", () => {
 
       jest
         .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
-        .mockReturnValue([parameter]);
+        .mockReturnValue([{ ...parameter, value: null }]);
 
       setup({
         dashboard,
@@ -915,7 +1232,7 @@ describe("DashCard", () => {
 
       jest
         .spyOn(dashboardSelectors, "getDashCardInlineValuePopulatedParameters")
-        .mockReturnValue([parameter]);
+        .mockReturnValue([{ ...parameter, value: null }]);
 
       setup({
         dashboard,

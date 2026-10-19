@@ -1,16 +1,14 @@
+import { coerceToString } from "metabase/utils/scripts-sandbox/coerce";
 import {
   CREATE_ELEMENT,
   CREATE_ELEMENT_NS,
+  getXmlElementLocalName,
 } from "metabase/utils/scripts-sandbox/distortions-dom-mutate";
 
 const isStyleTag = (tag: string) => tag.toLowerCase() === "style";
 
 function isStyleQualifiedName(qualifiedName: string) {
-  const localName = qualifiedName.includes(":")
-    ? qualifiedName.slice(qualifiedName.indexOf(":") + 1)
-    : qualifiedName;
-
-  return isStyleTag(localName);
+  return isStyleTag(getXmlElementLocalName(qualifiedName));
 }
 
 /** The shared sandbox distortion callback, as the membrane types it. */
@@ -42,15 +40,16 @@ export function makeCreateElementDistortion(
       tag: string,
       options?: ElementCreationOptions,
     ) {
+      const tagName = coerceToString(tag);
       // Data-app bundles inline imported CSS with
       // `vite-plugin-css-injected-by-js`, which creates a `<style>` tag at
       // runtime. Allow only that tag while keeping the shared dangerous-tag
       // blocklist for `script` and other DOM creation.
-      if (isStyleTag(tag)) {
-        return CREATE_ELEMENT.call(this, tag, options);
+      if (isStyleTag(tagName)) {
+        return CREATE_ELEMENT.call(this, tagName, options);
       }
 
-      return sharedCreateElement.call(this, tag, options);
+      return sharedCreateElement.call(this, tagName, options);
     };
   }
 
@@ -65,23 +64,14 @@ export function makeCreateElementDistortion(
       qualifiedName: string,
       options?: ElementCreationOptions,
     ) {
-      if (isStyleQualifiedName(qualifiedName)) {
+      const name = coerceToString(qualifiedName);
+      if (isStyleQualifiedName(name)) {
         // Same exception as `createElement("style")`, but for namespaced
         // creation paths.
-        return CREATE_ELEMENT_NS.call(
-          this,
-          namespaceURI,
-          qualifiedName,
-          options,
-        );
+        return CREATE_ELEMENT_NS.call(this, namespaceURI, name, options);
       }
 
-      return sharedCreateElementNS.call(
-        this,
-        namespaceURI,
-        qualifiedName,
-        options,
-      );
+      return sharedCreateElementNS.call(this, namespaceURI, name, options);
     };
   }
 

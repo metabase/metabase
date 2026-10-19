@@ -5,20 +5,18 @@ import { forwardRef, useCallback } from "react";
 import { Markdown } from "metabase/common/components/Markdown";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
-import type { LocationDescriptorObject } from "metabase/router";
-import { push } from "metabase/router";
+import type { To } from "metabase/router";
+import { useNavigate } from "metabase/router";
 import type { AnchorProps, BoxProps, StackProps } from "metabase/ui";
 import {
+  ActionIcon,
   Anchor,
   Box,
-  Button,
   Divider,
   Group,
   Icon,
   Loader,
   Stack,
-  rem,
 } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
@@ -113,13 +111,11 @@ export function SearchResult({
 
   const isActive = isItemActive(result);
   const isLoading = isItemLoading(result);
-
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const onChangeLocation = useCallback(
-    (nextLocation: LocationDescriptorObject | string) =>
-      dispatch(push(nextLocation)),
-    [dispatch],
+    (nextLocation: To) => navigate(nextLocation),
+    [navigate],
   );
 
   const onXRayClick = (e: MouseEvent<HTMLButtonElement>) => {
@@ -200,8 +196,8 @@ export function SearchResult({
         item={result}
         type={model}
       />
-      <ResultNameSection justify="center" gap="xs">
-        <Group gap="xs" align="center" wrap="nowrap">
+      <ResultNameSection justify="center" gap="xxs">
+        <Group gap="xxs" align="center" wrap="nowrap">
           <ResultTitle
             role="heading"
             data-testid="search-result-item-name"
@@ -227,7 +223,7 @@ export function SearchResult({
                 size="md"
                 color="input-focus"
                 orientation="vertical"
-                bdrs="xs"
+                bdrs="xxs"
               />
               <Markdown
                 dark
@@ -243,18 +239,15 @@ export function SearchResult({
         )}
       </ResultNameSection>
       {isLoading && (
-        <LoadingSection px="xs">
+        <LoadingSection px="xxs">
           <Loader data-testid="search-result-sync-loading-indicator" />
         </LoadingSection>
       )}
       {showXRayButton && (
         <Box className={S.xraySection} pos="relative">
-          <Button
-            w={rem(32)}
-            h={rem(32)}
-            leftSection={<Icon name="bolt" />}
-            onClick={onXRayClick}
-          />
+          <ActionIcon variant="subtle" size="sm" onClick={onXRayClick}>
+            <Icon name="bolt" />
+          </ActionIcon>
         </Box>
       )}
     </SearchResultContainer>

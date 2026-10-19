@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
@@ -47,8 +48,15 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :presto-jdbc, :parent #{:sql-mbql5 :sql-jdbc
-                                          ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :presto-jdbc, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/host-carrying-parameters :presto-jdbc
+  [_driver]
+  ["httpProxy" "socksProxy"])
+
+(defmethod driver/non-host-parameters :presto-jdbc
+  [_driver]
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
 
 (doseq [[feature supported?] {:basic-aggregations               true
                               :binning                          true
@@ -58,6 +66,7 @@
                               :expressions                      true
                               :metadata/key-constraints         false
                               :native-parameters                true
+                              :native-pivot-tables              true
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :set-timezone                     true
@@ -107,6 +116,28 @@
   [_driver expr amount unit]
   (date-add unit amount expr))
 
+;; Presto/Trino doesn't coerce untyped `NULL` across `UNION ALL` branches, so the UA pivot
+;; compiler's default bare-`NULL` pad fails preparation. Map the MBQL breakout `:base-type` to a
+;; Presto cast target so the branch's null-padded column carries the same type as its
+;; counterpart in the full-breakout branch.
+(defn- base-type->presto-cast-type
+  [base-type]
+  (cond
+    (isa? base-type :type/Text)           "varchar"
+    (isa? base-type :type/Integer)        "bigint"
+    (isa? base-type :type/Float)          "double"
+    (isa? base-type :type/Decimal)        "decimal"
+    (isa? base-type :type/Boolean)        "boolean"
+    (isa? base-type :type/Date)           "date"
+    (isa? base-type :type/Time)           "time"
+    (isa? base-type :type/DateTimeWithTZ) "timestamp with time zone"
+    (isa? base-type :type/DateTime)       "timestamp"))
+
+(defmethod sql.pivot/null-pad-breakout-hsql :presto-jdbc
+  [_driver [_tag opts _id-or-name] _breakout-expr]
+  (when-let [presto-type (base-type->presto-cast-type (or (:effective-type opts) (:base-type opts)))]
+    (h2x/cast presto-type nil)))
+
 (defn- describe-catalog-sql
   "The SHOW SCHEMAS statement that will list all schemas for the given `catalog`."
   {:added "0.39.0"}
@@ -153,7 +184,7 @@
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver ::sql.qp/cast expr "varchar")))
+  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc Boolean]
   [_ bool]
@@ -187,6 +218,7 @@
 
 (sql/register-fn! ::mod #'format-mod)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *inline-param-style*
   "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a
   best-effort attempt to escape strings and generate SQL that is nice to look at, but should not be considered safe
@@ -197,7 +229,7 @@
 (defmethod sql.qp/inline-value [:presto-jdbc String]
   [_ ^String s]
   (case *inline-param-style*
-    :friendly (str \' (sql.u/escape-sql s :ansi) \')
+    :friendly (sql.u/quote-literal s :ansi)
     :paranoid (format "from_utf8(from_hex('%s'))" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
@@ -312,7 +344,7 @@
   [driver [_ _opts pred]]
   ;; Presto will use the precision given here in the final expression, which chops off digits
   ;; need to explicitly provide two digits after the decimal
-  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :sum-where 1.00M pred)))
+  (sql.qp/->honeysql driver [:sum-where {} 1.00M pred]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
   [_driver [_ _opts t]]
@@ -445,7 +477,23 @@
    :kerberos-service-principal-pattern "KerberosServicePrincipalPattern"
    :kerberos-config-path "KerberosConfigPath"})
 
+(defn- check-kerberos-file-paths!
+  "The keytab, config and credential-cache paths are files on the Metabase host that an admin types in, so they have
+  to be somewhere `readable-paths` allows. A credential cache may also be named by type: `FILE:`/`DIR:` name a path,
+  the others (`KEYRING:`, `MEMORY:`, `KCM:`, ...) name no file."
+  [details]
+  (doseq [k     [:kerberos-keytab-path :kerberos-config-path :kerberos-credential-cache-path]
+          :let  [v    (some-> (get details k) str str/trim)
+                 path (cond
+                        (str/blank? v)                    nil
+                        (re-find #"(?i)^(FILE|DIR):" v)   (str/replace v #"(?i)^(FILE|DIR):" "")
+                        (re-find #"^[A-Za-z]{2,}:" v)     nil
+                        :else                             v)]
+          :when path]
+    (driver-api/ensure-readable-path! path)))
+
 (defn- details->kerberos-url-params [details]
+  (check-kerberos-file-paths! details)
   (let [remove-blank-vals (fn [m] (into {} (remove (comp str/blank? val) m)))
         ks                (keys kerb-props->url-param-names)]
     (-> (select-keys details ks)
@@ -690,6 +738,7 @@
 ;;; Connection spec from the top-level call, and if the `:presto-jdbc/force-fresh?` is passed in to recursive calls
 ;;; we'll create a NEW connection using the original spec every time. See for example the code
 ;;; in [[metabase.test.data.presto-jdbc]]
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *original-connection-spec* nil)
 
 (defn- set-connection-options! [driver ^java.sql.Connection conn {:keys [^String session-timezone write?], :as _options}]

@@ -10,6 +10,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
@@ -40,7 +41,8 @@
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context]
  [search.ingestion
-  bulk-ingest!
+  bulk-ingest!]
+ [search.ingestion.query
   max-searchable-value-length
   searchable-value-trim-sql]
  [search.spec
@@ -201,10 +203,13 @@
             (throw e)))))))
 
 (defn reindex!
-  "Populate a new index, and make it active. Simultaneously updates the current index.
-  Returns a future that will complete when the reindexing is done.
-  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
-  Alternately, if `:async?` is false, it will also run synchronously."
+  "Rebuild the search index.
+  By default, stages a new index and activates it once populated.
+  The active index keeps receiving updates meanwhile.
+  With `:in-place? true`, empties and repopulates the active index instead.
+  Runs asynchronously and returns a future.
+  Runs synchronously and returns a delivered promise when `:async?` is false or
+  [[search.ingestion/*force-sync*]] is true."
   [& {:keys [async?] :or {async? true} :as opts}]
   (let [f (fn []
             (try

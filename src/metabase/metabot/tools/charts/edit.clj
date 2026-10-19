@@ -1,13 +1,12 @@
 (ns metabase.metabot.tools.charts.edit
   "Tool for editing chart visualization settings."
   (:require
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]))
 
 (def ^:private valid-chart-types
   "Valid chart types supported by Metabase."
-  #{:table :bar :line :pie :sunburst :treemap :area :combo :row :pivot
-    :scatter :waterfall :sankey :scalar :smartscalar :gauge
-    :progress :funnel :object :map})
+  (into #{} (map keyword) shared/chart-types))
 
 (defn- format-chart-link
   "Format a metabase:// link to the chart."
@@ -37,6 +36,8 @@
   - chart-id: ID of the chart to edit
   - new-chart-type: New chart type to use
   - charts-state: Map of chart-id to chart data from agent state
+  - query: (optional) fallback query to use when the chart's own :queries is
+    empty, e.g. a chart whose query only lives in the caller's queries-state
 
   Returns a map with result and new-chart-data.
 
@@ -47,7 +48,7 @@
   - :chart-content - XML representation of the chart
   - :chart-link - Metabase link to the chart
   - :chart-type - Type of chart created"
-  [{:keys [chart-id new-chart-type charts-state]}]
+  [{:keys [chart-id new-chart-type charts-state query]}]
   (log/info "Editing chart" {:chart-id chart-id :new-chart-type new-chart-type})
 
   ;; Validate chart type
@@ -62,11 +63,24 @@
       (throw (ex-info "Sorry, I have issues accessing the chart data. Is there anything else I can help you with?"
                       {:agent-error? true
                        :chart-id chart-id})))
-    (let [new-chart-data (-> chart-data
+    (let [;; The caller may have resolved the query from somewhere other than
+          ;; charts-state (e.g. queries-state, when the chart carries a
+          ;; :query_id but no :queries). Fall back to that so :query on the
+          ;; result below doesn't end up nil while :query-id is set.
+          chart-data     (cond-> chart-data
+                           (not (first (:queries chart-data))) (assoc :queries [query]))
+          new-chart-data (-> chart-data
                              (assoc :chart_id (str (random-uuid)))
                              (assoc :visualization_settings {:chart_type new-chart-type}))]
       {:new-chart-data new-chart-data
        :result {:chart-id (:chart_id new-chart-data)
+                ;; Carry the source chart's query-id/query through. `extract-charts` only
+                ;; captures a tool's chart into `:charts` state when the structured
+                ;; output has BOTH `:chart-id` and `:query-id` (see commit 6d5721c5853),
+                ;; and it then rebuilds `:queries` from `:query` alone — omitting `:query`
+                ;; here would make it overwrite the chart's real queries with `[nil]`.
+                :query-id (:query_id new-chart-data)
+                :query (first (:queries new-chart-data))
                 :chart-content (format-chart-for-llm new-chart-data)
                 :chart-link (format-chart-link (:chart_id new-chart-data))
                 :chart-type new-chart-type

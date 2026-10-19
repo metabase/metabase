@@ -14,6 +14,7 @@ export interface AppBundle {
   rebuild: () => Promise<boolean>;
   readonly code: string;
   readonly lastRebuildAt: number | null;
+  readonly buildId: number;
 }
 
 export function createAppBundle({
@@ -23,6 +24,7 @@ export function createAppBundle({
 }: AppBundleOptions): AppBundle {
   let code = "";
   let lastRebuildAt: number | null = null;
+  let buildId = 0;
   let building = false;
   let stale = false;
 
@@ -54,6 +56,7 @@ export function createAppBundle({
           ?.code ?? "";
 
       lastRebuildAt = Date.now();
+      buildId += 1;
 
       return true;
     } catch (error) {
@@ -95,6 +98,10 @@ export function createAppBundle({
 
     get lastRebuildAt() {
       return lastRebuildAt;
+    },
+
+    get buildId() {
+      return buildId;
     },
   };
 }

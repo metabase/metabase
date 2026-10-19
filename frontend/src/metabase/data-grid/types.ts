@@ -21,7 +21,6 @@ import type { ColumnsReordering } from "./hooks/use-columns-reordering";
 import type { VirtualGrid } from "./hooks/use-virtual-grid";
 
 declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     wrap?: boolean;
     enableReordering?: boolean;
@@ -31,6 +30,10 @@ declare module "@tanstack/react-table" {
     clipboardFormatter?: PlainCellFormatter<TValue>;
     width?: "auto";
     isUtilityColumn?: boolean;
+    // Values that change while a column is resized live here rather than in the
+    // cell/header closures, so component identity stays stable (metabase#78557)
+    isTruncated?: boolean;
+    onExpand?: ExpandColumnHandler;
   }
 }
 
@@ -52,7 +55,7 @@ export type BodyCellBaseProps<TValue> = {
   isSelected?: boolean;
   className?: string;
   style?: React.CSSProperties;
-  onExpand?: (id: string, formattedValue: React.ReactNode) => void;
+  onExpand?: ExpandColumnHandler;
 };
 
 /**
@@ -151,6 +154,9 @@ export interface DataGridTheme {
   /** Background color of the table header that stays fixed while scrolling. Defaults to `white` if no cell background color is set */
   stickyBackgroundColor?: string;
 
+  /** Background color of every other row when striping is enabled. Defaults to a subtle tint of the cell background */
+  stripedBackgroundColor?: string;
+
   cell?: {
     /** Text color default body cells, defaults to `text-primary`. */
     textColor?: string;
@@ -196,7 +202,10 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Default row height in pixels */
   defaultRowHeight?: number;
 
-  /** Configuration for columns */
+  /**
+   * Configuration for columns. Must be memoized: cell and header components are
+   * built from it, so an unstable array remounts every cell on each render
+   * (metabase#78557) */
   columnsOptions: ColumnOptions<TData, TValue>[];
 
   /**
@@ -264,6 +273,11 @@ export type PlainCellFormatter<TValue> = (
   rowIndex: number,
   columnId: string,
 ) => string;
+
+export type ExpandColumnHandler = (
+  columnId: string,
+  formattedValue: React.ReactNode,
+) => void;
 
 export type ExpandedColumnsState = Record<string, boolean>;
 

@@ -1,5 +1,14 @@
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ComponentProps,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -8,13 +17,17 @@ import { GenericError, NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Box, Flex } from "metabase/ui";
+import { useParams } from "metabase/router";
+import { Box, Flex, Icon } from "metabase/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
+  DATA_APP_LOAD_TIMEOUT_MS,
+  DATA_APP_OUTDATED_ERROR_CODE,
   DATA_APP_READY_MESSAGE_TYPE,
   type DataAppBundleErrorMessage,
+  getOutdatedDataAppMessage,
 } from "../../constants";
 import { attachIframeUrlMirror } from "../../lib/attach-iframe-url-mirror";
 import { deriveIframeSrc } from "../../lib/derive-iframe-src";
@@ -23,9 +36,20 @@ import { isDataAppMessage } from "../../lib/is-data-app-message";
 
 import S from "./DataAppView.module.css";
 
-interface AppViewProps {
-  params: { name: string };
-}
+const OUTDATED_ERROR_PATTERN = {
+  status: 409,
+  data: { "error-code": DATA_APP_OUTDATED_ERROR_CODE, message: P.string },
+};
+
+const CenteredEmptyState = ({
+  children,
+  ...props
+}: ComponentProps<typeof EmptyState> & { children?: ReactNode }) => (
+  <Flex direction="column" w="100%" h="100%" justify="center" align="center">
+    <EmptyState {...props} />
+    {children}
+  </Flex>
+);
 
 /**
  * /apps/:name(/*) — renders the requested data-app inside an isolated
@@ -43,9 +67,9 @@ interface AppViewProps {
  * The data-app bundle itself knows nothing about either direction —
  * it just uses React Router as if it were the top-level app.
  */
-export function DataAppView({ params }: AppViewProps) {
-  const name = params.name;
-  const validName = typeof name === "string" && name.length > 0;
+export function DataAppView() {
+  const { name = "" } = useParams<{ name: string }>();
+  const validName = name.length > 0;
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);
@@ -57,6 +81,9 @@ export function DataAppView({ params }: AppViewProps) {
   const [appReady, setAppReady] = useState(false);
   const [bundleError, setBundleError] =
     useState<DataAppBundleErrorMessage | null>(null);
+  // Diagnostic string for the "Show error details" toggle; non-null once the
+  // iframe fails to load (blocked / unreachable / hung), which drives the error UI.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Reset whenever we navigate to a different app so a stale error/ready state
   // doesn't stick (the next app must re-earn the overlay being dropped).
@@ -64,6 +91,7 @@ export function DataAppView({ params }: AppViewProps) {
   useEffect(() => {
     setBundleError(null);
     setAppReady(false);
+    setLoadError(null);
   }, [name]);
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
@@ -158,6 +186,44 @@ export function DataAppView({ params }: AppViewProps) {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
+  // The iframe can fail to load without ever posting back — blocked by a CSP
+  // `frame-src` violation, unreachable, or hung — which would otherwise leave the
+  // loading overlay spinning forever. Surface an error via a CSP-violation signal
+  // (instant, the cross-origin misconfiguration case) and a timeout backstop.
+  useEffect(() => {
+    // Stop once anything resolves the wait — including a `loadError` already set
+    // by the CSP signal — so the timeout can't clobber a more specific message.
+    if (!validName || appReady || bundleError || loadError) {
+      return undefined;
+    }
+
+    const onViolation = (event: SecurityPolicyViolationEvent) => {
+      if (
+        event.effectiveDirective.startsWith("frame-src") &&
+        event.blockedURI.startsWith(window.location.origin)
+      ) {
+        setLoadError(
+          t`Frame ${event.blockedURI} was blocked by the browser’s content security policy.`,
+        );
+      }
+    };
+
+    document.addEventListener("securitypolicyviolation", onViolation);
+
+    const timer = window.setTimeout(
+      () =>
+        setLoadError(
+          t`The data app didn’t load within ${DATA_APP_LOAD_TIMEOUT_MS / 1000} seconds. The frame may be unreachable.`,
+        ),
+      DATA_APP_LOAD_TIMEOUT_MS,
+    );
+
+    return () => {
+      document.removeEventListener("securitypolicyviolation", onViolation);
+      window.clearTimeout(timer);
+    };
+  }, [validName, appReady, bundleError, loadError]);
+
   if (!validName) {
     return (
       <NotFound
@@ -188,11 +254,42 @@ export function DataAppView({ params }: AppViewProps) {
       );
     }
 
+    if (isMatching(OUTDATED_ERROR_PATTERN, metaError)) {
+      return (
+        <CenteredEmptyState
+          title={t`This data app is outdated`}
+          message={metaError.data.message}
+          illustrationElement={<Icon name="warning" size={64} />}
+        />
+      );
+    }
+
+    if (status === 403) {
+      return (
+        <CenteredEmptyState
+          title={t`You don’t have access to this data app`}
+          message={t`Ask an administrator for access to this data app.`}
+          illustrationElement={<Icon name="key" size={64} />}
+        />
+      );
+    }
+
     return (
       <GenericError
         title={t`Couldn’t load this data app`}
         message={t`We ran into an error loading this data app. Try refreshing the page, or go back.`}
         details={metaError}
+      />
+    );
+  }
+
+  // An admin still gets the metadata, to manage the app; nobody gets its bundle.
+  if (meta.outdated) {
+    return (
+      <CenteredEmptyState
+        title={t`This data app is outdated`}
+        message={getOutdatedDataAppMessage(meta.version)}
+        illustrationElement={<Icon name="warning" size={64} />}
       />
     );
   }
@@ -208,35 +305,37 @@ export function DataAppView({ params }: AppViewProps) {
     }
 
     return (
-      <Flex
-        direction="column"
-        w="100%"
-        h="100%"
-        justify="center"
-        align="center"
+      <CenteredEmptyState
+        title={t`This data app couldn’t be loaded`}
+        message={
+          bundleError.message ||
+          t`Something went wrong while loading this app. Try refreshing the page.`
+        }
+        illustrationElement={
+          <div
+            className={cx(
+              QueryBuilderS.QueryErrorImage,
+              QueryBuilderS.QueryErrorImageServerError,
+            )}
+          />
+        }
       >
-        <EmptyState
-          title={t`This data app couldn’t be loaded`}
-          message={
-            bundleError.message ||
-            t`Something went wrong while loading this app. Try refreshing the page.`
-          }
-          illustrationElement={
-            <div
-              className={cx(
-                QueryBuilderS.QueryErrorImage,
-                QueryBuilderS.QueryErrorImageServerError,
-              )}
-            />
-          }
-        />
-
         <ErrorDetails
           className={CS.pt2}
           errorBoxClassName={S.stackTrace}
           details={bundleError.stack}
         />
-      </Flex>
+      </CenteredEmptyState>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <GenericError
+        title={t`Couldn’t load this data app`}
+        message={t`This data app didn’t load. It may have been blocked or is unreachable. Try refreshing the page, or go back.`}
+        details={loadError}
+      />
     );
   }
 
@@ -245,7 +344,7 @@ export function DataAppView({ params }: AppViewProps) {
       {!appReady && (
         <Box
           pos="absolute"
-          bg="background-primary"
+          bg="background_page-primary"
           style={{ inset: 0, zIndex: 1 }}
         >
           <LoadingAndErrorWrapper loading data-testid="data-app-loading" />

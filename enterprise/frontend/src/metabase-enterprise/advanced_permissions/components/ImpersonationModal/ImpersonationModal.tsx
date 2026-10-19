@@ -3,9 +3,9 @@ import { useMount } from "react-use";
 
 import { updateDataPermission } from "metabase/admin/permissions/permissions";
 import { DataPermissionType } from "metabase/admin/permissions/types";
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import { useDatabaseQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { parseIntParam } from "metabase/urls";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
@@ -49,9 +49,7 @@ export const ImpersonationModal = ({
     data: database,
     isLoading: isDatabaseLoading,
     error,
-  } = useDatabaseQuery({
-    id: databaseId,
-  });
+  } = useGetDatabaseQuery(databaseId != null ? { id: databaseId } : skipToken);
 
   const attributes = useEnterpriseSelector(getUserAttributes);
   const draftImpersonation = useEnterpriseSelector(

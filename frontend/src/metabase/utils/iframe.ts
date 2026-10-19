@@ -20,6 +20,11 @@ export const isWithinIframe = function (): boolean {
   }
 };
 
+// Input-selector shape for composing the iframe check into createSelector.
+// The read happens on every selection, so mocks take effect and the combiner stays pure.
+export const selectIsWithinIframe = (_state: unknown): boolean =>
+  isWithinIframe();
+
 // check that we're both iframed, and the parent is a Metabase instance
 // used for detecting if we're previewing an embed
 export const IFRAMED_IN_SELF = (function () {

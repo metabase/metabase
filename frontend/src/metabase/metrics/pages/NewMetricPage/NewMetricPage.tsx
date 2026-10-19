@@ -15,9 +15,8 @@ import type { MetricUrls } from "metabase/common/metrics/types";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { useDispatch, useSelector } from "metabase/redux";
-import { goBack, push, useRouter } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/redux";
+import { useLocation, useNavigate } from "metabase/router";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -27,7 +26,7 @@ import { metricUrls as defaultUrls } from "../../urls";
 import { getValidationResult } from "../../utils/validation";
 
 import { CreateMetricModal } from "./CreateMetricModal";
-import { ensureDefaultDimension, getInitialQuery, getQuery } from "./utils";
+import { getInitialQuery, getQuery } from "./utils";
 
 interface NewMetricPageProps {
   urls?: MetricUrls;
@@ -42,25 +41,22 @@ export function NewMetricPage({
   showAppSwitcher = false,
   triggeredFrom = "main_app",
 }: NewMetricPageProps) {
-  const { location } = useRouter();
-  const metadata = useSelector(getMetadata);
+  const location = useLocation();
+  const initialQuery = useSelector(getInitialQuery);
   const [name, setName] = useState("");
   const [datasetQuery, setDatasetQuery] = useState(() =>
-    Lib.toJsQuery(getInitialQuery(metadata)),
+    Lib.toJsQuery(initialQuery),
   );
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const initialCollectionId = Urls.extractCollectionId(
-    location.query.collectionId,
+    new URLSearchParams(location.search).get("collectionId") ?? undefined,
   );
   const defaultCollectionId = useGetDefaultCollectionId();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const query = useMemo(
-    () => getQuery(datasetQuery, metadata),
-    [datasetQuery, metadata],
-  );
+  const query = useSelector((state) => getQuery(state, datasetQuery));
 
   const resultMetadata = useMemo(() => {
     return getResultMetadata(
@@ -82,18 +78,15 @@ export function NewMetricPage({
   );
 
   const handleCreate = (card: CardApiType) => {
-    dispatch(push(urls.about(card.id)));
+    navigate(urls.about(card.id));
   };
 
   const handleChangeQuery = (query: Lib.Query) => {
-    const nextQuery = getValidationResult(query).isValid
-      ? ensureDefaultDimension(query)
-      : query;
-    setDatasetQuery(Lib.toJsQuery(nextQuery));
+    setDatasetQuery(Lib.toJsQuery(query));
   };
 
   const handleCancel = () => {
-    dispatch(goBack());
+    navigate(-1);
   };
 
   return (

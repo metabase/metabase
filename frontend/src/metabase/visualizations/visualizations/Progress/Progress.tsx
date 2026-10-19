@@ -4,8 +4,9 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Flex, Icon } from "metabase/ui";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { checkNotNull } from "metabase/utils/types";
-import { formatValue } from "metabase/visualizations/lib/formatting";
+import { formatValue } from "metabase/value-formatting";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { PROGRESS_CHART_DEFINITION } from "./definition";
@@ -254,7 +255,7 @@ export function IconWithBorder() {
   );
 }
 
-export const Progress = Object.assign(
+export const Progress = assignLazily(
   ProgressComponent,
   PROGRESS_CHART_DEFINITION,
 );

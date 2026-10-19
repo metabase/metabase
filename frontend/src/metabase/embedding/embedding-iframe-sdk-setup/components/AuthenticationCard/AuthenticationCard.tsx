@@ -45,14 +45,14 @@ export const AuthenticationCard = () => {
   };
 
   return (
-    <Card p="md">
-      <Stack gap="md" p="xs">
+    <Card p="lg">
+      <Stack gap="lg" p="xxs">
         <Text size="lg" fw="bold">
           {t`Authentication`}
         </Text>
 
         <Radio.Group value={authType} onChange={handleAuthTypeChange}>
-          <Stack gap="md">
+          <Stack gap="lg">
             <Stack gap="sm">
               <Radio
                 value="sso"
@@ -83,13 +83,29 @@ export const AuthenticationCard = () => {
                       resourceType={resourceType}
                     />
                   )}
-                  {isGuestEmbedsEnabled !== undefined && (
-                    <EnableGuestEmbedsSection
-                      key={currentStep}
-                      isEnabled={isGuestEmbedsEnabled}
-                      termsAccepted={isGuestEmbedsTermsAccepted}
-                    />
-                  )}
+                  {isGuestEmbedsEnabled !== undefined &&
+                    // Guest enablement writes the same
+                    // `enable-embedding-modular` setting the SSO path does, so
+                    // on Pro the modular embedding terms are owed here too and
+                    // the section that states them is the one to show. Guest's
+                    // own terms come first whenever they are still unaccepted.
+                    (isSimpleEmbedFeatureAvailable &&
+                    isGuestEmbedsTermsAccepted ? (
+                      <EnableModularEmbeddingSection
+                        key={currentStep}
+                        isEnabled={isGuestEmbedsEnabled}
+                        termsAccepted={isSimpleEmbeddingTermsAccepted}
+                      />
+                    ) : (
+                      <EnableGuestEmbedsSection
+                        key={currentStep}
+                        isEnabled={isGuestEmbedsEnabled}
+                        termsAccepted={isGuestEmbedsTermsAccepted}
+                        isSimpleEmbedFeatureAvailable={
+                          isSimpleEmbedFeatureAvailable
+                        }
+                      />
+                    ))}
                 </>
               )}
             </Stack>

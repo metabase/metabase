@@ -8,6 +8,7 @@ import {
   useUpdateCollectionMutation,
   useUpdateDashboardMutation,
   useUpdateDocumentMutation,
+  useUpdateExplorationMutation,
   useUpdateSegmentMutation,
   useUpdateSnippetMutation,
   useUpdateSubscriptionMutation,
@@ -22,6 +23,7 @@ import type {
   Dashboard,
   DashboardSubscription,
   Document,
+  Exploration,
   NativeQuerySnippet,
   Segment,
   Timeline,
@@ -49,7 +51,8 @@ export type ArchivableItem =
   | Archivable<"timeline", Timeline>
   | Archivable<"timeline-event", TimelineEvent>
   | Archivable<"pulse", DashboardSubscription>
-  | Archivable<"snippet", NativeQuerySnippet>;
+  | Archivable<"snippet", NativeQuerySnippet>
+  | Archivable<"exploration", Exploration>;
 
 export type ArchivableModel = ArchivableItem["model"];
 
@@ -125,6 +128,11 @@ const LABELS = {
     archived: () => t`archived`,
     unarchived: () => t`unarchived`,
   },
+  exploration: {
+    subject: () => t`research`,
+    archived: () => t`trashed`,
+    unarchived: () => t`restored`,
+  },
 } as const satisfies Record<ArchivableModel, ArchivableLabels>;
 
 /**
@@ -150,6 +158,7 @@ export function useSetArchive() {
   const [updateTimelineEvent] = useUpdateTimelineEventMutation();
   const [updateSubscription] = useUpdateSubscriptionMutation();
   const [updateSnippet] = useUpdateSnippetMutation();
+  const [updateExploration] = useUpdateExplorationMutation();
 
   const setArchived = useCallback(
     (item: ArchivableItem, archived: boolean) =>
@@ -189,6 +198,9 @@ export function useSetArchive() {
           updateSubscription({ id, archived }),
         )
         .with({ model: "snippet" }, ({ id }) => updateSnippet({ id, archived }))
+        .with({ model: "exploration" }, ({ id }) =>
+          updateExploration({ id, archived }),
+        )
         .exhaustive(),
     [
       updateCard,
@@ -201,6 +213,7 @@ export function useSetArchive() {
       updateTimelineEvent,
       updateSubscription,
       updateSnippet,
+      updateExploration,
     ],
   );
 

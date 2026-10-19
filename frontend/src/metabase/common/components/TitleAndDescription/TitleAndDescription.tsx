@@ -21,7 +21,7 @@ const TitleAndDescriptionInner = ({
       >
         {tc(title)}
       </Title>
-      <Space component="span" mx="xs" />
+      <Space component="span" mx="xxs" />
       {description && (
         <Tooltip label={tc(description)} maw="22em">
           <Icon name="info" />

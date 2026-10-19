@@ -1,17 +1,25 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { renderWithProviders, screen } from "__support__/ui";
-import { reinitialize } from "metabase/plugins";
-import { createMockState } from "metabase/redux/store/mocks";
+import { lazyLoaders } from "__support__/lazy-routes";
+import { createMockSettingsState, createMockState } from "__support__/state";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
-import { createMockUser } from "metabase-types/api/mocks";
+import * as Urls from "metabase/urls";
+import type { TokenFeatures } from "metabase-types/api";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { getMonitorRedirects, getMonitorRoutes } from "./routes";
 
 type MonitorGuard =
   | "CanAccessMonitor"
-  | "CanAccessMonitorDiagnostics"
+  | "CanAccessDependencyDiagnostics"
+  | "CanAccessContentDiagnostics"
   | "CanAccessMonitoringTools"
-  | "CanAccessAlertsManagement";
+  | "CanAccessAlertsManagement"
+  | "CanAccessAiAuditing";
 
 /**
  * These specs assert route-tree structure, not access policy, so the guards are
@@ -34,9 +42,11 @@ jest.mock("./route-guards", () => {
 
   return {
     CanAccessMonitor: stubGuard("CanAccessMonitor"),
-    CanAccessMonitorDiagnostics: stubGuard("CanAccessMonitorDiagnostics"),
+    CanAccessDependencyDiagnostics: stubGuard("CanAccessDependencyDiagnostics"),
+    CanAccessContentDiagnostics: stubGuard("CanAccessContentDiagnostics"),
     CanAccessMonitoringTools: stubGuard("CanAccessMonitoringTools"),
     CanAccessAlertsManagement: stubGuard("CanAccessAlertsManagement"),
+    CanAccessAiAuditing: stubGuard("CanAccessAiAuditing"),
   };
 });
 
@@ -61,10 +71,26 @@ jest.mock(
     };
   },
 );
+jest.mock(
+  "metabase/monitor/content-diagnostics/ContentDiagnosticsSectionLayout",
+  () => {
+    const { Outlet } = jest.requireActual("metabase/router");
+    return {
+      ContentDiagnosticsSectionLayout: () => (
+        <div data-testid="content-diagnostics-section">
+          <Outlet />
+        </div>
+      ),
+    };
+  },
+);
 
 jest.mock("metabase-enterprise/monitor/dependency-diagnostics/pages", () => ({
   BrokenDependencyDiagnosticsPage: () => <div>{"Broken page"}</div>,
   UnreferencedDependencyDiagnosticsPage: () => <div>{"Unreferenced page"}</div>,
+}));
+jest.mock("metabase-enterprise/monitor/content-diagnostics/pages", () => ({
+  StaleContentPage: () => <div>{"Stale content page"}</div>,
 }));
 
 jest.mock("metabase/monitor/tools/components/Logs", () => {
@@ -81,14 +107,20 @@ jest.mock("metabase/monitor/tools/components/Logs", () => {
 jest.mock("metabase/monitor/tools/components/JobInfoApp", () => ({
   JobInfoApp: () => <div data-testid="jobs-page">{"Jobs"}</div>,
 }));
-jest.mock("metabase/monitor/tools/components/ModelPersistenceLogJobs", () => ({
-  ModelPersistenceLogPage: () => (
-    <div data-testid="model-persistence-log-page">
-      {"Model persistence log"}
-    </div>
-  ),
-  ModelPersistenceLogJobModal: () => null,
-}));
+jest.mock(
+  "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs",
+  () => ({
+    ModelPersistenceLogPage: () => (
+      <div data-testid="model-persistence-log-page">
+        {"Model persistence log"}
+      </div>
+    ),
+  }),
+);
+jest.mock(
+  "metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobModal",
+  () => ({ ModelPersistenceLogJobModal: () => null }),
+);
 jest.mock("metabase/monitor/tools/components/LogLevelsModal", () => ({
   LogLevelsModal: () => null,
 }));
@@ -125,18 +157,22 @@ jest.mock(
 
 const UPSELL_TITLE =
   "Find and fix broken dependencies without hunting them down";
+const CONTENT_DIAGNOSTICS_UPSELL_TITLE =
+  "Find and clean up stale content without hunting it down";
 
 type SetupOpts = {
   initialRoute: string;
   user?: ReturnType<typeof createMockUser>;
   /** Guards to make deny access, so a section can be blocked in isolation. */
   deny?: MonitorGuard[];
+  tokenFeatures?: Partial<TokenFeatures>;
 };
 
 const setup = ({
   initialRoute,
   user = createMockUser({ is_superuser: true }),
   deny = [],
+  tokenFeatures,
 }: SetupOpts) => {
   deny.forEach((guard) => mockDeniedGuards.add(guard));
 
@@ -148,8 +184,23 @@ const setup = ({
     {
       withRouter: true,
       initialRoute,
-      storeInitialState: createMockState({ currentUser: user }),
+      storeInitialState: createMockState({
+        currentUser: user,
+        settings: createMockSettingsState({
+          "token-features": createMockTokenFeatures(tokenFeatures),
+        }),
+      }),
     },
+  );
+};
+
+const enableAiAuditingRoutes = () => {
+  PLUGIN_AUDIT.isAiAuditingEnabled = true;
+  PLUGIN_AUDIT.getAiAuditingRoutes = () => (
+    <Route
+      path="usage"
+      element={<div data-testid="ai-auditing-page">AI Auditing</div>}
+    />
   );
 };
 
@@ -157,6 +208,20 @@ describe("monitor routes", () => {
   afterEach(() => {
     reinitialize();
     mockDeniedGuards.clear();
+  });
+
+  // Route factories name their page in an `import()`, so nothing type-checks the
+  // path or the export. Resolving every lazy loader is the cheap guard against a
+  // typo that would otherwise surface as a blank page. Runs against default (OSS)
+  // plugin state, so both diagnostics sections are on their upsell branch.
+  it("resolves every lazy page", async () => {
+    const loaders = lazyLoaders(getMonitorRoutes());
+
+    expect(loaders).toHaveLength(19);
+
+    for (const load of loaders) {
+      expect((await load()).Component).toBeDefined();
+    }
   });
 
   describe("getMonitorRoutes", () => {
@@ -175,6 +240,22 @@ describe("monitor routes", () => {
 
         expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
         expect(screen.queryByText("Broken page")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("OSS (Content Diagnostics disabled)", () => {
+      it("renders the upsell for content diagnostics child paths", async () => {
+        setup({ initialRoute: "/monitor/content-diagnostics/stale" });
+
+        expect(
+          await screen.findByText(CONTENT_DIAGNOSTICS_UPSELL_TITLE),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("content-diagnostics-section"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Stale content page"),
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -200,21 +281,52 @@ describe("monitor routes", () => {
       });
     });
 
+    describe("EE (Content Diagnostics enabled)", () => {
+      it("renders the content diagnostics section and child routes instead of the upsell", async () => {
+        setupEnterpriseOnlyPlugin("monitor_content_diagnostics");
+
+        setup({ initialRoute: "/monitor/content-diagnostics/stale" });
+
+        expect(
+          await screen.findByTestId("content-diagnostics-section"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Stale content page")).toBeInTheDocument();
+        expect(
+          screen.queryByText(CONTENT_DIAGNOSTICS_UPSELL_TITLE),
+        ).not.toBeInTheDocument();
+      });
+
+      it("redirects the content diagnostics index to the stale route", async () => {
+        setupEnterpriseOnlyPlugin("monitor_content_diagnostics");
+
+        setup({ initialRoute: "/monitor/content-diagnostics" });
+
+        expect(
+          await screen.findByText("Stale content page"),
+        ).toBeInTheDocument();
+      });
+    });
+
     describe("index redirect (/monitor)", () => {
-      it("sends analysts to the diagnostics section", async () => {
-        setup({
+      it("sends analysts to dependency diagnostics", async () => {
+        const { router } = setup({
           initialRoute: "/monitor",
           user: createMockUser({
             is_superuser: false,
             is_data_analyst: true,
           }),
+          tokenFeatures: { advanced_permissions: true },
         });
 
-        expect(await screen.findByText(UPSELL_TITLE)).toBeInTheDocument();
+        await waitFor(() =>
+          expect(router?.location.pathname).toBe(
+            "/monitor/dependency-diagnostics",
+          ),
+        );
       });
 
-      it("sends monitoring-only users to the Tools pages", async () => {
-        setup({
+      it("sends monitoring-only users to background tasks", async () => {
+        const { router } = setup({
           initialRoute: "/monitor",
           user: createMockUser({
             is_superuser: false,
@@ -223,7 +335,9 @@ describe("monitor routes", () => {
           }),
         });
 
-        expect(await screen.findByTestId("task-list-page")).toBeInTheDocument();
+        await waitFor(() =>
+          expect(router?.location.pathname).toBe(Urls.monitorTasksList()),
+        );
       });
     });
 
@@ -260,10 +374,30 @@ describe("monitor routes", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("renders NotFound for unknown paths even when both section guards deny (catch-all sits outside the guards)", async () => {
+      it("blocks the AI Auditing route when its own guard denies", async () => {
+        enableAiAuditingRoutes();
+
+        setup({
+          initialRoute: Urls.monitorAiAuditingUsage(),
+          deny: ["CanAccessAiAuditing"],
+        });
+
+        expect(
+          await screen.findByTestId("unauthorized-marker"),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId("ai-auditing-page"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("renders NotFound for unknown paths even when every section guard denies (catch-all sits outside the guards)", async () => {
         setup({
           initialRoute: "/monitor/does-not-exist",
-          deny: ["CanAccessMonitorDiagnostics", "CanAccessMonitoringTools"],
+          deny: [
+            "CanAccessDependencyDiagnostics",
+            "CanAccessContentDiagnostics",
+            "CanAccessMonitoringTools",
+          ],
         });
 
         expect(await screen.findByLabelText("error page")).toBeInTheDocument();
@@ -275,25 +409,37 @@ describe("monitor routes", () => {
   });
 
   describe("Tools sections (migrated from /admin/tools)", () => {
-    it("renders the Logs section at /monitor/logs", async () => {
-      setup({ initialRoute: "/monitor/logs" });
+    it.each([["/monitor/logs"], ["/monitor/logs/levels"]])(
+      "renders the Logs section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(await screen.findByTestId("logs-page")).toBeInTheDocument();
-    });
+        expect(await screen.findByTestId("logs-page")).toBeInTheDocument();
+      },
+    );
 
-    it("renders the Jobs section at /monitor/jobs", async () => {
-      setup({ initialRoute: "/monitor/jobs" });
+    it.each([["/monitor/jobs"], ["/monitor/jobs/sync"]])(
+      "renders the Jobs section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
-    });
+        expect(await screen.findByTestId("jobs-page")).toBeInTheDocument();
+      },
+    );
 
-    it("renders the Model persistence log section at /monitor/model-persistence-log", async () => {
-      setup({ initialRoute: "/monitor/model-persistence-log" });
+    it.each([
+      ["/monitor/model-persistence-log"],
+      ["/monitor/model-persistence-log/9"],
+    ])(
+      "renders the Model persistence log section at %s",
+      async (initialRoute) => {
+        setup({ initialRoute });
 
-      expect(
-        await screen.findByTestId("model-persistence-log-page"),
-      ).toBeInTheDocument();
-    });
+        expect(
+          await screen.findByTestId("model-persistence-log-page"),
+        ).toBeInTheDocument();
+      },
+    );
 
     it("renders the Erroring questions upsell at /monitor/errors without the audit_app feature", async () => {
       setup({ initialRoute: "/monitor/errors" });

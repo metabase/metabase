@@ -1,7 +1,5 @@
 import { renderHook } from "@testing-library/react";
 
-import type { CollectionItemModel } from "metabase-types/api";
-
 import {
   type EntityPickerProps,
   type OmniPickerCollectionItem,
@@ -12,7 +10,6 @@ import {
   getCollectionType,
   getItemFunctions,
   getNamespacesFromModels,
-  getValidCollectionItemModels,
   isSelectedItem,
   useGetEntityPickerIcon,
 } from "./utils";
@@ -374,32 +371,6 @@ describe("EntityPicker utils", () => {
     });
   });
 
-  describe("getValidCollectionItemModels", () => {
-    it("should filter valid collection models and append 'collection'", () => {
-      const input = [
-        "card",
-        "dashboard",
-        "pikachu",
-        "table",
-        "transform",
-        "snippet",
-        "",
-      ];
-      const result = getValidCollectionItemModels(
-        // Unjustified type cast. FIXME
-        input as CollectionItemModel[],
-      );
-      expect(result).toEqual([
-        "card",
-        "dashboard",
-        "table",
-        "transform",
-        "snippet",
-        "collection",
-      ]);
-    });
-  });
-
   describe("getCollectionType", () => {
     const baseCollection: OmniPickerCollectionItem = {
       id: 111,
@@ -429,6 +400,12 @@ describe("EntityPicker utils", () => {
 
     it("should return transform namespace if transform model is present", () => {
       expect(getNamespacesFromModels(["transform"])).toContain("transforms");
+    });
+
+    it("should return data actions and normal namespaces if action model is present", () => {
+      const namespaces = getNamespacesFromModels(["action"]);
+      expect(namespaces).toContain("data-actions");
+      expect(namespaces).toContain(null);
     });
 
     it("should return normal namespaces for other models", () => {

@@ -36,7 +36,7 @@ export const TenantIdentifierInput = ({
     : config.description;
 
   return (
-    <Stack gap="xs">
+    <Stack gap="xxs">
       <Text fw="bold" size="sm">
         {config.label}
       </Text>

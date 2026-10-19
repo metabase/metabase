@@ -1,19 +1,15 @@
 import { type ReactNode, useMemo, useState } from "react";
 
 import { MetabotBranchPicker } from "metabase/metabot/components/MetabotBranchPicker";
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import type { MetabotMessage } from "metabase/metabot/state/types";
 import {
-  type ParentedChatMessage,
+  type ActiveResponse,
+  type ParentedMessage,
   activeResponses,
 } from "metabase/metabot/utils/message-tree";
 
-type ActiveResponse = ReturnType<typeof activeResponses>[number];
-
-export function useBranchableMessages(
-  sourceMessages: ParentedChatMessage[],
-  { isSlack = false }: { isSlack?: boolean } = {},
-): {
-  messages: MetabotChatMessage[];
+export function useBranchableMessages(sourceMessages: ParentedMessage[]): {
+  messages: MetabotMessage[];
   getExtraActions: (messageId: string) => ReactNode;
 } {
   const [selectedReplyByParentId, setSelectedReplyByParentId] = useState<
@@ -26,16 +22,15 @@ export function useBranchableMessages(
         ...selected,
         [parentId]: replyId,
       }));
-    const responses = activeResponses(sourceMessages, selectedReplyByParentId, {
-      isSlack,
-    });
+    const responses = activeResponses(sourceMessages, selectedReplyByParentId);
+    const messages = responses.map(({ message }) => message);
     const branchPickers = buildBranchPickers(responses, selectBranch);
 
     return {
-      messages: responses.flatMap(({ messages }) => messages),
+      messages,
       getExtraActions: (messageId: string) => branchPickers[messageId],
     };
-  }, [sourceMessages, selectedReplyByParentId, isSlack]);
+  }, [sourceMessages, selectedReplyByParentId]);
 }
 
 function buildBranchPickers(
@@ -43,14 +38,12 @@ function buildBranchPickers(
   selectBranch: (parentId: string, replyId: string) => void,
 ): Record<string, ReactNode> {
   const pickers: Record<string, ReactNode> = {};
-  for (const { branch, messages } of responses) {
-    const lastMessage = messages.at(-1);
-    if (!branch || !lastMessage) {
+  for (const { message, branch } of responses) {
+    if (!branch) {
       continue;
     }
 
-    // Agent actions render on the final message in a response.
-    pickers[lastMessage.id] = (
+    pickers[message.id] = (
       <MetabotBranchPicker
         index={branch.currentIndex}
         count={branch.replyIds.length}

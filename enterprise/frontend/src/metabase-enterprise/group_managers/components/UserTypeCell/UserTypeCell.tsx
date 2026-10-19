@@ -45,7 +45,7 @@ export const UserTypeCell = ({
         component="button"
         className={S.changeButton}
         c="core-filter"
-        px="xs"
+        px="xxs"
         py={0}
       >
         <UserTypeToggle isManager={isManager} onChange={onChange} />

@@ -1,10 +1,20 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, within } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import type { DashboardSubscription } from "metabase-types/api";
+import {
+  createMockChannel,
+  createMockDashboardSubscription,
+} from "metabase-types/api/mocks";
 
-import { dashcard, hasBasicFilterOptions, setup, user } from "./setup";
+import {
+  dashcard,
+  hasBasicFilterOptions,
+  selectScheduleTime,
+  setup,
+  user,
+} from "./setup";
 
 describe("DashboardSubscriptionsSidebar", () => {
   it("should forward non-admin to email form - when slack is not setup", async () => {
@@ -254,6 +264,25 @@ describe("DashboardSubscriptionsSidebar", () => {
       expect(hasBasicFilterOptions(screen)).toBe(true);
     });
 
+    it("should show the report timezone in the schedule description (metabase#69496)", async () => {
+      setup({ isAdmin: false, email: false, slack: true });
+
+      await screen.findByText("Send this dashboard to Slack");
+
+      await userEvent.click(screen.getByTestId("select-frequency"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("daily"),
+      );
+
+      await selectScheduleTime();
+
+      expect(
+        await screen.findByText(
+          "Slack messages will be sent at 8:00 AM UTC, your Metabase timezone.",
+        ),
+      ).toBeInTheDocument();
+    });
+
     it("should send the include_pdf channel detail to the backend when the PDF switch is on", async () => {
       setup({ isAdmin: false, email: false, slack: true });
 
@@ -290,6 +319,25 @@ describe("DashboardSubscriptionsSidebar", () => {
       expect(hasBasicFilterOptions(screen)).toBe(true);
     });
 
+    it("should show the report timezone in the schedule description (metabase#69496)", async () => {
+      setup({ isAdmin: false, email: true, slack: false });
+
+      await screen.findByText("Email this dashboard");
+
+      await userEvent.click(screen.getByTestId("select-frequency"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("daily"),
+      );
+
+      await selectScheduleTime();
+
+      expect(
+        await screen.findByText(
+          "Emails will be sent at 8:00 AM UTC, your Metabase timezone.",
+        ),
+      ).toBeInTheDocument();
+    });
+
     it("should filter out actions and links when sending a test subscription", async () => {
       setup();
 
@@ -310,6 +358,37 @@ describe("DashboardSubscriptionsSidebar", () => {
       const payload = await lastCall?.request?.json();
       expect(payload.cards).toHaveLength(1);
       expect(payload.cards[0].id).toEqual(dashcard.id);
+    });
+
+    it("should keep 'Send email now' enabled when the frequency change clears the time", async () => {
+      setup();
+
+      await userEvent.click(await screen.findByText("Email it"));
+      await userEvent.click(
+        await screen.findByPlaceholderText(
+          "Enter user names or email addresses",
+        ),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+
+      await userEvent.click(screen.getByTestId("select-frequency"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("weekly"),
+      );
+
+      const sendNowButton = screen.getByRole("button", {
+        name: "Send email now",
+      });
+      expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+      expect(sendNowButton).toBeEnabled();
+
+      await userEvent.click(sendNowButton);
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels).toHaveLength(1);
     });
 
     it("should persist the include_pdf channel detail when the PDF switch is toggled on", async () => {
@@ -340,6 +419,149 @@ describe("DashboardSubscriptionsSidebar", () => {
       const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
       const payload = await lastCall?.request?.json();
       expect(payload.channels[0].details.include_pdf).toBe(true);
+    });
+
+    describe("subject", () => {
+      const selectRecipient = async () => {
+        await userEvent.click(
+          await screen.findByPlaceholderText(
+            "Enter user names or email addresses",
+          ),
+        );
+        await userEvent.click(
+          await screen.findByText(`${user.first_name} ${user.last_name}`),
+        );
+      };
+
+      it("should use the dashboard name as the placeholder", async () => {
+        setup();
+
+        await userEvent.click(await screen.findByText("Email it"));
+
+        expect(await screen.findByLabelText("Subject")).toHaveAttribute(
+          "placeholder",
+          "Dashboard",
+        );
+      });
+
+      it("should send the typed subject when creating a subscription", async () => {
+        setup();
+
+        await userEvent.click(await screen.findByText("Email it"));
+        await selectRecipient();
+        await userEvent.type(
+          await screen.findByLabelText("Subject"),
+          "Weekly revenue",
+        );
+        await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.called("path:/api/pulse", {
+              method: "POST",
+            }),
+          ).toBe(true),
+        );
+        const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse", {
+          method: "POST",
+        });
+        const payload = await lastCall?.request?.json();
+        expect(payload.channels[0].details.subject).toBe("Weekly revenue");
+      });
+
+      it("should drop the subject when it is cleared on an existing subscription", async () => {
+        const pulse = createMockDashboardSubscription({
+          id: 10,
+          channels: [
+            createMockChannel({
+              schedule_type: "hourly",
+              recipients: [user],
+              details: { subject: "Weekly revenue" },
+            }),
+          ],
+        });
+        fetchMock.put("path:/api/pulse/10", pulse);
+        setup({ pulses: [pulse] });
+
+        await userEvent.click(await screen.findByText("Emailed hourly"));
+        const subjectInput = await screen.findByLabelText("Subject");
+        expect(subjectInput).toHaveValue("Weekly revenue");
+
+        await userEvent.clear(subjectInput);
+        await userEvent.click(screen.getByRole("button", { name: "Done" }));
+
+        await waitFor(() =>
+          expect(fetchMock.callHistory.called("path:/api/pulse/10")).toBe(true),
+        );
+        const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/10");
+        const payload = await lastCall?.request?.json();
+        expect(payload.channels[0].channel_type).toBe("email");
+        expect(payload.channels[0].details).not.toHaveProperty("subject");
+      });
+    });
+  });
+
+  describe("requested subscription", () => {
+    const pulse = createMockDashboardSubscription({
+      id: 10,
+      channels: [
+        createMockChannel({
+          schedule_type: "hourly",
+          recipients: [user],
+          details: { subject: "Weekly revenue" },
+        }),
+      ],
+    });
+
+    it("opens the edit form of the requested subscription once", async () => {
+      setup({ isAdmin: true, pulses: [pulse], requestedSubscriptionId: 10 });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Subject")).toHaveValue("Weekly revenue");
+
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Email this dashboard"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the list when the requested subscription does not exist", async () => {
+      setup({ isAdmin: true, pulses: [pulse], requestedSubscriptionId: 99 });
+
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Email this dashboard"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the edit form of a requested subscription whose channel is not configured, like the list does", async () => {
+      setup({
+        isAdmin: true,
+        emailConfigured: false,
+        pulses: [pulse],
+        requestedSubscriptionId: 10,
+      });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the list when the form input leaves out the requested subscription's channel", async () => {
+      setup({
+        isAdmin: true,
+        email: false,
+        pulses: [pulse],
+        requestedSubscriptionId: 10,
+      });
+
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Email this dashboard"),
+      ).not.toBeInTheDocument();
     });
   });
 });

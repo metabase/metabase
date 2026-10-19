@@ -4,7 +4,7 @@ title: Offset
 
 # Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, ClickHouse, MongoDB, and Druid.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
 
 The `Offset` function returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
@@ -16,7 +16,7 @@ The `rowOffset` is the number relative to the current row. For example, `-1` for
 
 Example: `Offset(Sum([Total]), -1)` would get the value of `Sum([Total])` from the previous row.
 
-## The order of the breakouts matter
+## The order of the breakouts matters
 
 Because `Offset` refers to other rows, the order of the breakouts matters (the breakouts are the groups in the "Group By" section in the Summarization step). Metabase will sort by the first group, then partition by any additional breakouts. For example, if you want to see the counts of orders by product category over time, and the counts by product category for the previous period, you should first group by `Created At`, then by the product category.
 

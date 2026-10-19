@@ -1,15 +1,15 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { getActionErrorMessage } from "metabase/actions/utils";
 import { subscriptionApi } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
 import { createThunkAction } from "metabase/redux";
-import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
   DashboardSubscription,
+  DraftDashboardSubscription,
   UpdateSubscriptionRequest,
 } from "metabase-types/api";
 
@@ -55,12 +55,13 @@ export const saveEditingPulse = createThunkAction(
           ).unwrap();
         }
       } catch (error) {
-        const errorMessage = getActionErrorMessage(error);
+        const errorMessage =
+          findErrorMessage(error) ??
+          t`Something went wrong while saving your subscription`;
 
         dispatch(
           addUndo({
-            icon: "warning",
-            toastColor: "feedback-negative",
+            variant: "negative",
             message: isEdit
               ? t`Cannot edit subscription. ${errorMessage} Please contact your administrator.`
               : t`Cannot create subscription. ${errorMessage} Please contact your administrator.`,

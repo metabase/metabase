@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { TransformGraphRun } from "metabase-types/api";
 

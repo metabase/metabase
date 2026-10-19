@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { NewMetricPage } from "metabase/metrics/pages/NewMetricPage";
-import { Link } from "metabase/router";
 import * as Urls from "metabase/urls";
 
 import { dataStudioMetricUrls } from "../../urls";
@@ -15,7 +15,7 @@ export function DataStudioNewMetricPage() {
       triggeredFrom="data_studio"
       renderBreadcrumbs={() => (
         <DataStudioBreadcrumbs>
-          <Link to={Urls.dataStudioLibrary()}>{t`Library`}</Link>
+          <Link to={Urls.dataStudioLibrary()}>{t`Semantic layer`}</Link>
           {t`New Metric`}
         </DataStudioBreadcrumbs>
       )}

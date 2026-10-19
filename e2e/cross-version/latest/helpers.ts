@@ -1,3 +1,5 @@
+import { XV_DATABASE_NAME } from "../constants";
+
 const { H } = cy;
 
 export function saveQuestion(name: string) {
@@ -6,6 +8,18 @@ export function saveQuestion(name: string) {
   cy.findByTestId("qb-header").button("Save").click();
   cy.findByTestId("save-question-modal").within(() => {
     cy.findByLabelText("Name").clear().type(name);
+    cy.findByLabelText(/Where do you want to save this/).click();
+  });
+  H.entityPickerModal().within(() => {
+    H.entityPickerModalLevel(0).findByText("Our analytics").click();
+    cy.findByTestId("entity-picker-select-button").click();
+  });
+  H.entityPickerModal().should("not.exist");
+  cy.findByTestId("save-question-modal").within(() => {
+    cy.findByLabelText(/Where do you want to save this/).should(
+      "contain.text",
+      "Our analytics",
+    );
     cy.button("Save").click();
     cy.wait("@saveQuestion");
   });
@@ -35,11 +49,11 @@ export function visitRootCollectionAndWait() {
 }
 
 export function joinTables(baseTable: string, joinTable: string) {
-  selectFromPopover("Sample Database");
+  selectFromPopover(XV_DATABASE_NAME);
   selectFromPopover(baseTable);
 
   H.join();
 
-  selectFromPopover("Sample Database");
+  selectFromPopover(XV_DATABASE_NAME);
   selectFromPopover(joinTable);
 }

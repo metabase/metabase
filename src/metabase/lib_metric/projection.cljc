@@ -164,11 +164,13 @@
         lib.schema.temporal-bucketing/ordered-time-bucketing-units))
 
 (def ^:private date-bucket-options
-  (perf/mapv (fn [unit]
-               (cond-> {:lib/type :option/temporal-bucketing
-                        :unit unit}
-                 (= unit :day) (assoc :default true)))
-             lib.schema.temporal-bucketing/ordered-date-bucketing-units))
+  (into []
+        (comp (remove hidden-bucketing-options)
+              (map (fn [unit]
+                     (cond-> {:lib/type :option/temporal-bucketing
+                              :unit unit}
+                       (= unit :day) (assoc :default true)))))
+        lib.schema.temporal-bucketing/ordered-date-bucketing-units))
 
 (def ^:private datetime-bucket-options
   (let [units (into [] (remove hidden-bucketing-options)
@@ -202,6 +204,12 @@
       default-unit  (mark-unit :default  default-unit)
       selected-unit (mark-unit :selected selected-unit))))
 
+(defn valid-temporal-unit-for-type?
+  "Whether `unit` is a bucket a user may pick for a column of `column-type`."
+  [column-type unit]
+  (boolean (perf/some #(= unit (:unit %))
+                      (available-temporal-buckets-for-type column-type nil nil))))
+
 (mu/defn available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
   "Get available temporal buckets for a dimension based on its effective-type."
   [definition :- ::lib-metric.schema/metric-definition
@@ -213,7 +221,7 @@
                                      (:temporal-unit (second proj))))
                                  flat-projs)]
     (if (isa? effective-type :type/Temporal)
-      (available-temporal-buckets-for-type effective-type nil selected-unit)
+      (available-temporal-buckets-for-type effective-type (:default-temporal-unit dimension) selected-unit)
       [])))
 
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]

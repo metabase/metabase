@@ -1,0 +1,417 @@
+import { getIn } from "icepick";
+import { t } from "ttag";
+
+import { color } from "metabase/ui/colors";
+import { deriveChartShadeColor } from "metabase/ui/colors/accents";
+import type {
+  Series,
+  SeriesCard,
+  SingleSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+import { OTHER_DATA_KEY } from "../../echarts/cartesian/constants/dataset";
+import type { LegacySeriesSettingsObjectKey } from "../../echarts/cartesian/model/types";
+import {
+  SERIES_COLORS_SETTING_KEY,
+  SERIES_SETTING_KEY,
+  getSeriesColors,
+  getSeriesDefaultDisplay,
+  getSeriesDefaultLineMarker,
+  getSeriesDefaultLineMissing,
+  getSeriesDefaultLineSize,
+  getSeriesDefaultLineStyle,
+  getSeriesDefaultLinearInterpolate,
+  getSeriesDefaultShowSeriesTrendline,
+  getSeriesDefaultShowSeriesValues,
+  isSeriesTrendLineUnavailable,
+} from "../../shared/settings/series";
+import type {
+  ComputedVisualizationSettings,
+  SettingsExtra,
+  VisualizationSettingsDefinitions,
+} from "../../types";
+import { getNameForCard, isRowChartSeries } from "../series";
+
+import { type NestedSettingsOptions, nestedSettings } from "./nested";
+
+const isSeriesTrendLineCustomizationHidden = (
+  single: SingleSeries,
+  seriesSettings: ComputedVisualizationSettings,
+  extra?: SettingsExtra,
+) => {
+  const { series = [], settings = {} } = extra ?? {};
+  return (
+    series.length <= 1 || // with one series the trend line is customized in the Display tab
+    isSeriesTrendLineUnavailable(single, series, settings) ||
+    !settings["graph.show_trendline"] ||
+    !seriesSettings.show_series_trendline
+  );
+};
+
+export function keyForSingleSeries(single: SingleSeries): string {
+  if (isLegacySeriesCard(single.card)) {
+    // _seriesKey is sometimes set by transformSeries
+    return single.card._seriesKey || String(single.card.name);
+  }
+
+  return String(single.card.name);
+}
+
+function hasSingleSeriesKey(single: SingleSeries): boolean {
+  if (isLegacySeriesCard(single.card)) {
+    return Boolean(single.card._seriesKey || single.card.name);
+  }
+
+  return Boolean(single.card.name);
+}
+
+function isLegacySeriesCard(
+  card: SeriesCard,
+): card is SeriesCard & LegacySeriesSettingsObjectKey["card"] {
+  return "_seriesKey" in card;
+}
+
+const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
+
+export interface SeriesSettingOptions {
+  readDependencies?: string[];
+  def?: Partial<NestedSettingsOptions<SingleSeries>>;
+}
+
+export function seriesSetting({
+  readDependencies = [],
+  def = {},
+}: SeriesSettingOptions = {}): VisualizationSettingsDefinitions {
+  const COMMON_SETTINGS: VisualizationSettingsDefinitions = {
+    // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
+    title: {
+      getDefault: (single, _settings, extra = {}) => {
+        const { series = [], settings: vizSettings = {} } = extra;
+        const legacyTitles: string[] | undefined =
+          vizSettings["graph.series_labels"];
+        if (legacyTitles) {
+          const index = series.indexOf(single); // TODO: pass in series index so we don't have to search for it
+          if (index >= 0 && index < legacyTitles.length) {
+            return legacyTitles[index];
+          }
+        }
+        return single.card.name;
+      },
+    },
+    display: {
+      widget: "segmentedControl",
+      get title() {
+        return t`Display type`;
+      },
+      getProps: () => ({
+        options: [
+          { value: "line", icon: "line" },
+          { value: "area", icon: "area" },
+          { value: "bar", icon: "bar" },
+        ],
+      }),
+      getHidden: (single, settings, _extra) =>
+        !["line", "area", "bar", "combo"].includes(single.card.display ?? "") ||
+        settings["stackable.stack_type"] != null,
+      // Row charts only draw bars; ignore a display saved as another chart type.
+      isValid: (_single, _settings, extra) => !isRowChartSeries(extra?.series),
+      getDefault: (single, _settings, extra) => {
+        const { series = [] } = extra ?? {};
+        if (keyForSingleSeries(single) === OTHER_DATA_KEY) {
+          return "bar"; // "other" series is always a bar chart now
+        }
+        // FIXME: will move to Cartesian series model further, but now this code is used by other legacy charts
+        const transformedSeriesIndex = series.findIndex(
+          (s) => keyForSingleSeries(s) === keyForSingleSeries(single),
+        );
+        return getSeriesDefaultDisplay(
+          series[transformedSeriesIndex].card.display,
+          transformedSeriesIndex,
+        );
+      },
+    },
+    color: {
+      getDefault: (single, _settings, extra) => {
+        // get the color for series key, computed in the setting
+        return getIn(extra?.settings, [
+          SERIES_COLORS_SETTING_KEY,
+          keyForSingleSeries(single),
+        ]);
+      },
+    },
+    "line.interpolate": {
+      get title() {
+        return t`Line shape`;
+      },
+      widget: "segmentedControl",
+      getProps: () => ({
+        options: [
+          { icon: "straight", value: "linear" },
+          { icon: "curved", value: "cardinal" },
+          { icon: "stepped", value: "step-after" },
+        ],
+      }),
+      getHidden: (_single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      getDefault: (_single, _settings, extra) => {
+        // use legacy global line.interpolate setting if present
+        return getSeriesDefaultLinearInterpolate(extra?.settings ?? {});
+      },
+      readDependencies: ["display"],
+    },
+    "line.style": {
+      get title() {
+        return t`Line style`;
+      },
+      widget: "segmentedControl",
+      getProps: () => ({
+        options: [
+          { icon: "line_style_solid", value: "solid" },
+          { icon: "line_style_dashed", value: "dashed" },
+          { icon: "line_style_dotted", value: "dotted" },
+        ],
+      }),
+      getDefault: (_series, settings) => getSeriesDefaultLineStyle(settings),
+      getHidden: (_single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      readDependencies: ["display"],
+    },
+    "line.size": {
+      get title() {
+        return t`Line size`;
+      },
+      widget: "segmentedControl",
+      getProps: () => ({
+        options: [
+          { name: "S", value: "S" },
+          { name: "M", value: "M" },
+          { name: "L", value: "L" },
+        ],
+      }),
+      getDefault: (_series, settings) => getSeriesDefaultLineSize(settings),
+      getHidden: (_single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      readDependencies: ["display"],
+    },
+    "line.marker_enabled": {
+      get title() {
+        return t`Show dots on lines`;
+      },
+      widget: "segmentedControl",
+      getProps: () => ({
+        options: [
+          { name: t`Auto`, value: null },
+          { name: t`On`, value: true },
+          { name: t`Off`, value: false },
+        ],
+      }),
+      getHidden: (_single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      getDefault: (_single, _settings, extra) => {
+        // use legacy global line.marker_enabled setting if present
+        return getSeriesDefaultLineMarker(extra?.settings ?? {});
+      },
+      readDependencies: ["display"],
+    },
+    "line.missing": {
+      get title() {
+        return t`Replace missing values with`;
+      },
+      widget: "select",
+      getProps: () => ({
+        options: [
+          { name: t`Zero`, value: "zero" },
+          { name: t`Nothing`, value: "none" },
+          { name: t`Linear Interpolated`, value: "interpolate" },
+        ],
+      }),
+      getHidden: (_single, settings) =>
+        !LINE_DISPLAY_TYPES.has(settings["display"]),
+      getDefault: (_single, _settings, extra) => {
+        // use legacy global line.missing setting if present
+        return getSeriesDefaultLineMissing(extra?.settings ?? {});
+      },
+      readDependencies: ["display"],
+    },
+    axis: {
+      get title() {
+        return t`Y-axis position`;
+      },
+      widget: "segmentedControl",
+      getHidden: (_single, _seriesSettings, extra) =>
+        isRowChartSeries(extra?.series) ||
+        extra?.settings?.["graph.split_panels"] === true,
+      // Row charts have a single metric axis; ignore a saved position.
+      isValid: (_single, _settings, extra) => !isRowChartSeries(extra?.series),
+      getDefault: (_single, _seriesSettings, extra) =>
+        extra?.settings?.["graph.split_panels"] === true ? "left" : null,
+      getProps: () => ({
+        options: [
+          { name: t`Auto`, value: null },
+          { name: t`Left`, value: "left" },
+          { name: t`Right`, value: "right" },
+        ],
+      }),
+      readDependencies: ["display"],
+    },
+    show_series_trendline: {
+      get title() {
+        return t`Show trend line for this series`;
+      },
+      widget: "toggle",
+      inline: true,
+      getHidden: (single, _seriesSettings, extra) => {
+        const { series = [], settings = {} } = extra ?? {};
+        return (
+          series.length <= 1 || // no need to show series-level control if there's only one series
+          isSeriesTrendLineUnavailable(single, series, settings) ||
+          !settings["graph.show_trendline"] // don't show it unless this chart has a global setting;
+        );
+      },
+      getDefault: (_single, _seriesSettings, extra) =>
+        getSeriesDefaultShowSeriesTrendline(extra?.settings ?? {}),
+      readDependencies: ["graph.show_trendline"],
+    },
+    // With multiple series, trend lines are customized per series here instead
+    // of the Display tab, which only has room for a single color and style.
+    "trendline.color": {
+      widget: "color",
+      getProps: () => ({
+        title: t`Trend line color`,
+        bordered: true,
+        pillSize: "small" as const,
+        // the color dropdown must not escape the series settings popover
+        withinPortal: false,
+      }),
+      getHidden: (single, seriesSettings, extra) =>
+        isSeriesTrendLineCustomizationHidden(single, seriesSettings, extra),
+      getDefault: (single, _seriesSettings, extra) => {
+        const seriesColor =
+          extra?.settings?.[SERIES_COLORS_SETTING_KEY]?.[
+            keyForSingleSeries(single)
+          ];
+        return seriesColor != null
+          ? deriveChartShadeColor(seriesColor)
+          : color("core-brand");
+      },
+      readDependencies: [
+        "color",
+        "show_series_trendline",
+        "graph.show_trendline",
+      ],
+    },
+    "trendline.style": {
+      get title() {
+        return t`Trend line style`;
+      },
+      widget: "segmentedControl",
+      getProps: () => ({
+        options: [
+          { name: t`Solid`, value: "solid", icon: "line_style_solid" as const },
+          {
+            name: t`Dashed`,
+            value: "dashed",
+            icon: "line_style_dashed" as const,
+          },
+          {
+            name: t`Dotted`,
+            value: "dotted",
+            icon: "line_style_dotted" as const,
+          },
+        ],
+      }),
+      getHidden: (single, seriesSettings, extra) =>
+        isSeriesTrendLineCustomizationHidden(single, seriesSettings, extra),
+      getDefault: () => "solid",
+      readDependencies: ["show_series_trendline", "graph.show_trendline"],
+    },
+    show_series_values: {
+      get title() {
+        return t`Show values for this series`;
+      },
+      widget: "toggle",
+      inline: true,
+      getHidden: (_single, _seriesSettings, extra) => {
+        const { series = [], settings = {} } = extra ?? {};
+
+        return Boolean(
+          series.length <= 1 || // no need to show series-level control if there's only one series
+          !settings["graph.show_values"] || // don't show it unless this chart has a global setting
+          (settings["stackable.stack_type"] &&
+            settings["graph.show_stack_values"] === "total"),
+        );
+      },
+      getDefault: (_single, _seriesSettings, extra) =>
+        getSeriesDefaultShowSeriesValues(extra?.settings ?? {}),
+      readDependencies: ["graph.show_values", "stackable.stack_type"],
+    },
+  };
+
+  return {
+    ...nestedSettings<typeof SERIES_SETTING_KEY, SingleSeries>(
+      SERIES_SETTING_KEY,
+      {
+        getHidden: ([{ card }], _settings, extra) =>
+          !extra?.isDashboard || card?.display === "waterfall",
+        getSection: (_series, _settings, extra) =>
+          extra?.isDashboard ? t`Display` : t`Style`,
+        objectName: "series",
+        getObjects: (series) => series,
+        getObjectKey: keyForSingleSeries,
+        getObjectSettings: (storedSettings, object) =>
+          storedSettings[keyForSingleSeries(object)],
+        getSettingDefinitionsForObject: () => COMMON_SETTINGS,
+        widget: "nestedSeries",
+        readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
+        getWrapperStyle: () => ({
+          marginLeft: 0,
+          marginRight: 0,
+        }),
+        getExtraProps: (series) => ({
+          seriesCardNames: series.reduce<Record<string, string>>(
+            (memo, singleSeries) => {
+              memo[keyForSingleSeries(singleSeries)] = getNameForCard(
+                singleSeries.card,
+              );
+              return memo;
+            },
+            {},
+          ),
+        }),
+        ...def,
+      },
+    ),
+    // colors must be computed as a whole rather than individually
+    [SERIES_COLORS_SETTING_KEY]: {
+      getValue: getColors,
+    },
+  };
+}
+
+/**
+ * Exported for testing purposes.
+ * Computes the colors for the series based on their keys and settings.
+ * It filters out series that do not have a single key and maps them to their keys.
+ * Then it retrieves the colors using the `getSeriesColors` function.
+ * @returns An object mapping series keys to their colors.
+ */
+export function getColors(
+  series: Series,
+  settings: VisualizationSettings,
+): Record<string, string> {
+  const keys: string[] = [];
+  const defaultKeys: (string | undefined)[] = [];
+
+  for (const s of series.filter(hasSingleSeriesKey)) {
+    const key = keyForSingleSeries(s);
+    const mappedValue = s.columnValuesMapping?.[key]?.[0];
+
+    keys.push(key);
+    defaultKeys.push(
+      typeof mappedValue === "string" ? mappedValue : mappedValue?.originalName,
+    );
+  }
+
+  return getSeriesColors(keys, settings, defaultKeys);
+}

@@ -2,12 +2,11 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import { databaseApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { databaseFetched } from "metabase/metadata-store";
 import { combineReducers } from "metabase/redux";
 import { createDatabase } from "metabase/redux/databases";
-import { updateMetadata } from "metabase/redux/metadata";
 import type { Dispatch } from "metabase/redux/store";
-import { push } from "metabase/router";
-import { DatabaseSchema } from "metabase/schema";
+import { navigate } from "metabase/router";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
 const DELETE_DATABASE = createAction<{ databaseId: DatabaseId }>(
@@ -28,7 +27,7 @@ export const updateDatabase = function (database: DatabaseData) {
       dispatch,
       databaseApi.endpoints.updateDatabase,
     );
-    dispatch(updateMetadata(result, DatabaseSchema));
+    dispatch(databaseFetched(result));
     return result;
   };
 };
@@ -53,7 +52,7 @@ export const deleteDatabase = function (databaseId: DatabaseId) {
         dispatch,
         databaseApi.endpoints.deleteDatabase,
       );
-      dispatch(push("/admin/databases/"));
+      navigate("/admin/databases/");
 
       dispatch(DELETE_DATABASE({ databaseId }));
     } catch (error) {

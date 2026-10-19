@@ -27,8 +27,8 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
+  ActionIcon,
   Box,
-  Button,
   Flex,
   Group,
   Icon,
@@ -39,11 +39,12 @@ import {
 import * as Urls from "metabase/urls";
 
 import { trackMetadataChange } from "../../analytics";
-import { RouterTablePicker, TableSection } from "../../components";
-import type { TreePath } from "../../components/TablePicker/types";
-import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
+import { RouterTablePicker } from "./TablePicker";
+import type { TreePath } from "./TablePicker/types";
+import { TableSection } from "./TableSection";
+import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
 import { COLUMN_CONFIG } from "./constants";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
@@ -204,7 +205,7 @@ function DataModelContent() {
               h="100%"
               justify="center"
               miw={rem(400)}
-              p="xl"
+              p="xxl"
             >
               <LoadingAndErrorWrapper error={t`Not found.`} />
             </Stack>
@@ -242,29 +243,29 @@ function DataModelContent() {
               justify="space-between"
               w="100%"
               data-testid="table-section-header"
-              py="lg"
+              py="xl"
               bg="background_page-secondary"
               className={S.header}
-              px="lg"
+              px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
-              <Button
+              <ActionIcon
+                variant="subtle"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                p="sm"
-                size="compact-sm"
                 onClick={() => {
                   closePreview();
                   resetSelection();
                 }}
-              />
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Group>
-            <ScrollArea flex={1} px="lg" type="hover">
+            <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {table && (
                   <TableSection
@@ -309,25 +310,26 @@ function DataModelContent() {
               justify="space-between"
               w="100%"
               data-testid="field-section-header"
-              p="lg"
+              p="xl"
               bg="background_page-secondary"
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
-              <Button
+              <ActionIcon
+                variant="subtle"
+                size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                   tableId: table?.id,
                 })}
-                leftSection={<Icon name="close" c="text-secondary" />}
-                variant="subtle"
-                size="compact-sm"
                 onClick={closePreview}
-              />
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Group>
-            <ScrollArea flex={1} px="lg" type="hover">
+            <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && databaseId != null && (
                   <>
@@ -362,7 +364,7 @@ function DataModelContent() {
           <Box
             flex={COLUMN_CONFIG.preview.flex}
             h="100%"
-            p="lg"
+            p="xl"
             maw={COLUMN_CONFIG.preview.max}
             miw={COLUMN_CONFIG.preview.min}
             ref={scrollToPanel}

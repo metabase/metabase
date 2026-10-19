@@ -2,10 +2,12 @@
   "Native query snippet (/api/native-query-snippet) endpoints."
   (:require
    [clojure.data :as data]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -20,9 +22,7 @@
   ([]
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
-   (let [snippets (t2/select :model/NativeQuerySnippet
-                             :archived archived
-                             {:order-by [[:%lower.name :asc]]})]
+   (let [snippets (native-query-snippets.db/snippets-by-archived archived)]
      (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -31,29 +31,33 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
+  {:scope api-scope/data-app}
   [_route-params
-   {:keys [archived]} :- [:map
+   {:keys [archived]} :- [:map {:closed true}
                           [:archived {:default false} [:maybe ms/BooleanValue]]]]
   (list-native-query-snippets (boolean archived)))
 
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."
   [id :- ms/PositiveInt]
-  (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
+  (-> (api/read-check (native-query-snippets.db/snippet id))
       (t2/hydrate :creator :is_remote_synced)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; Not tagged `data-apps:base`, though the list route above is: a data app needs the list to
+;; resolve snippet names while rendering a native question, whereas fetching one by id is the
+;; Data Studio snippet editor (`useGetSnippetQuery`), which a data app does not render.
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (get-native-query-snippet id))
 
 (defn- check-snippet-name-is-unique [snippet-name]
-  (when (t2/exists? :model/NativeQuerySnippet :name snippet-name)
+  (when (native-query-snippets.db/snippet-name-exists? snippet-name)
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
@@ -65,7 +69,7 @@
   "Create a new `NativeQuerySnippet`."
   [_route-params
    _query-params
-   {:keys [content description name collection_id]} :- [:map
+   {:keys [content description name collection_id]} :- [:map {:closed true}
                                                         [:content       :string]
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
@@ -77,13 +81,13 @@
                  :name          name
                  :collection_id collection_id}]
     (api/create-check :model/NativeQuerySnippet snippet)
-    (api/check-500 (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet)))))
+    (api/check-500 (native-query-snippets.db/insert-snippet! snippet))))
 
 (defn- check-perms-and-update-snippet!
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (t2/select-one :model/NativeQuerySnippet :id id)
+  (let [snippet     (native-query-snippets.db/snippet id)
         body-fields (u/select-keys-when body
                                         :present #{:description :collection_id}
                                         :non-nil #{:archived :content :name})
@@ -93,7 +97,7 @@
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
       (t2/with-transaction [_conn]
-        (t2/update! :model/NativeQuerySnippet id changes)
+        (native-query-snippets.db/update-snippet! id changes)
         (collections/check-for-remote-sync-update snippet)))
     (get-native-query-snippet id)))
 
@@ -103,10 +107,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an existing `NativeQuerySnippet`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:archived      {:optional true} [:maybe :boolean]]
             [:content       {:optional true} [:maybe :string]]
             [:description   {:optional true} [:maybe :string]]

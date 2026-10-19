@@ -5,8 +5,8 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
-(derive ::api-events :metabase/event)
-(derive :event/api-handler-update ::api-events)
+(events/derive! ::api-events :metabase/event)
+(events/derive! :event/api-handler-update ::api-events)
 
 ;; Should be triggered in dev mode only to update the openapi.json doc when api schemas change this then will update
 ;; the metabase-types for FE via hot-reloading. This used to live in metabase.api.events. But because it needs a

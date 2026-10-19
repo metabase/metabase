@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useStorageSetup } from "metabase/common/components/upsells/StoragePurchaseModal";
-import { useSetting } from "metabase/common/hooks";
+import {
+  PLUGIN_STORAGE_SETUP,
+  useStorageSetup,
+} from "metabase/common/components/upsells/StoragePurchaseModal";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -14,14 +17,15 @@ import { DatabasesPanel } from "./Panels/DatabasesPanel";
 import { PanelsHeader } from "./Panels/PanelsHeader";
 import { trackAddDataEvent } from "./analytics";
 import { useAddDataState } from "./use-add-data-state";
-import { type AddDataTab, isValidTab } from "./utils";
+import type { AddDataTab } from "./utils";
 
 interface AddDataModalProps {
   opened: boolean;
   onClose: () => void;
 
   initialTab?: AddDataTab;
-  fromEmbeddingSetupGuide?: boolean;
+  /** Path of the setup guide that opened this, so the flow can return there. */
+  returnToSetupGuide?: string;
 }
 
 interface Tabs {
@@ -42,16 +46,16 @@ export const AddDataModal = (props: AddDataModalProps) => (
   // Outside `Modal.Root` so setup state and its polling survive the modal
   // closing, and so the purchase modal it hosts replaces this one rather than
   // stacking. `enabled` defers the add-ons fetch until the modal is shown.
-  <PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider enabled={props.opened}>
+  <PLUGIN_STORAGE_SETUP.StorageSetupProvider enabled={props.opened}>
     <AddDataModalContent {...props} />
-  </PLUGIN_UPLOAD_MANAGEMENT.StorageSetupProvider>
+  </PLUGIN_STORAGE_SETUP.StorageSetupProvider>
 );
 
 const AddDataModalContent = ({
   opened,
   onClose,
   initialTab,
-  fromEmbeddingSetupGuide,
+  returnToSetupGuide,
 }: AddDataModalProps) => {
   const { areUploadsEnabled, canManageUploads, isAdmin, hasAttachedDwh } =
     useAddDataState();
@@ -88,8 +92,8 @@ const AddDataModalContent = ({
     return result;
   }, [isHosted]);
 
-  const handleTabChange = (tabValue: string | null) => {
-    if (tabValue === activeTab || !isValidTab(tabValue)) {
+  const handleTabChange = (tabValue: AddDataTab | null) => {
+    if (tabValue === null || tabValue === activeTab) {
       return;
     }
 
@@ -128,7 +132,7 @@ const AddDataModalContent = ({
             <Box component="header" className={S.header}>
               <Modal.Title fz="lg">{t`Add data`}</Modal.Title>
             </Box>
-            <Tabs.List px="md" pb="lg">
+            <Tabs.List px="lg" pb="xl">
               {tabs.map((tab) => (
                 <Tabs.Tab
                   key={tab.value}
@@ -154,7 +158,7 @@ const AddDataModalContent = ({
             <Tabs.Panel value="db" className={S.panel}>
               <DatabasesPanel
                 canSeeContent={isAdmin}
-                fromEmbeddingSetupGuide={fromEmbeddingSetupGuide}
+                returnToSetupGuide={returnToSetupGuide}
               />
             </Tabs.Panel>
             <Tabs.Panel value="csv" className={S.panel}>

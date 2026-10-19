@@ -3,7 +3,7 @@ import { Box, Flex } from "metabase/ui";
 
 import DeprecationNotice from "../../containers/DeprecationNotice";
 
-const AdminApp = (): JSX.Element => {
+export const AdminApp = (): JSX.Element => {
   return (
     <Flex direction="column" h="100%">
       <DeprecationNotice />
@@ -13,6 +13,3 @@ const AdminApp = (): JSX.Element => {
     </Flex>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AdminApp;

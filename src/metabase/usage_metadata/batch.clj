@@ -3,6 +3,7 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
+   [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
@@ -13,7 +14,6 @@
    [metabase.usage-metadata.store :as usage-metadata.store]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
   (:import
    (java.nio ByteBuffer)
@@ -24,12 +24,12 @@
 (def ^:private utc-zone-offset
   (t/zone-offset "Z"))
 
-(def ^:private rollup-models
-  [:model/SourceSegmentDaily
-   :model/SourceSegmentCompositeDaily
-   :model/SourceMetricDaily
-   :model/SourceDimensionDaily
-   :model/SourceDimensionProfileDaily])
+(def ^:private delete-rollups-before-fns
+  [usage-metadata.db/delete-segment-rollups-before!
+   usage-metadata.db/delete-segment-composite-rollups-before!
+   usage-metadata.db/delete-metric-rollups-before!
+   usage-metadata.db/delete-dimension-rollups-before!
+   usage-metadata.db/delete-dimension-profile-rollups-before!])
 
 (def ^:private low-cardinality-threshold
   30)
@@ -90,11 +90,7 @@
   Identical hashes produce identical facts, so collapse at the DB and iterate
   unique hashes. Per-execution totals come from multiplying by `:n`."
   [bucket-date]
-  (t2/select [:model/QueryExecution :hash [:%count.* :n]]
-             {:where    [:and
-                         [:>= :started_at (utc-day-start bucket-date)]
-                         [:<  :started_at (utc-day-end bucket-date)]]
-              :group-by [:hash]}))
+  (usage-metadata.db/query-execution-hash-counts (utc-day-start bucket-date) (utc-day-end bucket-date)))
 
 (defn- add-skip [stats reason n]
   (update-in stats [:skipped-rows reason] (fnil + 0) n))
@@ -217,7 +213,7 @@
 
 (defn- field-fingerprint
   [field-id]
-  (some-> (t2/select-one-fn :fingerprint :metabase_field :id field-id)
+  (some-> (usage-metadata.db/raw-field-fingerprint field-id)
           decode-fingerprint))
 
 (defn- profile-rows-for-dimensions
@@ -285,8 +281,7 @@
                               stats
                               (mdb/streaming-reducible
                                (fn [conn]
-                                 (t2/reducible-select :conn conn [:model/Query :query_hash :query]
-                                                      :query_hash [:in hash-chunk])))))
+                                 (usage-metadata.db/queries-reducible conn hash-chunk)))))
                            initial-stats
                            (partition-all hash-chunk-size raw-hashes))
          seen-hashes      (:seen-hashes after-stream)
@@ -325,8 +320,8 @@
   [retention-days today]
   (let [retention-days (max 1 (or retention-days 1))
         cutoff-day     (t/minus today (t/days retention-days))]
-    (doseq [model rollup-models]
-      (t2/delete! model :bucket_date [:< cutoff-day]))
+    (doseq [delete-before! delete-rollups-before-fns]
+      (delete-before! cutoff-day))
     cutoff-day))
 
 (defn run-batch!

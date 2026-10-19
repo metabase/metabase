@@ -187,6 +187,7 @@ export function TreeTable<TData extends TreeNodeData>({
       renderRowLink={renderRowLink}
       renderSubRow={renderSubRow}
       hierarchical={hierarchical}
+      isClickable={Boolean(onRowClick) || Boolean(renderRowLink)}
     />
   );
 
@@ -215,7 +216,7 @@ export function TreeTable<TData extends TreeNodeData>({
           style={styles?.body}
         >
           {showEmptyState ? (
-            <Center h="100%" p="xl" c="text-disabled">
+            <Center h="100%" p="xxl" c="text-disabled">
               {emptyState}
             </Center>
           ) : (

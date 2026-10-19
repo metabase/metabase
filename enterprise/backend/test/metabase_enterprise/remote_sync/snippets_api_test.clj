@@ -19,7 +19,7 @@
       (mt/with-premium-features #{:snippet-collections}
         (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
           (collections.tu/with-library-synced
-            (mt/with-temporary-setting-values [remote-sync-type :read-only]
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}]
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -62,7 +62,7 @@
       (mt/with-premium-features #{:snippet-collections}
         (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
           (collections.tu/with-library-not-synced
-            (mt/with-temporary-setting-values [remote-sync-type :read-only]
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}]
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -87,7 +87,7 @@
       (mt/with-premium-features #{:snippet-collections}
         (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
           (collections.tu/with-library-synced
-            (mt/with-temporary-setting-values [remote-sync-type :read-only]
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                              :model/NativeQuerySnippet snippet {:name "Original Name"
                                                                 :content "SELECT 1"
@@ -129,7 +129,7 @@
       (mt/with-premium-features #{:snippet-collections}
         (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
           (collections.tu/with-library-not-synced
-            (mt/with-temporary-setting-values [remote-sync-type :read-only]
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                              :model/NativeQuerySnippet snippet {:name "Original Name"
                                                                 :content "SELECT 1"
@@ -152,7 +152,7 @@
       (mt/with-premium-features #{:snippet-collections}
         (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
           (collections.tu/with-library-synced
-            (mt/with-temporary-setting-values [remote-sync-type :read-only]
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                              :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                                 :content "SELECT 1"
@@ -172,7 +172,7 @@
       (mt/with-premium-features #{:snippet-collections}
         (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
           (collections.tu/with-library-synced
-            (mt/with-temporary-setting-values [remote-sync-type :read-only]
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                              :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                                 :content "SELECT 1"
@@ -193,7 +193,7 @@
       (mt/with-premium-features #{:snippet-collections}
         (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
           (collections.tu/with-library-synced
-            (mt/with-temporary-setting-values [remote-sync-type :read-only]
+            (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-temp [:model/Collection collection {:name "Test Collection", :namespace "snippets"}
                              :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                                 :content "SELECT 1"

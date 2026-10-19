@@ -3,6 +3,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { getCommonStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   SdkVisualizationWrapper,
@@ -12,10 +13,6 @@ import {
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -199,6 +196,90 @@ export const DashboardTable = {
   args: {
     series: data.ordersWithPeople,
     isDashboard: true,
+  },
+};
+
+const stripedOrdersWithPeople = [
+  {
+    ...ordersWithPeople,
+    card: {
+      ...ordersWithPeople.card,
+      visualization_settings: {
+        ...ordersWithPeople.card.visualization_settings,
+        "table.striped": true,
+      },
+    },
+  },
+];
+
+export const DashboardTableStripedRows = {
+  render: DefaultTemplate,
+  args: {
+    series: stripedOrdersWithPeople,
+    isDashboard: true,
+  },
+};
+
+export const TableStripedRows = {
+  render: DefaultTemplate,
+  args: {
+    series: stripedOrdersWithPeople,
+  },
+};
+
+export const DashboardTableStripedRowsEmbeddingTheme = {
+  render: DefaultTemplate,
+  args: {
+    series: stripedOrdersWithPeople,
+    isDashboard: true,
+    theme: {
+      components: {
+        table: {
+          cell: { textColor: "#dfe4ea", backgroundColor: "#2f3640" },
+        },
+      },
+    },
+    hasDevWatermark: false,
+  },
+};
+
+export const DashboardTableStripedRowsEmbeddingThemeStripeColor = {
+  render: DefaultTemplate,
+  args: {
+    series: stripedOrdersWithPeople,
+    isDashboard: true,
+    theme: {
+      components: {
+        table: {
+          cell: { textColor: "#dfe4ea", backgroundColor: "#2f3640" },
+          stripedBackgroundColor: "#4b3a5a",
+        },
+      },
+    },
+    hasDevWatermark: false,
+  },
+};
+
+const STRIPED_CONDITIONAL_FORMATTING_SERIES = CONDITIONA_FORMATTING_SERIES.map(
+  (series) => ({
+    ...series,
+    card: {
+      ...series.card,
+      visualization_settings: {
+        ...series.card.visualization_settings,
+        "table.striped": true,
+      },
+    },
+  }),
+);
+
+export const StripedRowsWithConditionalFormatting = {
+  parameters: {
+    layout: "fullscreen",
+  },
+  render: ColumnFormattingTemplate,
+  args: {
+    series: STRIPED_CONDITIONAL_FORMATTING_SERIES,
   },
 };
 

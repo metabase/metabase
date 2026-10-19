@@ -1,4 +1,4 @@
-(ns ^:synchronous metabase-enterprise.remote-sync.card-api-test
+(ns ^:synchronized metabase-enterprise.remote-sync.card-api-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.card-api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
@@ -24,7 +24,8 @@
       (let [response (mt/user-http-request :crowberto :post 400 "card/collections"
                                            {:collection_id synced-id
                                             :card_ids [root-card-id]})]
-        (is (= "Uses content that is not remote synced." (:message response))))
+        (is (= "Uses content that is not remote synced." (:message response)))
+        (is (seq (:non-remote-synced-models response))))
       (testing "card is not moved - transaction rolled back"
         (is (nil? (t2/select-one-fn :collection_id :model/Card root-card-id)))))))
 
@@ -41,7 +42,8 @@
       (let [response (mt/user-http-request :crowberto :post 400 "card/collections"
                                            {:collection_id regular-id
                                             :card_ids [source-card-id]})]
-        (is (= "Used by remote synced content." (:message response))))
+        (is (= "Used by remote synced content." (:message response)))
+        (is (seq (:remote-synced-models response))))
       (testing "card is not moved - transaction rolled back"
         (is (= synced-id (t2/select-one-fn :collection_id :model/Card source-card-id)))))))
 

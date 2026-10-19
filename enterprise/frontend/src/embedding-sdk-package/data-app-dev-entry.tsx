@@ -1,9 +1,3 @@
-import * as React from "react";
-import * as ReactDOM from "react-dom";
-import * as ReactDOMClient from "react-dom/client";
-import * as ReactDOMServer from "react-dom/server";
-import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
-import * as ReactJsxRuntime from "react/jsx-runtime";
 import * as sdkExports from "@metabase/embedding-sdk-react";
 import * as dataAppExports from "@metabase/embedding-sdk-react/data-app";
 import {
@@ -15,16 +9,24 @@ import {
   devDiagnostics,
   instanceConnectionCheck,
 } from "@metabase/embedding-sdk-react/data-app-dev";
+import * as React from "react";
+import * as ReactDOM from "react-dom";
+import * as ReactDOMClient from "react-dom/client";
+import { createRoot } from "react-dom/client";
+import * as ReactDOMServer from "react-dom/server";
+import * as ReactJsxDevRuntime from "react/jsx-dev-runtime";
+import * as ReactJsxRuntime from "react/jsx-runtime";
 import {
   allowedHosts,
   appSlug,
+  buildIdHeader,
   bundleUrl,
   diagnosticsChangedEvent,
   rebuiltEvent,
   sdkVersion,
 } from "virtual:metabase-data-app-dev-config";
-import { createRoot } from "react-dom/client";
 
+import { DATA_APP_PROVIDER_PROP_KEYS } from "metabase-enterprise/data_apps/sandbox/types";
 // The same baseline reset the production iframe loads (`iframe-vendors.ts`), so the
 // dev preview matches production. style-loader injects it at runtime.
 import "metabase-enterprise/data_apps/sandbox/iframe-baseline.css";
@@ -68,7 +70,7 @@ if (!root) {
 
 const appRoot = createRoot(root);
 
-const sandbox = createDataAppSandbox({
+const sandboxPromise = createDataAppSandbox({
   label: "dev",
   targetWindow: window,
   allowedHosts,
@@ -86,6 +88,7 @@ const sandbox = createDataAppSandbox({
 });
 
 async function loadAndRender() {
+  const sandbox = await sandboxPromise;
   const res = await fetch(bundleUrl, { cache: "no-store" });
 
   if (!res.ok) {
@@ -95,13 +98,26 @@ async function loadAndRender() {
   }
 
   const code = await res.text();
+
+  // From here on, everything the app reports belongs to this bundle generation.
+  // Without the stamp a reader can't tell a live failure from one an earlier,
+  // half-finished edit left in the dev server's buffer.
+  devDiagnostics.setBuildId(Number(res.headers.get(buildIdHeader)));
+
   const { component: Component, providerProps } = sandbox.evaluate(code)();
+
+  const rawProviderProps = providerProps ?? {};
+  const safeProviderProps = Object.fromEntries(
+    DATA_APP_PROVIDER_PROP_KEYS.filter((key) => key in rawProviderProps).map(
+      (key) => [key, rawProviderProps[key]],
+    ),
+  );
 
   appRoot.render(
     <DataAppDevProvider
       appSlug={appSlug}
       authConfig={authConfig}
-      {...providerProps}
+      {...safeProviderProps}
     >
       <Component />
     </DataAppDevProvider>,

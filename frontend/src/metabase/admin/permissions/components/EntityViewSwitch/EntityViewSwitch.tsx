@@ -8,7 +8,7 @@ type EntityView = "group" | "database";
 
 interface EntityViewSwitchProps {
   value: EntityView;
-  onChange: (value: string) => void;
+  onChange: (value: EntityView) => void;
 }
 
 export const EntityViewSwitch = ({

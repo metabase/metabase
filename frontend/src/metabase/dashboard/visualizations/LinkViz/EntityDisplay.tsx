@@ -42,7 +42,7 @@ export const EntityDisplay = ({
           name="info"
           c="text-disabled"
           tooltip={
-            <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+            <Markdown dark compact disallowHeading unstyleLinks lineClamp={8}>
               {entity.description}
             </Markdown>
           }

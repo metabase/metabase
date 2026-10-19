@@ -26,16 +26,17 @@ export function MissingScopesAlert({
 
   return (
     <Alert color="core-brand" title={t`Metabot needs more Slack permissions`}>
-      <Stack gap="md" mt="sm">
+      <Stack gap="lg" mt="sm">
         {t`Your Slack app is missing OAuth scopes required for Metabot. Copy the updated manifest and paste it in your Slack app settings. You will need to re-install your application to your workspace after.`}
-        <Group gap="md">
+        <Group gap="lg">
           <CopyButton
+            className={S.copyButton}
             value={JSON.stringify(manifest, null, 2)}
             target={
-              <button type="button" className={S.copyButton}>
+              <>
                 <span>{t`Copy manifest`}</span>
-                <Icon name="copy" size={16} ml="sm" />
-              </button>
+                <Icon name="copy" size={16} ml="sm" aria-hidden />
+              </>
             }
           />
           <ButtonLink href={slackUrl}>

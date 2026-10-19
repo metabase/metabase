@@ -1,15 +1,16 @@
 import { dissocIn } from "icepick";
 import _ from "underscore";
 
-import {
-  createModelIndex,
-  deleteModelIndex,
-  listModelIndexes,
-} from "metabase/api";
 import type { Dispatch } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
+
+import {
+  createModelIndex,
+  deleteModelIndex,
+  listModelIndexes,
+} from "../api/model-index";
 
 import { getPkRef } from "./utils";
 

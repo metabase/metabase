@@ -14,7 +14,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { Route, withRouteProps } from "metabase/router";
+import { Route, useLocation, useParams } from "metabase/router";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
 import { getImpersonations } from "metabase-enterprise/advanced_permissions/selectors";
@@ -25,7 +25,14 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 
-const RoutedImpersonationModal = withRouteProps(ImpersonationModal);
+/** Feeds the modal its route props the way `modalRoute` does in the app. */
+function RoutedImpersonationModal({ onClose }: { onClose: () => void }) {
+  const params = useParams();
+  const location = useLocation();
+  return (
+    <ImpersonationModal params={params} location={location} onClose={onClose} />
+  );
+}
 
 const groupId = 2;
 const databaseId = 1;

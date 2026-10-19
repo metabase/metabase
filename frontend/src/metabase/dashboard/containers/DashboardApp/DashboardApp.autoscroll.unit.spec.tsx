@@ -10,15 +10,15 @@ import {
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
+import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
   renderWithProviders,
   waitFor,
-  waitForLoaderToBeRemoved,
+  waitForDashboardToLoad,
 } from "__support__/ui";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import {
@@ -67,7 +67,7 @@ async function setup({ hash = "" }: { hash?: string } = {}) {
 
   const scrollIntoView = jest.spyOn(HTMLElement.prototype, "scrollIntoView");
 
-  const { history } = renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path="/dashboard/:slug" element={<DashboardApp />} />,
     {
       initialRoute: `/dashboard/${dashboard.id}${hash}`,
@@ -80,7 +80,7 @@ async function setup({ hash = "" }: { hash?: string } = {}) {
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  await waitForDashboardToLoad();
 
   const getTargetDashcard = () =>
     checkNotNull(
@@ -92,38 +92,40 @@ async function setup({ hash = "" }: { hash?: string } = {}) {
       (context) => context === getTargetDashcard(),
     );
 
-  return { history: checkNotNull(history), wasTargetScrolledIntoView };
+  return { router: checkNotNull(router), wasTargetScrolledIntoView };
 }
 
 describe("DashboardApp auto-scroll", () => {
   it("scrolls to the dashcard named by the scrollTo hash param and clears the hash", async () => {
-    const { history, wasTargetScrolledIntoView } = await setup({
+    const { router, wasTargetScrolledIntoView } = await setup({
       hash: `#scrollTo=${TARGET_DASHCARD_ID}`,
     });
 
-    await waitFor(() => expect(history.getCurrentLocation().hash).toBe(""));
+    await waitFor(() => expect(router.location.hash).toBe(""));
 
     expect(wasTargetScrolledIntoView()).toBe(true);
   });
 
   it("scrolls when the scrollTo hash param is added to the dashboard already on screen", async () => {
-    const { history, wasTargetScrolledIntoView } = await setup();
+    const { router, wasTargetScrolledIntoView } = await setup();
 
     expect(wasTargetScrolledIntoView()).toBe(false);
 
     act(() => {
-      history.push(`/dashboard/${DASHBOARD_ID}#scrollTo=${TARGET_DASHCARD_ID}`);
+      router.navigate(
+        `/dashboard/${DASHBOARD_ID}#scrollTo=${TARGET_DASHCARD_ID}`,
+      );
     });
 
-    await waitFor(() => expect(history.getCurrentLocation().hash).toBe(""));
+    await waitFor(() => expect(router.location.hash).toBe(""));
 
     expect(wasTargetScrolledIntoView()).toBe(true);
   });
 
   it("does not scroll when there is no scrollTo hash param", async () => {
-    const { history, wasTargetScrolledIntoView } = await setup();
+    const { router, wasTargetScrolledIntoView } = await setup();
 
     expect(wasTargetScrolledIntoView()).toBe(false);
-    expect(history.getCurrentLocation().hash).toBe("");
+    expect(router.location.hash).toBe("");
   });
 });

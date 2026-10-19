@@ -2,12 +2,17 @@ import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import { cronToBuilderValue } from "metabase/common/components/Schedule/cron";
 import type { ScheduleComponentType } from "metabase/common/components/Schedule/strings";
 import {
+  getDefaultsWithoutHour,
   setup,
-  setupHarness,
 } from "metabase/common/components/Schedule/test-utils";
 import { setLocalization } from "metabase/utils/i18n";
+import { checkNotNull } from "metabase/utils/types";
+
+const scheduleFromCron = (cronString: string) =>
+  checkNotNull(cronToBuilderValue(cronString));
 
 const getInputValues = () => {
   const inputs = screen.getAllByRole("textbox");
@@ -15,35 +20,45 @@ const getInputValues = () => {
   return values;
 };
 
+const expectAmPmToBe = (label: string) =>
+  expect(
+    within(screen.getByTestId("select-am-pm")).getByRole("radio", {
+      name: label,
+    }),
+  ).toBeChecked();
+
 describe("Schedule", () => {
   it("shows time when schedule is daily", () => {
-    setup({ cronString: "0 0 8 * * ? *" });
+    setup({ value: scheduleFromCron("0 0 8 * * ? *") });
     expect(getInputValues()).toEqual(["daily", "8:00"]);
   });
 
   it("shows minutes schedule is hourly and minutesOnHourPicker is true", () => {
-    setup({ cronString: "0 0 * * * ? *", minutesOnHourPicker: true });
+    setup({
+      value: scheduleFromCron("0 0 * * * ? *"),
+      minutesOnHourPicker: true,
+    });
     expect(getInputValues()).toEqual(["hourly", "0"]);
     expect(screen.getByText("minutes past the hour")).toBeInTheDocument();
   });
 
   it("shows day and time when schedule is weekly", () => {
     setup({
-      cronString: "0 0 8 ? * 2 *",
+      value: scheduleFromCron("0 0 8 ? * 2 *"),
     });
     expect(getInputValues()).toEqual(["weekly", "Monday", "8:00"]);
   });
 
   it("shows first/last/mid value, day, and time when schedule is monthly", async () => {
     setup({
-      cronString: "0 0 8 ? * 2#1 *",
+      value: scheduleFromCron("0 0 8 ? * 2#1 *"),
     });
     expect(getInputValues()).toEqual(["monthly", "first", "Monday", "8:00"]);
   });
 
   it("shows 10 minutes by default for every_n_minutes schedule", () => {
     setup({
-      cronString: "0 0/10 * * * ? *",
+      value: scheduleFromCron("0 0/10 * * * ? *"),
     });
     expect(getInputValues()).toEqual(["by the minute", "10"]);
     expect(screen.getByText("minutes")).toBeInTheDocument();
@@ -51,7 +66,7 @@ describe("Schedule", () => {
 
   it("shows proper single noun for every_n_minutes schedule", () => {
     setup({
-      cronString: "0 0/1 * * * ? *",
+      value: scheduleFromCron("0 0/1 * * * ? *"),
     });
     expect(getInputValues()).toEqual(["by the minute", "1"]);
     expect(screen.getByText("minute")).toBeInTheDocument();
@@ -59,7 +74,7 @@ describe("Schedule", () => {
 
   it("shows proper plural noun for every_n_minutes schedule", () => {
     setup({
-      cronString: "0 0/5 * * * ? *",
+      value: scheduleFromCron("0 0/5 * * * ? *"),
     });
     expect(getInputValues()).toEqual(["by the minute", "5"]);
     expect(screen.getByText("minutes")).toBeInTheDocument();
@@ -67,7 +82,7 @@ describe("Schedule", () => {
 
   it("does not allow 0 minutes option for every_n_minutes schedule", async () => {
     setup({
-      cronString: "0 0/10 * * * ? *",
+      value: scheduleFromCron("0 0/10 * * * ? *"),
     });
 
     const minuteInput = screen.getByTestId("select-minute");
@@ -87,7 +102,7 @@ describe("Schedule", () => {
 
   it("presents 0,1,2,3,4,5,6,10,15,20,30 for every_n_minutes schedule", async () => {
     setup({
-      cronString: "0 0/10 * * * ? *",
+      value: scheduleFromCron("0 0/10 * * * ? *"),
     });
 
     const minuteInput = screen.getByTestId("select-minute");
@@ -105,10 +120,7 @@ describe("Schedule", () => {
   });
 
   it("shows custom cron input", () => {
-    setup({
-      cronString: "0 0/5 * * * ? *",
-      isCustomSchedule: true,
-    });
+    setup({ value: { schedule_type: "cron", cron: "0 0/5 * * * ? *" } });
     expect(getInputValues()).toEqual(["custom", "0/5 * * * ?"]);
   });
 
@@ -177,7 +189,7 @@ describe("Schedule", () => {
         ],
       ],
     ])("renders the right fields for %s", (_label, cronString, expected) => {
-      setup({ cronString });
+      setup({ value: scheduleFromCron(cronString) });
       expected.forEach((label) => {
         expect(screen.getByLabelText(label)).toBeInTheDocument();
       });
@@ -372,16 +384,34 @@ describe("Schedule", () => {
       ],
       // Default-filling when only the frequency changes
       [
-        "switch daily to weekly defaults to Monday",
-        "0 0 8 * * ? *",
-        { frequency: "weekly" },
-        "0 0 8 ? * 2 *",
-      ],
-      [
         "switch daily to monthly defaults to first of month",
         "0 0 8 * * ? *",
         { frequency: "monthly" },
         "0 0 8 1 * ? *",
+      ],
+      [
+        "switch weekly to monthly keeps the weekday",
+        "0 0 8 ? * 6 *",
+        { frequency: "monthly" },
+        "0 0 8 ? * 6#1 *",
+      ],
+      [
+        "switch weekly to daily keeps the time",
+        "0 0 20 ? * 6 *",
+        { frequency: "daily" },
+        "0 0 20 * * ? *",
+      ],
+      [
+        "switch daily loaded from a cron with a hidden minute to weekly defaults to Monday, keeps the hour and drops the minute",
+        "0 30 15 * * ? *",
+        { frequency: "weekly" },
+        "0 0 15 ? * 2 *",
+      ],
+      [
+        "changing the time on a daily loaded from a cron with a hidden minute drops the minute",
+        "0 30 15 * * ? *",
+        { time: "10:00" },
+        "0 0 22 * * ? *",
       ],
       [
         "switch monthly to daily clears frame and weekday",
@@ -419,7 +449,9 @@ describe("Schedule", () => {
     it.each(cases)(
       "%s",
       async (_label, initialCronString, clicks, expectedCron) => {
-        const { onScheduleChange } = setupHarness({ initialCronString });
+        const { onScheduleChange } = setup({
+          value: scheduleFromCron(initialCronString),
+        });
         // Unjustified type cast. FIXME
         for (const entry of Object.entries(clicks) as [
           ScheduleComponentType,
@@ -428,9 +460,93 @@ describe("Schedule", () => {
           await pickField(entry[0], entry[1]);
         }
         expect(onScheduleChange).toHaveBeenCalled();
-        expect(onScheduleChange.mock.calls.at(-1)?.[0]).toBe(expectedCron);
+        const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+        expect(lastEvent.cronString).toBe(expectedCron);
       },
     );
+
+    it("does not carry a minute past the hour into a type that hides it", async () => {
+      const { onScheduleChange } = setup({
+        value: scheduleFromCron("0 0 * * * ? *"),
+        minutesOnHourPicker: true,
+      });
+
+      await pickField("minute", "15");
+      await pickField("frequency", "daily");
+
+      expect(screen.queryByTestId("select-minute")).not.toBeInTheDocument();
+      const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+      expect(lastEvent.cronString).toBe("0 0 8 * * ? *");
+    });
+
+    it("does not carry a minute named by a custom cron expression into a type that hides it", async () => {
+      const { onScheduleChange } = setup({
+        value: { schedule_type: "cron", cron: "0 15 8 * * ? *" },
+      });
+
+      await pickField("frequency", "daily");
+
+      expect(screen.getByTestId("select-time")).toHaveValue("8:00");
+      expectAmPmToBe("AM");
+      const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+      expect(lastEvent.cronString).toBe("0 0 8 * * ? *");
+    });
+
+    it("keeps the day of the month a custom cron expression names", async () => {
+      setup({ value: { schedule_type: "cron", cron: "0 0 8 15 * ? *" } });
+
+      await pickField("frequency", "monthly");
+
+      expect(getInputValues()).toEqual(["monthly", "15th", "8:00"]);
+    });
+
+    describe("with defaults that supply no hour", () => {
+      it("leaves the time unpicked when the previous type had no time", async () => {
+        const { onScheduleChange } = setup({
+          value: { schedule_type: "cron", cron: "0 0 * * * ? *" },
+          getDefaults: getDefaultsWithoutHour,
+        });
+
+        await pickField("frequency", "daily");
+
+        expect(screen.getByTestId("select-time")).toHaveValue("");
+        expectAmPmToBe("AM");
+        const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+        expect(lastEvent.cronString).toBeNull();
+      });
+
+      it("keeps the time a custom cron expression named", async () => {
+        const { onScheduleChange } = setup({
+          value: { schedule_type: "cron", cron: "0 0 15 1 * ? *" },
+          getDefaults: getDefaultsWithoutHour,
+        });
+
+        await pickField("frequency", "daily");
+
+        expect(screen.getByTestId("select-time")).toHaveValue("3:00");
+        expectAmPmToBe("PM");
+        const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+        expect(lastEvent.cronString).toBe("0 0 15 * * ? *");
+      });
+
+      it("lets the user pick AM/PM before the time, without picking a time for them", async () => {
+        const { onScheduleChange } = setup({
+          value: { schedule_type: "daily", schedule_hour: null },
+          getDefaults: getDefaultsWithoutHour,
+        });
+
+        await pickField("amPm", "PM");
+
+        expectAmPmToBe("PM");
+        expect(screen.getByTestId("select-time")).toHaveValue("");
+        expect(onScheduleChange).not.toHaveBeenCalled();
+
+        await pickField("time", "8:00");
+
+        const lastEvent = checkNotNull(onScheduleChange.mock.calls.at(-1))[0];
+        expect(lastEvent.cronString).toBe("0 0 20 * * ? *");
+      });
+    });
   });
 });
 
@@ -467,14 +583,14 @@ describe("Schedule i18n (metabase#77265)", () => {
 
   it("renders the plural unit without leaking a {0} placeholder", () => {
     setLocalization(HU_LOCALE);
-    const { container } = setup({ cronString: "0 0/5 * * * ? *" });
+    const { container } = setup({ value: scheduleFromCron("0 0/5 * * * ? *") });
     expect(container).not.toHaveTextContent(/\{\s*0\s*\}/);
     expect(screen.getByText("percek")).toBeInTheDocument();
   });
 
   it("renders the singular unit without leaking a {0} placeholder", () => {
     setLocalization(HU_LOCALE);
-    const { container } = setup({ cronString: "0 0/1 * * * ? *" });
+    const { container } = setup({ value: scheduleFromCron("0 0/1 * * * ? *") });
     expect(container).not.toHaveTextContent(/\{\s*0\s*\}/);
     expect(screen.getByText("perc")).toBeInTheDocument();
   });

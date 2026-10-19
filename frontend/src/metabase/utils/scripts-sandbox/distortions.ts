@@ -28,6 +28,36 @@ import {
   addEventListenerDistortion,
 } from "./distortions-event";
 
+// Host storage classes whose instances must never reach the guest. Near-Membrane
+// only rewrites function values, so a `Storage`/`IDBFactory`/`CacheStorage`
+// object would otherwise pass through untouched and stay readable by the guest —
+// named access (`store["k"]`) and enumeration aren't reachable by gating
+// prototype methods. We swap the instance itself for a throwing decoy instead.
+const HOST_STORAGE_CTORS = [
+  typeof Storage !== "undefined" && Storage,
+  typeof IDBFactory !== "undefined" && IDBFactory,
+  typeof CacheStorage !== "undefined" && CacheStorage,
+].filter(Boolean) as Array<new (...args: never[]) => object>;
+
+const isHostStorageInstance = (value: unknown): boolean =>
+  HOST_STORAGE_CTORS.some((ctor) => value instanceof ctor);
+
+// A stand-in for a host storage instance: every property read, membership
+// test, or enumeration throws, so the guest can neither read values nor call
+// `getItem`/`indexedDB.open`/`caches.match`/… on it.
+const makeBlockedStorageDecoy = (errorPrefix: string): object => {
+  const blocked = () => {
+    throw new Error(`[${errorPrefix}] blocked API call: host storage`);
+  };
+
+  return new Proxy(Object.create(null), {
+    get: blocked,
+    has: blocked,
+    ownKeys: blocked,
+    getOwnPropertyDescriptor: blocked,
+  });
+};
+
 /**
  * Build the common subset of a Near Membrane `distortionCallback` shared by
  * every Metabase sandbox.
@@ -42,7 +72,9 @@ import {
  *   - blocked inline-event-handler attributes (`onclick="…"`) and
  *     `javascript:` URLs at the setAttribute boundary;
  *   - blocked `addEventListener` on `document`/`window` for typing /
- *     clipboard / storage event types.
+ *     clipboard / storage event types;
+ *   - host `Storage`/`IDBFactory`/`CacheStorage` instances swapped for a
+ *     throwing decoy so the guest can't read or enumerate host storage.
  *
  * It does NOT handle DOM-node scoping (decoy nodes outside a script's
  * subtree, scope-aware `document.activeElement`). Scoping is consumer-
@@ -147,15 +179,23 @@ export function makeSandboxDistortionCallback(
     return value;
   };
 
-  return function distortionCallback(value: object): object {
+  return function distortionCallback<T extends object>(value: T): T {
     if (typeof value !== "function") {
+      if (isHostStorageInstance(value)) {
+        // The decoy impersonates the host storage instance it replaces, so
+        // assert it as `T` for the caller.
+        return makeBlockedStorageDecoy(errorPrefix) as T;
+      }
+
       return value;
     }
 
     const distorted = resolveDistortion(value);
 
     // Only wrap when we actually distorted `value`; pass-through values are
-    // returned untouched so we never log on a non-blocked call.
-    return distorted === value ? value : reportThrows(distorted);
+    // returned untouched so we never log on a non-blocked call. `resolveDistortion`
+    // erases the type to `object`, but the distortion has `value`'s call
+    // signature, so restore `T` for the caller.
+    return (distorted === value ? value : reportThrows(distorted)) as T;
   };
 }

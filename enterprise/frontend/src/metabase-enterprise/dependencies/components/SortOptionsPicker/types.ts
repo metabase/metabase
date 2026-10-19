@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-
+import type { SegmentedControlItem } from "metabase/ui";
 import type { DependencySortColumn, SortDirection } from "metabase-types/api";
 
 export type SortColumnItem = {
@@ -7,7 +6,4 @@ export type SortColumnItem = {
   label: string;
 };
 
-export type SortDirectionItem = {
-  value: SortDirection;
-  label: ReactNode;
-};
+export type SortDirectionItem = SegmentedControlItem<SortDirection>;

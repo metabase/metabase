@@ -433,6 +433,7 @@ Columns:
 - Metabase Version
 - Auth Method
 - Is Sandboxed
+- Sandbox Details
 - Is Impersonated
 - Is Db Routed
 - Parameters
@@ -608,6 +609,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - measure-update
 - mfa-disabled
 - mfa-enrolled
+- mfa-required-enrollment-failed
 - mfa-verification-failed
 - notification-create
 - notification-unsubscribe
@@ -626,6 +628,8 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - segment-create
 - segment-delete
 - segment-update
+- session-revoked
+- sessions-revoked
 - setting-update
 - subscription-create
 - subscription-delete
@@ -633,6 +637,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - subscription-unsubscribe
 - subscription-unsubscribe-undo
 - subscription-update
+- table-data-edit
 - table-manual-scan
 - table-manual-sync
 - table-publish
@@ -646,6 +651,11 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - transform-run-canceled
 - transform-run-start
 - transform-run-timeout
+- transform-test-create
+- transform-test-delete
+- transform-test-run-start
+- transform-test-run-timeout
+- transform-test-update
 - update-permission-failure
 - update-transform
 - upload-append
@@ -663,6 +673,7 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 The Query Source column on the [Query log](#query-log) model takes one of:
 
 - action
+- action-execute
 - ad-hoc
 - agent
 - cache-refresh
@@ -675,9 +686,12 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - embedded-json-download
 - embedded-question
 - embedded-xlsx-download
+- exploration
 - json-download
 - map-tiles
+- metabot
 - metric
+- public-action-execute
 - public-csv-download
 - public-dashboard
 - public-json-download
@@ -700,6 +714,7 @@ The Entity Type column on the [Content](#content) model takes one of:
 - dashboard
 - document
 - event
+- exploration
 - glossary
 - model
 - question
@@ -712,4 +727,5 @@ The Entity Type column on the [View log](#view-log) model takes one of:
 - card
 - collection
 - dashboard
+- document
 - table

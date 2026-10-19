@@ -31,32 +31,22 @@ describe("scenarios > question > custom column", () => {
       },
       { visitQuestion: true },
     );
+    cy.intercept("GET", "/api/automagic-dashboards/**/cell/**/compare/**").as(
+      "xray",
+    );
+
     H.cartesianChartCircle().eq(5).click();
     H.popover()
       .findByText(/Automatic Insights/i)
       .click();
-    H.popover().findByText(/X-ray/i);
+    H.popover().findByText(/X-ray/i).should("be.visible");
     H.popover()
       .findByText(/Compare to the rest/i)
       .click();
-  });
 
-  it("can create a custom column (metabase#13241)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({
-      formula: "1 + 1",
-      name: "Math",
-      format: true,
-    });
-    cy.button("Done").click();
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question").should("not.exist");
-    cy.findByTestId("query-visualization-root").contains("Math");
+    cy.wait("@xray").its("response.statusCode").should("eq", 200);
+    cy.location("pathname").should("match", /^\/auto\/dashboard\//);
+    cy.findAllByTestId("dashcard-container").should("have.length.gt", 0);
   });
 
   it("should not show default period in date column name (metabase#36631)", () => {
@@ -78,71 +68,25 @@ describe("scenarios > question > custom column", () => {
       .and("not.contain.text", "Default period");
   });
 
-  it("should not show binning for a numeric custom column", () => {
+  it("should only show bucketing options that fit the type of a custom column", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
-
     H.enterCustomColumnDetails({
       formula: "[Product.Price] / 2",
       name: "Half Price",
     });
     cy.button("Done").click();
 
-    cy.button("Summarize").click();
-    H.popover().findByText("Count of rows").click();
-
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-
-    H.popover()
-      .findByRole("option", { name: "Half Price" })
-      .within(() => {
-        cy.findByLabelText("Binning strategy").should("not.exist");
-        cy.findByLabelText("Temporal bucket").should("not.exist");
-      })
-      .click();
-
-    H.getNotebookStep("summarize")
-      .findByText("Half Price")
-      .should("be.visible");
-  });
-
-  it("should show temporal units for a date/time custom column", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
+    H.getNotebookStep("expression").icon("add").click();
     H.enterCustomColumnDetails({
       formula: "[Product.Created At]",
       name: "Product Date",
     });
     cy.button("Done").click();
 
-    cy.button("Summarize").click();
-    H.popover().findByText("Count of rows").click();
-
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-    H.popover()
-      .findByRole("option", { name: "Product Date" })
-      .within(() => {
-        cy.findByLabelText("Binning strategy").should("not.exist");
-        cy.findByLabelText("Temporal bucket").should("exist");
-      })
-      .click();
-
-    H.getNotebookStep("summarize")
-      .findByText("Product Date: Month")
-      .should("be.visible");
-  });
-
-  it("should not show binning options for a coordinate custom column", () => {
-    H.openPeopleTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
+    H.getNotebookStep("expression").icon("add").click();
     H.enterCustomColumnDetails({
-      formula: "[Latitude]",
+      formula: "[User.Latitude]",
       name: "UserLAT",
     });
     cy.button("Done").click();
@@ -153,66 +97,46 @@ describe("scenarios > question > custom column", () => {
     H.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
       .click();
-    H.popover()
-      .findByRole("option", { name: "UserLAT" })
-      .within(() => {
+    H.popover().within(() => {
+      cy.log("a regular numeric column shows binning options");
+      cy.findByRole("option", { name: "Total" })
+        .findByLabelText("Binning strategy")
+        .should("exist");
+
+      cy.log("numeric custom column");
+      cy.findByRole("option", { name: "Half Price" }).within(() => {
         cy.findByLabelText("Binning strategy").should("not.exist");
         cy.findByLabelText("Temporal bucket").should("not.exist");
-      })
-      .click();
+      });
 
-    H.getNotebookStep("summarize").findByText("UserLAT").should("be.visible");
-  });
+      cy.log("coordinate custom column");
+      cy.findByRole("option", { name: "UserLAT" }).within(() => {
+        cy.findByLabelText("Binning strategy").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("not.exist");
+      });
 
-  // flaky test (#19454)
-  it(
-    "should show info popovers when hovering over custom column dimensions in the summarize sidebar",
-    { tags: "@skip" },
-    () => {
-      H.openOrdersTable({ mode: "notebook" });
-      cy.findByLabelText("Custom column").click();
-
-      H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
-      cy.button("Done").click();
-
-      H.visualize();
-
-      H.summarize();
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Group by")
-        .parent()
-        .findByText("Math")
-        .trigger("mouseenter");
-
-      H.popover().contains("Math");
-      H.popover().contains("No description");
-    },
-  );
-
-  it("can create a custom column with an existing column name", () => {
-    const customFormulas = [
-      {
-        formula: "[Quantity] * 2",
-        name: "Double Qt",
-      },
-      {
-        formula: "[Quantity] * [Product.Price]",
-        name: "Sum Total",
-      },
-    ];
-
-    customFormulas.forEach(({ formula, name }) => {
-      H.openOrdersTable({ mode: "notebook" });
-      cy.findByLabelText("Custom column").click();
-
-      H.enterCustomColumnDetails({ formula, name });
-      cy.button("Done").click();
-
-      H.visualize();
-
-      cy.findByTestId("query-visualization-root").contains(name);
+      cy.log("date/time custom column");
+      cy.findByRole("option", { name: "Product Date" })
+        .within(() => {
+          cy.findByLabelText("Binning strategy").should("not.exist");
+          cy.findByLabelText("Temporal bucket").should("exist");
+        })
+        .click();
     });
+    H.getNotebookStep("summarize")
+      .findByText("Product Date: Month")
+      .should("be.visible");
+
+    cy.log("each custom column can be picked as the breakout");
+    H.getNotebookStep("summarize").findByText("Product Date: Month").click();
+    H.popover().findByRole("option", { name: "Half Price" }).click();
+    H.getNotebookStep("summarize")
+      .findByText("Half Price")
+      .should("be.visible");
+
+    H.getNotebookStep("summarize").findByText("Half Price").click();
+    H.popover().findByRole("option", { name: "UserLAT" }).click();
+    H.getNotebookStep("summarize").findByText("UserLAT").should("be.visible");
   });
 
   it("should create custom column with fields from aggregated data (metabase#12762)", () => {
@@ -253,10 +177,10 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      expect(body.error).to.not.exist;
+    });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question").should("not.exist");
     // This is a pre-save state of the question but the column name should appear
     // both in tabular and graph views (regardless of which one is currently selected)
     cy.findByTestId("query-visualization-root").contains(columnName);
@@ -291,41 +215,6 @@ describe("scenarios > question > custom column", () => {
     cy.get(".test-TableInteractive-cellWrapper--firstColumn")
       .eq(0)
       .findByText("1");
-  });
-
-  it("should be able to use custom expression after aggregation (metabase#13857)", () => {
-    const CE_NAME = "13857_CE";
-    const CC_NAME = "13857_CC";
-
-    cy.signInAsAdmin();
-
-    H.createQuestion(
-      {
-        name: "13857",
-        query: {
-          expressions: {
-            [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
-          },
-          "source-query": {
-            aggregation: [
-              [
-                "aggregation-options",
-                ["*", ["count"], 1],
-                { name: CE_NAME, "display-name": CE_NAME },
-              ],
-            ],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-            ],
-            "source-table": ORDERS_ID,
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(CC_NAME);
   });
 
   it("should work with implicit joins (metabase#14080)", () => {
@@ -392,8 +281,10 @@ describe("scenarios > question > custom column", () => {
     cy.findAllByText("57,911");
   });
 
-  it("should not be dropped if filter is changed after aggregation (metaabase#14193)", () => {
+  it("should use custom expressions after aggregation, and not drop them if filter is changed (metabase#13857, metabase#14193)", () => {
     const CC_NAME = "Double the fun";
+    const CE_NAME = "13857_CE";
+    const CE_CC_NAME = "13857_CC";
 
     H.createQuestion(
       {
@@ -402,18 +293,37 @@ describe("scenarios > question > custom column", () => {
           "source-query": {
             "source-table": ORDERS_ID,
             filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
-            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            aggregation: [
+              ["sum", ["field-id", ORDERS.TOTAL]],
+              [
+                "aggregation-options",
+                ["*", ["count"], 1],
+                { name: CE_NAME, "display-name": CE_NAME },
+              ],
+            ],
             breakout: [
               ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
             ],
           },
           expressions: {
             [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+            [CE_CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
           },
         },
       },
       { visitQuestion: true },
     );
+
+    H.assertTableData({
+      columns: [
+        "Created At: Year",
+        "Sum of Total",
+        CE_NAME,
+        CC_NAME,
+        CE_CC_NAME,
+      ],
+      firstRows: [["2025", "42,156.87", "744", "84,313.74", "918,096"]],
+    });
     // Test displays collapsed filter - click on number 1 to expand and show the filter name
     cy.findByTestId("filters-visibility-control")
       .should("have.text", "1")
@@ -425,8 +335,18 @@ describe("scenarios > question > custom column", () => {
       .find(".Icon-close")
       .click();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(CC_NAME);
+    cy.wait("@dataset").its("response.body.error").should("not.exist");
+    cy.findByTestId("filters-visibility-control").should("not.exist");
+    H.assertTableData({
+      columns: [
+        "Created At: Year",
+        "Sum of Total",
+        CE_NAME,
+        CC_NAME,
+        CE_CC_NAME,
+      ],
+      firstRows: [["2025", "42,156.87", "744", "84,313.74", "918,096"]],
+    });
   });
 
   it("should handle identical custom column and table column names (metabase#14255)", () => {
@@ -567,6 +487,40 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
   });
 
+  it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
+    cy.viewport(1920, 800); // we're looking for a column name beyond the right of the default viewport
+    H.openProductsTable({ mode: "notebook" });
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Custom column").click();
+    addSimpleCustomColumn("EXPR");
+
+    H.getNotebookStep("expression").within(() => {
+      cy.icon("add").click();
+    });
+    addSimpleCustomColumn("EXPR");
+
+    H.getNotebookStep("expression").within(() => {
+      cy.icon("add").click();
+    });
+    addSimpleCustomColumn("EXPR");
+
+    H.getNotebookStep("expression").within(() => {
+      cy.findByText("EXPR");
+      cy.findByText("EXPR (1)");
+      cy.findByText("EXPR (2)");
+    });
+
+    H.visualize();
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("EXPR");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("EXPR (1)");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("EXPR (2)");
+  });
+
   it("should be able to add a date range filter to a custom column", () => {
     H.visitQuestionAdhoc({
       display: "table",
@@ -635,40 +589,27 @@ describe("scenarios > question > custom column", () => {
       .should("be.visible");
   });
 
-  it("should allow indenting using Tab", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({ formula: "1 + 2", blur: false });
-
-    // Tab should insert indentation
-    cy.realPress("Tab");
-    H.CustomExpressionEditor.value().should("equal", "1 + 2  ");
-  });
-
-  it("should not format expression when pressing tab in the editor", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({ formula: "1+1" });
-
-    cy.realPress("Tab");
-    cy.realPress(["Shift", "Tab"]);
-
-    // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
-    H.CustomExpressionEditor.value().should("equal", "1+1");
-    H.CustomExpressionEditor.type("2");
-
-    // Fix prevents display value from being `1 +2 1` due to cursor position
-    // being wrong after formatting.
-    // That's because the caret position after refocusing on textarea
-    // would still be after the 3rd character
-    H.CustomExpressionEditor.value().should("equal", "1+12");
-  });
-
   it("should format expression when clicking the format button", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
+
+    cy.log("The format button is hidden while the editor is empty");
+    H.CustomExpressionEditor.get().should("be.visible");
+    H.CustomExpressionEditor.formatButton().should("not.exist");
+
+    H.enterCustomColumnDetails({ formula: "1+1" });
+
+    cy.log("Leaving the editor does not format the expression");
+    H.CustomExpressionEditor.value().should("equal", "1+1");
+
+    cy.log(
+      "Moving focus with Tab and Shift+Tab does not format the expression",
+    );
+    cy.realPress("Tab");
+    cy.realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.value().should("equal", "1+1");
+    H.CustomExpressionEditor.type("2");
+    H.CustomExpressionEditor.value().should("equal", "1+12");
 
     H.enterCustomColumnDetails({ formula: "1+1" });
 
@@ -739,84 +680,83 @@ describe("scenarios > question > custom column", () => {
     );
   });
 
-  it("should not allow formatting when the expression contains an error", () => {
+  it("should allow using `Custom Expression` in orders metrics and keep manually entered parenthesis intact if they affect the result (metabase#12899, metabase#13306)", () => {
     H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
+    H.summarize({ mode: "notebook" });
+    H.popover().contains("Custom Expression").click();
 
     H.enterCustomColumnDetails({
-      formula: "concat('foo', ",
+      formula: "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
+      format: true,
     });
-    H.CustomExpressionEditor.formatButton().should("not.exist");
-  });
 
-  it("should show the format button when the expression editor is empty", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-    H.CustomExpressionEditor.formatButton().should("not.exist");
-  });
-
-  it("should not allow saving the expression when it is invalid", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
+    H.CustomExpressionEditor.value().should(
+      "equal",
+      dedent`
+        Sum([Total]) /
+          (Sum([Product → Price]) * Average([Quantity]))
+      `.trim(),
+    );
 
     H.enterCustomColumnDetails({
-      formula: "concat('foo', ",
+      formula: "2 * Max([Total])",
+      name: "twice max total",
+    });
+
+    H.expressionEditorWidget().button("Done").click();
+    cy.findByTestId("aggregate-step")
+      .contains("twice max total")
+      .should("exist");
+
+    H.visualize();
+
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("318.7");
+  });
+
+  it("should not allow formatting or saving an invalid expression, and validate it when typing", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    cy.log("non-existent field reference");
+    H.enterCustomColumnDetails({
+      formula: "abcdef",
       name: "A custom expression",
     });
+    H.popover()
+      .contains(/^Unknown column: abcdef/i)
+      .should("be.visible");
+    H.expressionEditorWidget().button("Done").should("be.disabled");
 
+    cy.log("argument validation");
+    H.enterCustomColumnDetails({ formula: "SUBSTRING('foo', 0, 1)" });
+    H.popover().should("contain", "Expected positive integer but found 0");
+    H.expressionEditorWidget().button("Done").should("be.disabled");
+
+    cy.log("incomplete expression");
+    H.enterCustomColumnDetails({ formula: "concat('foo', " });
+
+    H.CustomExpressionEditor.formatButton().should("not.exist");
     H.expressionEditorWidget().button("Done").should("be.disabled");
     H.CustomExpressionEditor.nameInput().focus().type("{enter}");
     H.expressionEditorWidget().should("be.visible");
-  });
-
-  it("should validate the expression when typing", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({
-      formula: "concat('foo', ",
-      name: "A custom expression",
-    });
-    H.expressionEditorWidget().button("Done").should("be.disabled");
 
     cy.log("Fix the expression");
     H.CustomExpressionEditor.type("{leftarrow}'bar')", { focus: true });
     H.expressionEditorWidget().button("Done").should("not.be.disabled");
+    H.CustomExpressionEditor.formatButton().should("be.visible");
   });
 
-  it("should allow choosing a suggestion with Tab", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({ formula: "[Cre", blur: false });
-
-    H.CustomExpressionEditor.completions().should("be.visible");
-
-    // Suggestion popover shows up and this select the first one
-    cy.realPress("Tab");
-
-    // Focus remains on the expression editor
-    cy.focused().should("have.attr", "role", "textbox");
-  });
-
-  it("should be possible to use the suggestion snippet arguments", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-
-    H.CustomExpressionEditor.type("coalesc{tab}[Tax]{tab}[User ID]", {
-      delay: 50,
-    });
-    H.CustomExpressionEditor.value().should(
-      "equal",
-      "coalesce([Tax], [User ID])",
-    );
-  });
-
-  it("should be possible to use the suggestion templates", () => {
+  it("should be possible to fill in snippet arguments after validation runs (metabase#55164)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();
 
     H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
+
+    // Let the debounced validation (DEBOUNCE_VALIDATION_MS = 1000) run while the
+    // snippet is active; it must not break the snippet's argument placeholders.
+    // The error is hidden while the snippet is active, so there's nothing to wait on.
+    cy.wait(1300);
 
     H.CustomExpressionEditor.type("[Tax]{tab}[User ID]", {
       focus: false,
@@ -1014,3 +954,9 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("eq", "[Bar]");
   });
 });
+
+function addSimpleCustomColumn(name) {
+  H.enterCustomColumnDetails({ formula: "[Category]", blur: true });
+  H.CustomExpressionEditor.nameInput().click().type(name);
+  cy.button("Done").click();
+}

@@ -7,13 +7,13 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { MetabotManagedProviderLimitHoverCard } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import {
-  useMetabotName,
-  useUserMetabotPermissions,
-} from "metabase/metabot/hooks";
+import { MetabotSendButton } from "metabase/metabot/components/MetabotSendButton";
+import { MetabotWorkingIndicator } from "metabase/metabot/components/MetabotWorkingIndicator";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import type { MetabotAgentTurnDisplayError } from "metabase/metabot/state";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
+import { useSetting } from "metabase/settings";
+import { Box, Button, Flex, Tooltip } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
 
 import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
@@ -53,10 +53,13 @@ export const MetabotInlineSQLPrompt = ({
       open: openAiProviderConfigurationModal,
     },
   ] = useDisclosure(false);
-  const { canUseSqlGeneration } = useUserMetabotPermissions();
-  const metabotName = useMetabotName();
+  const { canUseSqlGeneration, hasSqlGenerationAccess } =
+    useUserMetabotPermissions();
+  const metabotName = useSetting("metabot-name");
 
-  const isSubmitDisabled = !canUseSqlGeneration || !value.trim() || isLoading;
+  const isLocked = error?.type === "locked";
+  const isSubmitDisabled =
+    !canUseSqlGeneration || !value.trim() || isLoading || isLocked;
 
   const handleSubmit = useCallback(async () => {
     const prompt = promptInputRef.current?.getValue?.().trim() ?? "";
@@ -96,6 +99,7 @@ export const MetabotInlineSQLPrompt = ({
           fz="sm"
           p="0.25rem 0.125rem"
           ff="var(--mb-default-font-family)"
+          hasFeatureAccess={hasSqlGenerationAccess}
           onConfigureAi={openAiProviderConfigurationModal}
         />
       ) : (
@@ -116,55 +120,69 @@ export const MetabotInlineSQLPrompt = ({
         </Box>
       )}
 
-      <Flex justify="space-between" align="center" gap="sm" mt="xs">
-        <Box
-          data-testid="metabot-inline-sql-error"
-          w="100%"
-          fz="sm"
-          c="feedback-negative"
-        >
-          {error?.type === "locked" ? (
-            <MetabotManagedProviderLimitHoverCard />
-          ) : (
-            error?.message
-          )}
-        </Box>
-        <Flex gap="xs" flex="1 0 auto">
-          {canUseSqlGeneration && (
-            <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
-              <Button
-                className={S.submitButton}
-                data-testid="metabot-inline-sql-generate"
-                size="xs"
-                variant="filled"
-                px="0"
-                w="1.875rem"
-                styles={{ label: { display: "flex" } }}
-                onClick={handleSubmit}
-                disabled={isSubmitDisabled}
-              >
-                {isLoading ? (
-                  <Loader
-                    size="xs"
-                    color="text-disabled"
-                    data-testid="metabot-inline-sql-generating"
-                  />
-                ) : (
-                  <Icon name="send" />
-                )}
-              </Button>
-            </Tooltip>
-          )}
-          <Button
-            className={S.cancelButton}
-            data-testid="metabot-inline-sql-cancel"
-            size="xs"
-            variant="subtle"
-            onClick={handleClose}
+      <Flex
+        direction="row-reverse"
+        justify="space-between"
+        align="center"
+        gap="sm"
+        mt="xxs"
+      >
+        {canUseSqlGeneration && (
+          <Tooltip
+            label={isLoading ? t`Stop generating` : t`Send to ${metabotName}`}
           >
-            {t`Cancel`}
-          </Button>
-        </Flex>
+            <MetabotSendButton
+              className={S.submitButton}
+              data-testid="metabot-inline-sql-generate"
+              aria-label={
+                isLoading ? t`Stop generating` : t`Send to ${metabotName}`
+              }
+              isResponding={isLoading}
+              onClick={isLoading ? cancelRequest : handleSubmit}
+              disabled={!isLoading && isSubmitDisabled}
+            />
+          </Tooltip>
+        )}
+        {isLoading ? (
+          <MetabotWorkingIndicator
+            pr="0.125rem"
+            ta="right"
+            flex={1}
+            fz="sm"
+            ff="var(--mb-default-font-family)"
+          />
+        ) : (
+          <Box
+            data-testid="metabot-inline-sql-error"
+            pr="0.125rem"
+            ta="right"
+            flex={1}
+            miw={0}
+            fz="sm"
+            ff="var(--mb-default-font-family)"
+            c={
+              error?.type === "aborted" ? "text-secondary" : "feedback-negative"
+            }
+          >
+            {isLocked ? (
+              <MetabotManagedProviderLimitHoverCard />
+            ) : (
+              error?.message
+            )}
+          </Box>
+        )}
+        <Button
+          className={S.cancelButton}
+          data-testid="metabot-inline-sql-cancel"
+          fz="sm"
+          px="sm"
+          ml="-sm"
+          fw="normal"
+          variant="subtle"
+          onClick={handleClose}
+        >
+          {t`Cancel`}
+        </Button>
       </Flex>
       <AIProviderConfigurationModal
         opened={isAiProviderConfigurationModalOpen}

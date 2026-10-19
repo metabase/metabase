@@ -35,7 +35,12 @@
     (testing "single arity version uses dynamic metabot resolution"
       (mt/with-temporary-setting-values [metabot.settings/metabot-id metabot.config/embedded-metabot-id]
         (is (= "embedding_next"
-               (metabot.config/resolve-dynamic-profile-id nil)))))))
+               (metabot.config/resolve-dynamic-profile-id nil)))))
+    (testing "the retired transforms_codegen profile is rejected whether named as a string or a keyword"
+      (doseq [profile-id ["transforms_codegen" :transforms_codegen]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Transform code generation is no longer supported"
+             (metabot.config/resolve-dynamic-profile-id profile-id "any-metabot-id")))))))
 
 (deftest check-metabot-enabled-test
   (testing "0-arity throws when both are disabled, passes when either is enabled"
@@ -47,8 +52,8 @@
   (testing "1-arity checks the specific instance's setting"
     (mt/with-temporary-setting-values [metabot-enabled? false embedded-metabot-enabled? true]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metabot is not enabled"
-                            (metabot.config/check-metabot-enabled! metabot.config/internal-metabot-id)))
-      (is (metabot.config/check-metabot-enabled! metabot.config/embedded-metabot-id))))
+                            (metabot.config/check-metabot-enabled! {:entity_id metabot.config/internal-metabot-id})))
+      (is (metabot.config/check-metabot-enabled! {:entity_id metabot.config/embedded-metabot-id}))))
   (testing "global AI disable blocks all Metabot instances"
     (mt/with-temporary-raw-setting-values [:ai-features-enabled?      "false"
                                            :metabot-enabled?          "true"
@@ -56,9 +61,9 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"AI features are not enabled"
                             (metabot.config/check-metabot-enabled!)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"AI features are not enabled"
-                            (metabot.config/check-metabot-enabled! metabot.config/internal-metabot-id)))
+                            (metabot.config/check-metabot-enabled! {:entity_id metabot.config/internal-metabot-id})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"AI features are not enabled"
-                            (metabot.config/check-metabot-enabled! metabot.config/embedded-metabot-id))))))
+                            (metabot.config/check-metabot-enabled! {:entity_id metabot.config/embedded-metabot-id}))))))
 
 (deftest integrated-resolution-test
   (testing "combination of metabot-id and profile-id precedence resolution"

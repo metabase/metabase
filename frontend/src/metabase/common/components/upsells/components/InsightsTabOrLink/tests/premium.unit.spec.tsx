@@ -14,7 +14,7 @@ const setup = (props: Omit<SetupOpts, "enableAuditAppPlugin">) => {
 describe("InsightsTabOrLink (EE with token)", () => {
   describe("for admins", () => {
     it("renders a link for a dashboard", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         isForADashboard: true,
         isUserAdmin: true,
       });
@@ -22,17 +22,15 @@ describe("InsightsTabOrLink (EE with token)", () => {
       expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
-      expect(history?.getCurrentLocation().pathname).toBe("/dashboard/201");
-      expect(history?.getCurrentLocation().query).toEqual({
-        dashboard_id: "1",
-      });
+      expect(router?.location.pathname).toBe("/dashboard/201");
+      expect(router?.location.search).toBe("?dashboard_id=1");
       expect(
         await screen.findByTestId("usage-analytics-dashboard"),
       ).toBeInTheDocument();
     });
 
     it("can render a link for a question", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         isForADashboard: false,
         isUserAdmin: true,
       });
@@ -40,8 +38,8 @@ describe("InsightsTabOrLink (EE with token)", () => {
       expect(screen.queryByTestId("upsell-gem")).not.toBeInTheDocument();
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
-      expect(history?.getCurrentLocation().pathname).toBe("/dashboard/202");
-      expect(history?.getCurrentLocation().query).toEqual({ question_id: "0" });
+      expect(router?.location.pathname).toBe("/dashboard/202");
+      expect(router?.location.search).toBe("?question_id=0");
       expect(
         await screen.findByTestId("usage-analytics-dashboard"),
       ).toBeInTheDocument();
@@ -50,7 +48,7 @@ describe("InsightsTabOrLink (EE with token)", () => {
 
   describe("for non-admins", () => {
     it("renders a link if they have permission to view Usage Analytics", async () => {
-      const { history } = await setup({
+      const { router } = await setup({
         isForADashboard: true,
         isUserAdmin: false,
         hasUsageAnalyticsPermission: true,
@@ -58,10 +56,8 @@ describe("InsightsTabOrLink (EE with token)", () => {
       expect(screen.queryByRole("tab")).not.toBeInTheDocument();
       const routerLink = await screen.findByText("Insights");
       await userEvent.click(routerLink);
-      expect(history?.getCurrentLocation().pathname).toBe("/dashboard/201");
-      expect(history?.getCurrentLocation().query).toEqual({
-        dashboard_id: "1",
-      });
+      expect(router?.location.pathname).toBe("/dashboard/201");
+      expect(router?.location.search).toBe("?dashboard_id=1");
       expect(
         await screen.findByTestId("usage-analytics-dashboard"),
       ).toBeInTheDocument();

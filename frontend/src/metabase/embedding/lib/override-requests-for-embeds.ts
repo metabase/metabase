@@ -1,14 +1,11 @@
-import { sessionPropertiesPath } from "metabase/api";
-import type {
-  OnBeforeRequestHandlerConfig,
-  RequestMethod,
-} from "metabase/api/client";
-import { isEmbedPreview } from "metabase/embedding/config";
 import {
+  type OnBeforeRequestHandlerConfig,
   PLUGIN_API,
-  PLUGIN_CONTENT_TRANSLATION,
-  PLUGIN_EMBEDDING_SDK,
-} from "metabase/plugins";
+  type RequestMethod,
+} from "metabase/api/client";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
+import { isEmbedPreview } from "metabase/embedding/config";
+import { sessionPropertiesPath } from "metabase/settings";
 
 type EmbedType = "guest" | "static" | "public";
 
@@ -259,12 +256,11 @@ export const setupEmbedPreviewRewrite = () => {
 export const overrideRequestsForGuestEmbeds = () => {
   setupEmbedPreviewRewrite();
 
-  PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
-    (data) =>
-      overrideRequests({
-        ...data,
-        embedType: "guest",
-      });
+  PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds = (data) =>
+    overrideRequests({
+      ...data,
+      embedType: "guest",
+    });
 };
 
 /**

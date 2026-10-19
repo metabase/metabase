@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Link } from "metabase/router";
+import { Link } from "metabase/common/components/Link";
 import { Box, Group, Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
@@ -26,7 +26,7 @@ export const PanelsHeader = ({
 
   return (
     <Box component="header" className={S.header}>
-      <Group ml="auto" align="center" justify="flex-end" gap="lg">
+      <Group ml="auto" align="center" justify="flex-end" gap="xl">
         {showDatabasesLink && (
           <HeaderLink to={Urls.viewDatabases()} text={t`Manage databases`} />
         )}

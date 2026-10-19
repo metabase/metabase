@@ -1,23 +1,26 @@
+import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DeleteObjectModal } from "metabase/actions/components/DeleteObjectModal";
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
+import { getActionItems } from "metabase/actions/utils";
 import {
   actionApi,
   datasetApi,
   skipToken,
   useListActionsQuery,
+  useListDatabasesQuery,
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { useDatabaseListQuery } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/redux";
-import { Loader, Modal } from "metabase/ui";
+import { Box, Center, Flex, Loader, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   ConcreteTableId,
   DatasetColumn,
@@ -25,21 +28,10 @@ import type {
   WritebackActionId,
 } from "metabase-types/api";
 
-import { DeleteObjectModal } from "./DeleteObjectModal";
 import { ObjectDetailBody } from "./ObjectDetailBody";
 import { ObjectDetailHeader } from "./ObjectDetailHeader";
-import {
-  ErrorWrapper,
-  ObjectDetailContainer,
-  ObjectDetailLayout,
-} from "./ObjectDetailPanel.styled";
 import type { ObjectDetailProps, ObjectId } from "./types";
-import {
-  getActionItems,
-  getDisplayId,
-  getObjectName,
-  getSinglePKIndex,
-} from "./utils";
+import { getDisplayId, getObjectName, getSinglePKIndex } from "./utils";
 
 function filterByPk(
   query: Lib.Query,
@@ -81,7 +73,6 @@ export function ObjectDetailPanel({
   canZoomPreviousRow,
   canZoomNextRow,
   showControls = true,
-  showRelations = true,
   showHeader,
   onVisualizationClick,
   visualizationIsClickable,
@@ -108,9 +99,7 @@ export function ObjectDetailPanel({
   const isDeleteModalOpen = typeof deleteActionId === "number";
   const isModalOpen = isActionExecuteModalOpen || isDeleteModalOpen;
 
-  const hasPk = !!data.cols.find(isPK);
   const hasFks = !_.isEmpty(tableForeignKeys);
-  const hasRelationships = showRelations && hasFks && hasPk;
 
   const isDrillThroughDetail = question?.display() !== "object";
 
@@ -267,9 +256,10 @@ export function ObjectDetailPanel({
       : skipToken,
   );
 
-  const { data: databases = [] } = useDatabaseListQuery({
-    enabled: areImplicitActionsEnabled,
-  });
+  const { data: databasesResponse } = useListDatabasesQuery(
+    areImplicitActionsEnabled ? undefined : skipToken,
+  );
+  const databases = databasesResponse?.data ?? [];
 
   const actionItems = areImplicitActionsEnabled
     ? getActionItems({
@@ -325,18 +315,20 @@ export function ObjectDetailPanel({
 
   return (
     <>
-      <ObjectDetailContainer wide={hasRelationships} className={className}>
+      <Box className={cx(CS.overflowAuto, className)} h="100%">
         {maybeLoading ? (
-          <ErrorWrapper>
+          <Center h="30rem">
             <Loader />
-          </ErrorWrapper>
+          </Center>
         ) : hasNotFoundError ? (
-          <ErrorWrapper>
+          <Center h="30rem">
             <NotFound message={t`We couldn't find that record`} />
-          </ErrorWrapper>
+          </Center>
         ) : (
-          <ObjectDetailLayout
+          <Flex
             className="ObjectDetail"
+            direction="column"
+            h="100%"
             data-testid="object-detail"
           >
             {showHeader && (
@@ -363,9 +355,9 @@ export function ObjectDetailPanel({
               visualizationIsClickable={visualizationIsClickable}
               isDashboard={isDashboard}
             />
-          </ObjectDetailLayout>
+          </Flex>
         )}
-      </ObjectDetailContainer>
+      </Box>
 
       <ActionExecuteModal
         opened={isActionExecuteModalOpen}

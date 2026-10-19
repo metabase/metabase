@@ -3,13 +3,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color as colorHex } from "metabase/ui/colors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { segmentIsValid } from "metabase/visualizations/lib/utils";
 import {
+  type VisualizationDefinition,
+  columnSettings,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+  segmentIsValid,
+} from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { isGaugeSegmentsArray } from "./types";
@@ -73,9 +73,9 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
             value = defaultValue;
           }
         } catch (error) {}
-        const errorColor = Color(colorHex("error")).hex();
-        const warningColor = Color(colorHex("warning")).hex();
-        const successColor = Color(colorHex("success")).hex();
+        const errorColor = Color(colorHex("feedback-negative")).hex();
+        const warningColor = Color(colorHex("feedback-warning")).hex();
+        const successColor = Color(colorHex("feedback-positive")).hex();
         return [
           { min: 0, max: value / 2, color: errorColor, label: "" },
           { min: value / 2, max: value, color: warningColor, label: "" },
