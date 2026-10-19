@@ -1022,6 +1022,20 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/delete! :model/ResultMetadataStatus :entity_type :card :entity_id [:in card-ids]))
 
+(mu/defn remapped-table-ids :- [:set ::lib.schema.id/table]
+  "The IDs of the Tables of the Fields remapped to one of the Fields with `field-ids` as their human-readable field."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (or (t2/select-fn-set :table_id [:model/Field :metabase_field.table_id]
+                        {:from  [(warehouse-schema-overlay/field-query {:user-settings? false})]
+                         :join  [:dimension [:= :dimension.field_id :metabase_field.id]]
+                         :where [:in :dimension.human_readable_field_id field-ids]})
+      #{}))
+
+(mu/defn internal-remap? :- :boolean
+  "Whether the Field with `field-id` has an internal remap, which shows its FieldValues' human-readable values."
+  [field-id :- ::lib.schema.id/field]
+  (t2/exists? :model/Dimension :field_id field-id :type "internal"))
+
 (mu/defn native-card-ids :- [:set ::lib.schema.id/card]
   "The IDs of the native Cards among `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]

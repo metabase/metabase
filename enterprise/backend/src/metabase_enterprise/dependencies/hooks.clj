@@ -39,8 +39,9 @@
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *batched-marks*
-  "Within [[do-with-batched-marks]], an atom of the `{entity-type #{entity-id}}` whose dependents the batch marks when
-  it ends, the only way the hooks of one transaction can mark each of them once."
+  "Within [[do-with-batched-marks]], an atom of what the batch marks when it ends: the `:dependents` of
+  `{entity-type #{entity-id}}`, the `:remapped-tables` and the `:remap-targets` fields, the only way the hooks of a
+  batch can mark each of them once."
   nil)
 
 (mu/defn- trigger-jobs!
@@ -119,7 +120,7 @@
                                                                       dependencies.db/dashcard-dashboard-id)]
     :model/QueryAction                            [:action (:action_id row)]
     (:model/Field :model/TableUserSettings)       [:table (:table_id row)]
-    (:model/FieldUserSettings :model/Dimension)   [:table (some-> (:field_id row) dependencies.db/field-table-id)]
+    :model/FieldUserSettings                      [:table (some-> (:field_id row) dependencies.db/field-table-id)]
     nil))
 
 (def ^:private part-columns
@@ -130,8 +131,7 @@
    :model/QueryAction         #{:dataset_query}
    :model/Field               field-columns
    :model/TableUserSettings   #{:display_name :visibility_type :data_layer :field_order}
-   :model/FieldUserSettings   (conj field-columns :custom_position :nfc_path :json_unfolding)
-   :model/Dimension           :any})
+   :model/FieldUserSettings   (conj field-columns :custom_position :nfc_path :json_unfolding)})
 
 (mu/defn- mark-dependents!
   "Mark the result metadata and analysis statuses of the entities directly depending on the entity `entity-type`
@@ -139,10 +139,50 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt]
   (if-let [batched *batched-marks*]
-    (swap! batched update entity-type (fnil conj #{}) entity-id)
+    (swap! batched update-in [:dependents entity-type] (fnil conj #{}) entity-id)
     (do
       (dependencies.db/mark-dependents-result-metadata-statuses-stale! entity-type #{entity-id})
       (dependencies.db/mark-dependents-analysis-finding-statuses-stale! entity-type #{entity-id}))))
+
+(mu/defn- mark-remapped-tables!
+  "Mark the result metadata and analysis statuses of every entity transitively depending on the Tables with `table-ids`
+  stale, whose remapped columns their stored metadata carries down."
+  [table-ids :- [:set ms/PositiveInt]]
+  (when (seq table-ids)
+    (if-let [batched *batched-marks*]
+      (swap! batched update :remapped-tables (fnil into #{}) table-ids)
+      (let [dependents (models.dependency/transitive-dependents {:table (mapv #(hash-map :id %) table-ids)})]
+        (dependencies.db/mark-result-metadata-statuses-stale! dependents)
+        (dependencies.db/mark-analysis-finding-statuses-stale! dependents)))))
+
+(mu/defn- mark-remap-targets!
+  "Mark what reads the remaps whose human-readable field is one of the Fields with `field-ids`, a change of which the
+  remapped columns show."
+  [field-ids :- [:set ms/PositiveInt]]
+  (when (seq field-ids)
+    (if-let [batched *batched-marks*]
+      (swap! batched update :remap-targets (fnil into #{}) field-ids)
+      (mark-remapped-tables! (dependencies.db/remapped-table-ids field-ids)))))
+
+(mu/defn- mark-dimension!
+  "Mark what reads the remap of the Dimension `row`, whose Field's Table's entities show it."
+  [row :- [:maybe Row]]
+  (when-let [table-id (some-> (:field_id row) dependencies.db/field-table-id)]
+    (mark-remapped-tables! #{table-id})))
+
+(mu/defn- mark-field-values! :- :boolean
+  "Mark what reads the internal remap of the Field of the FieldValues, which shows only while they have human-readable
+  values, when a write of them as `before` and `after` adds or removes those."
+  [before :- [:maybe Row]
+   after  :- [:maybe Row]]
+  (let [row      (or after before)
+        readable (comp boolean seq :human_readable_values)]
+    (boolean
+     (when (and (= :full (keyword (:type row)))
+                (not= (readable before) (readable after))
+                (dependencies.db/internal-remap? (:field_id row)))
+       (mark-dimension! row)
+       true))))
 
 (mu/defn- mark-output-changed!
   "Mark what reads the output of the entity `entity-type` `entity` stale: the direct dependents, or every transitive
@@ -197,24 +237,37 @@
       (mark-output-changed! entity-type row))
     (when part?
       (run! mark-part-owner! (distinct [(part-owner model (t2/original row)) (part-owner model row)])))
-    (or dependency? analysis? output? part?)))
+    (when part?
+      (case model
+        :model/Field             (mark-remap-targets! #{(:id row)})
+        :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
+        nil))
+    (or dependency? analysis? output? part?
+        (case model
+          :model/Dimension   (do (run! mark-dimension! (distinct [(t2/original row) row])) true)
+          :model/FieldValues (mark-field-values! (t2/original row) row)
+          false))))
 
 (defenterprise do-with-batched-marks
-  "Run `thunk` in one transaction, marking the dependents of the entities its writes change once each when it ends
-  instead of once per row, and triggering the jobs once."
+  "Run `thunk`, marking what its writes change once per entity after it ends, even when it throws, instead of once per
+  row in each write's transaction, and triggering the jobs once."
   :feature :dependencies
   [thunk]
   (if *batched-marks*
     (thunk)
-    (let [batched (atom {})
-          result  (t2/with-transaction [_]
-                    (let [result (binding [*batched-marks* batched] (thunk))]
-                      (doseq [[entity-type entity-ids] @batched]
-                        (dependencies.db/mark-dependents-result-metadata-statuses-stale! entity-type entity-ids)
-                        (dependencies.db/mark-dependents-analysis-finding-statuses-stale! entity-type entity-ids))
-                      result))]
-      (trigger-jobs!)
-      result)))
+    (let [batched (atom {})]
+      (try
+        (binding [*batched-marks* batched]
+          (thunk))
+        (finally
+          (let [{:keys [dependents remapped-tables remap-targets]} @batched]
+            (doseq [[entity-type entity-ids] dependents]
+              (dependencies.db/mark-dependents-result-metadata-statuses-stale! entity-type entity-ids)
+              (dependencies.db/mark-dependents-analysis-finding-statuses-stale! entity-type entity-ids))
+            (mark-remapped-tables! (into (set remapped-tables)
+                                         (when (seq remap-targets)
+                                           (dependencies.db/remapped-table-ids remap-targets)))))
+          (trigger-jobs!))))))
 
 (defenterprise before-insert
   "Mark what inserting `row` of `model` changes, and trigger the jobs once it commits; a new entity has no
@@ -223,6 +276,11 @@
   [model row]
   (when (contains? part-columns model)
     (mark-part-owner! (part-owner model row)))
+  (case model
+    :model/Dimension         (mark-dimension! row)
+    :model/FieldValues       (mark-field-values! nil row)
+    :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
+    nil)
   (trigger-jobs!))
 
 (defenterprise before-update
@@ -239,6 +297,12 @@
   [model row]
   (when (contains? part-columns model)
     (mark-part-owner! (part-owner model row)))
+  (case model
+    :model/Dimension         (mark-dimension! row)
+    :model/FieldValues       (mark-field-values! row nil)
+    :model/Field             (mark-remap-targets! #{(:id row)})
+    :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
+    nil)
   (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
     (mark-output-changed! entity-type row))
   (when (= model :model/Database)

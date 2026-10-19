@@ -103,6 +103,64 @@
           (is (not (marks? #(assoc % :fingerprint {:global {:distinct-count 3}}))))
           (is (marks? #(cond-> % (= "NAME" (:name %)) (assoc :display_name "Renamed")))))))))
 
+(defn- with-card-and-dependent!
+  "Call `f` with a card on `table-key` and a card on that card, whose result metadata and analysis are current, and a
+  function telling whether both are pending for both jobs."
+  [table-key f]
+  (mt/with-temp [:model/Card {card-id :id}      {:dataset_query (table-query table-key)}
+                 :model/Card {dependent-id :id} {:dataset_query (card-query card-id)}]
+    (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
+                                   :to_entity_type   :table :to_entity_id  (mt/id table-key)})
+    (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id dependent-id
+                                   :to_entity_type   :card :to_entity_id   card-id})
+    (f (fn []
+         (doseq [id [card-id dependent-id]]
+           (deps.test/record-result-metadata-processed! id)
+           (deps.test/record-analysis-finding-processed! :card id)))
+       (fn []
+         (every? (fn [id] (and (deps.test/result-metadata-pending? id)
+                               (deps.test/analysis-finding-pending? :card id)))
+                 [card-id dependent-id])))))
+
+(deftest remap-marks-transitive-dependents-test
+  (testing "an external remap, its human-readable field and that field's user settings mark every card that carries
+           the remapped column"
+    (mt/with-premium-features #{:dependencies}
+      (with-card-and-dependent!
+        :orders
+        (fn [processed! pending?]
+          (processed!)
+          (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :product_id)
+                                             :type                    :external
+                                             :name                    "Product"
+                                             :human_readable_field_id (mt/id :products :title)}]
+            (testing "adding the remap"
+              (is (pending?)))
+            (testing "changing its human-readable field"
+              (processed!)
+              (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Renamed"}
+                (is (pending?))))
+            (testing "a user setting of its human-readable field"
+              (processed!)
+              (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :title) :display_name "Item"}]
+                (is (pending?))))))))))
+
+(deftest internal-remap-values-mark-transitive-dependents-test
+  (testing "the FieldValues of an internally remapped field mark every card carrying the remapped column when they gain
+           or lose human-readable values, and not when only their values change"
+    (mt/with-premium-features #{:dependencies}
+      (with-card-and-dependent!
+        :venues
+        (fn [processed! pending?]
+          (mt/with-temp [:model/Dimension   _ {:field_id (mt/id :venues :price) :type :internal :name "Price"}
+                         :model/FieldValues fv {:field_id (mt/id :venues :price) :type :full
+                                                :values [1 2 3 4] :human_readable_values []}]
+            (processed!)
+            (t2/update! :model/FieldValues (:id fv) {:values [1 2 3 4 5]})
+            (is (not (pending?)))
+            (t2/update! :model/FieldValues (:id fv) {:human_readable_values ["$" "$$" "$$$" "$$$$" "$$$$$"]})
+            (is (pending?))))))))
+
 (deftest batched-marks-test
   (testing "a batch of field writes marks the cards reading their table once per status, and triggers the jobs once"
     (mt/with-premium-features #{:dependencies}

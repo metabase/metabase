@@ -3938,6 +3938,7 @@
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
+                    :model/FieldValues
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/QueryAction
