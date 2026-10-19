@@ -126,7 +126,7 @@ export function CliAnalyticsSectionLayout() {
   return (
     <AiAnalyticsSectionLayout
       title={t`CLI analytics`}
-      tabsAction={<NewQuestionButton viewName={VIEW_AGENT_API_CALLS} />}
+      filtersAction={<NewQuestionButton viewName={VIEW_AGENT_API_CALLS} />}
       tabs={tabs}
       filters={
         <CliCallsFilter

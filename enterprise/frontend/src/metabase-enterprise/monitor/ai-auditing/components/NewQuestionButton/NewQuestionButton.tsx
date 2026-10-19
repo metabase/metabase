@@ -33,11 +33,10 @@ export function NewQuestionButton({ viewName }: NewQuestionButtonProps) {
     <Button
       component={ForwardRefLink}
       to={url}
-      variant="subtle"
-      size="compact-md"
+      variant="default"
       leftSection={<Icon name="insight" />}
     >
-      {t`New question`}
+      {t`Query this data`}
     </Button>
   );
 }

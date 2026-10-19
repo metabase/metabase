@@ -44,7 +44,7 @@ describe("NewQuestionButton", () => {
   it("links to a notebook question on the view", async () => {
     setup();
 
-    const link = await screen.findByRole("link", { name: /New question/ });
+    const link = await screen.findByRole("link", { name: /Query this data/ });
     expect(link).toHaveAttribute("href", expect.stringContaining("/question"));
   });
 });

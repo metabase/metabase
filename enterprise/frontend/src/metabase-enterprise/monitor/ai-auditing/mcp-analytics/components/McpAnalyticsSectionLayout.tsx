@@ -127,7 +127,7 @@ export function McpAnalyticsSectionLayout() {
     <AiAnalyticsSectionLayout
       title={t`MCP analytics`}
       tabs={tabs}
-      tabsAction={<NewQuestionButton viewName={VIEW_MCP_TOOL_CALLS} />}
+      filtersAction={<NewQuestionButton viewName={VIEW_MCP_TOOL_CALLS} />}
       filters={
         <McpToolCallsFilter
           date={date}
