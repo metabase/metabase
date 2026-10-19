@@ -101,6 +101,8 @@ type ReviewModalProps = {
   onRegenerate?: (run: MetadataGenerationRun) => void;
   /** Called when the person is done with a run that has no suggestions. */
   onDone?: () => void;
+  /** Called after the person confirms discarding every suggestion of the run. */
+  onDiscard?: () => void;
 };
 
 export function ReviewModal({
@@ -109,6 +111,7 @@ export function ReviewModal({
   onClose,
   onRegenerate,
   onDone,
+  onDiscard,
 }: ReviewModalProps) {
   const { data: tables } = useListMetadataGenerationRunTablesQuery(runId, {
     skip: !opened,
@@ -139,7 +142,7 @@ export function ReviewModal({
                 runId={runId}
                 totals={getRunTotals(tables)}
                 onApply={setApplyResult}
-                onRegenerate={onRegenerate}
+                onDiscard={onDiscard}
               />
             )}
             <ActionIcon aria-label={t`Close`} onClick={handleClose}>
@@ -482,32 +485,28 @@ type ReviewActionsProps = {
   runId: MetadataGenerationRunId;
   totals: RunTotals;
   onApply: (result: MetadataGenerationApplyResult) => void;
-  onRegenerate?: (run: MetadataGenerationRun) => void;
+  onDiscard?: () => void;
 };
 
-/** The regenerate and apply actions of the modal header. */
+/** The discard and apply actions of the modal header. */
 function ReviewActions({
   runId,
   totals,
   onApply,
-  onRegenerate,
+  onDiscard,
 }: ReviewActionsProps) {
   const [applyRun, { isLoading: isApplying }] =
     useApplyMetadataGenerationRunMutation();
-  const { regenerate, canRegenerate, isRegenerating } = useRegenerate(
-    runId,
-    onRegenerate,
-  );
   const [
-    isRegenerateConfirmOpen,
-    { open: openRegenerateConfirm, close: closeRegenerateConfirm },
+    isDiscardConfirmOpen,
+    { open: openDiscardConfirm, close: closeDiscardConfirm },
   ] = useDisclosure();
   const { sendErrorToast } = useMetadataToasts();
   const { counts } = totals;
 
-  const handleRegenerate = async () => {
-    await regenerate();
-    closeRegenerateConfirm();
+  const handleDiscard = () => {
+    closeDiscardConfirm();
+    onDiscard?.();
   };
 
   const handleApply = async () => {
@@ -523,25 +522,23 @@ function ReviewActions({
 
   return (
     <>
-      {onRegenerate != null && (
-        <Tooltip label={t`Regenerate suggestions`}>
+      {onDiscard != null && (
+        <Tooltip label={t`Discard all suggestions`}>
           <ActionIcon
-            aria-label={t`Regenerate suggestions`}
-            disabled={!canRegenerate}
-            onClick={openRegenerateConfirm}
+            aria-label={t`Discard all suggestions`}
+            onClick={openDiscardConfirm}
           >
-            <Icon name="refresh" />
+            <Icon name="trash" />
           </ActionIcon>
         </Tooltip>
       )}
       <ConfirmModal
-        opened={isRegenerateConfirmOpen}
-        title={t`Regenerate suggestions?`}
-        message={t`This discards the current suggestions, including the ones you accepted or edited, and starts a new run.`}
-        confirmButtonText={t`Regenerate`}
-        confirmButtonProps={{ loading: isRegenerating }}
-        onConfirm={handleRegenerate}
-        onClose={closeRegenerateConfirm}
+        opened={isDiscardConfirmOpen}
+        title={t`Discard all suggestions?`}
+        message={t`This sets aside every suggestion of this run, including the ones you accepted or edited, and takes you back to generating metadata.`}
+        confirmButtonText={t`Discard`}
+        onConfirm={handleDiscard}
+        onClose={closeDiscardConfirm}
       />
       <Button
         variant="filled"

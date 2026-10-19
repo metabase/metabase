@@ -83,6 +83,14 @@ function GenerateMetadataButtonContent({
     closeReview();
   };
 
+  // Discarding sets the run aside and returns to the generate form.
+  const handleDiscard = () => {
+    setDismissedRunId(latestRun?.id ?? null);
+    closeReview();
+    setStartedRunId(null);
+    openModal();
+  };
+
   return (
     <>
       <Button
@@ -107,6 +115,7 @@ function GenerateMetadataButtonContent({
           onClose={closeReview}
           onRegenerate={handleRegenerate}
           onDone={handleReviewDone}
+          onDiscard={handleDiscard}
         />
       )}
     </>
