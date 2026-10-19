@@ -5,7 +5,49 @@ const POLL_MS = 2000;
 const CPU_MS = 2000;
 const ANSWER_TIMEOUT_MS = 6000;
 
+const fs = require("fs");
+
 const log = (...args) => console.log("[hang-watchdog]", ...args);
+
+// Renderer pids, kept up to date by the CPU sampling below.
+let rendererPids = [];
+
+const readProc = (path) => {
+  try {
+    return fs.readFileSync(path, "utf8").trim();
+  } catch (e) {
+    return "?";
+  }
+};
+
+// Linux only. Logs memory and, per thread, the state, wait channel and syscall.
+function dumpRenderers(reason) {
+  if (!fs.existsSync("/proc/self")) {
+    return;
+  }
+  rendererPids.forEach((pid) => {
+    const status = readProc(`/proc/${pid}/status`);
+    const field = (name) =>
+      (status.match(new RegExp(`^${name}:\\s*(.*)$`, "m")) ?? [])[1] ?? "?";
+    log(
+      `PROC ${reason} pid=${pid} state=${field("State")} rss=${field("VmRSS")} threads=${field("Threads")}`,
+    );
+    let tids = [];
+    try {
+      tids = fs.readdirSync(`/proc/${pid}/task`);
+    } catch (e) {
+      return;
+    }
+    tids.forEach((tid) => {
+      const base = `/proc/${pid}/task/${tid}`;
+      const stat = readProc(`${base}/stat`);
+      const state = (stat.match(/\) (\S)/) ?? [])[1] ?? "?";
+      log(
+        `PROC   tid=${tid} comm=${readProc(`${base}/comm`)} state=${state} wchan=${readProc(`${base}/wchan`)} syscall=${readProc(`${base}/syscall`).slice(0, 40)}`,
+      );
+    });
+  });
+}
 
 const withTimeout = (promise, ms) =>
   Promise.race([
@@ -72,6 +114,11 @@ async function check(target) {
   if (heap) {
     conn.reported = false;
     log(`ok heap=${Math.round(heap.usedSize / 1e6)}MB`);
+    if (!conn.dumpedHealthy) {
+      // Once on a healthy page, to check the output format.
+      conn.dumpedHealthy = true;
+      dumpRenderers("healthy");
+    }
     return;
   }
   if (conn.reported) {
@@ -80,6 +127,8 @@ async function check(target) {
   conn.reported = true;
 
   log("NO ANSWER from the page, pausing to get the stack");
+  dumpRenderers("frozen");
+  setTimeout(() => dumpRenderers("frozen+15s"), 15000).unref();
   const paused = new Promise((resolve) => (conn.onPaused = resolve));
   conn.send("Debugger.pause");
   const params = await withTimeout(paused, ANSWER_TIMEOUT_MS);
@@ -134,13 +183,15 @@ async function startCpuSampling(port) {
       }),
       ANSWER_TIMEOUT_MS,
     );
-    const parts = (result?.processInfo ?? [])
-      .filter((p) => p.type === "renderer")
-      .map((p) => {
-        const delta = p.cpuTime - (last.get(p.id) ?? p.cpuTime);
-        last.set(p.id, p.cpuTime);
-        return `${p.id}:+${delta.toFixed(2)}s`;
-      });
+    const renderers = (result?.processInfo ?? []).filter(
+      (p) => p.type === "renderer",
+    );
+    rendererPids = renderers.map((p) => p.id);
+    const parts = renderers.map((p) => {
+      const delta = p.cpuTime - (last.get(p.id) ?? p.cpuTime);
+      last.set(p.id, p.cpuTime);
+      return `${p.id}:+${delta.toFixed(2)}s`;
+    });
     log(`renderer cpu per ${CPU_MS / 1000}s: ${parts.join(" ") || "n/a"}`);
   }, CPU_MS);
   timer.unref();
