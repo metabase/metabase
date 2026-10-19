@@ -160,9 +160,9 @@ describe("toPluginSettings", () => {
 
   it("exposes column returning just the column when the host has none", () => {
     const pluginSettings = toPluginSettings({}, PREFIX);
-    const col = { name: "TOTAL", display_name: "Total", source: "fields" };
+    const column = { name: "TOTAL", display_name: "Total", source: "fields" };
 
-    expect(pluginSettings.column(col)).toEqual({ column: col });
+    expect(pluginSettings.column(column)).toEqual({ column });
   });
 
   it("exposes column as a callable whose results can't poison the host", () => {
