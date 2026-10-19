@@ -12,9 +12,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- blank->nil [s]
-  (when-not (str/blank? s) s))
-
 (defn temp-table-prefix
   "The T-SQL temp table prefix of `table`: \"##\" for a global temp table, \"#\" for a local one, \"\" otherwise.
   sqlglot keeps the prefix as a flag on the identifier rather than in its name."
@@ -31,8 +28,8 @@
   [table]
   (let [table-name (ast/node-name table)]
     (when-not (str/blank? table-name)
-      [(blank->nil (ast/text table "catalog"))
-       (blank->nil (ast/text table "db"))
+      [(u/not-blank (ast/text table "catalog"))
+       (u/not-blank (ast/text table "db"))
        (str (temp-table-prefix table) table-name)])))
 
 (defn shadowing-cte-names
@@ -87,16 +84,28 @@
        (sort-by sort-key)
        vec))
 
+(defn cte-names
+  "The names of the CTEs declared anywhere in `stmt`."
+  [stmt]
+  (into #{} (keep #(not-empty (ast/node-alias %))) (ast/find-all stmt Expressions$CTE)))
+
+(defn real-table-sources
+  "`[alias table]` for each source of `scope` that is a real table: a Table node with a name that, by its name or
+  its alias, is not one of `cte-names`."
+  [^Scope scope cte-names]
+  (for [[source-alias source] (.sources scope)
+        :when (instance? Expressions$Table source)
+        :let  [table-name (ast/node-name source)]
+        :when (and (seq table-name)
+                   (not (contains? cte-names table-name))
+                   (not (contains? cte-names source-alias)))]
+    [source-alias source]))
+
 (defn- scope-table-parts
   "`{alias [catalog schema table]}` for the sources of `scope` that are real tables, not CTEs."
-  [^Scope scope cte-names]
+  [scope cte-names]
   (into {}
-        (for [[source-alias source] (.sources scope)
-              :when (instance? Expressions$Table source)
-              :let  [table-name (ast/node-name source)]
-              :when (and (seq table-name)
-                         (not (contains? cte-names table-name))
-                         (not (contains? cte-names source-alias)))
+        (for [[source-alias source] (real-table-sources scope cte-names)
               :let  [parts (table-parts source)]
               :when parts]
           [source-alias parts])))
@@ -136,9 +145,7 @@
         ;; `build_scope`: the last scope `traverse_scope` yields, none for a statement that holds no query (a
         ;; DELETE without a subquery), which Python fails on.
         ^Scope root (or (last (Scope/traverseScope stmt)) (throw (attribute-error "traverse")))
-        cte-names   (into #{}
-                          (keep #(not-empty (ast/node-alias %)))
-                          (ast/find-all stmt Expressions$CTE))]
+        cte-names   (cte-names stmt)]
     (->> (.traverse root)
          (mapcat #(scope-fields % cte-names))
          distinct

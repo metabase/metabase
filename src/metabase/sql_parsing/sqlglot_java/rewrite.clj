@@ -3,8 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
-   [metabase.sql-parsing.sqlglot-java.references :as references]
-   [metabase.util :as u])
+   [metabase.sql-parsing.sqlglot-java.references :as references])
   (:import
    (com.metabase.sqlglot.ast Expressions$Column Expressions$CTE Expressions$Select
                              Expressions$Subquery Expressions$Table)
@@ -47,18 +46,13 @@
   (let [stmt      (ast/parse-one sql dialect)
         _         (when-not (instance? Expressions$Select stmt)
                     (throw (ast/python-error "ValueError" "SQL must be a SELECT statement")))
-        cte-names (into #{} (keep #(not-empty (ast/node-alias %))) (ast/find-all stmt Expressions$CTE))
+        cte-names (references/cte-names stmt)
         ^Set seen (Collections/newSetFromMap (IdentityHashMap.))]
     (doseq [^Scope scope (.traverse (Scope/build stmt))
-            :let  [replacements (vec (for [[source-alias source] (.sources scope)
-                                           :when (instance? Expressions$Table source)
-                                           :let  [source-name (ast/node-name source)]
-                                           :when (and (seq source-name)
-                                                      (not (contains? cte-names source-name))
-                                                      (not (contains? cte-names source-alias))
-                                                      ;; A temp table has no IDENTITY lineage worth breaking, and its
-                                                      ;; derived-table alias would lose the prefix qualified columns keep.
-                                                      (str/blank? (references/temp-table-prefix source))
+            :let  [replacements (vec (for [[source-alias source] (references/real-table-sources scope cte-names)
+                                           ;; A temp table has no IDENTITY lineage worth breaking, and its
+                                           ;; derived-table alias would lose the prefix qualified columns keep.
+                                           :when (and (str/blank? (references/temp-table-prefix source))
                                                       (.add seen source))]
                                        [source source-alias]))]
             [table table-alias] replacements]
@@ -91,16 +85,13 @@
           (catch Exception _ nil)))
       [ident false]))
 
-(defn- lower [s]
-  (some-> s u/lower-case-en))
-
 (defn- fold-keys
   "A case-insensitive view of `mapping`, whose keys are tuples of name parts. Keys that differ only in case and map
   to different values have no single answer, so they are dropped: an exact match still finds them."
   [mapping]
   (let [{:keys [folded ambiguous]}
         (reduce (fn [{:keys [folded] :as acc} [k v]]
-                  (let [folded-key (mapv #(if (string? %) (lower %) %) k)]
+                  (let [folded-key (mapv #(if (string? %) (ast/lower %) %) k)]
                     (cond-> (assoc-in acc [:folded folded-key] v)
                       (and (contains? folded folded-key) (not= (get folded folded-key) v))
                       (update :ambiguous conj folded-key))))
@@ -109,7 +100,7 @@
     (apply dissoc folded ambiguous)))
 
 (defn- fold-lookup [folded k]
-  (get folded (mapv #(if (string? %) (lower %) %) k)))
+  (get folded (mapv #(if (string? %) (ast/lower %) %) k)))
 
 (defn- part-matches?
   "Whether one part of a replacement key names the same thing as the reference's. A quoted reference part is case
@@ -119,7 +110,7 @@
     (and (nil? key-part) (nil? ref-part))
     (if quoted?
       (= key-part ref-part)
-      (= (lower key-part) (lower ref-part)))))
+      (= (ast/lower key-part) (ast/lower ref-part)))))
 
 (defn- find-table-replacement
   "The replacement for the table `[db schema table]`, most specific key shape first. Each shape is tried as written
@@ -177,7 +168,7 @@
 (defn- rewrite-statement [stmt {:keys [schemas folded-schemas table-map column-map]} dialect]
   ;; Names a bare column qualifier may refer to instead of a table: table and subquery aliases and CTE names.
   (let [aliases (into #{}
-                      (keep #(lower (not-empty (ast/node-alias %))))
+                      (keep #(ast/lower (not-empty (ast/node-alias %))))
                       (ast/find-all stmt Expressions$Table Expressions$Subquery Expressions$CTE))]
     ;; Mutated in place, not through a transform whose copy detaches a node from its parents: a CTE only shadows a
     ;; table for the query that declares it, which is a question about ancestors.
@@ -192,7 +183,7 @@
         ;; A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
         ;; enclosing query names the CTE and is left alone.
         (when-not (and (nil? db) (str/blank? schema)
-                       (contains? (references/shadowing-cte-names table) (lower table-name)))
+                       (contains? (references/shadowing-cte-names table) (ast/lower table-name)))
           ;; The schema is "" when the reference has none, as in sqlglot, so it only matches a key without one
           ;; through the bare-table shape.
           (when-let [replacement (usable (find-table-replacement table-map db schema table-name
@@ -204,7 +195,7 @@
             column-db   (ast/text column "db")]
         ;; A qualifier naming a replaced table follows the table. One without a schema may name an alias instead,
         ;; which is left alone.
-        (when (and (seq table-ref) (or (seq column-db) (not (contains? aliases (lower table-ref)))))
+        (when (and (seq table-ref) (or (seq column-db) (not (contains? aliases (ast/lower table-ref)))))
           (when-let [replacement (usable (find-table-replacement table-map (not-empty (ast/text column "catalog"))
                                                                  column-db table-ref
                                                                  (quoted-parts column "table")))]
@@ -212,9 +203,9 @@
         ;; A column key matches a column qualified by the key's table, or an unqualified column with any table. The
         ;; first matching key decides.
         (let [[_ new-column] (first (filter (fn [[[_ key-table key-column]]]
-                                              (and (= (lower key-column) (lower column-name))
+                                              (and (= (ast/lower key-column) (ast/lower column-name))
                                                    (or (str/blank? table-ref)
-                                                       (= (lower (or key-table "")) (lower table-ref)))))
+                                                       (= (ast/lower (or key-table "")) (ast/lower table-ref)))))
                                             column-map))]
           (when (seq new-column)
             (ast/set-arg! column "this" (ast/identifier new-column (ast/quoted? (ast/this column))))))))
