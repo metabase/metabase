@@ -17,11 +17,18 @@ import { DashboardMoreMenu } from "./DashboardMoreMenu";
 type SetupOpts = {
   dashboard: Dashboard;
   isAdmin?: boolean;
+  isRemoteSyncReadOnly?: boolean;
 };
 
-function setup({ dashboard, isAdmin = false }: SetupOpts) {
+function setup({
+  dashboard,
+  isAdmin = false,
+  isRemoteSyncReadOnly = false,
+}: SetupOpts) {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({ content_verification: true }),
+    "remote-sync-enabled": isRemoteSyncReadOnly,
+    "remote-sync-type": isRemoteSyncReadOnly ? "read-only" : undefined,
   });
   setupEnterpriseOnlyPlugin("moderation");
   setupBookmarksEndpoints([]);
@@ -60,6 +67,19 @@ describe("DashboardMoreMenu", () => {
     setup({ dashboard: createMockDashboard({ can_write: false }) });
 
     expect(await getMenuItemLabels()).toEqual(["Bookmark", "Duplicate"]);
+  });
+
+  it("keeps Verify and drops the edits when remote sync is read-only", async () => {
+    setup({
+      dashboard: createMockDashboard({ can_write: true }),
+      isAdmin: true,
+      isRemoteSyncReadOnly: true,
+    });
+
+    expect(await getMenuItemLabels()).toEqual([
+      "Bookmark",
+      "Verify this dashboard",
+    ]);
   });
 
   it("is hidden on a trashed dashboard, whose banner offers its actions", () => {

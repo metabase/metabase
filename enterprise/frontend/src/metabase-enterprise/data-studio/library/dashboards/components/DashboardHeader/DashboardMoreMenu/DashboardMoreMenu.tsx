@@ -6,7 +6,7 @@ import {
   useDeleteBookmarkMutation,
   useListBookmarksQuery,
 } from "metabase/api";
-import { PaneHeaderMenuButton } from "metabase/common/data-studio/components/PaneHeader";
+import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Icon, Menu } from "metabase/ui";
@@ -55,11 +55,11 @@ function DashboardMenu({ dashboard, onOpenModal }: DashboardMenuProps) {
   return (
     <Menu>
       <Menu.Target>
-        <PaneHeaderMenuButton aria-label={t`More options`} />
+        <MoreMenuButton aria-label={t`More options`} />
       </Menu.Target>
       <Menu.Dropdown>
         <BookmarkMenuItem dashboard={dashboard} />
-        {canEdit && <ModerationMenuItems dashboard={dashboard} />}
+        {dashboard.can_write && <ModerationMenuItems dashboard={dashboard} />}
         {canEdit && (
           <Menu.Item
             leftSection={<Icon name="move" />}
