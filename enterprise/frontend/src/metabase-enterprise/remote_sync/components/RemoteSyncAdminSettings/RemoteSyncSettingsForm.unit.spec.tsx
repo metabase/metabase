@@ -442,13 +442,17 @@ describe("RemoteSyncSettingsForm", () => {
         remoteSyncUrl: "https://github.com/test/repo.git",
       });
 
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+
+      // The branch dropdown only starts loading once the read-write form is on
+      // screen, so its request has to be flushed after that wait, not before.
+      await waitForRequestsToSettle();
+
       expect(
         screen.queryByLabelText("Sync Transforms"),
       ).not.toBeInTheDocument();
-
-      // The form finishes loading with nothing this test can observe, so flush
-      // that update rather than leaving it for the next test.
-      await waitForRequestsToSettle();
     });
 
     it("should display transforms row in collections list when transforms feature is enabled", async () => {

@@ -103,6 +103,11 @@ describe("CurrentDatePicker", () => {
     const { onChange } = setup();
 
     screen.getByRole("radio", { name: "Month" }).focus();
+
+    // Focus opens the chip's tooltip, whose transition settles after the test
+    // unless it is waited for here.
+    await screen.findByRole("tooltip");
+
     await userEvent.keyboard("{Enter}");
 
     expect(onChange).toHaveBeenCalledWith(CURRENT_MONTH_VALUE);
