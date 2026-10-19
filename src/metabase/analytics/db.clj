@@ -292,6 +292,11 @@
   [since :- ms/TemporalInstant]
   (t2/count :model/User :is_active true :date_joined [:>= since]))
 
+(mu/defn admin-revoked-session-count-since
+  "The number of Sessions an admin revoked at or after `since`."
+  [since :- ms/TemporalInstant]
+  (t2/count :model/Session :end_reason "admin" :ended_at [:>= [:auto/param since]]))
+
 (mu/defn unarchived-pivot-table-count
   "The number of unarchived pivot table Cards."
   []
