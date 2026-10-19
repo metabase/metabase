@@ -106,7 +106,8 @@
 
 (doto :model/FieldValues
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
 
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization

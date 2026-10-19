@@ -694,7 +694,7 @@
 
 (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/dependencies :default]
   "Run the before-update hooks of a `:hook/dependencies` model in the transaction of its UPDATE, which Toucan otherwise
-  opens only after them, so dependency marks commit together with the UPDATE and after-commit work sees it."
+  opens only after them, so the dependency marks commit or roll back with the UPDATE and after-commit work sees it."
   [rf query-type model parsed-args resolved-query]
   (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
     (next-method rf query-type model parsed-args resolved-query)))
