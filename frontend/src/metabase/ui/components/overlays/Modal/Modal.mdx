@@ -31,7 +31,7 @@ Pass the heading as `title` and put the action buttons in a `Modal.Footer` as th
 ### Layouts
 
 - `layout="default"` left-aligns the title and body, and right-aligns the buttons.
-- `layout="centered"` centre-aligns everything, stacks the buttons with the primary one on top, and shows an optional `illustration` above the title.
+- `layout="centered"` centre-aligns everything, stacks the buttons with the primary one on top, and shows an optional `illustration` above the title. Body copy is centred too. To left-align it, pass `ta="start"` to its `Text` (or to the `Stack` that wraps it).
 
 Don't confuse `layout` with Mantine's `centered` prop, which sets the modal's vertical position in the viewport.
 
@@ -43,6 +43,10 @@ Don't confuse `layout` with Mantine's `centered` prop, which sets the modal's ve
 - `density="relaxed"` leaves 24px instead. Use it when the body is a form with several fields or is split into sections. Space the fields 24px apart (`Stack gap="xl"`) to match.
 
 <Canvas of={ModalStories.WithForm} />
+
+### Padding
+
+The `padding` prop only accepts `0`, for full-bleed modals that lay out their own contents, such as pickers and side sheets. Leave it out to get the standard padding.
 
 ### Custom layouts
 
