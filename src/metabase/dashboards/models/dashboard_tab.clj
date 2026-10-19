@@ -23,11 +23,6 @@
   (derive :hook/entity-id)
   (derive :hook/dependencies))
 
-(t2/define-before-update :model/DashboardTab
-  [tab]
-  (mi/check-parent-unchanged tab :dashboard_id)
-  (mi/increment-version tab))
-
 (methodical/defmethod t2/model-for-automagic-hydration [:metabase.dashboards.models.dashboard-card/DashboardCard :dashboard_tab]
   [_original-model _k]
   :model/DashboardTab)
@@ -62,7 +57,7 @@
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
   {:copy      [:entity_id :name :position]
-   :skip      [:version]
+   :skip      []
    :transform {:created_at   (serdes/date)
                :dashboard_id (serdes/parent-ref)}})
 

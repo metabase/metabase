@@ -71,8 +71,7 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
-  (mi/check-parent-unchanged dashcard :dashboard_id)
-  (mi/increment-version (validate-dashcard-on-write dashcard)))
+  (validate-dashcard-on-write dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard
@@ -355,7 +354,7 @@
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
   {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
-   :skip      [:version]
+   :skip      []
    :transform {:created_at             (serdes/date)
                :dashboard_id           (serdes/parent-ref)
                :card_id                (serdes/fk :model/Card)

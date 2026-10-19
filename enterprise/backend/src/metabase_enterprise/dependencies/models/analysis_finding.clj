@@ -4,6 +4,8 @@
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -52,32 +54,40 @@
    :source-entity-type  (:source-entity-type error)
    :source-entity-id    (:source-entity-id error)})
 
-(defn- upsert-analysis-once!
-  "Upsert the AnalysisFinding of `type` `instance-id`, replace its errors and record `version`, unless it is nil, in
-  its status, in one transaction."
-  [type instance-id result finding-details version]
+(def ^:private FindingDetails
+  "The errors an analysis found, as `lib/find-bad-refs-with-source` returns them."
+  (let [error [:fn {:error/message "an analysis error"} map?]]
+    [:maybe [:or [:set error] [:sequential error]]]))
+
+(mu/defn- upsert-analysis-once!
+  "Upsert the AnalysisFinding of `type` `instance-id` and replace its errors, in one transaction."
+  [type            :- :keyword
+   instance-id     :- ms/PositiveInt
+   result          :- :boolean
+   finding-details :- FindingDetails]
   (t2/with-transaction [_conn]
     (if-let [existing-id (dependencies.db/finding-id type instance-id)]
       (dependencies.db/update-finding! existing-id {:result result})
-      (dependencies.db/insert-finding! {:result               result
-                                        :entity_type          type
-                                        :entity_id            instance-id}))
+      (dependencies.db/insert-finding! {:result      result
+                                        :entity_type type
+                                        :entity_id   instance-id}))
     (deps.analysis-finding-error/replace-errors-for-entity!
      type
      instance-id
-     (map error->finding-error-row finding-details))
-    (when version
-      (dependencies.db/upsert-analysis-finding-status! type instance-id *current-analysis-finding-version* version))))
+     (map error->finding-error-row finding-details))))
 
-(defn upsert-analysis!
-  "Given the details of an AnalysisFinding row, upsert the data into the actual db, recording `version`, the version of
-  the entity analyzed, unless it is nil, and updating the row a concurrent analysis inserted meanwhile.
+(mu/defn upsert-analysis!
+  "Given the details of an AnalysisFinding row, upsert the data into the actual db, updating the row a concurrent
+  analysis inserted meanwhile.
    Also writes individual errors to the analysis_finding_error table with source information."
-  [type instance-id result finding-details version]
+  [type            :- :keyword
+   instance-id     :- ms/PositiveInt
+   result          :- :boolean
+   finding-details :- FindingDetails]
   (let [existed? (some? (dependencies.db/finding-id type instance-id))]
     (try
-      (upsert-analysis-once! type instance-id result finding-details version)
+      (upsert-analysis-once! type instance-id result finding-details)
       (catch Exception e
         (if (and (not existed?) (dependencies.db/finding-id type instance-id))
-          (upsert-analysis-once! type instance-id result finding-details version)
+          (upsert-analysis-once! type instance-id result finding-details)
           (throw e))))))

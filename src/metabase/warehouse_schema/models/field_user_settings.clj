@@ -61,8 +61,7 @@
 
 (t2/define-before-update :model/FieldUserSettings
   [settings]
-  (mi/check-parent-unchanged settings :field_id)
-  (mi/increment-version (with-set-flags settings (t2/changes settings))))
+  (with-set-flags settings (t2/changes settings)))
 
 (t2/define-after-update :model/FieldUserSettings
   [settings]
@@ -127,7 +126,6 @@
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position
                :description_set :semantic_type_set :fk_target_field_id_set]
-   :skip      [:version]
    :defaults  {:description_set        false
                :semantic_type_set      false
                :fk_target_field_id_set false}

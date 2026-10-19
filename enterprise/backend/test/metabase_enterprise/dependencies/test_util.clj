@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
@@ -12,7 +13,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defn run-with-dependencies-setup!
   "Run `thunk` with the metadata provider of the test database, as Rasta and with the dependencies feature, each write
@@ -54,55 +56,47 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/card mp card-id))))
 
-(defn- pending-entities
-  "The `{:id :version}` of the entities of `entity-type` whose row in `status-table` is missing or records another
-  version, or that match `outdated`."
-  [entity-type status-table & {:as opts}]
-  (#'dependencies.db/changed-entities entity-type status-table 100000 opts))
+(defn- status-pending?
+  "Whether the entity `entity-type` `entity-id` has no row in the status `model`, or a stale one."
+  [model entity-type entity-id]
+  (not (t2/exists? model :entity_type entity-type :entity_id entity-id :stale false)))
 
-(defn- pending-version
-  "The version of the entity `entity-type` `entity-id` when its row in `status-table` is missing or records another
-  version, or nil."
-  [entity-type entity-id status-table & {:as opts}]
-  (some #(when (= entity-id (:id %)) (:version %)) (pending-entities entity-type status-table opts)))
+(defn dependency-pending?
+  "Whether the dependency job is to compute the dependencies of the entity `entity-type` `entity-id`: it has no
+  status, or a stale one."
+  [entity-type entity-id]
+  (status-pending? :model/DependencyStatus entity-type entity-id))
+
+(defn record-dependencies-computed!
+  "Record, as the dependency job does when it claims it, that the dependencies of the entity `entity-type` `entity-id`
+  are current."
+  [entity-type entity-id]
+  (dependencies.db/claim-dependency-statuses!
+   entity-type [entity-id] models.dependency/current-dependency-analysis-version))
 
 (defn result-metadata-pending?
-  "Whether the result metadata job did not process the Card with `card-id`, or another entity, at its current version."
-  ([card-id]
-   (result-metadata-pending? :card card-id))
-  ([entity-type entity-id]
-   (some? (pending-version entity-type entity-id :result_metadata_status
-                           :outdated [:< :status.analysis_version
-                                      models.result-metadata-status/current-result-metadata-version]))))
+  "Whether the result metadata job is to re-derive the Card with `card-id`: it has no status, or a stale one."
+  [card-id]
+  (status-pending? :model/ResultMetadataStatus :card card-id))
 
 (defn record-result-metadata-version!
-  "Record, as the result metadata job does, that it processed the Card with `card-id`, or another entity, at its
-  current version."
-  ([card-id]
-   (record-result-metadata-version! :card card-id))
-  ([entity-type entity-id]
-   (when-let [version (pending-version entity-type entity-id :result_metadata_status
-                                       :outdated [:< :status.analysis_version
-                                                  models.result-metadata-status/current-result-metadata-version])]
-     (dependencies.db/upsert-result-metadata-status!
-      entity-type entity-id models.result-metadata-status/current-result-metadata-version version))))
+  "Record, as the result metadata job does when it claims it, that the result metadata of the Card with `card-id` is
+  current."
+  [card-id]
+  (dependencies.db/claim-result-metadata-statuses!
+   [card-id] models.result-metadata-status/current-result-metadata-version))
 
 (defn analysis-finding-pending?
-  "Whether the analysis finding job did not process the entity `entity-type` `entity-id` at its current version."
+  "Whether the analysis job is to analyze the entity `entity-type` `entity-id`: it has no status, or a stale one."
   [entity-type entity-id]
-  (some? (pending-version entity-type entity-id :analysis_finding_status
-                          :outdated [:< :status.analysis_version
-                                     models.analysis-finding/*current-analysis-finding-version*])))
+  (status-pending? :model/AnalysisFindingStatus entity-type entity-id))
 
 (defn record-analysis-finding-version!
-  "Record, as the analysis finding job does, that it processed the entity `entity-type` `entity-id` at its current
-  version."
+  "Record, as the analysis job does when it claims it, that the finding of the entity `entity-type` `entity-id` is
+  current."
   [entity-type entity-id]
-  (when-let [version (pending-version entity-type entity-id :analysis_finding_status
-                                      :outdated [:< :status.analysis_version
-                                                 models.analysis-finding/*current-analysis-finding-version*])]
-    (dependencies.db/upsert-analysis-finding-status!
-     entity-type entity-id models.analysis-finding/*current-analysis-finding-version* version)))
+  (dependencies.db/claim-analysis-finding-statuses!
+   entity-type [entity-id] models.analysis-finding/*current-analysis-finding-version*))
 
 (defn do-with-immediate-hook-writes
   "Run `thunk` with the work the dependency hooks defer until commit done at once, since a test's transaction never

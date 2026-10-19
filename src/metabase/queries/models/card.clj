@@ -1126,8 +1126,7 @@
         (pre-update changes)
         (move-model-actions original)
         maybe-populate-initially-published-at
-        public-sharing/add-public-uuid-prefix-if-changed
-        (mi/increment-version #{:view_count :last_used_at}))))
+        public-sharing/add-public-uuid-prefix-if-changed)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -1676,8 +1675,7 @@
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
-   :skip [:version
-          ;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
+   :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
           ;; serialized representation is versioned by :card_schema instead
           :metabase_version
           ;; cache invalidation is instance-specific

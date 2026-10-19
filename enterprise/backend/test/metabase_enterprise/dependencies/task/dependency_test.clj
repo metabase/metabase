@@ -44,11 +44,7 @@
   [entity-type entity-id]
   (dependencies.db/delete-dependency-statuses! entity-type [entity-id]))
 
-(defn- pending?
-  "Whether the dependencies of the entity `entity-type` `entity-id` were not computed from its current version."
-  [entity-type entity-id]
-  (boolean (some #(= entity-id (:id (first %)))
-                 (deps.dependency-status/instances-for-dependency-calculation entity-type 100000))))
+(def ^:private pending? deps.test/dependency-pending?)
 
 (defn- processed?
   "Whether the dependencies of the entity `entity-type` `entity-id` were computed from its current version by the
@@ -500,16 +496,20 @@
   (t2/select-fn-set :to_entity_id :model/Dependency
                     :from_entity_type entity-type :from_entity_id entity-id :to_entity_type :table))
 
-(deftest ^:synchronized backfill-nested-snippet-tables-test
-  (testing "the tables of a snippet nested in another are the dependencies of the card whose SQL expands it"
+(deftest ^:synchronized backfill-snippet-edit-recomputes-queries-expanding-it-test
+  (testing "a snippet's tables are the card's own dependencies, so editing a snippet, even one nested in another,
+           recomputes the cards whose SQL expands it"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/NativeQuerySnippet _ {:name "birds inner" :content "VENUES"}
+      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "birds inner" :content "VENUES"}
                      :model/NativeQuerySnippet _ {:name "birds outer" :content "SELECT * FROM {{snippet: birds inner}}"}
                      :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                                  "{{snippet: birds outer}}")}]
         (backfill-all-existing-entities!)
-        (is (= #{(mt/id :venues)} (table-dependency-ids :card card-id)))))))
+        (is (= #{(mt/id :venues)} (table-dependency-ids :card card-id)))
+        (t2/update! :model/NativeQuerySnippet inner-id {:content "CHECKINS"})
+        (backfill-all-existing-entities!)
+        (is (= #{(mt/id :checkins)} (table-dependency-ids :card card-id)))))))
 
 (deftest ^:synchronized backfill-card-reference-leaves-out-card-tables-test
   (testing "a native query depends on the card it references, not on the card's tables, which it reads through the card"

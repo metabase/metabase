@@ -51,7 +51,6 @@
    [:table_id             ::lib.schema.id/table]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
    [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]
-   [:version              {:optional true} [:maybe :int]]
    [:attribute_remappings {:optional true} [:maybe
                                             [:map-of
                                              #_attribute-name ::lib.schema.common/non-blank-string

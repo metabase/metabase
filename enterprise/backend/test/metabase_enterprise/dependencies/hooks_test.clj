@@ -1,10 +1,7 @@
 (ns metabase-enterprise.dependencies.hooks-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.hooks]
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
@@ -21,25 +18,15 @@
 
 (def ^:private card-query deps.test/card-query)
 
-(defn- pending?
-  "Whether the dependencies of the entity `entity-type` `entity-id` were not computed from its current version."
-  [entity-type entity-id]
-  (boolean (some #(= entity-id (:id %))
-                 (dependencies.db/dependency-pending-entities
-                  entity-type 100000 models.dependency/current-dependency-analysis-version))))
+(def ^:private pending? deps.test/dependency-pending?)
 
-(defn- computed!
-  "Record that the dependencies of the entity `entity-type` `entity-id` were computed from its current version."
-  [entity-type entity-id]
-  (doseq [[instance version] (deps.dependency-status/instances-for-dependency-calculation entity-type 100000)
-          :when              (= entity-id (:id instance))]
-    (deps.dependency-status/upsert-status! entity-type entity-id version)))
+(def ^:private computed! deps.test/record-dependencies-computed!)
 
 (defn- status-row-count []
   (reduce + (map t2/count [:model/DependencyStatus :model/ResultMetadataStatus :model/AnalysisFindingStatus])))
 
-(deftest card-update-writes-nothing-test
-  (testing "updating a card writes no status, and triggers the jobs once it commits"
+(deftest card-update-adds-no-status-test
+  (testing "updating a card adds no status row, and triggers the jobs once it commits"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
         (let [submitted (atom [])
@@ -60,17 +47,19 @@
              #(t2/update! :model/Card card-id {:dataset_query (table-query :orders)})))
           (is (= [] @submitted)))))))
 
-(deftest card-version-test
-  (testing "any update of a card changes its version"
-    (mt/test-helpers-set-global-values!
+(deftest card-marks-own-statuses-test
+  (testing "an update of what a job reads of a card marks the card's own status for that job stale, and a rename marks
+           nothing"
+    (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
         (computed! :card card-id)
-        (is (not (pending? :card card-id)))
         (t2/update! :model/Card card-id {:name "Renamed"})
+        (is (not (pending? :card card-id)))
+        (t2/update! :model/Card card-id {:dataset_query (table-query :orders)})
         (is (pending? :card card-id))))))
 
-(deftest dashboard-version-test
-  (testing "inserting, updating and deleting a dashboard card, a series or a tab changes the dashboard's version"
+(deftest dashboard-parts-mark-dashboard-test
+  (testing "inserting, updating and deleting a dashboard card, a series or a tab marks the dashboard's dependencies stale"
     (mt/test-helpers-set-global-values!
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
@@ -104,9 +93,9 @@
               (computed! :dashboard dashboard-id)
               (is (not (pending? :dashboard dashboard-id))))))))))
 
-(deftest table-version-test
-  (testing "a write of a table, its user settings, one of its fields, field user settings or dimensions, changes the
-           table's version, which has the result metadata job process it and the cards on it"
+(deftest table-parts-mark-cards-test
+  (testing "a write of a table, its user settings, one of its fields, field user settings or dimensions, marks the cards
+           on it stale"
     (mt/test-helpers-set-global-values!
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
@@ -115,9 +104,9 @@
           (let [table-id (mt/id :venues)
                 field-id (mt/id :venues :price)
                 changes? (fn [write!]
-                           (deps.test/record-result-metadata-version! :table table-id)
+                           (deps.test/record-result-metadata-version! card-id)
                            (write!)
-                           (deps.test/result-metadata-pending? :table table-id))]
+                           (deps.test/result-metadata-pending? card-id))]
             (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
               (is (changes? #(t2/update! :model/Table table-id {:display_name "Places"}))))
             (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}

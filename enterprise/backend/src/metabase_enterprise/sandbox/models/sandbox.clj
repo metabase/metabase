@@ -302,7 +302,7 @@
 
 (t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
-  (u/prog1 (mi/increment-version updates)
+  (u/prog1 updates
     (let [original (t2/original updates)
           updated  (merge original updates)]
       (when-not (= (:table_id original) (:table_id updated))

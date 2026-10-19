@@ -1,10 +1,11 @@
 (ns metabase-enterprise.dependencies.models.dependency-status
   (:require
-   [medley.core :as m]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -14,13 +15,6 @@
 
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})
-
-(defn upsert-status!
-  "Record that the dependencies of the entity `entity-type` `entity-id` were computed from its `version` by the current
-  analysis."
-  [entity-type entity-id version]
-  (dependencies.db/upsert-dependency-status!
-   entity-type entity-id models.dependency/current-dependency-analysis-version version))
 
 (defmulti hydrate-for-deps
   "Hydrate a batch of instances with data needed for dependency calculation.
@@ -41,26 +35,25 @@
               (contains? queries id) (assoc :dataset_query (queries id))))
           instances)))
 
-(defn instances-for-dependency-calculation
-  "Find a batch of instances of type `entity-type` and maximum size `batch-size` whose dependencies were not computed
-  from their current version by the current analysis, as `[instance version]` pairs. Prioritizes changed entities over
-  outdated analyses."
-  [entity-type batch-size]
-  (let [rows      (dependencies.db/dependency-pending-entities entity-type batch-size models.dependency/current-dependency-analysis-version)
-        instances (when (seq rows)
-                    (m/index-by :id (dependencies.db/instances entity-type (into #{} (map :id) rows))))]
-    (into []
-          (keep (fn [{:keys [id version]}]
-                  (when-let [instance (get instances id)]
-                    [instance version])))
-          rows)))
+(mu/defn instances-for-dependency-calculation
+  "Claim a batch of instances of type `entity-type` and maximum size `batch-size` whose dependencies are stale, were not
+  computed yet, or were computed by an older analysis, and return them. Prioritizes stale entities over outdated
+  analyses."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   batch-size  :- ms/PositiveInt]
+  (let [ids (dependencies.db/dependency-pending-entity-ids
+             entity-type batch-size models.dependency/current-dependency-analysis-version)]
+    (when (seq ids)
+      (dependencies.db/claim-dependency-statuses! entity-type ids models.dependency/current-dependency-analysis-version)
+      (vec (dependencies.db/instances entity-type (set ids))))))
 
-(defn has-pending-entities?
-  "Returns true if there are any entities whose dependencies were not computed from their current version by the
-  current analysis, or deleted entities whose status the dependency job has yet to clean up."
+(mu/defn has-pending-entities? :- :boolean
+  "Returns true if there are any entities whose dependencies are stale, not computed yet or computed by an older
+  analysis, or deleted entities whose status the dependency job has yet to clean up."
   []
   (boolean
    (some (fn [entity-type]
-           (or (seq (dependencies.db/dependency-pending-entities entity-type 1 models.dependency/current-dependency-analysis-version))
+           (or (seq (dependencies.db/dependency-pending-entity-ids
+                     entity-type 1 models.dependency/current-dependency-analysis-version))
                (seq (dependencies.db/dependency-deleted-entity-ids entity-type 1))))
          deps.dependency-types/backfillable-dependency-types)))

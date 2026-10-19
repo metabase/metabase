@@ -157,10 +157,9 @@
 (t2/define-before-update :model/Action
   [{model-id :model_id, :as action}]
   (let [changed? (fn [k] (contains? (t2/changes action) k))]
-    (u/prog1 (-> (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
-                   (and model-id (changed? :model_id))
-                   set-model-collection)
-                 mi/increment-version)
+    (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
+               (and model-id (changed? :model_id))
+               set-model-collection)
       (when (and (implicit? action) (or (changed? :type) (changed? :model_id)))
         (check-implicit-action-model model-id)
         (check-implicit-actions-supported action))
@@ -187,8 +186,7 @@
 
 (t2/define-before-update :model/QueryAction
   [query-action]
-  (mi/check-parent-unchanged query-action :action_id)
-  (mi/increment-version (set-query-database query-action)))
+  (set-query-database query-action))
 
 (defn- action-database-ids
   "The ids of the Databases `action` runs against: its query's, or its model's for an implicit action."
@@ -260,7 +258,7 @@
 (def ^:private action-columns
   "The columns that are common to all Action types."
   [:archived :archived_directly :collection_id :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name
-   :parameter_mappings :parameters :public_uuid :public_uuid_prefix :type :updated_at :version :visualization_settings])
+   :parameter_mappings :parameters :public_uuid :public_uuid_prefix :type :updated_at :visualization_settings])
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
@@ -358,7 +356,7 @@
     (let [query-actions (actions.db/query-actions (map :id actions))
           action-id->query-actions (m/index-by :action_id query-actions)]
       (for [action actions]
-        (merge action (-> action :id action-id->query-actions (dissoc :action_id :version)))))))
+        (merge action (-> action :id action-id->query-actions (dissoc :action_id)))))))
 
 (defn- normalize-implicit-actions [actions]
   (when (seq actions)
@@ -625,8 +623,7 @@
 (defmethod serdes/generate-path "QueryAction" [_ _] nil)
 (defmethod serdes/make-spec "QueryAction" [_model-name _opts]
   {:copy      []
-   :skip      [:version
-               ;; this is a temporary column to power v57 => v56 rollbacks, and we can remove it in v58.
+   :skip      [;; this is a temporary column to power v57 => v56 rollbacks, and we can remove it in v58.
                :legacy_query]
    :transform {:action_id     (serdes/parent-ref)
                :database_id   (serdes/fk :model/Database)
@@ -639,8 +636,7 @@
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :archived_directly :description :entity_id :name :public_uuid]
-   :skip      [:version
-               ;; always re-derived from public_uuid on import
+   :skip      [;; always re-derived from public_uuid on import
                :public_uuid_prefix]
    :transform {:created_at             (serdes/date)
                :type                   (serdes/kw)

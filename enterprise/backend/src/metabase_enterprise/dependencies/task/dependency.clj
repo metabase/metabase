@@ -3,9 +3,8 @@
   (see [[metabase-enterprise.dependencies.models.dependency]]) up to date, that is, makes sure
   the dependency table contains fresh entries.
 
-  It selects the entities whose dependency_status records another version than theirs (their own `version` plus the
-  versions of their parts), an older analysis_version, or no row, computes their dependencies, and records
-  the version it computed them from."
+  It claims the entities whose dependency_status is stale, records an older analysis_version, or is missing, clearing
+  their stale flags, then computes their dependencies; a write while they are computed marks them stale again."
   (:require
    [clojurewerkz.quartzite.scheduler :as qs]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
@@ -66,24 +65,20 @@
 ;;; ------------------------------ Job orchestration ------------------------------
 
 (defn- processable-instances
-  "Up to `batch-size` instances of `entity-type` whose dependencies need computing, hydrated, each paired with its
-  version."
+  "Claim up to `batch-size` instances of `entity-type` whose dependencies need computing, hydrated."
   [entity-type batch-size]
-  (let [pairs (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)]
-    (map vector
-         (deps.dependency-status/hydrate-for-deps entity-type (mapv first pairs))
-         (map second pairs))))
+  (deps.dependency-status/hydrate-for-deps
+   entity-type (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)))
 
 (defn- compute-deps-for-entity!
-  "Compute and store the dependencies of an entity and record the `version` they were computed from. Entities are
-  expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
-  [entity-type entity version]
+  "Compute and store the dependencies of an entity. Entities are expected to be pre-hydrated by
+  [[deps.dependency-status/hydrate-for-deps]]."
+  [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (let [deps (deps.calculation/calculate-deps entity-type entity)]
     (t2/with-transaction [_]
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
-      (post-deps-cleanup! entity-type entity)
-      (deps.dependency-status/upsert-status! entity-type (:id entity) version))))
+      (post-deps-cleanup! entity-type entity))))
 
 (defn- remove-deleted-entity-batch!
   "Drop the dependencies and status of up to `batch-size` deleted entities of `entity-type`, returning how many were
@@ -103,22 +98,14 @@
           instances (processable-instances entity-type batch-size)]
       (when (seq instances)
         (log/debugf "Processing a batch of %s %s(s)..." (count instances) type-name))
-      (reduce (fn [total [entity version]]
+      (reduce (fn [total entity]
                 (+ total
                    (try
-                     (compute-deps-for-entity! entity-type entity version)
+                     (compute-deps-for-entity! entity-type entity)
                      1
                      (catch Throwable e ;; catch OOMs
-                       (let [id (:id entity)]
-                         (try
-                           (deps.dependency-status/upsert-status! entity-type id version)
-                           (log/errorf "Entity %s %s failed, so its dependencies are computed again when it changes: %s"
-                                       type-name id (ex-message e))
-                           (catch Exception record-ex
-                             (log/errorf "Entity %s %s failed during dependency calculation: %s"
-                                         type-name id (ex-message e))
-                             (log/errorf "Additionally, failed to record the failure for %s %s: %s"
-                                         type-name id (ex-message record-ex)))))
+                       (log/errorf "Entity %s %s failed, so its dependencies are computed again when it changes: %s"
+                                   type-name (:id entity) (ex-message e))
                        (when-not (instance? Exception e) ;; re-throw Errors
                          (throw e))
                        0))))

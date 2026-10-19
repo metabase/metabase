@@ -1,56 +1,9 @@
-## The dependency jobs find changed entities by comparing the version of an entity, a counter that every update of it
-## moves, plus the counters of the rows it is made of, with the version its status row last recorded, instead of
-## reading stale flags that every write had to set. The status rows lose the flag and the retry state.
-## result_metadata_status and analysis_finding_status record the version each entity was last processed from, as
-## dependency_status does, and analysis_finding keeps only the findings.
+## The dependency jobs process the entities whose status rows a write marks stale in its own transaction: an
+## entity's own row for the columns each job reads, and its direct dependents' rows when what they read changes. The
+## status rows lose the retry state. result_metadata_status and analysis_finding_status hold one row per entity,
+## as dependency_status does, and analysis_finding keeps only the findings.
 
 databaseChangeLog:
-  - changeSet:
-      id: v65.k4w2ns
-      author: ranquild
-      comment: Delete the dependency_status rows marked stale, since an entity without a row is processed again
-      changes:
-        - delete:
-            tableName: dependency_status
-            where: stale = TRUE
-      rollback: # the deleted rows are recreated when the job processes their entities
-
-  - changeSet:
-      id: v65.nuaq4b
-      author: ranquild
-      comment: Drop the index on dependency_status.stale, which the jobs no longer read
-      changes:
-        - dropIndex:
-            tableName: dependency_status
-            indexName: idx_dependency_status_stale
-      rollback:
-        - sql:
-            dbms: postgresql
-            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale) WHERE stale = true
-        - sql:
-            dbms: mysql,mariadb,h2
-            sql: CREATE INDEX idx_dependency_status_stale ON dependency_status(stale)
-
-  - changeSet:
-      id: v65.dngxhg
-      author: ranquild
-      comment: Drop dependency_status.stale, which change detection from versions replaces
-      changes:
-        - dropColumn:
-            tableName: dependency_status
-            columnName: stale
-      rollback:
-        - addColumn:
-            tableName: dependency_status
-            columns:
-              - column:
-                  name: stale
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: True when the entity needs dependency recalculation
-                  constraints:
-                    nullable: false
-
   - changeSet:
       id: v65.brqkb7
       author: ranquild
@@ -127,401 +80,169 @@ databaseChangeLog:
                   remarks: True when the entity names tables that match no synced table, recomputed after each sync
                   constraints:
                     nullable: false
+
   - changeSet:
-      id: v65.hvb1yr
+      id: v65.lywci7
       author: ranquild
-      comment: Add dependency_status.entity_version
+      comment: Rename dependency_status.dependency_analysis_version to analysis_version, as the other status tables name it
       changes:
-        - addColumn:
+        - renameColumn:
             tableName: dependency_status
-            columns:
-              - column:
-                  name: entity_version
-                  type: bigint
-                  remarks: The version of the entity, its own and its parts' counters summed, its dependencies were computed from, or null to compute them again
+            oldColumnName: dependency_analysis_version
+            newColumnName: analysis_version
+            columnDataType: smallint
       rollback:
-        - dropColumn:
+        - renameColumn:
             tableName: dependency_status
-            columnName: entity_version
+            oldColumnName: analysis_version
+            newColumnName: dependency_analysis_version
+            columnDataType: smallint
 
   - changeSet:
-      id: v65.nfvzyv
+      id: v65.0mshmu
       author: ranquild
-      comment: Record version 1, the version of every entity not made of other rows after the upgrade, as the version the remaining dependency_status rows were computed from
+      comment: Keep dependency_status.analysis_version not null, which a rename on MySQL drops
       changes:
-        - update:
+        - addNotNullConstraint:
             tableName: dependency_status
-            columns:
-              - column:
-                  name: entity_version
-                  valueNumeric: 1
-            where: entity_type NOT IN ('dashboard', 'action', 'table')
-      rollback: # the column is dropped by the rollback of the changeset adding it
+            columnName: analysis_version
+            columnDataType: smallint
+      rollback: # the rename's rollback restores the column
 
   - changeSet:
-      id: v65.qbxe8a
+      id: v65.oacw7z
       author: ranquild
-      comment: Add report_card.version
+      comment: Create result_metadata_status
       changes:
-        - addColumn:
-            tableName: report_card
+        - createTable:
+            tableName: result_metadata_status
+            remarks: Whether the result metadata of each MBQL card is to be re-derived
             columns:
               - column:
-                  name: version
+                  name: id
                   type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the card increments, read by the dependency jobs
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(254)
+                  remarks: The type of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: The ID of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when a write changed what the job reads for the entity, so the job processes it again
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analysis_version
+                  type: int
+                  remarks: The version of the result metadata logic that last processed the card
                   constraints:
                     nullable: false
       rollback:
-        - dropColumn:
-            tableName: report_card
-            columnName: version
+        - dropTable:
+            tableName: result_metadata_status
 
   - changeSet:
-      id: v65.nmq0me
+      id: v65.ckqf9u
       author: ranquild
-      comment: Add report_dashboard.version
+      comment: Unique constraint to prevent duplicate result_metadata_status entries
       changes:
-        - addColumn:
-            tableName: report_dashboard
+        - addUniqueConstraint:
+            tableName: result_metadata_status
+            columnNames: entity_type, entity_id
+            constraintName: idx_unique_result_metadata_status
+      rollback:
+        - dropUniqueConstraint:
+            tableName: result_metadata_status
+            constraintName: idx_unique_result_metadata_status
+
+  - changeSet:
+      id: v65.u44qob
+      author: ranquild
+      comment: Create analysis_finding_status
+      changes:
+        - createTable:
+            tableName: analysis_finding_status
+            remarks: Whether each analyzable entity is to be analyzed again
             columns:
               - column:
-                  name: version
+                  name: id
                   type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the dashboard increments, read by the dependency jobs
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(254)
+                  remarks: The type of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: The ID of the entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when a write changed what the job reads for the entity, so the job processes it again
+                  constraints:
+                    nullable: false
+              - column:
+                  name: analysis_version
+                  type: int
+                  remarks: The version of the analysis that last processed the entity
                   constraints:
                     nullable: false
       rollback:
-        - dropColumn:
-            tableName: report_dashboard
-            columnName: version
+        - dropTable:
+            tableName: analysis_finding_status
 
   - changeSet:
-      id: v65.73p6jv
+      id: v65.0ypnl2
       author: ranquild
-      comment: Add report_dashboardcard.version
+      comment: Unique constraint to prevent duplicate analysis_finding_status entries
       changes:
-        - addColumn:
-            tableName: report_dashboardcard
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the dashboard card increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
+        - addUniqueConstraint:
+            tableName: analysis_finding_status
+            columnNames: entity_type, entity_id
+            constraintName: idx_unique_analysis_finding_status
       rollback:
-        - dropColumn:
-            tableName: report_dashboardcard
-            columnName: version
+        - dropUniqueConstraint:
+            tableName: analysis_finding_status
+            constraintName: idx_unique_analysis_finding_status
 
   - changeSet:
-      id: v65.dphlja
+      id: v65.eoug8w
       author: ranquild
-      comment: Add dashboardcard_series.version
+      comment: Copy the stale flag and analysis version of each analysis_finding row to analysis_finding_status
       changes:
-        - addColumn:
-            tableName: dashboardcard_series
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the dashboard card series increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: dashboardcard_series
-            columnName: version
-
-  - changeSet:
-      id: v65.e6voat
-      author: ranquild
-      comment: Add dashboard_tab.version
-      changes:
-        - addColumn:
-            tableName: dashboard_tab
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the dashboard tab increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: dashboard_tab
-            columnName: version
-
-  - changeSet:
-      id: v65.eaxdpt
-      author: ranquild
-      comment: Add document.version
-      changes:
-        - addColumn:
-            tableName: document
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the document increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: document
-            columnName: version
-
-  - changeSet:
-      id: v65.ipwp7x
-      author: ranquild
-      comment: Add native_query_snippet.version
-      changes:
-        - addColumn:
-            tableName: native_query_snippet
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the snippet increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: native_query_snippet
-            columnName: version
-
-  - changeSet:
-      id: v65.mqa00u
-      author: ranquild
-      comment: Add transform.version
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the transform increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: transform
-            columnName: version
-
-  - changeSet:
-      id: v65.7lsw1h
-      author: ranquild
-      comment: Add segment.version
-      changes:
-        - addColumn:
-            tableName: segment
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the segment increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: segment
-            columnName: version
-
-  - changeSet:
-      id: v65.9e1np3
-      author: ranquild
-      comment: Add measure.version
-      changes:
-        - addColumn:
-            tableName: measure
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the measure increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: measure
-            columnName: version
-
-  - changeSet:
-      id: v65.0e4q1k
-      author: ranquild
-      comment: Add action.version
-      changes:
-        - addColumn:
-            tableName: action
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the action increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: action
-            columnName: version
-
-  - changeSet:
-      id: v65.bx8lh0
-      author: ranquild
-      comment: Add query_action.version
-      changes:
-        - addColumn:
-            tableName: query_action
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the query action increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: query_action
-            columnName: version
-
-  - changeSet:
-      id: v65.pbx4jc
-      author: ranquild
-      comment: Add sandboxes.version
-      changes:
-        - addColumn:
-            tableName: sandboxes
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the sandbox increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: sandboxes
-            columnName: version
-
-  - changeSet:
-      id: v65.fxce03
-      author: ranquild
-      comment: Add metabase_table.version
-      changes:
-        - addColumn:
-            tableName: metabase_table
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the table increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: metabase_table
-            columnName: version
-
-  - changeSet:
-      id: v65.clboxj
-      author: ranquild
-      comment: Add metabase_field.version
-      changes:
-        - addColumn:
-            tableName: metabase_field
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the field increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: metabase_field
-            columnName: version
-
-  - changeSet:
-      id: v65.07498d
-      author: ranquild
-      comment: Add metabase_field_user_settings.version
-      changes:
-        - addColumn:
-            tableName: metabase_field_user_settings
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the field user settings row increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: metabase_field_user_settings
-            columnName: version
-
-  - changeSet:
-      id: v65.o9kbco
-      author: ranquild
-      comment: Add metabase_table_user_settings.version
-      changes:
-        - addColumn:
-            tableName: metabase_table_user_settings
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the table user settings row increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: metabase_table_user_settings
-            columnName: version
-
-  - changeSet:
-      id: v65.eh281n
-      author: ranquild
-      comment: Add dimension.version
-      changes:
-        - addColumn:
-            tableName: dimension
-            columns:
-              - column:
-                  name: version
-                  type: int
-                  defaultValueNumeric: 1
-                  remarks: A counter that every update of the dimension increments, read by the dependency jobs
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: dimension
-            columnName: version
+        - sql:
+            sql: >-
+              INSERT INTO analysis_finding_status (entity_type, entity_id, stale, analysis_version)
+              SELECT analyzed_entity_type, analyzed_entity_id, stale, COALESCE(analysis_version, 0)
+              FROM analysis_finding
+      rollback: # the table is dropped by the rollback of the changeset creating it
 
   - changeSet:
       id: v65.1suf0c
       author: ranquild
-      comment: Drop the index on analysis_finding.stale, which the jobs no longer read
+      comment: Drop the index on analysis_finding.stale, which moves to analysis_finding_status
       changes:
         - dropIndex:
             tableName: analysis_finding
@@ -537,7 +258,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.d291qd
       author: ranquild
-      comment: Drop analysis_finding.stale, which change detection from versions replaces
+      comment: Drop analysis_finding.stale, which analysis_finding_status now holds
       changes:
         - dropColumn:
             tableName: analysis_finding
@@ -572,153 +293,6 @@ databaseChangeLog:
                   remarks: The version of the analysis that was performed
 
   - changeSet:
-      id: v65.upols4
-      author: ranquild
-      comment: Create result_metadata_status
-      changes:
-        - createTable:
-            tableName: result_metadata_status
-            remarks: The version of each entity the result metadata job last processed, re-deriving MBQL cards and having the entities depending on it processed
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: entity_type
-                  type: varchar(254)
-                  remarks: The type of the entity
-                  constraints:
-                    nullable: false
-              - column:
-                  name: entity_id
-                  type: int
-                  remarks: The ID of the entity
-                  constraints:
-                    nullable: false
-              - column:
-                  name: entity_version
-                  type: bigint
-                  remarks: The version of the entity, its own and its parts' counters summed, it was processed from, or null to process it again
-              - column:
-                  name: analysis_version
-                  type: int
-                  remarks: The version of the result metadata logic that processed the entity
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropTable:
-            tableName: result_metadata_status
-
-  - changeSet:
-      id: v65.2n6p0h
-      author: ranquild
-      comment: Unique constraint to prevent duplicate result_metadata_status entries
-      changes:
-        - addUniqueConstraint:
-            tableName: result_metadata_status
-            columnNames: entity_type, entity_id
-            constraintName: idx_unique_result_metadata_status
-      rollback:
-        - dropUniqueConstraint:
-            tableName: result_metadata_status
-            constraintName: idx_unique_result_metadata_status
-
-  - changeSet:
-      id: v65.5wiidr
-      author: ranquild
-      comment: Create analysis_finding_status
-      changes:
-        - createTable:
-            tableName: analysis_finding_status
-            remarks: The version of each entity the analysis job last processed, analyzing it and having the entities depending on it processed
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: entity_type
-                  type: varchar(254)
-                  remarks: The type of the entity
-                  constraints:
-                    nullable: false
-              - column:
-                  name: entity_id
-                  type: int
-                  remarks: The ID of the entity
-                  constraints:
-                    nullable: false
-              - column:
-                  name: entity_version
-                  type: bigint
-                  remarks: The version of the entity, its own and its parts' counters summed, it was processed from, or null to process it again
-              - column:
-                  name: analysis_version
-                  type: int
-                  remarks: The version of the analysis that processed the entity
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropTable:
-            tableName: analysis_finding_status
-
-  - changeSet:
-      id: v65.mt7yn9
-      author: ranquild
-      comment: Unique constraint to prevent duplicate analysis_finding_status entries
-      changes:
-        - addUniqueConstraint:
-            tableName: analysis_finding_status
-            columnNames: entity_type, entity_id
-            constraintName: idx_unique_analysis_finding_status
-      rollback:
-        - dropUniqueConstraint:
-            tableName: analysis_finding_status
-            constraintName: idx_unique_analysis_finding_status
-
-  - changeSet:
-      id: v65.aij5ua
-      author: ranquild
-      comment: Index metabase_field by table_id and version, so the sum of the versions of the fields of a table is read from the index
-      changes:
-        - createIndex:
-            tableName: metabase_field
-            indexName: idx_field_table_id_version
-            columns:
-              - column:
-                  name: table_id
-              - column:
-                  name: version
-      rollback:
-        - dropIndex:
-            tableName: metabase_field
-            indexName: idx_field_table_id_version
-
-  - changeSet:
-      id: v65.lywci7
-      author: ranquild
-      comment: Rename dependency_status.dependency_analysis_version to analysis_version, as the other status tables name it
-      changes:
-        - renameColumn:
-            tableName: dependency_status
-            oldColumnName: dependency_analysis_version
-            newColumnName: analysis_version
-            columnDataType: smallint
-      rollback:
-        - renameColumn:
-            tableName: dependency_status
-            oldColumnName: analysis_version
-            newColumnName: dependency_analysis_version
-            columnDataType: smallint
-
-  - changeSet:
       id: v65.pxgfgg
       author: ranquild
       comment: Rename analysis_finding.analyzed_entity_type to entity_type, as the status tables name it
@@ -751,17 +325,6 @@ databaseChangeLog:
             oldColumnName: entity_id
             newColumnName: analyzed_entity_id
             columnDataType: int
-
-  - changeSet:
-      id: v65.0mshmu
-      author: ranquild
-      comment: Keep dependency_status.analysis_version not null, which a rename on MySQL drops
-      changes:
-        - addNotNullConstraint:
-            tableName: dependency_status
-            columnName: analysis_version
-            columnDataType: smallint
-      rollback: # the rename's rollback restores the column
 
   - changeSet:
       id: v65.p5wigm

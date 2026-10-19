@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -179,9 +180,9 @@
                                           :entity_type :card :entity_id card-id)))
             (is (empty? (filter #{card-id} (analyzed-ids! run-jobs!))))))))))
 
-(deftest ^:synchronized analysis-re-analyzes-changed-entity-and-transitive-dependents-test
-  (testing "after an entity changes, the analysis finding job re-analyzes it and the entities transitively depending on
-           it"
+(deftest ^:synchronized analysis-re-analyzes-changed-entity-and-direct-dependents-test
+  (testing "after a card's query changes, the analysis finding job re-analyzes it and the cards directly depending on
+           it, and nothing for a rename"
     (backfill-all-entity-analyses!)
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
@@ -196,7 +197,9 @@
                                               :to_entity_type :card :to_entity_id p-id}]
             (run-jobs!)
             (t2/update! :model/Card gp-id {:name "Renamed"})
-            (is (= #{gp-id p-id c-id}
+            (is (empty? (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!))))
+            (t2/update! :model/Card gp-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
+            (is (= #{gp-id p-id}
                    (set (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!)))))))))))
 
 (deftest ^:synchronized analysis-follows-table-field-write-test
@@ -393,7 +396,9 @@
                       :model/Dependency _ {:from_entity_type :card :from_entity_id child-id
                                            :to_entity_type :card :to_entity_id parent-id}]
          (analyzed-by-job!)
-         (t2/update! :model/Card parent-id {:dataset_query (lib/native-query mp "select * from orders")})
+         (t2/update! :model/Card parent-id {:dataset_query   (lib/native-query mp "select * from orders")
+                                            :result_metadata (get-in (qp/process-query (lib/native-query mp "select * from orders"))
+                                                                     [:data :results_metadata :columns])})
          (deps.test/synchronously-run-dependency-job!)
          (is (= #{[:card parent-id] [:card child-id]}
                 (analyzed-among! [:card parent-id] [:card child-id]))))))))

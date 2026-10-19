@@ -105,8 +105,7 @@
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
     (u/prog1 (-> dashboard
                  maybe-populate-initially-published-at
-                 public-sharing/add-public-uuid-prefix-if-changed
-                 (mi/increment-version #{:view_count :last_viewed_at}))
+                 public-sharing/add-public-uuid-prefix-if-changed)
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
@@ -408,8 +407,7 @@
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip      [:version
-               ;; those stats are inherently local state
+   :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
                :cache_ttl

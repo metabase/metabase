@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
-   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
@@ -184,18 +183,9 @@
                           (depends-on-> :card (:id question-card) :card (:id metric-card))}
                         (upstream-of :card (:id question-card))))))))))))
 
-(defn- pending?
-  "Whether the dependencies of the entity `entity-type` `entity-id` were not computed from its current version."
-  [entity-type entity-id]
-  (boolean (some #(= entity-id (:id (first %)))
-                 (deps.dependency-status/instances-for-dependency-calculation entity-type 100000))))
+(def ^:private pending? deps.test/dependency-pending?)
 
-(defn- computed!
-  "Record that the dependencies of the entity `entity-type` `entity-id` were computed from its current version."
-  [entity-type entity-id]
-  (doseq [[instance version] (deps.dependency-status/instances-for-dependency-calculation entity-type 100000)
-          :when              (= entity-id (:id instance))]
-    (deps.dependency-status/upsert-status! entity-type entity-id version)))
+(def ^:private computed! deps.test/record-dependencies-computed!)
 
 (deftest ^:synchronized dependency-status-version-test
   (testing "updating an entity changes the version its dependencies are computed from, and creating one writes no status"

@@ -23,11 +23,6 @@
   (derive :hook/timestamped?)
   (derive :hook/dependencies))
 
-(t2/define-before-update :model/Dimension
-  [dimension]
-  (mi/check-parent-unchanged dimension :field_id)
-  (mi/increment-version dimension))
-
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})
 
@@ -45,7 +40,7 @@
 
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
   {:copy      [:name :type :entity_id]
-   :skip      [:version]
+   :skip      []
    :transform {:created_at              (serdes/date)
                :human_readable_field_id (serdes/fk :model/Field)
                :field_id                {::serdes/fk true

@@ -5,6 +5,10 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::entity-ids
+  "Entities as `{entity-type ids}`."
+  [:map-of :metabase-enterprise.dependencies.dependency-types/dependency-types [:set ms/PositiveInt]])
+
 (mr/def ::upstream-deps
   [:map
    [:card      {:optional true} [:set ::lib.schema.id/card]]
@@ -75,5 +79,5 @@
   [:map {:closed true}
    [:entity_type      {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_id        {:optional true} [:maybe ms/PositiveInt]]
-   [:entity_version   {:optional true} [:maybe :int]]
+   [:stale            {:optional true} [:maybe :boolean]]
    [:analysis_version {:optional true} [:maybe :int]]])

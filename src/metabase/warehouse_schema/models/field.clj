@@ -172,11 +172,10 @@
 
 (t2/define-before-update :model/Field
   [field]
-  (mi/check-parent-unchanged field :table_id)
   (when (false? (:active (t2/changes field)))
     (warehouse-schema.db/clear-fk-targets-to-field! (:id field))
     (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field)))
-  (mi/increment-version (enforce-effective-type-invariant field)))
+  (enforce-effective-type-invariant field))
 
 (t2/define-before-delete :model/Field
   [field]
@@ -480,7 +479,7 @@
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
-   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed :version]
+   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed]
    :transform {:created_at         (serdes/date)
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)

@@ -322,30 +322,3 @@
       (let [hydrated (t2/hydrate card :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
-
-(deftest increment-version-test
-  (testing "an update that changes a versioned row increments its version in the database, unless it changes only
-           the columns the model leaves out, such as usage counters"
-    (mt/with-temp [:model/Card      {card-id :id}      {:name "Card"}
-                   :model/Dashboard {dashboard-id :id} {}]
-      (let [version #(t2/select-one-fn :version %1 :id %2)]
-        (is (= 1 (version :model/Card card-id)))
-        (t2/update! :model/Card card-id {:name "Renamed"})
-        (is (= 2 (version :model/Card card-id)))
-        (t2/update! :model/Card card-id {:name "Renamed again" :updated_at :updated_at})
-        (is (= 3 (version :model/Card card-id)))
-        (t2/update! :model/Card card-id {:name "Renamed again"})
-        (is (= 3 (version :model/Card card-id)))
-        (t2/update! :model/Dashboard dashboard-id {:last_viewed_at (t/offset-date-time)})
-        (is (= 1 (version :model/Dashboard dashboard-id)))
-        (t2/update! :model/Dashboard dashboard-id {:name "Renamed"})
-        (is (= 2 (version :model/Dashboard dashboard-id)))))))
-
-(deftest check-parent-unchanged-test
-  (testing "an update moving a part to another parent throws, and one keeping its parent goes through"
-    (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
-                   :model/Dashboard     {other-id :id}     {}
-                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The dashboard_id of a DashboardCard can't change"
-                            (t2/update! :model/DashboardCard dashcard-id {:dashboard_id other-id})))
-      (is (= 1 (t2/update! :model/DashboardCard dashcard-id {:dashboard_id dashboard-id :row 2}))))))

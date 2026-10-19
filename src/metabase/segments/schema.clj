@@ -53,7 +53,6 @@
    [:definition              {:optional true} [:maybe ::segment.definition]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:version                 {:optional true} [:maybe :int]]
    [:points_of_interest      {:optional true} [:maybe :string]]
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
