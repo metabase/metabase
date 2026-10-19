@@ -91,7 +91,7 @@ jobs:
         env:
           CHANGESETS: ${{ needs.generate-test-matrix.outputs.unreleased-changesets }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_RELEASE_CHANNEL: "" 
         with:
           script: | # js
             const { findSlackMessage, sendSlackMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
