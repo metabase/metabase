@@ -1612,7 +1612,7 @@
   to get the raw native query as needed.
 
   A table the query names that matches no synced table or transform target can be returned as
-  `{:unresolved-table {:schema ... :table ...}}`, so dependency tracking can recompute the query once sync finds it.
+  `{:unresolved-table {:schema ... :table ...}}`, which dependency tracking does not record as an upstream.
 
   The return value should match the `:metabase.driver/native-query-deps` schema."
   {:added "0.57.0" :arglists '([driver query])}

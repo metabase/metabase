@@ -1836,7 +1836,7 @@
       (is (= :question
              (t2/select-one-fn :type :model/Card :id (:id card)))))))
 
-(deftest create-card-no-remaps
+(deftest create-card-remaps-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :user_id)
                                        :name                    "User ID"
@@ -1856,8 +1856,8 @@
                                      :dataset_query query}
                                     @api/*current-user*)]
         (try
-          (is (= 9
-                 (count (:result_metadata card))))
+          (testing "a created card stores the remapped columns of a run"
+            (is (= 2 (count (filter :remapped_from (:result_metadata card))))))
           (finally
             (t2/delete! :model/Card (:id card))))))))
 
@@ -1911,9 +1911,9 @@
                                           :name                   "Orders Model for remap test"
                                           :dataset_query          query}
                                          @api/*current-user*)]
-            (testing "model result_metadata should not include remap columns"
-              (is (not-any? #(re-find #"(?i)remap" (:name %))
-                            (:result_metadata card))))
+            (testing "model result_metadata includes the remap column of a run, marked as remapped"
+              (is (=? [{:remapped_from "QUANTITY"}]
+                      (filter #(re-find #"(?i)remap" (:name %)) (:result_metadata card)))))
             (let [mp          (mt/metadata-provider)
                   model-query (-> (lib/query mp (lib.metadata/card mp (:id card)))
                                   (lib/aggregate (lib/count))
