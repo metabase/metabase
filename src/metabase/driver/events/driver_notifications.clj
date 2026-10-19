@@ -22,7 +22,7 @@
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     ;; evict unconditionally: the relevance filter below is about connection-pool churn, but any
-    ;; update can change feature support (e.g. toggling `database-enable-actions`).
+    ;; update can change feature support (e.g. a new `dbms_version`, or `persist-models-enabled`).
     (driver.u/invalidate-features-cache! (:id database))
     ;; notify the appropriate driver about the updated database to release any related resources, such as connections.
     ;; avoid notifying if the changes shouldn't impact the observable behaviour of any resource, otherwise drivers might

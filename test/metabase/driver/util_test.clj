@@ -27,6 +27,7 @@
    [metabase.util.snake-hating-map :as snake-hating-map]
    [toucan2.core :as t2])
   (:import
+   (java.util.concurrent CountDownLatch TimeUnit)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
@@ -487,7 +488,7 @@
                                                           (:id db)
                                                           "Timed out after 100.0 ms"))))
                         (log-messages))))
-            (testing "the whole feature set is cached for the database, so we don't ask the driver or log again"
+            (testing "the whole feature set is cached for the database, so the timeout is not logged again"
               (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
                 (is (false? (driver.u/supports? :test-driver :left-join db)))
                 (is (= []
@@ -662,6 +663,32 @@
           (is (nil? (feature-cache-entry (:id db))))
           (finally
             (driver.u/invalidate-features-cache! (:id db))))))))
+
+(deftest feature-set-cache-concurrent-miss-test
+  (testing "concurrent cold misses for one database ask the driver about each feature once"
+    (mt/with-temp [:model/Database db {}]
+      (let [n       4
+            lib-db  (driver.u/ensure-lib-database (t2/select-one :model/Database :id (:id db)))
+            calls   (atom {})
+            arrived (CountDownLatch. n)]
+        (binding [driver.u/*memoize-supports?* true]
+          (try
+            (driver.u/invalidate-features-cache! (:id db))
+            (with-redefs [driver/features           #{:left-join :right-join}
+                          driver/database-supports? (fn [_ feature _]
+                                                      (swap! calls update feature (fnil inc 0))
+                                                      (when (= feature :left-join)
+                                                        ;; hold each sweep until every caller has missed, or
+                                                        ;; until it's clear no other caller is sweeping
+                                                        (.countDown arrived)
+                                                        (.await arrived 2 TimeUnit/SECONDS))
+                                                      true)]
+              (let [callers (doall (repeatedly n #(future (driver.u/supports? :h2 :left-join lib-db))))]
+                (is (every? true? (map deref callers)))
+                (is (= {:left-join 1, :right-join 1}
+                       @calls))))
+            (finally
+              (driver.u/invalidate-features-cache! (:id db)))))))))
 
 (deftest features-batched-matches-per-feature-test
   (testing "bounding the whole scan instead of each check does not change which features come back"
