@@ -179,3 +179,22 @@
                :reason             "unparseable"
                :error              "maximum recursion depth exceeded"}
               (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" sql "read-only"))))))
+
+(deftest port-logs-no-sql-test
+  (testing "the port's warning that quotes SQL it falls back on does not reach the log, as sql_tools.py ensures"
+    (let [records (atom [])
+          logger  (java.util.logging.Logger/getLogger "com.metabase.sqlglot.reference.Parser")
+          handler (proxy [java.util.logging.Handler] []
+                    (publish [^java.util.logging.LogRecord record] (swap! records conj (.getMessage record)))
+                    (flush [])
+                    (close []))]
+      (.addHandler logger handler)
+      (try
+        (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" "CREATE FROBNICATE marker_7731" "read-only")
+        (is (= [] @records))
+        (testing "after a Log4j reconfiguration, which resets java.util.logging levels"
+          (mt/with-log-level [metabase.sql-parsing :debug]
+            (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" "CREATE FROBNICATE marker_7732" "read-only"))
+          (is (= [] @records)))
+        (finally
+          (.removeHandler logger handler))))))
