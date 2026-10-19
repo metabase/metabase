@@ -34,6 +34,7 @@
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -2174,7 +2175,7 @@
             (is (= 1 (count @seen)))
             (is (= (first @seen) (get-in built [:structured-output :query])))))))))
 
-(deftest preprocessing-failures-keep-their-classification-test
+(deftest unrecognized-preprocessing-failures-allow-construction-test
   (with-mp-and-stubs!
     (fn []
       (let [query {:lib/type "mbql/query"
@@ -2182,26 +2183,21 @@
             wrap  (fn [cause] (ex-info "Error preprocessing query in middleware: private detail"
                                        {:type :qp :fn #'qp/preprocess} cause))
             forbidden (ex-info "private permission detail" {:status-code 403})]
-        (doseq [[expected e]
-                [[:metabase.metabot.tools.recoverable.common/not-found
-                  (wrap (ex-info "another wrapper" {} forbidden))]
-                 [:internal (ex-info "private setup failure" {})]
-                 [:internal (wrap (RuntimeException. "private programming failure"))]
-                 [:internal (wrap (ex-info "private DB failure" {:type :invalid-query}
-                                           (java.sql.SQLException. "private JDBC detail")))]
-                 [:internal (wrap (ex-info "private app DB failure"
-                                           {:type :invalid-query :toucan2/context-trace []}))]]
+        (doseq [e [(wrap (ex-info "another wrapper" {} forbidden))
+                   (ex-info "private setup failure" {})
+                   (wrap (RuntimeException. "private programming failure"))
+                   (wrap (ex-info "private DB failure" {:type :invalid-query}
+                                  (java.sql.SQLException. "private JDBC detail")))
+                   (wrap (ex-info "private app DB failure"
+                                  {:type :invalid-query :toucan2/context-trace []}))]
                 tool [construct/construct-notebook-query-tool
                       slackbot-query/slackbot-construct-notebook-query-tool]]
           (mt/with-dynamic-fn-redefs [qp/preprocess (fn [_] (throw e))]
-            (let [{:keys [class code text]} (test-util/tool-failure tool {:query query :reasoning "count orders"})]
-              (is (= expected code))
-              (is (= (if (= expected :internal) :unrecoverable :recoverable) class))
-              (is (not (str/includes? (or text "") "private"))))
-            (is (identical? (if (= expected :internal) e forbidden)
-                            (try
-                              (construct/execute-representations-query query {:preprocess-check? true})
-                              (catch Throwable failure failure))))))))))
+            (log.capture/with-log-messages-for-level [logs [metabase.metabot.tools.construct :warn]]
+              (let [result (test-util/call-tool tool {:query query :reasoning "count orders"})]
+                (is (map? (get-in result [:structured-output :query])))
+                (is (not (str/includes? (pr-str result) "private"))))
+              (is (= [e] (map :e (logs)))))))))))
 
 (deftest preprocessing-rejection-message-is-bounded-test
   (with-mp-and-stubs!
@@ -2221,17 +2217,15 @@
                         (subs diagnostic 0 300) "\nFix that part of the query and retry.")
                    text))))))))
 
-(deftest preprocessing-step-permission-failure-test
+(deftest preprocessing-permission-failure-allows-construction-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [forbidden (ex-info "private permission detail" {:status-code 403})
           query     {:lib/type "mbql/query"
                      :stages [{:lib/type "mbql.stage/mbql"
                                :source-table [(:name (mt/db)) "PUBLIC" "ORDERS"]}]}]
       (mt/with-dynamic-fn-redefs [qp.add-implicit-clauses/add-implicit-clauses (fn [_] (throw forbidden))]
-        (is (identical? forbidden
-                        (try
-                          (construct/execute-representations-query query {:preprocess-check? true})
-                          (catch Throwable failure failure))))))))
+        (is (map? (get-in (construct/execute-representations-query query {:preprocess-check? true})
+                          [:structured-output :query])))))))
 
 (deftest construct-tools-reject-incompatible-later-stage-metric-test
   (mt/with-current-user (mt/user->id :crowberto)

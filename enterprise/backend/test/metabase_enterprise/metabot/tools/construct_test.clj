@@ -18,6 +18,26 @@
     (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                 (lib/> (lib.metadata/field mp (mt/id :orders :total)) 10))))
 
+(defn- check-sandbox-attribute-error [attributes message]
+  (met/with-gtaps! {:gtaps {:venues {:query (let [mp (mt/metadata-provider)]
+                                              (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+                                     :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                    :attributes attributes}
+    (t2/update! :model/Database (mt/id) {:name "Metabot sandbox"})
+    (let [query {:lib/type "mbql/query"
+                 :stages [{:lib/type "mbql.stage/mbql"
+                           :source-table ["Metabot sandbox" "PUBLIC" "VENUES"]
+                           :aggregation [["count" {}]]}]}]
+      (doseq [tool [construct/construct-notebook-query-tool
+                    slackbot-query/slackbot-construct-notebook-query-tool]]
+        (let [built (get-in (test-util/call-tool tool {:query query :reasoning "count venues"})
+                            [:structured-output :query])]
+          (is (map? built))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo message (qp/process-query built))))))))
+
+(deftest construct-tools-allow-missing-sandbox-attribute-test
+  (check-sandbox-attribute-error {"something_random" 50} #"Query requires user attribute `cat`"))
+
 (deftest construct-tools-preprocess-sandboxed-queries-test
   (met/with-gtaps! {:gtaps {:orders {:query (sandbox-query)}}}
     (t2/update! :model/Database (mt/id) {:name "Metabot sandbox"})

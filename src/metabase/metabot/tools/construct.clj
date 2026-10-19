@@ -31,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -846,28 +847,20 @@
     (qp/preprocess query)
     (catch Throwable e
       (let [chain   (u/full-exception-chain e)
-            refusal (u/seek #(= 403 (:status-code (ex-data %))) chain)
             message (preprocessing-rejection-message (ex-cause e))]
-        (cond
-          (some #(or (instance? java.sql.SQLException %)
-                     (contains? (ex-data %) :toucan2/context-trace)) chain)
-          (throw e)
-
-          refusal
-          (throw refusal)
-
-          (and (= :qp (:type (ex-data e)))
-               (:fn (ex-data e))
-               message)
+        (if (and (= :qp (:type (ex-data e)))
+                 (:fn (ex-data e))
+                 message
+                 (not-any? #(or (= 403 (:status-code (ex-data %)))
+                                (instance? java.sql.SQLException %)
+                                (contains? (ex-data %) :toucan2/context-trace)) chain))
           (throw (ex-info (str "The query builds, but Metabase rejects it when preparing it to run: "
                                (u/truncate message preprocessing-message-limit))
                           {:agent-error? true
                            :error        :query-preprocessing-failed
                            :status-code  400}
                           e))
-
-          :else
-          (throw e))))))
+          (log/warn e "Could not preprocess the constructed Metabot query"))))))
 
 (defn execute-representations-query
   "Run `external-query` through the representations pipeline. See
@@ -877,8 +870,8 @@
   string (or nil) telling the caller's agent how to recover; the sentence is appended to the
   agent error's message. Omitting it leaves agent errors with the pipeline's bare statement.
 
-  `:preprocess-check?` also checks that the built query can be prepared to run, without executing it.
-  Query rejections become agent errors; permission and unexpected failures propagate."
+  `:preprocess-check?` checks the built query before returning it. Recognized query rejections become
+  agent errors; other preprocessing failures are logged and ignored."
   ([external-query]
    (execute-representations-query external-query nil))
   ([external-query {:keys [recovery-hint preprocess-check?]}]
