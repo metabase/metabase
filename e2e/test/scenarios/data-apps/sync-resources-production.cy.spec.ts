@@ -102,7 +102,7 @@ describe("scenarios > data apps > sync-resources in production", () => {
       }),
     );
 
-  it("runs the synchronized card rather than the authored table query", () => {
+  it("runs the synchronized card rather than the authored table query, and both return the same rows", () => {
     syncApp().then((cardId) => {
       cy.readFile(QUERY_FILE()).should(
         "contain",
@@ -131,15 +131,12 @@ describe("scenarios > data apps > sync-resources in production", () => {
         expect(stage?.["source-table"], "not the authored table").to.be
           .undefined;
       });
-    });
-  });
 
-  // The swap is only safe if both sides return the same thing. The dev preview
-  // runs the authored query unswapped; production runs the card it was published
-  // as. A deployed app cannot run the authored query at all, so the two sides are
-  // captured separately rather than side by side.
-  it("returns the same rows from the published card as from the authored query", () => {
-    syncApp().then((cardId) => {
+      // The swap is only safe if both sides return the same thing. The dev preview
+      // runs the authored query unswapped; production runs the card it was published
+      // as. A deployed app cannot run the authored query at all, so the two sides are
+      // captured separately rather than side by side.
+      cy.log("the published card returns the same rows as the authored query");
       cy.request("POST", "/api/dataset", {
         type: "query",
         database: SAMPLE_DB_ID,

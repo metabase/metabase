@@ -321,6 +321,9 @@ describe("scenarios > visualizations > pie chart", () => {
         ],
         ["Doohickey", "Gadget", "Gizmo", "Widget"],
       );
+      cy.findByTestId("development-watermark").should(
+        devMode ? "exist" : "not.exist",
+      );
 
       H.echartsContainer().within(() => {
         cy.findByText("Saturday").as("saturdaySlice").trigger("mousemove");
@@ -478,27 +481,51 @@ describe("scenarios > visualizations > pie chart", () => {
     H.assertQueryBuilderRowCount(835);
   });
 
-  it("should handle click behavior correctly", () => {
+  it("should handle card and dashcard click behavior correctly (metabase#15250)", () => {
+    const urlClickBehavior = {
+      type: "link",
+      linkType: "url",
+      linkTemplate: "question/{{count}}",
+    };
+
     H.createQuestionAndDashboard({
       questionDetails: {
         query: threeRingQuery.query,
         display: "pie",
         visualization_settings: {
-          click_behavior: {
-            type: "link",
-            linkType: "url",
-            linkTemplate: "question/{{count}}",
-          },
+          click_behavior: urlClickBehavior,
         },
       },
-      cardDetails: {
-        size_x: 30,
-        size_y: 15,
-      },
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
+    }).then(({ body: { card_id, dashboard_id } }) => {
+      H.createQuestion({
+        name: "15250",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field-id", PRODUCTS.CATEGORY]],
+        },
+        display: "pie",
+      }).then(({ body: { id: categoryCardId } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            { card_id, row: 0, col: 0, size_x: 30, size_y: 15 },
+            {
+              card_id: categoryCardId,
+              row: 15,
+              col: 0,
+              size_x: 21,
+              size_y: 10,
+              visualization_settings: { click_behavior: urlClickBehavior },
+            },
+          ],
+        });
+
+        H.visitDashboard(dashboard_id);
+      });
     });
 
+    cy.log("card click behavior on a three-ring pie");
     confirmSliceClickBehavior("2028", 6578);
     confirmSliceClickBehavior("Affiliate", 1270, 0);
     confirmSliceClickBehavior("Doohickey", 282, 0);
@@ -506,6 +533,27 @@ describe("scenarios > visualizations > pie chart", () => {
     confirmSliceClickBehavior("2027", 5834);
     confirmSliceClickBehavior("Organic", 1180, 1);
     confirmSliceClickBehavior("Gizmo", 354, 8);
+
+    cy.log("dashcard click behavior on the first pie row (metabase#15250)");
+    H.getDashboardCard(1).within(() => {
+      H.pieSliceWithColor("#88BF4D")
+        .first()
+        .as("doohickeySlice")
+        .trigger("mousemove");
+    });
+
+    H.assertEChartsTooltip({
+      header: "Category",
+      rows: [
+        { color: "#88BF4D", name: "Doohickey", value: "42" },
+        { color: "#F9D45C", name: "Gadget", value: "53" },
+        { color: "#A989C5", name: "Gizmo", value: "51" },
+        { color: "#F2A86F", name: "Widget", value: "54" },
+      ],
+    });
+
+    cy.get("@doohickeySlice").click();
+    cy.location("pathname").should("eq", "/question/42");
   });
 
   it("should handle min percentage setting correctly", () => {
@@ -780,14 +828,16 @@ function changeRowLimit(from, to) {
 }
 
 function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
-  H.echartsContainer().within(() => {
-    if (elementIndex == null) {
-      cy.findByText(sliceLabel).click({ force: true });
-    } else {
-      // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
-    }
-  });
+  H.getDashboardCard(0)
+    .findByTestId("chart-container")
+    .within(() => {
+      if (elementIndex == null) {
+        cy.findByText(sliceLabel).click({ force: true });
+      } else {
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
+        cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
+      }
+    });
 
   cy.location("pathname").should("eq", `/question/${value}`);
   H.main().within(() => {

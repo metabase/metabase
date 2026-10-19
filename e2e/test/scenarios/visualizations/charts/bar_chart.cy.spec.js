@@ -62,8 +62,8 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("(empty)").should("not.exist");
+      H.chartPathWithFillColor("#A989C5").should("have.length", 2);
+      H.echartsContainer().findByText("(empty)").should("not.exist");
     });
 
     it("should show an (empty) bar for null values when X axis is ordinal (metabase#12138)", () => {
@@ -202,86 +202,7 @@ describe("scenarios > visualizations > bar chart", () => {
         },
       });
 
-      H.echartsContainer()
-        .get("text")
-        .should("contain", "19")
-        .and("contain", "20.0M");
-    });
-
-    describe("issue 55853", () => {
-      const questionDetails = {
-        name: "55853",
-        database: WRITABLE_DB_ID,
-        native: {
-          query: `select 'Category A' as category, 0.0001 as value union all
-        select 'Category B' as category, 0.0002 as value union all
-        select 'Category C' as category, 0.00015 as value union all
-        select 'Category D' as category, 0.00025 as value`,
-          "template-tags": {},
-        },
-        display: "bar",
-        visualization_settings: {
-          "graph.dimensions": ["category"],
-          "graph.metrics": ["value"],
-          column_settings: {
-            '["name","value"]': {
-              number_style: "percent",
-            },
-          },
-        },
-      };
-
-      beforeEach(() => {
-        H.restore("postgres-12");
-        cy.signInAsAdmin();
-      });
-
-      it("should not have y-axis labels colliding with very low percentages (metabase#55853)", () => {
-        H.createNativeQuestion(questionDetails, { visitQuestion: true });
-
-        cy.log("Verify that the chart renders successfully");
-        H.echartsContainer().should("be.visible");
-        H.echartsContainer().find("text").should("contain", "%");
-        H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
-
-        cy.log("Check that axis labels and title don't overlap");
-        H.echartsContainer()
-          .find("text")
-          .then(($texts) => {
-            const texts = $texts.toArray();
-            const axisTitle = texts.find(
-              (el) => el.textContent?.trim() === "value",
-            );
-            const percentLabels = texts.filter((el) =>
-              el.textContent?.includes("%"),
-            );
-
-            expect(axisTitle, "y-axis title").to.exist;
-            expect(percentLabels).to.have.length.greaterThan(0);
-
-            const titleRight = axisTitle.getBoundingClientRect().right;
-            percentLabels.forEach((el) => {
-              expect(
-                el.getBoundingClientRect().left - titleRight,
-                `Label "${el.textContent}" should not overlap with the axis title`,
-              ).to.be.greaterThan(5);
-            });
-          });
-
-        cy.log(
-          "Verify tooltips show correct percentage values (not incorrectly rounded)",
-        );
-        H.chartPathWithFillColor("#88BF4D").first().realHover();
-        H.assertEChartsTooltip({
-          header: "Category A",
-          rows: [
-            {
-              name: "value",
-              value: "0.01%",
-            },
-          ],
-        });
-      });
+      H.getValueLabels().should("contain", "19").and("contain", "20.0M");
     });
   });
 
@@ -293,7 +214,8 @@ describe("scenarios > visualizations > bar chart", () => {
       H.sidebar().findByText("Data").click();
     });
 
-    it("should allow you to show/hide and reorder columns", () => {
+    it("should allow you to show/hide and reorder columns, and handle filtered and re-added items", () => {
+      cy.log("Move Doohickey to the third position");
       H.getDraggableElements().eq(0).as("dragElement");
       H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 100,
@@ -307,7 +229,8 @@ describe("scenarios > visualizations > bar chart", () => {
         .should("contain.text", "Doohickey");
       cy.findAllByTestId("legend-item").eq(3).should("contain.text", "Widget");
 
-      H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
+      cy.log("Hide Gizmo");
+      H.getDraggableElements().eq(1).icon("close").click({ force: true });
 
       cy.findByTestId("query-visualization-root")
         .findByText("Gizmo")
@@ -317,6 +240,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.chartPathWithFillColor("#F9D45C").should("be.visible");
       H.chartPathWithFillColor("#88BF4D").should("be.visible");
 
+      cy.log("Add Gizmo again");
       H.leftSidebar().button("Add another series").click();
       H.popover().findByText("Gizmo").click();
 
@@ -329,22 +253,11 @@ describe("scenarios > visualizations > bar chart", () => {
       H.chartPathWithFillColor("#88BF4D").should("be.visible");
       H.chartPathWithFillColor("#A989C5").should("be.visible");
 
-      cy.findAllByTestId("legend-item").contains("Gadget").click();
-      H.popover().findByText("See these Orders").click();
-      cy.findByTestId("qb-filters-panel")
-        .findByText("Product → Category is Gadget")
-        .should("exist");
-    });
+      cy.log("Hide Gizmo again");
+      H.getDraggableElements().eq(1).should("have.text", "Gizmo");
+      H.getDraggableElements().eq(1).icon("close").click({ force: true });
 
-    it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
-      H.getDraggableElements().first().as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", {
-        vertical: 100,
-        useMouseEvents: true,
-      });
-
-      H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
-
+      cy.log("Filter out Gadget");
       H.queryBuilderHeader()
         .button(/Filter/)
         .click();
@@ -361,6 +274,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.getDraggableElements().eq(0).should("have.text", "Doohickey");
       H.getDraggableElements().eq(1).should("have.text", "Widget");
 
+      cy.log("Remove the filter");
       cy.findByTestId("qb-filters-panel").icon("close").click();
 
       H.getDraggableElements().should("have.length", 3);
@@ -368,6 +282,7 @@ describe("scenarios > visualizations > bar chart", () => {
       H.getDraggableElements().eq(1).should("have.text", "Doohickey");
       H.getDraggableElements().eq(2).should("have.text", "Widget");
 
+      cy.log("Add Gizmo to the end of the list");
       H.leftSidebar().button("Add another series").click();
       H.popover().findByText("Gizmo").click();
 
@@ -376,6 +291,13 @@ describe("scenarios > visualizations > bar chart", () => {
       H.getDraggableElements().eq(1).should("have.text", "Gizmo");
       H.getDraggableElements().eq(2).should("have.text", "Doohickey");
       H.getDraggableElements().eq(3).should("have.text", "Widget");
+
+      cy.log("Drill through a legend item");
+      cy.findAllByTestId("legend-item").contains("Gadget").click();
+      H.popover().findByText("See these Orders").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Product → Category is Gadget")
+        .should("exist");
     });
   });
 
@@ -431,7 +353,11 @@ describe("scenarios > visualizations > bar chart", () => {
         display: "bar",
       });
 
-      cy.get("g.axis.yr").should("not.exist");
+      H.echartsContainer().within(() => {
+        cy.findByText("Created At: Month").should("be.visible");
+        cy.findByText("Average of Total").should("not.exist");
+        cy.findByText("Min of Total").should("not.exist");
+      });
     });
 
     it("should split the y-axis on native queries with two numeric columns", () => {
@@ -531,6 +457,13 @@ describe("scenarios > visualizations > bar chart", () => {
           visualization_settings: { "stackable.stack_type": "stacked" },
         });
 
+        cy.findAllByTestId("legend-item")
+          .findByText("Doohickey")
+          .should("be.visible");
+        cy.findByTestId("development-watermark").should(
+          devMode ? "exist" : "not.exist",
+        );
+
         cy.findAllByTestId("legend-item").findByText("Doohickey").click();
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.findByText("See these Products").click();
@@ -609,6 +542,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     // Ensure the gray color did not get assigned to series
+    H.chartPathWithFillColor("#88BF4D").should("be.visible");
     H.chartPathWithFillColor(grayColor).should("not.exist");
 
     H.openVizSettingsSidebar();
@@ -816,7 +750,7 @@ describe("scenarios > visualizations > bar chart", () => {
           .should("contain", "6")
           .and("contain", "13")
           .and("contain", "19");
-        cy.get(".axis.yr").should("not.exist");
+        H.echartsContainer().findAllByText("Count").should("have.length", 1);
       });
   });
 
@@ -866,7 +800,7 @@ describe("scenarios > visualizations > bar chart", () => {
         // since the first metric is scaled to be half of the second metric
         // the first bar should be half the size of the first bar
         // within a given tolerance
-        expect(heightMetricOne - heightMetricTwo / 2).to.be.lessThan(0.1);
+        expect(heightMetricOne).to.be.closeTo(heightMetricTwo / 2, 0.5);
       });
     });
 
@@ -890,7 +824,7 @@ describe("scenarios > visualizations > bar chart", () => {
     });
   });
 
-  it("should correctly show tool-tips when stacked bar charts contain a total value that is negative (#39012)", () => {
+  it("should correctly show tool-tips when stacked bar charts contain a negative total or multiple positive and negative segments (#39012, #47596)", () => {
     cy.signInAsAdmin();
 
     H.createNativeQuestion(
@@ -1022,11 +956,8 @@ describe("scenarios > visualizations > bar chart", () => {
       ],
     });
     H.echartsTriggerBlur();
-  });
 
-  it("should correctly show tool-tips when stacked bar charts contain multiple positive and multiple negative segments (#47596)", () => {
-    cy.signInAsAdmin();
-
+    cy.log("multiple positive and multiple negative segments (#47596)");
     H.createNativeQuestion(
       {
         name: "47596",
@@ -1135,14 +1066,11 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.wait("@dataset");
     H.echartsContainer().should("be.visible");
 
-    // Get all x-axis labels
-    H.echartsContainer().within(() => {
-      // ECharts renders axis labels as text elements in SVG
-      // We should see labels for all 12 months
-      cy.get('svg text[text-anchor="middle"]')
-        .should("have.length.at.least", 12)
-        .should("be.visible");
-    });
+    H.echartsContainer()
+      .findAllByText(
+        /^(January|February|March|April|May|June|July|August|September|October|November|December) \d{4}$/,
+      )
+      .should("have.length", 12);
   });
 
   it("should rotate axis labels when they do not fit horizontally instead of hiding them (metabase#68048)", () => {
@@ -1228,10 +1156,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
     H.openVizSettingsSidebar();
 
-    cy.findAllByTestId("chart-setting-select")
-      .eq(0)
-      .as("dimensionSelect")
-      .click();
+    cy.findAllByTestId("chart-setting-select").eq(0).click();
     H.popover().findByText("ID").click();
 
     H.leftSidebar().findByText("Add series breakout").click();
@@ -1278,10 +1203,6 @@ describe("scenarios > visualizations > bar chart", () => {
         query:
           "select -3 o, 'F2021' k, 1 v\nunion all select -2, 'V2021', 2\nunion all select -1, 'S2022', 3\nunion all select 0, 'F2022', 4",
         "template-tags": {},
-      },
-      visualization_settings: {
-        "table.pivot_column": "O",
-        "table.cell_column": "V",
       },
     };
 
@@ -1491,3 +1412,79 @@ function compareValuesInOrder(selector, values) {
     cy.wrap($item).invoke("text").should("eq", values[index]);
   });
 }
+
+describe("scenarios > visualizations > bar chart > issue 55853", () => {
+  const questionDetails = {
+    name: "55853",
+    database: WRITABLE_DB_ID,
+    native: {
+      query: `select 'Category A' as category, 0.0001 as value union all
+      select 'Category B' as category, 0.0002 as value union all
+      select 'Category C' as category, 0.00015 as value union all
+      select 'Category D' as category, 0.00025 as value`,
+      "template-tags": {},
+    },
+    display: "bar",
+    visualization_settings: {
+      "graph.dimensions": ["category"],
+      "graph.metrics": ["value"],
+      column_settings: {
+        '["name","value"]': {
+          number_style: "percent",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should not have y-axis labels colliding with very low percentages (metabase#55853)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Verify that the chart renders successfully");
+    H.echartsContainer().should("be.visible");
+    H.echartsContainer().find("text").should("contain", "%");
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+
+    cy.log("Check that axis labels and title don't overlap");
+    H.echartsContainer()
+      .find("text")
+      .then(($texts) => {
+        const texts = $texts.toArray();
+        const axisTitle = texts.find(
+          (el) => el.textContent?.trim() === "value",
+        );
+        const percentLabels = texts.filter((el) =>
+          el.textContent?.includes("%"),
+        );
+
+        expect(axisTitle, "y-axis title").to.exist;
+        expect(percentLabels).to.have.length.greaterThan(0);
+
+        const titleRight = axisTitle.getBoundingClientRect().right;
+        percentLabels.forEach((el) => {
+          expect(
+            el.getBoundingClientRect().left - titleRight,
+            `Label "${el.textContent}" should not overlap with the axis title`,
+          ).to.be.greaterThan(5);
+        });
+      });
+
+    cy.log(
+      "Verify tooltips show correct percentage values (not incorrectly rounded)",
+    );
+    H.chartPathWithFillColor("#88BF4D").first().realHover();
+    H.assertEChartsTooltip({
+      header: "Category A",
+      rows: [
+        {
+          name: "value",
+          value: "0.01%",
+        },
+      ],
+    });
+  });
+});
