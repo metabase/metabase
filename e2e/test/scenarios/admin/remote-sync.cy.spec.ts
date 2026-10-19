@@ -34,6 +34,7 @@ const SNIPPET_QUESTION_NAME = "Snippet Dependent Question";
 const PERSONAL_QUESTION_NAME = "Personal Source Question";
 const STUB_DATABASE_NAME = "Stub Postgres";
 const STUB_QUESTION_NAME = "Stub Database Question";
+const FIRST_SETUP_TRANSFORM_NAME = "First Setup Transform";
 
 const setup = (snapshot = "default") => {
   H.restore(snapshot);
@@ -53,6 +54,11 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       setup("postgres-writable");
       H.updateSetting("transforms-enabled", true);
+      cy.intercept("PUT", "/api/ee/remote-sync/settings").as("saveSettings");
+      cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
+        "publishTables",
+      );
+      cy.intercept("POST", "/api/transform").as("createTransform");
     });
 
     it("can push and pull changes", () => {
@@ -120,6 +126,65 @@ describe("Remote Sync", () => {
       H.collectionTable()
         .findByText(UPDATED_REMOTE_QUESTION_NAME)
         .should("exist");
+    });
+
+    it("sets up git sync from scratch, creating the Library and syncing it with transforms", () => {
+      H.updateSetting("remote-sync-collections-enabled", false);
+
+      cy.visit("/admin/settings/remote-sync");
+      cy.findByLabelText(/repository url/i)
+        .should("be.visible")
+        .clear()
+        .type(LOCAL_GIT_URL);
+      cy.findByTestId("admin-layout-content").findByText("Read-write").click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Collections to sync")
+        .should("not.exist");
+      cy.button("Set up remote sync").click();
+      cy.wait("@saveSettings").its("response.statusCode").should("eq", 200);
+
+      cy.log("Publish a table to the Library");
+      H.DataModel.visitDataStudio();
+      H.DataModel.TablePicker.getDatabase("Sample Database").click();
+      H.DataModel.TablePicker.getTable("Products").click();
+      cy.findByRole("button", { name: /Publish/ }).click();
+      H.modal().findByText("Publish this table").click();
+      cy.wait("@publishTables");
+
+      cy.log("Create a transform");
+      cy.visit("/data-studio/transforms");
+      cy.button("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+      H.popover().findByText("Writable Postgres12").click();
+      H.NativeEditor.type("SELECT 1", { allowFastSet: true }).blur();
+      H.DataStudio.Transforms.saveChangesButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Name").clear().type(FIRST_SETUP_TRANSFORM_NAME);
+        cy.button("Save").click();
+      });
+      cy.wait("@createTransform").its("response.statusCode").should("eq", 200);
+
+      cy.log("The push lists both the table and the transform");
+      H.clickPushOption();
+      H.modal().within(() => {
+        cy.findAllByText("Products").should("have.length.at.least", 1);
+        cy.findByText(FIRST_SETUP_TRANSFORM_NAME).should("be.visible");
+        cy.button(/Push changes/).click();
+      });
+      H.waitForTask({ taskName: "export" });
+
+      cy.log("The repository holds the table and the transform");
+      H.wrapSyncedCollectionFiles();
+      cy.get<string[]>("@syncedCollectionFiles").then((files) => {
+        expect(
+          files.some((file) => /tables\/products\/products\.yaml$/.test(file)),
+        ).to.equal(true);
+        expect(
+          files.some((file) =>
+            /transforms\/.*first_setup_transform\.yaml$/.test(file),
+          ),
+        ).to.equal(true);
+      });
     });
 
     it("should not allow you to move content to the Synced Collection that references non Synced Collection items", () => {
