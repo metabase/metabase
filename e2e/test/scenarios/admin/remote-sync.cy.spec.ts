@@ -167,8 +167,10 @@ describe("Remote Sync", () => {
       cy.log("The push lists both the table and the transform");
       H.clickPushOption();
       H.modal().within(() => {
-        cy.findAllByText("Products").should("have.length.at.least", 1);
-        cy.findByText(FIRST_SETUP_TRANSFORM_NAME).should("be.visible");
+        cy.findAllByText("PRODUCTS").should("have.length.at.least", 1);
+        cy.findByText(FIRST_SETUP_TRANSFORM_NAME)
+          .scrollIntoView()
+          .should("be.visible");
         cy.button(/Push changes/).click();
       });
       H.waitForTask({ taskName: "export" });
@@ -176,14 +178,10 @@ describe("Remote Sync", () => {
       cy.log("The repository holds the table and the transform");
       H.wrapSyncedCollectionFiles();
       cy.get<string[]>("@syncedCollectionFiles").then((files) => {
-        expect(
-          files.some((file) => /tables\/products\/products\.yaml$/.test(file)),
-        ).to.equal(true);
-        expect(
-          files.some((file) =>
-            /transforms\/.*first_setup_transform\.yaml$/.test(file),
-          ),
-        ).to.equal(true);
+        expect(files).to.include.members([
+          "databases/sample_database/schemas/public/tables/products/products___tableusersettings.yaml",
+          "collections/transforms/first_setup_transform.yaml",
+        ]);
       });
     });
 
