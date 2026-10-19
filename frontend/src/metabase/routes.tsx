@@ -33,6 +33,7 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import { getRoutes as getPrototypesRoutes } from "metabase/prototypes/routes";
 import {
   QuestionHashRedirect,
   loadMetabotQueryBuilder,
@@ -321,6 +322,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               // Send historical /archive route to trash - can remove in v52
               { path: "archive", element: redirect("../trash") },
               { path: "trash", lazy: trashCollectionLanding },
+
+              // DSN-737 throwaway OR-filter prototyping canvas
+              ...toRouteObjects(getPrototypesRoutes()),
 
               {
                 path: "document/:entityId",

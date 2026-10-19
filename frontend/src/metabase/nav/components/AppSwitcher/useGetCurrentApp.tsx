@@ -8,7 +8,8 @@ export type CurrentApp =
   | "admin"
   | "data-studio"
   | "monitor"
-  | "embedding-hub";
+  | "embedding-hub"
+  | "prototypes";
 
 export const useGetCurrentApp = (): CurrentApp => {
   const location = useLocation();
@@ -28,6 +29,10 @@ export const useGetCurrentApp = (): CurrentApp => {
     .when(
       (path) => path.startsWith(Urls.embeddingHub()),
       () => "embedding-hub",
+    )
+    .when(
+      (path) => path.startsWith("/prototypes"),
+      () => "prototypes",
     )
     .otherwise(() => "main");
 };
