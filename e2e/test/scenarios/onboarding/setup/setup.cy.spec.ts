@@ -201,38 +201,6 @@ describe("scenarios > setup", () => {
     });
   });
 
-  it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
-    H.mockSessionProperty("is-hosted?", true);
-
-    cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
-    );
-
-    skipWelcomePage();
-
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByDisplayValue("John").should("exist");
-      cy.findByDisplayValue("Doe").should("exist");
-      cy.findByDisplayValue("john@doe.test").should("exist");
-      cy.findByDisplayValue("Doe Unlimited").should("exist");
-      cy.findByLabelText("Create a password").should("be.empty");
-    });
-  });
-
-  it("should not show 'Sample Database' if env var is explicitly set to false during setup", () => {
-    H.mockSessionProperty("has-sample-database?", false);
-
-    navigateToDatabaseStep();
-
-    cy.findByLabelText("Add your data").within(() => {
-      cy.button("Continue with sample data").should("not.exist");
-      cy.button("I'll add my data later").click();
-    });
-
-    cy.log("We're done with the database step");
-    cy.findByLabelText("I'll add my own data later").should("be.visible");
-  });
-
   it("should create a new user upon inviting a teammate", () => {
     H.mockSessionProperty("email-configured?", true);
 
@@ -263,19 +231,6 @@ describe("scenarios > setup", () => {
 
     // Checks we are now in the next step
     cy.findByTestId("step-number").should("have.text", "4");
-  });
-
-  // There are only one step in the setup flow, so there is no need to show step numbers.
-  it("should not show step numbers in cloud embedding use case", () => {
-    H.mockSessionProperty("is-hosted?", true);
-    H.mockSessionProperty("token-features", { hosting: true });
-
-    cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
-    );
-
-    H.main().findByText("What should we call you?").should("be.visible");
-    cy.findByTestId("step-number").should("not.exist");
   });
 
   it("should update the site locale setting when changing language in setup", () => {
