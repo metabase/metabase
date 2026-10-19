@@ -68,7 +68,6 @@ export const setup = ({
       duration={duration}
       error={error}
       errorType={errorType}
-      via={[]}
     />,
     { storeInitialState: state },
   );

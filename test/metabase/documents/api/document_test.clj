@@ -2336,9 +2336,7 @@
 
                (is (malli= [:map
                             [:status [:= "failed"]]
-                            [:error_type [:= "missing-required-permissions"]]
-                            [:ex-data [:map
-                                       [:permissions-error? [:= true]]]]]
+                            [:error_type [:= "missing-required-permissions"]]]
                            (mt/user-http-request :rasta
                                                  :post 200
                                                  (format "document/%s/card/%s/query/csv" doc-id card-id)
