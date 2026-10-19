@@ -60,6 +60,49 @@ const prototypeData = useSetting("prototype-data");
 const delayMs = useSetting("prototype-slow-query-delay-ms");
 ```
 
+## Prototype settings
+
+The **Prototype settings** button in the bottom-left corner of the app opens a popover with the settings of the current prototype. Use it to switch the options of a prototype while you look at it. On this branch there are no settings, so the popover says "No settings for this prototype."
+
+To add settings to a prototype:
+
+1. In `frontend/src/metabase/prototype/settings.ts`, define and export each setting of your prototype, and add it to `PROTOTYPE_SETTINGS`. The popover shows the settings in this order. Everything that `settings.ts` exports is available from `metabase/prototype`.
+2. Read the value where you need it with `usePrototypeSetting`.
+
+```ts
+// frontend/src/metabase/prototype/settings.ts
+import type { BooleanPrototypeSetting, PrototypeSetting } from "./types";
+
+export const SHOW_FILTER_HINTS: BooleanPrototypeSetting = {
+  type: "boolean",
+  key: "show-filter-hints",
+  label: "Show filter hints",
+  description: "Show a short help text under each filter",
+  defaultValue: true,
+};
+
+export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [SHOW_FILTER_HINTS];
+```
+
+```tsx
+// in any component
+import { SHOW_FILTER_HINTS, usePrototypeSetting } from "metabase/prototype";
+
+const [showHints, setShowHints] = usePrototypeSetting(SHOW_FILTER_HINTS);
+```
+
+| Type | Control | Extra fields |
+|---|---|---|
+| `boolean` | switch | |
+| `select` | dropdown | `options: [{ value, label }]` |
+| `number` | number input | `min`, `max` (optional) |
+| `text` | text input | |
+
+- Values are stored in the browser (local storage), per setting `key`. They stay after a reload. Each person has their own values.
+- When a value changes, every component that reads that setting updates.
+- If a stored value is not valid any more (for example, you removed a select option), the setting uses its `defaultValue`.
+- To go back to the default values, clear the site data of the Metabase tab in the browser.
+
 ## Change the data
 
 1. Change `src/metabase/prototype/dataset.clj`.
