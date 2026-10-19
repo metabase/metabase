@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type { GeneratedCard } from "metabase/api/ai-streaming/schemas";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
@@ -18,7 +19,11 @@ import {
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 
 import {
   CodeEditTablePills,
@@ -36,7 +41,7 @@ const ORDERS_TABLE = createMockTable({
   display_name: "Orders",
 });
 const PRODUCTS_TABLE = createMockTable({
-  id: 3,
+  id: PRODUCTS_ID,
   db_id: 1,
   name: "PRODUCTS",
   display_name: "Products",
@@ -84,6 +89,22 @@ const createNativeCard = (
       ...(templateTags ? { "template-tags": templateTags } : {}),
     },
   });
+
+const createNativeQueryWithJoin = () => {
+  const query = Lib.appendStage(
+    Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+      query: "SELECT * FROM ORDERS",
+    }),
+  );
+  const products = checkNotNull(Lib.tableOrCardMetadata(query, PRODUCTS_ID));
+  const condition = Lib.joinConditionClause(
+    "=",
+    Lib.expressionClause(1),
+    Lib.expressionClause(1),
+  );
+  const [strategy] = Lib.availableJoinStrategies(query, -1);
+  return Lib.join(query, -1, Lib.joinClause(products, [condition], strategy));
+};
 
 const setupTableEndpoints = (...tables: (typeof ORDERS_TABLE)[]) => {
   tables.forEach((table) => {
@@ -325,6 +346,30 @@ describe("MetabotAgentDataSourcePills", () => {
       await screen.findByRole("link", { name: "Orders" }),
     ).toBeInTheDocument();
   });
+
+  it.each([
+    { format: "legacy", toDatasetQuery: Lib.toLegacyQuery },
+    { format: "MBQL 5", toDatasetQuery: Lib.toJsQuery },
+  ])(
+    "lists a table joined after a native stage as a source ($format)",
+    async ({ toDatasetQuery }) => {
+      setupTableEndpoints(PRODUCTS_TABLE);
+      fetchMock.post(FIELD_TABLE_IDS_ENDPOINT, { table_ids: [] });
+
+      renderWithProviders(
+        <GeneratedCardTablePills
+          messageId="message-6"
+          value={createGeneratedCard(
+            toDatasetQuery(createNativeQueryWithJoin()),
+          )}
+        />,
+      );
+
+      expect(
+        await screen.findByRole("link", { name: "Products" }),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("renders extracted native query model sources", async () => {
     const sql = "SELECT * FROM {{#4-revenue_model}}";
