@@ -405,7 +405,7 @@ export type DefaultBinningOptions = {
 
 export type NumBinsBinningOptions = {
   strategy: "num-bins";
-  numBins: number;
+  numBins: 10 | 50 | 100;
 };
 
 export type BinWidthBinningOptions = {
