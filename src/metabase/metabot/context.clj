@@ -274,10 +274,10 @@
   "True when `request` comes from a surface that renders Metabot inside the customer's own application —
   the React SDK, modular embedding, or a data app — so none of Metabase's own pages (SQL editor,
   dashboard builder, search) surround it. A full-app iframe embed is *not* a host app: it carries the
-  `embedding-iframe-full-app` client header and shows the whole Metabase UI. (Data-app sessions are
-  currently confined to the `data-apps:base` scope and cannot reach the agent API; the branch is here
-  so the rule stays true if that changes. `mcp-apps` has no Metabot today; if it gets one it belongs on
-  this list, since an MCP client shows no Metabase UI either.)"
+  `embedding-iframe-full-app` client header and shows the whole Metabase UI. (A data-app session is
+  confined to the `data-apps:base` scope and `/agent-streaming` declares no scope, so today it gets a 403
+  before this runs; the branch is here so the rule stays true if that changes. `mcp-apps` has no Metabot
+  today; if it gets one it belongs on this list, since an MCP client shows no Metabase UI either.)"
   [request]
   (boolean (and request
                 (or (embedding.util/is-modular-embedding-request? request)
