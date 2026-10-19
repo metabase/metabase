@@ -2,11 +2,21 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
-## 2.1.0
+## Unreleased
 
 ### Bug Fixes
 
-- The scaffolded dev server no longer crashes when an asset file disappears before it's copied, which happened with editors that save through atomic writes.
+- The scaffolded dev server no longer crashes when an asset file disappears before it's copied, which happened with editors that save through atomic writes, or when a directory is added to `public/assets`. Assets deleted from `public/assets` are now removed from `dist/assets` too ([#83597](https://github.com/metabase/metabase/pull/83597)).
+
+### Fix the asset watcher in existing projects
+
+After upgrading, copy the new config from the package:
+
+```
+cp node_modules/@metabase/custom-viz/dist/templates/vite.config.ts vite.config.ts
+```
+
+If you've customized `vite.config.ts`, port the `isMissingFileError` and `syncAsset` helpers and the `watch(assetsDirSrc, ...)` callback from that file instead.
 
 ## 2.0.0
 

@@ -1,6 +1,6 @@
 /* eslint-disable no-console, import/no-default-export, @typescript-eslint/no-require-imports */
-import { cpSync, existsSync, readFileSync, watch } from "fs";
-import { type ServerResponse, createServer } from "http";
+import { cpSync, existsSync, readFileSync, rmSync, watch } from "fs";
+import { createServer, type ServerResponse } from "http";
 import { createRequire } from "module";
 import { resolve } from "path";
 
@@ -27,6 +27,20 @@ function metabaseCopyManifest() {
 }
 
 const DEV_PORT = 5174;
+
+const isMissingFileError = (error: unknown) =>
+  error instanceof Error && "code" in error && error.code === "ENOENT";
+
+const syncAsset = (source: string, target: string) => {
+  try {
+    cpSync(source, target, { recursive: true });
+  } catch (error) {
+    if (!isMissingFileError(error)) {
+      throw error;
+    }
+    rmSync(target, { recursive: true, force: true });
+  }
+};
 
 /**
  * Vite plugin that starts a dev server serving both static files from dist/
@@ -144,27 +158,17 @@ function metabaseDevServer() {
       });
 
       // Watch public/assets/ for changes — copy to dist/assets/ and notify
-      const assetsDir = resolve(__dirname, "public/assets");
-      if (existsSync(assetsDir)) {
-        watch(assetsDir, { recursive: true }, (_event, filename) => {
+      const assetsDirSrc = resolve(__dirname, "public/assets");
+      const assetsDirDest = resolve(__dirname, "dist/assets");
+      if (existsSync(assetsDirSrc)) {
+        watch(assetsDirSrc, { recursive: true }, (_event, filename) => {
           if (!filename) {
             return;
           }
-          try {
-            cpSync(
-              resolve(assetsDir, filename),
-              resolve(__dirname, "dist/assets", filename),
-            );
-          } catch (error) {
-            if (
-              error instanceof Error &&
-              "code" in error &&
-              error.code === "ENOENT"
-            ) {
-              return;
-            }
-            throw error;
-          }
+          syncAsset(
+            resolve(assetsDirSrc, filename),
+            resolve(assetsDirDest, filename),
+          );
           for (const client of clients) {
             client.write("data: reload\n\n");
           }
