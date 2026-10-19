@@ -2227,7 +2227,7 @@
         (is (map? (get-in (construct/execute-representations-query query {:preprocess-check? true})
                           [:structured-output :query])))))))
 
-(deftest construct-tools-reject-incompatible-later-stage-metric-test
+(deftest construct-tools-reject-misplaced-metrics-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [mp           (mt/metadata-provider)
           metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
@@ -2236,14 +2236,21 @@
                                                          :type :metric
                                                          :database_id (mt/id)
                                                          :dataset_query (lib/prepare-for-serialization metric-query)}]
-        (let [query {:lib/type "mbql/query"
-                     :stages [{:lib/type "mbql.stage/mbql"
-                               :source-table [(:name (mt/db)) "PUBLIC" "ORDERS"]}
-                              {:lib/type "mbql.stage/mbql"
-                               :aggregation [["metric" {} entity-id]]}]}]
-          (doseq [tool [construct/construct-notebook-query-tool
-                        slackbot-query/slackbot-construct-notebook-query-tool]]
-            (is (=? {:class :recoverable
-                     :code  :metabase.metabot.tools.recoverable.pipeline/query-preprocessing-failed
-                     :text  #"(?s).*metric is incompatible.*stage's source table and columns.*Fix that part.*"}
-                    (test-util/tool-failure tool {:query query :reasoning "use a metric"})))))))))
+        (doseq [[stages message]
+                [[[{:lib/type "mbql.stage/mbql"
+                    :source-table [(:name (mt/db)) "PUBLIC" "ORDERS"]}
+                   {:lib/type "mbql.stage/mbql"
+                    :aggregation [["metric" {} entity-id]]}]
+                  #"(?s).*metric is incompatible.*stage's source table and columns.*Fix that part.*"]
+                 [[{:lib/type "mbql.stage/mbql"
+                    :source-table [(:name (mt/db)) "PUBLIC" "PRODUCTS"]
+                    :aggregation [["count" {}]]
+                    :filters [[">" {} ["metric" {} entity-id] 100]]}]
+                  #"(?s).*could not expand a metric reference.*in an aggregation.*Fix that part.*"]]
+                tool [construct/construct-notebook-query-tool
+                      slackbot-query/slackbot-construct-notebook-query-tool]]
+          (is (=? {:class :recoverable
+                   :code  :metabase.metabot.tools.recoverable.pipeline/query-preprocessing-failed
+                   :text  message}
+                  (test-util/tool-failure tool {:query {:lib/type "mbql/query" :stages stages}
+                                                :reasoning "use a metric"}))))))))
