@@ -142,7 +142,7 @@ check_src() {
   # usually the end of a sentence in a docstring.
   git grep -nIoE 'https?://(www\.)?metabase\.com/docs/latest/[^][:space:]"'"'"'`<>()\\]*' \
     -- frontend/src enterprise/frontend/src src enterprise/backend/src resources modules \
-       .github/ISSUE_TEMPLATE ':!*.unit.spec.*' ':!resources/openapi' |
+       .github/ISSUE_TEMPLATE README.md ':!*.unit.spec.*' ':!resources/openapi' |
     grep -v '\${' | sed -E 's/[.,;:]+$//' > "$locations" || true
   sed -E 's/^[^:]+:[0-9]+:(.*)$/- [src](\1)/' "$locations" > "$rendered"
 
@@ -169,7 +169,7 @@ check_site() {
 
   git grep -nIoE 'https?://(www\.)?metabase\.com(/[^][:space:]"'"'"'`<>()\\|]*)?|https://github\.com/metabase/[^/[:space:]]+/wiki(/[^][:space:]"`<>()\\|]*)?' \
     -- docs frontend/src enterprise/frontend/src src enterprise/backend/src resources modules \
-       .github/ISSUE_TEMPLATE ':!*.unit.spec.*' ':!resources/openapi' ':!docs/embedding/sdk/api' ':!docs/api.json' |
+       .github/ISSUE_TEMPLATE README.md ':!*.unit.spec.*' ':!resources/openapi' ':!docs/embedding/sdk/api' ':!docs/api.json' |
     grep -v -e '\${' -e '{{' -e '{%' | sed -E "s/[.,;:']+\$//" > "$locations" || true
   sed -E 's/^[^:]+:[0-9]+:(.*)$/- [site](\1)/' "$locations" > "$rendered"
 
