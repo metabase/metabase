@@ -149,17 +149,6 @@ export function getMcpClickActions(
   });
 }
 
-/**
- * Whether the chart is about to change: a derive is pending, or the question's
- * query is running.
- */
-export function isMcpChartChanging(
-  pendingDerives: { readonly current: number },
-  isQueryRunning: { readonly current: boolean },
-): boolean {
-  return pendingDerives.current > 0 || isQueryRunning.current;
-}
-
 /** The click-action mode for the MCP Apps iframe's question. */
 export function createMcpClickActionMode(
   onDrill: McpDrillHandler,

@@ -27,8 +27,9 @@ import {
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import { utf8_to_b64 } from "metabase/utils/encoding";
+import { defer } from "metabase/utils/promise";
 import MetabaseSettings from "metabase/utils/settings";
-import type { User } from "metabase-types/api";
+import type { Dataset, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -123,7 +124,7 @@ const BOOTSTRAP = createMockMcpAppsBootstrapResponse({
 
 function setup() {
   const { user, settings } = BOOTSTRAP;
-  const isQueryRunningRef = { current: false };
+  const onQueryRunningChange = jest.fn<void, [boolean]>();
   const deriveQuery = jest.fn<
     Promise<DerivedQuery>,
     [McpDeriveOperation[], (derived: DerivedQuery) => void]
@@ -171,7 +172,7 @@ function setup() {
         safeAreaPaddingTop={0}
         deriveQuery={deriveQuery}
         applyOperationsRef={applyOperationsRef}
-        isQueryRunningRef={isQueryRunningRef}
+        onQueryRunningChange={onQueryRunningChange}
       />
     </SdkQuestion>
   );
@@ -183,6 +184,7 @@ function setup() {
 
   return {
     deriveQuery,
+    onQueryRunningChange,
     showQuery: (queryKey: string) => rerender(view(queryKey)),
   };
 }
@@ -213,6 +215,30 @@ describe("McpQuestionView with the MCP Apps bootstrap projection (GHY-4400)", ()
       expect(screen.queryByText(/gone wrong/i)).not.toBeInTheDocument();
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("reports when the question's query starts and stops running, so the click actions can wait for it", async () => {
+    const runResponse = defer<Dataset>();
+    fetchMock.post("path:/api/dataset", runResponse.promise);
+    fetchMock.post(
+      "path:/api/dataset/query_metadata",
+      createMockCardQueryMetadata({ databases: [TEST_DATABASE] }),
+    );
+    const { deriveQuery, onQueryRunningChange } = setup();
+
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByRole("option", { name: "Month" }));
+    act(() => deriveQuery.mock.calls[0][1](derivedWithUnit("month")));
+
+    await waitFor(() => {
+      expect(onQueryRunningChange).toHaveBeenLastCalledWith(true);
+    });
+
+    runResponse.resolve(QUERY_RESULT);
+
+    await waitFor(() => {
+      expect(onQueryRunningChange).toHaveBeenLastCalledWith(false);
+    });
   });
 
   it("asks the server to derive a rebucketed query rather than building one", async () => {

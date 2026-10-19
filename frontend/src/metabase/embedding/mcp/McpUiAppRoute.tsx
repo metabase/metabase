@@ -1,4 +1,10 @@
-import { type CSSProperties, useEffect, useMemo, useRef } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
@@ -12,7 +18,7 @@ import { McpCardFooter } from "./McpCardFooter";
 import { McpFeedbackArea } from "./McpFeedbackArea";
 import { MCP_CONTENT_HEIGHT, McpQuestionView } from "./McpQuestionView";
 import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
-import { createMcpClickActionMode, isMcpChartChanging } from "./clickActions";
+import { createMcpClickActionMode } from "./clickActions";
 import type { ApplyMcpOperations } from "./derive";
 import {
   useHandleMcpDrill,
@@ -141,15 +147,15 @@ function McpUiAppRouteContent({
     mcpSessionId,
   });
 
-  // Set by the question view from the SDK question's running state.
-  const isQueryRunningRef = useRef(false);
+  const [isQueryRunning, setIsQueryRunning] = useState(false);
 
   const clickActionMode = useMemo(
     () =>
-      createMcpClickActionMode(handleDrill, () =>
-        isMcpChartChanging(pendingDerivesRef, isQueryRunningRef),
+      createMcpClickActionMode(
+        handleDrill,
+        () => isQueryRunning || pendingDerivesRef.current > 0,
       ),
-    [handleDrill, pendingDerivesRef],
+    [handleDrill, isQueryRunning, pendingDerivesRef],
   );
 
   const deserializedQuery = useMemo(() => {
@@ -242,7 +248,7 @@ function McpUiAppRouteContent({
           safeAreaPaddingTop={safeAreaPadding.top}
           deriveQuery={deriveQuery}
           applyOperationsRef={applyOperationsRef}
-          isQueryRunningRef={isQueryRunningRef}
+          onQueryRunningChange={setIsQueryRunning}
         />
 
         <McpCardFooter
