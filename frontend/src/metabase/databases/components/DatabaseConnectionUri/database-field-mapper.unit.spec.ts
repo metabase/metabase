@@ -37,6 +37,18 @@ describe.each<{
     additionalOptions: "prepareThreshold=0",
   },
   {
+    engineKey: "mysql",
+    connectionString:
+      "jdbc:mysql://metabase:password@localhost:3304/sample?allowPublicKeyRetrieval=true&useSSL=false",
+    additionalOptions: "allowPublicKeyRetrieval=true&useSSL=false",
+  },
+  {
+    engineKey: "postgres",
+    connectionString:
+      "jdbc:postgresql://metabase:password@localhost:5404/sample?prepareThreshold=0&connectTimeout=10",
+    additionalOptions: "prepareThreshold=0&connectTimeout=10",
+  },
+  {
     engineKey: "databricks",
     connectionString:
       "jdbc:databricks://example.cloud.databricks.com:443;httpPath=/sql/1.0/warehouses/abc;IgnoreTransactions=0",

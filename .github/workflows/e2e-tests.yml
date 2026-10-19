@@ -117,9 +117,9 @@ jobs:
     needs:
       - e2e-matrix-builder
       - e2e-snapshots
-    # No status function, so a skipped or failed matrix builder keeps this out: the strategy below
-    # cannot parse a matrix it never produced. The builder itself only runs when the gate says so.
-    if: ${{ needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
+    # Run even if e2e-snapshots fails: each shard then generates its own snapshots. The matrix builder
+    # must succeed, because the strategy below cannot parse a matrix it never produced.
+    if: ${{ !cancelled() && needs.e2e-matrix-builder.result == 'success' && needs.e2e-matrix-builder.outputs.hasTests == 'true' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
