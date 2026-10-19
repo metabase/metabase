@@ -2139,7 +2139,7 @@
                       tbl-name (if (vector? fk)
                                  (pr-str (nth fk 2))
                                  (str target-table-id))]
-                  (throw (ex-info (tru "Field {0} is on table {1}, which has no foreign key from the source table {2}, so it cannot be reached implicitly. To group or filter by a column from that table, add an explicit `joins:` entry and reference the field using the join alias. If you are aggregating a metric that relates to that table (metrics can join tables that have no foreign key), its dimensions list the exact join clause to paste into `joins:` and the columns it unlocks. Otherwise use a field from the source table."
+                  (throw (ex-info (tru "Field {0} is on table {1}, which has no foreign key from the source table {2}, so it cannot be reached implicitly. To group or filter by a column from that table, add an explicit `joins:` entry and reference the field using the join alias. Otherwise use a field from the source table."
                                        (display-portable fk)
                                        tbl-name
                                        (pr-str src-name))
