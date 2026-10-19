@@ -10,10 +10,10 @@
    [metabase.util :as u])
   (:import
    (com.metabase.sqlglot.ast Expressions$Alias Expressions$Between Expressions$Binary Expressions$Boolean
-                             Expressions$Case Expressions$Cast Expressions$Column Expressions$DataType
-                             Expressions$Exists Expressions$Func Expressions$Group Expressions$Identifier
-                             Expressions$In Expressions$Interval Expressions$Is Expressions$Literal Expressions$Order
-                             Expressions$Ordered Expressions$Paren Expressions$Select Expressions$Star
+                             Expressions$Case Expressions$Column Expressions$DataType Expressions$Exists
+                             Expressions$Func Expressions$Group Expressions$Identifier Expressions$In
+                             Expressions$Interval Expressions$Literal Expressions$Order Expressions$Ordered
+                             Expressions$Select Expressions$Star
                              Expressions$Subquery Expressions$Table Expressions$UDTF Expressions$Unary
                              Expressions$Union Expressions$Window)
    (com.metabase.sqlglot.reference ParseError)))
@@ -171,11 +171,9 @@
       (instance? Expressions$Star expr)
       []
 
-      (instance? Expressions$Subquery expr)
-      (mapv (fn [field] {:col field}) (:used_fields (process-query (ast/this expr) sources withs)))
-
-      (instance? Expressions$Select expr)
-      (mapv (fn [field] {:col field}) (:used_fields (process-query expr sources withs)))
+      (ast/instance-of-any? [Expressions$Subquery Expressions$Select] expr)
+      (mapv (fn [field] {:col field})
+            (:used_fields (process-query (cond-> expr (instance? Expressions$Subquery expr) ast/this) sources withs)))
 
       ;; An alias names the column it wraps, but not the columns a computed expression reads.
       (instance? Expressions$Alias expr)
@@ -187,7 +185,9 @@
       (instance? Expressions$Binary expr)
       (into (recur-on (ast/this expr)) (recur-on (ast/arg expr "expression")))
 
-      (instance? Expressions$Unary expr)
+      ;; sql_tools.py also has branches for Is, Cast and Paren that never run: in sqlglot an Is is a Binary, a Cast is
+      ;; a Func and a Paren is a Unary, and the branches for those come first. They are left out here.
+      (ast/instance-of-any? [Expressions$Unary Expressions$Exists Expressions$Ordered] expr)
       (recur-on (ast/this expr))
 
       (instance? Expressions$Case expr)
@@ -202,21 +202,14 @@
           (into (recur-on (ast/arg expr "low")))
           (into (recur-on (ast/arg expr "high"))))
 
-      (instance? Expressions$Is expr)
-      (recur-on (ast/this expr))
-
       (instance? Expressions$In expr)
       (into (recur-on (ast/this expr)) (mapcat recur-on) (ast/expressions expr))
-
-      (instance? Expressions$Exists expr)
-      (recur-on (ast/this expr))
 
       (instance? Expressions$Func expr)
       (into [] (mapcat (fn [value]
                          (cond
-                           (sequential? value)         (mapcat recur-on value)
                            (instance? java.util.List value) (mapcat recur-on value)
-                           (ast/ast-node? value)       (recur-on value))))
+                           (ast/ast-node? value)            (recur-on value))))
             (vals (ast/args expr)))
 
       (instance? Expressions$Window expr)
@@ -229,15 +222,6 @@
 
       (instance? Expressions$Group expr)
       (into [] (mapcat recur-on) (ast/expressions expr))
-
-      (instance? Expressions$Ordered expr)
-      (recur-on (ast/this expr))
-
-      (instance? Expressions$Cast expr)
-      (recur-on (ast/this expr))
-
-      (instance? Expressions$Paren expr)
-      (recur-on (ast/this expr))
 
       (some #(instance? % expr) [Expressions$Literal Expressions$Interval Expressions$DataType Expressions$Boolean])
       []
