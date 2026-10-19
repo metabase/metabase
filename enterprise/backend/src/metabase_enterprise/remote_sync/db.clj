@@ -2,6 +2,7 @@
   "Application database queries for the remote-sync module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [medley.core :as m]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -245,8 +246,8 @@
   [model-key :- :keyword
    model-id  :- ms/PositiveInt]
   (let [{:keys [alias select from join]} (tracking-select-parts model-key)]
-    (first (t2/query (cond-> {:select select :from from :where [:= (keyword alias "id") model-id]}
-                       join (assoc :join join))))))
+    (first (t2/query (m/assoc-some {:select select :from from :where [:= (keyword alias "id") model-id]}
+                                   :join join)))))
 
 (mu/defn tracking-details-by-entity-ids
   "The `:id`, name, table id, collection id, and table name of the `model-key` (Segment or Measure) instances with

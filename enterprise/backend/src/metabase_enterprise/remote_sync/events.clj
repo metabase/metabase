@@ -281,22 +281,22 @@
    For eligible: query child entities using :parent-fk and derived filter, check eligibility, create RSOs.
    For ineligible: query existing RSOs by model_table_id and mark as removed."
   [model-spec model-id status eligible?]
-  (doseq [child-spec (spec/children-specs (:model-key model-spec))]
-    (let [fk     (:parent-fk child-spec)
-          filter (cascade-filter child-spec)]
-      (cond
-        (and eligible? (= :user-settings (:identity child-spec)))
-        (doseq [child-id (user-settings-child-ids child-spec model-id)]
-          (create-or-update-sync-object-from-spec! child-spec child-id status))
+  (doseq [child-spec (spec/children-specs (:model-key model-spec))
+          :let [fk     (:parent-fk child-spec)
+                filter (cascade-filter child-spec)]]
+    (cond
+      (and eligible? (= :user-settings (:identity child-spec)))
+      (doseq [child-id (user-settings-child-ids child-spec model-id)]
+        (create-or-update-sync-object-from-spec! child-spec child-id status))
 
-        eligible?
-        (doseq [child (remote-sync.db/eligible-children (:model-key child-spec) fk model-id filter)]
-          (when (spec/check-eligibility child-spec child)
-            (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
+      eligible?
+      (doseq [child (remote-sync.db/eligible-children (:model-key child-spec) fk model-id filter)]
+        (when (spec/check-eligibility child-spec child)
+          (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
 
-        :else
-        (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
-          (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
+      :else
+      (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
+        (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed")))))
 
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
