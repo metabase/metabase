@@ -7,6 +7,9 @@ A dedicated team of technical writers owns `docs/` and updates it. Edit `docs/` 
 explicitly a documentation task. If your code change affects documented behavior, say so in your summary
 or PR description so the writers can follow up.
 
+Exception: engineers maintain `docs/developers-guide/`. Update it alongside code changes when needed, for
+example the driver changelog for new driver multimethods or the API changelog for breaking API changes.
+
 # Skills
 
 For detailed guidance on writing and reviewing code and documentation, see the skills in [.claude/skills/](.claude/skills/):
