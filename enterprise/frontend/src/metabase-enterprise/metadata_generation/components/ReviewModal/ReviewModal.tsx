@@ -1315,8 +1315,10 @@ function EditedBadge({
   );
 }
 
-/** Every proposed-value input has the same width, whatever its kind. */
+/** Every proposed-value input has the same width and height, whatever its kind. */
 const INPUT_WIDTH = "24rem";
+/** The 32px input size; a description still grows with its lines. */
+const INPUT_SIZE = "xs";
 
 type ValueInputProps = {
   suggestion: MetadataGenerationSuggestion;
@@ -1347,6 +1349,7 @@ function ValueInput({ suggestion, value, label, onChange }: ValueInputProps) {
           }}
           value={value}
           canSetKeyOrEmpty={false}
+          size={INPUT_SIZE}
           w={INPUT_WIDTH}
           onChange={(newValue) => newValue != null && onChange(newValue)}
         />
@@ -1358,6 +1361,7 @@ function ValueInput({ suggestion, value, label, onChange }: ValueInputProps) {
           value={isFieldDataSensitivity(value) ? value : null}
           source={null}
           canClear={false}
+          size={INPUT_SIZE}
           w={INPUT_WIDTH}
           onChange={(newValue) => newValue != null && onChange(newValue)}
           onReset={() => undefined}
@@ -1403,6 +1407,7 @@ function DescriptionInput({ value, label, onChange }: DescriptionInputProps) {
       maxLength={DESCRIPTION_MAX_LENGTH}
       autosize
       minRows={1}
+      size={INPUT_SIZE}
       w={INPUT_WIDTH}
       onChange={(event) => setText(event.currentTarget.value)}
       onBlur={commit}
