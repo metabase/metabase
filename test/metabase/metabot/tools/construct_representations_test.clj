@@ -22,12 +22,16 @@
    [metabase.mcp.v2.recovery-hints :as v2-hints]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
+   [metabase.metabot.tools.slackbot-query :as slackbot-query]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
@@ -2132,3 +2136,99 @@
       (is (not (re-find hint (explain (invalid :a) (missing :alias))))))
     (testing "an explanation with no errors falls back to a generic sentence and the usual causes"
       (is (str/starts-with? (explain) "the query does not match the query builder's schema. This usually means")))))
+
+(deftest construct-tools-reject-invalid-filter-literals-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[field-name value code message]
+            [["CREATED_AT" "2024-13-45" :invalid-temporal-literal #"(?s).*2024-13-45.*"]
+             ["TOTAL" "abc" :query-preprocessing-failed #"(?s).*unable to parse String.*"]]
+            tool [construct/construct-notebook-query-tool
+                  slackbot-query/slackbot-construct-notebook-query-tool]]
+      (testing (str (type tool) " " field-name)
+        (let [db-name (:name (mt/db))
+              query   {:lib/type "mbql/query"
+                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                   :source-table [db-name "PUBLIC" "ORDERS"]
+                                   :filters      [["=" {} ["field" {} [db-name "PUBLIC" "ORDERS" field-name]]
+                                                   value]]}]}]
+          (when (= code :query-preprocessing-failed)
+            (let [built (get-in (construct/execute-representations-query query) [:structured-output :query])]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo message (qp/preprocess built)))))
+          (is (=? {:class :recoverable
+                   :code  (keyword "metabase.metabot.tools.recoverable.pipeline" (name code))
+                   :text  message}
+                  (test-util/tool-failure tool {:query query :reasoning "filter orders"}))))))))
+
+(deftest preprocessing-check-is-opt-in-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [seen  (atom [])
+            query {:lib/type "mbql/query"
+                   :stages [{:lib/type "mbql.stage/mbql" :source-table ["Sample" "PUBLIC" "ORDERS"]}]}]
+        (mt/with-dynamic-fn-redefs [qp/preprocess (fn [query]
+                                                    (swap! seen conj query)
+                                                    (lib/limit query 1))]
+          (construct/execute-representations-query query)
+          (is (empty? @seen))
+          (let [built (construct/execute-representations-query query {:preprocess-check? true})]
+            (is (= 1 (count @seen)))
+            (is (= (first @seen) (get-in built [:structured-output :query])))))))))
+
+(deftest preprocessing-failures-keep-their-classification-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [query {:lib/type "mbql/query"
+                   :stages [{:lib/type "mbql.stage/mbql" :source-table ["Sample" "PUBLIC" "ORDERS"]}]}
+            wrap  (fn [cause] (ex-info "Error preprocessing query in middleware: private detail"
+                                       {:type :qp :fn #'qp/preprocess} cause))
+            forbidden (ex-info "private permission detail" {:status-code 403})]
+        (doseq [[expected e]
+                [[:metabase.metabot.tools.recoverable.common/not-found
+                  (wrap (ex-info "another wrapper" {} forbidden))]
+                 [:internal (ex-info "private setup failure" {})]
+                 [:internal (wrap (RuntimeException. "private programming failure"))]
+                 [:internal (wrap (ex-info "private DB failure" {:type :invalid-query}
+                                           (java.sql.SQLException. "private JDBC detail")))]
+                 [:internal (wrap (ex-info "private app DB failure"
+                                           {:type :invalid-query :toucan2/context-trace []}))]]
+                tool [construct/construct-notebook-query-tool
+                      slackbot-query/slackbot-construct-notebook-query-tool]]
+          (mt/with-dynamic-fn-redefs [qp/preprocess (fn [_] (throw e))]
+            (let [{:keys [class code text]} (test-util/tool-failure tool {:query query :reasoning "count orders"})]
+              (is (= expected code))
+              (is (= (if (= expected :internal) :unrecoverable :recoverable) class))
+              (is (not (str/includes? (or text "") "private"))))
+            (is (identical? (if (= expected :internal) e forbidden)
+                            (try
+                              (construct/execute-representations-query query {:preprocess-check? true})
+                              (catch Throwable failure failure))))))))))
+
+(deftest preprocessing-rejection-message-is-bounded-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [diagnostic (str "Bad literal: " (apply str (repeat 400 "\u00e9")))
+            cause      (ex-info diagnostic {:type :invalid-query})
+            query      {:lib/type "mbql/query"
+                        :stages [{:lib/type "mbql.stage/mbql" :source-table ["Sample" "PUBLIC" "ORDERS"]}]}]
+        (mt/with-dynamic-fn-redefs [qp/preprocess (fn [_]
+                                                    (throw (ex-info "Error preprocessing query in middleware"
+                                                                    {:type :qp :fn #'qp/preprocess} cause)))]
+          (let [{:keys [class code text]}
+                (test-util/tool-failure construct/construct-notebook-query-tool {:query query})]
+            (is (= :recoverable class))
+            (is (= :metabase.metabot.tools.recoverable.pipeline/query-preprocessing-failed code))
+            (is (= (str "The query builds, but Metabase rejects it when preparing it to run: "
+                        (subs diagnostic 0 300) "\nFix that part of the query and retry.")
+                   text))))))))
+
+(deftest preprocessing-step-permission-failure-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [forbidden (ex-info "private permission detail" {:status-code 403})
+          query     {:lib/type "mbql/query"
+                     :stages [{:lib/type "mbql.stage/mbql"
+                               :source-table [(:name (mt/db)) "PUBLIC" "ORDERS"]}]}]
+      (mt/with-dynamic-fn-redefs [qp.add-implicit-clauses/add-implicit-clauses (fn [_] (throw forbidden))]
+        (is (identical? forbidden
+                        (try
+                          (construct/execute-representations-query query {:preprocess-check? true})
+                          (catch Throwable failure failure))))))))

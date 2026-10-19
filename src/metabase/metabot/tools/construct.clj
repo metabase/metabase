@@ -27,6 +27,7 @@
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.query-processor.core :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -821,18 +822,54 @@
     (ex-info (str (ex-message e) " " hint) (ex-data e) e)
     e))
 
+(def ^:private preprocessing-message-limit 300)
+
+(defn- check-query-preprocessing!
+  [query]
+  (try
+    (qp/preprocess query)
+    (catch Throwable e
+      (let [chain   (u/full-exception-chain e)
+            refusal (u/seek #(= 403 (:status-code (ex-data %))) chain)
+            cause   (ex-cause e)]
+        (cond
+          (some #(or (instance? java.sql.SQLException %)
+                     (contains? (ex-data %) :toucan2/context-trace)) chain)
+          (throw e)
+
+          refusal
+          (throw refusal)
+
+          (and (= :qp (:type (ex-data e)))
+               (:fn (ex-data e))
+               (contains? #{:invalid-query :invalid-parameter :unsupported-feature} (:type (ex-data cause))))
+          (throw (ex-info (str "The query builds, but Metabase rejects it when preparing it to run: "
+                               (u/truncate (or (ex-message cause) "Invalid query.") preprocessing-message-limit))
+                          {:agent-error? true
+                           :error        :query-preprocessing-failed
+                           :status-code  400}
+                          e))
+
+          :else
+          (throw e))))))
+
 (defn execute-representations-query
   "Run `external-query` through the representations pipeline. See
   [[execute-representations-query*]] for the pipeline itself.
 
   `opts` may carry `:recovery-hint`, a function from an agent error's `ex-data` to a sentence
   string (or nil) telling the caller's agent how to recover; the sentence is appended to the
-  agent error's message. Omitting it leaves agent errors with the pipeline's bare statement."
+  agent error's message. Omitting it leaves agent errors with the pipeline's bare statement.
+
+  `:preprocess-check?` also checks that the built query can be prepared to run, without executing it.
+  Query rejections become agent errors; permission and unexpected failures propagate."
   ([external-query]
    (execute-representations-query external-query nil))
-  ([external-query {:keys [recovery-hint]}]
+  ([external-query {:keys [recovery-hint preprocess-check?]}]
    (try
-     (execute-representations-query* external-query)
+     (u/prog1 (execute-representations-query* external-query)
+       (when preprocess-check?
+         (check-query-preprocessing! (get-in <> [:structured-output :query]))))
      (catch clojure.lang.ExceptionInfo e
        (throw (if (:agent-error? (ex-data e))
                 (with-recovery-hint e recovery-hint)
@@ -938,7 +975,7 @@
           ;; `execute-representations-query` either throws or returns a structured output carrying
           ;; both `:query-id` and `:query`, so there is nothing to branch on after it.
           structured (:structured-output (tools/with-pipeline-errors
-                                           (execute-representations-query query)))
+                                           (execute-representations-query query {:preprocess-check? true})))
           ;; A query built only to be read needs run_query, so without it the chart is the one way
           ;; the user sees anything and is always shown.
           show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]

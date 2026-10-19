@@ -260,6 +260,11 @@
   "The query parsed but would not run — the editor's own run gate rejects it."
   [])
 
+(defpipeline-error query-preprocessing-failed!
+  "The query processor rejected the constructed query while preparing it to run."
+  [{:uses #{}
+    :text "Fix that part of the query and retry."}])
+
 (defpipeline-error not-implemented-yet!
   "The query used a representations feature the pipeline does not support yet."
   ;; No step: nothing the agent does to this query will make the feature exist. It can still make
