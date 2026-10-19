@@ -614,6 +614,7 @@ function TableList({
       {tables.map((table) => (
         <NavLink
           key={table.table_id}
+          className={S.tableLink}
           active={table.table_id === selectedTableId}
           label={displayNames[table.table_id] ?? getTableLabel(table)}
           description={getTableCountsLabel(table)}
@@ -965,7 +966,7 @@ function getColumns({
     },
     {
       id: "current",
-      header: t`Current`,
+      header: t`Current value`,
       width: 180,
       cell: suggestionCell((suggestion) => (
         <CurrentValue suggestion={suggestion} />

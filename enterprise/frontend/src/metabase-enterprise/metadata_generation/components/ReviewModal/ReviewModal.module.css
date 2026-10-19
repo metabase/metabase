@@ -16,6 +16,15 @@
   min-height: 0;
 }
 
+/* The list sits on the secondary page background, where the default hover is invisible. */
+.tableLink:hover:not([data-active]) {
+  background-color: var(--mb-color-background_surface-secondary-hover);
+}
+
+.tableLink:active:not([data-active]) {
+  background-color: var(--mb-color-background_surface-secondary-pressed);
+}
+
 /* The suggestions card with a grip over each vertical border. */
 .resizable {
   position: relative;
