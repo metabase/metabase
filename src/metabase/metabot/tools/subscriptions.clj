@@ -4,9 +4,11 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
    [metabase.util.malli :as mu]
@@ -100,6 +102,8 @@
   be emailed a dashboard, tell them this tool can only deliver to Slack rather than accepting an
   email address."
   [{:keys [dashboard_id email slack_channel schedule]} :- subscription-schema]
+  (when (shared/curated-only?)
+    (curation/check-curated-subject! (str "dashboard " dashboard_id) ["dashboard" dashboard_id]))
   (try
     (-> (create-dashboard-subscription
          {:dashboard-id  dashboard_id

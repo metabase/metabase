@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
@@ -132,6 +133,8 @@
   `schedule` is a frequency (hourly, daily, weekly, monthly) plus that frequency's time fields.
   `send_once` is optional (default false); when true the alert is deleted after it fires once."
   [{:keys [card_id send_condition schedule send_once]} :- alert-schema]
+  (when (shared/curated-only?)
+    (curation/check-curated-subject! (str "card " card_id) ["card" card_id]))
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
     (try
       (when-not slack-channel-id

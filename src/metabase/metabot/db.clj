@@ -508,9 +508,12 @@
   (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-curation-rows
-  "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
+  "The ID, Database ID, active flag, visibility type, published flag, data layer, and data authority of the Tables with
+  `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :is_published :data_layer :data_authority] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :db_id :active :visibility_type :is_published :data_layer :data_authority]
+             :id [:in table-ids]
+             {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn visible-table-summaries
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -1033,15 +1036,20 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
 
-(mu/defn card-collection-ids
-  "The ID and Collection ID of the Cards with `ids`."
+(mu/defn archived-card-ids
+  "The subset of `ids` that are archived Cards."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Card :id :collection_id] :id [:in ids]))
+  (t2/select-fn-set :id :model/Card :id [:in ids] :archived true))
 
-(mu/defn dashboard-collection-ids
-  "The ID and Collection ID of the Dashboards with `ids`."
+(mu/defn card-curation-rows
+  "The ID, Collection ID, archived flag, and Document ID of the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Dashboard :id :collection_id] :id [:in ids]))
+  (t2/select [:model/Card :id :collection_id :archived :document_id] :id [:in ids]))
+
+(mu/defn dashboard-curation-rows
+  "The ID, Collection ID, and archived flag of the Dashboards with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/Dashboard :id :collection_id :archived] :id [:in ids]))
 
 (mu/defn measure-table-id
   "The Table ID of the Measure with `id`, or nil."

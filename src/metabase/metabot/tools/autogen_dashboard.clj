@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
@@ -36,7 +37,8 @@
                :text "Call `search` to find another source and use an id from the results."}]})
 
 (defn- readable-source
-  "The `kind` entity with `id` and its X-ray path, if the current user can read it and it is still in use."
+  "The `kind` entity with `id` and its X-ray path, if the current user can read it, it is still in use, and it
+  is curated when the Metabot is curated-only."
   [kind id]
   (let [entity (tools/with-entity {:kind kind :id id}
                  (api/read-check (if (= :table kind)
@@ -44,6 +46,9 @@
                                    (metabot.db/card-of-type id kind))))]
     (when (or (:archived entity) (false? (:active entity)))
       (unavailable-source! {:kind kind :id id}))
+    (when (shared/curated-only?)
+      (curation/check-curated-subject! (str (name kind) " " id)
+                                       [(case kind :table "table" :metric "metric" "card") id]))
     {:entity entity
      :path   (str "/auto/dashboard/" (name kind) "/" id)}))
 

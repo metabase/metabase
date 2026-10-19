@@ -13,8 +13,10 @@
    [clojure.string :as str]
    [metabase.explorations.core :as explorations]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
@@ -70,6 +72,22 @@
   [:map {:closed true}
    [:q {:optional true} [:maybe :string]]])
 
+(defn- curated-only-index
+  "Under [[shared/curated-only?]], keep only the metrics of the research `index` this Metabot may use (see
+   [[curation/usable-metric-ids]]). The truncation stamp is left as the catalog computed it."
+  [index]
+  (if (shared/curated-only?)
+    (let [usable (curation/usable-metric-ids (map :id (:metrics index)))]
+      (update index :metrics (fn [rows] (filterv #(contains? usable (:id %)) rows))))
+    index))
+
+(defn- check-curated-metrics!
+  "Under [[shared/curated-only?]], reject the first of `metric-ids` this Metabot may not use."
+  [metric-ids]
+  (when (shared/curated-only?)
+    (doseq [id metric-ids]
+      (curation/check-curated-subject! (str "metric " id) ["metric" id]))))
+
 (mu/defn ^{:tool-name "list_research_metrics"
            :scope     scope/agent-explorations-read}
   list-research-metrics-tool
@@ -80,7 +98,7 @@
    the metrics that have a Region-like dimension. More than 500 matches are truncated to the top
    500 with `truncated: true` — narrow with `q`."
   [{:keys [q]} :- list-research-metrics-schema]
-  {:output (json/encode (explorations/research-metric-index {:q q}))})
+  {:output (json/encode (curated-only-index (explorations/research-metric-index {:q q})))})
 
 (def ^:private get-research-candidates-schema
   [:map {:closed true}
@@ -113,7 +131,9 @@
                   "). Split the request into multiple calls.")}
 
     :else
-    {:output (json/encode (explorations/research-candidates {:metric-ids metric_ids :q q}))}))
+    (do
+      (check-curated-metrics! metric_ids)
+      {:output (json/encode (explorations/research-candidates {:metric-ids metric_ids :q q}))})))
 
 (defn- research-groups-payload
   "Validate `groups` and hydrate the FE picker payload for them, in the snake_case shape the
@@ -179,6 +199,7 @@
    list (no automatic ones), also pass `\"replace_default_dimensions\": true` - then
    `dimension_ids` must be non-empty."
   [{:keys [groups]} :- add-research-groups-schema]
+  (check-curated-metrics! (map :metric_id groups))
   (let [payload (research-groups-payload groups)]
     {:output     (format-added-groups payload)
      :data-parts [(streaming/research-plan-update-part payload)]}))

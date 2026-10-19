@@ -3,7 +3,9 @@
   Renders existing saved questions/metrics as PNG images in Slack."
   (:require
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -14,6 +16,9 @@
   "Generate a static visualization (PNG image) of a saved question or metric. The visualization will be posted as a separate follow-up message in the thread."
   [{:keys [entity_id]} :- [:map {:closed true}
                            [:entity_id :int]]]
+  ;; a question or a metric: judged as a metric read is, a curated card on its own or a metric by its definition
+  (when (shared/curated-only?)
+    (curation/check-curated-subject! (str "entity " entity_id) ["metric" entity_id]))
   {:instructions (str "Visualization queued for entity " entity_id ". "
                       "The visualization will be posted as a separate follow-up message "
                       "with the question or metric's name as its title and a link to open "

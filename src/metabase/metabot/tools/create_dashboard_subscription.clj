@@ -1,5 +1,6 @@
 (ns metabase.metabot.tools.create-dashboard-subscription
   (:require
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.shared :as shared]
@@ -25,6 +26,8 @@
   [{:keys [dashboard_id schedule]} :- [:map {:closed true}
                                        [:dashboard_id :int]
                                        [:schedule tools.create-alert/schedule-schema]]]
+  (when (shared/curated-only?)
+    (curation/check-curated-subject! (str "dashboard " dashboard_id) ["dashboard" dashboard_id]))
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
     (try
       (when-not slack-channel-id
