@@ -215,6 +215,7 @@
     :models        [{:id "google/gemini-3.5-flash"             :display_name "Gemini 3.5 Flash"}
                     {:id "google/gemini-3.6-flash"             :display_name "Gemini 3.6 Flash"}
                     {:id "google/gemini-3.7-flash"             :display_name "Gemini 3.7 Flash"}
+                    {:id "google/gemini-3.8-flash"             :display_name "Gemini 3.8 Flash"}
                     {:id "anthropic/claude-fable-5-1"          :display_name "Claude Fable 5.1"}
                     {:id "anthropic/claude-fable-5"            :display_name "Claude Fable 5"}
                     {:id "anthropic/claude-opus-5-5"           :display_name "Claude Opus 5.5"}
@@ -223,7 +224,14 @@
                     {:id "anthropic/claude-sonnet-5-5"         :display_name "Claude Sonnet 5.5"}
                     {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
                     {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
-                    {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
+                    {:id "anthropic/claude-haiku-5-5"          :display_name "Claude Haiku 5.5"}
+                    {:id "anthropic/claude-haiku-4-5"          :display_name "Claude Haiku 4.5"}]
+    ;; Google lists Claude Haiku 4.5 without the `@20251001` date it once carried:
+    ;; https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/claude/haiku-4-5
+    ;; Treat an entry as permanent: nothing rewrites a value pinned by an environment variable, and a stored value
+    ;; converges only when the setting is next written.
+    ;; A connection's stored `:probed-model` converges only when a probe next verifies the connection.
+    :retired-models {"anthropic/claude-haiku-4-5@20251001" "anthropic/claude-haiku-4-5"}
     ;; A connection with an endpoint ID serves that Model Garden endpoint instead of the catalog.
     :model-fields  ["endpoints" :endpoint-id]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
@@ -562,7 +570,7 @@
   "Run one field's `:validate` hook against the value `config` supplies for it, if it has both."
   [{:keys [key validate]} config]
   (when-let [problem (and validate (some-> (u/trimmed-string (get config key)) validate))]
-    (throw (ex-info (str problem) {:status-code 400 :field key}))))
+    (throw (ex-info (str problem) {:status-code 400 :field key :response/keys #{:field}}))))
 
 (defn- field-descriptor
   "`type-name`'s registry entry for `field-key`."
@@ -591,14 +599,14 @@
   (let [value (u/trimmed-string (get config key))]
     (when (and required? (not value) (not default))
       (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
-                      {:status-code 400 :field key})))
+                      {:status-code 400 :field key :response/keys #{:field}})))
     (when (and value prefix (not (str/starts-with? value prefix)))
       (throw (ex-info (cond-> (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
                         prefix-help (str " " prefix-help))
-                      {:status-code 400 :field key})))
+                      {:status-code 400 :field key :response/keys #{:field}})))
     (when (and value (seq options) (not-any? #(= value (:value %)) options))
       (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
-                      {:status-code 400 :field key})))
+                      {:status-code 400 :field key :response/keys #{:field}})))
     (validate-field-value! field config)))
 
 (defn- validate-config-field!
@@ -976,10 +984,11 @@
     (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
                          (get (connection-env-vars type-name) :base-url "The environment")
                          (get (connection-env-vars type-name) field "the matching environment variable"))
-                    {:status-code 400
-                     :api-error   true
-                     :error-code  :llm-credentials-must-come-from-env
-                     :field       field}))))
+                    {:status-code   400
+                     :api-error     true
+                     :error-code    :llm-credentials-must-come-from-env
+                     :field         field
+                     :response/keys #{:field}}))))
 
 (defn env-overlay-config
   "What the environment supplies for a connection of `type-name` stored under `conn-key`, or nil where it
@@ -1145,7 +1154,7 @@
   "Every model id some provider type has retired, so a reference naming none of them needs no connection lookup."
   (into #{} (mapcat (comp keys :retired-models)) provider-type-registry))
 
-(defn- current-model
+(defn current-model
   "The model now serving `model` on provider type `type-name`.
 
   Its successor when the type retired it, otherwise `model` itself. Read from the raw registry, like
@@ -1260,11 +1269,12 @@
 
                            :else
                            (tru "Enter this connection''s credentials again to point it at a different base URL."))
-                         {:status-code 400
-                          :api-error   true
-                          :error-code  :llm-base-url-change-requires-credentials
-                          :field       :base-url
-                          :secrets     (mapv name missing-secrets)})))))))
+                         {:status-code   400
+                          :api-error     true
+                          :error-code    :llm-base-url-change-requires-credentials
+                          :field         :base-url
+                          :secrets       (mapv name missing-secrets)
+                          :response/keys #{:field}})))))))
 
 (defn- assert-credential-write-authorized!
   "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
@@ -1284,10 +1294,11 @@
                  (not= base-url (:base-url (with-field-defaults type-name {})))
                  (not (contains? (set env-fields) :base-url)))
         (throw (ex-info (tru "This connection has its own base URL. Use the provider connection settings to enter its credentials.")
-                        {:status-code 400
-                         :api-error   true
-                         :error-code  :llm-credential-change-requires-connection-settings
-                         :field       field}))))))
+                        {:status-code   400
+                         :api-error     true
+                         :error-code    :llm-credential-change-requires-connection-settings
+                         :field         field
+                         :response/keys #{:field}}))))))
 
 (defn set-single-provider-setting!
   "Write `new-value` for the per-provider credential setting `setting-kw` into the connection its settings group
@@ -1319,10 +1330,11 @@
                 ;; later removed that variable, carrying any stored credentials to a URL the API caller planted
                 ;; earlier.
                 (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
-                                {:status-code 400
-                                 :api-error   true
-                                 :error-code  :llm-base-url-is-env-managed
-                                 :field       :base-url})))
+                                {:status-code   400
+                                 :api-error     true
+                                 :error-code    :llm-base-url-is-env-managed
+                                 :field         :base-url
+                                 :response/keys #{:field}})))
               (let [current-config (or (:config live) {})
                     new-config     (if value
                                      (assoc current-config field value)

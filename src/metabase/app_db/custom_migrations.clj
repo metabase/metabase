@@ -2268,7 +2268,7 @@
 ;;; challenge that names the v2 scopes, so the client re-authorizes; that re-authorization only validates if
 ;;; the client's registered scope snapshot includes the v2 scopes.
 ;;;
-;;; The scope strings are literals rather than a read of `metabase.mcp.paths/v2-surface-scopes`: a
+;;; The scope strings are literals rather than a read of `metabase.mcp.scope/v2-surface-scopes`: a
 ;;; migration's behaviour must be frozen against later edits to that vector.
 
 (def ^:private ^:no-doc mcp-v2-scopes

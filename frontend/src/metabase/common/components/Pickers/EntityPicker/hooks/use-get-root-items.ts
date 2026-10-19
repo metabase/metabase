@@ -213,6 +213,17 @@ async function getRootItems({
     });
   }
 
+  if (namespaces.includes("transforms") && transformsEnabled) {
+    collectionItems.push({
+      ...(await getRootCollectionItem({
+        namespace: "transforms",
+        dispatch,
+      })),
+      here: ["collection"],
+      below: validCollectionModels,
+    });
+  }
+
   if (namespaces.includes("snippets")) {
     collectionItems.push({
       ...(await getRootCollectionItem({
@@ -228,17 +239,6 @@ async function getRootItems({
     collectionItems.push({
       ...(await getRootCollectionItem({
         namespace: "data-actions",
-        dispatch,
-      })),
-      here: ["collection"],
-      below: validCollectionModels,
-    });
-  }
-
-  if (namespaces.includes("transforms") && transformsEnabled) {
-    collectionItems.push({
-      ...(await getRootCollectionItem({
-        namespace: "transforms",
         dispatch,
       })),
       here: ["collection"],

@@ -86,7 +86,7 @@ type RouteContentProps = {
   showEmpty: boolean;
 };
 
-function RouteContent({
+export function RouteContent({
   children,
   emptyState,
   error,
@@ -109,5 +109,13 @@ function RouteContent({
     );
   }
 
-  return showEmpty ? emptyState : children;
+  if (showEmpty) {
+    return (
+      <Flex flex={1} mih="60vh" align="center" justify="center">
+        {emptyState}
+      </Flex>
+    );
+  }
+
+  return children;
 }

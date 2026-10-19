@@ -81,7 +81,7 @@
       (metrics/sync-dimensions! :metadata/metric (:id metric))
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/values"))]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              GET /api/metric/:id/dimension/:key/search/:query                                  |
@@ -121,7 +121,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/search")
                                            :query "test")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               GET /api/metric/:id/dimension/:key/remapping                                     |
@@ -161,7 +161,7 @@
       (let [response (mt/user-http-request :rasta :get 400
                                            (str "metric/" (:id metric) "/dimension/" fake-dimension-id "/remapping")
                                            :value "1")]
-        (is (re-find #"Dimension not found" (:message response)))))))
+        (is (re-find #"Dimension not found" response))))))
 
 (deftest dimension-remapping-requires-value-param-test
   (testing "GET /api/metric/:id/dimension/:key/remapping requires value parameter"
@@ -815,7 +815,7 @@
        (t2/update! :model/Card metric-id {:dataset_query (people-metric-query)})
        (let [{:keys [card_schema dimensions]} (stored-card metric-id)
              stored-names (display-name-by-field-id dimensions)]
-         (is (= @#'card/current-schema-version card_schema)
+         (is (= card/current-card-schema-version card_schema)
              "the vintage advances alongside the migrated columns")
          (testing "the dimensions written alongside that bump are the modernized ones"
            (is (= "Product - ID" (stored-names (mt/id :products :id))))
@@ -832,7 +832,7 @@
          (t2/update! :model/Card metric-id {:dimensions modernized})
          (let [{:keys [card_schema dimensions]} (stored-card metric-id)
                stored-names (display-name-by-field-id dimensions)]
-           (is (= @#'card/current-schema-version card_schema))
+           (is (= card/current-card-schema-version card_schema))
            (is (= "Product - ID" (stored-names (mt/id :products :id))))
            (is (= "User - ID" (stored-names (mt/id :people :id))))
            (doseq [[field-id display-name] stored-names]

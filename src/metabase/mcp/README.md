@@ -46,7 +46,8 @@ The flow for a first-time connection:
 3. The user is redirected to Metabase to log in and approve the connection.
 4. The client receives an access token scoped to the user's Metabase permissions.
 
-Browser-based sessions (cookie auth) are also supported and receive unrestricted scopes.
+Browser-based sessions (cookie auth), API keys, and `mb:full` tokens hold no MCP scope, so they can connect but
+call no scoped tool.
 
 ### Scopes
 
@@ -60,20 +61,22 @@ Access tokens are scoped to limit what tools a client can use:
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
 
-Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
+A tool matches only the exact scope in the table. A wildcard such as `*` or `agent:*`, and the `::unrestricted`
+sentinel, are not MCP scopes, so they grant no tool.
 
 These scopes gate the MCP surface only. No REST endpoint may declare one as its `:scope`, so a new token issued to an
 MCP client grants nothing on the REST API.
 
-Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
-challenge both list only `agent:content:read agent:query:run`: a fresh connection can read,
-query, and chart. Writes (`agent:content:write`), raw SQL (`agent:sql:run`), and alerts and subscriptions
-(`agent:delivery:write`) need a step-up. The surface still accepts every scope in the table, and the authorization
-server metadata still advertises all of them.
+The protected-resource metadata's `scopes_supported` and the `scope` of the 401 challenge both list every scope in
+the table, so a fresh connection asks for all of them. Some clients do not step up after a 403: a manual reconnect
+from Claude's connector settings registers a new client and asks for exactly what these list. When they listed only
+the baseline, that reconnect never offered writes, raw SQL, or delivery, and the user had no way to grant them
+(ENG-11089). The authorization server metadata advertises all of them too.
 
-`agent:query:run` is in the baseline so that charts never need a step-up. Claude Desktop retries a tool after a
-step-up over a session that doesn't declare MCP Apps support, so a stepped-up `visualize_query` is refused and its
-chart never embeds.
+The baseline (`agent:content:read agent:query:run`) is locked on the consent screen: when a client requests one of
+these, the user cannot untick it. `agent:query:run` is in the baseline so that charts never need a step-up. Claude
+Desktop retries a tool after a step-up over a session that doesn't declare MCP Apps support, so a stepped-up
+`visualize_query` is refused and its chart never embeds.
 
 A tool call or data resource read the token lacks a scope for is refused with HTTP 403 and a
 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
@@ -199,8 +202,8 @@ The implementation lives in these files:
 - **[`v2/registry.clj`](v2/registry.clj)** - The v2 tool registry. Tools self-register via `deftool`; the registry
   checks scopes, validates arguments, dispatches calls, and records usage.
 
-- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
-  `::unrestricted` sentinel for session-based auth.
+- **[`scope.clj`](scope.clj)** - Scope matching logic. Exact matches only: wildcards, nil scopes, and the
+  `::unrestricted` sentinel match nothing.
 
 ### Request flow
 

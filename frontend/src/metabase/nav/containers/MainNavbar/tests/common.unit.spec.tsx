@@ -5,6 +5,7 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { dayjs } from "metabase/dayjs";
 import * as Urls from "metabase/urls";
 import {
+  createMockBookmark,
   createMockCard,
   createMockDashboard,
   createMockModelResult,
@@ -187,6 +188,61 @@ describe("nav > containers > MainNavbar", () => {
         name: /Browse models/i,
       });
       expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("bookmarks", () => {
+    it.each([
+      { route: "/metric/:cardId", pathname: "/metric/9-revenue" },
+      {
+        route: "/metric/:cardId/query",
+        pathname: "/metric/9-revenue/query",
+      },
+    ])(
+      "highlights a metric bookmark on $pathname",
+      async ({ route, pathname }) => {
+        const card = createMockCard({ id: 9, name: "Revenue", type: "metric" });
+        const bookmark = createMockBookmark({
+          id: "card-9",
+          item_id: card.id,
+          type: "card",
+          card_type: "metric",
+          name: card.name,
+        });
+
+        await setup({
+          bookmarks: [bookmark],
+          openQuestionCard: card,
+          route,
+          pathname,
+        });
+
+        expect(
+          screen.getByRole("listitem", { name: "Revenue" }),
+        ).toHaveAttribute("aria-selected", "true");
+      },
+    );
+
+    it("highlights a question bookmark on the question page", async () => {
+      const card = createMockCard({ id: 37, name: "Question" });
+      const bookmark = createMockBookmark({
+        id: "card-37",
+        item_id: card.id,
+        type: "card",
+        card_type: "question",
+        name: card.name,
+      });
+
+      await setup({
+        bookmarks: [bookmark],
+        openQuestionCard: card,
+        route: "/question/:slug",
+        pathname: "/question/37-question",
+      });
+
+      expect(
+        screen.getByRole("listitem", { name: "Question" }),
+      ).toHaveAttribute("aria-selected", "true");
     });
   });
 

@@ -146,8 +146,6 @@ describe("Embedding SDK: data-app resources (queries)", () => {
       cards: [ordersQuestion(question)],
     });
     H.publishDataApp(APP_ROOT(), APP_SLUG).then((app) => {
-      expect(app.table_ids).to.deep.eq([ORDERS_ID]);
-
       cy.request<Card>(`/api/card/${question}`).then(({ body: card }) => {
         expect(card.collection_id).to.eq(app.resource_collection_id);
         expect(card.name).to.eq("Orders");

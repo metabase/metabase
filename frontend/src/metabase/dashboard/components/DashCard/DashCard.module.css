@@ -15,14 +15,18 @@
 }
 
 .DashCardRoot {
+  --scalar-description-opacity: 0;
+
   background-color: var(--mb-color-bg-dashboard-card);
   scroll-margin: 6px 0;
   border-radius: 0.75rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   transition: border-color 0.15s ease-in-out;
 
   &:hover {
-    border-color: var(--mb-color-border-strong);
+    --scalar-description-opacity: 1;
+
+    border-color: var(--mb-color-border-neutral-strong);
   }
 
   &.isAction {
@@ -63,11 +67,22 @@
 
   &:hover {
     color: var(--mb-color-text-primary);
-    background: var(--mb-color-background_surface-primary-hover);
+    /* Equal gradient stops make a solid tint over the opaque surface below. */
+    background:
+      linear-gradient(
+        var(--mb-color-background_surface-primary-hover),
+        var(--mb-color-background_surface-primary-hover)
+      ),
+      var(--mb-color-background_surface-primary);
   }
 
   &:active {
-    background: var(--mb-color-background_surface-primary-pressed);
+    background:
+      linear-gradient(
+        var(--mb-color-background_surface-primary-pressed),
+        var(--mb-color-background_surface-primary-pressed)
+      ),
+      var(--mb-color-background_surface-primary);
     box-shadow: none;
     transform: none;
   }

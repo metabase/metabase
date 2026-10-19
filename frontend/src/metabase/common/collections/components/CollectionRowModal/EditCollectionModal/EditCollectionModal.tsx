@@ -21,7 +21,7 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Group, Modal, Stack } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 type EditCollectionModalProps = {
@@ -75,10 +75,10 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
 
   return (
     <Modal
+      density="relaxed"
       title={t`Editing ${collection.name}`}
       opened
       onClose={onClose}
-      padding="xxl"
       onKeyDown={stopPropagation}
     >
       <FormProvider
@@ -89,7 +89,7 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
       >
         {({ dirty }) => (
           <Form>
-            <Stack gap="xl" mt="sm">
+            <Stack gap="xl">
               <FormTextInput
                 name="name"
                 label={t`Name`}
@@ -115,16 +115,16 @@ export function EditCollectionModal(props: EditCollectionModalProps) {
                   disableRecentLogging: true,
                 }}
               />
-              <Group justify="flex-end">
-                <FormErrorMessage />
-                <Button onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton
-                  label={t`Save`}
-                  variant="filled"
-                  disabled={!dirty}
-                />
-              </Group>
             </Stack>
+            <Modal.Footer>
+              <FormErrorMessage flex={1} />
+              <Button onClick={onClose}>{t`Cancel`}</Button>
+              <FormSubmitButton
+                label={t`Save`}
+                variant="filled"
+                disabled={!dirty}
+              />
+            </Modal.Footer>
           </Form>
         )}
       </FormProvider>

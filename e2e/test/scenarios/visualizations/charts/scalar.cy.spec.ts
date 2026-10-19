@@ -115,8 +115,10 @@ describe("scenarios > visualizations > scalar", () => {
     H.openVizSettingsSidebar();
 
     H.sidebar().findByText("Date style").should("be.visible");
-    H.sidebar().findByText("Show the time").should("be.hidden");
-    H.sidebar().findByText("Time style").should("be.hidden");
+    H.leftSidebar().within(() => {
+      cy.findByText("Show the time").should("not.exist");
+      cy.findByText("Time style").should("not.exist");
+    });
   });
 
   it("should not auto-select chart type when opening and saving a native question with parameters that have default values (metabase#33208)", () => {
