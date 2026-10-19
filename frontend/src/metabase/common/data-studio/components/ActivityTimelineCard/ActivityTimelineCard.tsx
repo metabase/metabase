@@ -4,19 +4,20 @@ import { t } from "ttag";
 import { useListRevisionsQuery, useRevertRevisionMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
-import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
+import { getActivityTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { getUser } from "metabase/current-user";
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Box, Card, Text } from "metabase/ui";
 import type { CardId, DashboardId, ModerationReview } from "metabase-types/api";
 
 import S from "./ActivityTimelineCard.module.css";
 
-type ActivityTimelineCardProps = {
-  entity: "card" | "dashboard";
-  id: CardId | DashboardId;
-  moderationReviews: ModerationReview[] | undefined;
+type ActivityTimelineTarget =
+  | { entity: "card"; id: CardId }
+  | { entity: "dashboard"; id: DashboardId };
+
+type ActivityTimelineCardProps = ActivityTimelineTarget & {
+  moderationReviews?: ModerationReview[];
   canWrite: boolean;
   "data-testid": string;
 };
@@ -48,16 +49,7 @@ function ActivityTimeline({
 
   const events = useMemo(
     () =>
-      [
-        ...getTimelineEvents({ revisions, currentUser }),
-        ...PLUGIN_MODERATION.getModerationTimelineEvents(
-          moderationReviews ?? [],
-          currentUser,
-        ),
-      ].sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      ),
+      getActivityTimelineEvents({ revisions, moderationReviews, currentUser }),
     [moderationReviews, revisions, currentUser],
   );
 
