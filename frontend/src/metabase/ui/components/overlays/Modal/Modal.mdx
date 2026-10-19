@@ -44,6 +44,10 @@ Don't confuse `layout` with Mantine's `centered` prop, which sets the modal's ve
 
 <Canvas of={ModalStories.WithForm} />
 
+### Padding
+
+The `padding` prop only accepts `0`, for full-bleed modals that lay out their own contents, such as pickers and side sheets. Leave it out to get the standard padding.
+
 ### Custom layouts
 
 `Modal.Root`, `Modal.Overlay`, `Modal.Content`, `Modal.Header`, `Modal.Title`, `Modal.CloseButton` and `Modal.Body` are an escape hatch for modals that don't fit the standard structure, such as side sheets. Prefer the props above where you can.

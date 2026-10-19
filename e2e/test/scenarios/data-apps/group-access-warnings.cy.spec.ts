@@ -30,6 +30,7 @@ describe("scenarios > data apps > group access warnings (EMB-2416)", () => {
         }),
       ],
     });
+    H.waitForBackfillComplete();
 
     cy.request<GroupInfo>("POST", "/api/permissions/group", {
       name: GROUP_NAME,

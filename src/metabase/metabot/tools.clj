@@ -116,6 +116,22 @@
     "replace_sql_query"
     "construct_notebook_query"})
 
+(def ^:private query-result-tool-names
+  "Names of the tools that return query results: those that need `:feature-query-execution`."
+  (delay
+    (into #{}
+          (comp (filter #(or (tools.legacy/legacy-tool? %) (satisfies? tools.core/Tool @%)))
+                (map tools.legacy/declaration-of)
+                (filter #(contains? (:metabot/capabilities %) :feature-query-execution))
+                (map :name))
+          (vals (ns-publics 'metabase.metabot.tools)))))
+
+(defn query-result-tool?
+  "Whether the tool named `tool-name` returns query results, which may reach the model only while query execution
+  is on."
+  [tool-name]
+  (contains? @query-result-tool-names tool-name))
+
 (defn ->entries
   "The agent's tool entries for one turn: a map of model-facing tool name to entry.
 
