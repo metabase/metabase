@@ -12,12 +12,13 @@ function setup(opts: SetupOpts) {
 }
 
 describe("LoadingView", () => {
-  it("should only render the spinner when the query is usually fast", () => {
+  it("should only render the skeleton when the query is usually fast", () => {
     setup({
       expectedDuration: 10,
       isSlow: false,
     });
 
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(screen.queryByText("Still Waiting…")).not.toBeInTheDocument();
   });
 

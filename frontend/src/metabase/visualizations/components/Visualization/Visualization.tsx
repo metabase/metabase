@@ -75,6 +75,7 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isCardDisplayType } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { EmptyVizState } from "../EmptyVizState";
@@ -738,6 +739,10 @@ class Visualization extends PureComponent<
     let noResults = false;
     let isPlaceholder = false;
     const loading = isLoading(series);
+    const firstCardDisplay = rawSeries[0]?.card?.display;
+    const loadingDisplay = isCardDisplayType(firstCardDisplay)
+      ? firstCardDisplay
+      : undefined;
 
     // don't try to load settings unless data is loaded
     const settings = this.props.settings || this.state.computedSettings;
@@ -885,6 +890,7 @@ class Visualization extends PureComponent<
             renderLoadingView({
               expectedDuration,
               isSlow,
+              display: loadingDisplay,
             })
           ) : isPlaceholder ? (
             <EmptyVizState
@@ -905,7 +911,11 @@ class Visualization extends PureComponent<
                     chunk that arrives after the data does not swap one
                     loading state for a different one. */}
                 <Suspense
-                  fallback={renderLoadingView({ expectedDuration, isSlow })}
+                  fallback={renderLoadingView({
+                    expectedDuration,
+                    isSlow,
+                    display: loadingDisplay,
+                  })}
                 >
                   <VisualizationRenderedWrapper
                     onRendered={this.handleVisualizationRendered}

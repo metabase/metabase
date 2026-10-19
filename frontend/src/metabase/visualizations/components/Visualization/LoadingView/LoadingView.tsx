@@ -1,15 +1,19 @@
 import { jt, t } from "ttag";
 
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import CS from "metabase/css/core/index.css";
-import { Box, Loader } from "metabase/ui";
+import { Box, Center } from "metabase/ui";
 import { duration } from "metabase/utils/formatting";
+import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
+import ScalarSkeleton from "metabase/visualizations/components/skeletons/ScalarSkeleton/ScalarSkeleton";
 import type { CardSlownessStatus } from "metabase/visualizations/types";
-
-import { StateView } from "../StateView";
+import type { CardDisplayType } from "metabase-types/api";
 
 export interface LoadingViewProps {
   isSlow: CardSlownessStatus | undefined;
   expectedDuration?: number;
+  /** The chart type the skeleton is drawn as; a table when unknown. */
+  display?: CardDisplayType;
 }
 
 function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
@@ -35,15 +39,22 @@ function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
   );
 }
 
-function LoadingView({ expectedDuration, isSlow }: LoadingViewProps) {
+function LoadingView({ expectedDuration, isSlow, display }: LoadingViewProps) {
+  const isScalar = display === "scalar" || display === "smartscalar";
+
   return (
-    <StateView pt="sm" c="core-brand">
-      {isSlow ? (
-        <SlowQueryView expectedDuration={expectedDuration} isSlow={isSlow} />
+    <LoadingSkeleton flex="1 0 auto" pos="relative" gap={0} p="sm">
+      {isScalar ? (
+        <ScalarSkeleton />
       ) : (
-        <Loader size="lg" color="text-secondary" />
+        getChartSkeletonImage(display ?? "table")
       )}
-    </StateView>
+      {isSlow && (
+        <Center pos="absolute" inset={0} ta="center" px="sm">
+          <SlowQueryView expectedDuration={expectedDuration} isSlow={isSlow} />
+        </Center>
+      )}
+    </LoadingSkeleton>
   );
 }
 
