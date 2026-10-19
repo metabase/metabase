@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -92,7 +93,8 @@
         (lib/limit 5))))
 
 (deftest ^:parallel multi-stage-questions-test
-  (mt/test-drivers (mt/normal-driver-select {:+fns [#(isa? driver/hierarchy % :sql)]
+  (mt/test-drivers (mt/normal-driver-select {:+fns [#(and (isa? driver/hierarchy % :sql)
+                                                          (sql.qp/use-ctes-for-stages? %))]
                                              :+features [:nested-queries :left-join :native-parameter-card-reference]})
     (let [mp         (qp.test-util/metadata-provider-with-cards-for-queries
                       [(lib/limit (multi-stage-query (mt/metadata-provider)) 100)])
@@ -122,7 +124,6 @@
       (testing "question joining the multi-stage question, with more stages after the join"
         (let [query  (query-joining-card mp)]
           (mt/with-native-query-testing-context query
-            ;; the year buckets depend on the report and database time zones, so only check the filter stage
             (is (= [["1958-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 13]
                     ["1958-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 17]
                     ["1959-01-01T00:00:00Z" "2016-01-01T00:00:00Z" 14]
