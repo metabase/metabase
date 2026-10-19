@@ -19,7 +19,7 @@
   "Counts active synced cards, in total and by type."
   []
   (t2/query-one
-   {:select [[:%count.* :card_count]
+   {:select [[[:count :card.id] :card_count]
              [(u/count-case [:= :card.type "model"]) :model_count]
              [(u/count-case [:= :card.type "question"]) :question_count]
              [(u/count-case [:= :card.type "metric"]) :metric_count]]
