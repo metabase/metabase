@@ -8,6 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSearchParams } from "metabase/router";
+import { Modal } from "metabase/ui";
 
 import { ArchiveNotificationModal } from "../../components/ArchiveModal";
 import { getPulseId } from "../../selectors";
@@ -37,8 +38,18 @@ export function ArchivePulseModal({ params, onClose }: ArchivePulseModalProps) {
     await updateSubscription({ id: item.id, archived });
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  // Opening the modal once the subscription loads, rather than around a
+  // spinner, saves it from animating in twice
+  if (isLoading) {
+    return null;
+  }
+
+  if (error) {
+    return (
+      <Modal opened size="lg" onClose={onClose}>
+        <LoadingAndErrorWrapper loading={false} error={error} />
+      </Modal>
+    );
   }
 
   return pulse && user ? (

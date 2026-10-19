@@ -1,13 +1,12 @@
 import { t } from "ttag";
 
-import { ModalHeader } from "metabase/common/components/ModalContent";
 import { StaticEmbedSetupPane } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane";
 import type {
   EmbedResource,
   EmbedResourceParameter,
   GuestEmbedResourceType,
 } from "metabase/embedding/types";
-import { Modal } from "metabase/ui";
+import { Group, Icon, Modal, UnstyledButton } from "metabase/ui";
 import type { EmbeddingParameters } from "metabase-types/api";
 
 import S from "./EmbedModal.module.css";
@@ -38,19 +37,24 @@ export const EmbedModal = ({
     opened={opened}
     onClose={onClose}
     size="auto"
-    withCloseButton={false}
-    padding={0}
-    classNames={{ content: S.content, body: S.body }}
+    title={
+      onBack ? (
+        <Group component="span" gap="sm" wrap="nowrap">
+          <UnstyledButton
+            className={S.backButton}
+            aria-label={t`Back`}
+            onClick={onBack}
+          >
+            <Icon name="chevronleft" />
+          </UnstyledButton>
+          {t`Static embedding`}
+        </Group>
+      ) : (
+        t`Static embedding`
+      )
+    }
+    classNames={{ content: S.content, header: S.header, body: S.body }}
   >
-    <ModalHeader
-      py="xl"
-      className={S.embedModalHeader}
-      onClose={onClose}
-      onBack={onBack}
-    >
-      {t`Static embedding`}
-    </ModalHeader>
-
     <StaticEmbedSetupPane
       resource={resource}
       resourceType={resourceType}

@@ -216,7 +216,7 @@ describe("Actions > ActionViz > Action", () => {
       await setup();
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.getByLabelText("Parameter 1")).toBeInTheDocument();
     });
@@ -233,7 +233,7 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       expect(screen.queryByLabelText(/^Parameter/)).not.toBeInTheDocument();
     });
@@ -242,16 +242,22 @@ describe("Actions > ActionViz > Action", () => {
       await setup();
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toHaveTextContent("My Awesome Action");
+      expect(await screen.findByRole("dialog")).toHaveTextContent(
+        "My Awesome Action",
+      );
     });
 
     it("clicking the cancel button on the form should close the modal", async () => {
       await setup();
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toHaveTextContent("My Awesome Action");
+      expect(await screen.findByRole("dialog")).toHaveTextContent(
+        "My Awesome Action",
+      );
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
     });
 
     it("should format dashboard filter values for numeric parameters", async () => {
@@ -295,7 +301,7 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       await userEvent.click(screen.getByRole("button", { name: "Click me" }));
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
       await userEvent.click(
         within(screen.getByRole("dialog")).getByRole("button", {
@@ -349,7 +355,9 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.click(screen.getByText("Click me"));
 
-      const editActionEl = getIcon("pencil");
+      const editActionEl = await screen.findByRole("button", {
+        name: "Edit this action",
+      });
       expect(editActionEl).toBeInTheDocument();
 
       await userEvent.click(editActionEl);
@@ -385,7 +393,9 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.click(screen.getByText("Click me"));
 
-      await userEvent.click(getIcon("pencil"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Edit this action" }),
+      );
 
       // wait for action edit form to be loaded
       const editorModal = await screen.findByTestId("action-editor-modal");
@@ -532,7 +542,9 @@ describe("Actions > ActionViz > Action", () => {
       });
 
       await userEvent.click(screen.getByRole("button"));
-      expect(screen.getByRole("dialog")).toHaveTextContent(/cannot be undone/i);
+      expect(await screen.findByRole("dialog")).toHaveTextContent(
+        /cannot be undone/i,
+      );
       expect(
         screen.getByRole("button", { name: "Delete" }),
       ).toBeInTheDocument();

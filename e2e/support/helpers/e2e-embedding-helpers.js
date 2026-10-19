@@ -270,7 +270,7 @@ export function openLegacyStaticEmbeddingModal({
 }
 
 export function closeStaticEmbeddingModal() {
-  modal().icon("close").click();
+  modal().findByLabelText("Close").click();
 }
 
 /**

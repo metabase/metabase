@@ -1,10 +1,9 @@
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, Button, Stack } from "metabase/ui";
+import { Box, Button, Modal, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
 
 type HelpModalProps = {
@@ -18,13 +17,10 @@ function HelpModal({ onClose }: HelpModalProps): JSX.Element {
   const handleClose = () => onClose?.(true);
 
   return (
-    <ModalContent
+    <Modal
+      opened
+      size="lg"
       title={t`Not seeing something listed here?`}
-      footer={
-        <Button key="close" onClick={handleClose}>
-          {t`Got it`}
-        </Button>
-      }
       onClose={handleClose}
     >
       <Stack gap="lg">
@@ -36,7 +32,10 @@ function HelpModal({ onClose }: HelpModalProps): JSX.Element {
           {t`Hopefully they'll be able to help you out!`}
         </Box>
       </Stack>
-    </ModalContent>
+      <Modal.Footer>
+        <Button onClick={handleClose}>{t`Got it`}</Button>
+      </Modal.Footer>
+    </Modal>
   );
 }
 

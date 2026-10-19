@@ -9,13 +9,21 @@ import {
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import { SelectButton } from "metabase/common/components/SelectButton";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import { connect, useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Button, Flex, Icon, Radio, Select, Stack } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Modal,
+  Radio,
+  Select,
+  Stack,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -90,21 +98,9 @@ const ValuesSourceTypeModal = ({
   onChangeSourceConfig,
   onChangeCard,
   onSubmit,
-  onClose,
 }: ModalProps): JSX.Element => {
   return (
-    <ModalContent
-      title={t`Selectable values for ${parameter.name}`}
-      footer={[
-        <Button
-          key="submit"
-          variant="filled"
-          disabled={!isValidSourceConfig(sourceType, sourceConfig)}
-          onClick={onSubmit}
-        >{t`Done`}</Button>,
-      ]}
-      onClose={onClose}
-    >
+    <>
       {sourceType === null ? (
         <FieldSourceModal
           // if sourceType === null the parameter must have fields
@@ -135,7 +131,14 @@ const ValuesSourceTypeModal = ({
           onChangeSourceConfig={onChangeSourceConfig}
         />
       ) : null}
-    </ModalContent>
+      <Modal.Footer>
+        <Button
+          variant="filled"
+          disabled={!isValidSourceConfig(sourceType, sourceConfig)}
+          onClick={onSubmit}
+        >{t`Done`}</Button>
+      </Modal.Footer>
+    </>
   );
 };
 
@@ -726,13 +729,21 @@ function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
   const question = useQuestionFromCard(card);
 
   return (
-    <ModalLoadingAndErrorWrapper
-      loading={isMetadataLoading || isCardLoading}
-      error={metadataError ?? cardError}
-      noWrapper
+    <Modal
+      opened
+      size="65%"
+      density="relaxed"
+      title={t`Selectable values for ${props.parameter.name}`}
+      onClose={props.onClose}
     >
-      <ValuesSourceTypeModalConnected {...props} question={question} />
-    </ModalLoadingAndErrorWrapper>
+      <ModalLoadingAndErrorWrapper
+        loading={isMetadataLoading || isCardLoading}
+        error={metadataError ?? cardError}
+        noWrapper
+      >
+        <ValuesSourceTypeModalConnected {...props} question={question} />
+      </ModalLoadingAndErrorWrapper>
+    </Modal>
   );
 }
 

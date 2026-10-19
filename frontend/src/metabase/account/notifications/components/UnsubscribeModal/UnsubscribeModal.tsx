@@ -1,10 +1,9 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
 import type { NotificationType } from "metabase/notifications/types";
-import { Button } from "metabase/ui";
+import { Box, Button, Modal, Text } from "metabase/ui";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 type UnsubscribeModalProps = {
@@ -45,29 +44,32 @@ function UnsubscribeModal({
   }, [item, type, user, onUnsubscribe, onArchive, onClose]);
 
   return (
-    <ModalContent
+    <Modal
+      opened
+      size="lg"
       title={t`Confirm you want to unsubscribe`}
-      footer={[
-        error ? <FormMessage key="message" formError={error} /> : null,
-        <Button key="cancel" onClick={onClose}>
-          {t`I changed my mind`}
-        </Button>,
+      onClose={onClose}
+    >
+      <Text>
+        {getUnsubscribeMessage(type)}
+        {t`Depending on your organization's permissions you might need to ask a moderator to be re-added in the future.`}
+      </Text>
+      <Modal.Footer>
+        {error ? (
+          <Box flex={1}>
+            <FormMessage formError={error} noPadding />
+          </Box>
+        ) : null}
+        <Button onClick={onClose}>{t`I changed my mind`}</Button>
         <Button
-          key="submit"
           variant="filled"
           color="negative"
           onClick={handleUnsubscribeClick}
         >
           {t`Unsubscribe`}
-        </Button>,
-      ]}
-      onClose={onClose}
-    >
-      <p>
-        {getUnsubscribeMessage(type)}
-        {t`Depending on your organization's permissions you might need to ask a moderator to be re-added in the future.`}
-      </p>
-    </ModalContent>
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 }
 

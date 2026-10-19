@@ -23,6 +23,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { checkNotNull } from "metabase/utils/types";
@@ -446,8 +447,13 @@ describe("ValuesSourceModal", () => {
           hasCollectionAccess: false,
         });
 
+        // The error stays inside the modal, so it keeps its title and close button
+        const modal = screen.getByRole("dialog");
         expect(
-          screen.getByText("You don't have permissions to do that."),
+          within(modal).getByText("You don't have permissions to do that."),
+        ).toBeInTheDocument();
+        expect(
+          within(modal).getByRole("button", { name: "Close" }),
         ).toBeInTheDocument();
       });
 

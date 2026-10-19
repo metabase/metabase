@@ -383,7 +383,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       {modalRoute("archive", ArchiveCollectionModal, {
                         noWrap: true,
                       })}
-                      {modalRoute("permissions", CollectionPermissionsModal)}
+                      {modalRoute("permissions", CollectionPermissionsModal, {
+                        noWrap: true,
+                      })}
                       {modalRoute(
                         "move-questions-dashboard",
                         MoveQuestionsIntoDashboardsModal,

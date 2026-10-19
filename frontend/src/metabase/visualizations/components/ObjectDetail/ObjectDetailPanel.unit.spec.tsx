@@ -499,9 +499,11 @@ describe("ObjectDetailPanel", () => {
     const modal = await screen.findByTestId("delete-object-modal");
     expect(modal).toBeInTheDocument();
 
-    expect(within(modal).getByTestId("modal-header")).toHaveTextContent(
-      "Are you sure you want to delete this row?",
-    );
+    expect(
+      within(modal).getByRole("heading", {
+        name: "Are you sure you want to delete this row?",
+      }),
+    ).toBeInTheDocument();
   });
 
   describe("keyboard bindings", () => {

@@ -5,11 +5,10 @@ import _ from "underscore";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { Button } from "metabase/ui";
+import { Box, Button, Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
 
@@ -70,6 +69,8 @@ const mapDispatchToProps = {
 };
 
 interface CollectionPermissionsModalProps {
+  /** Defaults to `true` */
+  opened?: boolean;
   permissionEditor: PermissionEditorType | null;
   isDirty: boolean;
   onClose: () => void;
@@ -83,6 +84,7 @@ interface CollectionPermissionsModalProps {
 }
 
 const CollectionPermissionsModal = ({
+  opened = true,
   permissionEditor,
   isDirty,
   onClose,
@@ -146,33 +148,7 @@ const CollectionPermissionsModal = ({
   );
 
   return (
-    <ModalContent
-      title={modalTitle}
-      onClose={onClose}
-      className={CS.overflowHidden}
-      footer={[
-        ...(isFolderNamespace(namespace)
-          ? []
-          : [
-              <Link
-                key="all-permissions"
-                className={CS.link}
-                to="/admin/permissions/collections"
-              >
-                {t`See all collection permissions`}
-              </Link>,
-            ]),
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button
-          key="save"
-          variant="filled"
-          disabled={!isDirty}
-          onClick={handleSave}
-        >
-          {t`Save`}
-        </Button>,
-      ]}
-    >
+    <Modal opened={opened} size="lg" title={modalTitle} onClose={onClose}>
       <div className={S.PermissionTableContainer}>
         {permissionEditor && (
           <PermissionsTable
@@ -181,7 +157,20 @@ const CollectionPermissionsModal = ({
           />
         )}
       </div>
-    </ModalContent>
+      <Modal.Footer>
+        {!isFolderNamespace(namespace) && (
+          <Box flex={1}>
+            <Link className={CS.link} to="/admin/permissions/collections">
+              {t`See all collection permissions`}
+            </Link>
+          </Box>
+        )}
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button variant="filled" disabled={!isDirty} onClick={handleSave}>
+          {t`Save`}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 };
 
