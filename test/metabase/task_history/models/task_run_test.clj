@@ -239,18 +239,19 @@
 (deftest run-id-meta-propagation-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "with-run-id-meta and with-restored-run-id propagate run-id via metadata"
-      (let [captured-run-id (atom nil)]
+      (let [restored-run (atom nil)]
         (task-history/with-task-run {:run_type    :sync
                                      :entity_type :database
                                      :entity_id   1}
-          (let [data (task-history/with-run-id-meta {:some "data"})
+          (let [data            (task-history/with-run-id-meta {:some "data"})
                 original-run-id (task-history/current-run-id)]
-            ;; Simulate async - outside the with-task-run
             (is (some? original-run-id) "run-id is set")
-            ;; Restore from metadata in a new context
+            (is (true? (:auto-complete? task-run/*run*)) "with-task-run completes this run itself")
+            ;; restore inside a run that auto-completes: the restored run must still not auto-complete
             (task-history/with-restored-run-id data
-              (reset! captured-run-id (task-history/current-run-id)))
-            (is (= original-run-id @captured-run-id) "run-id restored from metadata")))))))
+              (reset! restored-run task-run/*run*))
+            (is (= {:id original-run-id :auto-complete? false} @restored-run)
+                "the restored run has the id from the metadata, and task-run-work-done! recomputes it")))))))
 
 (deftest run-id-meta-nil-propagation-test
   (testing "with-restored-run-id handles nil metadata gracefully"
