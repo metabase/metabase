@@ -35,12 +35,13 @@ const TooltipImpl = forwardRef<HTMLDivElement, TooltipProps>(
       props,
     );
     const contextTarget = useContext(TooltipPortalTargetContext);
+    const callerPortalTarget = props.portalProps?.target;
     const resolvedPortalProps = useMemo(
       () =>
-        contextTarget && portalProps?.target == null
+        contextTarget && callerPortalTarget == null
           ? { ...portalProps, target: contextTarget }
           : portalProps,
-      [contextTarget, portalProps],
+      [contextTarget, callerPortalTarget, portalProps],
     );
 
     const isControlled = rest.opened !== undefined;

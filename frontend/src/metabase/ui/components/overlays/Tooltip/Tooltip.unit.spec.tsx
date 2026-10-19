@@ -1,9 +1,10 @@
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { act, render, screen, waitFor } from "__support__/ui";
 import { delay } from "metabase/utils/promise";
 
-import { Tooltip } from "./Tooltip";
+import { Tooltip, TooltipPortalTargetProvider } from "./Tooltip";
 import { TOOLTIP_CLOSE_DELAY_MS } from "./Tooltip.config";
 
 const LONGER_THAN_CLOSE_DELAY_MS = TOOLTIP_CLOSE_DELAY_MS * 3;
@@ -102,5 +103,24 @@ describe("Tooltip", () => {
     const tooltip = await screen.findByRole("tooltip");
     await act(() => delay(LONGER_THAN_CLOSE_DELAY_MS));
     expect(tooltip).not.toHaveAttribute("data-hoverable");
+  });
+
+  it("renders inside the portal target from context", async () => {
+    const TooltipInsideTarget = () => {
+      const [target, setTarget] = useState<HTMLElement | null>(null);
+      return (
+        <div ref={setTarget} data-testid="portal-target">
+          <TooltipPortalTargetProvider target={target}>
+            <Tooltip label="Tooltip content" opened>
+              <button>Target</button>
+            </Tooltip>
+          </TooltipPortalTargetProvider>
+        </div>
+      );
+    };
+    render(<TooltipInsideTarget />);
+
+    const tooltip = await screen.findByRole("tooltip");
+    expect(screen.getByTestId("portal-target")).toContainElement(tooltip);
   });
 });
