@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import {
   NotebookCell,
   NotebookCellAdd,
-  NotebookCellItem,
 } from "metabase/querying/notebook/components/NotebookCell";
 import { Button, Group, Icon, Popover, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -15,6 +13,7 @@ import { getFilterLabel } from "../../harness/clauses";
 import type { FilterUiProps, FilterUiVariant } from "../../types";
 
 import { GroupEditor } from "./GroupEditor";
+import { Token } from "./Token";
 import { type PillRows, readPillRows, writePillRows } from "./orPills";
 
 /**
@@ -34,7 +33,6 @@ export function OrPillsPrototype({
       key={index}
       query={query}
       stageIndex={stageIndex}
-      variant={variant}
       filter={filter}
       onUpdate={(rows) =>
         onChange(writePillRows(query, stageIndex, filter, rows))
@@ -75,23 +73,14 @@ export function OrPillsPrototype({
 type PillProps = {
   query: Lib.Query;
   stageIndex: number;
-  variant: FilterUiVariant;
   filter: Lib.FilterClause;
   onUpdate: (rows: PillRows) => void;
   onRemove: () => void;
 };
 
-function Pill({
-  query,
-  stageIndex,
-  variant,
-  filter,
-  onUpdate,
-  onRemove,
-}: PillProps) {
+function Pill({ query, stageIndex, filter, onUpdate, onRemove }: PillProps) {
   const [isOpened, setIsOpened] = useState(false);
   const rows = readPillRows(query, stageIndex, filter);
-  const label = getPillLabel(query, stageIndex, rows);
 
   return (
     <Popover
@@ -101,29 +90,12 @@ function Pill({
       onChange={setIsOpened}
     >
       <Popover.Target>
-        {variant === "chill" ? (
-          <FilterPill
-            onClick={() => setIsOpened((opened) => !opened)}
-            onRemoveClick={onRemove}
-          >
-            {label}
-          </FilterPill>
-        ) : (
-          <NotebookCellItem
-            color="core-filter"
-            onClick={() => setIsOpened((opened) => !opened)}
-          >
-            {label}
-            <Icon
-              name="close"
-              ml="sm"
-              onClick={(event) => {
-                event.stopPropagation();
-                onRemove();
-              }}
-            />
-          </NotebookCellItem>
-        )}
+        <Token
+          onClick={() => setIsOpened((opened) => !opened)}
+          onRemove={onRemove}
+        >
+          <PillLabel query={query} stageIndex={stageIndex} rows={rows} />
+        </Token>
       </Popover.Target>
       {/* The editor's own pickers render inside this dropdown, so it must not clip them. */}
       <Popover.Dropdown p={0} style={{ overflow: "visible" }}>
@@ -141,20 +113,31 @@ function Pill({
   );
 }
 
-/** `(A and B) or C`, with parentheses only when a row needs them. */
-function getPillLabel(
-  query: Lib.Query,
-  stageIndex: number,
-  rows: PillRows,
-): string {
-  return rows
-    .map((row) => {
-      const rowLabel = row
-        .map((clause) => getFilterLabel(query, stageIndex, clause))
-        .join(` ${t`and`} `);
-      return row.length > 1 && rows.length > 1 ? `(${rowLabel})` : rowLabel;
-    })
-    .join(` ${t`or`} `);
+type PillLabelProps = {
+  query: Lib.Query;
+  stageIndex: number;
+  rows: PillRows;
+};
+
+/** Figma "Group token (collapsed)": the first row, then `or N more`. */
+function PillLabel({ query, stageIndex, rows }: PillLabelProps) {
+  const [firstRow = [], ...otherRows] = rows;
+  const firstRowLabel = firstRow
+    .map((clause) => getFilterLabel(query, stageIndex, clause))
+    .join(` ${t`and`} `);
+
+  if (otherRows.length === 0) {
+    return firstRowLabel;
+  }
+  return (
+    <>
+      {firstRowLabel}
+      <Text span inherit fw="normal" c="text-secondary">
+        {t`or`}
+      </Text>
+      {t`${otherRows.length} more`}
+    </>
+  );
 }
 
 type AddFilterPopoverProps = {
@@ -188,10 +171,10 @@ function AddFilterPopover({
             <Button
               size="compact-sm"
               variant="subtle"
-              leftSection={<Icon name="add" />}
+              leftSection={isFirst ? <Icon name="add" /> : undefined}
               onClick={() => setIsOpened((opened) => !opened)}
             >
-              {t`Add filter`}
+              {isFirst ? t`Add filter` : t`AND`}
             </Button>
           </Group>
         ) : (

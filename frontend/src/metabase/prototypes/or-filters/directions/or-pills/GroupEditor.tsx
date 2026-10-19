@@ -12,13 +12,13 @@ import {
   Popover,
   Stack,
   Text,
-  UnstyledButton,
 } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 
 import S from "./GroupEditor.module.css";
+import { Token } from "./Token";
 import { type PillRows, toPillClause, updateRow } from "./orPills";
 
 type GroupEditorProps = {
@@ -74,7 +74,7 @@ export function GroupEditor({
   const draftClause = toPillClause(rows);
 
   return (
-    <Box miw={420}>
+    <Box miw={420} ff="monospace">
       <Stack gap="sm" px="md" pt="sm" pb="md">
         <Stack gap="xs">
           {rows.map((row, rowIndex) => (
@@ -89,7 +89,7 @@ export function GroupEditor({
                     {t`and`}
                   </Text>
                 ),
-                <Token
+                <ClauseToken
                   key={clauseIndex}
                   query={query}
                   stageIndex={stageIndex}
@@ -149,7 +149,7 @@ export function GroupEditor({
   );
 }
 
-type TokenProps = {
+type ClauseTokenProps = {
   query: Lib.Query;
   stageIndex: number;
   clause: Lib.FilterClause;
@@ -157,7 +157,13 @@ type TokenProps = {
   onRemove: () => void;
 };
 
-function Token({ query, stageIndex, clause, onReplace, onRemove }: TokenProps) {
+function ClauseToken({
+  query,
+  stageIndex,
+  clause,
+  onReplace,
+  onRemove,
+}: ClauseTokenProps) {
   const [isOpened, setIsOpened] = useState(false);
 
   return (
@@ -171,22 +177,12 @@ function Token({ query, stageIndex, clause, onReplace, onRemove }: TokenProps) {
       onChange={setIsOpened}
     >
       <Popover.Target>
-        <UnstyledButton
-          className={S.token}
+        <Token
           onClick={() => setIsOpened((opened) => !opened)}
+          onRemove={onRemove}
         >
           {getFilterLabel(query, stageIndex, clause)}
-          <Icon
-            name="close"
-            size={12}
-            role="button"
-            aria-label={t`Remove`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onRemove();
-            }}
-          />
-        </UnstyledButton>
+        </Token>
       </Popover.Target>
       <Popover.Dropdown>
         <FilterPicker
