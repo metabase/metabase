@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { Menu } from "metabase/ui";
 
 import type {
   BooleanPrototypeSetting,
@@ -9,7 +10,7 @@ import type {
 } from "../types";
 import { usePrototypeSetting } from "../use-prototype-setting";
 
-import { PrototypeSettingsButton } from "./PrototypeSettingsButton";
+import { PrototypeSettingsMenuItem } from "./PrototypeSettingsMenuItem";
 
 const SHOW_HINTS: BooleanPrototypeSetting = {
   type: "boolean",
@@ -44,13 +45,27 @@ interface SetupOpts {
 const setup = ({ settings }: SetupOpts) => {
   return renderWithProviders(
     <>
-      <PrototypeSettingsButton settings={settings} />
+      <Menu opened>
+        <Menu.Target>
+          <button>{"Menu"}</button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <PrototypeSettingsMenuItem settings={settings} />
+        </Menu.Dropdown>
+      </Menu>
       <SettingValues />
     </>,
   );
 };
 
-describe("PrototypeSettingsButton", () => {
+const openSubmenu = async () => {
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: "Prototype settings" }),
+  );
+  return screen.findByTestId("prototype-settings-submenu");
+};
+
+describe("PrototypeSettingsMenuItem", () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -58,28 +73,24 @@ describe("PrototypeSettingsButton", () => {
   it("should show an empty state when the prototype has no settings", async () => {
     setup({ settings: [] });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Prototype settings" }),
-    );
+    const submenu = await openSubmenu();
 
     expect(
-      await screen.findByText("No settings for this prototype."),
+      within(submenu).getByText("No settings for this prototype."),
     ).toBeInTheDocument();
   });
 
   it("should show a control for each setting with its default value", async () => {
     setup({ settings: [SHOW_HINTS, FILTER_LAYOUT] });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Prototype settings" }),
-    );
+    const submenu = await openSubmenu();
 
-    expect(await screen.findByLabelText("Show hints")).not.toBeChecked();
-    expect(screen.getByRole("textbox", { name: "Filter layout" })).toHaveValue(
-      "Compact",
-    );
+    expect(within(submenu).getByLabelText("Show hints")).not.toBeChecked();
     expect(
-      screen.queryByText("No settings for this prototype."),
+      within(submenu).getByRole("textbox", { name: "Filter layout" }),
+    ).toHaveValue("Compact");
+    expect(
+      within(submenu).queryByText("No settings for this prototype."),
     ).not.toBeInTheDocument();
   });
 
@@ -89,25 +100,21 @@ describe("PrototypeSettingsButton", () => {
       "false:compact",
     );
 
+    const submenu = await openSubmenu();
+    await userEvent.click(within(submenu).getByLabelText("Show hints"));
     await userEvent.click(
-      screen.getByRole("button", { name: "Prototype settings" }),
-    );
-    await userEvent.click(await screen.findByLabelText("Show hints"));
-    await userEvent.click(
-      screen.getByRole("textbox", { name: "Filter layout" }),
+      within(submenu).getByRole("textbox", { name: "Filter layout" }),
     );
     await userEvent.click(await screen.findByRole("option", { name: "Wide" }));
 
-    expect(screen.getByLabelText("Show hints")).toBeChecked();
+    expect(within(submenu).getByLabelText("Show hints")).toBeChecked();
     expect(screen.getByTestId("setting-values")).toHaveTextContent("true:wide");
   });
 
   it("should keep the values after the app is rendered again", async () => {
     const { unmount } = setup({ settings: [SHOW_HINTS] });
-    await userEvent.click(
-      screen.getByRole("button", { name: "Prototype settings" }),
-    );
-    await userEvent.click(await screen.findByLabelText("Show hints"));
+    const submenu = await openSubmenu();
+    await userEvent.click(within(submenu).getByLabelText("Show hints"));
     unmount();
 
     setup({ settings: [SHOW_HINTS] });

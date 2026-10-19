@@ -62,11 +62,11 @@ const delayMs = useSetting("prototype-slow-query-delay-ms");
 
 ## Prototype settings
 
-The **Prototype settings** button in the bottom-left corner of the app opens a popover with the settings of the current prototype. Use it to switch the options of a prototype while you look at it. On this branch there are no settings, so the popover says "No settings for this prototype."
+The main menu (the button in the top-right corner of the app, where you switch to Admin or Data studio) has a **Prototype settings** item. Hover it to open a submenu with the settings of the current prototype. Use it to switch the options of a prototype while you look at it. On this branch there are no settings, so the submenu says "No settings for this prototype."
 
 To add settings to a prototype:
 
-1. In `frontend/src/metabase/prototype/settings.ts`, define and export each setting of your prototype, and add it to `PROTOTYPE_SETTINGS`. The popover shows the settings in this order. Everything that `settings.ts` exports is available from `metabase/prototype`.
+1. In `frontend/src/metabase/prototype/settings.ts`, define and export each setting of your prototype, and add it to `PROTOTYPE_SETTINGS`. The submenu shows the settings in this order. Everything that `settings.ts` exports is available from `metabase/prototype`.
 2. Read the value where you need it with `usePrototypeSetting`.
 
 ```ts

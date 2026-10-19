@@ -26,10 +26,6 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import CS from "metabase/css/core/index.css";
 import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import {
-  PROTOTYPE_SETTINGS,
-  PrototypeSettingsButton,
-} from "metabase/prototype";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
@@ -129,7 +125,6 @@ export function App() {
               </AppContent>
               <UndoListing />
               <StatusListing />
-              <PrototypeSettingsButton settings={PROTOTYPE_SETTINGS} />
               <NewModals />
               <EmbedSetupModals />
               <Metabot

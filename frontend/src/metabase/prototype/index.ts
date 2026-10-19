@@ -1,4 +1,4 @@
-export { PrototypeSettingsButton } from "./components/PrototypeSettingsButton";
+export { PrototypeSettingsMenuItem } from "./components/PrototypeSettingsMenuItem";
 export * from "./settings";
 export type {
   BooleanPrototypeSetting,
