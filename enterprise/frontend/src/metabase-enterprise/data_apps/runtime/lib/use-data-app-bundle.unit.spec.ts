@@ -62,9 +62,13 @@ describe("useDataAppBundle", () => {
 
     await waitFor(() => expect(result.current.data).toEqual(LOADED_APP));
     expect(result.current.failed).toBe(false);
-    expect(mockedInstantiate).toHaveBeenCalledWith("CODE", "sales", window, [
-      "https://x",
-    ]);
+    expect(mockedInstantiate).toHaveBeenCalledWith(
+      "CODE",
+      "sales",
+      window,
+      ["https://x"],
+      { embedded: false },
+    );
     expect(mockedReport).not.toHaveBeenCalled();
   });
 

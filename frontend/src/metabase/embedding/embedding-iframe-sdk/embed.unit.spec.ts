@@ -19,7 +19,11 @@ const flushPromises = () =>
 
 const triggerIframeMessage = (iframe: HTMLIFrameElement, data: unknown) => {
   window.dispatchEvent(
-    new MessageEvent("message", { data, source: iframe.contentWindow }),
+    new MessageEvent("message", {
+      data,
+      source: iframe.contentWindow,
+      origin: new URL(iframe.src).origin,
+    }),
   );
 };
 
@@ -42,6 +46,165 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   afterEach(() => {
     consoleErrorSpy.mockRestore();
+  });
+
+  it("embeds a data app directly in its runtime iframe and sends its path", () => {
+    defineMetabaseConfig({ instanceUrl: "https://example.com/metabase" });
+
+    const embed = document.createElement("metabase-data-app");
+    embed.setAttribute("path", "123");
+    document.body.appendChild(embed);
+
+    const iframe = embed.querySelector("iframe")!;
+    expect(iframe.src).toMatch(
+      /^https:\/\/example.com\/metabase\/embed\/apps\/123\?modular=true&embed-js-identifier=\d+$/,
+    );
+
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+    triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "metabase.embed.setSettings",
+        data: expect.objectContaining({
+          componentName: "metabase-data-app",
+          path: "123",
+        }),
+      }),
+      "https://example.com",
+    );
+  });
+
+  it.each(["/123", "/123/orders?active=true"])(
+    "normalizes the leading slash in %s before sending settings",
+    (path) => {
+      defineMetabaseConfig({ instanceUrl: "https://example.com/metabase" });
+
+      const embed = document.createElement("metabase-data-app");
+      embed.setAttribute("path", path);
+      document.body.appendChild(embed);
+
+      const iframe = embed.querySelector("iframe")!;
+      expect(iframe).not.toBeNull();
+      expect(new URL(iframe.src).pathname).toBe(
+        `/metabase/embed/apps${path.split("?")[0]}`,
+      );
+
+      const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+      triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ path: path.slice(1) }),
+        }),
+        "https://example.com",
+      );
+
+      embed.setAttribute("path", "123");
+      const rootIframe = embed.querySelector("iframe")!;
+      embed.setAttribute("path", "/123");
+      expect(embed.querySelector("iframe")).toBe(rootIframe);
+      expect(new URL(rootIframe.src).pathname).toBe("/metabase/embed/apps/123");
+    },
+  );
+
+  it("preserves the initial nested route and query parameters", () => {
+    defineMetabaseConfig({ instanceUrl: "https://example.com/metabase" });
+
+    const embed = document.createElement("metabase-data-app");
+    embed.setAttribute(
+      "path",
+      "boba-ops/orders?active=true&modular=false#details",
+    );
+    document.body.appendChild(embed);
+
+    const url = new URL(embed.querySelector("iframe")!.src);
+    expect(url.pathname).toBe("/metabase/embed/apps/boba-ops/orders");
+    expect(url.searchParams.get("active")).toBe("true");
+    expect(url.searchParams.getAll("modular")).toEqual(["true"]);
+    expect(url.hash).toBe("#details");
+  });
+
+  it.each([
+    "https://other.example.com/app",
+    "//other.example.com/app",
+    "sales/../orders",
+    "sales/%2e%2e/orders",
+    "sales/%2forders",
+    "sales\\..\\orders",
+  ])("rejects paths that can escape the app: %s", (path) => {
+    defineMetabaseConfig({ instanceUrl: "https://example.com" });
+
+    const embed = document.createElement("metabase-data-app");
+    embed.setAttribute("path", path);
+    document.body.appendChild(embed);
+
+    expect(embed.querySelector("iframe")).toBeNull();
+  });
+
+  it("ignores data app transport messages after the frame navigates to another origin", () => {
+    defineMetabaseConfig({ instanceUrl: "https://example.com" });
+
+    const embed = document.createElement("metabase-data-app");
+    embed.setAttribute("path", "sales");
+    document.body.appendChild(embed);
+
+    const iframe = embed.querySelector("iframe")!;
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: { type: "metabase.embed.iframeReady" },
+        source: iframe.contentWindow,
+        origin: "https://other.example.com",
+      }),
+    );
+
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("recreates the runtime when its path changes and retains ready listeners", () => {
+    defineMetabaseConfig({ instanceUrl: "https://example.com" });
+
+    const embed = document.createElement("metabase-data-app");
+    embed.setAttribute("path", "sales");
+    document.body.appendChild(embed);
+
+    const onReady = jest.fn();
+    embed.addEventListener("ready", onReady);
+    const firstIframe = embed.querySelector("iframe")!;
+    triggerIframeMessage(firstIframe, { type: "metabase.embed.iframeReady" });
+
+    embed.setAttribute("path", "sales/orders?active=true");
+
+    const nextIframe = embed.querySelector("iframe")!;
+    expect(nextIframe).not.toBe(firstIframe);
+    expect(embed.querySelectorAll("iframe")).toHaveLength(1);
+    expect(nextIframe.src).toContain(
+      "/embed/apps/sales/orders?active=true&modular=true&",
+    );
+
+    triggerIframeMessage(nextIframe, { type: "metabase.embed.iframeReady" });
+    expect(onReady).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    { isGuest: true },
+    { apiKey: "key" },
+    { useExistingUserSession: true },
+  ])("rejects non-SSO data app authentication: %p", (auth) => {
+    defineMetabaseConfig({ instanceUrl: "https://example.com", ...auth });
+
+    const embed = document.createElement("metabase-data-app");
+    embed.setAttribute("path", "sales");
+    document.body.appendChild(embed);
+
+    expect(embed.querySelector("iframe")).toBeNull();
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[metabase.embed.error]",
+      expect.objectContaining({
+        message: "Data app embeds require SSO authentication.",
+      }),
+    );
   });
 
   it("reports an error when instance url is not provided", () => {

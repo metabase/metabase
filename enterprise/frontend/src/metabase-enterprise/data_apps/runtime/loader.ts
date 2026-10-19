@@ -7,6 +7,7 @@ import { pick } from "underscore";
 
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
+import { api } from "metabase/api/client";
 import { DATA_APP_REALM_HOST_URL, getSubpathSafeUrl } from "metabase/urls";
 import { createDataAppSandbox } from "metabase-enterprise/data_apps/sandbox/sandbox";
 import {
@@ -75,6 +76,7 @@ export class DataAppBundleError extends Error {
  */
 export const fetchDataAppBundleCode = async (
   name: string,
+  { embedded = false }: { embedded?: boolean } = {},
 ): Promise<FetchedDataAppBundle> => {
   const url = getSubpathSafeUrl(
     `/api/apps/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
@@ -82,7 +84,13 @@ export const fetchDataAppBundleCode = async (
 
   let res: Response;
   try {
-    res = await fetch(url, { cache: "no-store" });
+    res = embedded
+      ? await api.fetch({
+          method: "GET",
+          url: `/api/apps/${encodeURIComponent(name)}/bundle`,
+          cache: "no-store",
+        })
+      : await fetch(url, { cache: "no-store" });
   } catch (e) {
     throw new DataAppBundleError(
       `Failed to reach the server for data-app bundle: ${
@@ -112,12 +120,15 @@ export const instantiateDataAppBundle = async (
   label: string,
   targetWindow: Window & typeof globalThis,
   allowedHosts: string[] = [],
+  { embedded = false }: { embedded?: boolean } = {},
 ): Promise<LoadedDataApp> => {
   const sandbox = await createDataAppSandbox({
     label,
     targetWindow,
     allowedHosts,
-    realmHostUrl: getSubpathSafeUrl(DATA_APP_REALM_HOST_URL),
+    realmHostUrl: getSubpathSafeUrl(
+      embedded ? "/embed/apps-sandbox" : DATA_APP_REALM_HOST_URL,
+    ),
     endowments: {
       React,
       reactDom: ReactDOM,

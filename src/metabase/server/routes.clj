@@ -41,6 +41,7 @@
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private ^{:arglists '([request respond raise])} embed-routes
   (GET "/sdk/v1" [] index/embed-sdk)
+  (GET "/apps-sandbox" [] index/data-app-sandbox)
   ;; Same `data-app.html` for the bare path and any deeper sub-route — the
   ;; iframe's React Router owns the sub-path; reloads at an inner URL still
   ;; have to serve the SPA shell.

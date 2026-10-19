@@ -381,14 +381,26 @@
        (valid-embedding-origins
         (setting/get-value-of-type :string :embedding-app-origins-interactive))))
 
+(defn modular-embedding-frame-ancestors
+  "Allowed ancestors for modular data app runtime and evaluator documents."
+  []
+  (if (embedding.settings/enable-embedding-modular)
+    (str/join " " (remove str/blank?
+                          ["'self'"
+                           (when-not (server.settings/disable-cors-on-localhost)
+                             "http://localhost:* https://localhost:* http://127.0.0.1:* https://127.0.0.1:*")
+                           (valid-embedding-origins (embedding.settings/embedding-app-origins-sdk))]))
+    "'none'"))
+
 (defn- frame-ancestors-value
   "The `frame-ancestors` CSP source-list for a given framing `mode`:
    `:any` (open embedding), `:self` (same-origin only, e.g. the internal data-app
-   iframe), or `:none` (no framing, unless interactive embedding is configured)."
+   iframe), `:modular` (configured SDK origins), or `:none` (interactive embedding policy)."
   [mode]
   (case mode
     :any  "*"
     :self "'self'"
+    :modular (modular-embedding-frame-ancestors)
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
@@ -420,6 +432,7 @@
   [mode]
   (case mode
     :any  nil
+    :modular nil
     :self {"X-Frame-Options" "SAMEORIGIN"}
     {"X-Frame-Options" (if-let [eao (interactive-embedding-origins)]
                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
@@ -522,7 +535,7 @@
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options.
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
-   `:self` (same-origin only), or `:none` (default — no framing unless interactive
+   `:self` (same-origin only), `:modular` (configured SDK origins), or `:none` (default — no framing unless interactive
    embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
    [[script-nonce-response-key]]."
   [& {:keys [origin nonce script-nonce? frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts
@@ -652,11 +665,10 @@
                  :cors                        cors
                  :nonce                       (:nonce request)
                  :script-nonce?               (boolean (get response script-nonce-response-key))
-                 ;; The internal data-app iframe is only ever framed by the
-                 ;; same-origin Metabase app, so restrict it to `'self'` rather
-                 ;; than the open embedding `*`. Check it before the broader
-                 ;; `embed?`, which `/embed/apps/...` also matches.
+                 ;; Data apps choose their ancestor policy before the generic embed routes:
+                 ;; configured SDK origins for modular embeds, same-origin for internal views.
                  :frame-ancestors             (cond
+                                                (request/modular-data-app? request)               :modular
                                                 (request/data-app? request)                       :self
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
@@ -669,12 +681,15 @@
                  ;; hosts are looked up only for a signed-in user: the header would
                  ;; otherwise hand an app's `allowed_hosts` to anyone who can guess
                  ;; its slug, and let them probe which slugs exist. A signed-out
-                 ;; request still gets the data-app policy with an empty allowlist,
-                 ;; not the broader instance-wide one.
-                 :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (if (:metabase-user-id request)
-                                                  (drop-instance-origin (data-app-connect-src-hosts slug))
-                                                  []))
+                 ;; internal request keeps an empty allowlist. The modular SSO shell contains
+                 ;; trusted bootstrap code only. It installs the authenticated document's stricter
+                 ;; policy as a CSP meta element before evaluating any bundle.
+                 :data-app-connect-hosts      (if (request/data-app-bootstrap? request)
+                                                ["http:" "https:"]
+                                                (when-let [slug (data-app-slug request)]
+                                                  (if (:metabase-user-id request)
+                                                    (drop-instance-origin (data-app-connect-src-hosts slug))
+                                                    [])))
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
                                                   (request/embed-sdk-eajs-entrypoint? request)))
@@ -682,7 +697,10 @@
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
                         "Access-Control-Allow-Methods" "*"})]
-    (update response :headers #(merge %2 %1 cors-headers) headers)))
+    (cond-> (update response :headers #(merge %2 %1 cors-headers) headers)
+      (request/modular-data-app? request)
+      (assoc-in [:headers "X-Metabase-Data-App-Policy"]
+                (if (request/data-app-bootstrap? request) "bootstrap" "authenticated")))))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers. `cors` contains optional callbacks supplied by the

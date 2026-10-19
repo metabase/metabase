@@ -9,8 +9,11 @@
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
    [metabase.data-apps.core :as data-apps]
+   [metabase.embedding.settings :as embedding]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.core :as request]
+   [metabase.server.middleware.security :as security]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.users.settings :as users-settings]
@@ -164,12 +167,15 @@
   "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
    instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
-   data-app entrypoint rather than in the top-level route table. A signed-out visitor is sent to
-   the login page: the document's CSP carries the app's `allowed_hosts`, which only signed-in
-   users may see."
+   data-app entrypoint rather than in the top-level route table. Internal views require a signed-in
+   user. Modular embeds first receive a generic SSO shell, then fetch their authorized document's
+   policy before loading a bundle. App-specific allowed hosts stay behind that access check."
   [request respond raise]
   (cond
     (not (premium-features/enable-data-apps?)) (respond nil)
+    (and (request/modular-data-app? request)
+         (not (embedding/enable-embedding-modular))) (respond {:status 403 :body "Modular embedding is disabled."})
+    (request/data-app-bootstrap? request)    (data-app-shell request respond raise)
     (nil? (:metabase-user-id request))         (respond (login-redirect request))
     :else (if-let [error (try
                            (data-apps/check-data-app-access! request)
@@ -178,3 +184,15 @@
                              e))]
             (raise error)
             (data-app-shell request respond raise))))
+
+(defn data-app-sandbox
+  "Serve the empty evaluator realm for modular data apps without requiring cookies."
+  [_request respond _raise]
+  (respond (if-not (and (premium-features/enable-data-apps?) (embedding/enable-embedding-modular))
+             {:status 403 :body "Data app embedding is disabled."}
+             {:status 200
+              :headers {"Content-Type" "text/html; charset=utf-8"
+                        "Content-Security-Policy" (str "default-src 'none'; script-src 'unsafe-eval'; form-action 'none'; frame-ancestors "
+                                                       (security/modular-embedding-frame-ancestors) ";")
+                        "Referrer-Policy" "no-referrer"}
+              :body "<!doctype html><html><head></head><body></body></html>"})))

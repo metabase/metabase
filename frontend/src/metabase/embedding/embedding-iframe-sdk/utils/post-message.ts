@@ -17,8 +17,8 @@ type ListenForEajsMessagesOptions<Source extends EajsMessageSource> = {
   messageSource: Source;
   handler: (message: EajsMessageBySource[Source]) => void;
 } & (Source extends "iframe-content"
-  ? { iframe: HTMLIFrameElement }
-  : { iframe?: never });
+  ? { iframe: HTMLIFrameElement; expectedOrigin?: string }
+  : { iframe?: never; expectedOrigin?: never });
 
 export function listenForEajsMessages<Source extends EajsMessageSource>(
   options: ListenForEajsMessagesOptions<Source>,
@@ -36,7 +36,11 @@ export function listenForEajsMessages<Source extends EajsMessageSource>(
         break;
       case "iframe-content": {
         const iframeWindow = options.iframe?.contentWindow;
-        if (!iframeWindow || event.source !== iframeWindow) {
+        if (
+          !iframeWindow ||
+          event.source !== iframeWindow ||
+          (options.expectedOrigin && event.origin !== options.expectedOrigin)
+        ) {
           return;
         }
         break;

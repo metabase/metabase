@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.data-apps.core :as data-apps]
+   [metabase.embedding.settings :as embedding.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
@@ -34,6 +35,47 @@
   (let [p (promise)]
     (index/data-app request #(deliver p %) #(deliver p %))
     @p))
+
+(deftest modular-data-app-bootstrap-test
+  (mt/with-dynamic-fn-redefs [premium-features/enable-data-apps? (constantly true)
+                              embedding.settings/enable-embedding-modular (constantly true)
+                              data-apps/check-data-app-access! (fn [_] (throw (ex-info "Denied" {:status-code 403})))
+                              index/data-app-shell (fn [_ respond _] (respond {:status 200 :body "SHELL"}))]
+    (testing "the cookie-free bootstrap serves only the shell before SSO"
+      (is (= "SHELL" (:body (serve-data-app {:uri "/embed/apps/sales" :params {:modular "true"}})))))
+    (testing "an authenticated document request still checks app access"
+      (is (= 403 (-> (serve-data-app {:uri "/embed/apps/sales"
+                                      :params {:modular "true"}
+                                      :metabase-user-id 1
+                                      :headers {"x-metabase-session" "session"}})
+                     ex-data :status-code))))
+    (testing "disabling modular embedding blocks the bootstrap"
+      (mt/with-dynamic-fn-redefs [embedding.settings/enable-embedding-modular (constantly false)]
+        (is (= 403 (:status (serve-data-app {:uri "/embed/apps/sales" :params {:modular "true"}}))))))))
+
+(deftest modular-data-app-through-routes-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:data-apps :embedding-simple}
+     (mt/with-temporary-setting-values [enable-embedding-modular true
+                                        embedding-app-origins-sdk "https://customer.example"]
+       (binding [client/*url-prefix* ""]
+         (let [access-checks (atom [])]
+           (mt/with-dynamic-fn-redefs [index/data-app-shell (fn [_ respond _] (respond {:status 200 :body "SHELL"}))
+                                       data-apps/check-data-app-access! (fn [request] (swap! access-checks conj (:metabase-user-id request)))]
+             (let [bootstrap (client/client-full-response :get 200 "embed/apps/sales?modular=true")]
+               (is (= "SHELL" (:body bootstrap)))
+               (is (= "bootstrap" (get-in bootstrap [:headers "X-Metabase-Data-App-Policy"])))
+               (is (empty? @access-checks)))
+             (let [authorized (mt/user-http-request-full-response :rasta :get 200 "embed/apps/sales?modular=true")]
+               (is (= "authenticated" (get-in authorized [:headers "X-Metabase-Data-App-Policy"])))
+               (is (= [(mt/user->id :rasta)] @access-checks))))
+           (testing "the cookie-free evaluator retains its own script and network restrictions"
+             (let [response (client/client-full-response :get 200 "embed/apps-sandbox")
+                   policy (get-in response [:headers "Content-Security-Policy"])]
+               (is (str/includes? policy "default-src 'none'"))
+               (is (str/includes? policy "script-src 'unsafe-eval'"))
+               (is (str/includes? policy "https://customer.example"))
+               (is (nil? (get-in response [:headers "X-Frame-Options"])))))))))))
 
 (deftest data-app-entrypoint-is-gated-by-the-data-apps-feature-test
   (testing "the /embed/apps/:name entrypoint is served only with :data-apps; without it it
