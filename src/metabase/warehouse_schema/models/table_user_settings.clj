@@ -195,8 +195,7 @@
                :points_of_interest_set false
                :data_layer_set         false
                :data_source_set        false}
-   :transform {:created_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
+   :transform {:collection_id (serdes/fk :model/Collection)
                :owner_user_id (serdes/fk :model/User)
                :data_layer    (serdes/optional-kw)
                :table_id      {::serdes/fk true
