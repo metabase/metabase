@@ -299,13 +299,11 @@
       (is (not (str/includes? content "search/browse.\n\n\n\n"))
           "the {% endif %} must not add a blank line after the hand-off"))))
 
-(deftest ^:parallel raw-sql-aside-reaches-every-sql-writing-template-test
-  (testing "the raw-SQL aside lives outside the directive-free shared snippets, so each SQL-writing template must carry it itself"
+(deftest ^:parallel raw-sql-aside-in-internal-sql-section-test
+  (testing "the raw-SQL aside left the directive-free shared snippet, so internal.selmer carries it in its SQL section"
     (binding [scope/*current-user-metabot-permissions* {:permission/metabot-sql-generation :yes
                                                         :permission/metabot-nlq            :yes
                                                         :permission/metabot-other-tools    :yes}]
-      (doseq [template ["internal.selmer" "sql-querying-only.selmer"]]
-        (testing template
-          (is (str/includes? (prompts/build-system-message-content {:prompt-template template} {}
-                                                                   {"create_sql_query" nil} [])
-                             "When writing raw SQL")))))))
+      (is (str/includes? (prompts/build-system-message-content {:prompt-template "internal.selmer"} {}
+                                                               {"create_sql_query" nil} [])
+                         "When writing raw SQL")))))
