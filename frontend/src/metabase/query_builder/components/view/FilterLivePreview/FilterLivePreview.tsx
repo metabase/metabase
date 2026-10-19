@@ -6,6 +6,8 @@ import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import {
   LIVE_FILTER_PREVIEW,
+  LIVE_FILTER_PREVIEW_ANIMATION,
+  LIVE_FILTER_PREVIEW_ANIMATION_MS,
   LIVE_FILTER_PREVIEW_DELAY_MS,
   LIVE_FILTER_PREVIEW_SLOW_DATA,
   usePrototypeSetting,
@@ -17,6 +19,7 @@ import {
 } from "metabase/querying/filters/components/FilterPicker/FilterPreviewContext";
 import { useSetting } from "metabase/settings";
 import { Box, Center, Flex, Loader, Stack, Text } from "metabase/ui";
+import { ChartAnimationContext } from "metabase/visualizations/components/EChartsRenderer/ChartAnimationContext";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -69,6 +72,12 @@ function FilterLivePreview({
   const [delayMs] = usePrototypeSetting(LIVE_FILTER_PREVIEW_DELAY_MS);
   const [isEnabledForSlowData] = usePrototypeSetting(
     LIVE_FILTER_PREVIEW_SLOW_DATA,
+  );
+  const [isAnimated] = usePrototypeSetting(LIVE_FILTER_PREVIEW_ANIMATION);
+  const [animationMs] = usePrototypeSetting(LIVE_FILTER_PREVIEW_ANIMATION_MS);
+  const chartAnimation = useMemo(
+    () => (isAnimated ? { durationMs: animationMs } : null),
+    [isAnimated, animationMs],
   );
   const prototypeData = useSetting("prototype-data");
 
@@ -133,7 +142,7 @@ function FilterLivePreview({
         bg="background_page-primary"
         style={{
           borderRadius: "var(--mantine-radius-md)",
-          opacity: isUpdating && rawSeries ? 0.6 : 1,
+          opacity: isUpdating && rawSeries && !isAnimated ? 0.6 : 1,
           transition: "opacity 150ms",
         }}
       >
@@ -144,7 +153,13 @@ function FilterLivePreview({
             </Text>
           </Center>
         ) : rawSeries ? (
-          <Visualization rawSeries={rawSeries} isDashboard showTitle={false} />
+          <ChartAnimationContext.Provider value={chartAnimation}>
+            <Visualization
+              rawSeries={rawSeries}
+              isDashboard
+              showTitle={false}
+            />
+          </ChartAnimationContext.Provider>
         ) : (
           <Center h="100%">
             <Loader />
