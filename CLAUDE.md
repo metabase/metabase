@@ -1,5 +1,12 @@
 # Metabase Development Guide
 
+## Do Not Edit `docs/` Alongside Code Changes
+
+**NEVER** change files under `docs/` as part of a code change, even if the change makes the docs out of date.
+A dedicated team of technical writers owns `docs/` and updates it. Edit `docs/` only when the task is
+explicitly a documentation task. If your code change affects documented behavior, say so in your summary
+or PR description so the writers can follow up.
+
 # Skills
 
 For detailed guidance on writing and reviewing code and documentation, see the skills in [.claude/skills/](.claude/skills/):
