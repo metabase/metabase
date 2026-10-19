@@ -1,7 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.sql.stage-ctes-test
-  "End-to-end tests for queries whose stages compile to CTEs (see [[metabase.driver.sql.query-processor/use-ctes-for-stages?]]).
-  These recreate the questions used to test CTE compilation by hand: a multi-stage question with joins, a native
-  question that selects from it with a variable, and a question that joins it."
+  "Translation of manual tests done in the UI for CTE compilation into unit tests.
+   1. A multi-stage question with many joins and aggregations
+   2. A native question that selects from 1. with a filter variable
+   3. A question that joins 1. with an aggregation and filter"
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -16,7 +17,6 @@
    [metabase.util.date-2 :as u.date]))
 
 (defn- col
-  "The column in `cols` named `col-name` (ignoring case), from the join with `join-alias` if given."
   ([cols col-name]
    (col cols col-name nil))
   ([cols col-name join-alias]
@@ -27,7 +27,6 @@
        (throw (ex-info "Column not found" {:name col-name, :join-alias join-alias})))))
 
 (defn- join-alias
-  "The alias of the last join in the last stage of `query`. Join aliases come from table names, which differ by driver."
   [query]
   (:alias (last (lib/joins query))))
 
