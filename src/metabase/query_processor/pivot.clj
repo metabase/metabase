@@ -781,7 +781,7 @@
   Each shape value doubles as a `:qp.pivot/forced-shape` stage value the driver's compiler recognises.
   Returns an ordered collection — a seq, vector, or empty when the driver has no single-query shape
   for this query."
-  {:added "0.66.0" :changelog-test/ignore true :arglists '([query database])}
+  {:added "0.66.0" :arglists '([query database])}
   (fn [_query database] (:engine database))
   :hierarchy #'driver/hierarchy)
 
