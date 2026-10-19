@@ -128,3 +128,22 @@
           (is (= #{"a"} (set (map :column used_fields))))
           (is (every? #(= " " (:alias %)) used_fields))))
       (is (= "success" (:status (protocol/transpile-sql java-parser "SELECT 1" "  " "postgres")))))))
+
+(deftest replace-names-quotes-names-that-are-not-one-identifier-test
+  (testing "a replacement name that does not read back as one identifier is quoted whole, never written as SQL"
+    (let [java-parser (sqlglot-java/parser)
+          rename      (fn [sql replacements] (protocol/replace-names java-parser "postgres" sql replacements))]
+      (doseq [[new-name expected] [["x;y"                   "SELECT id FROM \"x;y\""]
+                                   ["x,y"                   "SELECT id FROM \"x,y\""]
+                                   ["x/*c*/"                "SELECT id FROM \"x/*c*/\""]
+                                   ["x;delete/**/from/**/t" "SELECT id FROM \"x;delete/**/from/**/t\""]
+                                   ["select"                "SELECT id FROM \"select\""]]]
+        (testing new-name
+          (is (= expected (rename "SELECT id FROM t" {:tables [[{:table "t"} new-name]]})))))
+      (testing "as a schema"
+        (is (= "SELECT id FROM \"a;b\".t" (rename "SELECT id FROM public.t" {:schemas {"public" "a;b"}}))))
+      (testing "as a column"
+        (is (= "SELECT \"x;y\" FROM t" (rename "SELECT id FROM t" {:columns [[{:column "id"} "x;y"]]}))))
+      (testing "an ordinary name stays unquoted, and a quoted one keeps its quotes"
+        (is (= "SELECT id FROM archived_orders" (rename "SELECT id FROM t" {:tables [[{:table "t"} "archived_orders"]]})))
+        (is (= "SELECT id FROM \"Archived\"" (rename "SELECT id FROM t" {:tables [[{:table "t"} "\"Archived\""]]})))))))
