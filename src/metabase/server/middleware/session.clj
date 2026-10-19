@@ -111,26 +111,27 @@
    anti-csrf-token :- [:maybe :string]]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
     (let [session-key-hash (session/hash-session-key session-key)]
-      (some-> (server.db/session-user-info session-key-hash
-                                           anti-csrf-token
-                                           (config/config-int :max-session-age)
-                                           (premium-features/enable-advanced-permissions?)
-                                           (and (premium-features/enable-tenants?)
-                                                (setting/get :use-tenants))
-                                           (request/enabled-session-timeout-seconds)
-                                           (session/mfa-required?))
-              ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
-              (update :is-group-manager? boolean)
-              ;; `:metabase-session-key` is attached by [[wrap-session-key]] from an unvalidated cookie or header, so
-              ;; its presence says nothing about whether the session is the credential that authenticated this
-              ;; request.  `:metabase/authed-session-key-hash` identifies the session that did, and being namespaced
-              ;; it cannot arrive from anywhere a request has been: Ring keys are unqualified, so only this function
-              ;; can set it. It carries the `key_hashed` value rather than the key itself, since that is all anything
-              ;; downstream needs and the key is the credential.
-              (assoc :metabase/authed-session-key-hash session-key-hash)
-              (as-> $
-                    (assoc $ :embedding/auth-method (or (:auth-provider $)
-                                                        "session")))))))
+      (when-let [{:keys [auth-provider] :as user-info}
+                 (server.db/session-user-info session-key-hash
+                                              anti-csrf-token
+                                              (config/config-int :max-session-age)
+                                              (premium-features/enable-advanced-permissions?)
+                                              (and (premium-features/enable-tenants?)
+                                                   (setting/get :use-tenants))
+                                              (request/enabled-session-timeout-seconds)
+                                              (session/mfa-required?))]
+        (-> user-info
+            (dissoc :auth-provider)
+            ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
+            (update :is-group-manager? boolean)
+            ;; `:metabase-session-key` is attached by [[wrap-session-key]] from an unvalidated cookie or header, so
+            ;; its presence says nothing about whether the session is the credential that authenticated this
+            ;; request.  `:metabase/authed-session-key-hash` identifies the session that did, and being namespaced
+            ;; it cannot arrive from anywhere a request has been: Ring keys are unqualified, so only this function
+            ;; can set it. It carries the `key_hashed` value rather than the key itself, since that is all anything
+            ;; downstream needs and the key is the credential.
+            (assoc :metabase/authed-session-key-hash session-key-hash
+                   :embedding/auth-method            (or auth-provider "session")))))))
 
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
@@ -274,18 +275,17 @@
 (defn- merge-current-user-info
   [{:keys [oauth-bearer mcp-ui-credentials]}
    {:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
-  ;; order of authentication sources is important, bearer and mcp ui credentials last
-  (let [current-user-info (or (current-user-info-for-session metabase-session-key anti-csrf-token)
-                              (current-user-info-for-api-key x-api-key)
-                              ;; oauth also carries `:token-scopes`
-                              (current-user-info-for-oauth-token oauth-bearer request)
-                              (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))]
-    (merge
-     request
-     (dissoc current-user-info :auth-provider)
-     (when x-metabase-locale
-       (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
-       {:user-locale (i18n/normalized-locale-string x-metabase-locale)}))))
+  (merge
+   request
+   ;; order of authentication sources is important, bearer and mcp ui credentials last
+   (or (current-user-info-for-session metabase-session-key anti-csrf-token)
+       (current-user-info-for-api-key x-api-key)
+       ;; oauth also carries `:token-scopes`
+       (current-user-info-for-oauth-token oauth-bearer request)
+       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))
+   (when x-metabase-locale
+     (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
+     {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session

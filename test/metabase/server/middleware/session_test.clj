@@ -444,7 +444,6 @@
                 :is-group-manager? false,
                 :user-locale nil
                 :is-data-analyst? false
-                :auth-provider nil
                 :metabase/authed-session-key-hash test-session-key-hashed
                 :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
@@ -463,7 +462,6 @@
                 :is-group-manager? false,
                 :user-locale nil
                 :is-data-analyst? false
-                :auth-provider nil
                 :metabase/authed-session-key-hash test-session-key-hashed
                 :embedding/auth-method "session"}
                (#'mw.session/current-user-info-for-session test-session-key nil)))
@@ -518,7 +516,6 @@
                   :is-group-manager? false,
                   :user-locale nil
                   :is-data-analyst? false
-                  :auth-provider nil
                   :metabase/authed-session-key-hash test-session-key-hashed
                   :embedding/auth-method "session"}
                  (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
@@ -571,21 +568,21 @@
           (t2/delete! :model/Session :id test-session-id))))))
 
 (deftest auth-provider-via-left-join-test
-  (testing "session LEFT JOIN on auth_identity returns correct provider for each auth method"
+  (testing "a session's auth method is its auth_identity provider, or \"session\" without one"
     (mt/with-temporary-setting-values [mfa-enforcement :off]
       (mt/with-temp [:model/User {user-id :id} {}]
-        ;; "password" is excluded - its before-insert hook requires credentials, and it's already
-        ;; tested via auth-method-test in view_log_test.clj. "api-key" is tested above in
-        ;; current-user-info-for-api-key-test (different code path, no auth_identity).
-        (doseq [provider ["jwt" "saml" "google" "ldap" "oidc"
-                          "custom-oidc" "slack-connect" "support-access-grant"]]
-          (testing (str "provider: " provider)
-            (let [ai         (first (t2/insert-returning-instances! (t2/table-name :model/AuthIdentity)
-                                                                    {:user_id     user-id
-                                                                     :provider    provider
-                                                                     :provider_id (str user-id "-" provider)
-                                                                     :created_at  :%now
-                                                                     :updated_at  :%now}))
+        ;; table inserts skip the AuthIdentity before-insert hook, which requires credentials for "password".
+        ;; "api-key" is tested above in current-user-info-for-api-key-test (no auth_identity).
+        (doseq [provider ["password" "jwt" "saml" "google" "ldap" "oidc"
+                          "custom-oidc" "slack-connect" "support-access-grant" nil]]
+          (testing (str "provider: " (or provider "none"))
+            (let [ai          (when provider
+                                (first (t2/insert-returning-instances! (t2/table-name :model/AuthIdentity)
+                                                                       {:user_id     user-id
+                                                                        :provider    provider
+                                                                        :provider_id (str user-id "-" provider)
+                                                                        :created_at  :%now
+                                                                        :updated_at  :%now})))
                   session-key (session/generate-session-key)
                   session-id  (session/generate-session-id)]
               (try
@@ -595,11 +592,12 @@
                              :user_id           user-id
                              :auth_identity_id  (:id ai)
                              :created_at        :%now})
-                (is (= provider
-                       (:auth-provider (#'mw.session/current-user-info-for-session session-key nil))))
+                (is (= (or provider "session")
+                       (:embedding/auth-method (#'mw.session/current-user-info-for-session session-key nil))))
                 (finally
                   (t2/delete! :model/Session :id session-id)
-                  (t2/delete! :model/AuthIdentity :id (:id ai)))))))))))
+                  (when ai
+                    (t2/delete! :model/AuthIdentity :id (:id ai))))))))))))
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns our bound variables for users
 (defn- user-bound-handler [request]

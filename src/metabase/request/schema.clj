@@ -13,7 +13,6 @@
    [:user-locale        {:optional true} [:maybe string?]]
    [:is-group-manager?  {:optional true} :boolean]
    [:permissions-set    {:optional true} [:set :string]]
-   [:auth-provider      {:optional true} [:maybe :string]]
    [:settings           {:optional true} [:maybe [:or ms/UserSettings :string]]]
    [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked {:optional true} :boolean]
