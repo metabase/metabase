@@ -824,6 +824,22 @@
 
 (def ^:private preprocessing-message-limit 300)
 
+(defn- preprocessing-rejection-message
+  [cause]
+  (if (contains? #{:invalid-query :invalid-parameter :unsupported-feature} (:type (ex-data cause)))
+    (or (ex-message cause) "Invalid query.")
+    (when (instance? clojure.lang.ExceptionInfo cause)
+      (case (ex-message cause)
+        "Incompatible metric"
+        (str "A metric is incompatible with this query stage. Use a metric that applies to the stage's "
+             "source table and columns.")
+
+        "Failed to replace metric"
+        (str "Metabase could not expand a metric reference. Check that it is in an aggregation and applies "
+             "to this stage's source.")
+
+        nil))))
+
 (defn- check-query-preprocessing!
   [query]
   (try
@@ -831,7 +847,7 @@
     (catch Throwable e
       (let [chain   (u/full-exception-chain e)
             refusal (u/seek #(= 403 (:status-code (ex-data %))) chain)
-            cause   (ex-cause e)]
+            message (preprocessing-rejection-message (ex-cause e))]
         (cond
           (some #(or (instance? java.sql.SQLException %)
                      (contains? (ex-data %) :toucan2/context-trace)) chain)
@@ -842,9 +858,9 @@
 
           (and (= :qp (:type (ex-data e)))
                (:fn (ex-data e))
-               (contains? #{:invalid-query :invalid-parameter :unsupported-feature} (:type (ex-data cause))))
+               message)
           (throw (ex-info (str "The query builds, but Metabase rejects it when preparing it to run: "
-                               (u/truncate (or (ex-message cause) "Invalid query.") preprocessing-message-limit))
+                               (u/truncate message preprocessing-message-limit))
                           {:agent-error? true
                            :error        :query-preprocessing-failed
                            :status-code  400}

@@ -2232,3 +2232,24 @@
                         (try
                           (construct/execute-representations-query query {:preprocess-check? true})
                           (catch Throwable failure failure))))))))
+
+(deftest construct-tools-reject-incompatible-later-stage-metric-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp           (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price)))))]
+      (mt/with-temp [:model/Card {entity-id :entity_id} {:name "Products price"
+                                                         :type :metric
+                                                         :database_id (mt/id)
+                                                         :dataset_query (lib/prepare-for-serialization metric-query)}]
+        (let [query {:lib/type "mbql/query"
+                     :stages [{:lib/type "mbql.stage/mbql"
+                               :source-table [(:name (mt/db)) "PUBLIC" "ORDERS"]}
+                              {:lib/type "mbql.stage/mbql"
+                               :aggregation [["metric" {} entity-id]]}]}]
+          (doseq [tool [construct/construct-notebook-query-tool
+                        slackbot-query/slackbot-construct-notebook-query-tool]]
+            (is (=? {:class :recoverable
+                     :code  :metabase.metabot.tools.recoverable.pipeline/query-preprocessing-failed
+                     :text  #"(?s).*metric is incompatible.*stage's source table and columns.*Fix that part.*"}
+                    (test-util/tool-failure tool {:query query :reasoning "use a metric"})))))))))
