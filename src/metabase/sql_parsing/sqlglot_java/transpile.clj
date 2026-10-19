@@ -84,7 +84,7 @@
     (metabase-templates? sql)
     {:transpiled_sql sql :status "skipped" :reason "contains_templates"}
 
-    (or (str/blank? from-dialect) (str/blank? to-dialect))
+    (or (empty? from-dialect) (empty? to-dialect))
     {:transpiled_sql sql :status "skipped" :reason "missing_dialect"}
 
     :else

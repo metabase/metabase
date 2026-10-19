@@ -2,7 +2,6 @@
   "The tables and fields a query reads: `referenced_tables`, `referenced_fields`, and the table helpers they share
   with the rewrites."
   (:require
-   [clojure.string :as str]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.util :as u])
   (:import
@@ -27,9 +26,9 @@
   "`[catalog schema table]` of a Table node, or nil when it has no name (a table function)."
   [table]
   (let [table-name (ast/node-name table)]
-    (when-not (str/blank? table-name)
-      [(u/not-blank (ast/text table "catalog"))
-       (u/not-blank (ast/text table "db"))
+    (when (seq table-name)
+      [(not-empty (ast/text table "catalog"))
+       (not-empty (ast/text table "db"))
        (str (temp-table-prefix table) table-name)])))
 
 (defn shadowing-cte-names
@@ -66,8 +65,8 @@
   [stmt]
   (for [table (ast/find-all stmt Expressions$Table)
         :when (table-parts table)
-        :when (not (and (str/blank? (ast/text table "db"))
-                        (str/blank? (ast/text table "catalog"))
+        :when (not (and (empty? (ast/text table "db"))
+                        (empty? (ast/text table "catalog"))
                         (contains? (shadowing-cte-names table) (u/lower-case-en (ast/node-name table)))))]
     table))
 

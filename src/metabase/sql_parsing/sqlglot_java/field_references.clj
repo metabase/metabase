@@ -5,9 +5,7 @@
   is a list of scope levels, innermost first, each a list of the sources in that scope (FROM and JOINs). `withs` maps a
   CTE name to its source."
   (:require
-   [clojure.string :as str]
-   [metabase.sql-parsing.sqlglot-java.ast :as ast]
-   [metabase.util :as u])
+   [metabase.sql-parsing.sqlglot-java.ast :as ast])
   (:import
    (com.metabase.sqlglot.ast Expressions$Alias Expressions$Between Expressions$Binary Expressions$Boolean
                              Expressions$Case Expressions$Column Expressions$DataType Expressions$Exists
@@ -49,7 +47,7 @@
   its qualifier names, ignoring case."
   [source table-ref]
   (boolean (and source
-                (or (str/blank? table-ref)
+                (or (empty? table-ref)
                     (let [{:keys [table_alias table]} (:names source)]
                       (or (and table_alias (= (ast/lower table_alias) (ast/lower table-ref)))
                           (and table (= (ast/lower table) (ast/lower table-ref)))))))))
@@ -80,12 +78,12 @@
                                   :when (seq scope-fields)]
                               scope-fields))
         source-column  (some (fn [field]
-                               (let [field-name (or (u/not-blank (:alias field)) (:column field))]
+                               (let [field-name (or (not-empty (:alias field)) (:column field))]
                                  (when (and field-name (= (ast/lower field-name) (ast/lower column-name)))
                                    field)))
                              (first source-columns))
         ;; SELECT o FROM (SELECT * FROM orders) AS o: an unqualified name may name a source rather than a column
-        table-match    (when (and (not source-column) (str/blank? table-ref))
+        table-match    (when (and (not source-column) (empty? table-ref))
                          (some (fn [scope-sources]
                                  (some (fn [{:keys [names] :as source}]
                                          (when (and source
@@ -111,7 +109,7 @@
             [(recursive-cte-reference cte-source table-ref column-name)]
             [{:col (cond-> source-column
                      ;; an unqualified reference seen from several scopes keeps them all
-                     (and (str/blank? table-ref) (> (count source-columns) 1))
+                     (and (empty? table-ref) (> (count source-columns) 1))
                      (assoc :source_columns source-columns))}]))
 
         "custom_field"
@@ -265,7 +263,7 @@
     ;; a function, CASE, arithmetic and the rest compute a field from the ones they use
     :else
     [{:col {:type        "custom_field"
-            :alias       (u/not-blank (ast/node-alias expr))
+            :alias       (not-empty (ast/node-alias expr))
             :used_fields (vec (cols (find-used-fields expr sources withs)))}}]))
 
 (defn- unknown-columns-source
@@ -292,7 +290,7 @@
                                                (seq table-alias) (assoc :table_alias table-alias)))
 
         ;; a table function sqlglot did not recognise, named by its alias or wrapping a function call
-        (and (str/blank? table-name) (or (seq table-alias) (instance? Expressions$Func (ast/this source-expr))))
+        (and (empty? table-name) (or (seq table-alias) (instance? Expressions$Func (ast/this source-expr))))
         (unknown-columns-source table-alias)
 
         :else
@@ -350,7 +348,7 @@
         returned-fields          (vec (cols returned))
         ;; SELECT aliases are a scope level of their own, ahead of the tables, for ORDER BY and the like
         select-source            {:names           nil
-                                  :returned_fields (filterv #(u/not-blank (:alias %)) returned-fields)
+                                  :returned_fields (filterv #(not-empty (:alias %)) returned-fields)
                                   :used_fields     #{}
                                   :errors          #{}}
         sources-with-select      (into [[select-source] local-sources] outside-sources)
@@ -382,7 +380,7 @@
                                        right-field (get right-fields i)
                                        named       (or left-field right-field)]]
                              {:type          "composite_field"
-                              :alias         (or (u/not-blank (:alias named)) (:column named))
+                              :alias         (or (not-empty (:alias named)) (:column named))
                               :member_fields (vec (remove nil? [left-field right-field]))}))
      :errors          (into (set (:errors left)) (:errors right))}))
 
