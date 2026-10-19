@@ -3,7 +3,6 @@ import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
-import { colors } from "metabase/ui/colors";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/viz-core";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
@@ -141,7 +140,7 @@ const createTemplate = ({ rows, vizSettings }: SmartScalarSeriesOpts) =>
         rawSeries={[series]}
         renderingContext={{
           fontFamily: "Lato",
-          getColor: createColorGetter(colors),
+          getColor: createColorGetter(),
           measureText: (text, style) =>
             measureTextWidth(text, Number(style.size), Number(style.weight)),
           measureTextHeight: (_, style) =>

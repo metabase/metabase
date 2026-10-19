@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 
-import type { Card, CardId } from "./card";
+import type { Card, CreateCardRequest } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { BaseUser, UserId } from "./user";
 
@@ -34,7 +34,19 @@ export type Document = {
 
 export type GetDocumentRequest = { id: DocumentId };
 
-export type DocumentCardToCreate = Card & { source_card_id?: CardId };
+export type DocumentCardToCreate = Pick<
+  CreateCardRequest,
+  | "name"
+  | "dataset_query"
+  | "display"
+  | "visualization_settings"
+  | "description"
+  | "parameters"
+  | "parameter_mappings"
+  | "result_metadata"
+  | "cache_ttl"
+  | "source_card_id"
+>;
 
 export type CreateDocumentRequest = Pick<Document, "name"> & {
   document: DocumentContent;

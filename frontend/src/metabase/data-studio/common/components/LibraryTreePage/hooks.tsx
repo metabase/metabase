@@ -39,7 +39,7 @@ type Params = {
   isSearchActive: boolean;
   searchQuery: string;
   emptyMessage: string;
-  defaultExpandedIds: string[];
+  defaultExpandedIds: readonly string[];
   renderRowMenu: (item: TreeItem) => ReactNode;
   emptyStateActions?: Partial<Record<LibrarySectionType, () => void>>;
 };

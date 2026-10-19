@@ -41,6 +41,8 @@ describe("scenarios > navigation > navbar", () => {
       H.popover()
         .findByText(/SQL query/)
         .click();
+      // creating new content collapses the navbar
+      H.navigationSidebar().should("not.be.visible");
 
       H.openNavigationSidebar();
       H.assertNavigationSidebarItemSelected(/Third collection/, "false");
@@ -52,13 +54,18 @@ describe("scenarios > navigation > navbar", () => {
       cy.location("pathname").should("eq", "/");
       cy.findByTestId("home-page").should("be.visible");
       H.navigationSidebar().should("be.visible");
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.navigationSidebar().should("not.be.visible");
 
+      // navigating to a dashboard doesn't collapse the navbar
+      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+      H.dashboardGrid().should("be.visible");
+      H.navigationSidebar().should("be.visible");
+
+      // clicking the logo reopens a closed navbar
+      H.closeNavigationSidebar();
       cy.findByTestId("main-logo-link").click();
       cy.location("pathname").should("eq", "/");
       cy.findByTestId("home-page").should("be.visible");
-      H.navigationSidebar().should("not.be.visible");
+      H.navigationSidebar().should("be.visible");
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.navigationSidebar().should("not.be.visible");
@@ -111,7 +118,8 @@ describe("scenarios > navigation > navbar", () => {
         new RegExp(`^/question/${ORDERS_QUESTION_ID}\\b`),
       );
       H.queryBuilderHeader().findByText("Orders").should("be.visible");
-      H.navigationSidebar().should("not.be.visible");
+      // clicking the logo reopens the navbar, and the redirect keeps it open
+      H.navigationSidebar().should("be.visible");
     });
   });
 });

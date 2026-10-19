@@ -5,7 +5,6 @@
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -14,7 +13,7 @@
 (def non-blob-columns
   "Every DataApp column except the raw bundle blob."
   [:id :entity_id :name :display_name :description :version :bundle_path :enabled :allowed_hosts
-   :resource_collection_id :table_ids :bundle_hash :created_at :updated_at])
+   :resource_collection_id :bundle_hash :created_at :updated_at])
 
 (def ^:private non-blob-model
   (into [:model/DataApp] non-blob-columns))
@@ -40,31 +39,6 @@
   (t2/select non-blob-model
              (cond-> {:order-by [[:display_name :asc]]}
                available? (assoc :where [:= :enabled true]))))
-
-(defn- read-scope-clause
-  [scope]
-  (if (= scope :all)
-    [:= 1 1]
-    [:in :id ^:allow-subquery
-     {:select [:assignment.data_app_id]
-      :from [[:data_app_group_assignment :assignment]]
-      :join [[:permissions_group_membership :pgm] [:= :pgm.group_id :assignment.permission_group_id]
-             [:core_user :u] [:= :u.id :pgm.user_id]]
-      :where [:and [:= :u.id (:user-id scope)] [:= :u.tenant_id nil]]}]))
-
-(mu/defn non-blob-data-apps
-  "DataApps in the read scope without bundles, ordered by display name. Optionally restrict to enabled apps."
-  [scope :- [:or [:= :all] [:map {:closed true} [:user-id ms/PositiveInt]]]
-   available? :- [:maybe :boolean]]
-  (t2/select non-blob-model
-             {:order-by [[:display_name :asc]]
-              :where (cond-> [:and (read-scope-clause scope)]
-                       available? (conj [:= :enabled true]))}))
-
-(defn readable-data-app?
-  "Whether the app exists in the read scope."
-  [scope app-id]
-  (t2/exists? :model/DataApp :id app-id {:where (read-scope-clause scope)}))
 
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
@@ -138,11 +112,6 @@
   [entity-id]
   (t2/select-one [:model/DataApp :id :entity_id :resource_collection_id] :entity_id entity-id))
 
-(defn data-apps-with-resource-collections
-  "The `:id` and `:resource_collection_id` of every DataApp that has a resource collection."
-  []
-  (t2/select [:model/DataApp :id :resource_collection_id] :resource_collection_id [:not= nil]))
-
 (defn active-table?
   "Whether the table with `table-id` is active."
   [table-id]
@@ -176,32 +145,15 @@
     (t2/select [:model/Action :entity_id :collection_id] :entity_id [:in entity-ids])
     []))
 
-(defn table-ids-named
-  "The IDs of the active tables in the database with `database-id` that `refs` (maps of `:schema` and `:table`)
-  name: by name, and by schema when the reference has one, ignoring case."
-  [database-id refs]
-  (if (seq refs)
-    (let [lower  #(some-> % u/lower-case-en)
-          tables (t2/select [:model/Table :id :schema :name] :db_id database-id :active true
-                            {:from  [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                             :where [:in [:lower :name] (into [] (keep (comp lower :table)) refs)]})]
-      (into (sorted-set)
-            (for [{:keys [schema table]} refs
-                  {:keys [id] :as named} tables
-                  :when (and (= (lower table) (lower (:name named)))
-                             (or (nil? schema) (= (lower schema) (lower (:schema named)))))]
-              id)))
-    #{}))
-
-(defn collection-dataset-queries
-  "The queries of the cards and of the query actions in the collection with `collection-id`."
+(defn collection-card-ids
+  "The IDs of the cards in the collection with `collection-id`."
   [collection-id]
-  (into (t2/select-fn-vec :dataset_query :model/Card :collection_id collection-id)
-        (t2/select-fn-vec :dataset_query :model/QueryAction
-                          {:select [:qa.*]
-                           :from   [[:query_action :qa]]
-                           :join   [[:action :a] [:= :a.id :qa.action_id]]
-                           :where  [:= :a.collection_id collection-id]})))
+  (t2/select-pks-vec :model/Card :collection_id collection-id))
+
+(defn collection-action-ids
+  "The IDs of the actions in the collection with `collection-id`."
+  [collection-id]
+  (t2/select-pks-vec :model/Action :collection_id collection-id))
 
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."
@@ -257,33 +209,23 @@
   (t2/insert! :model/DataAppGroupAssignment
               (mapv (fn [group-id] {:data_app_id app-id :permission_group_id group-id}) group-ids)))
 
-(defn delete-assignment!
-  "Remove one group assignment."
-  [app-id group-id]
-  (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id group-id))
+(defn delete-assignments!
+  "Remove the requested group assignments from an app."
+  [app-id group-ids]
+  (if (seq group-ids)
+    (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id [:in group-ids])
+    0))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."
   [group-ids database-ids table-ids]
-  (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
-             :group_id [:in group-ids]
-             :db_id [:in database-ids]
-             :perm_type :perms/view-data
-             {:where [:or [:in :table_id table-ids] [:= :table_id nil]]}))
-
-(defn table-details
-  "Names and database details for the active tables in `table-ids`."
-  [table-ids]
-  (t2/select :model/Table
-             {:select [:t.id
-                       [:t.display_name :name]
-                       :t.schema
-                       [:t.db_id :database_id]
-                       [:d.name :database_name]]
-              :from [(warehouse-schema-overlay/table-query {:alias :t})]
-              :join [[(t2/table-name :model/Database) :d] [:= :d.id :t.db_id]]
-              :where [:and [:in :t.id table-ids] [:= :t.active true]]
-              :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]}))
+  (if (and (seq group-ids) (seq database-ids) (seq table-ids))
+    (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
+               :group_id [:in group-ids]
+               :db_id [:in database-ids]
+               :perm_type :perms/view-data
+               {:where [:or [:in :table_id table-ids] [:= :table_id nil]]})
+    []))
 
 (mu/defn metric-cards-in-collections
   "The non-archived metric Cards in `collection-ids`, in name then id order."
@@ -321,6 +263,14 @@
                                  [:= :model_id nil]
                                  [:= :type "query"]
                                  [:= :archived false]
+                                 [:or
+                                  [:= :collection_id nil]
+                                  [:exists ^:allow-subquery {:select [1]
+                                                             :from [[(t2/table-name :model/Collection) :c]]
+                                                             :where [:and
+                                                                     [:= :c.id :action.collection_id]
+                                                                     [:= :c.archived false]
+                                                                     [:= :c.namespace "data-actions"]]}]]
                                  (when (seq excluded-collection-ids)
                                    [:or [:= :collection_id nil] [:not-in :collection_id excluded-collection-ids]])]
                       :order-by [[:name :asc] [:id :asc]]}))
@@ -363,7 +313,11 @@
   [measure-ids :- [:sequential ::lib.schema.id/measure]]
   (t2/select [:model/Measure :id :definition] :id [:in measure-ids]))
 
-(mu/defn collections-with-entity-ids
-  "The Collections with `entity-ids`."
-  [entity-ids :- [:set :string]]
-  (t2/select :model/Collection :entity_id [:in entity-ids]))
+(mu/defn unarchived-collections
+  "The unarchived Collections among `collection-ids`, with their Library types."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (t2/select [:model/Collection :id :type]
+               :id [:in collection-ids]
+               :archived false)
+    []))

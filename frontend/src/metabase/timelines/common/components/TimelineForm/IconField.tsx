@@ -17,7 +17,12 @@ export function IconField({
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
 
   return (
-    <FormField title={title} htmlFor={id} error={touched ? error : undefined}>
+    <FormField
+      mb="lg"
+      title={title}
+      htmlFor={id}
+      error={touched ? error : undefined}
+    >
       <Select
         id={id}
         name={name}

@@ -5,7 +5,8 @@
 
   This is done by querying the dependency_status table for entities that are stale or have an
   outdated dependency_analysis_version. The backfill task computes dependencies and updates
-  the dependency_status table."
+  the dependency_status table. Entities that a write marked stale, or that were deleted, also have their dependents
+  marked for re-analysis here, outside the write's transaction."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
@@ -14,28 +15,35 @@
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
-   [metabase.events.core :as events]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
+   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
+(def ^:private expanded-into-dependents
+  "The entity types whose content a native query using them expands into its own SQL, so that a change to one changes
+  the table dependencies of the entities using it, which no graph edge carries."
+  #{:snippet})
+
 (def ^:private entity-types
-  "The list of entity types to backfill.
+  "The list of entity types to backfill, those expanded into their dependents first, so that the dependents they mark
+  are recomputed in the same run.
 
   This is not the same as deps.dependency-types/dependency-types, because tables shouldn't be backfilled.  Instead, links
   involving tables are found via analysis of the other side of the relation."
-  (vec deps.dependency-types/backfillable-dependency-types))
+  (vec (sort-by (complement expanded-into-dependents) deps.dependency-types/backfillable-dependency-types)))
 
 (def ^:private max-retries 5)
 
@@ -74,16 +82,41 @@
    entity-type
    (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)))
 
+(defn- mark-expanding-entities-stale!
+  "Mark for recalculation the entities whose native SQL expands the `entity-type` entity `entity-id`, directly or
+  through the entities of the same kind that include it."
+  [entity-type entity-id]
+  (let [graph     (models.dependency/filtered-graph-dependents nil {:types expanded-into-dependents})
+        type->ids (models.dependency/group-nodes (graph/transitive graph [[entity-type entity-id]]))]
+    (deps.dependency-status/mark-stale! (apply dissoc type->ids expanded-into-dependents))))
+
 (defn- compute-deps-for-entity!
-  "Compute and store dependencies for an entity, then update its dependency_status.
-  Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
+  "Mark the dependents of an entity that a write marked stale for re-analysis, and those that expand it for
+  recalculation, then compute and store its dependencies and update its dependency_status, flagging the tables it
+  names that match nothing. Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
+  (when (:stale (dependencies.db/dependency-status entity-type (:id entity)))
+    (deps.findings/mark-transitive-dependents-stale! {entity-type #{(:id entity)}})
+    (when (expanded-into-dependents entity-type)
+      (mark-expanding-entities-stale! entity-type (:id entity))))
   (t2/with-transaction [_]
     (let [deps (deps.calculation/calculate-deps entity-type entity)]
-      (models.dependency/replace-dependencies! entity-type (:id entity) deps)
+      (models.dependency/replace-dependencies! entity-type (:id entity) (dissoc deps :unresolved-table))
       (post-deps-cleanup! entity-type entity)
-      (deps.dependency-status/upsert-status! entity-type (:id entity)))))
+      (deps.dependency-status/upsert-status! entity-type (:id entity) (contains? deps :unresolved-table)))))
+
+(defn- remove-deleted-entity-batch!
+  "Mark the dependents of up to `batch-size` deleted entities of `entity-type` for re-analysis and drop their
+  dependencies and status, returning how many were removed."
+  [entity-type batch-size]
+  (let [entity-ids (dependencies.db/deleted-entity-ids entity-type batch-size)]
+    (when (seq entity-ids)
+      (t2/with-transaction [_]
+        (deps.findings/mark-transitive-dependents-stale! {entity-type entity-ids})
+        (dependencies.db/delete-dependencies-from! entity-type entity-ids)
+        (dependencies.db/delete-dependency-statuses! entity-type entity-ids)))
+    (count entity-ids)))
 
 (defn- backfill-entity-batch!
   [entity-type batch-size]
@@ -121,20 +154,26 @@
               instances))))
 
 (defn- backfill-dependencies!
-  "Job to backfill dependencies for all entities.
+  "Job to backfill dependencies for all entities, triggering the entity-check job for the findings it marked stale.
   Returns true if a full batch has been selected, nil or false otherwise."
   []
   (when (premium-features/has-feature? :dependencies)
-    (-> (reduce (fn [batch-size entity-type]
-                  (if (< batch-size 1)
-                    (reduced 0)
-                    (let [processed (backfill-entity-batch! entity-type batch-size)]
-                      (when (pos? processed)
-                        (log/info "Updated" processed "entities."))
-                      (- batch-size processed))))
-                (deps.settings/dependency-backfill-batch-size)
-                entity-types)
-        (< 1))))
+    (let [batch-size (deps.settings/dependency-backfill-batch-size)
+          remaining  (reduce (fn [remaining entity-type]
+                               (if (< remaining 1)
+                                 (reduced 0)
+                                 (let [removed   (remove-deleted-entity-batch! entity-type remaining)
+                                       processed (if (< removed remaining)
+                                                   (backfill-entity-batch! entity-type (- remaining removed))
+                                                   0)]
+                                   (when (pos? processed)
+                                     (log/info "Updated" processed "entities."))
+                                   (- remaining removed processed))))
+                             batch-size
+                             entity-types)]
+      (when (< remaining batch-size)
+        (task.entity-check/trigger-entity-check-job!))
+      (< remaining 1))))
 
 (defn- has-pending-retries?
   "Whether any entity is in retry backoff that this instance can actually act on.
@@ -182,10 +221,11 @@
         active-triggers-count (try (count (qs/get-triggers-of-job scheduler job-key)) (catch Exception _))]
     (log/infof "Executing %s job. %s total triggers active." job-class active-triggers-count)))
 
-(task/defjob
-  ^{:doc "Backfill the dependency table."
-    org.quartz.DisallowConcurrentExecution true}
-  BackfillDependencies [ctx]
+(task/defjob BackfillDependencies
+  "Backfill the dependency table."
+  {:saved-class "metabase_enterprise.dependencies.task.backfill.BackfillDependencies"
+   :concurrent? false}
+  [ctx]
   (let [ctx ^JobExecutionContext ctx]
     (log-job-start ctx)
     (run-and-reschedule! (.getScheduler ctx))))
@@ -226,12 +266,3 @@
    (task/scheduler)
    (deps.task-util/job-initial-delay
     (deps.settings/dependency-backfill-variance-minutes))))
-
-(events/derive! ::backfill :metabase/event)
-(events/derive! :event/serdes-load ::backfill)
-(events/derive! :event/set-premium-embedding-token ::backfill)
-
-(methodical/defmethod events/publish-event! ::backfill
-  [_ _]
-  (when (premium-features/has-feature? :dependencies)
-    (trigger-backfill-job!)))

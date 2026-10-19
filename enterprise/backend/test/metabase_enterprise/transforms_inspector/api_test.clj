@@ -18,8 +18,8 @@
         (mt/with-data-analyst-role! (mt/user->id :lucky)
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (is (= "Lens data not available"
-                   (:message (mt/user-http-request :lucky :get 404
-                                                   (format "ee/transforms/%d/inspect/no-such-lens" transform-id)))))))))))
+                   (mt/user-http-request :lucky :get 404
+                                         (format "ee/transforms/%d/inspect/no-such-lens" transform-id))))))))))
 
 ;;; -------------------------------------------------- Inspector Query API --------------------------------------------------
 

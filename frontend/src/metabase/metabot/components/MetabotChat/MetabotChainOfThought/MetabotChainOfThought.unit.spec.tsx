@@ -409,6 +409,52 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("PUBLIC", { exact: false })).toBeInTheDocument();
   });
 
+  it("links measures to the explorer and segments through their base table", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "search",
+            title: "revenue",
+            status: "ended",
+            searchResults: {
+              totalCount: 2,
+              results: [
+                {
+                  id: 7,
+                  type: "measure",
+                  name: "Total revenue",
+                  database_id: 1,
+                  table_id: 9,
+                },
+                {
+                  id: 8,
+                  type: "segment",
+                  name: "Big orders",
+                  database_id: 1,
+                  table_id: 9,
+                },
+              ],
+            },
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    await userEvent.click(screen.getByText("2 results"));
+    expect(
+      screen.getByRole("link", { name: /Total revenue/, hidden: true }),
+    ).toHaveAttribute("href", "/explore?measureId=7");
+    expect(
+      screen.getByRole("link", { name: /Big orders/, hidden: true }),
+    ).not.toHaveAttribute("href", "/404");
+  });
+
   it("labels an empty search with No results", async () => {
     setup(
       chain({

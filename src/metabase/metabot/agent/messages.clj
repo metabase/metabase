@@ -9,6 +9,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.skills :as skills]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
@@ -25,17 +26,26 @@
     role
     (keyword role)))
 
+(defn- decode-arguments-json
+  "Decode the tool call arguments JSON string `s`, or return `s` unchanged when it is not valid JSON."
+  [s]
+  (try
+    (json/decode s)
+    (catch Exception e
+      (log/warnf "Failed to decode tool call arguments: %s" (ex-message e))
+      s)))
+
 (defn- decode-tool-arguments
-  "Decode tool call arguments from JSON when provided as a string.
-  Falls back to the raw string if decoding fails."
+  "Decode tool call arguments, with keyword argument names at the top level only.
+
+  The JSON string `{\"query\": {\"stages\": []}}` becomes `{:query {\"stages\" []}}`, the shape the stream parser gives.
+  A map gets the same shape: `{\"query\" {:stages []}}` becomes `{:query {\"stages\" []}}`. A string that is not valid
+  JSON comes back unchanged."
   [arguments]
-  (if (string? arguments)
-    (try
-      (json/decode arguments)
-      (catch Exception e
-        (log/warnf "Failed to decode tool call arguments: %s" (ex-message e))
-        arguments))
-    arguments))
+  (let [decoded (cond-> arguments
+                  (string? arguments) decode-arguments-json)]
+    (cond-> decoded
+      (map? decoded) (-> (update-keys keyword) self.core/stringify-nested-keys))))
 
 (defn- tool-result-content
   "Normalise tool result content to a string suitable for :tool-output."

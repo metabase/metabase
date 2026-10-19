@@ -1,1 +1,0 @@
-export { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";

@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-29 05:50+0000\n"
+"POT-Creation-Date: 2026-10-06 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Persian\n"
 "Language: fa_IR\n"
-"PO-Revision-Date: 2026-10-06 05:43\n"
+"PO-Revision-Date: 2026-10-13 05:46\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -275,7 +275,6 @@ msgid "User attribute"
 msgstr "ویژگی کاربر"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
@@ -321,12 +320,11 @@ msgstr "ویژگی کاربر"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
 #: frontend/src/metabase/collections/components/ModelUploadModal.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
@@ -406,7 +404,6 @@ msgid "Cancel"
 msgstr "لغو"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/EditSandboxingModal/EditSandboxingModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/NotificationChannelConfigModal/NotificationChannelConfigModal.tsx
@@ -1156,8 +1153,6 @@ msgid "Search for a group"
 msgstr "جستجو برای یک گروه"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantCollectionPermissionsPage/selectors.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantSpecificCollectionPermissionsPage/selectors.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
@@ -1209,7 +1204,6 @@ msgstr "خروجی گرفتن از analytics ناموفق بود"
 #: enterprise/frontend/src/metabase-enterprise/monitor/tools/ErrorOverview/ErroringQuestionsTable.tsx
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsTable.tsx
 #: frontend/src/metabase/common/components/errors/NoDataError.tsx
-#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/utils.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricsViewerVisualization/MetricsViewerVisualization.tsx
@@ -1341,16 +1335,10 @@ msgid "Unit"
 msgstr "واحد"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping added"
-msgstr "مپینگ اضافه شد"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping updated"
-msgstr "مپینگ به‌روزرسانی شد"
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
+msgid "Save the settings above to set up group mapping."
+msgstr "برای راه‌اندازی نگاشت گروه، تنظیمات بالا را ذخیره کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Group mapping mode"
@@ -1379,36 +1367,43 @@ msgid "Off"
 msgstr "خاموش"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "New mapping"
 msgstr "نگاشت جدید"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
+#: frontend/src/metabase/settings-components/SettingsSection/SwitchSettingsSection.tsx
 #, javascript-format
 msgid "Using {0}"
 msgstr "استفاده از {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Users will be assigned to {0} groups based on their JWT group names"
-msgstr "کاربران بر اساس نام‌های گروه در JWT خود به گروه‌های {0} اختصاص داده می‌شوند"
+msgid "At each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "در هر ورود، افراد به گروه‌های {0} که نامشان در JWT آن‌ها آمده اضافه می‌شوند و از همهٔ گروه‌های دیگر، از جمله Administrators، حذف می‌شوند."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Groups could not be loaded"
+msgstr "گروه‌ها بارگذاری نشدند"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "JWT group name"
+msgstr "نام گروه JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+msgid "Enter JWT group..."
+msgstr "گروه JWT را وارد کنید..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Add at least one mapping to use manual group mapping"
 msgstr "برای استفاده از مپینگ دستی گروه، حداقل یک مپینگ اضافه کنید"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
-msgid "Add mapping"
-msgstr "افزودن مپینگ"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "This is the last mapping, so group mapping will be turned off."
@@ -1420,90 +1415,42 @@ msgstr "به مپینگ خودکار گروه تغییر دهید؟"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 #, javascript-format
-msgid "Your existing group mappings will be deleted, and users will be assigned to {0} groups matching their JWT group names."
-msgstr "مپینگ‌های گروه فعلی شما حذف می‌شوند و کاربران به گروه‌های {0} که با نام‌های گروه JWT آن‌ها مطابقت دارند اختصاص داده می‌شوند."
+msgid "Your existing group mappings will be deleted. From then on, at each sign-in, people are added to the {0} groups named in their JWT and removed from all other groups, including Administrators."
+msgstr "نگاشت‌های گروه موجود شما حذف می‌شوند. از آن به بعد، در هر ورود، افراد به گروه‌های {0} که نامشان در JWT آن‌ها آمده اضافه می‌شوند و از همهٔ گروه‌های دیگر، از جمله Administrators، حذف می‌شوند."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
 msgid "Delete mappings and switch"
 msgstr "حذف مپینگ‌ها و تغییر"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "JWT group name"
-msgstr "نام گروه JWT"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-msgid "Enter JWT group..."
-msgstr "گروه JWT را وارد کنید..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
-msgid "A mapping for this group already exists"
-msgstr "برای این گروه از قبل یک مپینگ وجود دارد"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "{0} groups"
-msgstr "{0} گروه"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
-#, javascript-format
-msgid "Pick {0} group..."
-msgstr "گروه {0} را انتخاب کنید..."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
-msgid "Edit mapping"
-msgstr "ویرایش مپینگ"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-msgid "Delete mapping"
-msgstr "حذف مپینگ"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
-#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
-msgid "No groups"
-msgstr "بدون گروه"
-
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-mode.ts
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/EditUserStrategyModal/EditUserStrategyModal.tsx
 #: frontend/src/metabase/settings/use-admin-setting.ts
 msgid "Changes saved"
 msgstr "تغییرات ذخیره شد"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "خطا در ذخیره‌سازی مپینگ گروه"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-msgid "Mapping deleted, but not all of its groups could be updated"
-msgstr "مپینگ حذف شد، اما همهٔ گروه‌های آن نتوانستند به‌روزرسانی شوند"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-msgid "Mapping deleted and group mapping turned off"
-msgstr "مپینگ حذف شد و مپینگ گروه خاموش شد"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mapping deleted"
-msgstr "مپینگ حذف شد"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
 msgstr "خطا در ذخیره تنظیمات JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Changes saved. Group mapping is set to Automatic."
+msgstr "تغییرات ذخیره شد. نگاشت گروه روی Automatic تنظیم شد."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "خطا در بارگذاری پیکربندی JWT"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+msgid "Set up a signing key before saving"
+msgstr "قبل از ذخیره، یک کلید امضا تنظیم کنید"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
@@ -1540,11 +1487,13 @@ msgid "Email attribute key"
 msgstr "کلید ویژگی ایمیل"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "کلید ویژگی نام"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "کلید ویژگی نام خانوادگی"
@@ -1558,9 +1507,8 @@ msgid "Tenant assignment attribute key"
 msgstr "کلید ویژگی تخصیص مستأجر"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/SettingsGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "نگاشت گروه"
 
@@ -1604,6 +1552,19 @@ msgstr "ذخیره و فعال کردن"
 msgid "Save changes"
 msgstr "ذخیره تغییرات"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your OIDC provider"
+msgstr "بر اساس گروه‌های ارائه‌دهندهٔ OIDC شما، افراد را به‌صورت خودکار به گروه‌های {0} اختصاص بده"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "OIDC group name"
+msgstr "نام گروه OIDC"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/OidcGroupMappingSection/OidcGroupMappingSection.tsx
+msgid "Enter OIDC group..."
+msgstr "گروه OIDC را وارد کنید..."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt is required"
 msgstr "Login prompt الزامی است"
@@ -1625,6 +1586,10 @@ msgid "Client ID is required"
 msgstr "Client ID الزامی است"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Client secret is required"
+msgstr "Client secret الزامی است"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OIDC discovery succeeded, but credentials could not be verified. The identity provider does not support the grant type used for testing."
 msgstr "کشف OIDC موفق بود، اما اعتبارنامه‌ها قابل تأیید نبودند. ارائه‌دهندهٔ هویت از نوع grant استفاده‌شده برای تست پشتیبانی نمی‌کند."
 
@@ -1637,25 +1602,8 @@ msgid "OIDC configuration check failed"
 msgstr "بررسی پیکربندی OIDC ناموفق بود"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider disabled"
-msgstr "ارائه‌دهندهٔ OIDC غیرفعال شد"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider enabled"
-msgstr "ارائه‌دهندهٔ OIDC فعال شد"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
-msgid "Failed to update OIDC provider"
-msgstr "به‌روزرسانی ارائه‌دهندهٔ OIDC ناموفق بود"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "OIDC provider deleted"
-msgstr "ارائه‌دهندهٔ OIDC حذف شد"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Failed to delete OIDC provider"
-msgstr "حذف ارائه‌دهندهٔ OIDC ناموفق بود"
+msgid "Error loading OIDC configuration"
+msgstr "خطا در بارگذاری پیکربندی OIDC"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "OpenID Connect"
@@ -1677,10 +1625,6 @@ msgid "Provider identifier. Your OIDC redirect URI will be \"{0}/auth/sso/${ 1 }
 msgstr "شناسهٔ ارائه‌دهنده. URI ریدایرکت OIDC شما این خواهد بود: \"{0}/auth/sso/${ 1 }/callback\""
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. okta"
-msgstr "مثلاً okta"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Login prompt"
 msgstr "Login prompt"
 
@@ -1690,8 +1634,8 @@ msgid "Button text on the {0} sign-in screen"
 msgstr "متن دکمه در صفحهٔ ورود {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "e.g. Sign in with Okta"
-msgstr "مثلاً Sign in with Okta"
+msgid "Sign in with Okta"
+msgstr "با Okta وارد شوید"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Issuer URI"
@@ -1699,8 +1643,8 @@ msgstr "Issuer URI"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The OIDC issuer URI. The discovery endpoint \"${ 0 }/.well-known/openid-configuration\" should be accessible."
-msgstr "Issuer URI مربوط به OIDC. اندپوینت discovery یعنی \"${ 0 }/.well-known/openid-configuration\" باید قابل دسترس باشد."
+msgid "The discovery endpoint \"{0}/.well-known/openid-configuration\" should be accessible"
+msgstr "باید endpoint کشف \"{0}/.well-known/openid-configuration\" در دسترس باشد"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
@@ -1711,27 +1655,41 @@ msgstr "Client ID"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "The Client ID configured for {0} in your OIDC provider."
-msgstr "Client ID پیکربندی‌شده برای {0} در ارائه‌دهندهٔ OIDC شما."
+msgid "This is configured for {0} in your OIDC provider"
+msgstr "این مورد برای {0} در ارائه‌دهندهٔ OIDC شما پیکربندی می‌شود"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
-msgid "Client Secret"
-msgstr "Client Secret"
+msgid "Client secret"
+msgstr "رازِ کلاینت"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "The Client secret configured in your OIDC provider."
-msgstr "Client secret پیکربندی‌شده در ارائه‌دهندهٔ OIDC شما."
+msgid "This is configured in your OIDC provider"
+msgstr "این مورد در ارائه‌دهندهٔ OIDC شما پیکربندی می‌شود"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Leave blank to keep current value"
 msgstr "برای حفظ مقدار فعلی خالی بگذارید"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Scopes"
+msgstr "Scopeها"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+msgid "Comma-separated list of OIDC scopes to request"
+msgstr "فهرست اسکوپ‌های OIDC برای درخواست، جداشده با ویرگول"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
+#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
+msgid "Attributes"
+msgstr "ویژگی‌ها"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #, javascript-format
-msgid "To enable this, you'll need to create mappings to tell {0} which group(s) your users should be added to based on the SSO group they're in."
-msgstr "برای فعال‌کردن این مورد، باید مپینگ‌هایی بسازید تا به {0} بگویید بر اساس گروه SSO که کاربران در آن هستند، آن‌ها باید به کدام گروه(ها) اضافه شوند."
+msgid "Map OIDC claims to the first name and last name fields in {0}. The email always comes from the standard email claim."
+msgstr "کلیم‌های OIDC را به فیلدهای نام و نام خانوادگی در {0} نگاشت کنید. ایمیل همیشه از کلیم استاندارد email می‌آید."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
@@ -1741,69 +1699,6 @@ msgstr "نام ویژگی گروه"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "The OIDC claim that contains group membership information."
 msgstr "کلِیم OIDC که اطلاعات عضویت در گروه را در خود دارد."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Optional settings"
-msgstr "تنظیمات اختیاری"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Scopes"
-msgstr "Scopeها"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Comma-separated list of OIDC scopes to request."
-msgstr "لیست جداشده با کاما از scopeهای OIDC برای درخواست."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Attribute mapping"
-msgstr "مپینگ ویژگی‌ها"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims."
-msgstr "claimهای OIDC را به ویژگی‌های کاربر مپ کنید. از نام‌های استاندارد claimهای OIDC یا claimهای سفارشی ارائه‌دهندهٔ خود استفاده کنید."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Email attribute"
-msgstr "ویژگی ایمیل"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "First name attribute"
-msgstr "ویژگی نام"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Last name attribute"
-msgstr "ویژگی نام خانوادگی"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
-#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
-#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
-#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
-msgid "Disable"
-msgstr "غیرفعال سازی"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
-#: frontend/src/metabase/documents/components/DocumentHeader.tsx
-msgid "Enable"
-msgstr "فعال کن"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete configuration"
-msgstr "حذف پیکربندی"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Delete this OIDC provider?"
-msgstr "این ارائه‌دهندهٔ OIDC حذف شود؟"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-msgid "Users will no longer be able to sign in with this provider. This can't be undone."
-msgstr "کاربران دیگر نمی‌توانند با این ارائه‌دهنده وارد شوند. این کار قابل بازگشت نیست."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 msgid "Check connection"
@@ -1823,24 +1718,8 @@ msgid "SAML"
 msgstr "SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Use the settings below to configure your SSO via SAML. If you have any questions, check out our {0}."
-msgstr "از تنظیمات زیر برای پیکربندی SSO خود از طریق SAML استفاده کنید. اگر سؤالی دارید، به {0} ما مراجعه کنید."
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
-msgid "documentation"
-msgstr "مستندات"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Configure your identity provider (IdP)"
-msgstr "پیکربندی ارائه دهنده هویت شما (IdP)"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Your identity provider will need the following info about {0}."
-msgstr "ارائه‌دهنده هویت شما به اطلاعات زیر درباره {0} نیاز دارد."
+msgid "Identity provider (IdP) configuration"
+msgstr "پیکربندی ارائه‌دهندهٔ هویت (IdP)"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "URL the IdP should redirect back to"
@@ -1875,18 +1754,16 @@ msgid "Tenant assignment attribute"
 msgstr "ویژگی انتساب مستأجر"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "Tell {0} about your identity provider"
-msgstr "ارائه‌دهنده هویت خود را به {0} معرفی کنید"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#, javascript-format
-msgid "{0} will need the following info about your provider."
-msgstr "{0} به اطلاعات زیر درباره ارائه‌دهنده شما نیاز دارد."
+msgid "Identity provider info"
+msgstr "اطلاعات ارائه‌دهندهٔ هویت"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider URL"
 msgstr "URL ارائه‌دهندهٔ هویت SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "This is the URL where your users go to log in to your identity provider."
+msgstr "این URL جایی است که کاربران شما برای ورود به ارائه‌دهندهٔ هویت شما می‌روند."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML identity provider certificate"
@@ -1901,8 +1778,16 @@ msgid "SAML identity provider issuer"
 msgstr "issuer ارائه‌دهندهٔ هویت SAML"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-msgid "Sign SSO requests (optional)"
-msgstr "درخواست‌های SSO را امضا کنید (اختیاری)"
+msgid "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'."
+msgstr "این یک شناسهٔ یکتا برای IdP است. اغلب با نام Entity ID یا صرفاً 'Issuer' شناخته می‌شود."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Sign SSO requests"
+msgstr "درخواست‌های SSO را امضا کنید"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Use a keystore to sign authentication requests sent to your identity provider"
+msgstr "برای امضای درخواست‌های احراز هویتِ ارسال‌شده به ارائه‌دهندهٔ هویت‌تان از یک keystore استفاده کنید"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
 msgid "SAML keystore path"
@@ -1921,9 +1806,36 @@ msgstr "ش..."
 msgid "SAML keystore alias"
 msgstr "alias keystore SAML"
 
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on groups from your SAML identity provider"
+msgstr "بر اساس گروه‌های ارائه‌دهندهٔ هویت SAML شما، افراد را به‌صورت خودکار به گروه‌های {0} اختصاص بده"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "SAML group name"
+msgstr "نام گروه SAML"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "Enter SAML group..."
+msgstr "گروه SAML را وارد کنید..."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+msgid "The SAML attribute that lists a user's groups. Group mapping assigns no groups until it's set."
+msgstr "ویژگی SAML که گروه‌های یک کاربر را فهرست می‌کند. تا وقتی تنظیم نشود، نگاشت گروه هیچ گروهی را اختصاص نمی‌دهد."
+
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SsoButton/SsoButton.tsx
 msgid "Sign in with SSO"
 msgstr "ورود با SSO"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
+msgstr "به ورود با {0} اجازه بدهید برای کاربران جدید حساب ایجاد کند و حساب‌های غیرفعال‌شده را دوباره فعال کند. وقتی غیرفعال باشد، فقط کاربرانی که حساب‌های فعال {1} دارند می‌توانند وارد شوند."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
+#, javascript-format
+msgid "Allow {0} sign-in to create accounts for new users. When disabled, only users with active {1} accounts can sign in."
+msgstr "به ورود با {0} اجازه بده برای کاربران جدید حساب ایجاد کند. اگر غیرفعال باشد، فقط کاربرانی که حساب فعال {1} دارند می‌توانند وارد شوند."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx
@@ -1932,14 +1844,13 @@ msgstr "ورود با SSO"
 msgid "User provisioning"
 msgstr "Provisioning کاربر"
 
-#: enterprise/frontend/src/metabase-enterprise/auth/components/UserProvisioningSection/UserProvisioningSection.tsx
-#, javascript-format
-msgid "Allow {0} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active {1} accounts can sign in."
-msgstr "به ورود با {0} اجازه بدهید برای کاربران جدید حساب ایجاد کند و حساب‌های غیرفعال‌شده را دوباره فعال کند. وقتی غیرفعال باشد، فقط کاربرانی که حساب‌های فعال {1} دارند می‌توانند وارد شوند."
-
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
 msgid "Allows users to login via a JWT Identity Provider."
 msgstr "به کاربران اجازه می‌دهد از طریق یک ارائه دهنده هویت JWT وارد شوند."
+
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
+msgid "Failed to update OIDC provider"
+msgstr "به‌روزرسانی ارائه‌دهندهٔ OIDC ناموفق بود"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/containers/OidcAuthCard/OidcAuthCard.tsx
 msgid "Failed to deactivate OIDC provider"
@@ -2584,6 +2495,12 @@ msgstr "URL سرور Dev"
 msgid "URL of the local dev server serving the visualization bundle, manifest, and assets."
 msgstr "URL سرور Dev محلی که باندلِ ویژوالایزیشن، مانیفست و assetها را سرو می‌کند."
 
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/AddDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: frontend/src/metabase/documents/components/DocumentHeader.tsx
+msgid "Enable"
+msgstr "فعال کن"
+
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/BundleDropzone.tsx
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizPage.tsx
 msgid "Bundle must be a .tgz file produced by \"npm run build\"."
@@ -2640,6 +2557,17 @@ msgstr "اکشن‌های پلاگین"
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 msgid "Replace bundle"
 msgstr "جایگزینی باندل"
+
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
+#: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/AccountSecurityPanel.tsx
+#: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/AccountSecurityPanel/DisableModal/DisableModal.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/hooks/use-disable-remote-sync.ts
+#: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionDetails.tsx
+#: frontend/src/metabase/transforms/components/JobMoreMenu/JobMoreMenu.tsx
+msgid "Disable"
+msgstr "غیرفعال سازی"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
@@ -2784,7 +2712,6 @@ msgstr "به‌روزرسانی"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/AddDataAppUsers/AddDataAppUsers.tsx
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DatabaseRoutingSection/DatabaseRoutingSection.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddEntitiesModal.tsx
 msgid "Add"
 msgstr "اضافه کنید"
@@ -2895,17 +2822,13 @@ msgid "They may have been built for a different version and may need to be updat
 msgstr "ممکن است برای نسخهٔ دیگری ساخته شده باشند و نیاز باشد به‌روزرسانی شوند."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/DataReferenceLibraryPane.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
-#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/modals/AddMetricsModal.tsx
-#: frontend/src/metabase/metabot/utils/source-location.ts
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: frontend/src/metabase/nav/containers/MainNavbar/NavbarLibrarySection/NavbarLibrarySection.tsx
 #: frontend/src/metabase/querying/components/DataReference/MainPane.tsx
 #: metabase/collections/models/collection.clj
@@ -2939,6 +2862,19 @@ msgstr "جدول‌ها"
 msgid "No published tables in your library yet."
 msgstr "هنوز هیچ جدول منتشرشده‌ای در کتابخانه‌تان نیست."
 
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/LibraryPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibrarySectionLayout/LibrarySectionLayout.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/components/SnippetHeader/SnippetHeader.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/ArchivedSnippetsPage/ArchivedSnippetsPage.tsx
+#: enterprise/frontend/src/metabase-enterprise/data-studio/library/snippets/pages/NewSnippetPage/NewSnippetPage.tsx
+#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
+#: frontend/src/metabase/data-studio/common/utils/get-library-collection-display-name.ts
+#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
+#: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
+msgid "Semantic layer"
+msgstr "لایهٔ معنایی"
+
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
 msgid "Published table"
 msgstr "جدول منتشرشده"
@@ -2963,7 +2899,7 @@ msgid "Snippet"
 msgstr "قطعه‌کد"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3129,18 +3065,18 @@ msgstr[0] "آرشیو کردن این مجموعه همچنین جدول‌ها�
 msgstr[1] "آرشیو کردن این مجموعه‌ها همچنین جدول‌های داخل آن‌ها (و هر جدولی که به آن‌ها وابسته است) را از حالت انتشار خارج می‌کند و هر آیتم فرزند دیگری را آرشیو می‌کند."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
-msgid "Create your Library"
-msgstr "کتابخانهٔ خود را بسازید"
+msgid "Create your semantic layer"
+msgstr "لایهٔ معنایی خود را بسازید"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Library created"
-msgstr "کتابخانه ایجاد شد"
+msgid "Semantic layer created"
+msgstr "لایهٔ معنایی ایجاد شد"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "The Library helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
-msgstr "کتابخانه به شما کمک می‌کند با ارائهٔ مجموعه‌ای از محتوای گزیده و با مدیریت متمرکز، یک منبع حقیقت برای تحلیل ایجاد کنید. اجزای معتبر و قابل‌استفادهٔ مجدد را از تحلیل‌های ad-hoc جدا می‌کند."
+msgid "The semantic layer helps you create a source of truth for analytics by providing a centrally managed set of curated content. It separates authoritative, reusable components from ad-hoc analyses."
+msgstr "لایهٔ معنایی با ارائهٔ مجموعه‌ای از محتوای گزینش‌شده و مدیریت‌شده به‌صورت متمرکز، کمک می‌کند یک منبع حقیقت برای تحلیل‌ها بسازید. این کار اجزای معتبر و قابل‌استفاده‌مجدد را از تحلیل‌های ad-hoc جدا می‌کند."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3161,8 +3097,8 @@ msgstr "کنترل نسخه"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Sync your Library to Git"
-msgstr "کتابخانه‌تان را با Git سینک کنید"
+msgid "Sync your semantic layer to git"
+msgstr "لایهٔ معنایی‌تان را با git همگام‌سازی کنید"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
@@ -3176,8 +3112,8 @@ msgstr "به‌صورت پیش‌فرض از منابع قابل‌اعتماد�
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/CreateLibraryModal/CreateLibraryModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
-msgid "Create my Library"
-msgstr "کتابخانهٔ من را بساز"
+msgid "Create my semantic layer"
+msgstr "لایهٔ معنایی من را بساز"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/LibraryEmptyState/LibraryEmptyState.tsx
 msgid "A source of truth for analytics"
@@ -3195,8 +3131,8 @@ msgid "Go to {0}"
 msgstr "رفتن به {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
-msgid "Publishing a table saves it to the Library."
-msgstr "انتشارِ یک جدول آن را در کتابخانه ذخیره می‌کند."
+msgid "Publishing a table saves it to the semantic layer."
+msgstr "انتشار یک table آن را در لایهٔ معنایی ذخیره می‌کند."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/PublishTablesModal/PublishTablesModal.tsx
 msgid "Publish to"
@@ -3264,12 +3200,12 @@ msgid "Unpublish these tables?"
 msgstr "این جدول‌ها از انتشار خارج شوند؟"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove this table from the Library."
-msgstr "این کار این جدول را از کتابخانه حذف می‌کند."
+msgid "This will remove this table from the semantic layer."
+msgstr "این کار این table را از لایهٔ معنایی حذف می‌کند."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
-msgid "This will remove these tables from the Library."
-msgstr "این کار این جدول‌ها را از کتابخانه حذف می‌کند."
+msgid "This will remove these tables from the semantic layer."
+msgstr "این کار این tableها را از لایهٔ معنایی حذف می‌کند."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/components/UnpublishTablesModal/UnpublishTablesModal.tsx
 #, javascript-format
@@ -3700,16 +3636,16 @@ msgid "No published tables yet"
 msgstr "هنوز هیچ جدول منتشرشده‌ای نیست"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Publish tables in the Library to see them here."
-msgstr "جدول‌ها را در کتابخانه منتشر کنید تا اینجا ببینیدشان."
+msgid "Publish tables in the semantic layer to see them here."
+msgstr "برای دیدن‌شان اینجا، tableها را در لایهٔ معنایی منتشر کنید."
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
 msgid "No metrics yet"
 msgstr "هنوز هیچ معیاری نیست"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/utils.ts
-msgid "Put metrics in the Library to see them here."
-msgstr "برای دیدن معیارها اینجا، آن‌ها را در کتابخانه قرار دهید."
+msgid "Put metrics in the semantic layer to see them here."
+msgstr "برای دیدن‌شان اینجا، معیارها را در لایهٔ معنایی قرار دهید."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppUsersPage.tsx
 msgid "Failed to add users"
@@ -3723,6 +3659,7 @@ msgstr "حذف کاربر ناموفق بود"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/ManageDataAppsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/navbar/DataAppsNavbarSection.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/DataAppsNav.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsPages/DataAppsSettingsPage.tsx
 msgid "Data apps"
 msgstr "اپ‌های داده"
 
@@ -3845,19 +3782,8 @@ msgid "Outdated"
 msgstr "قدیمی"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
-msgid "Sync failed"
-msgstr "همگام‌سازی ناموفق بود"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-#, javascript-format
-msgid "Synced {0}"
-msgstr "سینک شد {0}"
-
-#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
-msgid "Not synced yet"
-msgstr "هنوز سینک نشده"
+msgid "Draft"
+msgstr "پیش‌نویس"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppUserList/DataAppUserList.tsx
 msgid "No one has access yet"
@@ -4168,6 +4094,7 @@ msgstr "این فرایند در پس‌زمینه اجرا می‌شود. بس�
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/AddDimensionsPanel.tsx
 #: frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.tsx
@@ -4793,6 +4720,7 @@ msgstr "فیلد"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/utils.ts
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 #: enterprise/frontend/src/metabase-enterprise/schema_viewer/components/SchemaViewer/components/SelectedNodeInfoPanel/PanelBody/PanelBody.tsx
+#: frontend/src/metabase/metabot/components/MetabotHoverCard/MetabotHoverCard.tsx
 #: metabase/xrays/automagic_dashboards/core.clj
 msgid "{0} field"
 msgid_plural "{0} fields"
@@ -6246,16 +6174,16 @@ msgid "Curated semantic layer"
 msgstr "لایهٔ معنایی منتخب"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Metrics and published tables within your Library."
-msgstr "معیارها و جدول‌های منتشرشده در کتابخانهٔ شما."
+msgid "Metrics and published tables within your semantic layer."
+msgstr "معیارها و tableهای منتشرشده در لایهٔ معنایی شما."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Full semantic layer"
 msgstr "لایهٔ معنایی کامل"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Library entities plus every active physical table."
-msgstr "موجودیت‌های کتابخانه به‌اضافهٔ همهٔ جدول‌های فیزیکیِ فعال."
+msgid "Semantic layer entities plus every active physical table."
+msgstr "موجودیت‌های لایهٔ معنایی به‌علاوهٔ همهٔ tableهای فیزیکیِ فعال."
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
 msgid "Metabot-visible layer"
@@ -7250,6 +7178,7 @@ msgid "Could not connect to repository"
 msgstr "اتصال به مخزن برقرار نشد"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/TestConnectionButton.tsx
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
 msgid "Test connection"
 msgstr "تست اتصال"
 
@@ -7456,6 +7385,12 @@ msgstr "شما تغییرات همگام‌نشده دارید. می‌خواه�
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Failed to cancel sync"
 msgstr "لغو همگام‌سازی ناموفق بود"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#: frontend/src/metabase/admin/databases/components/DatabaseConnectionInfoSection/DatabaseConnectionInfoSection.tsx
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+msgid "Sync failed"
+msgstr "همگام‌سازی ناموفق بود"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "An error occurred during sync."
@@ -8143,13 +8078,6 @@ msgid "This attribute is inherited from the tenant, but you can override its val
 msgstr "این ویژگی از مستأجر به ارث می‌رسد، اما می‌توانید مقدارش را override کنید"
 
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-#: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.tsx
-msgid "Attributes"
-msgstr "ویژگی‌ها"
-
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget.tsx
 msgid "Duplicate login attribute keys"
 msgstr "کلیدهای تکراریِ ویژگیِ ورود"
 
@@ -8778,6 +8706,7 @@ msgstr "افزودن گزینه:"
 
 #: enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputSearchableSelect.tsx
 #: frontend/src/metabase/common/components/ReorderableTagsInput/ReorderableTagsInput.tsx
+#: frontend/src/metabase/common/components/errors/NoObjectError.tsx
 msgid "Nothing found"
 msgstr "چیزی پیدا نشد"
 
@@ -9324,9 +9253,7 @@ msgstr "و"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgid_plural "tables"
-msgstr[0] "جدول"
-msgstr[1] "جدول‌ها"
+msgstr "جدول"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -9466,6 +9393,7 @@ msgstr "بستن تب"
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/LinkOptions/ValuesYouCanReference.tsx
 #: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/EditorTabs/EditorTabs.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexTable/columns.tsx
 #: frontend/src/metabase/visualizations/components/ChartSettings/BaseChartSettings/hooks.ts
 #: frontend/src/metabase/visualizations/visualizations/PivotTable/partitions.tsx
@@ -10335,7 +10263,6 @@ msgstr "وقتی به {0}% از سهمیه‌تان برسید به شما اط�
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "Agree and continue"
 msgstr "موافقت و ادامه"
 
@@ -13181,6 +13108,10 @@ msgid "You'll find this in your Slack app's {0} settings."
 msgstr "این را در تنظیمات {0} اپ Slack خود پیدا می‌کنید."
 
 #: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
+msgid "Client Secret"
+msgstr "Client Secret"
+
+#: frontend/src/metabase/admin/ai/MetabotSlackSetup.tsx
 msgid "Signing Secret"
 msgstr "Signing Secret"
 
@@ -14196,13 +14127,16 @@ msgstr "ایجاد یک گروه"
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "می‌توانید از گروه‌ها برای کنترل دسترسی کاربران‌تان به داده‌ها استفاده کنید. کاربران را در گروه‌ها قرار دهید و بعد به بخش Permissions بروید تا دسترسی هر گروه را کنترل کنید. گروه‌های Administrators و All Users گروه‌های پیش‌فرض ویژه‌ای هستند که نمی‌توان آن‌ها را حذف کرد."
 
+#: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "No groups"
+msgstr "بدون گروه"
+
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupDetailApp.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/common/components/UserForm.tsx
 msgid "Groups"
@@ -15287,6 +15221,140 @@ msgstr "اجازه دهید کاربران خود را ثبت نام کنند ا
 msgid "Allow users to sign up on their own if their Google account email address is from:"
 msgstr "اگر آدرس ایمیل حساب Google کاربران از این دامنه باشد، اجازه دهید خودشان ثبت‌نام کنند:"
 
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "The {0} group is not affected."
+msgstr "گروه {0} تحت تأثیر قرار نمی‌گیرد."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "These groups are not affected: {0}."
+msgstr "این گروه‌ها تحت تأثیر قرار نمی‌گیرند: {0}."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping"
+msgstr "حذف نگاشت"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and members"
+msgstr "حذف نگاشت و اعضا"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete groups"
+msgstr "حذف نگاشت و گروه‌ها"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove mapping and delete group"
+msgstr "حذف نگاشت و گروه"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "This mapping isn't linked to any group."
+msgstr "این مپینگ به هیچ گروهی لینک نشده است."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of these groups will no longer be synced when users log in."
+msgstr "عضویت این گروه‌ها هنگام ورود کاربران دیگر سینک نخواهد شد."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Membership of this group will no longer be synced when users log in."
+msgstr "عضویت این گروه هنگام ورود کاربران دیگر سینک نخواهد شد."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Remove this group mapping?"
+msgstr "این گروه نگاشت حذف شود؟"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the groups themselves in {0}?"
+msgstr "در {0} با خودِ گروه‌ها چه باید بشود؟"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "What should happen with the group itself in {0}?"
+msgstr "در {0} با خودِ گروه چه باید بشود؟"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Nothing, just remove the mapping"
+msgstr "هیچ، فقط نگاشت را حذف کنید"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from these groups"
+msgstr "همچنین همهٔ اعضا را از این گروه‌ها حذف کن"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also remove all members from this group"
+msgstr "همچنین همهٔ اعضا را از این گروه حذف کن"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+#, javascript-format
+msgid "Members keep their {0} accounts."
+msgstr "اعضا حساب‌های {0} خود را نگه می‌دارند."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the groups"
+msgstr "همچنین گروه‌ها را حذف کن"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
+msgid "Also delete the group"
+msgstr "همچنین گروه را حذف کنید"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
+msgid "Add mapping"
+msgstr "افزودن مپینگ"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "Manual group mappings"
+msgstr "مپینگ‌های دستیِ گروه"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingsPanel.tsx
+msgid "No mappings yet"
+msgstr "هنوز هیچ نگاشتی وجود ندارد"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "{0} groups"
+msgstr "{0} گروه"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
+#, javascript-format
+msgid "Pick {0} group..."
+msgstr "گروه {0} را انتخاب کنید..."
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+#: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+msgid "Edit mapping"
+msgstr "ویرایش مپینگ"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
+msgid "Delete mapping"
+msgstr "حذف مپینگ"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but not all of its groups could be updated"
+msgstr "مپینگ حذف شد، اما همهٔ گروه‌های آن نتوانستند به‌روزرسانی شوند"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted, but its deleted group could not be removed from the other mappings"
+msgid_plural "Mapping deleted, but its deleted groups could not be removed from the other mappings"
+msgstr[0] "نگاشت حذف شد، اما گروهِ حذف‌شده‌اش نتوانست از سایر نگاشت‌ها حذف شود"
+msgstr[1] "نگاشت حذف شد، اما گروه‌های حذف‌شده‌اش نتوانستند از سایر نگاشت‌ها حذف شوند"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
+msgid "Mapping deleted"
+msgstr "مپینگ حذف شد"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "A mapping for this group already exists"
+msgstr "برای این گروه از قبل یک مپینگ وجود دارد"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping added"
+msgstr "مپینگ اضافه شد"
+
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
+msgid "Mapping updated"
+msgstr "مپینگ به‌روزرسانی شد"
+
 #: frontend/src/metabase/admin/settings/auth/containers/LdapAuthCard/LdapAuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP"
@@ -15542,7 +15610,6 @@ msgid "Edit configuration"
 msgstr "ویرایش پیکربندی"
 
 #: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "First, some legalese"
 msgstr "اول کمی متن حقوقی"
 
@@ -15759,28 +15826,18 @@ msgstr "این نمونه در حالت توسعه است و فقط برای ت�
 msgid "Get your token"
 msgstr "توکن خود را بگیرید"
 
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#, javascript-format
-msgid "Automatically assign people to {0} groups based on their LDAP group membership"
-msgstr "اختصاص خودکار افراد به گروه‌های {0} بر اساس عضویتشان در گروه‌های LDAP"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "Manual group mappings"
-msgstr "مپینگ‌های دستیِ گروه"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-msgid "LDAP group name"
-msgstr "نام گروه LDAP"
-
-#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "هنوز هیچ نگاشتی وجود ندارد"
-
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "فعال کردن"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Check your parentheses"
+msgstr "پرانتزها را بررسی کنید"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Port must be a whole number between 1 and 65535"
+msgstr "پورت باید یک عدد صحیح بین 1 و 65535 باشد"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Error loading LDAP configuration"
@@ -15839,6 +15896,15 @@ msgstr "فیلتر کاربر"
 #, javascript-format
 msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
 msgstr "اتریبیوت‌های LDAP را به فیلدهای ایمیل، نام و نام خانوادگی در {0} مپ کنید"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "اختصاص خودکار افراد به گروه‌های {0} بر اساس عضویتشان در گروه‌های LDAP"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "LDAP group name"
+msgstr "نام گروه LDAP"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
@@ -16488,102 +16554,6 @@ msgstr "واحد ارز"
 msgid "Currency label style"
 msgstr "سبک برچسب ارز"
 
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/AddMappingRow/AddMappingRow.tsx
-msgid "New group mapping name"
-msgstr "نام مپینگ گروه جدید"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Remove mapping"
-msgstr "حذف نگاشت"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and members"
-msgstr "حذف نگاشت و اعضا"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete groups"
-msgstr "حذف نگاشت و گروه‌ها"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove mapping and delete group"
-msgstr "حذف نگاشت و گروه"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "The Administrators group is not affected."
-msgstr "گروه Administrators تحت تأثیر قرار نمی‌گیرد."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "This mapping isn't linked to any group."
-msgstr "این مپینگ به هیچ گروهی لینک نشده است."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of these groups will no longer be synced when users log in."
-msgstr "عضویت این گروه‌ها هنگام ورود کاربران دیگر سینک نخواهد شد."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Membership of this group will no longer be synced when users log in."
-msgstr "عضویت این گروه هنگام ورود کاربران دیگر سینک نخواهد شد."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Remove this group mapping?"
-msgstr "این گروه نگاشت حذف شود؟"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the groups themselves in {0}?"
-msgstr "در {0} با خودِ گروه‌ها چه باید بشود؟"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "What should happen with the group itself in {0}?"
-msgstr "در {0} با خودِ گروه چه باید بشود؟"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Nothing, just remove the mapping"
-msgstr "هیچ، فقط نگاشت را حذف کنید"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from these groups"
-msgstr "همچنین همهٔ اعضا را از این گروه‌ها حذف کن"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also remove all members from this group"
-msgstr "همچنین همهٔ اعضا را از این گروه حذف کن"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-#, javascript-format
-msgid "Members keep their {0} accounts."
-msgstr "اعضا حساب‌های {0} خود را نگه می‌دارند."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the groups"
-msgstr "همچنین گروه‌ها را حذف کن"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/DeleteGroupMappingModal/DeleteGroupMappingModal.tsx
-msgid "Also delete the group"
-msgstr "همچنین گروه را حذف کنید"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced."
-msgstr "نگاشت‌ها به Metabase اجازه می‌دهند که به طور خودکار کاربران را بر اساس اطلاعات عضویت ارائه شده توسط سرور فهرست به گروه‌ها اضافه و حذف کند. اگر یک گروه نگاشته نباشد، عضویت آن همگام‌سازی نخواهد شد."
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet, group sync is not on"
-msgstr "هنوز هیچ مپینگی وجود ندارد؛ همگام‌سازی گروه روشن نیست"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "Synchronize Group Memberships"
-msgstr "همگام سازی اعضای گروه"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "About mappings"
-msgstr "درباره نگاشت‌ها"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/MappingRow/MappingRow.tsx
-msgid "Delete this mapping?"
-msgstr "این نگاشت را حذف کنید؟"
-
 #: frontend/src/metabase/admin/settings/components/widgets/HomepageSetting.tsx
 msgid "Homepage"
 msgstr "صفحهٔ اصلی"
@@ -17140,6 +17110,7 @@ msgstr "شروع‌شده از"
 #: frontend/src/metabase/archive/hooks/use-delete-item.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionContentView.tsx
 #: frontend/src/metabase/documents/components/DocumentArchivedEntityBanner.tsx
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 #: frontend/src/metabase/metrics/components/MetricPageShell/MetricPageShell.tsx
 msgid "This item has been permanently deleted."
 msgstr "این آیتم برای همیشه حذف شده است."
@@ -17236,6 +17207,7 @@ msgstr "پوشه"
 
 #: frontend/src/metabase/archive/hooks/use-set-archive.ts
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
+#: frontend/src/metabase/explorations/components/ExplorationArchivedEntityBanner.tsx
 msgid "research"
 msgstr "تحقیق"
 
@@ -17617,6 +17589,7 @@ msgid "No items of the selected types."
 msgstr "هیچ آیتمی از نوع‌های انتخاب‌شده وجود ندارد."
 
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionItemsToolbar.tsx
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
 msgid "Clear search"
 msgstr "پاک کردن جستجو"
 
@@ -18011,6 +17984,10 @@ msgstr "مجموعهٔ جدیدِ فوق‌العادهٔ من"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 msgid "Collection it's saved in"
 msgstr "مجموعه‌ای که در آن ذخیره می‌شود"
+
+#: frontend/src/metabase/common/collections/components/PinDropZone/PinDropZone.tsx
+msgid "Drag here to pin"
+msgstr "برای سنجاق‌کردن، اینجا بکشید"
 
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 msgid "Can't move this question into a dashboard"
@@ -19326,7 +19303,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "Minutes"
+msgid_plural "{0} Minutes"
 msgstr[0] "دقیقه"
 msgstr[1] "{0} دقیقه"
 
@@ -19986,6 +19963,10 @@ msgstr "همهٔ کاربران مستأجر"
 #: frontend/src/metabase/common/utils/groups.ts
 msgid "Data Analysts"
 msgstr "تحلیلگران داده"
+
+#: frontend/src/metabase/common/utils/groups.ts
+msgid "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed."
+msgstr "اضافه‌کردن عضو به این گروه نیاز به پلنی دارد که شامل گروه Data Analysts باشد. فقط می‌توان اعضا را حذف کرد."
 
 #: frontend/src/metabase/common/utils/model-names.ts
 #: frontend/src/metabase/dashboard/components/ActionSidebar/ActionSidebar.tsx
@@ -21781,11 +21762,6 @@ msgid "Data transformation"
 msgstr "تبدیل داده"
 
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
-#: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
-msgid "Semantic layer"
-msgstr "لایهٔ معنایی"
-
-#: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/glossary/pages/GlossaryPage/GlossaryPage.tsx
 #: frontend/src/metabase/data-studio/guide/pages/GuidePage/GuidePage.tsx
 #: frontend/src/metabase/reference/glossary/GlossaryContainer.tsx
@@ -22057,8 +22033,8 @@ msgstr "این جدول هیچ فیلدی ندارد"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
-msgid "First, let's create your Library"
-msgstr "اول، بیایید کتابخانه‌تان را ایجاد کنیم"
+msgid "First, let's create your semantic layer"
+msgstr "اول بیایید لایهٔ معنایی‌تان را بسازیم"
 
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/TableSection.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditBulk.tsx
@@ -22438,8 +22414,8 @@ msgid "Bring more order to your analytics"
 msgstr "به آنالیتیکس‌تان نظم بیشتری بدهید"
 
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
-msgid "Create a shared library of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
-msgstr "یک کتابخانهٔ مشترک از دیتاست‌ها و متریک‌ها بسازید که تیم‌تان بتواند به آن تکیه کند، تا با رشد داده‌ها و محتوای پایین‌دستی، همه‌چیز سازگار بماند."
+msgid "Create a shared semantic layer of datasets and metrics your team can rely on, so things stay consistent as your data and downstream content grows."
+msgstr "یک لایهٔ معنایی مشترک از datasetها و معیارها بسازید که تیم‌تان بتواند به آن تکیه کند، تا با رشد داده‌ها و محتوای پایین‌دستی‌تان، همه‌چیز سازگار بماند."
 
 #: frontend/src/metabase/data-studio/upsells/pages/SchemaViewerUpsellPage.tsx
 msgid "Visualize your database structure"
@@ -22643,6 +22619,18 @@ msgstr "هر زمان خواستید می‌توانید داده‌های خو�
 #: frontend/src/metabase/databases/components/DatabaseForm/DatabaseFormFooter.tsx
 msgid "I'll add my data later"
 msgstr "بعداً داده‌هایم را اضافه می‌کنم"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection successful"
+msgstr "اتصال موفق بود"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Connection failed"
+msgstr "اتصال ناموفق بود"
+
+#: frontend/src/metabase/databases/components/DatabaseForm/DatabaseTestConnectionButton.tsx
+msgid "Couldn't connect to the database"
+msgstr "اتصال به پایگاه‌داده برقرار نشد"
 
 #: frontend/src/metabase/databases/components/DatabaseFormError/CheckHostAndPortButton.tsx
 msgid "Check Host and Port settings"
@@ -23153,6 +23141,11 @@ msgid "These options require changing the server code. You can play around with 
 msgstr "این گزینه‌ها نیاز به تغییر کد سرور دارند. می‌توانید اینجا با گزینه‌ها کار کنید و پیش‌نمایش بگیرید. برای اطلاعات بیشتر {0} را ببینید."
 
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/OverviewSettings.tsx
+msgid "documentation"
+msgstr "مستندات"
+
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
 msgid "Use instance font"
 msgstr "استفاده از فونت نمونه"
 
@@ -23438,7 +23431,6 @@ msgstr "وقتی نمودارها یا داشبوردهای Metabase را در\n
 "Metabase\" را روی آن جاسازی‌ها قابل مشاهده نگه دارید."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 msgid "You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
 msgstr "با این حال باید متن مجوزی را که بالا لینک شده بخوانید، چون همان مجوز واقعی است که با فعال‌کردن این قابلیت با آن موافقت می‌کنید."
 
@@ -25214,10 +25206,6 @@ msgid "Remove provider"
 msgstr "حذف ارائه‌دهنده"
 
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
-msgid "SQL generation also runs on this connection, and will stop working without it."
-msgstr "تولید SQL هم روی این اتصال اجرا می‌شود و بدون آن از کار می‌افتد."
-
-#: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 msgid "Semantic search also runs on this connection, and will stop working without it."
 msgstr "جستجوی معنایی هم روی این اتصال اجرا می‌شود و بدون آن از کار می‌افتد."
 
@@ -25349,8 +25337,8 @@ msgid "AI explorations"
 msgstr "کاوش‌های هوش مصنوعی"
 
 #: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
-msgid "Ask about your data, and type @ to mention an item"
-msgstr "دربارهٔ داده‌تان سؤال بپرسید، و برای منشن کردن یک آیتم @ را تایپ کنید"
+msgid "Suggestions"
+msgstr "پیشنهادها"
 
 #: frontend/src/metabase/metabot/components/MetabotBranchPicker/MetabotBranchPicker.tsx
 msgid "Previous version"
@@ -25392,16 +25380,14 @@ msgid "Source is wrong"
 msgstr "منبع اشتباه است"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Collapse data sources"
-msgstr "جمع کردن منابع داده"
+msgid "Give feedback"
+msgstr "بازخورد بدهید"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Expand data sources"
-msgstr "باز کردن منابع داده"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentDataSourcePills.tsx
-msgid "Data sources used"
-msgstr "منابع دادهٔ استفاده‌شده"
+msgid "Data source used"
+msgid_plural "Data sources used"
+msgstr[0] "منبع دادهٔ استفاده‌شده"
+msgstr[1] "منابع دادهٔ استفاده‌شده"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
@@ -25565,11 +25551,6 @@ msgid "Explore your metrics and models with AI."
 msgstr "معیارها و مدل‌هایتان را با هوش مصنوعی کاوش کنید."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
-#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
-msgid "How can I help? Type @ to mention items."
-msgstr "چطور می‌توانم کمک کنم؟ برای منشن کردن آیتم‌ها @ را تایپ کنید."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChat.tsx
 #, javascript-format
 msgid "{0} isn't perfect. Double-check results."
 msgstr "{0} بی‌نقص نیست. نتایج را دوباره بررسی کنید."
@@ -25579,41 +25560,10 @@ msgid "Fork conversation"
 msgstr "گفتگو را منشعب کن"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
+#: frontend/src/metabase/metabot/state/actions.ts
 #, javascript-format
 msgid "Response from {0} was interrupted"
 msgstr "پاسخ از {0} قطع شد"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was cut off because it hit the maximum length"
-msgstr "پاسخِ {0} قطع شد چون به حداکثر طول رسید"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
-msgstr "آخرین پاسخ شما قطع شد. دقیقاً از همان‌جایی که متوقف شد ادامه بده. چیزی را که قبلاً نوشته‌ای تکرار نکن."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
-msgstr "پاسخِ {0} توسط فیلتر محتوا متوقف شد. سعی کنید سؤال‌تان را جور دیگری مطرح کنید."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "{0} paused after reaching its step limit for this response"
-msgstr "{0} بعد از رسیدن به محدودیت تعداد گام برای این پاسخ متوقف شد"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "Continue working on my last request."
-msgstr "به کار روی آخرین درخواست من ادامه بده."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-#, javascript-format
-msgid "Response from {0} stopped before it finished"
-msgstr "پاسخِ {0} قبل از اینکه تمام شود متوقف شد"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
-msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
-msgstr "این گفتگو به حداکثر طول خود رسیده و نمی‌تواند ادامه پیدا کند. لطفاً یک چت جدید شروع کنید."
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
 msgid "Conversation forked"
@@ -25719,6 +25669,12 @@ msgstr "این چت در آستانهٔ رسیدن به {0} است."
 msgid "New chat"
 msgstr "چت جدید"
 
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotResponseLoader.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
+#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
+msgid "Loading"
+msgstr "بارگذاری"
+
 #: frontend/src/metabase/metabot/components/MetabotChat/feedback-issue-types.ts
 msgid "UI bug"
 msgstr "باگ UI"
@@ -25756,6 +25712,11 @@ msgstr "SQL موردنظرتان را توصیف کنید، برای منشن ک
 msgid "Send to {0}"
 msgstr "ارسال به {0}"
 
+#: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
+#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
+msgid "Stop generating"
+msgstr "توقف تولید"
+
 #: frontend/src/metabase/metabot/components/MetabotManagedProviderLimit.tsx
 msgid "Add an AI provider"
 msgstr "یک ارائه‌دهندهٔ هوش مصنوعی اضافه کنید"
@@ -25780,6 +25741,10 @@ msgstr "شروع اشتراک پولی"
 msgid "Ask {0}"
 msgstr "از {0} بپرسید"
 
+#: frontend/src/metabase/metabot/components/MetabotPromptInput/MetabotPromptInput.tsx
+msgid "Ask about your data. Type @ to mention items."
+msgstr "دربارهٔ داده‌هایتان بپرسید. برای mention کردن آیتم‌ها @ را تایپ کنید."
+
 #: frontend/src/metabase/metabot/components/SlackConnectSuccess.tsx
 msgid "Your Slack account has been connected successfully."
 msgstr "حساب Slack شما با موفقیت متصل شد."
@@ -25803,10 +25768,6 @@ msgstr "ساخته‌شده با {0}"
 #, javascript-format
 msgid "{0} is disabled"
 msgstr "{0} غیرفعال است"
-
-#: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
-msgid "Stop generating"
-msgstr "توقف تولید"
 
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotEmbed/MetabotEmbed.tsx
 #, javascript-format
@@ -25990,6 +25951,38 @@ msgstr "فرمت درخواست نامعتبر است"
 #: frontend/src/metabase/metabot/state/actions.ts
 msgid "Sorry, we couldn't load that conversation."
 msgstr "متأسفیم، نتوانستیم آن گفت‌وگو را بارگذاری کنیم."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "{0} paused after reaching its step limit for this response"
+msgstr "{0} بعد از رسیدن به محدودیت تعداد گام برای این پاسخ متوقف شد"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was cut off because it hit the maximum length"
+msgstr "پاسخِ {0} قطع شد چون به حداکثر طول رسید"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "This conversation has reached its maximum length and can't continue. Please start a new chat."
+msgstr "این گفتگو به حداکثر طول خود رسیده و نمی‌تواند ادامه پیدا کند. لطفاً یک چت جدید شروع کنید."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} was stopped by a content filter. Try rephrasing your question."
+msgstr "پاسخِ {0} توسط فیلتر محتوا متوقف شد. سعی کنید سؤال‌تان را جور دیگری مطرح کنید."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+#, javascript-format
+msgid "Response from {0} stopped before it finished"
+msgstr "پاسخِ {0} قبل از اینکه تمام شود متوقف شد"
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Continue working on my last request."
+msgstr "به کار روی آخرین درخواست من ادامه بده."
+
+#: frontend/src/metabase/metabot/state/utils.ts
+msgid "Your last response was cut off. Pick up exactly where you left off. Don't repeat anything you already wrote."
+msgstr "آخرین پاسخ شما قطع شد. دقیقاً از همان‌جایی که متوقف شد ادامه بده. چیزی را که قبلاً نوشته‌ای تکرار نکن."
 
 #: frontend/src/metabase/metadata/components/CoercionStrategyPicker/CoercionStrategyPicker.tsx
 msgid "To enable casting, please select a data type"
@@ -28957,19 +28950,6 @@ msgstr "نتایج را کش نکن"
 msgid "No caching"
 msgstr "بدون کش"
 
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-#, javascript-format
-msgid "By clicking \"Agree and continue\" you're agreeing to {0}"
-msgstr "با کلیک روی \"Agree and continue\" شما با {0} موافقت می‌کنید"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "our embedding license."
-msgstr "مجوز تعبیه‌سازی ما."
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "When you embed charts or dashboards from Metabase in your own application that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds."
-msgstr "وقتی نمودارها یا داشبوردها را از Metabase در اپلیکیشن خود جاسازی می‌کنید، آن اپلیکیشن مشمول مجوز Affero General Public License که بقیهٔ Metabase را پوشش می‌دهد نیست، به شرطی که لوگوی Metabase و عبارت \"Powered by Metabase\" را روی آن جاسازی‌ها قابل مشاهده نگه دارید."
-
 #: frontend/src/metabase/pulse/pulse.ts
 msgid "emailed"
 msgstr "ایمیل‌شده"
@@ -30685,6 +30665,29 @@ msgstr "{0}+کلیک برای باز کردن در تب جدید"
 msgid "Pick columns"
 msgstr "انتخاب ستون‌ها"
 
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns"
+msgstr "ستون‌ها را جستجو کنید"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Search columns…"
+msgstr "ستون‌ها را جستجو کنید…"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+#, javascript-format
+msgid "{0} column found"
+msgid_plural "{0} columns found"
+msgstr[0] "{0} ستون پیدا شد"
+msgstr[1] "{0} ستون پیدا شد"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "Select all of these"
+msgstr "همهٔ این‌ها را انتخاب کنید"
+
+#: frontend/src/metabase/querying/notebook/components/FieldPicker/FieldPicker.tsx
+msgid "No columns found"
+msgstr "هیچ ستونی پیدا نشد"
+
 #: frontend/src/metabase/querying/notebook/components/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentEditor/FilterStep/FilterStep.tsx
 #: frontend/src/metabase/segments/components/SegmentFilterEditor/SegmentFilterEditor.tsx
@@ -31658,6 +31661,11 @@ msgstr "خطا در همگام‌سازی"
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing…"
 msgstr "در حال همگام‌سازی…"
+
+#: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
+#, javascript-format
+msgid "Sync failed: {0}"
+msgstr "همگام‌سازی ناموفق بود: {0}"
 
 #: frontend/src/metabase/status/components/DatabaseStatusLarge/DatabaseStatusLarge.tsx
 msgid "Syncing completed"
@@ -33303,11 +33311,6 @@ msgstr "متغیرها در تبدیل‌ها باید یا اختیاری با�
 #: frontend/src/metabase/ui/components/data-display/KeyboardShortcut/KeyboardShortcut.tsx
 msgid "then"
 msgstr "سپس"
-
-#: frontend/src/metabase/ui/components/data-display/TreeTable/ExpandButton/ExpandButton.tsx
-#: frontend/src/metabase/ui/components/data-display/TreeTable/TreeTableRow/TreeTableRow.tsx
-msgid "Loading"
-msgstr "بارگذاری"
 
 #: frontend/src/metabase/ui/components/data-display/TreeTable/SelectionCheckbox/SelectionCheckbox.tsx
 msgid "Deselect row"
@@ -35565,6 +35568,10 @@ msgid "You don''t have permissions to do that."
 msgstr "شما مجوز انجام این کار را ندارید."
 
 #: metabase/actions/execution.clj
+msgid "You do not have permissions to run this action."
+msgstr "شما مجوز اجرای این اکشن را ندارید."
+
+#: metabase/actions/execution.clj
 msgid "Error executing action."
 msgstr "خطا در اجرای اکشن."
 
@@ -35589,10 +35596,6 @@ msgid "Implicit parameters must be provided."
 msgstr "پارامترهای ضمنی باید ارائه شوند."
 
 #: metabase/actions/execution.clj
-msgid "HTTP actions cannot be executed from public endpoints."
-msgstr "اکشن‌های HTTP از endpointهای عمومی قابل اجرا نیستند."
-
-#: metabase/actions/execution.clj
 msgid "Unknown action type {0}."
 msgstr "نوع عمل ناشناخته {0}."
 
@@ -35600,26 +35603,13 @@ msgstr "نوع عمل ناشناخته {0}."
 msgid "Values can only be fetched for actions that require a Primary Key."
 msgstr "فقط برای اکشن‌هایی که به Primary Key نیاز دارند می‌توان مقدارها را واکشی کرد."
 
-#: metabase/actions/http_action.clj
-#: metabase/driver/sql/parameters/substitute.clj
-msgid "Unable to substitute parameters: {0}"
-msgstr "عدم توانایی در جایگزینی پارامترها: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Cannot call the service: missing required parameters: {0}"
-msgstr "نمی توان سرویس را فراخوانی کرد: پارامترهای لازم وجود ندارد: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "Too many results returned: {0}"
-msgstr "نتایج بسیاری برگشت داده شد: {0}"
-
-#: metabase/actions/http_action.clj
-msgid "HTTP actions are disabled."
-msgstr "اکشن‌های HTTP غیرفعال هستند."
-
 #: metabase/actions/models.clj
 msgid "Actions must be made with models, not cards."
 msgstr "اکشن‌ها باید با مدل‌ها ساخته شوند، نه کارت‌ها."
+
+#: metabase/actions/models.clj
+msgid "Implicit actions are not supported for models with clauses."
+msgstr "اکشن‌های implicit برای مدل‌هایی که clause دارند پشتیبانی نمی‌شوند."
 
 #: metabase/actions/schema.clj
 msgid "value must be a JSON object mapping parameter ids to scalar values."
@@ -35632,10 +35622,6 @@ msgstr "value باید idهای پارامتر را به مقدارهای اسک
 #: metabase/actions/schema.clj
 msgid "Unsupported action type"
 msgstr "نوع اکشن پشتیبانی نمی‌شود"
-
-#: metabase/actions/schema.clj
-msgid "must be a valid json-query, something like ''.item.title''"
-msgstr "باید یک json-query معتبر باشد، چیزی مثل ''.item.title''"
 
 #: metabase/actions/schema.clj
 msgid "Unsupported implicit action kind"
@@ -35666,16 +35652,8 @@ msgid "Whether the Database has table data editing enabled."
 msgstr "این‌که آیا ویرایش دادهٔ جدول برای پایگاه داده فعال است یا نه."
 
 #: metabase/actions_rest/api.clj
-msgid "HTTP actions are not supported."
-msgstr "اکشن‌های HTTP پشتیبانی نمی‌شوند."
-
-#: metabase/actions_rest/api.clj
 msgid "Must provide a database_id for query actions"
 msgstr "برای اکشن‌های query باید database_id ارائه شود"
-
-#: metabase/actions_rest/api.clj
-msgid "Implicit actions are not supported for models with clauses."
-msgstr "اکشن‌های implicit برای مدل‌هایی که clause دارند پشتیبانی نمی‌شوند."
 
 #: metabase/agent_api/settings.clj
 msgid "Whether the Agent API is enabled."
@@ -35758,12 +35736,24 @@ msgid "`field` clause needs a portable FK in its third slot, not a numeric id. U
 msgstr "کلاز `field` در اسلات سومش به یک FK قابل‌حمل نیاز دارد، نه یک id عددی. از یک وکتور `[<database>, <schema>, <table>, <column>]` (که در برابر ارائه‌دهندهٔ متادیتا resolve می‌شود) یا یک رشتهٔ column-name (برای ارجاع بین‌مرحله‌ای) استفاده کنید."
 
 #: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+msgstr "`{0}` رفت‌وبرگشتِ لینکِ سؤال که فرانت‌اند باز می‌کند را دوام نمی‌آورد: سؤال یا بارگذاری نمی‌شود، یا بی‌صدا clause را از دست می‌دهد و چیز دیگری را پاسخ می‌دهد. به‌جای آن unit را روی ستون بگذارید — یک گزینهٔ `temporal-unit` روی مرجع `field` / `expression`، که با اولین روزِ دوره به‌عنوان یک رشتهٔ تاریخ ساده مثل \"2025-01-01\" مقایسه می‌شود — یا بازه را به‌صورت `>=` روزِ اولش و `<` روزِ اولِ بعد از آن بنویسید، هر دو به‌صورت رشتهٔ تاریخ ساده (نه `between` که هرچیزی بعد از نیمه‌شبِ آخرین روزش را حذف می‌کند). بازه را برای `year` روی مرجع `expression` استفاده کنید، که موتور کوئری آن را به‌صورت عدد می‌خواند، و داخل `aggregation:` (`count-where`, `sum-where`, `share`) و `conditions:` در join، که در آن‌ها جابه‌جا کردن unit به روی ستون جواب را تغییر می‌دهد."
+
+#: metabase/agent_lib/representations/repair.clj
 msgid "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
 msgstr "ویرایشگر عبارتِ سازندهٔ کوئری، یک بندِ {0} را در مرحلهٔ {1} رد می‌کند: {2}. کوئری ساخته می‌شود اما قابل نمایش یا ذخیره نیست — بندِ مشکل‌دار را بازنویسی کنید."
 
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` یک ستون سفارشیِ {1} است، بنابراین نمی‌توان آن را با {2} بازه‌بندی کرد. آن را با یک مقدار ساده مقایسه کنید، یا به‌جای آن یک ستون date / datetime را بازه‌بندی کنید."
+
+#: metabase/agent_lib/representations/repair.clj
+msgid "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+msgstr "`{0}` یک ستونِ {1} است، بنابراین نمی‌توان آن را با {2} بازه‌بندی کرد. آن را با یک مقدار ساده مقایسه کنید، یا به‌جای آن یک ستون date / datetime را بازه‌بندی کنید."
+
 #: metabase/agent_lib/representations/resolve.clj
-msgid "Invalid temporal literal {0} in :absolute-datetime — use an ISO-8601 date, datetime, year, or year-month."
-msgstr "لیترال زمانی {0} در :absolute-datetime نامعتبر است — از یک تاریخ/زمان، سال، یا سال-ماه با قالب ISO-8601 استفاده کنید."
+msgid "Invalid temporal literal {0} — use an ISO-8601 date, datetime, year, or year-month."
+msgstr "لیترال زمانی نامعتبر {0} — از یک date، datetime، year، یا year-month با قالب ISO-8601 استفاده کنید."
 
 #: metabase/ai_tracing/api.clj
 msgid "Eval trace not found"
@@ -35820,6 +35810,10 @@ msgstr "اینکه آیا یک نمودارِ غیرجدولی قبلاً تول
 #: metabase/analytics/settings.clj
 msgid "Enable logging of embed path, query parameters, user agent, IP address, and Metabot conversation metadata for users of your internal data and embeds. This information will be shown in your usage analytics."
 msgstr "لاگ‌گیریِ مسیر جاسازی، پارامترهای کوئری، user agent، آدرس IP و متادیتای گفتگوهای Metabot را برای کاربرانِ داده‌های داخلی و جاسازی‌های شما فعال کنید. این اطلاعات در تحلیل‌های استفادهٔ شما نشان داده خواهد شد."
+
+#: metabase/analytics/settings.clj
+msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
+msgstr "همهٔ آزمایش‌های کد را فعال یا غیرفعال کنید. وقتی غیرفعال باشد، فقط مسیر کدِ محیط عملیاتی اجرا می‌شود."
 
 #: metabase/analyze/query_results.clj
 msgid "value must be an array of valid results column metadata maps."
@@ -36153,38 +36147,6 @@ msgstr "این بخش از مدت‌زمان کش را قبل از انقضا ب
 msgid "The absolute maximum time to keep any cached query results, in seconds."
 msgstr "حداکثر زمان مطلق برای نگه‌داشتن هر نتیجهٔ کوئری کش‌شده، به ثانیه."
 
-#: metabase/channel/api/channel.clj
-msgid "Must be a namespaced channel. E.g: channel/http"
-msgstr "باید یک کانال namespaced باشد. مثلا: channel/http"
-
-#: metabase/channel/api/channel.clj metabase/channel/shared.clj
-msgid "Invalid channel details"
-msgstr "جزئیات کانال نامعتبر است"
-
-#: metabase/channel/api/slack.clj
-msgid "Invalid Slack token."
-msgstr "توکن Slack نامعتبر است."
-
-#: metabase/channel/api/slack.clj
-msgid "invalid token"
-msgstr "توکن نامعتبر"
-
-#: metabase/channel/api/slack.clj
-msgid "Slack channel not found."
-msgstr "کانال Slack یافت نشد."
-
-#: metabase/channel/api/slack.clj
-msgid "channel not found"
-msgstr "کانال پیدا نشد"
-
-#: metabase/channel/api/slack.clj
-msgid "You must configure a site-url for Slack integration to work."
-msgstr "برای کارکردن یکپارچه‌سازی Slack باید site-url را پیکربندی کنید."
-
-#: metabase/channel/api/slack.clj
-msgid "Bug reporting is not enabled."
-msgstr "گزارش باگ فعال نیست."
-
 #: metabase/channel/email.clj
 msgid "SMTP host is not set."
 msgstr "host مربوط به SMTP تنظیم نشده است."
@@ -36384,6 +36346,38 @@ msgstr "خطا در ثبت فونت‌ها: Metabase قادر به ارسال پ
 #: metabase/channel/render/style.clj
 msgid "This is a known issue with certain JVMs. See {0} and for more details."
 msgstr "این یک مشکل شناخته شده با برخی JVMها است. برای جزئیات بیشتر، {0} را ببینید."
+
+#: metabase/channel/rest/api/channel.clj
+msgid "Must be a namespaced channel. E.g: channel/http"
+msgstr "باید یک کانال namespaced باشد. مثلا: channel/http"
+
+#: metabase/channel/rest/api/channel.clj metabase/channel/shared.clj
+msgid "Invalid channel details"
+msgstr "جزئیات کانال نامعتبر است"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Invalid Slack token."
+msgstr "توکن Slack نامعتبر است."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "invalid token"
+msgstr "توکن نامعتبر"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Slack channel not found."
+msgstr "کانال Slack یافت نشد."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "channel not found"
+msgstr "کانال پیدا نشد"
+
+#: metabase/channel/rest/api/slack.clj
+msgid "You must configure a site-url for Slack integration to work."
+msgstr "برای کارکردن یکپارچه‌سازی Slack باید site-url را پیکربندی کنید."
+
+#: metabase/channel/rest/api/slack.clj
+msgid "Bug reporting is not enabled."
+msgstr "گزارش باگ فعال نیست."
 
 #: metabase/channel/settings.clj
 msgid "Bot user OAuth token for connecting the Metabase Slack app. This should be used for all new Slack integrations starting in Metabase v0.42.0."
@@ -37091,6 +37085,14 @@ msgstr "اجازه خواندن جدول در طرح {0} را ندارید"
 msgid "Lack permission to delete table in schema {0}"
 msgstr "اجازه حذف جدول در طرح {0} را ندارید"
 
+#: metabase/driver/druid_jdbc.clj
+msgid "Invalid {0}."
+msgstr "{0} نامعتبر است."
+
+#: metabase/driver/druid_jdbc.clj
+msgid "must not contain spaces, quotes, or semicolons"
+msgstr "نباید شامل فاصله، کوتیشن یا سمی‌کالن باشد"
+
 #: metabase/driver/h2.clj
 msgid "Connection String"
 msgstr "رشتهٔ اتصال"
@@ -37441,6 +37443,42 @@ msgid "The passphrase for this private key is incorrect."
 msgstr "عبارت عبورِ این کلید خصوصی نادرست است."
 
 #: metabase/driver/snowflake.clj
+msgid "No OIDC token was provided. Paste a JWT or set the token file path."
+msgstr "هیچ توکن OIDC ارائه نشد. یک JWT را paste کنید یا مسیر فایل توکن را تنظیم کنید."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token isn''t a valid JWT. Check the token you pasted or the file at the provided path."
+msgstr "توکن OIDC یک JWT معتبر نیست. توکنی که paste کردید یا فایلِ مسیرِ ارائه‌شده را بررسی کنید."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `iss` (issuer) claim."
+msgstr "توکن OIDC claim ضروری `iss` (issuer) را ندارد."
+
+#: metabase/driver/snowflake.clj
+msgid "The OIDC token is missing the required `sub` (subject) claim."
+msgstr "توکن OIDC claim ضروری `sub` (subject) را ندارد."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS credentials found. Make sure Metabase''s workload has an IAM role attached (instance profile, ECS task role, IRSA, etc.)."
+msgstr "هیچ اعتبارنامه‌ای برای AWS پیدا نشد. مطمئن شوید workload متابیس یک نقش IAM متصل دارد (instance profile، نقش تسک ECS، IRSA و غیره)."
+
+#: metabase/driver/snowflake.clj
+msgid "No AWS region was found. Set AWS_REGION in Metabase''s environment."
+msgstr "هیچ regionای برای AWS پیدا نشد. AWS_REGION را در محیط Metabase تنظیم کنید."
+
+#: metabase/driver/snowflake.clj
+msgid "No Azure managed identity is configured on Metabase''s host."
+msgstr "هیچ Azure managed identity روی میزبان Metabase پیکربندی نشده است."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a token from Azure''s identity endpoint."
+msgstr "Metabase نتوانست از endpoint هویت Azure یک توکن دریافت کند."
+
+#: metabase/driver/snowflake.clj
+msgid "Metabase couldn''t obtain a GCP identity token. Check that the workload has a service account attached."
+msgstr "Metabase نتوانست یک توکن هویت GCP دریافت کند. بررسی کنید که workload یک service account متصل داشته باشد."
+
+#: metabase/driver/snowflake.clj
 msgid "Snowflake doesn''t support extract us week"
 msgstr "Snowflake از extract us week پشتیبانی نمی‌کند"
 
@@ -37467,6 +37505,10 @@ msgstr "امکان پارس کردن کوئری نیتیو نیست. ممکن ا
 #: metabase/driver/sql.clj
 msgid "Invalid impersonated native query. Must be a single {0} statement."
 msgstr "کوئری نیتیوِ با هویتِ نقشِ پایگاه‌داده نامعتبر است. باید یک دستور {0} تکی باشد."
+
+#: metabase/driver/sql/parameters/substitute.clj
+msgid "Unable to substitute parameters: {0}"
+msgstr "عدم توانایی در جایگزینی پارامترها: {0}"
 
 #: metabase/driver/sql/parameters/substitute.clj
 msgid "Cannot run the query: missing required parameters: {0}"
@@ -39421,22 +39463,6 @@ msgstr "{0} {1} {2} مقدار"
 msgid "{0} {1} values"
 msgstr "{0} {1} مقدار"
 
-#: metabase/llm/api.clj
-msgid "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings."
-msgstr "تولید SQL با LLM پیکربندی نشده است. لطفاً در تنظیمات مدیران یک کلید API Anthropic تنظیم کنید."
-
-#: metabase/llm/api.clj
-msgid "Failed to parse SQL. Use @mentions to provide table references."
-msgstr "پارس کردن SQL ناموفق بود. برای ارائهٔ ارجاع جدول از @mentions استفاده کنید."
-
-#: metabase/llm/api.clj
-msgid "No tables found. Use @mentions or provide source SQL with table references."
-msgstr "هیچ جدولی پیدا نشد. از @mentions استفاده کنید یا SQL منبع را همراه با ارجاع‌های جدول ارائه کنید."
-
-#: metabase/llm/api.clj
-msgid "No accessible tables found. Check table permissions."
-msgstr "هیچ جدول قابل‌دسترسی‌ای پیدا نشد. مجوزهای جدول را بررسی کنید."
-
 #: metabase/llm/api/provider.clj
 msgid "The {0} connection is configured by environment variables and cannot be changed here."
 msgstr "اتصال {0} توسط متغیرهای محیطی پیکربندی شده است و اینجا قابل تغییر نیست."
@@ -39518,6 +39544,10 @@ msgid "The root both surfaces hang off; leave off any /anthropic or /v1 path."
 msgstr "ریشه‌ای که هر دو سطح از آن منشعب می‌شوند؛ هیچ مسیر /anthropic یا /v1 را اضافه نکنید."
 
 #: metabase/llm/provider.clj
+msgid "xAI"
+msgstr "xAI"
+
+#: metabase/llm/provider.clj
 msgid "Google Gemini Enterprise"
 msgstr "Google Gemini Enterprise"
 
@@ -39578,6 +39608,14 @@ msgid "A short-lived token, e.g. the output of gcloud auth print-access-token. U
 msgstr "یک توکن کوتاه‌عمر، مثلاً خروجی gcloud auth print-access-token. برای تست مفید است."
 
 #: metabase/llm/provider.clj
+msgid "Model Garden endpoint ID"
+msgstr "شناسهٔ endpoint ID برای Model Garden"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to."
+msgstr "اختیاری. به‌جای مدلی که گوگل میزبانی می‌کند، از یک مدل باز که از Model Garden دیپلوی کرده‌اید استفاده کنید. Location را روی regionای بگذارید که در آن دیپلوی کرده‌اید."
+
+#: metabase/llm/provider.clj
 msgid "Derived from the location when left at the global host."
 msgstr "وقتی روی هاست global بماند، از location مشتق می‌شود."
 
@@ -39632,6 +39670,14 @@ msgstr "کلید دسترسی محرمانه"
 #: metabase/llm/provider.clj
 msgid "Region"
 msgstr "ریجن"
+
+#: metabase/llm/provider.clj
+msgid "Model ID"
+msgstr "شناسه مدل"
+
+#: metabase/llm/provider.clj
+msgid "Optional. Use an inference profile, or a model that isn''t listed for this region, by its ID or ARN."
+msgstr "اختیاری. با ID یا ARN از یک inference profile، یا مدلی که برای این region فهرست نشده، استفاده کنید."
 
 #: metabase/llm/provider.clj
 msgid "Session token"
@@ -39752,16 +39798,8 @@ msgid "The Anthropic API Key."
 msgstr "کلید API Anthropic."
 
 #: metabase/llm/settings.clj
-msgid "The Anthropic model to use."
-msgstr "مدل Anthropic که باید استفاده شود."
-
-#: metabase/llm/settings.clj
 msgid "The Anthropic API base URL."
 msgstr "URL پایه API Anthropic."
-
-#: metabase/llm/settings.clj
-msgid "The Anthropic API version."
-msgstr "نسخه API Anthropic."
 
 #: metabase/llm/settings.clj
 msgid "The OpenAI Model (e.g. ''gpt-5.5'', ''gpt-5.4-mini'')"
@@ -39814,6 +39852,14 @@ msgstr "URL پایه API DeepSeek. هم سطح Messages سازگار با Anthro
 #: metabase/llm/settings.clj
 msgid "The DeepSeek API Key."
 msgstr "کلید API DeepSeek."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API base URL used for Chat Completions."
+msgstr "URL پایهٔ API برای xAI که برای Chat Completions استفاده می‌شود."
+
+#: metabase/llm/settings.clj
+msgid "The xAI API Key."
+msgstr "API Key برای xAI."
 
 #: metabase/llm/settings.clj
 msgid "A Google Cloud service account key JSON for the Gemini Enterprise Agent Platform. Takes precedence over the OAuth access token when both are set."
@@ -39902,14 +39948,6 @@ msgstr "Timeout سوکت (خواندنِ بین‌بایتی) برحسب میل�
 #: metabase/llm/settings.clj
 msgid "TCP connection timeout in milliseconds for LLM API requests. A provider that is down or unreachable should fail fast instead of holding a worker thread forever."
 msgstr "Timeout اتصال TCP برحسب میلی‌ثانیه برای درخواست‌های API مربوط به LLM. اگر یک ارائه‌دهنده down باشد یا در دسترس نباشد، باید سریع fail کند به‌جای اینکه یک تردِ ورکر را برای همیشه نگه دارد."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per user per minute."
-msgstr "حداکثر درخواست‌های تولید SQL برای هر کاربر در هر دقیقه."
-
-#: metabase/llm/settings.clj
-msgid "Maximum SQL generation requests per IP address per minute."
-msgstr "حداکثر درخواست‌های تولید SQL برای هر آدرس IP در هر دقیقه."
 
 #: metabase/logger/api.clj
 msgid "Sync issue troubleshooting"
@@ -40006,6 +40044,14 @@ msgstr "عدم تطابق بین `collection_id` داشبورد ({0}) و `collec
 #: metabase_enterprise/content_verification/api/routes.clj
 msgid "Content verification"
 msgstr "اعتبارسنجی محتوا"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: {0}"
+msgstr "کوئری ناموفق بود: {0}"
+
+#: metabase/metabot/query_execution.clj
+msgid "Query failed: unknown error"
+msgstr "کوئری ناموفق بود: خطای نامشخص"
 
 #: metabase/metabot/scope.clj
 msgid "Construct SQL queries"
@@ -40179,6 +40225,30 @@ msgstr "تسک‌ها را ایجاد و ویرایش کنید"
 msgid "No LLM provider connection named {0} is configured."
 msgstr "هیچ اتصال ارائه‌دهنده LLM با نام {0} پیکربندی نشده است."
 
+#: metabase/metabot/self.clj
+msgid "{0} rejected the request because of a billing issue, such as running out of credits. Check the billing settings for your account."
+msgstr "{0} به‌خاطر یک مشکل صورتحساب، مثل تمام شدن اعتبارها، درخواست را رد کرد. تنظیمات صورتحساب حساب‌تان را بررسی کنید."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the request because of a billing issue. Please contact your administrator."
+msgstr "ارائه‌دهندهٔ هوش مصنوعی به‌خاطر یک مشکل صورتحساب درخواست را رد کرد. لطفاً با ادمین خود تماس بگیرید."
+
+#: metabase/metabot/self.clj
+msgid "{0} is rate limiting requests from Metabase. Try again in a moment, and if it keeps happening, check the rate limits for your account."
+msgstr "{0} در حال rate limiting کردن درخواست‌ها از Metabase است. چند لحظهٔ دیگر دوباره تلاش کنید، و اگر ادامه داشت، rate limitهای حساب‌تان را بررسی کنید."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider is rate limiting requests right now. Please try again in a moment."
+msgstr "ارائه‌دهندهٔ هوش مصنوعی الان در حال rate limiting کردن درخواست‌ها است. لطفاً چند لحظهٔ دیگر دوباره تلاش کنید."
+
+#: metabase/metabot/self.clj
+msgid "{0} rejected the API key or credentials that Metabase sent. Check them in the AI settings."
+msgstr "{0} API key یا اعتبارنامه‌هایی را که Metabase فرستاد رد کرد. آن‌ها را در تنظیمات هوش مصنوعی بررسی کنید."
+
+#: metabase/metabot/self.clj
+msgid "The AI provider rejected the credentials that Metabase sent. Please contact your administrator."
+msgstr "ارائه‌دهندهٔ هوش مصنوعی اعتبارنامه‌هایی را که Metabase فرستاد رد کرد. لطفاً با ادمین خود تماس بگیرید."
+
 #: metabase/metabot/self/adapter.clj
 msgid "{0} API error (HTTP {1})"
 msgstr "خطای API {0} (HTTP {1})"
@@ -40266,6 +40336,10 @@ msgstr "AWS Bedrock ما را rate limit کرده است"
 #: metabase/metabot/self/bedrock.clj
 msgid "AWS Bedrock is not working but not saying why"
 msgstr "AWS Bedrock کار نمی‌کند اما دلیلش را نمی‌گوید"
+
+#: metabase/metabot/self/bedrock.clj
+msgid "AWS Bedrock returned an incomplete response from {0}"
+msgstr "AWS Bedrock یک پاسخ ناقص از {0} برگرداند"
 
 #: metabase/metabot/self/bedrock.clj
 msgid "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported."
@@ -40392,8 +40466,8 @@ msgid "Invalid Google model {0} — expected a publisher-qualified ID like \"goo
 msgstr "مدل گوگل نامعتبر {0} — انتظار می‌رفت یک ID دارای publisher مثل \"google/gemini-3.5-flash\" باشد"
 
 #: metabase/metabot/self/google.clj
-msgid "Unsupported Google model {0}. Only google/* and anthropic/* models are supported."
-msgstr "مدل Google پشتیبانی‌نشده {0}. فقط مدل‌های google/* و anthropic/* پشتیبانی می‌شوند."
+msgid "Unsupported Google model {0}. Only google/*, anthropic/* and endpoints/* models are supported."
+msgstr "مدل گوگلِ پشتیبانی‌نشده {0}. فقط مدل‌های google/*، anthropic/* و endpoints/* پشتیبانی می‌شوند."
 
 #: metabase/metabot/self/google.clj
 msgid "Invalid Google model {0} — a publisher and model ID can hold only letters, digits, and the characters \".\", \"_\", \"-\" and \"@\""
@@ -40442,6 +40516,10 @@ msgstr "(endpoint: {0})"
 #: metabase/metabot/self/google.clj
 msgid "check that \"{0}\" is a valid location"
 msgstr "بررسی کنید که \"{0}\" یک location معتبر است"
+
+#: metabase/metabot/self/google.clj
+msgid "Nothing is deployed on Google endpoint {0}"
+msgstr "روی endpoint گوگل {0} هیچ چیزی دیپلوی نشده است"
 
 #: metabase/metabot/self/mistral.clj
 msgid "Mistral API error (HTTP {0})"
@@ -40492,6 +40570,7 @@ msgid "Moonshot returned an internal server error"
 msgstr "Moonshot یک خطای داخلی سرور برگرداند"
 
 #: metabase/metabot/self/openai.clj
+#: metabase/metabot/self/openai/chat_completions.clj
 msgid "The model provider failed to complete the response"
 msgstr "ارائه‌دهنده مدل نتوانست پاسخ را کامل کند"
 
@@ -40662,6 +40741,30 @@ msgstr "اتصال به سرور vLLM قبل از اینکه پاسخ تمام �
 #: metabase/metabot/self/vllm.clj
 msgid "The vLLM server did not respond within {0}ms. Check that it is not overloaded, or raise the vLLM request timeout."
 msgstr "سرور vLLM در بازه {0}ms پاسخ نداد. بررسی کنید تحت بار زیاد نباشد، یا تایم‌اوت درخواست vLLM را افزایش دهید."
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API error (HTTP {0})"
+msgstr "خطای API برای xAI (HTTP {0})"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key expired or invalid"
+msgstr "کلید API xAI منقضی شده یا نامعتبر است"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API key lacks permission, or the team is out of credits"
+msgstr "کلید API xAI مجوز لازم را ندارد، یا اعتبارهای تیم تمام شده است"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI API endpoint or model was not found"
+msgstr "endpoint یا مدل API برای xAI پیدا نشد"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI has rate limited us"
+msgstr "xAI ما را rate limit کرده است"
+
+#: metabase/metabot/self/xai.clj
+msgid "xAI returned an internal server error"
+msgstr "xAI یک خطای داخلی سرور برگرداند"
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI API error (HTTP {0})"
@@ -41355,6 +41458,10 @@ msgid "You cannot remove the last member of the ''Admin'' group!"
 msgstr "نمی‌توانید آخرین عضو گروه ''Admin'' را حذف کنید!"
 
 #: metabase/permissions/models/permissions_group_membership.clj
+msgid "Adding people to the ''Data Analysts'' group requires the Advanced Permissions feature, which is not enabled on this instance."
+msgstr "اضافه‌کردن افراد به گروه ''Data Analysts'' به قابلیت Advanced Permissions نیاز دارد که روی این نمونه فعال نیست."
+
+#: metabase/permissions/models/permissions_group_membership.clj
 msgid "You cannot add or remove users to/from the ''All Users'' group."
 msgstr "نمی‌توانید کاربرها را به/از گروه ''همهٔ کاربران'' اضافه یا حذف کنید."
 
@@ -41591,6 +41698,10 @@ msgstr "توکن باید یک توکن معتبرِ ۶۴ کاراکتریِ ه�
 #: metabase/premium_features/token_check.clj
 msgid "Token validation is currently unavailable."
 msgstr "اعتبارسنجی توکن در حال حاضر در دسترس نیست."
+
+#: metabase/premium_features/token_check.clj
+msgid "Token validation timed out."
+msgstr "اعتبارسنجی توکن با timeout مواجه شد."
 
 #: metabase/premium_features/token_check.clj
 #: metabase_enterprise/premium_features/airgap.clj
@@ -42416,13 +42527,13 @@ msgstr "مسیر فایل برای {0}"
 msgid "{0} points to non-existent file: {1}"
 msgstr "{0} به فایلی که وجود ندارد اشاره می‌کند: {1}"
 
-#: metabase/segments/api.clj
-msgid "Segment definition must specify a source table."
-msgstr "تعریف بخش باید یک جدول مبدأ را مشخص کند."
-
 #: metabase/segments/models/segment.clj
 msgid "You cannot update the creator_id of a Segment."
 msgstr "نمی‌توانید creator_id یک بخش را به‌روزرسانی کنید."
+
+#: metabase/segments/rest/api.clj
+msgid "Segment definition must specify a source table."
+msgstr "تعریف بخش باید یک جدول مبدأ را مشخص کند."
 
 #: metabase/segments/schema.clj
 msgid "value must be a valid MBQL query with a source table and filters."
@@ -42507,6 +42618,10 @@ msgstr "احراز هویت دومرحله‌ای از قبل راه‌اندا�
 #: metabase/session/api.clj
 msgid "Invalid reset token"
 msgstr "توکن ریست نامعتبر"
+
+#: metabase/session/api.clj
+msgid "Unauthenticated"
+msgstr "احرازنشده"
 
 #: metabase/session/api.clj metabase_enterprise/mfa/core.clj
 msgid "Authentication session expired. Please log in again."
@@ -42934,6 +43049,14 @@ msgstr "اینکه بعد از اضافه شدن اتصال دیتابیس بع�
 msgid "Invalid timezone {0}: {1}"
 msgstr "timezone نامعتبر {0}: {1}"
 
+#: metabase/system/paths.clj
+msgid "Reading from path is disallowed: {0}"
+msgstr "خواندن از مسیر مجاز نیست: {0}"
+
+#: metabase/system/paths.clj
+msgid "Writing to path is disallowed: {0}"
+msgstr "نوشتن روی مسیر مجاز نیست: {0}"
+
 #: metabase/system/settings.clj
 msgid "The startup time in milliseconds"
 msgstr "زمان شروع به میلی‌ثانیه"
@@ -42957,6 +43080,14 @@ msgstr "محل نامعتبر {0}"
 #: metabase/system/settings.clj
 msgid "The email address users should be referred to if they encounter a problem."
 msgstr "آدرس ایمیلی که اگر کاربران با مشکلی مواجه شدند باید به آن ارجاع داده شوند."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may read files from, e.g. for database secrets given as a local file path. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "allowlist جداشده با ویرگول از دایرکتوری‌هایی که Metabase می‌تواند از آن‌ها فایل بخواند؛ مثلاً برای secretهای پایگاه‌داده که به‌صورت مسیر فایل محلی داده می‌شوند. برای مجاز نبودن هیچ مسیری از NONE استفاده کنید. مقدار پیش‌فرض در Metabase Cloud برابر /tmp و در حالت نصب‌شده روی سرور خودتان برابر / (every path) است."
+
+#: metabase/system/settings.clj
+msgid "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no paths. Defaults to /tmp on Metabase Cloud and / (every path) when self-hosted."
+msgstr "allowlist جداشده با ویرگول از دایرکتوری‌هایی که Metabase می‌تواند در آن‌ها فایل بنویسد. برای مجاز نبودن هیچ مسیری از NONE استفاده کنید. مقدار پیش‌فرض در Metabase Cloud برابر /tmp و در حالت نصب‌شده روی سرور خودتان برابر / (every path) است."
 
 #: metabase/tiles/api.clj
 msgid "No appropriate image writer found!"
@@ -43487,10 +43618,6 @@ msgstr "نمی‌دانم چطور {0} را با فرمت {1} تجزیه کنم"
 msgid "{0} must be at least 16 characters."
 msgstr "{0} باید حداقل 16 کاراکتر باشد."
 
-#: metabase/util/experiment/settings.clj
-msgid "Enable or disable all code experiments. When disabled, only the production code path runs."
-msgstr "همهٔ آزمایش‌های کد را فعال یا غیرفعال کنید. وقتی غیرفعال باشد، فقط مسیر کدِ محیط عملیاتی اجرا می‌شود."
-
 #: metabase/util/files.clj
 msgid "Resource does not exist."
 msgstr "Resource وجود ندارد."
@@ -43693,8 +43820,8 @@ msgstr "value باید یک نوع entity معتبر باشد (keyword یا stri
 
 #: metabase/warehouse_schema_rest/api/table.clj
 #: metabase_enterprise/data_studio/api/table.clj
-msgid "Tables can only be published to Library/Data collections."
-msgstr "جدول‌ها فقط می‌توانند در مجموعه‌های کتابخانه/داده منتشر شوند."
+msgid "Tables can only be published to Semantic layer/Data collections."
+msgstr "جدول‌ها فقط می‌توانند در مجموعه‌های Semantic layer/Data منتشر شوند."
 
 #: metabase/warehouse_schema_rest/api/table.clj
 msgid "unexpected multipart part"
@@ -44278,65 +44405,13 @@ msgstr "کاربران مستأجر را نمی‌توان به اپ‌های د
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "کوئری‌های اپ داده نمی‌توانند از معیارهایی استفاده کنند که به سؤال‌ها یا معیارهای ذخیره‌شدهٔ دیگر ارجاع می‌دهند: {0}"
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
-msgstr "{0}/{1}: \"version\" باید یک عدد صحیح مثبت باشد، مثل 1."
+#: metabase_enterprise/data_apps/apps.clj
+msgid "A data app with this slug already exists."
+msgstr "یک اپ داده با این slug از قبل وجود دارد."
 
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" must be a one-line string."
-msgstr "{0}/{1}: \"description\" باید یک رشتهٔ تک‌خطی باشد."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"description\" is a one-line summary — it must be {2} characters or fewer."
-msgstr "{0}/{1}: \"description\" یک خلاصهٔ تک‌خطی است — باید {2} کاراکتر یا کمتر باشد."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"{2}\" is not a valid allowed_hosts entry — use an origin like https://api.example.com or https://*.example.com."
-msgstr "{0}/{1}: \"{2}\" یک مقدار معتبر برای allowed_hosts نیست — از یک origin مثل https://api.example.com یا https://*.example.com استفاده کنید."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"allowed_hosts\" must be a list."
-msgstr "{0}/{1}: \"allowed_hosts\" باید یک لیست باشد."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "Could not parse {0}/{1}: {2}"
-msgstr "امکان پارس کردن {0}/{1} نبود: {2}"
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: the app directory''s name is its slug, so it must be lowercase letters, numbers, and dashes."
-msgstr "{0}: نام دایرکتوری اپ همان slug آن است، پس باید فقط شامل حروف کوچک، عدد و خط تیره باشد."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}: \"{1}\" is a reserved slug — rename the directory."
-msgstr "{0}: \"{1}\" یک slug رزروشده است — دایرکتوری را تغییر نام دهید."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"name\" is required."
-msgstr "{0}/{1}: \"name\" الزامی است."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" is required."
-msgstr "{0}/{1}: \"path\" الزامی است."
-
-#: metabase_enterprise/data_apps/config.clj
-msgid "{0}/{1}: \"path\" must not contain \"..\"."
-msgstr "{0}/{1}: \"path\" نباید شامل \"..\" باشد."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle not synced yet."
-msgstr "Bundle هنوز sync نشده است."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Could not read {0}."
-msgstr "امکان خواندن {0} نبود."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle file \"{0}\" not found in the repository."
-msgstr "فایل Bundle \"{0}\" در ریپازیتوری پیدا نشد."
-
-#: metabase_enterprise/data_apps/sync.clj
-msgid "Bundle for \"{0}\" must be less than {1} MiB."
-msgstr "Bundle برای \"{0}\" باید کمتر از {1} MiB باشد."
+#: metabase_enterprise/data_apps/models/data_app.clj
+msgid "Bundle file \"{0}\" not found."
+msgstr "فایل bundle \"{0}\" پیدا نشد."
 
 #: metabase_enterprise/data_complexity_score/api.clj
 msgid "Data Complexity Score has not been computed yet. Recompute it to create the first snapshot."
@@ -44643,6 +44718,18 @@ msgstr "سوالات سندباکس نمی‌توانند ستون‌هایی ر
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "You do not have permissions to modify a question that is used for row and column level security."
 msgstr "شما مجوزِ تغییرِ سؤالی را که برای امنیتِ سطح ردیف و ستون استفاده می‌شود ندارید."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a snippet that is used for row and column level security."
+msgstr "شما مجوز تغییر یک قطعه‌کدی که برای امنیت سطح ردیف و سطح ستون استفاده می‌شود را ندارید."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a segment that is used for row and column level security."
+msgstr "شما مجوز تغییر یک بخش که برای امنیت سطح ردیف و سطح ستون استفاده می‌شود را ندارید."
+
+#: metabase_enterprise/sandbox/models/sandbox.clj
+msgid "You do not have permissions to modify a measure that is used for row and column level security."
+msgstr "شما مجوز تغییر یک معیار که برای امنیت سطح ردیف و سطح ستون استفاده می‌شود را ندارید."
 
 #: metabase_enterprise/sandbox/models/sandbox.clj
 msgid "Cannot update Card: Card is used for Sandboxing, and updates would violate sandbox rules."

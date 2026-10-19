@@ -56,8 +56,7 @@ dataset_query:
         widget-type: date/range
     lib/type: mbql.stage/native
   lib/type: mbql/query
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
 - model: Card
