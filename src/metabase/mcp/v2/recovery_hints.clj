@@ -82,7 +82,7 @@
                        "from its own database. Use one from that database, or change the source to a table "
                        "in the referenced item's database.")])
 
-    :unknown-database
+    (:unknown-database :ambiguous-database-name)
     (message/msg [(str "Use a numeric table id in `source-table:` (from \"browse_data\" "
                        "action \"list_tables\"), which needs no database name at all.")])
 

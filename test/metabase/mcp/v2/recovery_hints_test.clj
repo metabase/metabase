@@ -18,3 +18,8 @@
                   "from its own database. Use one from that database, or change the source to a table "
                   "in the referenced item's database.")
              (some-> (recovery-hints/recovery-hint {:error error}) message/render))))))
+
+(deftest ^:parallel ambiguous-database-name-hint-test
+  (is (= (str "Use a numeric table id in `source-table:` (from \"browse_data\" "
+              "action \"list_tables\"), which needs no database name at all.")
+         (some-> (recovery-hints/recovery-hint {:error :ambiguous-database-name}) message/render))))
