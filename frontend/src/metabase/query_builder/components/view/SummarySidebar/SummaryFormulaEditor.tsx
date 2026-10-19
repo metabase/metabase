@@ -2,7 +2,7 @@ import { completionStatus } from "@codemirror/autocomplete";
 import { EditorState, Prec } from "@codemirror/state";
 import { type EditorView, keymap } from "@codemirror/view";
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -89,8 +89,10 @@ export function SummaryFormulaEditor({
 
   // the edited formula is printed once, when the editor opens, so later renders don't reset what was typed
   const [editedClause] = useState(initialClause);
+  const hasTypedRef = useRef(false);
 
-  // the formatter loads lazily, so an edited formula shows up a moment after the editor
+  // the formatter loads lazily, so an edited formula shows up a moment after the editor,
+  // unless the user has started typing in the meantime
   useEffect(() => {
     if (editedClause == null) {
       return;
@@ -102,12 +104,12 @@ export function SummaryFormulaEditor({
       availableColumns,
       printWidth: Infinity,
     })
-      .catch(() => "")
       .then((formula) => {
-        if (!isCancelled) {
+        if (!isCancelled && !hasTypedRef.current) {
           setSource(formula);
         }
-      });
+      })
+      .catch(() => {});
     return () => {
       isCancelled = true;
     };
@@ -225,6 +227,7 @@ export function SummaryFormulaEditor({
           autoCorrect="off"
           autoFocus
           onChange={(value) => {
+            hasTypedRef.current = true;
             setSource(value);
             setErrorMessage(null);
           }}

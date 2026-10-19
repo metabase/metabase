@@ -110,15 +110,14 @@ export const updateQuestion = (
     newQuestion = computedPivotQuestion.question;
 
     if (computedPivotQuestion.shouldRun !== null) {
-      // the pivot check only looks at how columns are laid out, so a changed query
-      // (e.g. a reworded aggregation with the same name) still runs when asked to
-      const hasQueryChanged =
-        currentQuestion != null &&
-        !Lib.areLegacyQueriesEqual(
-          currentQuestion.datasetQuery(),
-          newQuestion.datasetQuery(),
-        );
-      run = computedPivotQuestion.shouldRun || (run && hasQueryChanged);
+      // the pivot check only looks at how columns are laid out, so a query that differs
+      // from the last one run (e.g. a reworded aggregation with the same name) still runs
+      // when asked to
+      const lastRunQuery = rawSeries?.[0]?.card.dataset_query;
+      const hasStaleResults =
+        lastRunQuery == null ||
+        !Lib.areLegacyQueriesEqual(newQuestion.datasetQuery(), lastRunQuery);
+      run = computedPivotQuestion.shouldRun || (run && hasStaleResults);
     }
 
     const isNewQuestionNative = Lib.queryDisplayInfo(

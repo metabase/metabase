@@ -4,6 +4,7 @@ import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { hasFeature } from "metabase/databases";
 import {
   ActionIcon,
   Box,
@@ -53,6 +54,8 @@ export function SummaryWells({
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
+  const canWriteValueFormula =
+    database != null && hasFeature(database, "expression-aggregations");
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const formulaEdit = getFormulaEdit(definition, editingItemId);
   const editingWellId =
@@ -144,7 +147,11 @@ export function SummaryWells({
                 changeValueOperator(definition, value.id, operatorShortName),
               )
             }
-            onEditFormula={() => setEditingItemId(value.id)}
+            onEditFormula={
+              canWriteValueFormula
+                ? () => setEditingItemId(value.id)
+                : undefined
+            }
             onRemove={handleRemove}
           />
         ))}
@@ -289,7 +296,7 @@ function WellChip({
 
 type FormulaChipLabelProps = {
   label: string;
-  onEdit: () => void;
+  onEdit?: () => void;
 };
 
 function FormulaChipLabel({ label, onEdit }: FormulaChipLabelProps) {
@@ -297,6 +304,7 @@ function FormulaChipLabel({ label, onEdit }: FormulaChipLabelProps) {
     <UnstyledButton
       className={S.chipButton}
       aria-label={t`Edit the formula of ${label}`}
+      disabled={onEdit == null}
       onClick={onEdit}
     >
       <Icon name="function" size={12} />
@@ -311,7 +319,8 @@ type ValueChipProps = {
   label: string;
   isEditing: boolean;
   onChangeOperator: (operatorShortName: string) => void;
-  onEditFormula: () => void;
+  /** Omitted when the database can't aggregate with a formula. */
+  onEditFormula?: () => void;
   onRemove: (itemId: string) => void;
 };
 
@@ -386,13 +395,17 @@ function ValueChip({
               {option.displayName}
             </Menu.Item>
           ))}
-          <Menu.Divider />
-          <Menu.Item
-            leftSection={<Icon name="function" />}
-            onClick={onEditFormula}
-          >
-            {t`Edit as formula`}
-          </Menu.Item>
+          {onEditFormula && (
+            <>
+              <Menu.Divider />
+              <Menu.Item
+                leftSection={<Icon name="function" />}
+                onClick={onEditFormula}
+              >
+                {t`Edit as formula`}
+              </Menu.Item>
+            </>
+          )}
         </Menu.Dropdown>
       </Menu>
     </WellChip>
