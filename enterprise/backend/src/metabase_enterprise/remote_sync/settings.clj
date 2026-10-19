@@ -97,7 +97,7 @@
   :default 60)
 
 (defsetting remote-sync-transforms
-  (deferred-tru "Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).")
+  (deferred-tru "Whether to sync transforms via remote-sync. When enabled, transforms, transform tags, transform tests, Python libraries, and transforms folders are synced.")
   :type :boolean
   :visibility :admin
   :export? false
