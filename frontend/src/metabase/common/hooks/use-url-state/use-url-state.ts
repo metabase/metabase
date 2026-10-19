@@ -4,7 +4,12 @@ import _ from "underscore";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import type { Location } from "metabase/router";
-import { getRouterLocation, queryToSearch, useNavigate } from "metabase/router";
+import {
+  getIsNavigationPending,
+  getRouterLocation,
+  queryToSearch,
+  useNavigate,
+} from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
 
 import type { UrlStateQuery } from "./types";
@@ -79,7 +84,7 @@ export function useUrlState<State extends BaseState>(
       const routerLocationKey = getRouterLocation()?.key;
       const hasNavigatedSinceRender =
         routerLocationKey !== undefined && routerLocationKey !== location.key;
-      if (hasNavigatedSinceRender) {
+      if (hasNavigatedSinceRender || getIsNavigationPending()) {
         return;
       }
       const search = toSearchString(state);
