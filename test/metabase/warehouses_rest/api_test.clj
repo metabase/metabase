@@ -2820,15 +2820,19 @@
                           :ssl false,
                           :tunnel-enabled false,
                           :advanced-options false}
-        new-details      {:service-account-json "{\"type\": \"service_account\", \"project_id\": \"bigquery-project\"}",
-                          :dataset-filters-type "inclusion",
-                          :dataset-filters-patterns "dev",
-                          :project-id nil
+        new-details      {:host "mysql.example.com",
+                          :port 3306,
+                          :dbname "shop",
+                          :user "shop",
+                          :password "password",
                           :advanced-options false}]
+    ;; saving a Database validates its details through the driver, which loads it on first use -- and a driver namespace
+    ;; cannot load while one of its multimethods is redefined below
+    (driver/the-initialized-driver :mysql)
     (with-redefs [driver/can-connect? (constantly true)]
       (testing "when the engine changes, the existing details are not merged into the new ones (#77480)"
         (mt/with-temp [:model/Database {db-id :id} {:engine :postgres, :details existing-details}]
-          (api-update-database! 200 db-id {:engine :bigquery-cloud-sdk, :details new-details})
+          (api-update-database! 200 db-id {:engine :mysql, :details new-details})
           (is (= new-details
                  (t2/select-one-fn :details :model/Database :id db-id))))
         (testing "without an engine change, existing details are still merged into partial updates"
