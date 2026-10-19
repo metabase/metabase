@@ -263,6 +263,10 @@
     (mapcat (fn [[i v]] (humanized-locations (conj path i) v)) (map-indexed vector errors))
     :else [[path (str errors)]]))
 
+(def ^:private max-humanized-paths-length
+  "Character budget for structural validation paths, including the truncation marker."
+  500)
+
 (defn humanized->paths
   "Flatten humanized validation errors into readable paths, capped at 500 characters with an ellipsis."
   [humanized]
@@ -274,8 +278,8 @@
                                    (str/join ", " (distinct (map second (get by-path path)))))))
                        (interpose "; ")
                        (mapcat seq)
-                       (take 501)
+                       (take (inc max-humanized-paths-length))
                        (apply str))]
-    (if (> (count text) 500)
-      (str (subs text 0 499) "\u2026")
+    (if (> (count text) max-humanized-paths-length)
+      (str (subs text 0 (dec max-humanized-paths-length)) "\u2026")
       text)))
