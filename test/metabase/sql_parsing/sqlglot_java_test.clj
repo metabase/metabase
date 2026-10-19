@@ -114,3 +114,17 @@
                       (protocol/transpile-sql java-parser sql "postgres" "snowflake")]]
         (is (not-any? sqlglot-java.ast/ast-node? (tree-seq coll? seq result))
             (pr-str result))))))
+
+(deftest whitespace-names-test
+  (testing "a name made only of whitespace is a name, as in sql_tools.py, which only treats an empty one as missing"
+    (let [java-parser (sqlglot-java/parser)]
+      (is (= [[nil nil " "]] (protocol/referenced-tables java-parser "postgres" "select * from \" \"")))
+      (is (= [[" " " " "t"]] (protocol/referenced-tables java-parser "postgres" "select * from \" \".\" \".t")))
+      (is (= [[nil " " "t" "a"]] (protocol/referenced-fields java-parser "postgres" "select a from \" \".t")))
+      (testing "an ORDER BY of a whitespace alias resolves to the alias"
+        (let [{:keys [used_fields errors]} (protocol/field-references java-parser "postgres"
+                                                                      "SELECT a AS \" \" FROM t ORDER BY \" \"")]
+          (is (= [] errors))
+          (is (= #{"a"} (set (map :column used_fields))))
+          (is (every? #(= " " (:alias %)) used_fields))))
+      (is (= "success" (:status (protocol/transpile-sql java-parser "SELECT 1" "  " "postgres")))))))

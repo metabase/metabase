@@ -132,7 +132,7 @@
     ;; table-valued function named `t`.
     (and (instance? Expressions$Table node) (instance? Expressions$Anonymous (ast/this node)))
     (boolean (some #(and (instance? Expressions$Column %)
-                         (str/blank? (ast/text % "table"))
+                         (empty? (ast/text % "table"))
                          (contains? locking-table-hints (u/upper-case-en (ast/node-name %))))
                    (ast/expressions (ast/this node))))
 
@@ -169,7 +169,7 @@
 (defn- unbracketed
   "`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias."
   [stmt]
-  (if (and (instance? Expressions$Subquery stmt) (str/blank? (ast/node-alias stmt)))
+  (if (and (instance? Expressions$Subquery stmt) (empty? (ast/node-alias stmt)))
     (recur (ast/this stmt))
     stmt))
 

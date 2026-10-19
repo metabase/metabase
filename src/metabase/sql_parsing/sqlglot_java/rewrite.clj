@@ -52,7 +52,7 @@
             :let  [replacements (vec (for [[source-alias source] (references/real-table-sources scope cte-names)
                                            ;; A temp table has no IDENTITY lineage worth breaking, and its
                                            ;; derived-table alias would lose the prefix qualified columns keep.
-                                           :when (and (str/blank? (references/temp-table-prefix source))
+                                           :when (and (empty? (references/temp-table-prefix source))
                                                       (.add seen source))]
                                        [source source-alias]))]
             [table table-alias] replacements]
@@ -184,7 +184,7 @@
           (set-identifier! table "db" new-schema dialect))
         ;; A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
         ;; enclosing query names the CTE and is left alone.
-        (when-not (and (nil? db) (str/blank? schema)
+        (when-not (and (nil? db) (empty? schema)
                        (contains? (references/shadowing-cte-names table) (ast/lower table-name)))
           ;; The schema is "" when the reference has none, as in sqlglot, so it only matches a key without one
           ;; through the bare-table shape.
@@ -206,7 +206,7 @@
         ;; first matching key decides.
         (let [[_ new-column] (first (filter (fn [[[_ key-table key-column]]]
                                               (and (= (ast/lower key-column) (ast/lower column-name))
-                                                   (or (str/blank? table-ref)
+                                                   (or (empty? table-ref)
                                                        (= (ast/lower (or key-table "")) (ast/lower table-ref)))))
                                             column-map))]
           (when (seq new-column)
