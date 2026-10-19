@@ -32,6 +32,7 @@ import { PreviewModeSelector } from "./PreviewModeSelector";
 import { type PreviewBackgroundType, PreviewPane } from "./PreviewPane";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { SettingsTabLayout } from "./SettingsTabLayout";
+import S from "./StaticEmbedSetupPane.module.css";
 import { getDefaultDisplayOptions } from "./config";
 import { getDefaultEmbeddingParams } from "./lib/get-default-embedding-params";
 import { getHasParamsChanged } from "./lib/get-has-params-changed";
@@ -208,7 +209,7 @@ export const StaticEmbedSetupPane = ({
   >(EMBED_MODAL_TABS.Overview);
 
   return (
-    <Stack gap={0}>
+    <Stack gap={0} flex="1 1 auto" mih={0}>
       <Paper withBorder shadow="sm" m="1.5rem 2rem" p="0.75rem 1rem">
         <EmbedModalContentStatusBar
           resourceType={resourceType}
@@ -221,6 +222,7 @@ export const StaticEmbedSetupPane = ({
       </Paper>
 
       <Tabs
+        className={S.tabs}
         defaultValue={EMBED_MODAL_TABS.Overview}
         data-testid="embedding-preview"
       >
@@ -251,7 +253,7 @@ export const StaticEmbedSetupPane = ({
          * when you change to a different tab since they're all rendered inside
          * different `Tabs.Panel` if you were to use it as Mantine suggests.
          */}
-        <Tabs.Panel value={activeTab}>
+        <Tabs.Panel className={S.tabPanel} value={activeTab}>
           {activeTab === EMBED_MODAL_TABS.Overview ? (
             <OverviewSettings
               resourceType={resourceType}

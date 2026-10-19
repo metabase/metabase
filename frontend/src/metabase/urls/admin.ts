@@ -144,8 +144,11 @@ export function dataModelSegmentRevisions(segmentId: SegmentId) {
   return `${dataModelSegment(segmentId)}/revisions`;
 }
 
+/** Default `/admin/settings` page. The index route redirects here. */
+export const SETTINGS_INDEX_SLUG = "general";
+
 export function generalSettings() {
-  return "/admin/settings/general";
+  return `/admin/settings/${SETTINGS_INDEX_SLUG}`;
 }
 
 export function domainsSettings() {

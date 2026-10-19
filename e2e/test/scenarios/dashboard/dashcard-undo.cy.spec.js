@@ -109,4 +109,65 @@ describe("scenarios > dashboard cards > undo", () => {
       }
     },
   );
+
+  it("should stop the ongoing query when removing a card, re-fetch it on undo, and undo a virtual card removal (metabase#12926, metabase#35545)", () => {
+    const filterDisplayName = "F";
+    const queryResult = 42;
+    const questionDetails = {
+      name: "Question 1",
+      native: {
+        query: `SELECT ${queryResult} [[+{{F}}]] as ANSWER`,
+        "template-tags": {
+          F: {
+            type: "number",
+            name: "F",
+            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+            "display-name": filterDisplayName,
+          },
+        },
+      },
+    };
+
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+      req.on("response", (res) => {
+        res.setDelay(5000);
+      });
+    });
+
+    H.createNativeQuestionAndDashboard({
+      questionDetails,
+    }).then(({ body: { dashboard_id } }) => {
+      cy.visit(`/dashboard/${dashboard_id}`);
+    });
+
+    // The API client uses fetch, so cancelling the query aborts its
+    // AbortController rather than calling XMLHttpRequest.abort().
+    cy.window().then((win) => {
+      cy.spy(win.AbortController.prototype, "abort").as("queryAbort");
+    });
+
+    H.editDashboard();
+    H.showDashboardCardActions();
+    H.getDashboardCard().findByTestId("loading-indicator").should("exist");
+    cy.get("@queryAbort").invoke("resetHistory");
+    cy.findByTestId("dashboardcard-actions-panel")
+      .findByLabelText("close icon")
+      .click();
+    cy.get("@queryAbort").should("have.been.called");
+
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+      // calling req.continue() will make cypress skip all previously added intercepts
+      req.continue();
+    }).as("dashcardQueryRestored");
+    H.undo();
+    cy.wait("@dashcardQueryRestored");
+    H.getDashboardCard().findByText(queryResult);
+
+    H.addTextBoxWhileEditing("Text card content");
+    H.getDashboardCards().should("have.length", 2);
+    H.removeDashboardCard(1);
+    H.getDashboardCards().should("have.length", 1);
+    H.undo();
+    H.getDashboardCard(1).findByText("Text card content");
+  });
 });

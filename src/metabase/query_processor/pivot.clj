@@ -54,6 +54,13 @@
   "Re-export of [[metabase.query-processor.pivot.common/group-bitmask]]."
   pivot.common/group-bitmask)
 
+(def ^:private max-powerset-breakouts
+  "The most breakouts [[breakout-combinations]] will expand to their full powerset (2^n grouping combinations) when no
+  pivot rows or columns are given. Beyond this a single request could force the server to enumerate billions of
+  combinations. Each combination is a separate query on the multi-query path, so the cap is kept low: 10 breakouts
+  is 1024 combinations."
+  10)
+
 (defn- powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
   [xs]
@@ -87,7 +94,7 @@
 
 (defn- validate-pivot-indices!
   "Throw an `:invalid-query` error if any index in `pivot-rows` or `pivot-cols` falls outside
-  `[0, num-breakouts)`."
+  `[0, num-breakouts)`, if either contains duplicates, or if they overlap."
   [num-breakouts pivot-rows pivot-cols]
   (doseq [[k pivots] [[:pivot-rows pivot-rows]
                       [:pivot-cols pivot-cols]]
@@ -98,11 +105,34 @@
                       {:type          qp.error-type/invalid-query
                        :num-breakouts num-breakouts
                        :pivot-rows    pivot-rows
-                       :pivot-cols    pivot-cols})))))
+                       :pivot-cols    pivot-cols}))))
+  (doseq [[k pivots] [[:pivot-rows pivot-rows]
+                      [:pivot-cols pivot-cols]]]
+    (when-not (apply distinct? (or (seq pivots) [nil]))
+      (throw (ex-info (tru "Invalid {0}: duplicate breakout indices" (name k))
+                      {:type       qp.error-type/invalid-query
+                       :pivot-rows pivot-rows
+                       :pivot-cols pivot-cols}))))
+  (when (some (set pivot-rows) pivot-cols)
+    (throw (ex-info (tru "Invalid pivot options: pivot-rows and pivot-cols must not overlap")
+                    {:type       qp.error-type/invalid-query
+                     :pivot-rows pivot-rows
+                     :pivot-cols pivot-cols}))))
+
+(defn- validate-powerset-size!
+  "Throw an `:invalid-query` error if `num-breakouts` is too large to expand into its full powerset of combinations."
+  [num-breakouts]
+  (when (> num-breakouts max-powerset-breakouts)
+    (throw (ex-info (tru "Too many breakouts for a pivot query without pivot rows or columns: {0} breakouts, but the maximum is {1}"
+                         num-breakouts max-powerset-breakouts)
+                    {:type          qp.error-type/invalid-query
+                     :num-breakouts num-breakouts
+                     :max-breakouts max-powerset-breakouts}))))
 
 (defmacro ^:private wrapping-pivot-generation-errors
   "Rewrap any throw from `body` as `\"Error generating pivot queries\"` of type `:qp`, matching the
   outer error shape every pivot path presents to the QP's error handling."
+  {:style/indent 1}
   [query & body]
   `(try
      ~@body
@@ -132,7 +162,9 @@
        ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
        ;; we'll just generate everything
        (if (empty? (concat pivot-rows pivot-cols))
-         (powerset (range 0 num-breakouts))
+         (do
+           (validate-powerset-size! num-breakouts)
+           (powerset (range 0 num-breakouts)))
          (concat
           ;; e.g. given num-breakouts = 4; pivot-rows = [0 1 2]; pivot-cols = [3]
           ;; primary data: return all breakouts
@@ -181,21 +213,21 @@
   [query :- ::lib.schema/query
    {:keys [pivot-rows pivot-cols show-row-totals show-column-totals] :as _pivot-options} :- ::pivot-opts]
   (wrapping-pivot-generation-errors query
-                                    (let [all-breakouts (lib/breakouts query)
-                                          all-queries   (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts)
-                                                                                                               pivot-rows
-                                                                                                               pivot-cols
-                                                                                                               show-row-totals
-                                                                                                               show-column-totals)
-                                                                                 (log/tracef "Using breakout combinations: %s" (pr-str <>)))]
-                                                          (-> query
-                                                              (assoc :qp.pivot/unremapped-breakout-combination breakout-indexes)
-                                                              qp.nest-for-pivot/remove-non-aggregation-order-bys
-                                                              (keep-breakouts-at-indexes breakout-indexes)))]
-                                      (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
-                                            (->
-                                             (assoc-in (first all-queries) [:info :pivot/original-query] query)
-                                             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))))
+    (let [all-breakouts (lib/breakouts query)
+          all-queries   (for [breakout-indexes (u/prog1 (breakout-combinations (count all-breakouts)
+                                                                               pivot-rows
+                                                                               pivot-cols
+                                                                               show-row-totals
+                                                                               show-column-totals)
+                                                 (log/tracef "Using breakout combinations: %s" (pr-str <>)))]
+                          (-> query
+                              (assoc :qp.pivot/unremapped-breakout-combination breakout-indexes)
+                              qp.nest-for-pivot/remove-non-aggregation-order-bys
+                              (keep-breakouts-at-indexes breakout-indexes)))]
+      (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
+            (->
+             (assoc-in (first all-queries) [:info :pivot/original-query] query)
+             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))))
 
 (defn- maybe-userland
   "Wrap `query` as a userland query when it carries a non-empty `:info` map."
@@ -585,20 +617,16 @@
            :qp.pivot/num-remapped-breakouts   num-remapped-breakouts
            :qp.pivot/remapped-indexes         remap)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic ^:private *pivot-max-result-rows*
-  "Maximum number of result rows for each pivot sub-query. Divided by the number of aggregations since each aggregation
-  adds a column to the output, so fewer rows are needed to fill the pivot table."
-  200000)
-
 (defn- pivot-query-max-rows
-  "Calculate the per-sub-query row limit for pivot queries: `floor(pivot-max-result-rows / num-aggregations)`.
-  Falls back to `pivot-max-result-rows` if there are no aggregations (shouldn't happen for pivot queries)."
+  "Calculate the per-sub-query row limit for the multi-query pivot path:
+  `floor(pivot-max-result-rows / num-aggregations)`. Falls back to the raw setting value if there are no
+  aggregations (shouldn't happen for pivot queries)."
   [query]
-  (let [num-aggs (count (lib/aggregations query))]
+  (let [cap      (qp.settings/pivot-max-result-rows)
+        num-aggs (count (lib/aggregations query))]
     (if (pos? num-aggs)
-      (quot *pivot-max-result-rows* num-aggs)
-      *pivot-max-result-rows*)))
+      (quot cap num-aggs)
+      cap)))
 
 (defn- pivot-opts-from-query
   "Return `query`'s pivot-options map — as downstream export middleware and streaming writers read it from
@@ -728,6 +756,15 @@
          (not (lib.pivot/has-pivot? query)))
     (lib.pivot/with-pivot {:rows [] :columns [] :show-row-totals true :show-column-totals true})))
 
+(defn- cap-constraints-at-pivot-setting
+  "Cap `:max-results` (and `:max-results-bare-rows`, so it stays ≤ `:max-results`) at the pivot setting.
+  A caller-supplied smaller value is still honored."
+  [query]
+  (let [cap (qp.settings/pivot-max-result-rows)]
+    (cond-> (update-in query [:constraints :max-results] u/safe-min cap)
+      (get-in query [:constraints :max-results-bare-rows])
+      (update-in [:constraints :max-results-bare-rows] min cap))))
+
 (defn- run-sql-pivot-query
   "Translate `query`'s pivot intent (legacy top-level keys and/or viz-settings) into an MBQL5 `:pivot` clause
   on the last stage and submit to the standard QP through `rff`."
@@ -736,12 +773,13 @@
                          (get-in query [:info :visualization-settings]))
         pivot-opts   (pivot-opts-from-query query)
         prepared     (wrapping-pivot-generation-errors query
-                                                       (-> query
-                                                           apply-legacy-pivot-keys
-                                                           (apply-pivot-viz-settings viz-settings)
-                                                           maybe-add-default-pivot-clause
-                                                           (assoc-in [:middleware :pivot-options] pivot-opts)
-                                                           maybe-userland))]
+                       (-> query
+                           apply-legacy-pivot-keys
+                           (apply-pivot-viz-settings viz-settings)
+                           maybe-add-default-pivot-clause
+                           (assoc-in [:middleware :pivot-options] pivot-opts)
+                           cap-constraints-at-pivot-setting
+                           maybe-userland))]
     (qp/process-query prepared rff)))
 
 (defn- running-in-clojure-test?

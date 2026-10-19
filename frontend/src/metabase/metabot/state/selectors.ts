@@ -6,9 +6,9 @@ import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 import {
+  CONTEXT_FULL_ERROR_CODE,
   CONTEXT_WINDOW_WARNING_PERCENT,
-  FIXED_METABOT_IDS,
-  METABOT_REQUEST_IDS,
+  FIXED_METABOT_ENTITY_IDS,
 } from "../constants";
 import {
   getContextWindowPercentUsage,
@@ -46,8 +46,10 @@ export const getActiveMetabotAgentIds = createSelector(
   (state) => Object.keys(state.agents) as MetabotAgentId[],
 );
 
-export const getMetabotId = () =>
-  isEmbedding() ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT;
+export const getMetabotEntityId = () =>
+  isEmbedding()
+    ? FIXED_METABOT_ENTITY_IDS.EMBEDDED
+    : FIXED_METABOT_ENTITY_IDS.DEFAULT;
 
 export const getDebugMode = createSelector(
   getMetabotState,
@@ -256,10 +258,21 @@ export const getContextUsagePercent = createSelector(
   getContextWindowPercentUsage,
 );
 
+export const isContextFullError = (message: MetabotMessage | undefined) =>
+  message?.status.type === "errored" &&
+  message.status.error.type === CONTEXT_FULL_ERROR_CODE;
+
 export const getLongChatNotice = createSelector(
-  [getContextUsage, getContextUsagePercent],
-  (contextUsage, percentUsage): MetabotLongChatNoticeVariant | undefined => {
-    if (isContextWindowFull(contextUsage)) {
+  [getMessages, getContextUsage, getContextUsagePercent],
+  (
+    messages,
+    contextUsage,
+    percentUsage,
+  ): MetabotLongChatNoticeVariant | undefined => {
+    if (
+      isContextWindowFull(contextUsage) ||
+      isContextFullError(messages.at(-1))
+    ) {
       return "full";
     }
     return percentUsage >= CONTEXT_WINDOW_WARNING_PERCENT
@@ -295,9 +308,12 @@ export const getMetabotReqIdOverride = createSelector(
   (convo) => convo.experimental.metabotReqIdOverride,
 );
 
-export const getMetabotRequestId = (state: State, conversationId: string) =>
+export const getMetabotRequestEntityId = (
+  state: State,
+  conversationId: string,
+) =>
   getMetabotReqIdOverride(state, conversationId) ??
-  (isEmbedding() ? METABOT_REQUEST_IDS.EMBEDDED : undefined);
+  (isEmbedding() ? FIXED_METABOT_ENTITY_IDS.EMBEDDED : undefined);
 
 export const getProfileOverride = createSelector(
   getConversation,

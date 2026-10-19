@@ -17,6 +17,7 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.self.openai-compatible :as openai-compatible]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.registry :as registry]
    [metabase.metabot.self.vllm :as vllm]
@@ -47,6 +48,7 @@
    #'moonshot/provider   :metabot.moonshot/request
    #'ollama/provider     :metabot.ollama/request
    #'openai/provider     :metabot.openai/request
+   #'openai-compatible/provider :metabot.openai-compatible/request
    #'openrouter/provider :metabot.openrouter/request
    #'vllm/provider       :metabot.vllm/request
    #'xai/provider        :metabot.xai/request
@@ -76,6 +78,7 @@
    ;; the shared msgid, which renders identically
    #'ollama/provider     "Ollama API error (HTTP 418)"
    #'openai/provider     "OpenAI API error (HTTP 418)"
+   #'openai-compatible/provider "OpenAI-compatible API error (HTTP 418)"
    #'openrouter/provider "OpenRouter API error (HTTP 418)"
    #'vllm/provider       "vLLM API error (HTTP 418)"
    #'xai/provider        "xAI API error (HTTP 418)"

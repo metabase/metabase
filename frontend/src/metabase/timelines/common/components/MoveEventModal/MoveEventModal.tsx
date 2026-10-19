@@ -2,14 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getSortedTimelines } from "metabase/common/utils/timelines";
-import { Button } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Button, Stack } from "metabase/ui";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
-import ModalFooter from "../ModalFooter";
-import ModalHeader from "../ModalHeader";
-import TimelinePicker from "../TimelinePicker";
-
-import { ModalBody, ModalRoot } from "./MoveEventModal.styled";
+import { ModalFooter } from "../ModalFooter";
+import { ModalHeader } from "../ModalHeader";
+import { TimelinePicker } from "../TimelinePicker";
 
 export interface MoveEventModalProps {
   event: TimelineEvent;
@@ -24,7 +23,7 @@ export interface MoveEventModalProps {
   onClose?: () => void;
 }
 
-const MoveEventModal = ({
+export const MoveEventModal = ({
   event,
   timelines,
   collection,
@@ -46,24 +45,28 @@ const MoveEventModal = ({
   }, [event, newTimeline, oldTimeline, onSubmit, onSubmitSuccess]);
 
   return (
-    <ModalRoot>
+    <Stack gap={0} mih="36rem" mah="90vh">
       <ModalHeader title={t`Move ${event.name}`} onClose={onClose} />
-      <ModalBody>
+      <Stack
+        className={CS.overflowYAuto}
+        gap={0}
+        flex="1 1 auto"
+        my="lg"
+        py="lg"
+        px="xxl"
+      >
         <TimelinePicker
           value={newTimeline}
           options={sortedTimelines}
           onChange={setNewTimeline}
         />
-      </ModalBody>
+      </Stack>
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button variant="filled" disabled={!isEnabled} onClick={handleSubmit}>
           {t`Move`}
         </Button>
       </ModalFooter>
-    </ModalRoot>
+    </Stack>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MoveEventModal;

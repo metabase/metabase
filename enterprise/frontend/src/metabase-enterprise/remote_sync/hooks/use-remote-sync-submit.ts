@@ -80,7 +80,7 @@ export const useRemoteSyncSubmit = ({
         } catch (error) {
           sendToast({
             message: t`Failed to create Library`,
-            icon: "warning",
+            variant: "negative",
           });
           throw error;
         }
@@ -138,7 +138,7 @@ export const useRemoteSyncSubmit = ({
         } catch (error) {
           sendToast({
             message: getErrorMessage(error, t`Settings could not be saved`),
-            icon: "warning",
+            variant: "negative",
           });
           throw isRemoteSyncDependencyError(error)
             ? { ...error, data: { ...error.data, errors: undefined } }

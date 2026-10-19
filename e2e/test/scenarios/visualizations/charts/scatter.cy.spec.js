@@ -136,9 +136,9 @@ describe("scenarios > visualizations > scatter", () => {
       },
     });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization");
-    cy.findAllByText("79").should("not.exist");
+    H.cartesianChartCircle().should("have.length", 49);
+    H.getValueLabels().should("not.exist");
+    H.echartsContainer().findByText("79").should("not.exist");
   });
 
   it("should respect circle size in a visualization (metabase#22929)", () => {
@@ -227,11 +227,11 @@ select 10 as size, 2 as x, 5 as y`,
     stabilizeScatterChart();
     H.cartesianChartCircle().first().realHover();
 
-    H.assertEChartsTooltipNotContain(columnsToRemove);
     H.assertEChartsTooltip({
       header: "15.69",
       rows: allTooltipRows.slice(0, 2),
     });
+    H.assertEChartsTooltipNotContain(columnsToRemove);
   });
 
   it("should render scatter plot with native query data (metabase#55880)", () => {

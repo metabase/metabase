@@ -2,6 +2,14 @@
 name: typescript-review
 description: Review TypeScript and JavaScript code changes for compliance with Metabase coding standards, style violations, and code quality issues. Use when reviewing pull requests or diffs containing TypeScript/JavaScript code.
 allowed-tools: Read, Grep, Bash, Glob, Skill
+metadata:
+  metareview:
+    title: TypeScript review
+    kind: agent
+    rule: TypeScript or JavaScript files changed
+    watches: ["*.ts", "*.tsx", "*.mts", "*.cts", "*.js", "*.jsx"]
+    icon: brand-typescript
+    color: blue
 ---
 
 # TypeScript/JavaScript Code Review Skill

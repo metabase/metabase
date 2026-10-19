@@ -1,22 +1,15 @@
-import { t } from "ttag";
-
 import { isRootCollection } from "metabase/common/collections/utils";
 import type { TreeItem } from "metabase/data-studio/common/types";
-import { createEmptyStateItem } from "metabase/data-studio/common/utils";
+import {
+  buildCollectionTreeChildren,
+  buildCollectionTreeNode,
+  createEmptyStateItem,
+} from "metabase/data-studio/common/utils";
 import type {
   Collection,
   CollectionId,
   WritebackAction,
 } from "metabase-types/api";
-
-// The data actions root has the same "root" id as the SQL snippets root, so its node needs its own key.
-const DATA_ACTIONS_ROOT_NODE_KEY = "data-actions-root";
-
-export function getActionCollectionNodeId(collection: Pick<Collection, "id">) {
-  return isRootCollection(collection)
-    ? `collection:${DATA_ACTIONS_ROOT_NODE_KEY}`
-    : `collection:${collection.id}`;
-}
 
 function createActionNode(action: WritebackAction): TreeItem {
   return {
@@ -37,31 +30,6 @@ function createActionNode(action: WritebackAction): TreeItem {
   };
 }
 
-function buildActionCollectionNode(
-  collection: Collection,
-  collections: Collection[],
-  actions: WritebackAction[],
-): TreeItem {
-  const parentId = isRootCollection(collection) ? null : collection.id;
-  const children = [
-    ...collections
-      .filter((child) => child.parent_id === parentId)
-      .map((child) => buildActionCollectionNode(child, collections, actions)),
-    ...actions
-      .filter((action) => action.collection_id === parentId)
-      .map(createActionNode),
-  ];
-
-  return {
-    id: getActionCollectionNodeId(collection),
-    name: collection.name,
-    model: "collection",
-    icon: isRootCollection(collection) ? "bolt" : "folder",
-    data: { ...collection, model: "collection" },
-    children: children.length > 0 ? children : undefined,
-  };
-}
-
 function isDataAction(
   action: WritebackAction,
   collectionIds: Set<CollectionId>,
@@ -73,16 +41,15 @@ function isDataAction(
 }
 
 /**
- * The data actions root with its folders and the actions without a model under it, or nothing without a readable
- * root.
+ * The folders and actions without a model at the top of the data actions collection, an empty-state row when it holds
+ * none, or nothing without a readable root.
  */
 export function buildActiveActionTree(
   actionCollections: Collection[],
   actions: WritebackAction[],
   canCreateActions: boolean,
 ): TreeItem[] {
-  const rootCollection = actionCollections.find(isRootCollection);
-  if (!rootCollection) {
+  if (!actionCollections.some(isRootCollection)) {
     return [];
   }
 
@@ -93,22 +60,16 @@ export function buildActiveActionTree(
   const dataActions = actions.filter(
     (action) => !action.archived && isDataAction(action, collectionIds),
   );
-  const rootNode = buildActionCollectionNode(
-    rootCollection,
+  const items = buildCollectionTreeChildren(
+    null,
     collections,
     dataActions,
+    createActionNode,
   );
-  const hasContent = dataActions.length > 0 || collections.length > 0;
 
-  return [
-    {
-      ...rootNode,
-      name: t`Data actions`,
-      children: hasContent
-        ? rootNode.children
-        : [createEmptyStateItem("actions", undefined, !canCreateActions)],
-    },
-  ];
+  return items.length > 0
+    ? items
+    : [createEmptyStateItem("actions", undefined, !canCreateActions)];
 }
 
 /**
@@ -136,7 +97,12 @@ export function buildArchivedActionTree(
 
   return [
     ...topLevelCollections.map((collection) =>
-      buildActionCollectionNode(collection, archivedCollections, dataActions),
+      buildCollectionTreeNode(
+        collection,
+        archivedCollections,
+        dataActions,
+        createActionNode,
+      ),
     ),
     ...dataActions
       .filter(

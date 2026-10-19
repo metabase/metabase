@@ -299,3 +299,14 @@
                        (t2/with-call-count [call-count]
                          (params/dashcards->param-field-ids dashcards)
                          (call-count)))))))))))
+
+(deftest ^:parallel invalid-parameters-errors-are-humanized-test
+  (testing "`:errors` are client-facing, so they are humanized messages rather than Malli explanations"
+    (doseq [[thunk desc] [[#(params/assert-valid-parameters {:parameters [{:id 1}]})
+                           "parameters"]
+                          [#(params/assert-valid-parameter-mappings {:parameter_mappings [{:card_id "x"}]})
+                           "parameter mappings"]]]
+      (testing desc
+        (let [errors (:errors (try (thunk) (catch clojure.lang.ExceptionInfo e (ex-data e))))]
+          (is (some? errors))
+          (is (not-any? #(and (map? %) (contains? % :schema)) (tree-seq coll? seq errors))))))))

@@ -166,11 +166,17 @@ export function toggleSectionRoot(
   selected: TreeItem[],
   sectionRoot: TreeItem,
 ): TreeItem[] {
-  const selectables = getSectionDirectSelectables(sectionRoot);
+  return toggleItems(selected, getSectionDirectSelectables(sectionRoot));
+}
+
+export function toggleItems(
+  selected: TreeItem[],
+  selectables: TreeItem[],
+): TreeItem[] {
   if (selectables.length === 0) {
     return selected;
   }
-  const section = getItemSection(sectionRoot);
+  const section = getItemSection(selectables[0]);
   const current = getSelectionSection(selected);
   if (current !== null && current !== section) {
     return selectables;

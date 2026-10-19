@@ -181,6 +181,10 @@ The `CurrentChart` component is bound to the latest chart the agent produced. Re
 
 `useMetabot` returns `null` until the SDK bundle has loaded and `<MetabaseProvider>` has mounted, so always guard before you use it. The SDK ships its Metabot internals in a code-split chunk that isn't available synchronously, which means an unguarded first render throws `Cannot read properties of null` as soon as you reach for `metabot.messages`, `metabot.submitMessage`, or anything else on the hook.
 
+### Only one conversation per page
+
+Each page gets a single AI chat conversation, and every `MetabotQuestion` and `useMetabot` call on the page reads and writes that same conversation. You can't give each component its own conversation.
+
 ### Bring your own markdown renderer
 
 `MetabotQuestion` renders agent text messages for you, markdown formatting and all, along with transcript scrolling and input styling. The `useMetabot` hook hands you the raw conversation state instead, so you can handle the markdown rendering.

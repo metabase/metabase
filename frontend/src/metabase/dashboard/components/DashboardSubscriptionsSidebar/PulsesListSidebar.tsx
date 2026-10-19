@@ -1,17 +1,20 @@
 import cx from "classnames";
-import { msgid, ngettext, t } from "ttag";
-import _ from "underscore";
+import { t } from "ttag";
 
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { Label } from "metabase/common/components/type/Label";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
-import { formatDateValue } from "metabase/parameters/utils/date-formatting";
-import { getActivePulseParameters } from "metabase/pulse";
+import { getEditableSubscriptionChannel } from "metabase/notifications/pulse/subscription-editing";
+import {
+  buildFilterText,
+  buildRecipientText,
+  formatSubscriptionDelivery,
+} from "metabase/notifications/pulse/subscription-formatting";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
-  Button,
+  ActionIcon,
   Card,
   Flex,
   Group,
@@ -20,16 +23,8 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { conjunct } from "metabase/utils/formatting";
-import { formatFrame } from "metabase/utils/time-dayjs";
-import { isNotNull } from "metabase/utils/types";
-import {
-  formatDateTimeWithUnit,
-  formatTimeWithUnit,
-} from "metabase/value-formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Channel,
   ChannelApiResponse,
   ChannelType,
   DashboardSubscription,
@@ -88,34 +83,36 @@ function _PulsesListSidebar({
 
         <Flex align="center">
           <Tooltip label={createSubscriptionLabel}>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
-            <Button
+            <ActionIcon
               variant="subtle"
-              color="neutral"
               size="sm"
               aria-label={createSubscriptionLabel}
-              leftSection={<Icon name="add" />}
               mr="1rem"
               onClick={createSubscription}
-            />
+            >
+              <Icon name="add" />
+            </ActionIcon>
           </Tooltip>
 
           <Tooltip label={closeSidebarLabel}>
-            {/* TODO: replace with ActionIcon (GDGT-2457) */}
-            <Button
+            <ActionIcon
               variant="subtle"
-              color="neutral"
               size="sm"
               aria-label={closeSidebarLabel}
-              leftSection={<Icon name="close" />}
               onClick={onCancel}
-            />
+            >
+              <Icon name="close" />
+            </ActionIcon>
           </Tooltip>
         </Flex>
       </div>
       <div className={cx(CS.my2, CS.mx4)}>
         {pulses.map((pulse) => {
-          const canEdit = canEditPulse(pulse, formInput);
+          const editableChannel = getEditableSubscriptionChannel(
+            pulse,
+            formInput,
+          );
+          const canEdit = editableChannel != null;
 
           return (
             <Card
@@ -127,7 +124,8 @@ function _PulsesListSidebar({
               shadow="none"
               withBorder
               onClick={() =>
-                canEdit && editPulse(pulse, pulse.channels[0].channel_type)
+                editableChannel != null &&
+                editPulse(pulse, editableChannel.channel_type)
               }
             >
               <div
@@ -154,7 +152,7 @@ function _PulsesListSidebar({
                     size={12}
                   />
                   <Label className={cx(CS.hoverChild, CS.hoverInherit)} mb="0">
-                    {friendlySchedule(pulse.channels[0])}
+                    {formatSubscriptionDelivery(pulse.channels[0])}
                   </Label>
                 </div>
                 <PulseDetails pulse={pulse} parameters={parameters} />
@@ -167,95 +165,12 @@ function _PulsesListSidebar({
   );
 }
 
-function canEditPulse(
-  pulse: DashboardSubscription,
-  formInput: ChannelApiResponse,
-): boolean {
-  switch (pulse.channels[0].channel_type) {
-    case "email":
-      return formInput.channels.email != null;
-    case "slack":
-      return formInput.channels.slack != null;
-    default:
-      return false;
-  }
-}
-
 function getEmailSubject({
   channels: [firstChannel],
 }: DashboardSubscription): string {
   return firstChannel.channel_type === "email"
     ? (firstChannel.details?.subject ?? "")
     : "";
-}
-
-function buildRecipientText(pulse: DashboardSubscription): string {
-  const {
-    channels: [firstChannel],
-  } = pulse;
-
-  const { channel_type, recipients } = firstChannel;
-
-  if (channel_type !== "email" || !recipients || recipients.length === 0) {
-    return "";
-  }
-
-  const [firstRecipient, ...otherRecipients] = recipients;
-  const firstRecipientText = firstRecipient.common_name || firstRecipient.email;
-  return _.isEmpty(otherRecipients)
-    ? firstRecipientText
-    : `${firstRecipientText} ${ngettext(
-        msgid`and ${otherRecipients.length} other`,
-        `and ${otherRecipients.length} others`,
-        otherRecipients.length,
-      )}`;
-}
-
-export function buildFilterText(
-  pulse: DashboardSubscription,
-  parameters: UiParameter[],
-): string {
-  const activeParameters = getActivePulseParameters(pulse, parameters);
-
-  if (_.isEmpty(activeParameters)) {
-    return "";
-  }
-
-  const [firstParameter, ...otherParameters] = activeParameters;
-
-  // Format the first parameter value using the same logic as DefaultParametersSection
-  let formattedValue;
-  if (firstParameter.type && firstParameter.type.startsWith("date/")) {
-    const values = Array.isArray(firstParameter.value)
-      ? firstParameter.value
-      : [firstParameter.value];
-    const formattedValues = values
-      .map((val) => formatDateValue(firstParameter, val))
-      .filter(isNotNull);
-    if (formattedValues.length > 0) {
-      formattedValue = conjunct(formattedValues, t`and`);
-    } else {
-      formattedValue = firstParameter.value;
-    }
-  } else {
-    const values = Array.isArray(firstParameter.value)
-      ? firstParameter.value
-      : [firstParameter.value];
-    formattedValue =
-      values.length > 1
-        ? t`${values.length} selections`
-        : conjunct(values.filter(isNotNull), t`and`);
-  }
-
-  const firstFilterText = `${firstParameter.name}: ${formattedValue}`;
-
-  return _.isEmpty(otherParameters)
-    ? firstFilterText
-    : `${firstFilterText} ${ngettext(
-        msgid`and ${otherParameters.length} more filter`,
-        `and ${otherParameters.length} more filters`,
-        otherParameters.length,
-      )}`;
 }
 
 type PulseDetailsProps = {
@@ -311,57 +226,6 @@ function PulseDetailsItem({ icon, text }: PulseDetailsItemProps) {
       </Text>
     </Group>
   );
-}
-
-function friendlySchedule(channel: Channel): string {
-  const {
-    channel_type,
-    details,
-    schedule_day,
-    schedule_frame,
-    schedule_hour,
-    schedule_type,
-  } = channel;
-
-  let scheduleString = "";
-
-  if (channel_type === "email") {
-    scheduleString += t`Emailed `;
-  } else if (channel_type === "slack") {
-    scheduleString += t`Sent to ` + details?.channel + " ";
-  } else {
-    scheduleString += t`Sent `;
-  }
-
-  switch (schedule_type) {
-    case "hourly":
-      scheduleString += t`hourly`;
-      break;
-    case "daily": {
-      const hour = formatTimeWithUnit(schedule_hour ?? 0, "hour-of-day");
-      scheduleString += t`daily at ${hour}`;
-      break;
-    }
-    case "weekly": {
-      const hour = formatTimeWithUnit(schedule_hour ?? 0, "hour-of-day");
-      const day = formatDateTimeWithUnit(schedule_day ?? "mon", "day-of-week");
-      scheduleString += t`${day} at ${hour}`;
-      break;
-    }
-    case "monthly": {
-      const hour = formatTimeWithUnit(schedule_hour ?? 0, "hour-of-day");
-      const day = schedule_day
-        ? formatDateTimeWithUnit(schedule_day, "day-of-week")
-        : "calendar day";
-      const frame = formatFrame(schedule_frame ?? "first");
-      scheduleString += t`monthly on the ${frame} ${day} at ${hour}`;
-      break;
-    }
-    default:
-      scheduleString += schedule_type;
-  }
-
-  return scheduleString;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

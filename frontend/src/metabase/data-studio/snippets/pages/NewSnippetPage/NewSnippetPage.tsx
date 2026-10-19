@@ -60,7 +60,7 @@ export function NewSnippetPage() {
     if (error) {
       sendToast({
         message: getErrorMessage(error, t`Failed to create snippet`),
-        icon: "warning",
+        variant: "negative",
       });
     } else if (snippet) {
       setSavedSnippet(snippet);

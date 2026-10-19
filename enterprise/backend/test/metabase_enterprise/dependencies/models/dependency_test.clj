@@ -136,10 +136,8 @@
               (deps.test/synchronously-run-backfill!)
               (testing "raw deps are recorded correctly"
                 (is (=? #{(depends-on-> :card id1 :table (mt/id :orders))} (upstream-of :card id1)))
-                (is (=? #{(depends-on-> :card id2 :table (mt/id :orders))
-                          (depends-on-> :card id2 :card id1)} (upstream-of :card id2)))
-                (is (=? #{(depends-on-> :card id3 :table (mt/id :orders))
-                          (depends-on-> :card id3 :card id2)} (upstream-of :card id3))))
+                (is (=? #{(depends-on-> :card id2 :card id1)} (upstream-of :card id2)))
+                (is (=? #{(depends-on-> :card id3 :card id2)} (upstream-of :card id3))))
               (testing "transitive deps are computed correctly"
                 (testing "for each card"
                   (is (=? {:card #{id2 id3}}
@@ -185,7 +183,7 @@
                         (upstream-of :card (:id question-card))))))))))))
 
 (deftest dependency-status-marked-stale-test
-  (testing "dependency_status is marked stale when entities are created or updated"
+  (testing "dependency_status is marked stale when entities are updated, and not touched when they are created"
     (mt/with-model-cleanup [:model/DependencyStatus]
       (testing "cards"
         (mt/with-model-cleanup [:model/Dependency]
@@ -197,7 +195,7 @@
       (testing "transforms create"
         (mt/with-premium-features #{:dependencies}
           (mt/with-temp [:model/Transform transform]
-            (is (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform) :stale true)))))
+            (is (not (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform)))))))
       (testing "transforms update"
         (mt/with-premium-features #{}
           (mt/with-temp [:model/Transform transform]
@@ -207,7 +205,7 @@
       (testing "snippets create"
         (mt/with-premium-features #{:dependencies}
           (mt/with-temp [:model/NativeQuerySnippet snippet]
-            (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet) :stale true)))))
+            (is (not (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet)))))))
       (testing "snippets update"
         (mt/with-premium-features #{}
           (mt/with-temp [:model/NativeQuerySnippet snippet]
@@ -215,13 +213,15 @@
               (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"}))
             (is (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet) :stale true))))))))
 
-(deftest dependency-status-marked-stale-on-card-create-test
-  (testing "dependency_status is marked stale when a card is created"
+(deftest dependency-status-absent-until-backfill-on-card-create-test
+  (testing "a created card has no dependency_status row until the backfill job processes it"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/User user]
           (let [card (card/create-card! (basic-orders) user)]
-            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card) :stale true))))))))
+            (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card))))
+            (deps.test/synchronously-run-backfill!)
+            (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id (:id card) :stale false))))))))
 
 (deftest filtered-graph-dependencies-test
   (testing "filtered-graph-dependencies respects filter clause"
