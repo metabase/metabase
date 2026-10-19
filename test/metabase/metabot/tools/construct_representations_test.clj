@@ -636,6 +636,7 @@
             (is (true? (:agent-error? (ex-data e))))
             (is (= :query-not-runnable (:error (ex-data e))))
             (is (re-find #"`offset` cannot be custom columns" (ex-message e)))
+            (is (str/includes? (ex-message e) "Failing paths: stages[0].expressions[0]:"))
             (is (re-find #"non-aggregation expression" (ex-message e)))))))))
 
 (deftest editor-gate-offset-in-filter-surfaces-error-end-to-end-test
@@ -754,7 +755,7 @@
               bad  (assoc-in good [:stages 0 :breakout 0] [:field {} "PRODUCT_ID"])]
           (is (nil? (#'construct/query-not-runnable-explanation good)))
           (is (str/includes? (#'construct/query-not-runnable-explanation bad)
-                             "[:stages 0 :breakout 0 1 :base-type]: a field reference by name is missing `base-type`")))))))
+                             "stages[0].breakout[0][1].base-type: a field reference by name is missing `base-type`")))))))
 
 ;;; ============================================================
 ;;; Step-9 contract: expressions (custom columns)
@@ -2121,12 +2122,12 @@
         invalid (fn [k] {:schema (mc/schema :int) :value "x" :in [:stages 0 k]})
         hint    #"\. This usually means a field reference is missing its type"]
     (testing "identical problems are listed once"
-      (is (= "[:stages 0 :alias]: missing `alias`" (explain (missing :alias) (missing :alias)))))
+      (is (= "stages[0].alias: missing `alias`" (explain (missing :alias) (missing :alias)))))
     (testing "at most three problems are listed"
       (is (= 3 (count (str/split (apply explain (map missing [:a :b :c :d])) #"; ")))))
     (testing "problems with a known cause are listed before Malli's own messages"
       (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c) (missing :alias))
-                            "[:stages 0 :alias]: missing `alias`; [:stages 0 :a]: should be an integer")))
+                            "stages[0].alias: missing `alias`; stages[0].a: should be an integer")))
     (testing "the usual causes are added only when no problem has a known cause"
       (is (re-find hint (explain (invalid :a))))
       (is (not (re-find hint (explain (invalid :a) (missing :alias))))))
