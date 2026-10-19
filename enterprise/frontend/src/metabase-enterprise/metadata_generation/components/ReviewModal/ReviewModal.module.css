@@ -12,18 +12,53 @@
   border-bottom-right-radius: var(--mantine-radius-xs);
 }
 
-.tableList {
-  flex: 0 0 18rem;
+.fieldPane {
+  min-height: 0;
 }
 
-.fieldPane {
-  flex: 0 0 26rem;
+/* The suggestions card with a grip over each vertical border. */
+.resizable {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
   min-height: 0;
+}
+
+.handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  z-index: 2;
+  cursor: col-resize;
+}
+
+.handleLeft {
+  left: -4px;
+}
+
+.handleRight {
+  right: -4px;
+}
+
+.resizable .card[data-hover-side="left"] {
+  border-left-color: var(--mb-color-border-neutral-strong);
+}
+
+.resizable .card[data-hover-side="right"] {
+  border-right-color: var(--mb-color-border-neutral-strong);
 }
 
 .suggestions {
   flex: 1;
   min-height: 0;
+}
+
+/* Rows grow with their inputs: TreeTable sets a fixed height inline. */
+.suggestionRow {
+  height: auto !important;
+  min-height: 44px;
 }
 
 /* Cells hold inputs and badges, so they wrap instead of truncating. */

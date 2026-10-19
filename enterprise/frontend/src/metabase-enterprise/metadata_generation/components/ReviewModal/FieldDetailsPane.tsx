@@ -27,6 +27,8 @@ import S from "./ReviewModal.module.css";
 type FieldDetailsPaneProps = {
   tableId: ConcreteTableId;
   fieldId: FieldId;
+  /** Width in pixels; the review modal lets the person resize it. */
+  width: number;
   onClose: () => void;
 };
 
@@ -34,6 +36,7 @@ type FieldDetailsPaneProps = {
 export function FieldDetailsPane({
   tableId,
   fieldId,
+  width,
   onClose,
 }: FieldDetailsPaneProps) {
   const {
@@ -54,7 +57,12 @@ export function FieldDetailsPane({
   const parent = fieldsByName[field?.nfc_path?.[0] ?? ""];
 
   return (
-    <Stack gap="sm" className={S.fieldPane} data-testid="field-details-pane">
+    <Stack
+      gap="sm"
+      className={S.fieldPane}
+      style={{ flex: `0 0 ${width}px` }}
+      data-testid="field-details-pane"
+    >
       <Group justify="space-between" wrap="nowrap">
         <Text fw="bold">{t`Field details`}</Text>
         <ActionIcon

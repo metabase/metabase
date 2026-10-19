@@ -1,7 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type KeyboardEvent, useMemo, useState } from "react";
+import cx from "classnames";
+import { type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { skipToken, useGetDatabaseMetadataQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -12,8 +14,11 @@ import {
 import {
   ActionIcon,
   Badge,
+  Box,
   Button,
   Card,
+  Center,
+  Checkbox,
   Flex,
   Group,
   Icon,
@@ -57,6 +62,7 @@ import S from "./ReviewModal.module.css";
 import {
   DESCRIPTION_MAX_LENGTH,
   type RunTotals,
+  type TableCheckboxState,
   formatSuggestionValue,
   getApplyFailureReasonLabel,
   getApplySummary,
@@ -277,8 +283,13 @@ function ReviewContent({
   const [selectedTableId, setSelectedTableId] =
     useState<ConcreteTableId | null>(null);
   const [detailFieldId, setDetailFieldId] = useState<FieldId | null>(null);
+  const [listWidth, setListWidth] = useState(DEFAULT_LIST_WIDTH);
+  const [paneWidth, setPaneWidth] = useState(DEFAULT_PANE_WIDTH);
+  const [hoveredSide, setHoveredSide] = useState<ResizeSide | null>(null);
+  const dragStartWidth = useRef(0);
   const decideState = useDecide(runId);
   const { humanSetPending } = getRunTotals(tables);
+  const displayNames = useTableDisplayNames(runId);
 
   const selectedTable =
     tables.find((table) => table.table_id === selectedTableId) ??
@@ -300,9 +311,10 @@ function ReviewContent({
         <ApplyResult result={applyResult} onDismiss={onDismissApplyResult} />
       )}
       <Flex gap="lg" h="65vh" mih={0}>
-        <ScrollArea className={S.tableList}>
+        <ScrollArea style={{ flex: `0 0 ${listWidth}px` }}>
           <TableList
             tables={tables}
+            displayNames={displayNames}
             selectedTableId={selectedTable.table_id}
             onSelect={(tableId) => {
               setSelectedTableId(tableId);
@@ -310,30 +322,158 @@ function ReviewContent({
             }}
           />
         </ScrollArea>
-        <Card withBorder p={0} flex={1} miw={0} mih={0} display="flex">
-          <TableReview
-            key={selectedTable.table_id}
-            runId={runId}
-            table={selectedTable}
-            decideState={decideState}
-            detailFieldId={detailFieldId}
-            onToggleFieldDetails={(fieldId) =>
-              setDetailFieldId((current) =>
-                current === fieldId ? null : fieldId,
+        <Box className={S.resizable}>
+          <ResizeHandle
+            side="left"
+            onHoverChange={setHoveredSide}
+            onDragStart={() => (dragStartWidth.current = listWidth)}
+            onDrag={(deltaX) =>
+              setListWidth(
+                clamp(
+                  dragStartWidth.current + deltaX,
+                  MIN_LIST_WIDTH,
+                  MAX_LIST_WIDTH,
+                ),
               )
             }
           />
-        </Card>
+          <Card
+            withBorder
+            p={0}
+            flex={1}
+            miw={0}
+            mih={0}
+            display="flex"
+            className={S.card}
+            data-hover-side={hoveredSide ?? undefined}
+          >
+            <TableReview
+              key={selectedTable.table_id}
+              runId={runId}
+              table={selectedTable}
+              decideState={decideState}
+              detailFieldId={detailFieldId}
+              onToggleFieldDetails={(fieldId) =>
+                setDetailFieldId((current) =>
+                  current === fieldId ? null : fieldId,
+                )
+              }
+            />
+          </Card>
+          {detailFieldId != null && (
+            <ResizeHandle
+              side="right"
+              onHoverChange={setHoveredSide}
+              onDragStart={() => (dragStartWidth.current = paneWidth)}
+              onDrag={(deltaX) =>
+                setPaneWidth(
+                  clamp(
+                    dragStartWidth.current - deltaX,
+                    MIN_PANE_WIDTH,
+                    MAX_PANE_WIDTH,
+                  ),
+                )
+              }
+            />
+          )}
+        </Box>
         {detailFieldId != null && (
           <FieldDetailsPane
             key={detailFieldId}
             tableId={selectedTable.table_id}
             fieldId={detailFieldId}
+            width={paneWidth}
             onClose={() => setDetailFieldId(null)}
           />
         )}
       </Flex>
     </Stack>
+  );
+}
+
+const DEFAULT_LIST_WIDTH = 288;
+const MIN_LIST_WIDTH = 180;
+const MAX_LIST_WIDTH = 560;
+const DEFAULT_PANE_WIDTH = 416;
+const MIN_PANE_WIDTH = 280;
+const MAX_PANE_WIDTH = 720;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+/** The display names of the run's tables, by table id. */
+function useTableDisplayNames(
+  runId: MetadataGenerationRunId,
+): Record<number, string> {
+  const { data: run } = useGetMetadataGenerationRunQuery(runId);
+  const { data: database } = useGetDatabaseMetadataQuery(
+    run != null
+      ? {
+          id: run.database_id,
+          include_hidden: true,
+          skip_fields: true,
+        }
+      : skipToken,
+  );
+  return useMemo(
+    () =>
+      Object.fromEntries(
+        (database?.tables ?? []).map((table) => [table.id, table.display_name]),
+      ),
+    [database],
+  );
+}
+
+type ResizeSide = "left" | "right";
+
+type ResizeHandleProps = {
+  side: ResizeSide;
+  onHoverChange: (side: ResizeSide | null) => void;
+  onDragStart: () => void;
+  /** Called with the pointer's horizontal distance from where the drag started. */
+  onDrag: (deltaX: number) => void;
+};
+
+/** An invisible grip over one vertical border of the suggestions card. */
+function ResizeHandle({
+  side,
+  onHoverChange,
+  onDragStart,
+  onDrag,
+}: ResizeHandleProps) {
+  const startX = useRef(0);
+
+  return (
+    <Box
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={
+        side === "left" ? t`Resize the table list` : t`Resize the field details`
+      }
+      className={cx(S.handle, side === "left" ? S.handleLeft : S.handleRight)}
+      onPointerEnter={() => onHoverChange(side)}
+      onPointerLeave={(event) => {
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+          onHoverChange(null);
+        }
+      }}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        startX.current = event.clientX;
+        onDragStart();
+      }}
+      onPointerMove={(event) => {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          onDrag(event.clientX - startX.current);
+        }
+      }}
+      onPointerUp={(event) => {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+        onHoverChange(null);
+      }}
+    />
   );
 }
 
@@ -459,18 +599,24 @@ function ApplyResult({ result, onDismiss }: ApplyResultProps) {
 
 type TableListProps = {
   tables: MetadataGenerationRunTable[];
+  displayNames: Record<number, string>;
   selectedTableId: ConcreteTableId;
   onSelect: (tableId: ConcreteTableId) => void;
 };
 
-function TableList({ tables, selectedTableId, onSelect }: TableListProps) {
+function TableList({
+  tables,
+  displayNames,
+  selectedTableId,
+  onSelect,
+}: TableListProps) {
   return (
     <Stack gap={2} data-testid="metadata-generation-review-tables">
       {tables.map((table) => (
         <NavLink
           key={table.table_id}
           active={table.table_id === selectedTableId}
-          label={getTableLabel(table)}
+          label={displayNames[table.table_id] ?? getTableLabel(table)}
           description={getTableCountsLabel(table)}
           rightSection={
             table.human_set_pending > 0 ? (
@@ -520,8 +666,6 @@ type SuggestionNode = {
   isFirstOfField: boolean;
 };
 
-const noop = () => undefined;
-
 function TableReview({
   runId,
   table,
@@ -549,26 +693,35 @@ function TableReview({
       })),
     [suggestions],
   );
-  const rowSelection = useMemo(
-    () =>
-      Object.fromEntries(
-        nodes
-          .filter((node) => isSuggestionChecked(node.suggestion))
-          .map((node) => [String(node.id), true]),
-      ),
-    [nodes],
+  const tableCheckbox = useMemo(
+    () => getTableCheckboxState(suggestions ?? []),
+    [suggestions],
   );
   const columns = useMemo(
-    () => getColumns({ runId, decide, detailFieldId, onToggleFieldDetails }),
-    [runId, decide, detailFieldId, onToggleFieldDetails],
+    () =>
+      getColumns({
+        runId,
+        table,
+        tableCheckbox,
+        decide,
+        decidingIds,
+        detailFieldId,
+        onToggleFieldDetails,
+      }),
+    [
+      runId,
+      table,
+      tableCheckbox,
+      decide,
+      decidingIds,
+      detailFieldId,
+      onToggleFieldDetails,
+    ],
   );
   const instance = useTreeTableInstance<SuggestionNode>({
     data: nodes,
     columns,
     getNodeId: (node) => String(node.id),
-    enableRowSelection: (row) => isSuggestionDecidable(row.original.suggestion),
-    rowSelection,
-    onRowSelectionChange: noop,
   });
 
   if (error) {
@@ -582,31 +735,16 @@ function TableReview({
     return <Loader size="sm" m="md" />;
   }
 
-  const tableCheckbox = getTableCheckboxState(suggestions);
-
   return (
     <TreeTable
       instance={instance}
       hierarchical={false}
-      showCheckboxes
-      classNames={{ root: S.suggestions, cell: S.suggestionCell }}
+      classNames={{
+        root: S.suggestions,
+        row: S.suggestionRow,
+        cell: S.suggestionCell,
+      }}
       ariaLabel={t`Suggestions of ${getTableLabel(table)}`}
-      headerCheckboxAriaLabel={t`Accept the suggestions of this table`}
-      onHeaderCheckboxClick={() =>
-        decide({
-          decision: tableCheckbox.checked ? "unaccept" : "accept",
-          table_ids: [table.table_id],
-        })
-      }
-      onCheckboxClick={(row) =>
-        decide({
-          decision: isSuggestionChecked(row.original.suggestion)
-            ? "unaccept"
-            : "accept",
-          suggestion_ids: [row.original.id],
-        })
-      }
-      isRowLoading={(row) => decidingIds.has(row.original.id)}
       getRowProps={(row) => ({
         "data-testid": "metadata-generation-suggestion",
         "data-human-set":
@@ -625,18 +763,55 @@ function TableReview({
 
 type ColumnOptions = {
   runId: MetadataGenerationRunId;
+  table: MetadataGenerationRunTable;
+  tableCheckbox: TableCheckboxState;
   decide: Decide;
+  decidingIds: ReadonlySet<MetadataGenerationSuggestionId>;
   detailFieldId: FieldId | null;
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
 function getColumns({
   runId,
+  table,
+  tableCheckbox,
   decide,
+  decidingIds,
   detailFieldId,
   onToggleFieldDetails,
 }: ColumnOptions): TreeTableColumnDef<SuggestionNode>[] {
   return [
+    {
+      id: "accept",
+      header: () => (
+        <Tooltip
+          label={t`Accepts or clears every suggestion of this table, except those that would replace a value a person set.`}
+        >
+          <Box component="span" display="inline-flex">
+            <Checkbox
+              aria-label={t`Accept the suggestions of this table`}
+              checked={tableCheckbox.checked}
+              indeterminate={tableCheckbox.indeterminate}
+              disabled={tableCheckbox.disabled}
+              onChange={() =>
+                decide({
+                  decision: tableCheckbox.checked ? "unaccept" : "accept",
+                  table_ids: [table.table_id],
+                })
+              }
+            />
+          </Box>
+        </Tooltip>
+      ),
+      width: 48,
+      cell: ({ row }) => (
+        <AcceptCell
+          suggestion={row.original.suggestion}
+          isDeciding={decidingIds.has(row.original.id)}
+          decide={decide}
+        />
+      ),
+    },
     {
       id: "field",
       header: t`Field`,
@@ -669,14 +844,13 @@ function getColumns({
     {
       id: "current",
       header: t`Current`,
-      minWidth: 180,
-      maxWidth: 360,
+      width: 180,
       cell: ({ row }) => <CurrentValue suggestion={row.original.suggestion} />,
     },
     {
       id: "proposed",
       header: t`Proposed`,
-      minWidth: 280,
+      minWidth: 440,
       cell: ({ row }) => (
         <Stack gap={4} align="flex-start" py="xs">
           <ProposedValue
@@ -684,7 +858,7 @@ function getColumns({
             suggestion={row.original.suggestion}
             decide={decide}
           />
-          {!isSuggestionDecidable(row.original.suggestion) && (
+          {row.original.suggestion.status === "stale" && (
             <Tooltip label={getFixedStatusTooltip(row.original.suggestion)}>
               <Badge
                 variant="light"
@@ -705,14 +879,16 @@ function getColumns({
       cell: ({ row }) => {
         const { reasoning } = row.original.suggestion;
         return reasoning ? (
-          <Tooltip label={reasoning} maw="25rem" multiline>
-            <Icon
-              name="comment"
-              c="text-secondary"
-              aria-label={t`Explanation`}
-              aria-hidden={false}
-            />
-          </Tooltip>
+          <Center w="100%">
+            <Tooltip label={reasoning} maw="25rem" multiline>
+              <Icon
+                name="comment"
+                c="text-secondary"
+                aria-label={t`Explanation`}
+                aria-hidden={false}
+              />
+            </Tooltip>
+          </Center>
         ) : null;
       },
     },
@@ -740,6 +916,51 @@ function getColumns({
       },
     },
   ];
+}
+
+type AcceptCellProps = {
+  suggestion: MetadataGenerationSuggestion;
+  isDeciding: boolean;
+  decide: Decide;
+};
+
+/** The row's checkbox; an applied suggestion shows a check instead, a stale one nothing. */
+function AcceptCell({ suggestion, isDeciding, decide }: AcceptCellProps) {
+  const attributeLabel = getAttributeLabel(suggestion.attribute);
+  const fieldLabel = getFieldLabel(suggestion);
+
+  if (suggestion.status === "applied") {
+    return (
+      <Tooltip label={getFixedStatusTooltip(suggestion)}>
+        <Icon
+          name="check_filled"
+          c="feedback-positive"
+          aria-label={t`Applied`}
+          aria-hidden={false}
+          data-testid="metadata-generation-suggestion-applied"
+        />
+      </Tooltip>
+    );
+  }
+  if (!isSuggestionDecidable(suggestion)) {
+    return null;
+  }
+  if (isDeciding) {
+    return <Loader size="xs" aria-label={t`Saving`} />;
+  }
+  const isChecked = isSuggestionChecked(suggestion);
+  return (
+    <Checkbox
+      aria-label={t`Accept ${attributeLabel} of ${fieldLabel}`}
+      checked={isChecked}
+      onChange={() =>
+        decide({
+          decision: isChecked ? "unaccept" : "accept",
+          suggestion_ids: [suggestion.id],
+        })
+      }
+    />
+  );
 }
 
 function CurrentValue({
@@ -819,7 +1040,11 @@ function ProposedValue({ runId, suggestion, decide }: ProposedValueProps) {
   }
 
   return (
-    <Stack gap={4} align="stretch" data-testid="metadata-generation-proposed">
+    <Stack
+      gap={4}
+      align="flex-start"
+      data-testid="metadata-generation-proposed"
+    >
       <ValueInput
         suggestion={suggestion}
         value={value}
@@ -859,6 +1084,9 @@ function EditedBadge({
   );
 }
 
+/** Every proposed-value input has the same width, whatever its kind. */
+const INPUT_WIDTH = "24rem";
+
 type ValueInputProps = {
   suggestion: MetadataGenerationSuggestion;
   value: string;
@@ -888,7 +1116,7 @@ function ValueInput({ suggestion, value, label, onChange }: ValueInputProps) {
           }}
           value={value}
           canSetKeyOrEmpty={false}
-          w="100%"
+          w={INPUT_WIDTH}
           onChange={(newValue) => newValue != null && onChange(newValue)}
         />
       );
@@ -899,7 +1127,7 @@ function ValueInput({ suggestion, value, label, onChange }: ValueInputProps) {
           value={isFieldDataSensitivity(value) ? value : null}
           source={null}
           canClear={false}
-          w="100%"
+          w={INPUT_WIDTH}
           onChange={(newValue) => newValue != null && onChange(newValue)}
           onReset={() => undefined}
         />
@@ -944,6 +1172,7 @@ function DescriptionInput({ value, label, onChange }: DescriptionInputProps) {
       maxLength={DESCRIPTION_MAX_LENGTH}
       autosize
       minRows={1}
+      w={INPUT_WIDTH}
       onChange={(event) => setText(event.currentTarget.value)}
       onBlur={commit}
       onKeyDown={handleKeyDown}
