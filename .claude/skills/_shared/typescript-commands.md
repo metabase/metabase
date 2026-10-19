@@ -7,7 +7,7 @@
 - **Type Check:** `bun run type-check`
   - Run TypeScript type checking
 
-`type-check` and `test-unit` rebuild ClojureScript first, and `lint-format` runs `bun install` first. When you only need the check, use `type-check-pure`, `lint-format-pure`, or `test-unit-keep-cljs`.
+`test-unit` rebuilds ClojureScript first, and `lint-format` runs `bun install` first. When you only need the check, use `test-unit-keep-cljs` or `lint-format-pure`.
 
 ## Testing
 
