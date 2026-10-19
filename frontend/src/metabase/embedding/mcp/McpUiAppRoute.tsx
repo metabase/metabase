@@ -21,9 +21,9 @@ import { getMcpDeserializedQuery } from "./McpUiAppRoute.utils";
 import { createMcpClickActionMode } from "./clickActions";
 import type { ApplyMcpOperations } from "./derive";
 import {
-  useHandleMcpDrill,
-  useHandleMcpDrillThrough,
-} from "./hooks/useHandleMcpDrillThrough";
+  useHandleMcpDerivedDrill,
+  useOpenDrillThroughInMetabase,
+} from "./hooks/useHandleMcpDerivedDrill";
 import { type McpAppState, useMcpApp } from "./hooks/useMcpApp";
 import { useMcpFeedback } from "./hooks/useMcpFeedback";
 import { useMcpUserAndSettingsFetch } from "./hooks/useMcpUserAndSettingsFetch";
@@ -129,12 +129,12 @@ function McpUiAppRouteContent({
   const isHosted = useSetting("is-hosted?");
   const safeAreaInsets = hostContext?.safeAreaInsets ?? DEFAULT_INSETS;
 
-  const handleDrillThrough = useHandleMcpDrillThrough({ app });
+  const handleDrillThrough = useOpenDrillThroughInMetabase({ app });
 
   // Set by the question view, which can update the question the SDK shows.
   const applyOperationsRef = useRef<ApplyMcpOperations | null>(null);
 
-  const handleDrill = useHandleMcpDrill({
+  const handleDrill = useHandleMcpDerivedDrill({
     app,
     uiCredential,
     mcpSessionId,

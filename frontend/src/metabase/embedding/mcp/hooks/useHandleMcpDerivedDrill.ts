@@ -48,7 +48,7 @@ type DrillThroughHandler = (
   defaultNavigate: () => Promise<void>,
 ) => Promise<void>;
 
-interface UseHandleMcpDrillThroughParams {
+interface UseOpenDrillThroughInMetabaseParams {
   app: McpDrillThroughApp | null;
 }
 
@@ -58,9 +58,9 @@ interface UseHandleMcpDrillThroughParams {
  * here is one the server cannot derive: it opens in Metabase instead of
  * running in the iframe.
  */
-export function useHandleMcpDrillThrough({
+export function useOpenDrillThroughInMetabase({
   app,
-}: UseHandleMcpDrillThroughParams): DrillThroughHandler {
+}: UseOpenDrillThroughInMetabaseParams): DrillThroughHandler {
   return useCallback(
     async ({ nextCard }) => {
       await openInMetabase(app, nextCard);
@@ -69,7 +69,7 @@ export function useHandleMcpDrillThrough({
   );
 }
 
-interface UseHandleMcpDrillParams {
+interface UseHandleMcpDerivedDrillParams {
   app: McpDrillThroughApp | null;
   uiCredential: string;
   mcpSessionId: string;
@@ -87,12 +87,12 @@ export type McpDrillHandler = (
  * handle, or opens in Metabase for Claude hosts, which render the follow-up
  * there.
  */
-export function useHandleMcpDrill({
+export function useHandleMcpDerivedDrill({
   app,
   uiCredential,
   mcpSessionId,
   applyOperationsRef,
-}: UseHandleMcpDrillParams): McpDrillHandler {
+}: UseHandleMcpDerivedDrillParams): McpDrillHandler {
   return useCallback(
     async (operation, nextCard) => {
       if (isStayDrill(operation)) {

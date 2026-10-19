@@ -8,9 +8,9 @@ import { createMockCard } from "metabase-types/api/mocks";
 import type { ApplyMcpOperations, McpDrillOperation } from "../derive";
 
 import {
-  useHandleMcpDrill,
-  useHandleMcpDrillThrough,
-} from "./useHandleMcpDrillThrough";
+  useHandleMcpDerivedDrill,
+  useOpenDrillThroughInMetabase,
+} from "./useHandleMcpDerivedDrill";
 
 const NEXT_CARD = createMockCard({
   dataset_query: {
@@ -46,7 +46,7 @@ function setupDrill(hostName: string) {
     Parameters<ApplyMcpOperations>
   >();
   const { result } = renderHook(() =>
-    useHandleMcpDrill({
+    useHandleMcpDerivedDrill({
       app,
       uiCredential: "ui-credential",
       mcpSessionId: "mcp-session-id",
@@ -60,7 +60,7 @@ function setupDrill(hostName: string) {
 const drillCalls = () =>
   fetchMock.callHistory.calls("path:/api/embed-mcp/drills");
 
-describe("useHandleMcpDrill", () => {
+describe("useHandleMcpDerivedDrill", () => {
   beforeEach(() => {
     window.metabaseConfig = { instanceUrl: "https://metabase.example" };
     setCurrentMcpQueryHandle("current-handle");
@@ -135,7 +135,7 @@ describe("useHandleMcpDrill", () => {
   });
 });
 
-describe("useHandleMcpDrillThrough", () => {
+describe("useOpenDrillThroughInMetabase", () => {
   beforeEach(() => {
     window.metabaseConfig = { instanceUrl: "https://metabase.example" };
   });
@@ -147,7 +147,7 @@ describe("useHandleMcpDrillThrough", () => {
   it("never runs a drill the server did not derive in the iframe: it opens in Metabase", async () => {
     const app = createApp("Cursor");
     const defaultNavigate = jest.fn();
-    const { result } = renderHook(() => useHandleMcpDrillThrough({ app }));
+    const { result } = renderHook(() => useOpenDrillThroughInMetabase({ app }));
 
     await result.current(
       { drillName: "column-filter", nextCard: NEXT_CARD },
