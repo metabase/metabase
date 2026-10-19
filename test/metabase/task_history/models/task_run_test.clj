@@ -11,9 +11,12 @@
    [metabase.pulse.test-util :as pulse.tu]
    [metabase.sync.util :as sync-util]
    [metabase.task-history.core :as task-history]
+   [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -155,6 +158,49 @@
           (finish! (start!) :success)
           (task-history/task-run-work-done! run-id)
           (is (= :abandoned (:status (run)))))))))
+
+(deftest task-run-work-done-two-threads-test
+  (testing "a call that read the tasks before the last send ended does not overwrite the status the last send sets (GDGT-3331)"
+    ;; The run is success for a moment, and one more send is still started. On one thread, a call reads the tasks, gets
+    ;; started, and waits up to 500 ms before it writes. On a second thread, the last send ends and calls
+    ;; task-run-work-done!. The run row lock makes the last send wait until the first call has written started, so it
+    ;; then writes success. Without the lock, the last send reads the run as success, writes nothing, and the first
+    ;; call then writes its older started: the run stays started.
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (let [run-id         (task-run/create-task-run! {:run_type    :subscription
+                                                       :entity_type :dashboard
+                                                       :entity_id   1})
+            task!          (fn [status]
+                             (t2/insert-returning-pk! :model/TaskHistory {:task       "notification-send"
+                                                                          :run_id     run-id
+                                                                          :status     status
+                                                                          :started_at (t/instant)}))
+            _              (task! :success)
+            last-send      (task! :started)
+            _              (t2/update! :model/TaskRun run-id {:status :success :ended_at (t/instant)})
+            first-read     (CountDownLatch. 1)
+            last-done      (CountDownLatch. 1)
+            first-statuses (atom nil)
+            original       (mt/original-fn #'task-history.db/task-statuses-for-run)]
+        ;; `future` conveys the dynamic redef to both threads
+        (mt/with-dynamic-fn-redefs [task-history.db/task-statuses-for-run
+                                    (fn [id]
+                                      (let [statuses (original id)]
+                                        (when (compare-and-set! first-statuses nil statuses)
+                                          (.countDown first-read)
+                                          (.await last-done 500 TimeUnit/MILLISECONDS))
+                                        statuses))]
+          (let [first-call (future (task-history/task-run-work-done! run-id))
+                last-call  (future
+                             (.await first-read 10 TimeUnit/SECONDS)
+                             (t2/update! :model/TaskHistory last-send {:status :success :ended_at (t/instant)})
+                             (task-history/task-run-work-done! run-id)
+                             (.countDown last-done))]
+            @first-call
+            @last-call))
+        (is (= #{:started :success} @first-statuses)
+            "the first call read the tasks while the last send was still started")
+        (is (= :success (t2/select-one-fn :status :model/TaskRun :id run-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Nesting prevention tests                                            |
