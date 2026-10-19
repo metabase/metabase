@@ -6,7 +6,7 @@ import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/Add
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { useNavigate } from "metabase/router";
-import { Group, Stack, Title } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
 import type { Card, ConcreteTableId } from "metabase-types/api";
 
 import { pickSettingsForKind } from "../analyses/config";
@@ -22,27 +22,31 @@ import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 import { grainLabel } from "../sql/compile/grain";
 import type { DrillPoint } from "../sql/compose";
+import { useSupportingAnalyses } from "../supporting/use-supporting-analyses";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
-import { useAnalysisState } from "../use-analysis-state";
+import { type HintedPanel, useAnalysisState } from "../use-analysis-state";
 import { useSaveAnalysis } from "../use-save-analysis";
 
 import { AnalysisResult } from "./AnalysisResult";
-import { AnalysisTabs } from "./AnalysisTabs";
+import { AnalysisTitle, getNewAnalysisTitle } from "./AnalysisTitle";
 import { AnalysisToolbar } from "./AnalysisToolbar";
 import { FilterPills } from "./FilterPills";
 import { SettingsPanel } from "./SettingsPanel";
 import { CreateSegmentModal } from "./drills/CreateSegmentModal";
 import { MembersModal } from "./drills/MembersModal";
 import { SegmentPalette } from "./palette/SegmentPalette";
+import { SupportingAnalyses } from "./supporting/SupportingAnalyses";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
   tableId: ConcreteTableId | undefined;
   savedCard?: Card;
   savedSettings?: StoredSettings;
-  /** For a new analysis, where tabs switch between kinds. */
+  /** For a new analysis, where the title's kind opens a menu of the kinds. */
   onKindChange?: (kind: AnalysisKind) => void;
+  /** Opens that menu on arrival, when the URL names no kind yet. */
+  isKindMenuOpenInitially?: boolean;
   /** For a new analysis, where the palette picks the table. */
   onTableChange?: (tableId: ConcreteTableId) => void;
   isTableLoading?: boolean;
@@ -50,10 +54,11 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
 };
 
 /**
- * The event analysis page: the kind tabs for a new analysis across the top;
- * below them the segment palette on the far left, running the full height,
- * then the title and toolbar above the setup panel and the result. A saved analysis opens on
- * its result, with both side panels collapsed.
+ * The event analysis page: the title and toolbar across the top, then the
+ * segment palette, the setup panel and the result side by side. A new
+ * analysis picks its kind from the title. The result's column scrolls, with
+ * the kind's supporting analyses below the primary chart. A saved analysis
+ * opens on its result, with both side panels collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
@@ -61,6 +66,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   savedCard,
   savedSettings,
   onKindChange,
+  isKindMenuOpenInitially,
   onTableChange,
   isTableLoading = false,
   tableError,
@@ -68,6 +74,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const navigate = useNavigate();
   const isNew = savedSettings === undefined;
   const [isPaletteOpen, setIsPaletteOpen] = useState(isNew);
+  // The panel whose toolbar button is hovered lights up its border.
+  const [hintedPanel, setHintedPanel] = useState<HintedPanel | null>(null);
   const {
     stored,
     hasUnsavedChanges,
@@ -80,7 +88,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     config,
     table,
     usersTable,
+    context,
     computed,
+    base,
     spec,
     widgets,
     missing,
@@ -92,6 +102,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     tableId,
     stored,
     onChangeSettings,
+  });
+  const supporting = useSupportingAnalyses({
+    spec,
+    tableId,
+    base,
+    context,
+    query,
   });
   const drillQueries = useDrillQueries({
     spec,
@@ -111,6 +128,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     countColumn: grainLabel(computed.counting),
     describePoint,
     queries: drillQueries,
+    getExtraActions: supporting.getClickActions,
   });
 
   useEffect(() => {
@@ -120,7 +138,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   }, [tableId]);
 
   const tableName = table?.display_name ?? t`this table`;
-  const title = savedCard?.name ?? t`${config.name} analysis on ${tableName}`;
+  const title = savedCard?.name ?? getNewAnalysisTitle(kind, tableName);
 
   // Only the kind on the current tab is saved; the other tabs' settings stay
   // in the URL for this session.
@@ -170,10 +188,50 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         gap={0}
         bg="background-secondary"
       >
-        {onKindChange !== undefined && (
-          <AnalysisTabs kind={kind} onChange={onKindChange} />
-        )}
-        <Group flex={1} gap={0} align="stretch" wrap="nowrap" mih={0}>
+        <Stack
+          gap="md"
+          pl="xxl"
+          pr="lg"
+          pt="lg"
+          pb="md"
+          bg="background-primary"
+          style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+        >
+          <AnalysisTitle
+            kind={kind}
+            tableName={tableName}
+            savedName={savedCard?.name}
+            onKindChange={onKindChange}
+            isKindMenuOpenInitially={isKindMenuOpenInitially}
+          />
+          <AnalysisToolbar
+            widgets={widgets}
+            panel={panel}
+            setupLabel={config.setupLabel}
+            sql={query.sql}
+            canSave={canSave}
+            isSaveDisabled={isSaveDisabled}
+            isPaletteOpen={isPaletteOpen}
+            onTogglePalette={() => setIsPaletteOpen((isOpen) => !isOpen)}
+            onPanelChange={setPanel}
+            onHintPanel={setHintedPanel}
+            onSave={handleSave}
+          />
+          <FilterPills
+            value={computed.filters}
+            table={table}
+            onChange={handleFiltersChange}
+          />
+        </Stack>
+        <Group
+          gap="lg"
+          wrap="nowrap"
+          py="lg"
+          pl="xxl"
+          flex={1}
+          align="stretch"
+          mih={0}
+        >
           {isPaletteOpen && (
             <SegmentPalette
               tableId={tableId}
@@ -183,74 +241,46 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               tableError={tableError}
               onTableChange={onTableChange}
               onSelectPeopleSegment={handleAddPeopleFilter}
+              isHinted={hintedPanel === "palette"}
             />
           )}
-          <Stack flex={1} miw={0} gap={0}>
-            <Stack
-              gap="md"
-              pl="xxl"
-              pr="lg"
-              pt="lg"
-              pb="md"
-              bg="background-primary"
-              style={{ borderBottom: "1px solid var(--mb-color-border)" }}
-            >
-              <Title order={3} fw="normal">
-                {title}
-              </Title>
-              <AnalysisToolbar
-                widgets={widgets}
-                panel={panel}
-                setupLabel={config.setupLabel}
-                sql={query.sql}
-                canSave={canSave}
-                isSaveDisabled={isSaveDisabled}
-                isPaletteOpen={isPaletteOpen}
-                onTogglePalette={() => setIsPaletteOpen((isOpen) => !isOpen)}
-                onPanelChange={setPanel}
-                onSave={handleSave}
-              />
-              <FilterPills
-                value={computed.filters}
-                table={table}
-                onChange={handleFiltersChange}
-              />
-            </Stack>
-            <Group
-              gap="lg"
-              wrap="nowrap"
-              py="lg"
-              pl="xxl"
-              pr="lg"
-              flex={1}
-              align="stretch"
-              mih={0}
-            >
-              {panel && (
-                <SettingsPanel key={kind} panel={panel} widgets={widgets} />
-              )}
-              <AnalysisResult
-                title={config.question}
-                display={display}
-                vizSettings={vizSettings}
-                dataset={query.dataset}
-                datasetQuery={query.datasetQuery}
-                isLoading={query.isLoading}
-                error={
-                  query.error ??
-                  (tableId === undefined
-                    ? t`Choose a table to analyze.`
-                    : undefined)
-                }
-                warnings={query.warnings}
-                missing={missing}
-                setupLabel={config.setupLabel}
-                onOpenSetup={
-                  panel !== "setup" ? () => setPanel("setup") : undefined
-                }
-                clickActionsMode={drillActions.mode}
-              />
-            </Group>
+          {panel && (
+            <SettingsPanel
+              key={kind}
+              panel={panel}
+              widgets={widgets}
+              isHinted={hintedPanel === panel}
+            />
+          )}
+          <Stack
+            flex={1}
+            miw={0}
+            gap="lg"
+            pr="lg"
+            style={{ overflowY: "auto" }}
+          >
+            <AnalysisResult
+              title={config.question}
+              display={display}
+              vizSettings={vizSettings}
+              dataset={query.dataset}
+              datasetQuery={query.datasetQuery}
+              isLoading={query.isLoading}
+              error={
+                query.error ??
+                (tableId === undefined
+                  ? t`Choose a table to analyze.`
+                  : undefined)
+              }
+              warnings={query.warnings}
+              missing={missing}
+              setupLabel={config.setupLabel}
+              onOpenSetup={
+                panel !== "setup" ? () => setPanel("setup") : undefined
+              }
+              clickActionsMode={drillActions.mode}
+            />
+            <SupportingAnalyses supporting={supporting} />
           </Stack>
         </Group>
       </Stack>

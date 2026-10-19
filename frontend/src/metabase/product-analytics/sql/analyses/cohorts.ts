@@ -10,7 +10,8 @@ export const COHORT_COLUMN_NAMES: Record<CohortsSpec["by"], string> = {
   attribute: "cohort_attribute",
 };
 
-const periodOf = (spec: AnalysisSpec): Period =>
+/** The cohort period: the granularity, with hours rounded up to days. */
+export const periodOf = (spec: AnalysisSpec): Period =>
   spec.bucket.granularity === "month"
     ? "month"
     : spec.bucket.granularity === "week"
@@ -28,7 +29,10 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   const warnings: string[] = [];
 
   const base = scopedEvents(spec, undefined, [
-    { as: "is_return", sql: flagSql(cohorts.return.flag) },
+    {
+      as: "is_return",
+      sql: cohorts.return !== undefined ? flagSql(cohorts.return.flag) : "1",
+    },
     { as: cohortColumn, sql: cohortColumn },
   ]);
   warnings.push(...base.warnings);

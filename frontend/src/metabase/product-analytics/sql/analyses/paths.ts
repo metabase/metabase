@@ -4,8 +4,14 @@ import { flagSql } from "../compile/flag";
 import type { Cte, DrillPoint, QueryPlan } from "../compose";
 
 import { pointString, scopedEvents } from "./base";
+import {
+  PATHS_COLUMNS,
+  kindSql,
+  pathNodeKeySql,
+  pathNodeLabelSql,
+} from "./path-nodes";
 
-const STEP_NAME_SQL =
+export const STEP_NAME_SQL =
   "if(event_name != '' AND event_name IS NOT NULL, event_name, url_path)";
 
 // A step is noisy when it makes up at least this share of all steps...
@@ -207,33 +213,74 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n"),
   });
 
+  const volume =
+    spec.output.pathsEdgeMetric === "events" ? "count()" : "uniqExact(actor)";
+
+  ctes.push({
+    name: "kept_steps",
+    note: `the ${paths.maxNodes} biggest events at each step, with at least ${paths.minVolume} — the rest are grouped into Other`,
+    deps: ["numbered"],
+    body: [
+      "SELECT step, step_name",
+      "FROM numbered",
+      "GROUP BY step, step_name",
+      `HAVING ${volume} >= ${paths.minVolume}`,
+      `ORDER BY step, ${volume} DESC, step_name`,
+      `LIMIT ${paths.maxNodes} BY step`,
+    ].join("\n"),
+  });
+
+  ctes.push({
+    name: "grouped_steps",
+    note: "each visit's steps, with the events too small to show grouped into Other",
+    deps: ["numbered", "kept_steps"],
+    body: [
+      "SELECT",
+      "  actor,",
+      "  visit,",
+      "  step,",
+      "  if(is_kept, step_name, '') AS step_name,",
+      `  if(is_kept, ${kindSql("step")}, ${kindSql("other")}) AS kind`,
+      "FROM (",
+      "  SELECT",
+      "    *,",
+      "    (step, step_name) IN (SELECT step, step_name FROM kept_steps) AS is_kept",
+      "  FROM numbered",
+      ")",
+    ].join("\n"),
+  });
+
+  // Only "from" has paths that can end early; the others end at their ending event.
+  const dropOff = paths.direction === "from" ? ` OR step <= ${depth}` : "";
   ctes.push({
     name: "edges",
-    note: "one row per step, from each step to the next — labels carry the step number so a repeated step is a new node, not a loop",
-    deps: ["numbered"],
+    note: "one row per step, from each step to the next — keys carry the step number so a repeated step is a new node, not a loop",
+    deps: ["grouped_steps"],
     body: [
       "SELECT",
       "  step,",
-      "  concat(toString(step), '. ', step_name) AS source,",
-      "  concat(toString(step + 1), '. ', next_name) AS target,",
+      `  ${pathNodeKeySql("step", "kind", "step_name")} AS source,`,
+      `  ${pathNodeKeySql("step + 1", "target_kind", "next_name")} AS target,`,
+      `  ${pathNodeLabelSql("kind", "step_name")} AS ${PATHS_COLUMNS.sourceLabel},`,
+      `  ${pathNodeLabelSql("target_kind", "next_name")} AS ${PATHS_COLUMNS.targetLabel},`,
+      `  target_kind AS ${PATHS_COLUMNS.targetKind},`,
       "  actor",
       "FROM (",
       "  SELECT",
       "    actor,",
       "    step,",
       "    step_name,",
+      "    kind,",
       "    leadInFrame(step_name, 1, '') OVER (PARTITION BY actor, visit ORDER BY step",
-      "      ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS next_name",
-      "  FROM numbered",
+      "      ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS next_name,",
+      "    leadInFrame(kind, 1, '') OVER (PARTITION BY actor, visit ORDER BY step",
+      "      ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS next_kind,",
+      `    if(next_kind = '', ${kindSql("dropped")}, next_kind) AS target_kind`,
+      "  FROM grouped_steps",
       ")",
-      "WHERE next_name != ''",
+      `WHERE next_kind != ''${dropOff}`,
     ].join("\n"),
   });
-
-  const metric =
-    spec.output.pathsEdgeMetric === "events"
-      ? "count() AS weight"
-      : "uniqExact(actor) AS weight";
 
   // A node click carries one label, an edge click both ends.
   const members = (point: DrillPoint): string | null => {
@@ -256,12 +303,13 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
       "  step,",
       "  source,",
       "  target,",
-      `  ${metric}`,
+      `  ${PATHS_COLUMNS.sourceLabel},`,
+      `  ${PATHS_COLUMNS.targetLabel},`,
+      `  ${PATHS_COLUMNS.targetKind},`,
+      `  ${volume} AS weight`,
       "FROM edges",
-      "GROUP BY step, source, target",
-      `HAVING weight >= ${paths.minVolume}`,
+      `GROUP BY step, source, target, ${PATHS_COLUMNS.sourceLabel}, ${PATHS_COLUMNS.targetLabel}, ${PATHS_COLUMNS.targetKind}`,
       "ORDER BY step, weight DESC",
-      `LIMIT ${paths.maxNodes} BY step`,
     ].join("\n"),
     warnings: [
       ...warnings,

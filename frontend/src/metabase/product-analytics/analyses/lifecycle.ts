@@ -15,7 +15,6 @@ import {
   isOneOf,
   isOptionalEventDefinition,
   isUnknownArray,
-  missingIf,
   ready,
 } from "./setting-helpers";
 import type {
@@ -87,7 +86,10 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
     widget: EventDefinitionWidget,
     getDefault: () => null,
     isValid: (value) => isOptionalEventDefinition(value),
-    getProps: getEventDefinitionProps,
+    getProps: (context) => ({
+      ...getEventDefinitionProps(context),
+      emptyLabel: t`Any action or event`,
+    }),
   }),
   "lifecycle.shown": withWidgetProps({
     getTitle: () => t`Groups to show`,
@@ -123,24 +125,19 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
   settings: SETTINGS,
   toSpec: (settings, events) => {
     const active = settings["lifecycle.active"];
-    const isMissingActive = active === null;
-    const isMissingShown = settings["lifecycle.shown"].length === 0;
-    if (isMissingActive || isMissingShown) {
+    if (settings["lifecycle.shown"].length === 0) {
       return incomplete([
-        ...missingIf(isMissingActive, {
-          key: "lifecycle.active",
-          message: t`Define the event that counts as being active.`,
-        }),
-        ...missingIf(isMissingShown, {
+        {
           key: "lifecycle.shown",
           message: t`Pick at least one group to show.`,
-        }),
+        },
       ]);
     }
     return ready({
       ...getCommonSpec("lifecycle", settings),
       lifecycle: {
-        active: { flag: events.flagFor(active) },
+        // Empty means any event counts as being active.
+        active: active === null ? undefined : { flag: events.flagFor(active) },
         period: getPeriod(settings.granularity),
       },
       output: { lifecycleShown: settings["lifecycle.shown"] },

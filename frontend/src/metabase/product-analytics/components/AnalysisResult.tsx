@@ -27,6 +27,8 @@ import type {
 import type { MissingSetting } from "../analyses/types";
 
 const SYNTHETIC_CARD_ID = -1;
+// The result shares a scrolling column with the supporting analyses below it.
+const MIN_HEIGHT_PX = 480;
 
 type AnalysisResultProps = {
   title: string;
@@ -84,7 +86,7 @@ export const AnalysisResult = ({
     : warnings;
 
   return (
-    <Paper withBorder p="lg" style={{ flex: 1, minWidth: 0 }}>
+    <Paper withBorder p="lg" flex={1} miw={0} mih={MIN_HEIGHT_PX}>
       <Stack h="100%">
         <Group justify="space-between" wrap="nowrap">
           <Title order={4}>{title}</Title>

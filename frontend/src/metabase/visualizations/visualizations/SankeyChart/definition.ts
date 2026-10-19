@@ -124,6 +124,16 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
       ],
     }),
   },
+  // No widgets yet; set by product analytics paths
+  "sankey.breakout": {
+    getDefault: () => undefined,
+  },
+  "sankey.breakout_colors": {
+    getDefault: () => ({}),
+  },
+  "product_analytics.paths": {
+    getDefault: () => false,
+  },
 };
 
 export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {

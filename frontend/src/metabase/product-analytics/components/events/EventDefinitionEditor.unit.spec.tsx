@@ -71,12 +71,17 @@ describe("EventDefinitionEditor", () => {
   });
 
   it("can't be submitted with only a name", async () => {
-    setup({ value: null });
+    const { onSubmit } = setup({ value: null });
     await userEvent.type(getName(), "Big order");
     await userEvent.tab();
 
     expect(getName()).toHaveValue("Big order");
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Done" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(getName(), "{enter}");
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("keeps a custom name when a condition is removed", async () => {
@@ -105,7 +110,7 @@ describe("EventDefinitionEditor", () => {
   });
 
   it("can't be submitted once its last condition is removed", async () => {
-    setup({
+    const { onSubmit } = setup({
       value: createMockEventDefinition({
         name: TOTAL_NAME,
         filters: [totalAbove(100)],
@@ -114,7 +119,12 @@ describe("EventDefinitionEditor", () => {
 
     await removeCondition(TOTAL_NAME);
 
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Done" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(getName(), "{enter}");
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("submits the typed name on Enter", async () => {

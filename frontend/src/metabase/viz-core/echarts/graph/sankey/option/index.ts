@@ -10,6 +10,9 @@ import { SANKEY_CHART_STYLE } from "../constants/style";
 import type { SankeyChartLayout } from "../layout/types";
 import type { SankeyChartModel } from "../model/types";
 
+// Breakout colors tell flows apart, so they need to read more strongly than the default edges.
+const BREAKOUT_EDGE_OPACITY = 0.35;
+
 export const getSankeyChartOption = (
   chartModel: SankeyChartModel,
   layout: SankeyChartLayout,
@@ -19,15 +22,10 @@ export const getSankeyChartOption = (
   const { data, formatters } = chartModel;
 
   const nodes = data.nodes.map((node) => {
-    const formattedName = formatters.node(node);
-    const formattedDisplayName = !node.hasOutputs
-      ? formatters.target(node.displayName)
-      : formatters.source(node.displayName);
-
     return {
       ...node,
-      name: formattedName,
-      value: formattedDisplayName,
+      name: formatters.node(node),
+      value: formatters.nodeLabel(node),
       itemStyle: {
         color: chartModel.nodeColors[String(node.rawName)],
       },
@@ -38,6 +36,9 @@ export const getSankeyChartOption = (
     source: formatters.source(link.source),
     target: formatters.target(link.target),
     value: typeof link.value === "number" ? link.value : undefined,
+    ...(link.color !== undefined && {
+      lineStyle: { color: link.color, opacity: BREAKOUT_EDGE_OPACITY },
+    }),
   }));
 
   const edgeColor =
@@ -77,6 +78,7 @@ export const getSankeyChartOption = (
       focus: "adjacency",
     },
     draggable: false,
+    ...(chartModel.keepsNodeOrder && { layoutIterations: 0 }),
     nodes,
     links,
     nodeWidth: SANKEY_CHART_STYLE.nodeWidth,

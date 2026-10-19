@@ -210,11 +210,19 @@ describe("analysis settings", () => {
   });
 
   it("hides granularity for analyses without a time grain", () => {
-    expect(setup({ kind: "habit" }).isHidden("granularity")).toBe(true);
+    expect(setup({ kind: "paths" }).isHidden("granularity")).toBe(true);
     expect(
-      setup({ kind: "habit", stored: { granularity: "day" } }).computed
+      setup({ kind: "paths", stored: { granularity: "day" } }).computed
         .granularity,
     ).toBe("week");
+  });
+
+  it("limits habit granularity to days and weeks", () => {
+    expect(setup({ kind: "habit" }).computed.granularity).toBe("day");
+    expect(
+      setup({ kind: "habit", stored: { granularity: "month" } }).computed
+        .granularity,
+    ).toBe("day");
   });
 
   it("only offers counting by columns the table has", () => {
@@ -249,15 +257,27 @@ describe("analysis settings", () => {
     expect(computed["columns.timestamp"]).toBe("ts");
   });
 
-  it("derives the habit threshold default from the sub-period", () => {
+  it("derives the habit threshold default from the granularity", () => {
     const { computed, isHidden } = setup({
       kind: "habit",
-      stored: { "habit.sub_period": "week", "habit.measure": "threshold" },
+      stored: { granularity: "week", "habit.measure": "threshold" },
     });
 
     expect(computed["habit.threshold"]).toBe(2);
     expect(isHidden("habit.threshold")).toBe(false);
     expect(setup({ kind: "habit" }).isHidden("habit.threshold")).toBe(true);
+  });
+
+  it("counts habit sub-periods over the date range", () => {
+    const { specResult } = setup({
+      kind: "habit",
+      stored: { granularity: "week", date_range: "past4weeks" },
+    });
+
+    expect(getReadySpec(specResult).habit).toMatchObject({
+      subPeriod: "week",
+      periods: 4,
+    });
   });
 
   it("follows cohorts for as many periods as the date range spans", () => {
@@ -426,20 +446,19 @@ describe("analysis settings", () => {
     it.each([
       { kind: "habit", key: "habit.active" },
       { kind: "lifecycle", key: "lifecycle.active" },
-      { kind: "cohorts", key: "cohorts.return" },
-    ] as const)(
-      "reports $key as missing when it has no event",
-      ({ kind, key }) => {
-        const { computed, specResult, allocation } = setup({
-          kind,
-          stored: { ...REQUIRED_EVENTS[kind], [key]: null },
-        });
+    ] as const)("counts any event when $key is empty", ({ kind, key }) => {
+      const { computed, specResult, allocation } = setup({
+        kind,
+        stored: { ...REQUIRED_EVENTS[kind], [key]: null },
+      });
 
-        expect(computed).toHaveProperty([key], null);
-        expect(getMissingKeys(specResult)).toEqual([key]);
-        expect(allocation.events).toHaveLength(0);
-      },
-    );
+      expect(computed).toHaveProperty([key], null);
+      expect(specResult.status).toBe("ready");
+      expect(
+        specResult.status === "ready" ? specResult.spec[kind]?.active : null,
+      ).toBeUndefined();
+      expect(allocation.events).toHaveLength(0);
+    });
 
     it("keeps an empty lifecycle group list and reports it as incomplete", () => {
       const { computed, specResult } = setup({
@@ -451,16 +470,26 @@ describe("analysis settings", () => {
       expect(getMissingKeys(specResult)).toEqual(["lifecycle.shown"]);
     });
 
-    it("reports every missing cohorts setting at once", () => {
+    it("counts any event as returning when cohorts have no return event", () => {
+      const { specResult, allocation } = setup({
+        kind: "cohorts",
+        stored: { ...REQUIRED_EVENTS.cohorts, "cohorts.return": null },
+      });
+
+      expect(specResult.status).toBe("ready");
+      expect(
+        specResult.status === "ready" ? specResult.spec.cohorts?.return : null,
+      ).toBeUndefined();
+      expect(allocation.events).toHaveLength(0);
+    });
+
+    it("reports the missing cohorts attribute", () => {
       const { specResult } = setup({
         kind: "cohorts",
         stored: { "cohorts.by": "attribute", "cohorts.return": null },
       });
 
-      expect(getMissingKeys(specResult)).toEqual([
-        "cohorts.attribute",
-        "cohorts.return",
-      ]);
+      expect(getMissingKeys(specResult)).toEqual(["cohorts.attribute"]);
     });
 
     it("only requires the paths events the direction uses", () => {

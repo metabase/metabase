@@ -39,6 +39,8 @@ export const NewAnalysisPage = () => {
 
   const kindParam = searchParams.get("kind");
   const kind = isAnalysisKind(kindParam) ? kindParam : DEFAULT_KIND;
+  // Arriving without a kind, the first thing to do is pick one.
+  const [isKindMenuOpenInitially] = useState(() => kindParam === null);
   const tableId =
     parseTableId(searchParams.get("table")) ?? lastTableId ?? prototype.tableId;
 
@@ -74,6 +76,7 @@ export const NewAnalysisPage = () => {
       kind={kind}
       tableId={tableId}
       onKindChange={(nextKind) => setParams({ kind: nextKind })}
+      isKindMenuOpenInitially={isKindMenuOpenInitially}
       onTableChange={handleTableChange}
       isTableLoading={prototype.isLoading}
       tableError={prototype.error}

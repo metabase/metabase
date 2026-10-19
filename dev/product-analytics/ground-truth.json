@@ -2,31 +2,83 @@
   "seed": "pa-prototype-v1",
   "people": 25000,
   "days": 120,
-  "start": "2026-06-18T00:00:00.000Z",
-  "end": "2026-10-16T00:00:00.000Z",
+  "start": "2026-06-21T00:00:00.000Z",
+  "end": "2026-10-19T00:00:00.000Z",
   "incident": {
-    "start": "2026-09-10T00:00:00.000Z",
-    "end": "2026-09-17T00:00:00.000Z"
+    "start": "2026-09-13T00:00:00.000Z",
+    "end": "2026-09-20T00:00:00.000Z"
   },
   "counts": {
-    "events": 1626506,
-    "pageviews": 1489890,
+    "events": 1638220,
+    "pageviews": 1500599,
     "signup": 22123,
-    "trial_started": 5123,
-    "checkout_completed": 1436,
-    "invite_sent": 3742,
-    "report_created": 95960,
-    "subscription_cancelled": 89,
-    "error": 8143,
-    "error_incident": 3171,
-    "identities": 28771
+    "trial_started": 5077,
+    "checkout_completed": 1443,
+    "invite_sent": 3724,
+    "report_created": 96791,
+    "subscription_cancelled": 68,
+    "error": 8395,
+    "error_incident": 3304,
+    "identities": 28711
   },
   "funnel": {
-    "pricing": 19505,
-    "trial_started": 5123,
-    "checkout_completed": 1436
+    "pricing": 19366,
+    "trial_started": 5077,
+    "checkout_completed": 1443
   },
-  "inviteWeek1": 2668,
-  "twoDevicePeople": 3672,
-  "identifiedPeople": 22123
+  "inviteWeek1": 2667,
+  "twoDevicePeople": 3722,
+  "identifiedPeople": 22123,
+  "insights": {
+    "expected": [
+      {
+        "transition": "Started trial → Purchased",
+        "conditions": [
+          {
+            "os": "iOS"
+          }
+        ],
+        "direction": "lower",
+        "why": "iOS checkout conversion × 0.5. iOS always means Safari, so this should not also show as Safari, or Safari and iOS."
+      },
+      {
+        "transition": "Viewed pricing → Started trial",
+        "conditions": [
+          {
+            "browser": "Firefox",
+            "os": "Android"
+          },
+          {
+            "browser": "Firefox",
+            "device": "mobile"
+          }
+        ],
+        "direction": "lower",
+        "why": "Android + Firefox trial starts × 0.25. Android or Firefox alone should be explained by the pair."
+      },
+      {
+        "transition": "Started trial → Purchased",
+        "conditions": [
+          {
+            "trial_source": "sales_email"
+          }
+        ],
+        "direction": "higher",
+        "why": "Checkout × 1.8. trial_source is only set on trial_started events, so this tests sparse columns."
+      }
+    ],
+    "unexpected": [
+      {
+        "transition": "Started trial → Purchased",
+        "column": "plan",
+        "why": "plan is only set on checkout_completed, so it isn't known when someone starts a trial."
+      },
+      {
+        "transition": "Viewed pricing → Started trial",
+        "column": "country",
+        "value": "NZ",
+        "why": "NZ trial starts × 2.4, but NZ is too small to report."
+      }
+    ]
+  }
 }

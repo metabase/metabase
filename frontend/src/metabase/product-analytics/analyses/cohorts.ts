@@ -105,7 +105,10 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
     widget: EventDefinitionWidget,
     getDefault: () => null,
     isValid: (value) => isOptionalEventDefinition(value),
-    getProps: getEventDefinitionProps,
+    getProps: (context) => ({
+      ...getEventDefinitionProps(context),
+      emptyLabel: t`Any event or action`,
+    }),
   }),
   "cohorts.display": withWidgetProps({
     getTitle: () => t`What value do you want to see?`,
@@ -195,19 +198,17 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
           message: t`Pick a property to group users by.`,
         },
       ),
-      ...missingIf(returning === null, {
-        key: "cohorts.return",
-        message: t`Pick the action that counts as returning.`,
-      }),
     ];
-    if (returning === null || missing.length > 0) {
+    if (missing.length > 0) {
       return incomplete(missing);
     }
     return ready({
       ...getCommonSpec("cohorts", settings),
       cohorts: {
         by,
-        return: { flag: events.flagFor(returning) },
+        // Empty means any event counts as coming back.
+        return:
+          returning === null ? undefined : { flag: events.flagFor(returning) },
         returnRule: settings["cohorts.return_rule"],
         horizon: settings["cohorts.horizon"],
       },

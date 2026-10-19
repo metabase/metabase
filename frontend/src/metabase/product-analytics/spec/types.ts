@@ -100,9 +100,11 @@ export interface PathsSpec {
 }
 
 export interface HabitSpec {
-  active: FlagRef;
-  lookback: Duration;
+  /** What counts as showing up. Undefined: any event does. */
+  active?: FlagRef;
   subPeriod: Extract<Period, "day" | "week">;
+  /** How many sub-periods the date range spans; undefined when open-ended. */
+  periods?: number;
   measure: "histogram" | "ratio" | "threshold";
   threshold: number;
 }
@@ -114,7 +116,8 @@ export type LifecycleStateName =
   | "dormant";
 
 export interface LifecycleSpec {
-  active: FlagRef;
+  /** What counts as being active. Undefined: any event does. */
+  active?: FlagRef;
   period: Period;
 }
 
@@ -125,7 +128,8 @@ export interface CohortsSpec {
    * their clock started; see `planCohorts`.
    */
   by: "startDate" | "attribute";
-  return: FlagRef;
+  /** What counts as coming back. Undefined: any event does. */
+  return?: FlagRef;
   returnRule: "exactly" | "onOrAfter";
   horizon: number;
 }
