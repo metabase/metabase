@@ -8,7 +8,10 @@ import { BooleanFilterPicker } from "../BooleanFilterPicker";
 import { CoordinateFilterPicker } from "../CoordinateFilterPicker";
 import { DateFilterPicker } from "../DateFilterPicker";
 import { DefaultFilterPicker } from "../DefaultFilterPicker";
-import { FilterPreviewContext } from "../FilterPreviewContext";
+import {
+  FilterFooterLabelContext,
+  FilterPreviewContext,
+} from "../FilterPreviewContext";
 import { NumberFilterPicker } from "../NumberFilterPicker";
 import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
@@ -79,11 +82,16 @@ export function FilterPickerBody({
     return body;
   }
 
+  const previewProps = { query, stageIndex, filter, draftFilter };
   return (
-    <Flex align="stretch">
-      {body}
-      {preview.renderPreview({ query, stageIndex, filter, draftFilter })}
-    </Flex>
+    <FilterFooterLabelContext.Provider
+      value={preview.renderFooterLabel?.(previewProps)}
+    >
+      <Flex align="stretch">
+        {body}
+        {preview.renderPreview(previewProps)}
+      </Flex>
+    </FilterFooterLabelContext.Provider>
   );
 }
 

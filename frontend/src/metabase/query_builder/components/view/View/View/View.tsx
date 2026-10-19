@@ -264,7 +264,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
       .otherwise(() => SIDEBAR_SIZES.NORMAL);
     return (
-      <FilterLivePreviewProvider question={question}>
+      <FilterLivePreviewProvider question={question} result={result}>
         <div className={CS.fullHeight} ref={ref}>
           <Flex
             className={cx(QueryBuilderS.QueryBuilder, S.QueryBuilderViewRoot)}
