@@ -12,7 +12,6 @@ interface StructuredQueryRightSidebarProps {
   isShowingQuestionSettingsSidebar: boolean;
   isShowingSummarySidebar: boolean;
   isShowingTimelineSidebar: boolean;
-  onCloseSummary: () => void;
   onSave: (question: Question) => Promise<void>;
   question: Question;
   updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
@@ -23,7 +22,6 @@ export const StructuredQueryRightSidebar = ({
   isShowingQuestionSettingsSidebar,
   isShowingSummarySidebar,
   isShowingTimelineSidebar,
-  onCloseSummary,
   onSave,
   question,
   updateQuestion,
@@ -41,7 +39,6 @@ export const StructuredQueryRightSidebar = ({
         onQuestionChange={(nextQuestion) =>
           updateQuestion(nextQuestion, { run: true })
         }
-        onClose={onCloseSummary}
       />
     ))
     .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)

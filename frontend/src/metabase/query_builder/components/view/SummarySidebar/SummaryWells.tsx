@@ -1,6 +1,6 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import cx from "classnames";
-import { type ReactNode, useState } from "react";
+import { type MouseEvent, type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
@@ -8,9 +8,9 @@ import { hasFeature } from "metabase/databases";
 import {
   ActionIcon,
   Box,
+  Card,
   Icon,
   Menu,
-  Stack,
   Text,
   UnstyledButton,
 } from "metabase/ui";
@@ -42,7 +42,7 @@ type SummaryWellsProps = {
   onChange: (definition: SummaryDefinition) => void;
 };
 
-/** The Rows, Columns, and Values drop targets that define the pivot. */
+/** The Values, Rows, and Columns drop targets that define the pivot, in that order. */
 export function SummaryWells({
   base,
   definition,
@@ -68,7 +68,7 @@ export function SummaryWells({
     }
   };
 
-  const renderInput = (wellId: SummaryWellId) => (
+  const renderField = (wellId: SummaryWellId, items: ReactNode[]) => (
     <SummaryWellInput
       base={base}
       database={database}
@@ -77,7 +77,9 @@ export function SummaryWells({
       formulaEdit={editingWellId === wellId ? formulaEdit : null}
       onChange={onChange}
       onFormulaEditEnd={() => setEditingItemId(null)}
-    />
+    >
+      {items}
+    </SummaryWellInput>
   );
 
   const renderDimensions = (
@@ -108,53 +110,53 @@ export function SummaryWells({
   return (
     <Box className={S.wells} data-testid="summary-wells">
       <SummaryWell
-        wellId="rows"
-        title={t`Rows`}
-        placeholder={t`Drag columns here to group rows`}
+        wellId="values"
+        title={t`Values`}
         definition={definition}
         draggedItem={draggedItem}
-        footer={renderInput("rows")}
       >
-        {renderDimensions("rows", definition.rows)}
+        {renderField(
+          "values",
+          definition.values.map((value) => (
+            <ValueChip
+              key={value.id}
+              base={base}
+              value={value}
+              label={itemLabels.get(value.id) ?? ""}
+              isEditing={value.id === editingItemId}
+              onChangeOperator={(operatorShortName) =>
+                onChange(
+                  changeValueOperator(definition, value.id, operatorShortName),
+                )
+              }
+              onEditFormula={
+                canWriteValueFormula
+                  ? () => setEditingItemId(value.id)
+                  : undefined
+              }
+              onRemove={handleRemove}
+            />
+          )),
+        )}
+      </SummaryWell>
+      <SummaryWell
+        wellId="rows"
+        title={t`Rows`}
+        definition={definition}
+        draggedItem={draggedItem}
+      >
+        {renderField("rows", renderDimensions("rows", definition.rows))}
       </SummaryWell>
       <SummaryWell
         wellId="columns"
         title={t`Columns`}
-        placeholder={t`Drag columns here to split across the top`}
         definition={definition}
         draggedItem={draggedItem}
-        footer={renderInput("columns")}
       >
-        {renderDimensions("columns", definition.columns)}
-      </SummaryWell>
-      <SummaryWell
-        wellId="values"
-        title={t`Values`}
-        placeholder={t`Drag columns or metrics here, or type below`}
-        definition={definition}
-        draggedItem={draggedItem}
-        footer={renderInput("values")}
-      >
-        {definition.values.map((value) => (
-          <ValueChip
-            key={value.id}
-            base={base}
-            value={value}
-            label={itemLabels.get(value.id) ?? ""}
-            isEditing={value.id === editingItemId}
-            onChangeOperator={(operatorShortName) =>
-              onChange(
-                changeValueOperator(definition, value.id, operatorShortName),
-              )
-            }
-            onEditFormula={
-              canWriteValueFormula
-                ? () => setEditingItemId(value.id)
-                : undefined
-            }
-            onRemove={handleRemove}
-          />
-        ))}
+        {renderField(
+          "columns",
+          renderDimensions("columns", definition.columns),
+        )}
       </SummaryWell>
     </Box>
   );
@@ -198,24 +200,27 @@ function getItemWellId(
   return "values";
 }
 
+// clicks on these keep their own behavior instead of focusing the well's field
+const INTERACTIVE_SELECTOR =
+  "button, input, a, [role='button'], [contenteditable='true']";
+// the formula editor's content comes before its name input, so it wins while a formula is open
+const FIELD_SELECTOR = "[contenteditable='true'], input";
+
 type SummaryWellProps = {
   wellId: SummaryWellId;
   title: string;
-  placeholder: string;
   definition: SummaryDefinition;
   draggedItem: SummaryDragItem | null;
-  children: ReactNode[];
-  footer?: ReactNode;
+  children: ReactNode;
 };
 
+/** A drop target that's also one big input: clicking anywhere outside its chips focuses its field. */
 function SummaryWell({
   wellId,
   title,
-  placeholder,
   definition,
   draggedItem,
   children,
-  footer,
 }: SummaryWellProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `summary-well:${wellId}`,
@@ -224,26 +229,39 @@ function SummaryWell({
   const canDrop =
     draggedItem != null && canDropOnWell(draggedItem, wellId, definition);
 
+  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    if (
+      !(event.target instanceof Element) ||
+      event.target.closest(INTERACTIVE_SELECTOR)
+    ) {
+      return;
+    }
+    const field =
+      event.currentTarget.querySelector<HTMLElement>(FIELD_SELECTOR);
+    if (field) {
+      // keep the mousedown from blurring the field we're about to focus
+      event.preventDefault();
+      field.focus();
+    }
+  };
+
   return (
-    <Stack gap="xs">
-      <Text fw="bold">{title}</Text>
-      <Box
-        ref={setNodeRef}
-        className={cx(S.well, {
-          [S.wellAcceptsDrop]: canDrop,
-          [S.wellIsOver]: canDrop && isOver,
-          [S.wellRejectsDrop]: draggedItem != null && !canDrop,
-        })}
-        data-testid={`summary-well-${wellId}`}
-      >
-        {children.length > 0 ? (
-          children
-        ) : (
-          <Text className={S.wellPlaceholder}>{placeholder}</Text>
-        )}
-        {footer && <Box className={S.valuesInput}>{footer}</Box>}
-      </Box>
-    </Stack>
+    <Card
+      ref={setNodeRef}
+      className={cx(S.well, {
+        [S.wellAcceptsDrop]: canDrop,
+        [S.wellIsOver]: canDrop && isOver,
+        [S.wellRejectsDrop]: draggedItem != null && !canDrop,
+      })}
+      radius="lg"
+      shadow="xs_outline"
+      p="md"
+      data-testid={`summary-well-${wellId}`}
+      onMouseDown={handleMouseDown}
+    >
+      <Text className={S.wellTitle}>{title}</Text>
+      {children}
+    </Card>
   );
 }
 
@@ -282,6 +300,7 @@ function WellChip({
     >
       {children || <span className={S.chipLabel}>{label}</span>}
       <ActionIcon
+        className={S.chipRemove}
         size="sm"
         variant="transparent"
         c="inherit"

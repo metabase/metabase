@@ -208,7 +208,7 @@ export function SummaryFormulaEditor({
   const hasFormula = source.trim().length > 0;
 
   return (
-    <Box data-testid="summary-formula-editor">
+    <Box className={S.formula} data-testid="summary-formula-editor">
       <Box
         className={cx(S.formulaBox, { [S.formulaBoxInvalid]: errorMessage })}
       >
@@ -275,7 +275,13 @@ export function SummaryFormulaEditor({
         </Flex>
       )}
       {errorMessage && (
-        <Text size="sm" c="error" mt="xs" data-testid="summary-formula-error">
+        <Text
+          className={S.formulaError}
+          size="sm"
+          c="error"
+          mt="xs"
+          data-testid="summary-formula-error"
+        >
           {errorMessage}
         </Text>
       )}

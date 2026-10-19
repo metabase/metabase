@@ -9,11 +9,9 @@ import {
 } from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 import type Question from "metabase-lib/v1/Question";
 
 import { SummaryFieldList } from "./SummaryFieldList";
@@ -40,7 +38,6 @@ import {
 type SummarySidebarProps = {
   question: Question;
   onQuestionChange: (question: Question) => void;
-  onClose: () => void;
 };
 
 function getDropWellId(data: unknown): SummaryWellId | null {
@@ -57,7 +54,6 @@ function getDropWellId(data: unknown): SummaryWellId | null {
 export function SummarySidebar({
   question,
   onQuestionChange,
-  onClose,
 }: SummarySidebarProps) {
   const [session, setSession] = useState(() => getSummarySession(question));
   const { base, definition } = session;
@@ -115,12 +111,7 @@ export function SummarySidebar({
       onDragEnd={handleDragEnd}
       onDragCancel={() => setDraggedItem(null)}
     >
-      <SidebarContent
-        title={t`Summarize`}
-        color={color("core-summarize")}
-        onDone={onClose}
-        data-testid="summary-sidebar"
-      >
+      <SidebarContent className={S.sidebar} data-testid="summary-sidebar">
         <SummaryFieldList base={base} />
         <SummaryWells
           base={base}
