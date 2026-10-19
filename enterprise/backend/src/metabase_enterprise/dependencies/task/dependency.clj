@@ -76,8 +76,8 @@
 
 (mu/defn- compute-deps-for-entity! :- :any
   "Compute and store the dependencies of an `entity` hydrated by [[deps.dependency-status/hydrate-for-deps]], marking
-  an entity with a new upstream stale for its result metadata and analysis, which an upstream change made before the
-  edge existed never marked."
+  an entity with a new upstream stale for its result metadata and analysis, or for a snippet the analysis of what
+  expands it, which an upstream change made before the edge existed never marked."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity      :- Entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
@@ -88,7 +88,10 @@
         (when (= :card entity-type)
           (dependencies.db/mark-result-metadata-statuses-stale! own))
         (when (contains? deps.analysis-finding/analyzable-entities entity-type)
-          (dependencies.db/mark-analysis-finding-statuses-stale! own)))
+          (dependencies.db/mark-analysis-finding-statuses-stale! own))
+        (when (= :snippet entity-type)
+          (dependencies.db/mark-analysis-finding-statuses-stale!
+           (models.dependency/transitive-dependents {:snippet [entity]}))))
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       (post-deps-cleanup! entity-type entity))))
 

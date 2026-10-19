@@ -511,6 +511,21 @@
         (backfill-all-existing-entities!)
         (is (= #{(mt/id :checkins)} (table-dependency-ids :card card-id)))))))
 
+(deftest ^:synchronized snippet-new-upstream-marks-analysis-test
+  (testing "storing a new upstream of a snippet marks the analysis of what expands it, which an edit of that upstream
+           before the edge existed never marked"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/NativeQuerySnippet _ {:name "window inner" :content "VENUES"}
+                     :model/NativeQuerySnippet {outer-id :id} {:name "window outer" :content "SELECT * FROM VENUES"}
+                     :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                 "{{snippet: window outer}}")}]
+        (backfill-all-existing-entities!)
+        (t2/update! :model/NativeQuerySnippet outer-id {:content "SELECT * FROM {{snippet: window inner}}"})
+        (deps.test/record-analysis-finding-processed! :card card-id)
+        (backfill-dependencies-single-trigger!)
+        (is (deps.test/analysis-finding-pending? :card card-id))))))
+
 (deftest ^:synchronized backfill-card-reference-leaves-out-card-tables-test
   (testing "a native query depends on the card it references, not on the card's tables, which it reads through the card"
     (backfill-all-existing-entities!)
