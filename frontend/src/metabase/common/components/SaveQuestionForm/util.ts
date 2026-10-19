@@ -177,19 +177,17 @@ export const getInitialValues = (
   initialDashboardId: FormValues["dashboard_id"],
 ): FormValues => {
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
-  const hasOwnCollection = !isReadonly && question.collectionId() !== undefined;
-  const hasOwnDashboard = !isReadonly && question.dashboardId() !== undefined;
+  const ownCollectionId = isReadonly ? undefined : question.collectionId();
+  const ownDashboardId = isReadonly ? undefined : question.dashboardId();
 
-  const collectionId = hasOwnCollection
-    ? question.collectionId()
-    : initialCollectionId;
+  const collectionId =
+    ownCollectionId === undefined ? initialCollectionId : ownCollectionId;
 
   // A recently selected dashboard must not replace the collection a question
-  // was started in, so it only applies when the question has no location yet.
-  const dashboardId =
-    hasOwnCollection || hasOwnDashboard
-      ? question.dashboardId()
-      : initialDashboardId;
+  // was started in. A null collection id does not express that intent.
+  const hasOwnLocation =
+    ownCollectionId != null || ownDashboardId !== undefined;
+  const dashboardId = hasOwnLocation ? ownDashboardId : initialDashboardId;
 
   return {
     name: getName(question, originalQuestion),
