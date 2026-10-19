@@ -30,7 +30,7 @@
 
 (def ^:private measured-column-keys
   "The result metadata column keys a run of the card measures, within the type that inference gets right."
-  [:base_type :effective_type :database_type :fingerprint])
+  [:base_type :effective_type :database_type])
 
 (defn- normalize-column
   "The result metadata column `col` with its unqualified keys in snake_case."
@@ -64,12 +64,16 @@
 
 (defn- patch-result-metadata
   "The inferred result metadata `inferred`, each column keeping the [[measured-column-keys]] of the stored column of
-  `stored` it stands for when a run measured them."
+  `stored` it stands for when a run measured them, and only that column's fingerprint, so that the job never shows a
+  fingerprint the card's runs and saves did not store."
   [stored inferred]
   (mapv (fn [col stored-col]
-          (cond-> col
+          (cond-> (dissoc col :fingerprint)
             (and stored-col (measured-by-a-run? stored-col col))
-            (merge (select-keys stored-col measured-column-keys))))
+            (merge (select-keys stored-col measured-column-keys))
+
+            (some? (:fingerprint stored-col))
+            (assoc :fingerprint (:fingerprint stored-col))))
         inferred
         (lib/match-returned-columns stored inferred)))
 
@@ -95,8 +99,8 @@
    state    :- ::dependencies.schema/card-state
    metadata :- ::lib.schema.metadata/card.result-metadata]
   (t2/with-transaction [_]
-    (dependencies.db/mark-dependents-result-metadata-stale! :card card-id)
-    (dependencies.db/mark-dependents-analysis-findings-stale! :card card-id)
+    (dependencies.db/mark-dependents-result-metadata-statuses-stale! :card #{card-id})
+    (dependencies.db/mark-dependents-analysis-finding-statuses-stale! :card #{card-id})
     (if (= state (dependencies.db/locked-card-state card-id))
       (dependencies.db/update-card-result-metadata! card-id metadata)
       (dependencies.db/mark-result-metadata-statuses-stale! {:card #{card-id}}))))

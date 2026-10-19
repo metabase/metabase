@@ -2,11 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
@@ -85,6 +87,33 @@
           (mt/with-temp [:model/TableUserSettings _ {:table_id (mt/id :venues)}]
             (is (not (marks? source-id #(t2/update! :model/TableUserSettings (mt/id :venues)
                                                     {:caveats "Careful"}))))))))))
+
+(deftest batched-marks-test
+  (testing "a batch of field writes marks the cards reading their table once per status, and triggers the jobs once"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+        (t2/insert! :model/Dependency {:from_entity_type :card  :from_entity_id card-id
+                                       :to_entity_type   :table :to_entity_id   (mt/id :venues)})
+        (deps.test/record-result-metadata-processed! card-id)
+        (let [marks     (atom [])
+              submitted (atom [])
+              mark!     (mt/original-fn #'dependencies.db/mark-dependents-result-metadata-statuses-stale!)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/mark-dependents-result-metadata-statuses-stale!
+                                      (fn [entity-type entity-ids]
+                                        (swap! marks conj [entity-type entity-ids])
+                                        (mark! entity-type entity-ids))
+                                      grouper/submit! (fn [_queue write] (swap! submitted conj write))]
+            (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:position 5}
+              (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:position 6}
+                (reset! marks [])
+                (reset! submitted [])
+                (deps.test/do-with-immediate-hook-writes
+                 #(dependencies.hooks/with-batched-marks
+                    (t2/update! :model/Field (mt/id :venues :price) {:position 0})
+                    (t2/update! :model/Field (mt/id :venues :name) {:position 1})))
+                (is (= [[:table #{(mt/id :venues)}]] @marks))
+                (is (= [{:dependency-jobs true}] @submitted))
+                (is (deps.test/result-metadata-pending? card-id))))))))))
 
 (deftest snippet-delete-marks-transitive-dependencies-test
   (testing "deleting a snippet nested in another marks the dependencies of the cards expanding it"

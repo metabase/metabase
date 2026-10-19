@@ -66,7 +66,7 @@
        :updated-entities updated-entities
        :dependent-ids dependents}))))
 
-(mu/defn- check-query-soundness :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
+(mu/defn- check-query-soundness :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error-with-source]]]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
   to check that everything is still sound.
 
@@ -113,7 +113,7 @@
       (vswap! by-db update-vals #(assoc % :snippet (:snippet deps))))
     @by-db))
 
-(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
+(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error-with-source]]]]
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 

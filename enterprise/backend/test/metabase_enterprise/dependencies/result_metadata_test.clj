@@ -128,6 +128,22 @@
               (is (= (select-keys run-count [:base_type :fingerprint])
                      (select-keys (column card-id "count") [:base_type :fingerprint]))))))))))
 
+(deftest fingerprints-come-only-from-stored-metadata-test
+  (testing "re-deriving a card keeps the stored fingerprints and adds none for a column the stored metadata lacks"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+        (let [marker {:global {:distinct-count 7}}
+              stored (->> (t2/select-one-fn :result_metadata :model/Card :id card-id)
+                          (remove #(= "PRICE" (:name %)))
+                          (mapv #(cond-> % (= "ID" (:name %)) (assoc :fingerprint marker))))]
+          (t2/update! :model/Card card-id {:result_metadata stored})
+          (run-jobs!)
+          (reprocess! card-id)
+          (run-jobs!)
+          (is (some? (column card-id "PRICE")))
+          (is (nil? (:fingerprint (column card-id "PRICE"))))
+          (is (= marker (:fingerprint (column card-id "ID")))))))))
+
 (deftest native-parent-test
   (testing "a card depending on a changed model directly is re-derived even when it also depends on a native card"
     (with-dependencies-feature
@@ -545,18 +561,22 @@
         (is (not (pending? card-id)))))))
 
 (deftest measured-keys-test
-  (testing "a re-derived column keeps what a run measured only while its root type and source type are unchanged"
+  (testing "a re-derived column keeps what a run measured only while its root type and source type are unchanged, and only the stored fingerprint"
     (let [stored {:name "X" :base_type "type/BigInteger" :database_type "BIGINT" :fingerprint {:type {:type/Number {}}}}
           patch  #(first (#'deps.result-metadata/patch-result-metadata [stored] [%]))]
       (testing "a run's refinement within the root type and source type is kept"
         (is (=? {:base_type "type/BigInteger" :fingerprint {:type {:type/Number {}}}}
                 (patch {:name "X" :base_type :type/Integer :database_type "BIGINT"}))))
-      (testing "a new root type takes the inferred type and fingerprint"
-        (is (= {:name "X" :base_type :type/Text :database_type "VARCHAR" :fingerprint {:type {:type/Text {}}}}
+      (testing "a new root type takes the inferred type and keeps the stored fingerprint"
+        (is (= {:name "X" :base_type :type/Text :database_type "VARCHAR" :fingerprint {:type {:type/Number {}}}}
                (patch {:name "X" :base_type :type/Text :database_type "VARCHAR" :fingerprint {:type {:type/Text {}}}}))))
-      (testing "a new source type within the root type takes the inferred type"
-        (is (= {:name "X" :base_type :type/Decimal :database_type "DECIMAL"}
-               (patch {:name "X" :base_type :type/Decimal :database_type "DECIMAL"})))))))
+      (testing "a new source type within the root type takes the inferred type and keeps the stored fingerprint"
+        (is (= {:name "X" :base_type :type/Decimal :database_type "DECIMAL" :fingerprint {:type {:type/Number {}}}}
+               (patch {:name "X" :base_type :type/Decimal :database_type "DECIMAL"}))))
+      (testing "a column without a stored one gets no fingerprint"
+        (is (= {:name "Y" :base_type :type/Text}
+               (first (#'deps.result-metadata/patch-result-metadata
+                       [stored] [{:name "Y" :base_type :type/Text :fingerprint {:type {:type/Text {}}}}]))))))))
 
 (deftest remapped-column-test
   (testing "a card storing the metadata of a run with remapped columns is not rewritten, since inference adds them too"

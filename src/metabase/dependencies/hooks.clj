@@ -34,3 +34,16 @@
   metabase-enterprise.dependencies.hooks
   [_transform-id _table-id]
   nil)
+
+(defenterprise do-with-batched-marks
+  "Run `thunk`, with the dependents of what its writes change marked once each when it ends. The OSS implementation
+  just runs it."
+  metabase-enterprise.dependencies.hooks
+  [thunk]
+  (thunk))
+
+(defmacro with-batched-marks
+  "Run `body`, with the dependents of what its writes change marked once each when it ends, for a batch of writes
+  such as a sync's."
+  [& body]
+  `(do-with-batched-marks (fn [] ~@body)))

@@ -36,10 +36,17 @@
 (def ^:private writes-queue
   (delay (grouper/start! (fn [_writes] (trigger-jobs-now!)) :capacity 500 :interval 1000)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *batched-marks*
+  "Within [[do-with-batched-marks]], an atom of the `{entity-type #{entity-id}}` whose dependents the batch marks when
+  it ends, the only way the hooks of one transaction can mark each of them once."
+  nil)
+
 (mu/defn- trigger-jobs!
   "Have every job triggered once the current transaction commits, together with the other writes in its batch."
   []
-  (mdb/do-after-commit #(grouper/submit! @writes-queue {:dependency-jobs true})))
+  (when-not *batched-marks*
+    (mdb/do-after-commit #(grouper/submit! @writes-queue {:dependency-jobs true}))))
 
 (def ^:private Row
   "A row a hook is given, a Toucan instance."
@@ -130,8 +137,11 @@
   `entity-id` stale."
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt]
-  (dependencies.db/mark-dependents-result-metadata-stale! entity-type entity-id)
-  (dependencies.db/mark-dependents-analysis-findings-stale! entity-type entity-id))
+  (if-let [batched *batched-marks*]
+    (swap! batched update entity-type (fnil conj #{}) entity-id)
+    (do
+      (dependencies.db/mark-dependents-result-metadata-statuses-stale! entity-type #{entity-id})
+      (dependencies.db/mark-dependents-analysis-finding-statuses-stale! entity-type #{entity-id}))))
 
 (mu/defn- mark-output-changed!
   "Mark what reads the output of the entity `entity-type` `entity` stale: the direct dependents, or every transitive
@@ -176,6 +186,23 @@
     (when part?
       (run! mark-part-owner! (distinct [(part-owner model (t2/original row)) (part-owner model row)])))
     (or dependency? analysis? output? part?)))
+
+(defenterprise do-with-batched-marks
+  "Run `thunk` in one transaction, marking the dependents of the entities its writes change once each when it ends
+  instead of once per row, and triggering the jobs once."
+  :feature :dependencies
+  [thunk]
+  (if *batched-marks*
+    (thunk)
+    (let [batched (atom {})
+          result  (t2/with-transaction [_]
+                    (let [result (binding [*batched-marks* batched] (thunk))]
+                      (doseq [[entity-type entity-ids] @batched]
+                        (dependencies.db/mark-dependents-result-metadata-statuses-stale! entity-type entity-ids)
+                        (dependencies.db/mark-dependents-analysis-finding-statuses-stale! entity-type entity-ids))
+                      result))]
+      (trigger-jobs!)
+      result)))
 
 (defenterprise before-insert
   "Mark what inserting `row` of `model` changes, and trigger the jobs once it commits; a new entity has no

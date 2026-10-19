@@ -756,22 +756,23 @@
     (t2/update! model :entity_type entity-type :entity_id [:in batch] {:stale true})))
 
 (mu/defn- mark-dependents-stale!
-  "Mark the rows of the status `model` of the entities directly depending on the entity `entity-type` `entity-id` stale
-  in one UPDATE, locking them, so a job claiming one waits for the write."
+  "Mark the rows of the status `model` of the entities directly depending on the entities `entity-type` `entity-ids`
+  stale, in one UPDATE per 1,000 of them, locking them, so a job claiming one waits for the write."
   [model       :- StatusModel
    entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
+   entity-ids  :- [:set ms/PositiveInt]]
   (let [table (t2/table-name model)]
-    (t2/query {:update table
-               :set    {:stale true}
-               :where  [:exists ^:allow-subquery
-                        {:select [1]
-                         :from   [[(t2/table-name :model/Dependency) :d]]
-                         :where  [:and
-                                  [:= :d.to_entity_type (name entity-type)]
-                                  [:= :d.to_entity_id entity-id]
-                                  [:= :d.from_entity_type (u/qualified-key table :entity_type)]
-                                  [:= :d.from_entity_id (u/qualified-key table :entity_id)]]}]})))
+    (doseq [batch (partition-all 1000 entity-ids)]
+      (t2/query {:update table
+                 :set    {:stale true}
+                 :where  [:exists ^:allow-subquery
+                          {:select [1]
+                           :from   [[(t2/table-name :model/Dependency) :d]]
+                           :where  [:and
+                                    [:= :d.to_entity_type (name entity-type)]
+                                    [:in :d.to_entity_id batch]
+                                    [:= :d.from_entity_type (u/qualified-key table :entity_type)]
+                                    [:= :d.from_entity_id (u/qualified-key table :entity_id)]]}]}))))
 
 (mu/defn- claim!
   "Record that a job processes the entities `entity-type` `entity-ids` with its logic of `current-version`, clearing
@@ -805,17 +806,18 @@
   [entity-ids :- ::dependencies.schema/entity-ids]
   (mark-stale! :model/AnalysisFindingStatus entity-ids))
 
-(mu/defn mark-dependents-result-metadata-stale!
-  "Mark the ResultMetadataStatuses of the entities directly depending on the entity `entity-type` `entity-id` stale."
+(mu/defn mark-dependents-result-metadata-statuses-stale!
+  "Mark the ResultMetadataStatuses of the entities directly depending on the entities `entity-type` `entity-ids` stale."
   [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (mark-dependents-stale! :model/ResultMetadataStatus entity-type entity-id))
+   entity-ids  :- [:set ms/PositiveInt]]
+  (mark-dependents-stale! :model/ResultMetadataStatus entity-type entity-ids))
 
-(mu/defn mark-dependents-analysis-findings-stale!
-  "Mark the AnalysisFindingStatuses of the entities directly depending on the entity `entity-type` `entity-id` stale."
+(mu/defn mark-dependents-analysis-finding-statuses-stale!
+  "Mark the AnalysisFindingStatuses of the entities directly depending on the entities `entity-type` `entity-ids`
+  stale."
   [entity-type :- EntityType
-   entity-id   :- ms/PositiveInt]
-  (mark-dependents-stale! :model/AnalysisFindingStatus entity-type entity-id))
+   entity-ids  :- [:set ms/PositiveInt]]
+  (mark-dependents-stale! :model/AnalysisFindingStatus entity-type entity-ids))
 
 (mu/defn- current-dependencies-clause
   "Whether the dependency status of the entity of `entity-type` with `id-field` is current for the dependency logic of

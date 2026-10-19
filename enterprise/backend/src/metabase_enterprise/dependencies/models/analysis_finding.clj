@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -56,8 +57,9 @@
 
 (def ^:private FindingDetails
   "The errors an analysis found, as `lib/find-bad-refs-with-source` returns them."
-  (let [error [:fn {:error/message "an analysis error"} map?]]
-    [:maybe [:or [:set error] [:sequential error]]]))
+  [:maybe [:or
+           [:set ::lib.schema.validate/error-with-source]
+           [:sequential ::lib.schema.validate/error-with-source]]])
 
 (mu/defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
