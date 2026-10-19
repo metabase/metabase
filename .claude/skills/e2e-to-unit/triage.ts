@@ -3,9 +3,9 @@
  * Static triage of Cypress e2e specs for the e2e-to-unit skill.
  *
  * It parses each spec with the TypeScript compiler API, gets signals for each
- * `it()` block, guesses a bucket (A, B or C?), and ranks the specs by yield:
- * (A + B tests) × spec duration. It does not call an LLM, edit specs, run
- * Cypress or call the network.
+ * `it()` block, guesses a bucket (A, B or C?), and ranks the specs by the CI
+ * time that a move saves: spec duration × (A + B tests) / tests. It does not
+ * call an LLM, edit specs, run Cypress or call the network.
  *
  * Usage:
  *   bun .claude/skills/e2e-to-unit/triage.ts [spec or folder ...] [--flakes <file.json>] [--json]
@@ -40,7 +40,7 @@ export type SpecTriage = {
   durationMs: number | null;
   flakes: number | null;
   failures: number | null;
-  yield: number;
+  savedMs: number;
   counts: Record<Bucket, number>;
   tests: TestTriage[];
 };
@@ -220,6 +220,7 @@ type Event =
   | { kind: "wait"; aliases: string[] }
   | { kind: "visit" }
   | { kind: "reload" }
+  | { kind: "request" }
   | { kind: "action"; name: string; submitLabel: string | null }
   | { kind: "backend"; name: string }
   | { kind: "query"; name: string }
@@ -493,8 +494,11 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
   if (root === "cy" && method === "reload") {
     return [{ kind: "reload" }];
   }
+  if (root === "cy" && method === "request") {
+    return [{ kind: "request" }];
+  }
   if (
-    (root === "cy" || root === "H" || ts.isIdentifier(callee)) &&
+    (root === "cy" || root === "H" || isDirectCall) &&
     method?.startsWith("visit")
   ) {
     events.push({ kind: "visit" });
@@ -513,6 +517,13 @@ const callEvents = (call: ts.CallExpression, ctx: Ctx): Event[] => {
     if (root === "cy" && method === "visit" && /^\/?(model|question|dashboard|metric)\//.test(urlText)) {
       events.push({ kind: "query", name: `cy.visit ${urlText.split(/[?#]/)[0]}` });
     }
+  }
+  // A visit helper passed by reference, such as `.then(H.visitDashboard)`.
+  if (
+    method === "then" &&
+    call.arguments.some((arg) => /^(H\.)?visit\w*$/.test(text(arg, sf)))
+  ) {
+    events.push({ kind: "visit" });
   }
   // Inline edits often save when the input loses focus.
   if (method === "blur") {
@@ -699,14 +710,18 @@ const absenceFirst = (events: Event[]): boolean => {
   });
 };
 
-const backendEffects = (events: Event[]): string[] => {
-  const methods = new Map(
+// The last intercept for each alias.
+const interceptsByAlias = (events: Event[]) =>
+  new Map(
     events.flatMap((event) =>
       event.kind === "intercept" && event.alias
-        ? [[event.alias, event.method ?? "ANY"] as const]
+        ? [[event.alias, event] as const]
         : [],
     ),
   );
+
+const backendEffects = (events: Event[]): string[] => {
+  const intercepts = interceptsByAlias(events);
   const firstAction = events.findIndex((event) => event.kind === "action");
   const afterAction = firstAction < 0 ? [] : events.slice(firstAction + 1);
   const firstTyping = events.findIndex(
@@ -726,13 +741,20 @@ const backendEffects = (events: Event[]): string[] => {
   return [
     ...commits,
     ...afterAction.flatMap((event) => {
+      // A static stub answers the request, so the backend does not see it.
       if (event.kind === "wait") {
-        return event.aliases.map(
-          (alias) => `waits on ${methods.get(alias) ?? "ANY"} @${alias} after an action`,
-        );
+        return event.aliases
+          .filter((alias) => intercepts.get(alias)?.response !== "static")
+          .map(
+            (alias) =>
+              `waits on ${intercepts.get(alias)?.method ?? "ANY"} @${alias} after an action`,
+          );
       }
       if (event.kind === "reload") {
         return ["cy.reload() after an action"];
+      }
+      if (event.kind === "request") {
+        return ["cy.request after an action"];
       }
       if (event.kind === "visit") {
         return ["visit after an action"];
@@ -759,9 +781,15 @@ const triageTest = (raw: RawTest, base: Omit<Ctx, "binding">): TestTriage => {
   const events = [...hookEvents, ...testEvents];
 
   const visits = events.some((event) => event.kind === "visit");
+  const apiOnly =
+    !visits &&
+    events.some((event) => event.kind === "request") &&
+    !events.some((event) => event.kind === "query" || event.kind === "action");
   const queryAliases = new Set(
-    events.flatMap((event) =>
-      event.kind === "intercept" && event.alias && QUERY_URL.test(event.url)
+    [...interceptsByAlias(events).values()].flatMap((event) =>
+      event.kind === "intercept" &&
+      event.response !== "static" &&
+      QUERY_URL.test(event.url)
         ? [event.alias]
         : [],
     ),
@@ -795,6 +823,7 @@ const triageTest = (raw: RawTest, base: Omit<Ctx, "binding">): TestTriage => {
   const reasonsC = [
     ...new Set([
       ...(raw.tags.includes("@external") ? ["@external"] : []),
+      ...(apiOnly ? ["API only: cy.request, no page visit"] : []),
       ...backendEffects(events),
       ...queryData.map((name) => `query data: ${name}`),
       ...realBrowser.map((what) => `real browser: ${what}`),
@@ -1156,14 +1185,17 @@ export const triageSpecs = ({
       durationMs,
       flakes: flake?.flakes ?? null,
       failures: flake?.failures ?? null,
-      yield: (counts.A + counts.B) * (durationMs ?? 0),
+      savedMs:
+        tests.length > 0
+          ? ((durationMs ?? 0) * (counts.A + counts.B)) / tests.length
+          : 0,
       counts,
       tests,
     };
   });
   return specs.sort(
     (a, b) =>
-      b.yield - a.yield ||
+      b.savedMs - a.savedMs ||
       (b.flakes ?? 0) - (a.flakes ?? 0) ||
       (b.failures ?? 0) - (a.failures ?? 0) ||
       a.path.localeCompare(b.path),
@@ -1202,15 +1234,15 @@ export const toMarkdown = (specs: SpecTriage[]): string => {
     "",
     `${specs.length} specs, ${all.length} tests: A ${count("A")}, B ${count("B")}, C? ${count("C?")}. ${ranked.length} specs have A or B candidates.`,
     "",
-    "Yield = (A + B tests) × spec duration (`e2e/support/timings.json`). Flakes break ties.",
+    "Saved = spec duration (`e2e/support/timings.json`) × (A + B tests) / tests: the CI time that a move of all A and B tests saves, if each test takes the same time. Flakes break ties.",
     "",
     "## Ranked specs",
     "",
-    "| # | Spec | Duration | Tests | A | B | C? | Flakes | Yield (test·s) |",
+    "| # | Spec | Duration | Tests | A | B | C? | Flakes | Saved |",
     "|---|---|---|---|---|---|---|---|---|",
     ...ranked.map(
       (s, i) =>
-        `| ${i + 1} | \`${scenarioKey(s.path)}\` | ${seconds(s.durationMs)} | ${s.tests.length} | ${s.counts.A} | ${s.counts.B} | ${s.counts["C?"]} | ${s.flakes ?? "–"} | ${Math.round(s.yield / 1000)} |`,
+        `| ${i + 1} | \`${scenarioKey(s.path)}\` | ${seconds(s.durationMs)} | ${s.tests.length} | ${s.counts.A} | ${s.counts.B} | ${s.counts["C?"]} | ${s.flakes ?? "–"} | ${seconds(s.savedMs)} |`,
     ),
   ];
   const details = ranked.flatMap((s) => [

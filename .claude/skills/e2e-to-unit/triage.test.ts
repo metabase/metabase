@@ -167,6 +167,31 @@ describe("rules beyond the pilot", () => {
     expect(triage("cy.visit(`/collection/${id}`);").bucket).toBe("B");
   });
 
+  it("puts a cy.request read-back after an action in C?", () => {
+    const body = (readBack: string) =>
+      `cy.visit("/"); cy.findByRole("switch").click(); ${readBack}`;
+    expect(triage(body(`cy.request("GET", "/api/setting/x");`)).bucket).toBe("C?");
+    expect(triage(body(`cy.findByText("x");`)).bucket).toBe("B");
+  });
+
+  it("puts an API-only test in C?", () => {
+    expect(triage(`cy.request("GET", "/api/user/current");`).bucket).toBe("C?");
+    expect(
+      triage(`cy.request("PUT", "/api/setting/x"); cy.visit("/");`).bucket,
+    ).toBe("B");
+    expect(
+      triage(`cy.request("PUT", "/api/x"); cy.get("@id").then(H.visitPublicDashboard);`).bucket,
+    ).toBe("B");
+  });
+
+  it("does not count a wait on a static stub as a backend effect", () => {
+    const body = (handler: string, url = "/api/x") =>
+      `cy.intercept("POST", "${url}"${handler}).as("x"); cy.visit("/"); cy.findByText("Details").click(); cy.wait("@x");`;
+    expect(triage(body(", { statusCode: 500 }")).bucket).toBe("A");
+    expect(triage(body("")).bucket).toBe("C?");
+    expect(triage(body(", { body: {} }", "/api/dataset")).bucket).toBe("A");
+  });
+
   it("follows local functions", () => {
     const header = `function save() { cy.button("Save").click(); }`;
     expect(triage(`cy.visit("/"); save();`, header).bucket).toBe("C?");
