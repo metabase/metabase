@@ -23,7 +23,7 @@
      :remote-sync-model-count              (:model_count cards)
      :remote-sync-question-count           (:question_count cards)
      :remote-sync-metric-count             (:metric_count cards)
-     :remote-sync-dashboard-count         (internal-stats.db/remote-sync-collection-content-count :model/Dashboard)
+     :remote-sync-dashboard-count          (internal-stats.db/remote-sync-collection-content-count :model/Dashboard)
      :remote-sync-document-count           (internal-stats.db/remote-sync-collection-content-count :model/Document)
      :remote-sync-timeline-count           (internal-stats.db/remote-sync-collection-content-count :model/Timeline)
      :remote-sync-transform-count          (if transforms? (internal-stats.db/transform-count) 0)
