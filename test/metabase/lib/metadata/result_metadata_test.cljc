@@ -457,7 +457,7 @@
   (testing "`:aggregation-options`"
     (testing "`:name` and `:display-name`"
       (is (=? {:base-type     :type/Integer
-               :settings      {:is_priceless true}
+               :settings      {:decimals 2}
                :name          "sum_2"
                :display-name  "My custom name"}
               (lib.tu.macros/$ids venues
@@ -468,7 +468,7 @@
   (testing "`:aggregation-options`"
     (testing "`:name` only"
       (is (=? {:base-type     :type/Integer
-               :settings      {:is_priceless true}
+               :settings      {:decimals 2}
                :name          "sum_2"
                :display-name  "Sum of Price"}
               (lib.tu.macros/$ids venues
@@ -478,7 +478,7 @@
   (testing "`:aggregation-options`"
     (testing "`:display-name` only"
       (is (=? {:base-type     :type/Integer
-               :settings      {:is_priceless true}
+               :settings      {:decimals 2}
                :name          "sum"
                :display-name  "My Custom Name"}
               (lib.tu.macros/$ids venues
