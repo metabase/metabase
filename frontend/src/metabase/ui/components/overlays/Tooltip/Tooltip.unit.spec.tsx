@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { act, render, screen, waitFor } from "__support__/ui";
+import { act, fireEvent, render, screen, waitFor } from "__support__/ui";
 
 import { Tooltip, TooltipPortalTargetProvider } from "./Tooltip";
 
@@ -14,16 +14,47 @@ const setupUser = () =>
 
 const setup = () => {
   const user = setupUser();
-  const onParentClick = jest.fn<void, []>();
-  const onParentPointerDown = jest.fn<void, []>();
   render(
-    <div onClick={onParentClick} onPointerDown={onParentPointerDown}>
-      <Tooltip label="Tooltip content">
+    <Tooltip label="Tooltip content">
+      <button>Target</button>
+    </Tooltip>,
+  );
+  return { user };
+};
+
+const ISOLATED_EVENTS = [
+  { type: "click", fire: fireEvent.click },
+  { type: "dblclick", fire: fireEvent.dblClick },
+  { type: "contextmenu", fire: fireEvent.contextMenu },
+  { type: "mousedown", fire: fireEvent.mouseDown },
+  { type: "mouseup", fire: fireEvent.mouseUp },
+  { type: "pointerdown", fire: fireEvent.pointerDown },
+  { type: "pointerup", fire: fireEvent.pointerUp },
+  { type: "touchstart", fire: fireEvent.touchStart },
+];
+
+const setupEventIsolation = () => {
+  const onParentEvent = jest.fn<void, [string]>();
+  const recordType = (event: { type: string }) => onParentEvent(event.type);
+
+  render(
+    <div
+      onClick={recordType}
+      onDoubleClick={recordType}
+      onContextMenu={recordType}
+      onMouseDown={recordType}
+      onMouseUp={recordType}
+      onPointerDown={recordType}
+      onPointerUp={recordType}
+      onTouchStart={recordType}
+    >
+      <Tooltip label="Tooltip content" opened>
         <button>Target</button>
       </Tooltip>
     </div>,
   );
-  return { user, onParentClick, onParentPointerDown };
+
+  return { onParentEvent };
 };
 
 describe("Tooltip", () => {
@@ -72,19 +103,28 @@ describe("Tooltip", () => {
     });
   });
 
-  it("doesn't pass clicks on the tooltip to the target's parents", async () => {
-    const { user, onParentClick, onParentPointerDown } = setup();
-    const target = screen.getByRole("button", { name: "Target" });
+  it.each(ISOLATED_EVENTS)(
+    "lets $type on the target reach its parents",
+    async ({ type, fire }) => {
+      const { onParentEvent } = setupEventIsolation();
+      await screen.findByRole("tooltip");
 
-    await user.click(target);
-    expect(onParentClick).toHaveBeenCalledTimes(1);
-    expect(onParentPointerDown).toHaveBeenCalledTimes(1);
+      fire(screen.getByRole("button", { name: "Target" }));
+      expect(onParentEvent).toHaveBeenCalledWith(type);
+    },
+  );
 
-    await user.click(await screen.findByText("Tooltip content"));
-    await user.click(await screen.findByRole("tooltip"));
-    expect(onParentClick).toHaveBeenCalledTimes(1);
-    expect(onParentPointerDown).toHaveBeenCalledTimes(1);
-  });
+  it.each(ISOLATED_EVENTS)(
+    "keeps $type on the tooltip from reaching the target's parents",
+    async ({ type, fire }) => {
+      const { onParentEvent } = setupEventIsolation();
+      const tooltip = await screen.findByRole("tooltip");
+
+      fire(screen.getByText("Tooltip content"));
+      fire(tooltip);
+      expect(onParentEvent).not.toHaveBeenCalledWith(type);
+    },
+  );
 
   it("still stops events on the tooltip reaching the target's parents when the caller handles them", async () => {
     const user = setupUser();
