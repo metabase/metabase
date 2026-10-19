@@ -88,6 +88,21 @@
             (is (not (marks? source-id #(t2/update! :model/TableUserSettings (mt/id :venues)
                                                     {:caveats "Careful"}))))))))))
 
+(deftest card-metadata-dependents-see-test
+  (testing "a card's result metadata change marks its dependents only when it changes what they see"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}
+                     :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
+        (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
+                                       :to_entity_type   :card :to_entity_id   source-id})
+        (let [metadata (t2/select-one-fn :result_metadata :model/Card :id source-id)
+              marks?   (fn [f]
+                         (deps.test/record-result-metadata-processed! card-id)
+                         (t2/update! :model/Card source-id {:result_metadata (mapv f metadata)})
+                         (deps.test/result-metadata-pending? card-id))]
+          (is (not (marks? #(assoc % :fingerprint {:global {:distinct-count 3}}))))
+          (is (marks? #(cond-> % (= "NAME" (:name %)) (assoc :display_name "Renamed")))))))))
+
 (deftest batched-marks-test
   (testing "a batch of field writes marks the cards reading their table once per status, and triggers the jobs once"
     (mt/with-premium-features #{:dependencies}
@@ -131,8 +146,8 @@
         (is (pending? :card card-id))))))
 
 (deftest card-marks-own-statuses-test
-  (testing "an update of what a job reads of a card marks the card's own status for that job stale, and a rename marks
-           nothing"
+  (testing "an update of what a job reads of a card marks the card's own status for that job stale, and a question's
+           rename marks nothing"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
         (computed! :card card-id)

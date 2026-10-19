@@ -1,4 +1,5 @@
 (ns metabase-enterprise.dependencies.models.result-metadata-status
+  "The ResultMetadataStatus model: one status per MBQL card, marked stale by the writes its result metadata reads."
   (:require
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]

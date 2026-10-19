@@ -514,8 +514,8 @@
                      :model/Card {other-id :id}   {:dataset_query (table-query :venues)}]
         (run-jobs!)
         (reprocess! failing-id other-id)
-        (let [store (mt/original-fn #'dependencies.db/update-card-result-metadata!)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/update-card-result-metadata!
+        (let [store (mt/original-fn #'dependencies.db/set-card-result-metadata!)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/set-card-result-metadata!
                                       (fn [card-id metadata]
                                         (if (= failing-id card-id)
                                           (throw (ex-info "Store failed" {}))
@@ -587,6 +587,19 @@
         (mt/with-temp [:model/Card card {:dataset_query query :result_metadata run}]
           (is (nil? (#'deps.result-metadata/rederived-result-metadata card))))))))
 
+(deftest store-compares-same-read-test
+  (testing "a card whose full read normalizes its stored metadata away is stored, since both compared reads are alike"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (reprocess! card-id)
+        (let [card (mt/original-fn #'dependencies.db/card)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/card (fn [id] (assoc (card id) :result_metadata nil))]
+            (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed"))
+                               rederive!)))
+        (is (= "Changed" (:display_name (column card-id "NAME"))))
+        (is (not (pending? card-id)))))))
+
 (deftest conflict-fails-test
   (testing "a card that keeps changing during its re-derive is left as the other writer stored it, and other cards proceed"
     (with-dependencies-feature
@@ -604,16 +617,17 @@
         (is (not= "Changed" (:display_name (column orders-card-id "TOTAL"))))
         (is (= "Changed" (:display_name (column other-card-id "TOTAL"))))))))
 
-(deftest store-holds-only-card-lock-test
-  (testing "storing a re-derived card holds no status lock, so a write of a status meanwhile doesn't wait for it"
+(deftest store-locks-only-dependents-test
+  (testing "storing a re-derived card locks only the statuses of its dependents, so a write of another status meanwhile
+           doesn't wait for it"
     (with-dependencies-feature
       (mt/with-temp [:model/Card {card-id :id}  {:dataset_query (table-query :orders)}
                      :model/Card {other-id :id} {:dataset_query (table-query :venues)}]
         (run-jobs!)
         (reprocess! card-id)
-        (let [store  (mt/original-fn #'dependencies.db/update-card-result-metadata!)
+        (let [store  (mt/original-fn #'dependencies.db/set-card-result-metadata!)
               marked (atom nil)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/update-card-result-metadata!
+          (mt/with-dynamic-fn-redefs [dependencies.db/set-card-result-metadata!
                                       (fn [& args]
                                         (reset! marked (deref (future (t2/update! :model/ResultMetadataStatus
                                                                                   :entity_type :card

@@ -370,9 +370,6 @@
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
-        ;; Precondition: the temp card was inserted directly (no :event/card-create), so it has no
-        ;; status row at all. This is the case the left-join in claim-pending-entities!
-        ;; must catch — guard it so the test can't silently pass without exercising that branch.
         (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id))
             "Expected the temp card to start with no dependency_status row")
         (backfill-dependencies-single-trigger!)
@@ -465,7 +462,7 @@
             "test setup: the card must have no status row, which is what makes it eligible")
         (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps (fn [& _] (throw (ex-info "boom" {})))]
           (backfill-dependencies-single-trigger!))
-        (testing "the failure is recorded, so the entity is not reselected unchanged"
+        (testing "the claim stays, so the entity is not reselected unchanged"
           (is (not (pending? :card card-id))))))))
 
 (deftest ^:synchronized fatal-error-still-reschedules-test
@@ -1163,3 +1160,16 @@
                (is (not (pending? :card other-id))))
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{[:table (mt/id :products)]} (card-deps card-id))))))))))
+
+(deftest ^:synchronized new-upstream-marks-analysis-test
+  (testing "storing a new upstream of an entity marks its analysis stale, since one done before the edge missed the
+           upstream's changes"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/AnalysisFindingStatus :model/DependencyStatus]
+        (mt/with-temp [:model/Card {source-id :id} {:dataset_query (deps.test/table-query :orders)}
+                       :model/Card {card-id :id}   {:dataset_query (deps.test/table-query :venues)}]
+          (deps.test/synchronously-run-dependency-job!)
+          (t2/update! :model/Card card-id {:dataset_query (deps.test/card-query source-id)})
+          (deps.test/record-analysis-finding-processed! :card card-id)
+          (deps.test/synchronously-run-dependency-job!)
+          (is (deps.test/analysis-finding-pending? :card card-id)))))))

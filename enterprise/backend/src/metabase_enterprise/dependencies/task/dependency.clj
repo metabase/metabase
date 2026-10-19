@@ -7,6 +7,7 @@
   their stale flags, then computes their dependencies; a write while they are computed marks them stale again."
   (:require
    [clojurewerkz.quartzite.scheduler :as qs]
+   [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
@@ -72,15 +73,18 @@
 
 (defn- compute-deps-for-entity!
   "Compute and store the dependencies of an `entity` hydrated by [[deps.dependency-status/hydrate-for-deps]], marking
-  a card with a new upstream stale for its result metadata, which an upstream change made before the edge existed
-  never marked."
+  an entity with a new upstream stale for its result metadata and analysis, which an upstream change made before the
+  edge existed never marked."
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
-  (let [deps (deps.calculation/calculate-deps entity-type entity)]
+  (let [deps (deps.calculation/calculate-deps entity-type entity)
+        own  {entity-type #{(:id entity)}}]
     (t2/with-transaction [_]
-      (when (and (= :card entity-type)
-                 (seq (models.dependency/new-dependencies entity-type (:id entity) deps)))
-        (dependencies.db/mark-result-metadata-statuses-stale! {:card #{(:id entity)}}))
+      (when (seq (models.dependency/new-dependencies entity-type (:id entity) deps))
+        (when (= :card entity-type)
+          (dependencies.db/mark-result-metadata-statuses-stale! own))
+        (when (contains? deps.analysis-finding/analyzable-entities entity-type)
+          (dependencies.db/mark-analysis-finding-statuses-stale! own)))
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       (post-deps-cleanup! entity-type entity))))
 

@@ -295,6 +295,11 @@ databaseChangeLog:
                   remarks: True when the entity needs re-analysis due to upstream changes
                   constraints:
                     nullable: false
+        - sql:
+            sql: >-
+              UPDATE analysis_finding SET stale = COALESCE((SELECT s.stale
+              FROM analysis_finding_status s WHERE s.entity_type = analysis_finding.analyzed_entity_type
+              AND s.entity_id = analysis_finding.analyzed_entity_id), FALSE)
 
   - changeSet:
       id: v65.em1iri

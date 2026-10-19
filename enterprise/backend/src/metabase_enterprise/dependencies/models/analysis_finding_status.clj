@@ -1,4 +1,5 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding-status
+  "The AnalysisFindingStatus model: one status per analyzable entity, marked stale by the writes the analysis reads."
   (:require
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]

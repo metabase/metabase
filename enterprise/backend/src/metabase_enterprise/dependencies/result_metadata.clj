@@ -48,6 +48,12 @@
                 compared-column-keys))
         cols))
 
+(defn same-output?
+  "Whether the result metadata `before` and `after` show the queries using the card the same columns."
+  [before after]
+  (= (comparable-metadata (map normalize-column before))
+     (comparable-metadata (map normalize-column after))))
+
 (defn- same-root-type?
   "Whether the types `x` and `y` share an ancestor below `:type/*`, like integers and decimals do."
   [x y]
@@ -101,26 +107,27 @@
   (t2/with-transaction [_]
     (dependencies.db/mark-dependents-result-metadata-statuses-stale! :card #{card-id})
     (dependencies.db/mark-dependents-analysis-finding-statuses-stale! :card #{card-id})
-    (if (= state (dependencies.db/locked-card-state card-id))
-      (dependencies.db/update-card-result-metadata! card-id metadata)
+    (if (= state (dependencies.db/card-state card-id true))
+      (dependencies.db/set-card-result-metadata! card-id metadata)
       (dependencies.db/mark-result-metadata-statuses-stale! {:card #{card-id}}))))
 
 (mu/defn- rederive-card!
   "Re-derive the result metadata of the MBQL Card with `card-id` and store it when it changed, logging a failure."
   [card-id :- ::lib.schema.id/card]
   (try
-    (let [card     (dependencies.db/card card-id)
+    (let [state    (dependencies.db/card-state card-id false)
+          card     (dependencies.db/card card-id)
           metadata (lib-be/with-metadata-provider-cache
                      (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
                        (rederived-result-metadata card)))]
-      (when metadata
-        (store-result-metadata! card-id (select-keys card [:updated_at :result_metadata]) metadata)))
+      (when (and state metadata)
+        (store-result-metadata! card-id state metadata)))
     (catch Exception e
       (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e)))))
 
 (mu/defn update-result-metadata! :- nat-int?
   "Delete the statuses of deleted cards, claim up to `batch-size` MBQL cards whose ResultMetadataStatus is stale,
-  missing or outdated and re-derive them, returning how many rows it took."
+  missing or outdated and re-derive them, returning how many statuses it took, deleted ones included."
   [batch-size :- ms/PositiveInt]
   (let [deleted-ids (dependencies.db/result-metadata-deleted-card-ids batch-size)
         card-ids    (dependencies.db/result-metadata-pending-card-ids

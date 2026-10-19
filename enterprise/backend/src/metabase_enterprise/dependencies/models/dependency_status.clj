@@ -20,7 +20,7 @@
   "Hydrate a batch of entities with data needed for dependency calculation.
   Dispatches on entity-type keyword. Default is identity (no hydration needed)."
   {:arglists '([entity-type entities])}
-  (fn [entity-type _instances] entity-type))
+  (fn [entity-type _entities] entity-type))
 
 (defmethod hydrate-for-deps :default [_ entities] entities)
 
@@ -36,9 +36,8 @@
           entities)))
 
 (mu/defn claim-pending-entities!
-  "Claim a batch of entities of type `entity-type` and maximum size `batch-size` whose dependencies are stale, were not
-  computed yet, or were computed by an older analysis, and return them. Prioritizes stale entities over outdated
-  analyses."
+  "Claim and return up to `batch-size` entities of `entity-type` whose dependencies are stale, not computed yet, or
+  computed by an older analysis, stale ones first."
   [entity-type :- ::deps.dependency-types/dependency-types
    batch-size  :- ms/PositiveInt]
   (let [ids (dependencies.db/dependency-pending-entity-ids

@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
@@ -56,7 +57,7 @@
   "The columns a write of a model has to change, or `:any`."
   [:maybe [:or [:= :any] [:set :keyword]]])
 
-(def ^:private Entity
+(def ^:private Node
   "An entity as `[entity-type entity-id]`, the ID nil when unknown."
   [:maybe [:tuple ::deps.dependency-types/dependency-types [:maybe ms/PositiveInt]]])
 
@@ -88,8 +89,8 @@
    :model/Transform #{:source :target}})
 
 (def ^:private model-output-columns
-  "For each model, the columns whose update changes what the entities directly depending on it read, so their result
-  metadata is re-derived and they are analyzed again."
+  "For each model, the columns whose update changes what the entities directly depending on it read, so their statuses
+  are marked."
   {:model/Card               #{:type :result_metadata}
    :model/Measure            #{:definition :table_id}
    :model/NativeQuerySnippet #{:content :template_tags}
@@ -108,7 +109,7 @@
   #{:name :display_name :description :active :visibility_type :settings :base_type :effective_type :database_type
     :semantic_type :coercion_strategy :fk_target_field_id :position})
 
-(mu/defn- part-owner :- Entity
+(mu/defn- part-owner :- Node
   "The entity, as `[entity-type entity-id]`, that `row` of `model` is a part of, or nil."
   [model :- :keyword
    row   :- [:maybe Row]]
@@ -160,22 +161,33 @@
 (mu/defn- mark-part-owner!
   "Mark what a write of a part of the `[owner-type owner-id]` entity changes: the dependencies of a dashboard or an
   action, or what the entities depending on a table read."
-  [[owner-type owner-id] :- Entity]
+  [[owner-type owner-id] :- Node]
   (when owner-id
     (if (= :table owner-type)
       (mark-dependents! :table owner-id)
       (dependencies.db/mark-dependency-statuses-stale! {owner-type #{owner-id}}))))
 
+(mu/defn- output-changed? :- :boolean
+  "Whether the update of `row` of `model` changes what the entities directly depending on it read, ignoring a card's
+  result metadata changes they don't see, such as a run's new fingerprints."
+  [model :- :keyword
+   row   :- Row]
+  (let [columns (output-columns model row)]
+    (and (changed? row columns)
+         (or (not= :model/Card model)
+             (changed? row (disj columns :result_metadata))
+             (not (deps.result-metadata/same-output? (:result_metadata (t2/original row)) (:result_metadata row)))))))
+
 (mu/defn- mark-update! :- :boolean
   "Mark the statuses an update of `row` of `model` makes stale: the entity's own, by the columns each job
-  reads, and what reads its output when that changes, returning whether it marked any."
+  reads, and what reads its output when that changes, returning whether a column some job reads changed."
   [model :- :keyword
    row   :- Row]
   (let [entity-type (deps.dependency-types/model->dependency-type model)
         own         {entity-type #{(:id row)}}
         dependency? (changed? row (dependency-columns model))
         analysis?   (changed? row (analysis-columns model))
-        output?     (changed? row (output-columns model row))
+        output?     (output-changed? model row)
         part?       (changed? row (part-columns model))]
     (when dependency?
       (dependencies.db/mark-dependency-statuses-stale! own))
@@ -230,7 +242,7 @@
   (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
     (mark-output-changed! entity-type row))
   (when (= model :model/Database)
-    (when-let [transform-ids (not-empty (set (dependencies.db/source-database-transform-ids (:id row))))]
+    (when-let [transform-ids (not-empty (dependencies.db/source-database-transform-ids (:id row)))]
       (dependencies.db/mark-dependency-statuses-stale! {:transform transform-ids})
       (dependencies.db/mark-analysis-finding-statuses-stale! {:transform transform-ids})))
   (trigger-jobs!))

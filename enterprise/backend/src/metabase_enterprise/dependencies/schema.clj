@@ -6,7 +6,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(mr/def ::entity-ids
+(mr/def ::type->ids
   "Entities as `{entity-type ids}`."
   [:map-of :metabase-enterprise.dependencies.dependency-types/dependency-types [:set ms/PositiveInt]])
 
@@ -26,21 +26,6 @@
    [:document  {:optional true} [:set ::documents.schema/document.id]]
    [:sandbox   {:optional true} [:set ::lib.schema.id/sandbox]]
    [:segment   {:optional true} [:set ::lib.schema.id/segment]]])
-
-(mr/def ::analysis-finding
-  "A AnalysisFinding as selected from the app DB: every column of `:analysis_finding`."
-  [:merge
-   ::analysis-finding.update
-   [:map {:closed true}
-    [:id                   ms/PositiveInt]]])
-
-(mr/def ::analysis-finding.update
-  "What an update (or insert) of a AnalysisFinding accepts: every column of `:analysis_finding` except `id`, all optional."
-  [:map {:closed true}
-   [:entity_type          {:optional true} [:maybe [:or :keyword :string]]]
-   [:entity_id            {:optional true} [:maybe ms/PositiveInt]]
-   [:analyzed_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:result               {:optional true} [:maybe :boolean]]])
 
 (mr/def ::analysis-finding-error
   "A AnalysisFindingError as selected from the app DB: every column of `:analysis_finding_error`."
@@ -73,18 +58,3 @@
    [:from_entity_id   {:optional true} [:maybe ms/PositiveInt]]
    [:to_entity_type   {:optional true} [:maybe [:or :keyword :string]]]
    [:to_entity_id     {:optional true} [:maybe ms/PositiveInt]]])
-
-(mr/def ::dependency-status
-  "A DependencyStatus as selected from the app DB: every column of `:dependency_status`."
-  [:merge
-   ::dependency-status.update
-   [:map {:closed true}
-    [:id               ms/PositiveInt]]])
-
-(mr/def ::dependency-status.update
-  "What an update (or insert) of a DependencyStatus accepts: every column of `:dependency_status` except `id`, all optional."
-  [:map {:closed true}
-   [:entity_type      {:optional true} [:maybe [:or :keyword :string]]]
-   [:entity_id        {:optional true} [:maybe ms/PositiveInt]]
-   [:stale            {:optional true} [:maybe :boolean]]
-   [:analysis_version {:optional true} [:maybe :int]]])

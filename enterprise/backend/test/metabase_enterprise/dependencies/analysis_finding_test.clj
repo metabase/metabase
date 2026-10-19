@@ -485,7 +485,7 @@
 (deftest ^:synchronized transform-run-without-table-analyzes-nothing-test
   (deps.test/run-with-dependencies-setup!
    (fn [mp]
-     (testing "a transform run re-analyzes nothing by itself, since the sync of its output table moves that table's version"
+     (testing "a transform run re-analyzes nothing by itself, since the sync of its output table marks what reads that table"
        (let [products (lib.metadata/table mp (mt/id :products))
              orders   (lib.metadata/table mp (mt/id :orders))]
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}

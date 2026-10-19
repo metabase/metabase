@@ -1,5 +1,5 @@
 (ns metabase-enterprise.dependencies.task.util
-  "The scheduling the dependencies module's self-rescheduling jobs share. Each job is described by a map of its
+  "The scheduling the dependencies module's self-rescheduling jobs share, each job described by a map of its
   `:job-type`, `:job-key`, `:trigger-key` and `:job-name`, the getters of its `:batch-size`, `:delay-minutes` and
   `:variance-minutes` settings, and `:run-batch!`, which processes a batch and returns how many seconds from now to
   run again, or nil to stop."

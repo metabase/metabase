@@ -1,4 +1,5 @@
 (ns metabase-enterprise.dependencies.task.analysis-finding
+  "The job that runs the analysis of the entities whose AnalysisFindingStatus is stale, missing or outdated."
   (:require
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]

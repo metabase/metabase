@@ -233,7 +233,7 @@
     (into {}
           (mapcat (fn [[node-type ids]]
                     (if (= node-type :card)
-                      (let [native (set (dependencies.db/native-card-ids ids))]
+                      (let [native (dependencies.db/native-card-ids ids)]
                         (map (fn [id] [[:card id] (contains? native id)]) ids))
                       (mapv (fn [entity]
                               [[node-type (:id entity)]

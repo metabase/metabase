@@ -1,4 +1,5 @@
 (ns metabase-enterprise.dependencies.analysis-finding
+  "Analyzes the entities whose AnalysisFindingStatus a write marked stale, recording what each one's query no longer finds."
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.db :as dependencies.db]

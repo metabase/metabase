@@ -4,40 +4,39 @@
    [metabase.premium-features.defenterprise :refer [defenterprise]]))
 
 (defenterprise before-insert
-  "Hook for the `model` row `instance` before it is inserted. The OSS implementation is a no-op."
+  "Hook for `row` of `model` before it is inserted, which does nothing without the dependencies feature."
   metabase-enterprise.dependencies.hooks
-  [_model _instance]
+  [_model _row]
   nil)
 
 (defenterprise before-update
-  "Hook for the `model` row `instance` before it is updated. The OSS implementation is a no-op."
+  "Hook for `row` of `model` before it is updated, which does nothing without the dependencies feature."
   metabase-enterprise.dependencies.hooks
-  [_model _instance]
+  [_model _row]
   nil)
 
 (defenterprise before-delete
-  "Hook for the `model` row `instance` before it is deleted. The OSS implementation is a no-op."
+  "Hook for `row` of `model` before it is deleted, which does nothing without the dependencies feature."
   metabase-enterprise.dependencies.hooks
-  [_model _instance]
+  [_model _row]
   nil)
 
 (defenterprise after-premium-token-update
-  "Hook for after the premium token changed, which may have enabled the dependencies feature. The OSS implementation is
-  a no-op."
+  "Hook for after the premium token changed, which may have enabled the dependencies feature, and does nothing without
+  it."
   metabase-enterprise.dependencies.hooks
   []
   nil)
 
 (defenterprise after-transform-run
   "Hook for the transform with `transform-id` after a run wrote its output Table with `table-id`, or nil when the
-  table was not synced. The OSS implementation is a no-op."
+  table was not synced, which does nothing without the dependencies feature."
   metabase-enterprise.dependencies.hooks
   [_transform-id _table-id]
   nil)
 
 (defenterprise do-with-batched-marks
-  "Run `thunk`, with the dependents of what its writes change marked once each when it ends. The OSS implementation
-  just runs it."
+  "Run `thunk`, with the dependents of what its writes change marked once each when it ends."
   metabase-enterprise.dependencies.hooks
   [thunk]
   (thunk))
