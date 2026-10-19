@@ -19,6 +19,7 @@
    [:token-scopes-checked {:optional true} :boolean]
    [:data-app-scoped?     {:optional true} :boolean]
    [:authenticated-via-oauth? {:optional true} :boolean]
+   [:embedding/auth-method {:optional true} :string]
    ;; only API-key auth resolves these two: `:api-key-id` identifies the key itself (for per-key usage analytics),
    ;; and `:api-key-creator-id` is the real human who created the key (distinct from `:metabase-user-id`, the key's
    ;; own synthetic service-account user) — both read off the same auth query rather than looked up again later.

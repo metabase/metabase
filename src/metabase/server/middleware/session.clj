@@ -95,12 +95,6 @@
 ;;; |                                             wrap-current-user-info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mr/def ::current-user-info
-  [:merge
-   ::request.schema/current-user-info
-   [:map {:closed true}
-    [:embedding/auth-method {:optional true} :string]]])
-
 (defn- valid-session-key?
   "Validates that the given session-key looks like a session key (a UUID string). Session keys are only ever compared
   against `core_session.key_hashed`; this check short-circuits obviously-invalid values before we hash them."
@@ -108,7 +102,7 @@
   (or (not session-key) (string/valid-uuid? session-key)))
 
 (mu/defn- current-user-info-for-session :- [:maybe [:merge
-                                                    ::current-user-info
+                                                    ::request.schema/current-user-info
                                                     [:map {:closed true}
                                                      [:metabase/authed-session-key-hash :string]]]]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired, plus
@@ -159,7 +153,7 @@
     (u.password/verify-password passed-api-key "" stored-hash)
     (do-useless-hash)))
 
-(mu/defn- current-user-info-for-api-key :- [:maybe ::current-user-info]
+(mu/defn- current-user-info-for-api-key :- [:maybe ::request.schema/current-user-info]
   "Return User ID and superuser status for an API Key with `api-key-id"
   [api-key :- [:maybe :string]]
   (when (and api-key
@@ -222,7 +216,7 @@
     (into full-access-token-scopes (disj granted-scopes full-access-scope))
     granted-scopes))
 
-(mu/defn- current-user-info-for-oauth-token :- [:maybe ::current-user-info]
+(mu/defn- current-user-info-for-oauth-token :- [:maybe ::request.schema/current-user-info]
   "Return current-user-info for a valid OAuth bearer access token on `request`, or nil. Mirrors the
    shape returned by the session/api-key resolvers and additionally attaches `:token-scopes`, so the
    merged request carries both the user identity and the access the token was granted, and marks it
