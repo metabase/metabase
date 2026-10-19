@@ -185,6 +185,11 @@
   [e]
   (::python-error-type (ex-data e)))
 
+(defn lower
+  "`s` lower-cased, nil for nil."
+  [s]
+  (some-> s u/lower-case-en))
+
 (defn instance-of-any?
   "Whether `node` is an instance of one of `classes`."
   [classes node]

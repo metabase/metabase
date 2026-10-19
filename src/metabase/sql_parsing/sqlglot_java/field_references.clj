@@ -28,12 +28,6 @@
 (defn- missing-column-error [column-name]
   {:type "missing_column" :column column-name})
 
-(defn- lower [s]
-  (some-> s u/lower-case-en))
-
-(defn- not-blank [s]
-  (when-not (str/blank? s) s))
-
 ;;; ------------------------------------------------------ sources ------------------------------------------------------
 
 (defn- table-matches?
@@ -57,8 +51,8 @@
   (boolean (and source
                 (or (str/blank? table-ref)
                     (let [{:keys [table_alias table]} (:names source)]
-                      (or (and table_alias (= (lower table_alias) (lower table-ref)))
-                          (and table (= (lower table) (lower table-ref)))))))))
+                      (or (and table_alias (= (ast/lower table_alias) (ast/lower table-ref)))
+                          (and table (= (ast/lower table) (ast/lower table-ref)))))))))
 
 (defn- recursive-cte-reference
   "A column read from the recursive CTE `source` by its own body: a single column whose source is the CTE itself."
@@ -86,8 +80,8 @@
                                   :when (seq scope-fields)]
                               scope-fields))
         source-column  (some (fn [field]
-                               (let [field-name (or (not-blank (:alias field)) (:column field))]
-                                 (when (and field-name (= (lower field-name) (lower column-name)))
+                               (let [field-name (or (u/not-blank (:alias field)) (:column field))]
+                                 (when (and field-name (= (ast/lower field-name) (ast/lower column-name)))
                                    field)))
                              (first source-columns))
         ;; SELECT o FROM (SELECT * FROM orders) AS o: an unqualified name may name a source rather than a column
@@ -95,7 +89,7 @@
                          (some (fn [scope-sources]
                                  (some (fn [{:keys [names] :as source}]
                                          (when (and source
-                                                    (some #(and % (= (lower %) (lower column-name)))
+                                                    (some #(and % (= (ast/lower %) (ast/lower column-name)))
                                                           [(:table_alias names) (:table names)]))
                                            source))
                                        scope-sources))
@@ -271,7 +265,7 @@
     ;; a function, CASE, arithmetic and the rest compute a field from the ones they use
     :else
     [{:col {:type        "custom_field"
-            :alias       (not-blank (ast/node-alias expr))
+            :alias       (u/not-blank (ast/node-alias expr))
             :used_fields (vec (cols (find-used-fields expr sources withs)))}}]))
 
 (defn- unknown-columns-source
@@ -356,7 +350,7 @@
         returned-fields          (vec (cols returned))
         ;; SELECT aliases are a scope level of their own, ahead of the tables, for ORDER BY and the like
         select-source            {:names           nil
-                                  :returned_fields (filterv #(not-blank (:alias %)) returned-fields)
+                                  :returned_fields (filterv #(u/not-blank (:alias %)) returned-fields)
                                   :used_fields     #{}
                                   :errors          #{}}
         sources-with-select      (into [[select-source] local-sources] outside-sources)
@@ -388,7 +382,7 @@
                                        right-field (get right-fields i)
                                        named       (or left-field right-field)]]
                              {:type          "composite_field"
-                              :alias         (or (not-blank (:alias named)) (:column named))
+                              :alias         (or (u/not-blank (:alias named)) (:column named))
                               :member_fields (vec (remove nil? [left-field right-field]))}))
      :errors          (into (set (:errors left)) (:errors right))}))
 
