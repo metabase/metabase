@@ -1,27 +1,30 @@
-import { useInterval } from "@mantine/hooks";
 import cx from "classnames";
 import {
   type CSSProperties,
   Children,
   type ReactNode,
   forwardRef,
-  useEffect,
-  useState,
 } from "react";
 import { t } from "ttag";
 
 import { findErrorMessage } from "metabase/api/utils/errors";
+import {
+  LoadingSkeleton,
+  TextSkeleton,
+} from "metabase/common/components/Skeletons";
 import CS from "metabase/css/core/index.css";
-import { Loader } from "metabase/ui";
 
 export interface LoadingAndErrorWrapperProps {
   loading?: boolean;
   error?: any;
   noBackground?: boolean;
   noWrapper?: boolean;
-  showSpinner?: boolean;
-  getLoadingMessages?: () => string[];
-  messageInterval?: number;
+  /**
+   * Skeleton layout shown while loading, shaped like the content it stands in
+   * for. It's wrapped in a `LoadingSkeleton`, so don't render one inside it.
+   * Defaults to a generic paragraph skeleton.
+   */
+  loader?: ReactNode;
   renderError?: (message?: string) => ReactNode;
   style?: CSSProperties;
   className?: string;
@@ -39,9 +42,7 @@ export const LoadingAndErrorWrapper = forwardRef<
     error,
     noBackground = true,
     noWrapper = false,
-    showSpinner = true,
-    getLoadingMessages = () => [t`Loading...`],
-    messageInterval = 6000,
+    loader,
     renderError: renderCustomError,
     style,
     className,
@@ -50,23 +51,6 @@ export const LoadingAndErrorWrapper = forwardRef<
   },
   ref,
 ) {
-  const [messageIndex, setMessageIndex] = useState(0);
-
-  const loadingInterval = () => {
-    if (loading) {
-      setMessageIndex(
-        (oldIndex) => (oldIndex + 1) % getLoadingMessages().length,
-      );
-    }
-  };
-  const interval = useInterval(loadingInterval, messageInterval);
-  useEffect(() => {
-    if (getLoadingMessages().length > 1) {
-      interval.start();
-    }
-    return interval.stop;
-  });
-
   function getErrorMessage() {
     const statusText =
       typeof error?.statusText === "string" ? error.statusText : undefined;
@@ -124,12 +108,9 @@ export const LoadingAndErrorWrapper = forwardRef<
       {error ? (
         renderError(contentClassName)
       ) : loading ? (
-        <div className={contentClassName}>
-          {showSpinner && <Loader size="lg" />}
-          <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>
-            {getLoadingMessages()[messageIndex]}
-          </h2>
-        </div>
+        <LoadingSkeleton>
+          {loader ?? <TextSkeleton withTitle lines={4} p="xl" />}
+        </LoadingSkeleton>
       ) : (
         getChildren()
       )}

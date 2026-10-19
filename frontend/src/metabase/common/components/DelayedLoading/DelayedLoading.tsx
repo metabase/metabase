@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMount } from "react-use";
-import _ from "underscore";
 
-import { Flex, Loader, Skeleton, Stack, Text } from "metabase/ui";
+import {
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
+import { Flex, Loader, Text } from "metabase/ui";
 
 export const LoadingSpinner = ({ text }: { text?: string }) => (
   <Flex align="center" justify="center" h="100%" gap="lg">
@@ -37,21 +40,8 @@ export const DelayedLoadingSpinner = ({
   return <LoadingSpinner text={text} />;
 };
 
-// Uneven label widths keep the skeleton rows from looking mechanically uniform.
-const SKELETON_ROW_WIDTHS = [
-  "70%",
-  "55%",
-  "80%",
-  "45%",
-  "65%",
-  "75%",
-  "50%",
-  "60%",
-];
-
 export const DelayedSkeleton = ({ delay = 300 }: { delay?: number }) => {
   const [show, setShow] = useState(false);
-  const widths = useMemo(() => _.shuffle(SKELETON_ROW_WIDTHS), []);
 
   useMount(() => {
     const timeout = setTimeout(() => setShow(true), delay);
@@ -64,13 +54,8 @@ export const DelayedSkeleton = ({ delay = 300 }: { delay?: number }) => {
   }
 
   return (
-    <Stack gap="lg" data-testid="loading-indicator">
-      {widths.map((width, index) => (
-        <Flex key={index} align="center" gap="sm">
-          <Skeleton height="1rem" width="1rem" radius="xs" />
-          <Skeleton height="0.75rem" width={width} radius="xs" />
-        </Flex>
-      ))}
-    </Stack>
+    <LoadingSkeleton>
+      <ListSkeleton rows={8} />
+    </LoadingSkeleton>
   );
 };
