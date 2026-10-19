@@ -2040,3 +2040,14 @@
       (is (not (contains? q :qp/source-card-id)))
       (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
           "internal keys are stripped from every stage"))))
+
+(deftest construct-query-structural-locations-test
+  (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                       {:query (orders-query :filters [{:op ">"} {:op "<"}])})]
+    (is (= "invalid-representations-query" (:error response)))
+    (is (= (str "Representations query has an invalid structure. "
+                "Invalid at stages[0].filters[0]: should be a vector, "
+                "clause must be [operator-string, options-map, \u2026args]; "
+                "stages[0].filters[1]: should be a vector, "
+                "clause must be [operator-string, options-map, \u2026args]. Fix the named paths.")
+           (:message response)))))

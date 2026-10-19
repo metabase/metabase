@@ -253,26 +253,29 @@
             "" path)
     "(root)"))
 
-(defn- humanized-paths
+(defn- humanized-locations
   [path errors]
   (cond
     (nil? errors) nil
-    (map? errors) (mapcat (fn [[k v]] (humanized-paths (conj path k) v)) errors)
-    (and (sequential? errors) (every? string? errors))
-    (when (seq errors)
-      [(str (query-path path) ": " (str/join ", " errors))])
-    (sequential? errors)
-    (mapcat (fn [[i v]] (humanized-paths (conj path i) v)) (map-indexed vector errors))
-    :else [(str (query-path path) ": " errors)]))
+    (map? errors) (mapcat (fn [[k v]] (humanized-locations (conj path k) v)) errors)
+    (seq? errors) (mapcat #(humanized-locations path %) errors)
+    (vector? errors)
+    (mapcat (fn [[i v]] (humanized-locations (conj path i) v)) (map-indexed vector errors))
+    :else [[path (str errors)]]))
 
 (defn humanized->paths
   "Flatten humanized validation errors into readable paths, capped at 500 characters with an ellipsis."
   [humanized]
-  (let [text (->> (humanized-paths [] humanized)
-                  (interpose "; ")
-                  (mapcat seq)
-                  (take 501)
-                  (apply str))]
+  (let [locations (humanized-locations [] humanized)
+        by-path   (group-by first locations)
+        text      (->> (distinct (map first locations))
+                       (map (fn [path]
+                              (str (query-path path) ": "
+                                   (str/join ", " (distinct (map second (get by-path path)))))))
+                       (interpose "; ")
+                       (mapcat seq)
+                       (take 501)
+                       (apply str))]
     (if (> (count text) 500)
       (str (subs text 0 499) "\u2026")
       text)))
