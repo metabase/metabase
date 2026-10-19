@@ -197,3 +197,25 @@ describe("ManageDataAppGroupsPage warnings", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
+
+it("shows tenant group warnings in the tenant access page", async () => {
+  setup({
+    tenancy: "external",
+    groups: [
+      { id: 5, name: "Tenant", member_count: 2, is_tenant_group: true },
+      { id: FINCHES_GROUP_ID, name: "Finches", member_count: 3 },
+    ],
+    warnings: [{ ...FINCHES_WARNING, group_id: 5 }, FINCHES_WARNING],
+  });
+
+  await userEvent.hover(
+    await screen.findByRole("button", { name: "Missing data access" }),
+  );
+  expect(
+    await screen.findByText(
+      "Tenant doesn’t have permission to view these tables used in this app:",
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Orders" })).toBeVisible();
+  expect(screen.queryByText("Finches")).not.toBeInTheDocument();
+});

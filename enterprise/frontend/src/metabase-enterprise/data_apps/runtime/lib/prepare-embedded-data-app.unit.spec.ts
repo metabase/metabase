@@ -50,8 +50,21 @@ describe("prepareEmbeddedDataApp", () => {
     ).toBeNull();
   });
 
+  it("explains when the user does not have access to the app", async () => {
+    jest
+      .spyOn(api, "fetch")
+      .mockResolvedValue(new Response("", { status: 403 }));
+
+    await expect(prepareEmbeddedDataApp("sales")).rejects.toThrow(
+      "You don't have access to this data app.",
+    );
+
+    expect(
+      document.head.querySelector('meta[http-equiv="Content-Security-Policy"]'),
+    ).toBeNull();
+  });
+
   it.each([
-    new Response("", { status: 403 }),
     new Response("", {
       headers: {
         "Content-Security-Policy": "default-src *;",

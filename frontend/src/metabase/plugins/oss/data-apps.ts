@@ -8,7 +8,7 @@ export type DataAppsPlugin = {
   isEnabled: boolean;
   getRoutes: () => ReactNode | null;
   ManageDataAppsPage: ComponentType;
-  ManageDataAppGroupsPage: ComponentType;
+  ManageDataAppGroupsPage: ComponentType<{ tenancy?: "internal" | "external" }>;
   MainNavbarSection: ComponentType<{ onItemSelect: () => void }>;
 };
 

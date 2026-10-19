@@ -260,6 +260,9 @@
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
                  :model/Collection {coll-id :id} {:location "/" :type "tenant-collection"}]
     (perms/revoke-collection-permissions! tenant-group-id coll-id)
+    (doseq [root [collection/root-collection (assoc collection/root-collection :namespace "data-apps")]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
+                            (perms/grant-collection-read-permissions! tenant-group-id root))))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
                           (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot have write access to any collections\."

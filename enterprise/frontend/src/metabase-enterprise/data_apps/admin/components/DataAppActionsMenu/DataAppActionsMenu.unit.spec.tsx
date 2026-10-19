@@ -1,18 +1,26 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { createMockDataApp } from "metabase-types/api/mocks";
+import {
+  createMockDataApp,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import { DataAppActionsMenu } from "./DataAppActionsMenu";
 
 const setup = ({
   enabled = true,
+  hasTenantsFeature = false,
+  isTenantsEnabled = false,
   canRemove = false,
   resourceCollectionId = 9,
 }: {
   enabled?: boolean;
+  hasTenantsFeature?: boolean;
+  isTenantsEnabled?: boolean;
   canRemove?: boolean;
   resourceCollectionId?: number;
 } = {}) => {
@@ -28,7 +36,17 @@ const setup = ({
       {/* Mounts the toaster so failure toasts are assertable in the DOM. */}
       <UndoListing />
     </>,
-    { withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: {
+        settings: createMockSettingsState({
+          "token-features": createMockTokenFeatures({
+            tenants: hasTenantsFeature,
+          }),
+          "use-tenants": isTenantsEnabled,
+        }),
+      },
+    },
   );
 };
 
@@ -125,3 +143,33 @@ describe("DataAppActionsMenu", () => {
     );
   });
 });
+
+it("shows tenant access when tenants and the feature token are enabled", async () => {
+  setup({ hasTenantsFeature: true, isTenantsEnabled: true });
+
+  await openMenu();
+
+  expect(
+    screen.getByRole("menuitem", { name: "Manage tenant access" }),
+  ).toHaveAttribute("href", "/admin/settings/apps/sales/tenant-groups");
+  expect(
+    screen.getByRole("menuitem", { name: "Manage group access" }),
+  ).toHaveAttribute("href", "/admin/settings/apps/sales/groups");
+});
+
+it.each([
+  { hasTenantsFeature: true, isTenantsEnabled: false },
+  { hasTenantsFeature: false, isTenantsEnabled: true },
+  { hasTenantsFeature: false, isTenantsEnabled: false },
+])(
+  "hides tenant access with token=$hasTenantsFeature and tenants=$isTenantsEnabled",
+  async (options) => {
+    setup(options);
+
+    await openMenu();
+
+    expect(
+      screen.queryByRole("menuitem", { name: "Manage tenant access" }),
+    ).not.toBeInTheDocument();
+  },
+);

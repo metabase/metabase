@@ -64,14 +64,13 @@
         (resources/ensure-resources! app)
         (group-access/add-groups! app [(:id group)])
         (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
-        ;; A stale assignment must not admit tenant users.
-        (t2/insert! :model/DataAppGroupAssignment {:data_app_id (:id app) :permission_group_id (:id tenant-group)})
         (t2/update! :model/PermissionsGroup (:id tenant-group) {:is_tenant_group true})
+        (group-access/add-groups! app [(:id tenant-group)])
         (perms/add-user-to-group! (:id tenant-user) (:id tenant-group))
         (doseq [[user-id admin? allowed?] [[(mt/user->id :crowberto) true true]
                                            [(mt/user->id :rasta) false true]
                                            [(mt/user->id :lucky) false false]
-                                           [(:id tenant-user) false false]]]
+                                           [(:id tenant-user) false true]]]
           (testing (str "read access for user " user-id)
             (is (= (if allowed? ["birds"] [])
                    (mapv :name (mt/user-http-request user-id :get 200 "apps"))))
@@ -94,11 +93,12 @@
                    :model/PermissionsGroup tenant {:is_tenant_group true}]
       (is (= [] (mt/user-http-request :crowberto :get 200 "apps/birds/groups")))
       (doseq [ids [[(:id finches) (:id (perms/admin-group))]
-                   [(:id finches) (:id tenant)]
                    []
                    (vec (range 1 102))]]
         (mt/user-http-request :crowberto :post 400 "apps/birds/groups" {:group_ids ids})
         (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app)))))
+      (mt/user-http-request :crowberto :post 402 "apps/birds/groups" {:group_ids [(:id finches) (:id tenant)]})
+      (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
       (mt/user-http-request :crowberto :post 404 "apps/birds/groups" {:group_ids [(:id finches) Integer/MAX_VALUE]})
       (is (=? [{:id (:id finches) :name "Finches" :member_count 0}
                {:id (:id owls) :name "Owls" :member_count 0}]
@@ -319,3 +319,31 @@
     (sso/sync-group-memberships! (:id user) [])
     (mt/with-current-user (:id user)
       (is (not (mi/can-read? app))))))
+
+(deftest tenant-group-assignment-lifecycle-test
+  (mt/with-premium-features #{:data-apps :tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-temp [:model/Tenant tenant {:name "Tenant"}
+                     :model/User user {:tenant_id (:id tenant)}
+                     :model/PermissionsGroup group {:is_tenant_group true}
+                     :model/PermissionsGroup other-group {:is_tenant_group true}
+                     :model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
+        (perms/add-user-to-group! (:id user) (:id group))
+        (mt/user-http-request (:id user) :get 403 "apps/birds")
+        (is (=? [{:id (:id group) :is_tenant_group true :member_count 1}]
+                (mt/user-http-request :crowberto :post 200 "apps/birds/groups" {:group_ids [(:id group)]})))
+        (mt/user-http-request (:id user) :get 200 "apps/birds")
+        (mt/user-http-request :rasta :get 403 "apps/birds")
+        (group-access/add-groups! app [(:id other-group)])
+        (let [collection-id (:resource_collection_id app)]
+          (is (t2/exists? :model/Permissions :group_id (:id group)
+                          :object (perms/collection-read-path collection-id)))
+          (mt/with-premium-features #{:data-apps}
+            (mt/user-http-request (:id user) :get 401 "apps/birds")
+            (mt/with-current-user (:id user)
+              (is (not (mi/can-read? app))))
+            (mt/user-http-request :crowberto :delete 204 (str "apps/birds/groups/" (:id group))))
+          (is (not (t2/exists? :model/Permissions :group_id (:id group)
+                               :object (perms/collection-read-path collection-id)))))
+        (mt/user-http-request (:id user) :get 403 "apps/birds")
+        (is (= [(:id other-group)] (mapv :id (group-access/assigned-groups app))))))))

@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { EMBEDDED_DATA_APP_PREFIX } from "embedding-sdk-shared/lib/data-app-embed";
 import { api } from "metabase/api/client";
 
@@ -13,6 +15,10 @@ export async function prepareEmbeddedDataApp(name: string) {
     throw new Error(
       `Data app "${name}" was not found or is disabled. Check the app name in path.`,
     );
+  }
+
+  if (response.status === 403) {
+    throw new Error(t`You don't have access to this data app.`);
   }
 
   if (!response.ok) {

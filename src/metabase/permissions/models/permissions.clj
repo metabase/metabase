@@ -166,6 +166,7 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.user :as permissions.user]
@@ -614,7 +615,9 @@
   (check-is-modifiable-collection collection-or-id)
   (let [collection (collection-or-id->collection collection-or-id)]
     (when (perms-group/is-tenant-group? group-or-id)
-      (when-not (shared-tenant-collection? collection)
+      (when-not (or (shared-tenant-collection? collection)
+                    (and (pos-int? (:id collection))
+                         (data-perms/data-app-collection? (:id collection))))
         (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 

@@ -155,3 +155,66 @@ describe("ManageDataAppGroupsPage", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("tenant group access", () => {
+  it("assigns and removes tenant groups separately from internal groups", async () => {
+    setup({
+      tenancy: "external",
+      groups: [{ id: FINCHES_GROUP_ID, name: "Finches", member_count: 7 }],
+    });
+
+    expect(
+      await screen.findByText("Manage tenant access to Sales"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Finches")).not.toBeInTheDocument();
+
+    await openGroupAssignmentPicker();
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["Tenant"]);
+
+    await userEvent.click(screen.getByRole("option", { name: "Tenant" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Remove Tenant" }),
+    );
+
+    expect(
+      await screen.findByText("No groups have access yet"),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory
+        .calls("path:/api/apps/sales/groups", { method: "POST" })
+        .map(({ options }) => JSON.parse(String(options.body))),
+    ).toEqual([{ group_ids: [5] }]);
+    expect(
+      fetchMock.callHistory.called("path:/api/apps/sales/groups/5", {
+        method: "DELETE",
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps tenant assignments out of the internal group page", async () => {
+    setup({
+      groups: [
+        { id: 5, name: "Tenant", member_count: 3, is_tenant_group: true },
+      ],
+    });
+
+    expect(
+      await screen.findByText("No groups have access yet"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Tenant")).not.toBeInTheDocument();
+  });
+
+  it("does not open tenant access without the feature token", async () => {
+    setup({ tenancy: "external", tenantsEnabled: false });
+
+    expect(
+      await screen.findByText("Tenant access is not available."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add groups" }),
+    ).not.toBeInTheDocument();
+  });
+});

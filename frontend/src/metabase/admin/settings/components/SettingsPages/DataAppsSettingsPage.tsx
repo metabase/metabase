@@ -26,3 +26,7 @@ export function DataAppsManagePage() {
 export function DataAppGroupsManagePage() {
   return <PLUGIN_DATA_APPS.ManageDataAppGroupsPage />;
 }
+
+export function DataAppTenantGroupsManagePage() {
+  return <PLUGIN_DATA_APPS.ManageDataAppGroupsPage tenancy="external" />;
+}

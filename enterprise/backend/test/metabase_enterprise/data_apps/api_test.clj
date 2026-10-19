@@ -415,3 +415,27 @@
         (create-app!)
         (is (= 200 (:status (mt/user-http-request-full-response
                              :crowberto :get 200 "apps/sandbox-host"))))))))
+
+(deftest tenant-assignment-grants-only-app-resource-reads-test
+  (mt/with-premium-features #{:data-apps :tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-temp [:model/Tenant tenant {:name "Tenant"}
+                     :model/User user {:tenant_id (:id tenant)}
+                     :model/PermissionsGroup group {:is_tenant_group true}
+                     :model/DataApp app {:name "tenant-app" :display_name "Tenant app" :bundle_path "tenant-app.js"}
+                     :model/Card card {:collection_id (:resource_collection_id app)}
+                     :model/Collection internal-collection {}
+                     :model/Card internal-card {:collection_id (:id internal-collection)}]
+        (perms/add-user-to-group! (:id user) (:id group))
+        (let [data-permissions (t2/select :model/DataPermissions)]
+          (group-access/add-groups! app [(:id group)])
+          (is (= data-permissions (t2/select :model/DataPermissions)))
+          (mt/user-http-request (:id user) :get 200 (str "card/" (:id card)))
+          (mt/user-http-request (:id user) :get 403 (str "card/" (:id internal-card)))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-tenant collections"
+                                (perms/grant-collection-read-permissions! group internal-collection)))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"write access"
+                                (perms/grant-collection-readwrite-permissions! group (:resource_collection_id app))))
+          (group-access/remove-group! app (:id group))
+          (is (= data-permissions (t2/select :model/DataPermissions)))
+          (mt/user-http-request (:id user) :get 403 (str "card/" (:id card))))))))

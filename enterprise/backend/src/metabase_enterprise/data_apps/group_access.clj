@@ -14,9 +14,12 @@
   "Assigned groups with their member counts."
   [app]
   (let [using-tenants? (setting/get :use-tenants)
-        group-ids     (into #{} (map :permission_group_id) (data-apps.db/app-assignments [(:id app)]))]
+        group-ids     (into #{} (map :permission_group_id) (data-apps.db/app-assignments [(:id app)]))
+        tenant-flags  (perms/group-tenant-flags group-ids)]
     (mapv (fn [group]
-            (assoc group :name (perms/group-display-name group using-tenants?)))
+            (assoc group
+                   :name (perms/group-display-name group using-tenants?)
+                   :is_tenant_group (boolean (get tenant-flags (:id group)))))
           (t2/hydrate (perms/groups-by-ids group-ids) :member_count))))
 
 (defn add-groups!
@@ -87,20 +90,23 @@
     (vec (into (set table) outputs))))
 
 (defn permission-warnings
-  "Missing table access for assigned groups, including access inherited from All Users."
+  "Missing table access for assigned groups, including access inherited from their tenancy's All users group."
   [{app-id :id collection-id :resource_collection_id}]
   (let [assigned-ids (mapv :permission_group_id (data-apps.db/app-assignments [app-id]))
         table-ids    (when (and (seq assigned-ids) collection-id)
                        (resource-table-ids collection-id))]
     (if (and (seq assigned-ids) (seq table-ids))
-      (let [tables       (table-details table-ids)
-            all-users-id (:id (perms/all-users-group))
-            access       (group-table-access (conj (set assigned-ids) all-users-id) tables)]
+      (let [tables         (table-details table-ids)
+            tenant-flags   (perms/group-tenant-flags (set assigned-ids))
+            all-users-id   (:id (perms/all-users-group))
+            all-tenants-id (:id (perms/all-external-users-group))
+            access         (group-table-access (into (set assigned-ids) [all-users-id all-tenants-id]) tables)]
         (into []
               (keep (fn [group-id]
-                      (let [missing (filterv #(not (or (group-has-table-access? access group-id %)
-                                                       (group-has-table-access? access all-users-id %)))
-                                             tables)]
+                      (let [inherited-id (if (get tenant-flags group-id) all-tenants-id all-users-id)
+                            missing      (filterv #(not (or (group-has-table-access? access group-id %)
+                                                            (group-has-table-access? access inherited-id %)))
+                                                  tables)]
                         (when (seq missing)
                           {:group_id group-id :missing_tables missing}))))
               assigned-ids))

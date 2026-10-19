@@ -37,6 +37,7 @@ const PAGE_SIZE = 25;
 
 type Props = {
   appName: string;
+  tenancy: "internal" | "external";
   isAdding: boolean;
   groups: DataAppGroup[];
 
@@ -47,6 +48,7 @@ type Props = {
 
 export const DataAppGroupList = ({
   appName,
+  tenancy,
   isAdding,
   groups,
   onAddGroups,
@@ -134,6 +136,7 @@ export const DataAppGroupList = ({
           >
             {isAdding && (
               <AddDataAppGroups
+                tenancy={tenancy}
                 groups={groups}
                 onAddGroups={onAddGroups}
                 onCancel={onCancelAdd}
@@ -186,7 +189,7 @@ export const DataAppGroupList = ({
 const DataAppGroupsEmptyState = () => (
   <Box
     data-testid="data-app-groups-empty-state"
-    bg="background_page-secondary"
+    bg="background_page-primary"
     bdrs="md"
     py="5rem"
   >
