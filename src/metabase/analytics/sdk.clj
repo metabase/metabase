@@ -54,13 +54,6 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *route* "Used to track the API route for the current request (e.g. \"public\", \"guest-embed\")." nil)
 
-(defn- route-based-auth-method
-  "Returns the route-based auth-method or nil when route is not special."
-  []
-  (if (= "guest-embed" *route*)
-    "guest"
-    *route*))
-
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *auth-method* "Used to track the authentication method for the current request (e.g. \"password\", \"jwt\", \"api-key\")." nil)
 
@@ -186,7 +179,9 @@
       (update :embedding_client_identifier (fn [identifier] (or *client-identifier* identifier)))
       (update :embedding_route (fn [route] (or *route* route)))
       (update :embedding_sdk_version (fn [version] (or *version* version)))
-      (update :auth_method (fn [method] (or (route-based-auth-method) *auth-method* method)))
+      (update :auth_method (fn [method] (if (= "guest-embed" *route*)
+                                          "guest"
+                                          (or *route* *auth-method* method))))
       (assoc :metabase_version (:tag config/mb-version-info))
       (merge (hostname-fields) (pii-fields))))
 
