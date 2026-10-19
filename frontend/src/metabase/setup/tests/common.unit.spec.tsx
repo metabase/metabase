@@ -48,6 +48,25 @@ describe("setup (OSS)", () => {
     expectSectionsToHaveLabelsInOrder({ from: 3 });
   });
 
+  it("should not offer the sample database when the instance has none", async () => {
+    await setup({ settings: { "has-sample-database?": false } });
+    await skipWelcomeScreen();
+    await submitUserInfoStep();
+    await clickNextStep(); // Usage question
+
+    const addLaterButton = await screen.findByRole("button", {
+      name: "I'll add my data later",
+    });
+    expect(
+      screen.queryByRole("button", { name: "Continue with sample data" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(addLaterButton);
+    expect(
+      await screen.findByLabelText("I'll add my own data later"),
+    ).toBeInTheDocument();
+  });
+
   describe("Usage question", () => {
     async function setupForUsageQuestion() {
       await setup();

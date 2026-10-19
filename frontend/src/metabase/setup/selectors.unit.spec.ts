@@ -2,9 +2,16 @@ import { mockSettings } from "__support__/settings";
 import { createMockSetupState, createMockState } from "__support__/state";
 import type { SetupState } from "metabase/redux/store";
 import type { EnterpriseSettings } from "metabase-types/api";
-import { createMockSettings } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
-import { getShouldOfferAiConfig, getSteps } from "./selectors";
+import {
+  getShouldOfferAiConfig,
+  getShouldShowStepNumber,
+  getSteps,
+} from "./selectors";
 
 interface SetupOpts {
   setup?: Partial<SetupState>;
@@ -94,5 +101,33 @@ describe("getShouldOfferAiConfig", () => {
 
   it("should not offer the AI config step for the embedding use case", () => {
     expect(getShouldOffer({ setup: { isEmbeddingUseCase: true } })).toBe(false);
+  });
+});
+
+describe("getShouldShowStepNumber", () => {
+  const getShouldShow = ({ setup = {}, settings = {} }: SetupOpts = {}) =>
+    getShouldShowStepNumber(
+      createMockState({
+        setup: createMockSetupState(setup),
+        settings: mockSettings(createMockSettings(settings)),
+      }),
+    );
+
+  const HOSTED_SETTINGS: Partial<EnterpriseSettings> = {
+    "is-hosted?": true,
+    "token-features": createMockTokenFeatures({ hosting: true }),
+  };
+
+  it("should show step numbers on a hosted instance", () => {
+    expect(getShouldShow({ settings: HOSTED_SETTINGS })).toBe(true);
+  });
+
+  it("should not show step numbers in the cloud embedding use case", () => {
+    expect(
+      getShouldShow({
+        setup: { isEmbeddingUseCase: true },
+        settings: HOSTED_SETTINGS,
+      }),
+    ).toBe(false);
   });
 });
