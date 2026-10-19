@@ -69,6 +69,11 @@ export function useUrlState<State extends BaseState>(
     [],
   );
 
+  const toSearchString = useCallback(
+    (state: State) => queryToSearch(serialize(state)),
+    [serialize],
+  );
+
   const updateUrl = useCallback(
     (state: State) => {
       const routerLocationKey = getRouterLocation()?.key;
@@ -77,26 +82,26 @@ export function useUrlState<State extends BaseState>(
       if (hasNavigatedSinceRender) {
         return;
       }
-      const search = queryToSearch(serialize(state));
+      const search = toSearchString(state);
       // skip when the URL already carries this state, so adopting a URL below
       // does not push it onto the history a second time
       if (search !== location.search) {
         navigate({ ...location, search });
       }
     },
-    [location, serialize, navigate],
+    [location, toSearchString, navigate],
   );
 
   const searchString = useMemo(
-    () => queryToSearch(serialize(state)),
-    [serialize, state],
+    () => toSearchString(state),
+    [toSearchString, state],
   );
 
   const updateUrlRef = useLatest(updateUrl);
   const urlStateRef = useLatest(urlState);
 
   useEffectOnce(function cleanInvalidQueryParams() {
-    const search = queryToSearch(serialize(urlState));
+    const search = toSearchString(urlState);
     // Replacing to the identical URL notifies the router, which re-renders every
     // location consumer on the page for nothing.
     if (search !== location.search) {
