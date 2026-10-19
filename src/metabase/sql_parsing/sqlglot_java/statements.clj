@@ -217,6 +217,9 @@
           (when-not stmt
             (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))
           (vswap! result assoc :sql (ast/sql stmt dialect))))
+      ;; Python's `except Exception` also catches the RecursionError of SQL nested too deeply.
+      (catch StackOverflowError _
+        (vswap! result assoc :error "maximum recursion depth exceeded"))
       (catch Exception e
         (vswap! result assoc :error (ex-message e))))
     (cond-> @result
