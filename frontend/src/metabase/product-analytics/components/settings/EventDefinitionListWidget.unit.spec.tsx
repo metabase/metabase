@@ -150,7 +150,9 @@ describe("EventDefinitionListWidget", () => {
       screen.getByTestId("event-definition-name"),
       "Any order",
     );
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Done" }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(document.body);
 

@@ -228,7 +228,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           wrap="nowrap"
           py="lg"
           pl="xxl"
-          pr="lg"
           flex={1}
           align="stretch"
           mih={0}
@@ -253,7 +252,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               isHinted={hintedPanel === panel}
             />
           )}
-          <Stack flex={1} miw={0} gap="lg" style={{ overflowY: "auto" }}>
+          <Stack
+            flex={1}
+            miw={0}
+            gap="lg"
+            pr="lg"
+            style={{ overflowY: "auto" }}
+          >
             <AnalysisResult
               title={config.question}
               display={display}
