@@ -7,14 +7,16 @@
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import (org.quartz JobExecutionContext)))
 
 (set! *warn-on-reflection* true)
 
 (declare ^:private job)
 
-(defn- run-batch!
+(mu/defn- run-batch! :- [:maybe ms/PositiveInt]
   "Re-derive a batch of stale cards, returning when to run again: a second from now when it took any, or nil."
   []
   (when (premium-features/has-feature? :dependencies)
@@ -41,7 +43,7 @@
    :variance-minutes deps.settings/dependency-result-metadata-variance-minutes
    :run-batch!       #'run-batch!})
 
-(defn trigger-result-metadata-job!
+(mu/defn trigger-result-metadata-job! :- :any
   "Trigger the UpdateResultMetadata job, unless a MB_DEPENDENCY_RESULT_METADATA_BATCH_SIZE that isn't positive
   disables it."
   []

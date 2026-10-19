@@ -35,9 +35,8 @@
   (some-> entity :definition lib/database-id))
 
 (defmulti ^:private pre-analysis-errors
-  "Return a (possibly empty) sequence of errors detected without running the full analyzer. When
-  non-empty, the entity is recorded broken with these errors and the regular analysis is skipped.
-  Use this for structural failures e.g. an orphan Transform whose source database has been deleted."
+  "The set of errors of `entity` found without running the analysis, such as an orphan Transform's, which when not
+  empty are recorded instead of running it."
   {:arglists '([entity])}
   t2/model)
 
@@ -46,8 +45,8 @@
 (defmethod pre-analysis-errors :model/Transform
   [{db-id :source_database_id id :id}]
   (when (nil? db-id)
-    [(-> (lib/validation-exception-error "Source database for this transform has been deleted.")
-         (assoc :source-entity-type :transform :source-entity-id id))]))
+    #{(-> (lib/validation-exception-error "Source database for this transform has been deleted.")
+          (assoc :source-entity-type :transform :source-entity-id id))}))
 
 (mu/defn upsert-analysis!
   "Analyze the Toucan entity `entity` and insert or replace its AnalysisFinding, reusing the caller's metadata provider
@@ -57,19 +56,19 @@
     (let [model       (t2/model entity)
           entity-type (deps.dependency-types/model->dependency-type model)
           entity-id   (:id entity)]
-      (if-let [errors (seq (pre-analysis-errors entity))]
+      (if-let [errors (not-empty (pre-analysis-errors entity))]
         (models.analysis-finding/upsert-analysis! entity-type entity-id false errors)
         (if-let [db-id (entity-db-id entity)]
           (let [mp (lib-be/application-database-metadata-provider db-id)
                 results (try (deps.analysis/check-entity mp entity-type entity-id)
                              (catch Exception e
                                (log/errorf "Error analyzing entity: %s" (ex-message e))
-                               [(lib/validation-exception-error (.getMessage e))]))
+                               #{(lib/validation-exception-error (.getMessage e))}))
                 success (empty? results)]
             (models.analysis-finding/upsert-analysis! entity-type entity-id success results))
           (models.analysis-finding/upsert-analysis!
            entity-type entity-id false
-           [(lib/validation-exception-error "Could not resolve a database for this entity.")]))))))
+           #{(lib/validation-exception-error "Could not resolve a database for this entity.")}))))))
 
 (mu/defn- analyze-entity!
   "Analyze `entity`, recording a failure as a failed finding."
@@ -81,7 +80,7 @@
          (try
            (models.analysis-finding/upsert-analysis!
             (deps.dependency-types/model->dependency-type (t2/model entity)) (:id entity) false
-            [(lib/validation-exception-error (ex-message e))])
+            #{(lib/validation-exception-error (ex-message e))})
            (catch Exception record-e
              (log/errorf "Recording the failure of entity %s %s failed: %s"
                          (t2/model entity) (:id entity) (ex-message record-e)))))))

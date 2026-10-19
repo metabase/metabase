@@ -6,11 +6,13 @@
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(defn- run-batch!
+(mu/defn- run-batch! :- [:maybe ms/PositiveInt]
   "Analyze a batch of entities whose findings are outdated, returning when to run again: a second from now when it took
   any, or nil."
   []
@@ -44,7 +46,7 @@
 (defmethod task/init! ::UpdateAnalysisFindings [_]
   (task.util/init-job! job))
 
-(defn trigger-analysis-finding-job!
+(mu/defn trigger-analysis-finding-job! :- :any
   "Trigger the UpdateAnalysisFindings job, unless a MB_DEPENDENCY_ENTITY_CHECK_BATCH_SIZE that isn't positive
   disables it."
   []

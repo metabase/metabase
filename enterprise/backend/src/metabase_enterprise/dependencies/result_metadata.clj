@@ -32,14 +32,22 @@
   "The result metadata column keys a run of the card measures, within the type that inference gets right."
   [:base_type :effective_type :database_type])
 
-(defn- normalize-column
+(def ^:private Column
+  "A result metadata column, as a card stores or inference returns it, valid or not."
+  [:fn {:error/message "a map"} map?])
+
+(def ^:private TypeName
+  "A type, as a keyword or as the string a stored column may hold it as."
+  [:maybe [:or :keyword :string]])
+
+(mu/defn- normalize-column :- Column
   "The result metadata column `col` with its unqualified keys in snake_case."
-  [col]
+  [col :- Column]
   (update-keys col #(cond-> % (not (qualified-keyword? %)) u/->snake_case_en)))
 
-(defn- comparable-metadata
+(mu/defn- comparable-metadata :- [:vector [:map-of :keyword :any]]
   "The [[compared-column-keys]] of the result metadata `cols` with a value, with keyword values as strings."
-  [cols]
+  [cols :- [:sequential Column]]
   (mapv (fn [col]
           (into {}
                 (keep (fn [k]
@@ -48,31 +56,35 @@
                 compared-column-keys))
         cols))
 
-(defn same-output?
+(mu/defn same-output? :- :boolean
   "Whether the result metadata `before` and `after` show the queries using the card the same columns."
-  [before after]
+  [before :- [:maybe [:sequential Column]]
+   after  :- [:maybe [:sequential Column]]]
   (= (comparable-metadata (map normalize-column before))
      (comparable-metadata (map normalize-column after))))
 
-(defn- same-root-type?
+(mu/defn- same-root-type? :- [:maybe :boolean]
   "Whether the types `x` and `y` share an ancestor below `:type/*`, like integers and decimals do."
-  [x y]
+  [x :- TypeName
+   y :- TypeName]
   (and x y (not= :type/* (types/most-specific-common-ancestor (keyword x) (keyword y)))))
 
-(defn- measured-by-a-run?
+(mu/defn- measured-by-a-run? :- [:maybe :boolean]
   "Whether the stored column `stored-col` holds what a run measured for the inferred column `col`: a run stored its
   source type, they have types of the same root, and the column's source type is unchanged or unknown."
-  [stored-col col]
+  [stored-col :- Column
+   col        :- Column]
   (and (some? (:database_type stored-col))
        (same-root-type? (:base_type stored-col) (:base_type col))
        (or (nil? (:database_type col))
            (= (:database_type col) (:database_type stored-col)))))
 
-(defn- patch-result-metadata
+(mu/defn- patch-result-metadata :- [:vector Column]
   "The inferred result metadata `inferred`, each column keeping the [[measured-column-keys]] of the stored column of
   `stored` it stands for when a run measured them, and only that column's fingerprint, so that the job never shows a
   fingerprint the card's runs and saves did not store."
-  [stored inferred]
+  [stored   :- [:sequential Column]
+   inferred :- [:sequential Column]]
   (mapv (fn [col stored-col]
           (cond-> (dissoc col :fingerprint)
             (and stored-col (measured-by-a-run? stored-col col))
@@ -83,10 +95,10 @@
         inferred
         (lib/match-returned-columns stored inferred)))
 
-(defn- rederived-result-metadata
+(mu/defn- rederived-result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]
   "The re-derived result metadata of the MBQL `card`, inferred as its creator, as their own save would, so their
   sandboxes apply, or nil when what the queries using it see is unchanged."
-  [{query :dataset_query, stored :result_metadata, :keys [id creator_id], :as card}]
+  [{query :dataset_query, stored :result_metadata, :keys [id creator_id], :as card} :- (ms/InstanceOf :model/Card)]
   (let [stored   (mapv normalize-column stored)
         metadata (patch-result-metadata
                   stored

@@ -51,7 +51,7 @@
                                                                     (when (= :model/AnalysisFinding model)
                                                                       (.await barrier 10 TimeUnit/SECONDS))
                                                                     (apply insert! model args))]
-                (let [upserts (repeatedly 2 #(future (models.analysis-finding/upsert-analysis! :card card-id true [])))]
+                (let [upserts (repeatedly 2 #(future (models.analysis-finding/upsert-analysis! :card card-id true #{})))]
                   (run! deref (doall upserts))))
               (is (=? {:result true} (finding card-id)))
               (is (zero? (t2/count :model/AnalysisFindingError :analyzed_entity_type "card"

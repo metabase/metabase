@@ -7,17 +7,20 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
+   [metabase-enterprise.dependencies.schema :as deps.schema]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::entity-type
   [:enum :card :transform :snippet :table])
@@ -29,8 +32,14 @@
    [:snippet   {:optional true} [:sequential ::lib.schema.metadata/native-query-snippet]]
    [:table     {:optional true} [:sequential ::lib.schema.metadata/table]]])
 
-(defn- transitive-dependents
-  [& {:keys [graph updated-entities include-native?]}]
+(mu/defn- transitive-dependents :- ::deps.schema/type->ids
+  "The transitive dependents of `updated-entities` in `graph` (the app DB by default), leaving out native entities and
+  their children unless `include-native?`."
+  [& {:keys [graph updated-entities include-native?]}
+   :- [:map {:closed true}
+       [:graph            {:optional true} [:maybe ::graph/graph]]
+       [:updated-entities ::updates-map]
+       [:include-native?  {:optional true} [:maybe :boolean]]]]
   (if include-native?
     (deps.graph/transitive-dependents graph updated-entities)
     (deps.graph/transitive-mbql-dependents graph updated-entities)))
@@ -92,7 +101,10 @@
         (vswap! errors assoc-in [entity-type id] bad-refs)))
     @errors))
 
-(defn- group-by-db [deps]
+(mu/defn- group-by-db :- [:map-of ::lib.schema.id/database [:map-of ::entity-type [:set ms/PositiveInt]]]
+  "The card, table, transform, and snippet ids of `deps` grouped by the id of the Database each belongs to, with the
+  snippets copied to every Database."
+  [deps :- ::deps.schema/type->ids]
   (let [by-db (volatile! {})]
     (when (seq (:card deps))
       (doseq [[db-id card-ids] (->> (dependencies.db/card-database-ids (:card deps))

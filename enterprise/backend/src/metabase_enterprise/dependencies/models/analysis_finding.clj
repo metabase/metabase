@@ -45,10 +45,10 @@
   - 8: Flag MBQL queries whose source-table is missing/inactive (e.g. dropped during sync)"
   8)
 
-(defn- error->finding-error-row
+(mu/defn- error->finding-error-row :- ::deps.analysis-finding-error/error-input
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.
    We use `:message` for the error detail if there was an `validation-exception-error`."
-  [error]
+  [error :- ::lib.schema.validate/error-with-source]
   {:error-type          (:type error)
    ;; error-detail cannot be longer than 254
    :error-detail        (some-> (or (:name error) (:message error)) (u/truncate 254))
@@ -57,9 +57,7 @@
 
 (def ^:private FindingDetails
   "The errors an analysis found, as `lib/find-bad-refs-with-source` returns them."
-  [:maybe [:or
-           [:set ::lib.schema.validate/error-with-source]
-           [:sequential ::lib.schema.validate/error-with-source]]])
+  [:maybe [:set ::lib.schema.validate/error-with-source]])
 
 (mu/defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.

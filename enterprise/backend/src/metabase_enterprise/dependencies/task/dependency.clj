@@ -22,6 +22,8 @@
    [metabase.task.core :as task]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import (org.quartz JobExecutionContext)))
 
@@ -34,6 +36,10 @@
   This is not the same as deps.dependency-types/dependency-types, because tables have no dependencies of their
   own. Instead, links involving tables are found via analysis of the other side of the relation."
   (vec (sort-by #(not= :snippet %) deps.dependency-types/backfillable-dependency-types)))
+
+(def ^:private Entity
+  "An entity whose dependencies the job computes, as the app DB holds it."
+  [:fn {:error/message "a Toucan entity"} t2/instance?])
 
 ;;; ------------------------------ Post-deps cleanup multimethod ------------------------------
 
@@ -65,17 +71,19 @@
 
 ;;; ------------------------------ Job orchestration ------------------------------
 
-(defn- claim-hydrated-entities!
+(mu/defn- claim-hydrated-entities! :- [:maybe [:sequential Entity]]
   "Claim up to `batch-size` entities of `entity-type` whose dependencies need computing, hydrated."
-  [entity-type batch-size]
+  [entity-type :- ::deps.dependency-types/dependency-types
+   batch-size  :- ms/PositiveInt]
   (deps.dependency-status/hydrate-for-deps
    entity-type (deps.dependency-status/claim-pending-entities! entity-type batch-size)))
 
-(defn- compute-deps-for-entity!
+(mu/defn- compute-deps-for-entity! :- :any
   "Compute and store the dependencies of an `entity` hydrated by [[deps.dependency-status/hydrate-for-deps]], marking
   an entity with a new upstream stale for its result metadata and analysis, which an upstream change made before the
   edge existed never marked."
-  [entity-type entity]
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entity      :- Entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (let [deps (deps.calculation/calculate-deps entity-type entity)
         own  {entity-type #{(:id entity)}}]
@@ -88,10 +96,11 @@
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
       (post-deps-cleanup! entity-type entity))))
 
-(defn- remove-deleted-entity-batch!
+(mu/defn- remove-deleted-entity-batch! :- ms/IntGreaterThanOrEqualToZero
   "Drop the dependencies and status of up to `batch-size` deleted entities of `entity-type`, returning how many were
   removed."
-  [entity-type batch-size]
+  [entity-type :- ::deps.dependency-types/dependency-types
+   batch-size  :- ms/PositiveInt]
   (let [entity-ids (dependencies.db/dependency-deleted-entity-ids entity-type batch-size)]
     (when (seq entity-ids)
       (t2/with-transaction [_]
@@ -99,8 +108,10 @@
         (dependencies.db/delete-dependency-statuses! entity-type entity-ids)))
     (count entity-ids)))
 
-(defn- update-entity-batch!
-  [entity-type batch-size]
+(mu/defn- update-entity-batch! :- ms/IntGreaterThanOrEqualToZero
+  "Compute the dependencies of up to `batch-size` claimed entities of `entity-type`, returning how many it claimed."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   batch-size  :- ms/PositiveInt]
   (lib-be/with-metadata-provider-cache
     (let [type-name (name entity-type)
           entities  (claim-hydrated-entities! entity-type batch-size)]
@@ -116,7 +127,7 @@
               (throw e)))))
       (count entities))))
 
-(defn- update-dependencies!
+(mu/defn- update-dependencies! :- [:maybe :boolean]
   "Update the dependencies of up to a batch of entities, triggering the jobs that read them, and return whether the
   batch took any."
   []
@@ -141,14 +152,15 @@
 
 (declare ^:private job)
 
-(defn- run-batch!
+(mu/defn- run-batch! :- [:maybe ms/PositiveInt]
   "Process a batch, returning when to run again: a second from now when it took any, or nil."
   []
   (when (update-dependencies!)
     1))
 
-(defn- log-job-start
-  [^JobExecutionContext ctx]
+(mu/defn- log-job-start :- :nil
+  "Log the start of the job running in `ctx`, with how many triggers it has."
+  [^JobExecutionContext ctx :- (ms/InstanceOfClass JobExecutionContext)]
   (let [scheduler (.getScheduler ctx)
         job-key (.getKey (.getJobDetail ctx))
         job-class (.getSimpleName (.getJobClass (.getJobDetail ctx)))
@@ -174,7 +186,7 @@
    :variance-minutes deps.settings/dependency-backfill-variance-minutes
    :run-batch!       #'run-batch!})
 
-(defn trigger-dependency-job!
+(mu/defn trigger-dependency-job! :- :any
   "Trigger the UpdateDependencies job, unless a MB_DEPENDENCY_BACKFILL_BATCH_SIZE that isn't positive
   disables it."
   []

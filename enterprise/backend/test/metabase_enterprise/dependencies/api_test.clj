@@ -2269,7 +2269,7 @@
                       :analyzed_entity_id   card-id
                       :source_entity_type   nil
                       :source_entity_id     nil
-                      :error_type           "invalid-query"}])
+                      :error_type           "syntax-error"}])
         (let [result      (#'deps.api/node-errors {:card [card-id]})
               card-errors (get result [:card card-id])]
           (testing "includes errors with visible source"
@@ -2277,7 +2277,7 @@
           (testing "excludes errors with archived source"
             (is (not (contains? card-errors {:type :missing-column :detail "col2"}))))
           (testing "includes errors with nil source"
-            (is (contains? card-errors {:type :invalid-query}))))))))
+            (is (contains? card-errors {:type :syntax-error}))))))))
 
 (deftest ^:synchronized node-downstream-errors-filtering-test
   (testing "node-downstream-errors filters by analyzed entity visibility"
