@@ -6,6 +6,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 
 import {
   getCurrentMcpQueryHandle,
+  refreshMcpCredential,
   setCurrentMcpQueryHandle,
 } from "metabase/embedding-sdk/mcp-app-queries";
 
@@ -510,6 +511,31 @@ describe("useMcpApp", () => {
         expect(result.current.query).toBe("next-encoded-query");
       });
       expect(getCurrentMcpQueryHandle()).toBe(NEXT_QUERY_HANDLE);
+    });
+
+    it("does not load the handle again when a refused request refreshes the credential, or a refused load would refresh and reload forever", async () => {
+      mockFetchQueryByHandle.mockRejectedValue(
+        Object.assign(new Error("refused"), { status: 401 }),
+      );
+      jest.spyOn(console, "error").mockImplementation(() => {});
+
+      const { app, result } = setup({
+        callServerTool: jest.fn().mockResolvedValue(createAuthResult()),
+        getHostCapabilities: jest.fn(() => ({ serverTools: {} })),
+      });
+
+      await act(async () => app.ontoolresult(QUERY_RESULT));
+      await waitFor(() => {
+        expect(result.current.queryError).not.toBeNull();
+      });
+
+      // What the iframe's request helpers do after a 401.
+      await act(async () => {
+        await refreshMcpCredential();
+      });
+
+      expect(app.callServerTool).toHaveBeenCalledTimes(2);
+      expect(mockFetchQueryByHandle).toHaveBeenCalledTimes(1);
     });
 
     it("surfaces an error instead of spinning forever when a handle will not resolve", async () => {

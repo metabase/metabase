@@ -98,12 +98,6 @@ export function useMcpUiAuth({
       setError(null);
 
       authenticatedUntilRef.current = expiresAt;
-      // Passed through rather than read from state: the consumer resolves a
-      // query handle here, and the state setters above have not committed yet.
-      onAuthenticated({
-        uiCredential: auth.credential,
-        mcpSessionId: auth.sessionId,
-      });
 
       scheduleCredentialExpiry();
       scheduleRefresh(UI_CREDENTIAL_REFRESH_INTERVAL_MS);
@@ -112,8 +106,10 @@ export function useMcpUiAuth({
     }
 
     async function refreshAuth() {
+      let auth: McpUiAuth;
+
       try {
-        await authenticate();
+        auth = await authenticate();
       } catch {
         if (abortController.signal.aborted) {
           return;
@@ -130,7 +126,16 @@ export function useMcpUiAuth({
         }
 
         scheduleRefresh(UI_CREDENTIAL_REFRESH_RETRY_MS);
+        return;
       }
+
+      // Not in `authenticate`, which also renews a refused credential: the
+      // consumer loads a query handle, so a refused load would renew and load
+      // again forever. Passed through because state has not committed yet.
+      onAuthenticated({
+        uiCredential: auth.credential,
+        mcpSessionId: auth.sessionId,
+      });
     }
 
     setError(null);

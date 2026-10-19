@@ -40,32 +40,33 @@ export function getCurrentMcpQueryHandle(): string | null {
 
 type McpCredentialRefresher = () => Promise<McpUiAuth>;
 
+const REFRESH_REUSE_MS = 10_000;
+
 let refresher: McpCredentialRefresher | null = null;
-let refreshInFlight: Promise<McpUiAuth> | null = null;
+let lastRefresh: { auth: Promise<McpUiAuth>; startedAt: number } | null = null;
 
 /** Set how a fresh UI credential is obtained, or clear it with null. */
 export function setMcpCredentialRefresher(
   nextRefresher: McpCredentialRefresher | null,
 ) {
   refresher = nextRefresher;
+  lastRefresh = null;
 }
 
 /**
- * A fresh UI credential. Concurrent calls share one refresh. Rejects when no
- * refresher is set or the refresh fails.
+ * A fresh UI credential. Every call within ten seconds of a refresh shares that
+ * refresh, so a credential the server refuses as soon as it is issued ends in
+ * the refusal rather than in a loop of refreshes. Rejects when no refresher is
+ * set or the refresh fails.
  */
 export function refreshMcpCredential(): Promise<McpUiAuth> {
-  const currentRefresher = refresher;
-
-  if (!currentRefresher) {
+  if (!refresher) {
     return Promise.reject(new Error("No MCP UI credential refresher is set."));
   }
 
-  if (!refreshInFlight) {
-    refreshInFlight = currentRefresher().finally(() => {
-      refreshInFlight = null;
-    });
+  if (!lastRefresh || Date.now() - lastRefresh.startedAt >= REFRESH_REUSE_MS) {
+    lastRefresh = { auth: refresher(), startedAt: Date.now() };
   }
 
-  return refreshInFlight;
+  return lastRefresh.auth;
 }
