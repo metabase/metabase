@@ -320,7 +320,10 @@
   (trigger-jobs!))
 
 (defenterprise after-premium-token-update
-  "Restart every job, since they stop while the dependencies feature is disabled."
+  "Restart every job, since they stop while the dependencies feature is disabled, after deleting every status when the
+  token change turned the feature on, so the jobs process again whatever changed while it was off."
   :feature :dependencies
-  []
+  [had-feature?]
+  (when-not had-feature?
+    (dependencies.db/delete-all-statuses!))
   (trigger-jobs-now!))

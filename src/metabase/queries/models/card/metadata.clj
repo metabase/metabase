@@ -187,33 +187,26 @@ saved later when it is ready."
           (log/errorf "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
-  "Infer the default result_metadata to store for MBQL cards, as the user with `user-id` so their sandboxes apply, or
-  as no user, ignoring any already present."
-  ([query]
-   (infer-metadata query nil))
-  ([query user-id]
-   (not-empty (request/with-current-user user-id
-                (u/ignore-exceptions
-                  (qp.preprocess/query->expected-cols query))))))
+  "Infer the default result_metadata to store for MBQL cards, as no user, ignoring any already present."
+  [query]
+  (not-empty (request/with-current-user nil
+               (u/ignore-exceptions
+                 (qp.preprocess/query->expected-cols query)))))
 
 (defn infer-metadata-with-model-overrides
   "Does a fresh [[infer-metadata]] for the provided query.
 
   - If the `card` is not a model, that fresh metadata is returned directly.
   - If the `card` **is** a model, then the fresh metadata is returned, but any existing `:result_metadata` is included
-  so model metadata overrides (eg. new display_name or field types) are preserved in the result.
-
-  Infers as the user with `user-id` when given, see [[infer-metadata]]."
-  ([query card]
-   (infer-metadata-with-model-overrides query card nil))
-  ([query card user-id]
-   (let [model?         (= (:type card) :model)
-         model-metadata (when model? (:result_metadata card))
-         ;; If this is a model, include that model metadata so QP will infer correctly overridden metadata.
-         query          (cond-> query
-                          model-metadata (update :info merge {:metadata/model-metadata   model-metadata
-                                                              :metadata/own-model-query? true}))]
-     (infer-metadata query user-id))))
+  so model metadata overrides (eg. new display_name or field types) are preserved in the result."
+  [query card]
+  (let [model?         (= (:type card) :model)
+        model-metadata (when model? (:result_metadata card))
+        ;; If this is a model, include that model metadata so QP will infer correctly overridden metadata.
+        query          (cond-> query
+                         model-metadata (update :info merge {:metadata/model-metadata   model-metadata
+                                                             :metadata/own-model-query? true}))]
+    (infer-metadata query)))
 
 (defn untyped-metadata?
   "Whether `metadata` has columns and none of them has a known base type."

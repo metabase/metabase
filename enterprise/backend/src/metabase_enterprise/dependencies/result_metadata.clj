@@ -97,13 +97,13 @@
         (lib/match-returned-columns stored inferred)))
 
 (mu/defn- rederived-result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]
-  "The re-derived result metadata of the MBQL `card`, inferred as its creator, as their own save would, so their
-  sandboxes apply, or nil when what the queries using it see is unchanged."
-  [{query :dataset_query, stored :result_metadata, :keys [id creator_id], :as card} :- (ms/InstanceOf :model/Card)]
+  "The re-derived result metadata of the MBQL `card`, inferred as no user so no one's permissions decide it, or nil
+  when what the queries using it see is unchanged."
+  [{query :dataset_query, stored :result_metadata, :keys [id], :as card} :- (ms/InstanceOf :model/Card)]
   (let [stored   (mapv normalize-column stored)
         metadata (patch-result-metadata
                   stored
-                  (or (queries/infer-metadata-with-model-overrides query card creator_id)
+                  (or (queries/infer-metadata-with-model-overrides query card)
                       (throw (ex-info "Could not infer the result metadata of the card" {:card-id id}))))]
     (when (not= (comparable-metadata stored) (comparable-metadata metadata))
       (when-let [error (me/humanize (mr/explain ::lib.schema.metadata/card.result-metadata metadata))]

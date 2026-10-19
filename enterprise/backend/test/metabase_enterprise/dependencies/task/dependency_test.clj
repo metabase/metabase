@@ -336,6 +336,19 @@
             (assert-processed :card card-id)
             (is (= 1 deps-after))))))))
 
+(deftest ^:synchronized token-turning-feature-on-deletes-statuses-test
+  (testing "a token change that turns the dependencies feature on deletes every status, so the jobs process again what
+           changed while it was off, and one that keeps it on deletes none"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        (backfill-all-existing-entities!)
+        (dependencies.hooks/after-premium-token-update true)
+        (is (not (pending? :card card-id)))
+        (dependencies.hooks/after-premium-token-update false)
+        (is (pending? :card card-id))
+        (is (zero? (t2/count :model/DependencyStatus)))))))
+
 (deftest ^:synchronized backfill-dependencies-on-token-update-test
   (testing "Token update triggers the dependency job (entities remain pending until job runs)"
     (backfill-all-existing-entities!)
@@ -348,7 +361,7 @@
           (forget-status! :card card2-id)
           (forget-status! :card card3-id)
           ;; token update triggers the async job, not synchronous processing
-          (dependencies.hooks/after-premium-token-update)
+          (dependencies.hooks/after-premium-token-update true)
           (is (every? #(pending? :card %) [card1-id card2-id card3-id]))
           ;; manually run the backfill to verify it processes them
           (backfill-all-existing-entities!)

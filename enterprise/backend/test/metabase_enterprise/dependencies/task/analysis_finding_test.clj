@@ -48,5 +48,5 @@
     (let [scheduled (atom [])]
       (mt/with-dynamic-fn-redefs [task/schedule-task! (fn [& args] (swap! scheduled conj args) nil)]
         (mt/with-premium-features #{:dependencies}
-          (dependencies.hooks/after-premium-token-update)
+          (dependencies.hooks/after-premium-token-update true)
           (is (contains? (scheduled-job-names @scheduled) job-key)))))))

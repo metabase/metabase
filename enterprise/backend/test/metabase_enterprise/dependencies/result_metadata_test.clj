@@ -464,7 +464,8 @@
           (is (seq @submitted)))))))
 
 (deftest sandboxed-creator-test
-  (testing "a card is re-derived as its creator, as their own save would, so the columns their sandbox hides stay out"
+  (testing "a card is re-derived as no user, so its creator's sandbox doesn't decide its columns, and the columns its
+           stored metadata lacks get no fingerprint"
     (met/with-gtaps! {:gtaps {:venues {:query (let [mp (mt/metadata-provider)]
                                                 (lib/with-fields (table-query :venues)
                                                   [(lib.metadata/field mp (mt/id :venues :id))
@@ -478,8 +479,9 @@
           (reprocess! card-id)
           (mt/with-premium-features #{:dependencies :sandboxes}
             (deps.result-metadata/update-result-metadata! 1000))
-          (is (= ["ID" "NAME" "CATEGORY_ID"]
-                 (mapv :name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
+          (let [columns (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+            (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"] (mapv :name columns)))
+            (is (every? (comp nil? :fingerprint) columns))))))))
 
 (deftest legacy-stored-card-test
   (testing "a card whose stored query is legacy MBQL with a filter is stored once and the job stops, though each read

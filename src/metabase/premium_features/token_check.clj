@@ -613,42 +613,45 @@
   ([checker token]
    (-check-token checker token)))
 
+(declare has-feature?)
+
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
   [new-value]
   ;; validate the new value if we're not unsetting it
-  (try
-    (when (seq new-value)
-      (when (mr/validate [:re AirgapToken] new-value)
-        (assert-valid-airgap-user-count!))
-      (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
-                    (mr/validate [:re AirgapToken] new-value))
-        (throw (ex-info (tru "Token format is invalid.")
-                        {:status-code   400
-                         :error-details "Token should be 64 hexadecimal characters."
-                         :response/keys #{:error-details}})))
-      ;; validate against the store, not a cached verdict — the token may be the same string with a
-      ;; renewed subscription behind it
-      (clear-cache!)
-      (let [decoded (check-token new-value)]
-        (when-not (:valid decoded)
-          (throw (ex-info (:status decoded)
-                          {:error-details (:error-details decoded)
-                           ;; If MetaStore told us the token is invalid, use 400. If some other error occurred, a 503 is
-                           ;; probably more appropriate.
-                           :status-code (if (:canonical? decoded)
-                                          400
-                                          503)
-                           :response/keys #{:error-details}}))))
-      (log/info "Token is valid."))
-    (setting/set-value-of-type! :string :premium-embedding-token new-value)
-    ((requiring-resolve 'metabase.dependencies.hooks/after-premium-token-update))
-    (catch Throwable e
-      (log/errorf "Error setting premium features token: %s" (ex-message e))
-      ;; merge in error-details if present
-      (throw (ex-info (.getMessage e) (merge
-                                       {:message (.getMessage e), :status-code 400}
-                                       (ex-data e)))))))
+  (let [had-dependencies? (has-feature? :dependencies)]
+    (try
+      (when (seq new-value)
+        (when (mr/validate [:re AirgapToken] new-value)
+          (assert-valid-airgap-user-count!))
+        (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
+                      (mr/validate [:re AirgapToken] new-value))
+          (throw (ex-info (tru "Token format is invalid.")
+                          {:status-code   400
+                           :error-details "Token should be 64 hexadecimal characters."
+                           :response/keys #{:error-details}})))
+        ;; validate against the store, not a cached verdict — the token may be the same string with a
+        ;; renewed subscription behind it
+        (clear-cache!)
+        (let [decoded (check-token new-value)]
+          (when-not (:valid decoded)
+            (throw (ex-info (:status decoded)
+                            {:error-details (:error-details decoded)
+                             ;; If MetaStore told us the token is invalid, use 400. If some other error occurred, a 503 is
+                             ;; probably more appropriate.
+                             :status-code (if (:canonical? decoded)
+                                            400
+                                            503)
+                             :response/keys #{:error-details}}))))
+        (log/info "Token is valid."))
+      (setting/set-value-of-type! :string :premium-embedding-token new-value)
+      ((requiring-resolve 'metabase.dependencies.hooks/after-premium-token-update) had-dependencies?)
+      (catch Throwable e
+        (log/errorf "Error setting premium features token: %s" (ex-message e))
+        ;; merge in error-details if present
+        (throw (ex-info (.getMessage e) (merge
+                                         {:message (.getMessage e), :status-code 400}
+                                         (ex-data e))))))))
 
 (defn -airgap-enabled
   "Getter for [[metabase.premium-features.settings/airgap-enabled]]"

@@ -937,6 +937,13 @@
                                                                           :where  [:= :entity.id :status.entity_id]}]]]
                                 :limit  batch-size}))))
 
+(mu/defn delete-all-statuses! :- :nil
+  "Delete every status of the three jobs, so they process every entity again."
+  []
+  (doseq [model [:model/DependencyStatus :model/ResultMetadataStatus :model/AnalysisFindingStatus]]
+    (t2/delete! model))
+  nil)
+
 ;;; ---------------------------------------------- Dependency job ----------------------------------------------
 
 (mu/defn dependency-deleted-entity-ids :- [:sequential ms/PositiveInt]

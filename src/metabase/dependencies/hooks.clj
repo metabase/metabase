@@ -22,10 +22,10 @@
   nil)
 
 (defenterprise after-premium-token-update
-  "Hook for after the premium token changed, which may have enabled the dependencies feature, and does nothing without
-  it."
+  "Hook for after the premium token changed, with whether the dependencies feature was on before, which does nothing
+  without it."
   metabase-enterprise.dependencies.hooks
-  []
+  [_had-feature?]
   nil)
 
 (defenterprise after-transform-run
