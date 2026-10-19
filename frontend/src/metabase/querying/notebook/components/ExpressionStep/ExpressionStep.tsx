@@ -160,17 +160,13 @@ const getUniqueClauseName = (
   clause: Lib.ExpressionClause | undefined,
   name: string,
 ) => {
-  const isUpdate = clause != null;
   // exclude the current clause so that it can be updated without renaming
-  const queryWithoutCurrentClause = isUpdate
-    ? Lib.removeClause(query, stageIndex, clause)
-    : query;
-  const expressions = Lib.expressions(queryWithoutCurrentClause, stageIndex);
-  const expressionsObject = Object.fromEntries(
-    expressions.map((expression) => [
-      Lib.displayInfo(query, stageIndex, expression).displayName,
-    ]),
+  const queryWithoutCurrentClause =
+    clause != null ? Lib.removeClause(query, stageIndex, clause) : query;
+  const uniqueName = getUniqueExpressionName(
+    queryWithoutCurrentClause,
+    stageIndex,
+    name,
   );
-  const uniqueName = getUniqueExpressionName(expressionsObject, name);
   return uniqueName;
 };

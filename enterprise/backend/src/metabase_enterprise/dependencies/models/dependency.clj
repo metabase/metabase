@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.sandbox.schema]
+   [metabase.actions.schema :as actions.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
@@ -22,8 +23,18 @@
 
 (def current-dependency-analysis-version
   "Current version of the dependency analysis logic.
-  This should be incremented when the dependency analysis logic changes."
-  6)
+  This should be incremented when the dependency analysis logic changes.
+
+  Version history:
+  - 1: Initial version
+  - 2: Added implicitly joined tables
+  - 3: Added segments
+  - 4: Tracked unreferenced and broken entities
+  - 5: Added the source tables of Python transforms
+  - 6: Enabled native entity validation
+  - 7: Native queries depend on the cards they reference but no longer on those cards' tables, and record whether
+       they name tables that match nothing"
+  7)
 
 (methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
 
@@ -201,7 +212,8 @@
                           ::documents.schema/document
                           :metabase-enterprise.sandbox.schema/sandbox
                           :metabase.segments.schema/segment
-                          :metabase.measures.schema/measure]]]]
+                          :metabase.measures.schema/measure
+                          ::actions.schema/action]]]]
   (boolean
    (case entity-type
      :card (some-> entity
@@ -212,6 +224,7 @@
                         :query
                         lib/any-native-stage?)
      :snippet true
+     :action (= :query (:type entity))
      false)))
 
 (defn- native-lookup-map [children]

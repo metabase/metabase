@@ -9,6 +9,7 @@ import {
   Flex,
   Icon,
   List,
+  Modal,
   Stack,
   Text,
   Title,
@@ -60,82 +61,83 @@ export function UpgradeModalInitial({
   ];
 
   return (
-    <Stack gap="xl">
-      <Flex align="center" gap="sm">
-        <UpsellGem size={24} />
-        <Title order={2}>{title}</Title>
-      </Flex>
+    <>
+      <Stack gap="xl">
+        <Flex align="center" gap="sm">
+          <UpsellGem size={24} />
+          <Title order={2}>{title}</Title>
+        </Flex>
 
-      <Box
-        bg="background_page-secondary"
-        p="xl"
-        style={{ borderRadius: "var(--mantine-radius-sm)" }}
-      >
-        <Stack gap="lg">
-          <Flex justify="space-between" align="center">
-            {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins */}
-            <Title order={4}>{t`Metabase Pro`}</Title>
-            <ExternalLink href="https://www.metabase.com/pricing">
-              <Anchor component="span">{t`See all features`}</Anchor>
-            </ExternalLink>
-          </Flex>
-
-          <List
-            spacing="xxs"
-            icon={<Icon name="check" c="text-primary" size={16} />}
-            pl={0}
-          >
-            {proFeatures.map((feature) => (
-              <List.Item key={feature}>
-                <Text c="text-secondary">{feature}</Text>
-              </List.Item>
-            ))}
-          </List>
-
-          <Divider />
-
-          <Stack gap="xxs">
+        <Box
+          bg="background_page-secondary"
+          p="xl"
+          style={{ borderRadius: "var(--mantine-radius-sm)" }}
+        >
+          <Stack gap="lg">
             <Flex justify="space-between" align="center">
-              <Text c="text-secondary">{t`Due today:`}</Text>
-              <Text fw="bold" size="lg">
-                {dueToday}
-              </Text>
+              {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins */}
+              <Title order={4}>{t`Metabase Pro`}</Title>
+              <ExternalLink href="https://www.metabase.com/pricing">
+                <Anchor component="span">{t`See all features`}</Anchor>
+              </ExternalLink>
             </Flex>
-            {showPlanPricing && planPricing && (
-              <Flex justify="space-between" align="flex-start">
-                <Text c="text-secondary">{t`After your trial ends:`}</Text>
-                <Stack gap={0} align="flex-end">
-                  <Text fw="bold" size="md">
-                    {planPricing.billingPeriodMonths === 12
-                      ? t`${formatPriceNoCents(planPricing.price)}/year + tax`
-                      : t`${formatPriceNoCents(planPricing.price)}/mo + tax`}
-                  </Text>
-                  <Text c="text-secondary" size="sm">
-                    {planPricing.billingPeriodMonths === 12
-                      ? t`Incl. ${planPricing.includedUsers} users, then ${formatPriceNoCents(planPricing.pricePerAdditionalUser)}/user/year`
-                      : t`Incl. ${planPricing.includedUsers} users, then ${formatPriceNoCents(planPricing.pricePerAdditionalUser)}/user/mo`}
-                  </Text>
-                </Stack>
+
+            <List
+              spacing="xxs"
+              icon={<Icon name="check" c="text-primary" size={16} />}
+              pl={0}
+            >
+              {proFeatures.map((feature) => (
+                <List.Item key={feature}>
+                  <Text c="text-secondary">{feature}</Text>
+                </List.Item>
+              ))}
+            </List>
+
+            <Divider />
+
+            <Stack gap="xxs">
+              <Flex justify="space-between" align="center">
+                <Text c="text-secondary">{t`Due today:`}</Text>
+                <Text fw="bold" size="lg">
+                  {dueToday}
+                </Text>
               </Flex>
-            )}
+              {showPlanPricing && planPricing && (
+                <Flex justify="space-between" align="flex-start">
+                  <Text c="text-secondary">{t`After your trial ends:`}</Text>
+                  <Stack gap={0} align="flex-end">
+                    <Text fw="bold" size="md">
+                      {planPricing.billingPeriodMonths === 12
+                        ? t`${formatPriceNoCents(planPricing.price)}/year + tax`
+                        : t`${formatPriceNoCents(planPricing.price)}/mo + tax`}
+                    </Text>
+                    <Text c="text-secondary" size="sm">
+                      {planPricing.billingPeriodMonths === 12
+                        ? t`Incl. ${planPricing.includedUsers} users, then ${formatPriceNoCents(planPricing.pricePerAdditionalUser)}/user/year`
+                        : t`Incl. ${planPricing.includedUsers} users, then ${formatPriceNoCents(planPricing.pricePerAdditionalUser)}/user/mo`}
+                    </Text>
+                  </Stack>
+                </Flex>
+              )}
+            </Stack>
           </Stack>
-        </Stack>
-      </Box>
+        </Box>
 
-      {isTrial && (
-        <Text c="text-secondary">
-          {t`After your free trial ends, we won't charge you automatically – you decide if you'd like to keep the Pro plan.`}
-        </Text>
-      )}
-
-      <Flex justify="flex-end" gap="lg">
+        {isTrial && (
+          <Text c="text-secondary">
+            {t`After your free trial ends, we won't charge you automatically – you decide if you'd like to keep the Pro plan.`}
+          </Text>
+        )}
+      </Stack>
+      <Modal.Footer>
         <Button variant="subtle" color="neutral" onClick={onCancel}>
           {t`Cancel`}
         </Button>
         <Button variant="filled" color="brand" onClick={onConfirm}>
           {buttonText}
         </Button>
-      </Flex>
-    </Stack>
+      </Modal.Footer>
+    </>
   );
 }

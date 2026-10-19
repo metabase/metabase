@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.calculation :as calculation]
+   [metabase.actions.core :as actions]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -682,3 +683,35 @@
                 {:dashcards [{:visualization_settings
                               {:click_behavior {:linkType "question" :targetId 7777}}}]})]
       (is (= #{7777} (:card deps))))))
+
+(deftest upstream-deps-query-action-test
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                   :model/Action {action-id :id} {:type :query, :name "Move check-ins"}
+                   :model/QueryAction _ {:action_id     action-id
+                                         :database_id   (mt/id)
+                                         :dataset_query (-> (lib/native-query mp (str "UPDATE checkins SET user_id = {{user}} "
+                                                                                      "WHERE venue_id IN (SELECT id FROM {{#" card-id "}})"))
+                                                            (lib/with-template-tags
+                                                              {"user"                 {:id           "user-tag"
+                                                                                       :type         :number
+                                                                                       :name         "user"
+                                                                                       :display-name "User"
+                                                                                       :required     true}
+                                                               (str "#" card-id) {:id           "card-tag"
+                                                                                  :type         :card
+                                                                                  :name         (str "#" card-id)
+                                                                                  :display-name "Venues"
+                                                                                  :card-id      card-id}}))}]
+      (is (= {:card  #{card-id}
+              :table #{(mt/id :checkins)}}
+             (calculation/calculate-deps :action (actions/select-action :id action-id)))))))
+
+(deftest upstream-deps-implicit-action-test
+  (let [mp (mt/metadata-provider)]
+    (mt/with-temp [:model/Card {model-id :id} {:type          :model
+                                               :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                   :model/Action {action-id :id} {:type :implicit, :name "Create venue", :model_id model-id}
+                   :model/ImplicitAction _ {:action_id action-id, :kind "row/create"}]
+      (is (= {:card #{model-id}}
+             (calculation/calculate-deps :action (actions/select-action :id action-id)))))))

@@ -64,7 +64,11 @@ import type {
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
-import { createMessageId, parseSlashCommand } from "./utils";
+import {
+  createMessageId,
+  getServerErrorDisplay,
+  parseSlashCommand,
+} from "./utils";
 
 export const {
   addAgentTextDelta,
@@ -717,22 +721,7 @@ export const sendAgentRequest = createAsyncThunk<
           shouldRetry: true,
           serverStarted,
           error: streamedError,
-          display: isMatching(
-            {
-              type: P.union(
-                "ai_usage_limit_reached",
-                "ai_provider_billing",
-                "ai_provider_rate_limit",
-                "ai_provider_auth",
-                "ai_provider_unavailable",
-              ),
-              message: P.string,
-            },
-            streamedError,
-          )
-            ? // special case where we want to show the returned error from the backend
-              { type: "message" as const, message: streamedError.message }
-            : undefined,
+          display: getServerErrorDisplay(streamedError),
         });
       }
 

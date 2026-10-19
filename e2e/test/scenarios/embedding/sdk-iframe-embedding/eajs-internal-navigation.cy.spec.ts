@@ -153,7 +153,7 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       });
     });
 
-    it("should navigate to a linked dashboard with filters when clicking a dashboard link", () => {
+    it("should navigate to a linked dashboard with filters and to a linked question with parameters", () => {
       cy.get<number>("@startingDashboardId").then((startingDashboardId) => {
         H.visitCustomHtmlPage(`
           ${H.getNewEmbedScriptTag()}
@@ -196,18 +196,6 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       H.getSimpleEmbedIframeContent()
         .findByText(/Back to/)
         .should("not.exist");
-    });
-
-    it("should navigate to a linked question with parameters when clicking a question link", () => {
-      cy.get<number>("@startingDashboardId").then((startingDashboardId) => {
-        H.visitCustomHtmlPage(`
-          ${H.getNewEmbedScriptTag()}
-          ${H.getNewEmbedConfigurationScript({})}
-          <metabase-dashboard dashboard-id="${startingDashboardId}" drills enable-entity-navigation />
-        `);
-      });
-
-      cy.wait("@getDashCardQuery");
 
       cy.log("click on the question link");
       H.getSimpleEmbedIframeContent()
@@ -361,7 +349,7 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       });
     });
 
-    it("should hide breadcrumbs during internal navigation and show them again after going back", () => {
+    it("should hide breadcrumbs during internal navigation, show them again after going back, and clean up the navigation stack", () => {
       H.visitCustomHtmlPage(`
         ${H.getNewEmbedScriptTag()}
         ${H.getNewEmbedConfigurationScript({})}
@@ -392,15 +380,18 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
         .first()
         .click();
 
+      cy.log("back button should be visible");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Back to First Dashboard")
+        .should("be.visible");
+
       cy.log("breadcrumbs should be hidden after navigating");
       H.getSimpleEmbedIframeContent()
         .findByTestId("sdk-breadcrumbs")
         .should("not.exist");
 
-      cy.log("back button should be visible");
       H.getSimpleEmbedIframeContent()
         .findByText("Back to First Dashboard")
-        .should("be.visible")
         .click();
 
       cy.log("verify we returned to First Dashboard");
@@ -417,36 +408,6 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       H.getSimpleEmbedIframeContent()
         .findByText(/Back to/)
         .should("not.exist");
-    });
-
-    it("should clean up navigation stack when clicking a collection breadcrumb after navigating back", () => {
-      H.visitCustomHtmlPage(`
-        ${H.getNewEmbedScriptTag()}
-        ${H.getNewEmbedConfigurationScript({})}
-        <metabase-browser initial-collection="root" enable-entity-navigation />
-      `);
-
-      cy.log("open First Dashboard from the browser");
-      H.getSimpleEmbedIframeContent()
-        .findByText("First Dashboard")
-        .should("be.visible")
-        .click();
-
-      cy.wait("@getDashCardQuery");
-
-      cy.log("navigate to Target Dashboard via click behavior link");
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("Go to Target Dashboard")
-        .first()
-        .click();
-
-      cy.wait("@getDashboard");
-
-      cy.log("click back to return to First Dashboard");
-      H.getSimpleEmbedIframeContent()
-        .findByText("Back to First Dashboard")
-        .should("be.visible")
-        .click();
 
       cy.log(
         "click 'Our analytics' breadcrumb to go back to the collection browser",

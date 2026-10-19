@@ -29,9 +29,7 @@
           "embedding-sdk-package",
           "embedding-sdk-package/**",
           "embedding-sdk-shared",
-          "embedding-sdk-shared/**",
-          "img",
-          "img/**"
+          "embedding-sdk-shared/**"
         ]
       },
       {

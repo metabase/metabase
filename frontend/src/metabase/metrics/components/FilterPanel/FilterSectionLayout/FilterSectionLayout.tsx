@@ -28,7 +28,7 @@ export function FilterSectionLayout({
         </Box>
         {children}
       </Stack>
-      <ActionIcon aria-label={t`Remove`} onClick={onRemove}>
+      <ActionIcon variant="subtle" aria-label={t`Remove`} onClick={onRemove}>
         <FixedSizeIcon name="close" />
       </ActionIcon>
     </Group>
