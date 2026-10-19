@@ -1037,6 +1037,7 @@
         card.metadata/populate-result-metadata
         pre-insert
         populate-query-fields
+        maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix)
     (collection/check-allowed-content (library-content-type <> mi/*deserializing?*) (:collection_id <>))
     (check-data-app-card <>)))
