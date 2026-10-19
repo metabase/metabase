@@ -201,6 +201,7 @@
                        :model/TransformTest {test-id :id}      {:transform_id transform-id :name "No nulls"}]
           (let [library-id (edit-default-python-library!)]
             (insert-rso! "Transform" tracked-id "synced")
+            (settings/remote-sync-transforms! true)
             (remote-sync.events/enable-transforms-tracking!)
             (is (= {["Collection" folder-id]       "create"
                     ["Transform" transform-id]     "create"
@@ -214,7 +215,7 @@
 
 (deftest enable-transforms-tracking-skips-default-content-test
   (testing "Enabling transforms tracking with only built-in tags and the default Python library records nothing"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms true]
       (reset-default-python-library!)
       (is (t2/exists? :model/TransformTag :built_in_type [:not= nil]))
       (remote-sync.events/enable-transforms-tracking!)
@@ -265,7 +266,7 @@
 
 (deftest re-enabling-transforms-tracking-restores-removed-rows-test
   (testing "Re-enabling transforms tracking before a push turns removed rows back into updates"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms true]
       (mt/with-temp [:model/Transform {synced-id :id} {:name "Synced"}
                      :model/Transform {created-id :id} {:name "Created"}]
         (insert-rso! "Transform" synced-id "synced")
@@ -275,9 +276,39 @@
         (is (= "update" (rso-status "Transform" synced-id)))
         (is (= "create" (rso-status "Transform" created-id)))))))
 
+(deftest re-enabling-transforms-tracking-deletes-removed-rows-of-deleted-content-test
+  (testing "Re-enabling transforms tracking turns the removed row of content deleted while sync was off into a delete"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms true]
+      (mt/with-temp [:model/Transform {kept-id :id}    {:name "Kept"}
+                     :model/Transform {deleted-id :id} {:name "Deleted"}]
+        (insert-rso! "Transform" kept-id "synced")
+        (insert-rso! "Transform" deleted-id "synced")
+        (remote-sync.events/disable-transforms-tracking!)
+        (t2/delete! :model/Transform :id deleted-id)
+        (remote-sync.events/enable-transforms-tracking!)
+        (is (= "update" (rso-status "Transform" kept-id)))
+        (is (= "delete" (rso-status "Transform" deleted-id)))))))
+
+(deftest enable-transforms-tracking-records-only-exported-content-test
+  (testing "Enabling transforms tracking records rows only for what an export writes, and folder rows carry their own id"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-enabled    true
+                                         remote-sync-type       :read-write
+                                         remote-sync-transforms true]
+        (mt/with-temp [:model/Collection {folder-id :id}   {:name "ETL" :namespace collection/transforms-ns}
+                       :model/Collection {archived-id :id} {:name "Old" :namespace collection/transforms-ns :archived true}
+                       :model/Transform  {live-id :id}     {:name "Live" :collection_id folder-id}
+                       :model/Transform  {stale-id :id}    {:name "Stale" :collection_id archived-id}]
+          (remote-sync.events/enable-transforms-tracking!)
+          (is (=? {:status "create" :model_collection_id folder-id}
+                  (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id folder-id)))
+          (is (= "create" (rso-status "Transform" live-id)))
+          (is (nil? (rso-status "Collection" archived-id)))
+          (is (nil? (rso-status "Transform" stale-id))))))))
+
 (deftest disable-enable-disable-keeps-pushed-rows-removed-test
   (testing "Disabling, re-enabling, and disabling transforms tracking again before a push still removes pushed files"
-    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+    (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms true]
       (mt/with-temp [:model/Transform {synced-id :id} {:name "Synced"}
                      :model/Transform {created-id :id} {:name "Created"}]
         (insert-rso! "Transform" synced-id "synced")
@@ -370,14 +401,27 @@
 
 (deftest convert-legacy-transforms-root-pending-publish-test
   (testing "A legacy Transforms root pending publish becomes a 'create' row for each untracked piece of content"
-    (doseq [status ["create" "update"]]
-      (testing status
-        (mt/with-temp [:model/Transform {transform-id :id} {:name "T"}]
-          (insert-legacy-transforms-root! status)
-          (remote-sync.events/convert-legacy-transforms-root!)
-          (is (= "create" (rso-status "Transform" transform-id)))
-          (is (not (legacy-transforms-root-exists?)))
-          (t2/delete! :model/RemoteSyncObject))))))
+    (mt/with-temporary-setting-values [remote-sync-transforms true]
+      (doseq [status ["create" "update"]]
+        (testing status
+          (mt/with-temp [:model/Transform {transform-id :id} {:name "T"}]
+            (insert-legacy-transforms-root! status)
+            (remote-sync.events/convert-legacy-transforms-root!)
+            (is (= "create" (rso-status "Transform" transform-id)))
+            (is (not (legacy-transforms-root-exists?)))
+            (t2/delete! :model/RemoteSyncObject)))))))
+
+(deftest convert-legacy-transforms-root-concurrently-test
+  (testing "Nodes converting the legacy Transforms root at the same time record one row per piece of content"
+    (mt/with-temporary-setting-values [remote-sync-transforms true]
+      (mt/with-temp [:model/Transform {transform-id :id} {:name "T"}]
+        (insert-legacy-transforms-root! "create")
+        (let [start (promise)
+              nodes (doall (repeatedly 4 #(future @start (remote-sync.events/convert-legacy-transforms-root!))))]
+          (deliver start true)
+          (run! deref nodes))
+        (is (= 1 (t2/count :model/RemoteSyncObject :model_type "Transform" :model_id transform-id)))
+        (is (not (legacy-transforms-root-exists?)))))))
 
 (deftest convert-legacy-transforms-root-pending-delete-test
   (testing "A legacy Transforms root pending deletion marks the pushed transforms removed and drops the others"

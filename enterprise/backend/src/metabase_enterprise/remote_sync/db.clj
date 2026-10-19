@@ -58,6 +58,14 @@
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
+(mu/defn existing-ids :- [:set ms/PositiveInt]
+  "The IDs among `ids` of the existing instances of `model-key`."
+  [model-key :- :keyword
+   ids       :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select-pks-set model-key :id [:in ids])
+    #{}))
+
 (mu/defn instances-where
   "The instances of `model-key` matching `conditions` (a map of column to value or Toucan 2 operator-vector value,
   or nil for every instance)."
