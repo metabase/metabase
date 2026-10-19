@@ -9,14 +9,13 @@ type BulkActionButtonProps = Omit<ButtonProps, "variant"> & {
 export const BulkActionButton = forwardRef<
   HTMLButtonElement,
   BulkActionButtonProps
->(function BulkActionButton({ danger = false, c, disabled, ...props }, ref) {
+>(function BulkActionButton({ danger = false, color, ...props }, ref) {
   return (
     <Button
       {...props}
       ref={ref}
-      disabled={disabled}
       variant="on-dark-secondary"
-      c={danger && !disabled ? "feedback-negative" : c}
+      color={danger ? "negative" : color}
     />
   );
 });
