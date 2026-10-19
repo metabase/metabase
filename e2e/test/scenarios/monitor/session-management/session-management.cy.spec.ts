@@ -116,6 +116,7 @@ describe("scenarios > monitor > session management", () => {
           sessionRow(s.nodataA).should("not.exist");
 
           sessionRow(s.normalA).click();
+          sessionSidebar().should("contain", "Robert Tableton");
           sessionSidebar().button("Revoke session").click();
           confirmRevoke("Revoke this session?");
           expectToast("Revoked 1 session");
@@ -131,6 +132,7 @@ describe("scenarios > monitor > session management", () => {
           sessionRow(s.normalB).should("not.exist");
 
           sessionRow(s.nodataA).click();
+          sessionSidebar().should("contain", "No Data Tableton");
           sessionSidebar().button("Revoke active sessions").click();
           confirmRevoke("Revoke all sessions for No Data Tableton?");
           // no count: the other users' cached sessions H.restore() brings back are revoked too

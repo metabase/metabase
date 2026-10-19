@@ -17,7 +17,12 @@ import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
-import { useLocation, useNavigate, useParams } from "metabase/router";
+import {
+  queryToSearch,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "metabase/router";
 import { Button, Flex, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useLazyListSessionsQuery } from "metabase-enterprise/api";
@@ -151,10 +156,10 @@ export const SessionsPage = () => {
           id === undefined
             ? Urls.monitorSessions()
             : Urls.monitorSessionDetail(id),
-        search: location.search,
+        search: queryToSearch(urlStateConfig.serialize(urlState)),
       });
     },
-    [navigate, location.search],
+    [navigate, urlState],
   );
 
   const handleSidebarClose = useCallback(
