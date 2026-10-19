@@ -23,8 +23,8 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources)
-   (java.sql Connection)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources PooledDataSource)
+   (java.sql Connection SQLException)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
 
@@ -371,6 +371,32 @@
             :let      [[old-map] (swap-vals! pool-cache-key->connection-pool dissoc cache-key)
                        pool-spec (get old-map cache-key)]
             :when     pool-spec]
+      (destroy-pool! db-id pool-spec)
+      (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
+
+(defn- empty-pool?
+  [data-source]
+  (and (instance? PooledDataSource data-source)
+       (try
+         (zero? (.getNumConnectionsDefaultUser ^PooledDataSource data-source))
+         (catch SQLException _
+           false))))
+
+(defn invalidate-empty-pool!
+  "Closes the cached pool for a given `data-source` if it has no connections. This should be called
+   after a checkout from a pool fails, otherwise c3p0 will make repeated requests which can lock
+   out certain DBs (#84206). We don't use [[pool-cache-key]] here to avoid looking up the database
+   object from the app DB, which could fail or have a race condition across multiple pods."
+  [data-source]
+  (when (empty-pool? data-source)
+    (doseq [[cache-key pool-spec] @pool-cache-key->connection-pool
+            :when (identical? (:datasource pool-spec) data-source)
+            :let [db-id (first cache-key)]]
+      (log/warnf "Could not acquire a connection for database %d; closing its empty connection pool" db-id)
+      ;; do not remove a newer pool that another thread put in the cache
+      (swap! pool-cache-key->connection-pool
+             #(cond-> %
+                (identical? (get % cache-key) pool-spec) (dissoc cache-key)))
       (destroy-pool! db-id pool-spec)
       (swap! pool-cache-key->jdbc-spec-hash dissoc cache-key))))
 
