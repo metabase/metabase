@@ -10,12 +10,11 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { FormField } from "metabase/common/components/FormField";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { TextArea } from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
-import { ActionIcon, Box, Icon, Switch, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Icon, Switch, Textarea, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
@@ -143,11 +142,10 @@ export function InlineActionSettings({
           onClose={closeModal}
         />
         <FormField title={t`Success message`} htmlFor={`${id}-message`}>
-          <TextArea
+          <Textarea
             id={`${id}-message`}
             value={formSettings.successMessage ?? ""}
             placeholder={t`Action ran successfully`}
-            fullWidth
             disabled={!isEditable}
             onChange={handleSuccessMessageChange}
           />
