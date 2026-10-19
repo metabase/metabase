@@ -6,7 +6,8 @@
      bb -e '(require (quote mage.pre-commit-hook-integration-test)) (mage.pre-commit-hook-integration-test/run-tests)'
 
    lint-staged stashes your work as `lint-staged automatic backup` before running tasks. When lint-staged itself
-   dies (e.g. bun or node crashes), it never restores that backup, and the commit attempt loses unstaged changes."
+   dies (e.g. bun or node crashes) after its reset, it never restores that backup. During a merge without
+   partially staged files the hook skips the stash, so a crash cannot take the resolved conflicts with it."
   (:require
    [babashka.fs :as fs]
    [babashka.process :as p]
@@ -14,18 +15,20 @@
    [clojure.test :refer [deftest is testing]]
    [mage.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private hook-path
   (str (fs/path u/project-root-directory ".husky" "pre-commit")))
 
 (def ^:private lint-staged-bin
   (str (fs/path u/project-root-directory "node_modules" ".bin" "lint-staged")))
 
-;; Kills lint-staged mid-run, as if bun or node crashed.
-(def ^:private crash-script
-  "#!/bin/sh
-kill -KILL $PPID
-sleep 5
-")
+;; Kills lint-staged when it restores its backup stash, after it has reset the work tree, as if bun or node crashed.
+(defn- crashing-git-script []
+  (str "#!/bin/sh
+case \" $* \" in *\" stash apply \"*) kill -KILL $PPID; sleep 5 ;; esac
+exec " (fs/which "git") " \"$@\"
+"))
 
 (defn- sh [dir & args]
   (let [result (p/sh (vec args) {:dir dir :err :string :out :string})]
@@ -38,31 +41,28 @@ sleep 5
     (:out result)))
 
 (defn- run-hook [dir]
-  (let [tmp-dir (fs/create-temp-dir {:prefix "pre-commit-hook-tmp-"})]
-    (try
-      (let [result (p/sh ["sh" "-e" hook-path] {:dir dir
-                                                :err :string
-                                                :out :string
-                                                :extra-env {"TMPDIR" (str tmp-dir)}})]
-        (assoc result :temporary-files (->> (fs/list-dir tmp-dir)
-                                            (filter #(str/starts-with? (str (fs/file-name %)) "tmp."))
-                                            (mapv str))))
-      (finally
-        (fs/delete-tree tmp-dir)))))
+  (p/sh ["sh" "-e" hook-path] {:dir dir
+                               :err :string
+                               :out :string
+                               :extra-env {"PATH" (str dir "/fake-bin:" (System/getenv "PATH"))}}))
 
 (defn- setup-test-repo
-  "Creates a repo in the middle of a merge: the conflict in `a.txt` is resolved and staged, and `b.txt` is staged
-   with an extra unstaged line. The lint-staged task for `*.txt` runs `task`.
+  "Creates a repo in the middle of a merge: the conflict in `a.txt` is resolved and staged, and `b.txt` is staged.
+   With `partially-staged?`, `b.txt` also gets an unstaged line. The lint-staged task for `*.txt` runs `task`.
+   With `crash-on-restore?`, the hook runs with a `git` that kills lint-staged when it restores its backup stash.
 
    Returns the path to the temp directory."
-  [task]
+  [{:keys [task partially-staged? crash-on-restore?]}]
   (let [tmp-dir (str (fs/create-temp-dir {:prefix "pre-commit-hook-test-"}))]
     (sh tmp-dir "git" "init" "-b" "master")
     (sh tmp-dir "git" "config" "user.email" "test@test.com")
     (sh tmp-dir "git" "config" "user.name" "Test User")
     (spit (str tmp-dir "/package.json") (str "{\"scripts\": {\"precommit\": \"" lint-staged-bin "\"}}\n"))
     (spit (str tmp-dir "/lint-staged.config.cjs") (str "module.exports = { \"*.txt\": [\"" task "\"] };\n"))
-    (spit (str tmp-dir "/crash.sh") crash-script)
+    (when crash-on-restore?
+      (fs/create-dirs (str tmp-dir "/fake-bin"))
+      (spit (str tmp-dir "/fake-bin/git") (crashing-git-script))
+      (fs/set-posix-file-permissions (str tmp-dir "/fake-bin/git") "rwxr-xr-x"))
     (fs/create-sym-link (str tmp-dir "/hooks") (fs/path u/project-root-directory "hooks"))
     (spit (str tmp-dir "/a.txt") "base\n")
     (sh tmp-dir "git" "add" ".")
@@ -77,41 +77,44 @@ sleep 5
     (spit (str tmp-dir "/a.txt") "resolved\n")
     (spit (str tmp-dir "/b.txt") "staged\n")
     (sh tmp-dir "git" "add" "a.txt" "b.txt")
-    (spit (str tmp-dir "/b.txt") "staged\nunstaged\n")
+    (when partially-staged?
+      (spit (str tmp-dir "/b.txt") "staged\nunstaged\n"))
     tmp-dir))
 
-(defn- assert-work-kept [tmp-dir]
+(defn- assert-work-kept [tmp-dir partially-staged?]
   (is (= "resolved\n" (sh tmp-dir "git" "show" ":a.txt")) "resolved conflict stays staged")
+  (is (= "resolved\n" (slurp (str tmp-dir "/a.txt"))) "resolved conflict stays in the working tree")
   (is (= "staged\n" (sh tmp-dir "git" "show" ":b.txt")) "staged change stays staged")
-  (is (= "staged\nunstaged\n" (slurp (str tmp-dir "/b.txt"))) "unstaged change stays in the working tree")
+  (is (= (if partially-staged? "staged\nunstaged\n" "staged\n") (slurp (str tmp-dir "/b.txt")))
+      "working tree keeps all changes")
   (is (fs/exists? (str tmp-dir "/.git/MERGE_HEAD")) "merge is still in progress"))
 
+(defn- run-hook-in-merge [{:keys [partially-staged?] :as opts}]
+  (let [tmp-dir (setup-test-repo opts)]
+    (try
+      (let [result (run-hook tmp-dir)]
+        (assert-work-kept tmp-dir partially-staged?)
+        result)
+      (finally
+        (fs/delete-tree tmp-dir)))))
+
 (deftest lint-staged-crash-keeps-work-test
-  (testing "When lint-staged is killed mid-run during a merge, the hook fails and all work is kept"
-    (let [tmp-dir (setup-test-repo "sh ./crash.sh")]
-      (try
-        (let [result (run-hook tmp-dir)
-              stash-hash (str/trim (sh tmp-dir "git" "rev-parse" "refs/stash"))]
-          (is (not= 0 (:exit result)) "hook blocks the commit")
-          (is (str/includes? (:out result) stash-hash) "hook reports the retained safety backup hash")
-          (is (empty? (:temporary-files result)) "hook removes its temporary merge-state backup"))
-        (assert-work-kept tmp-dir)
-        (is (= ["lint-staged automatic backup"]
-               (str/split-lines (sh tmp-dir "git" "stash" "list" "--format=%gs")))
-            "lint-staged backup is retained as a safety copy")
-        (finally
-          (fs/delete-tree tmp-dir))))))
+  (testing "When lint-staged crashes while reverting a failed lint during a merge, the hook fails and all work is kept"
+    (is (not= 0 (:exit (run-hook-in-merge {:task "false" :crash-on-restore? true}))) "hook blocks the commit")))
+
+(deftest lint-task-failure-keeps-work-test
+  (doseq [partially-staged? [false true]]
+    (testing (str "When a lint task fails during a merge, the hook fails and all work is kept"
+                  (when partially-staged? ", including unstaged lines of a partially staged file"))
+      (is (not= 0 (:exit (run-hook-in-merge {:task "false" :partially-staged? partially-staged?})))
+          "hook blocks the commit"))))
 
 (deftest lint-staged-success-keeps-work-test
-  (testing "When lint-staged passes, the hook succeeds and all work is kept"
-    (let [tmp-dir (setup-test-repo "true")]
-      (try
-        (let [result (run-hook tmp-dir)]
-          (is (= 0 (:exit result)) (str "hook allows the commit. Output:\n" (:out result) (:err result)))
-          (is (empty? (:temporary-files result)) "hook removes its temporary merge-state backup"))
-        (assert-work-kept tmp-dir)
-        (finally
-          (fs/delete-tree tmp-dir))))))
+  (doseq [partially-staged? [false true]]
+    (testing (str "When lint-staged passes during a merge, the hook succeeds and all work is kept"
+                  (when partially-staged? ", including unstaged lines of a partially staged file"))
+      (let [result (run-hook-in-merge {:task "true" :partially-staged? partially-staged?})]
+        (is (= 0 (:exit result)) (str "hook allows the commit. Output:\n" (:out result) (:err result)))))))
 
 (defn run-tests
   "Run the integration tests. Call this manually since these tests
