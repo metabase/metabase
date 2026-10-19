@@ -258,6 +258,8 @@ export type GdrivePayload = {
   error?: string;
 };
 
+// Values of the `features` array in the admin-only `token-status` setting: raw strings from the store.
+// Not exhaustive: the store can send values that aren't listed here.
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -334,6 +336,8 @@ export type DayOfWeekId =
   | "friday"
   | "saturday";
 
+// Keys of the public `token-features` setting, mirroring `-token-features` in premium_features/settings.clj.
+// If Starter tokens carry a new feature, also add it to STARTER_FEATURES in metabase/settings/plan.ts.
 export const tokenFeatures = [
   "attached_dwh",
   "advanced_permissions",

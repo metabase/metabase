@@ -5,13 +5,11 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { UpsellBigCard } from "metabase/common/components/upsells/components";
 import S from "metabase/common/components/upsells/components/Upsells.module.css";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
-import { useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { PLUGIN_ADMIN_SETTINGS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 
 export const UpsellRemoteSync = ({ source }: { source: string }) => {
-  const hasRemoteSync = useHasTokenFeature("remote_sync");
   const applicationName = useSelector(getApplicationName);
   const campaign = "remote-sync";
   const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
@@ -19,7 +17,7 @@ export const UpsellRemoteSync = ({ source }: { source: string }) => {
     location: source,
   });
 
-  if (hasRemoteSync) {
+  if (PLUGIN_REMOTE_SYNC.isEnabled) {
     return null;
   }
 

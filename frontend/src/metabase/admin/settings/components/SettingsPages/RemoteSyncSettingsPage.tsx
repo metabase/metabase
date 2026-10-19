@@ -1,11 +1,8 @@
 import { UpsellRemoteSync } from "metabase/admin/upsells";
-import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 
 export function RemoteSyncSettingsPage() {
-  const hasRemoteSync = useHasTokenFeature("remote_sync");
-
-  if (hasRemoteSync) {
+  if (PLUGIN_REMOTE_SYNC.isEnabled) {
     return <PLUGIN_REMOTE_SYNC.RemoteSyncSettings />;
   }
 
