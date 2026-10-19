@@ -107,8 +107,9 @@
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
-  (u/prog1 (cond-> snippet
-             (:content snippet) add-template-tags)
+  (u/prog1 (-> (cond-> snippet
+                 (:content snippet) add-template-tags)
+               mi/increment-version)
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? (t2/changes <>) :creator_id)
       (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))
@@ -199,7 +200,7 @@
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy      [:archived :description :entity_id :name]
-   :skip      []
+   :skip      [:version]
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dependencies.hooks
   "Implements the hooks of `metabase.dependencies.hooks`, triggering the background jobs once a write commits. The jobs
-  find what changed from the `updated_at` of each entity, so a write records nothing for them."
+  find what changed from the `version` of each entity, so an insert or an update records nothing for them."
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
@@ -10,7 +10,6 @@
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]))
 
@@ -35,11 +34,9 @@
   (delay (grouper/start! (fn [_writes] (trigger-jobs-now!)) :capacity 500 :interval 1000)))
 
 (defn- trigger-jobs!
-  "Have every job triggered once the current transaction commits, together with the other writes in its batch, unless
-  a serdes load triggers them once it finishes."
+  "Have every job triggered once the current transaction commits, together with the other writes in its batch."
   []
-  (when-not mi/*deserializing?*
-    (mdb/do-after-commit #(grouper/submit! @writes-queue {:dependency-jobs true}))))
+  (mdb/do-after-commit #(grouper/submit! @writes-queue {:dependency-jobs true})))
 
 (defenterprise before-insert
   "Trigger the jobs for inserting the `model` row `instance`."
@@ -67,20 +64,20 @@
 
 (defenterprise before-delete
   "Trigger the jobs for deleting the `model` row `instance`, having the entity it is a part of, or the transforms of a
-  deleted Database, and the entities directly depending on them processed again, since a delete moves no `updated_at`."
+  deleted Database, processed again, since a delete lowers the version of the entity it is part of, and the entities
+  transitively depending on a deleted entity, since nothing picks it to have them processed."
   :feature :dependencies
   [model instance]
   (let [[owner-type owner-id] (part-owner model instance)
         entity-type           (deps.dependency-types/model->dependency-type model)]
     (when owner-id
-      (dependencies.db/forget-entity-processing! owner-type owner-id)
-      (dependencies.db/forget-dependents-processing! owner-type owner-id))
+      (dependencies.db/forget-entity-processing! owner-type owner-id))
     (when entity-type
-      (dependencies.db/forget-dependents-processing! entity-type (:id instance)))
+      (dependencies.db/forget-dependents-processing!
+       (models.dependency/transitive-dependents {entity-type [instance]})))
     (when (= model :model/Database)
       (doseq [transform-id (dependencies.db/source-database-transform-ids (:id instance))]
-        (dependencies.db/forget-entity-processing! :transform transform-id)
-        (dependencies.db/forget-dependents-processing! :transform transform-id))))
+        (dependencies.db/forget-entity-processing! :transform transform-id))))
   (trigger-jobs!))
 
 (defenterprise after-transform-run
@@ -90,12 +87,6 @@
   (when table-id
     (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))
   (trigger-jobs!))
-
-(defenterprise after-serdes-load
-  "Trigger every job for what a serdes load wrote."
-  :feature :dependencies
-  []
-  (trigger-jobs-now!))
 
 (defenterprise after-premium-token-update
   "Restart every job, since they stop while the dependencies feature is disabled."

@@ -23,6 +23,7 @@
    [:human_readable_field_id {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:version                 {:optional true} [:maybe :int]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
 (mr/def ::field.settings
@@ -45,6 +46,7 @@
   [:map {:closed true}
    [:created_at                 {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                 {:optional true} [:maybe ms/TemporalInstant]]
+   [:version                    {:optional true} [:maybe :int]]
    [:name                       {:optional true} [:maybe :string]]
    [:base_type                  {:optional true} [:maybe [:or :keyword :string]]]
    [:semantic_type              {:optional true} [:maybe [:or :keyword :string]]]
@@ -99,6 +101,7 @@
    [:field_id           {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
+   [:version            {:optional true} [:maybe :int]]
    [:semantic_type      {:optional true} [:maybe [:or :keyword :string]]]
    [:description        {:optional true} [:maybe :string]]
    [:display_name       {:optional true} [:maybe :string]]
@@ -151,6 +154,7 @@
    [:table_id                {:optional true} [:maybe ::lib.schema.id/table]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:version                 {:optional true} [:maybe :int]]
    [:display_name            {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:entity_type             {:optional true} [:maybe [:or :keyword :string]]]
@@ -195,6 +199,7 @@
   [:map {:closed true}
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:version                 {:optional true} [:maybe :int]]
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:entity_type             {:optional true} [:maybe [:or :keyword :string]]]

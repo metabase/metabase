@@ -76,6 +76,7 @@
    "AiUsageLog"
    "AnalysisFinding"
    "AnalysisFindingError"
+   "AnalysisFindingStatus"
    "ApiKey"
    "ApiKeyUsageLog"
    "ApplicationPermissionsRevision"

@@ -1,6 +1,7 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
    [metabase.dashboards.schema]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -9,8 +10,12 @@
 
 (doto :model/DashboardCardSeries
   (derive :metabase/model)
-  (derive :hook/timestamped?)
   (derive :hook/dependencies))
+
+(t2/define-before-update :model/DashboardCardSeries
+  [series]
+  (mi/check-parent-unchanged series :dashboardcard_id)
+  (mi/increment-version series))
 
 ;; Serialization
 
@@ -22,6 +27,6 @@
   ;; We did not have `position` in serialization before, it was inferred from the order, but we're trying to keep
   ;; code more generic right now - so it's carried over as data rather than implied.
   {:copy      [:position]
-   :skip      [:created_at]
+   :skip      [:version]
    :transform {:dashboardcard_id (serdes/parent-ref)
                :card_id          (serdes/fk :model/Card)}})

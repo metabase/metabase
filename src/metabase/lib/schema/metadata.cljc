@@ -574,6 +574,7 @@
    [:fingerprint-version        {:optional true} [:maybe :int]]
    [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
+   [:version                    {:optional true} [:maybe :int]]
    [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]
    ;; the Field a foreign key points at, and the Field that names this table's rows: hydrated onto a Field by the
    ;; application database metadata provider, but only an id reference in the metadata the frontend hands over

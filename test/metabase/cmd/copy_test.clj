@@ -139,6 +139,7 @@
     :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
+    :model/AnalysisFindingStatus
     :model/ApiKeyUsageLog
     :model/CacheConfig
     :model/CardFavorite

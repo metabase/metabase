@@ -158,6 +158,7 @@
                               (when-not request?
                                 [[:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
                                  [:updated_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+                                 [:version            {:optional true} [:maybe :int]]
                                  [:public_uuid        {:optional true} [:maybe ms/UUIDString]]
                                  [:public_uuid_prefix {:optional true} [:maybe :string]]
                                  [:made_public_by_id  {:optional true} [:maybe ::lib.schema.id/user]]
@@ -216,8 +217,7 @@
    [:database_id   ::lib.schema.id/database]
    [:dataset_query ::query-action.dataset-query]
    [:legacy_query  [:maybe :string]]
-   [:created_at    {:optional true} ms/TemporalInstant]
-   [:updated_at    {:optional true} ms/TemporalInstant]])
+   [:version       {:optional true} [:maybe :int]]])
 
 (mr/def ::query-action.update
   "What an update (or insert) of a QueryAction accepts: every column of `:query_action` except `id`, all optional."
@@ -226,8 +226,7 @@
    [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
    [:dataset_query {:optional true} [:maybe ::query-action.dataset-query]]
    [:legacy_query  {:optional true} [:maybe :string]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]])
+   [:version       {:optional true} [:maybe :int]]])
 
 (mr/def ::execution.row-diff
   "One effect recorded against the `:effects` key of [[::execution-context]]: the before/after state of a row a

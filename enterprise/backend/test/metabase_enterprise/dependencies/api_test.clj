@@ -1859,7 +1859,7 @@
                 (run-analysis-for-card! (:id card)))
               (testing "the dependent card's analysis is now broken, attributing the inactive table as the source"
                 (is (false? (t2/select-one-fn :result :model/AnalysisFinding
-                                              :analyzed_entity_type "card" :analyzed_entity_id (:id card))))
+                                              :entity_type "card" :entity_id (:id card))))
                 (is (t2/exists? :model/AnalysisFindingError
                                 :source_entity_type "table" :source_entity_id (:id table)
                                 :analyzed_entity_type "card" :analyzed_entity_id (:id card))))

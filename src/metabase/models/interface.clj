@@ -713,6 +713,24 @@
 
 (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
   (methodical/prefer-method! #'t2.before-update/before-update hook :hook/dependencies))
+
+(defn increment-version
+  "The update `instance` with its `version` incremented in the database, unless it changes nothing but the columns in
+  `ignored`, such as usage counters; a model whose rows the dependency jobs read calls it in its before-update."
+  ([instance]
+   (increment-version instance #{}))
+  ([instance ignored]
+   (cond-> instance
+     (seq (remove ignored (keys (t2/changes instance))))
+     (assoc :version [:+ (u/qualified-key (t2/table-name (t2/model instance)) :version) [:inline 1]]))))
+
+(defn check-parent-unchanged
+  "Throw a 400 when the update `instance` moves the row to another parent, changing its `parent-key`, since the
+  version of a parent sums the versions of its rows."
+  [instance parent-key]
+  (when (contains? (t2/changes instance) parent-key)
+    (throw (ex-info (format "The %s of a %s can't change" (name parent-key) (name (t2/model instance)))
+                    {:status-code 400}))))
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.

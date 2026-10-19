@@ -10,3 +10,11 @@
 
 (t2/deftransforms :model/ResultMetadataStatus
   {:entity_type mi/transform-keyword})
+
+(def current-result-metadata-version
+  "Current version of the result metadata logic. Increment it when the logic changes, so the job processes every
+  entity again.
+
+  Version history:
+  - 1: Initial version"
+  1)

@@ -22,7 +22,7 @@
     (let [batch-size (deps.settings/dependency-result-metadata-batch-size)
           taken      (if (pos? batch-size) (deps.result-metadata/update-result-metadata! batch-size) 0)]
       (when (pos? taken)
-        (log/info "Re-derived the MBQL dependents of" taken "changed entities"))
+        (log/debug "Processed" taken "entities for result metadata"))
       (when (pos? taken)
         1))))
 
@@ -31,7 +31,7 @@
   {:saved-class "metabase_enterprise.dependencies.task.result_metadata.UpdateResultMetadata"
    :concurrent? false}
   [ctx]
-  (log/info "Executing UpdateResultMetadata job...")
+  (log/debug "Executing UpdateResultMetadata job...")
   (task.util/run-and-reschedule! (.getScheduler ^JobExecutionContext ctx) job))
 
 (def ^:private job

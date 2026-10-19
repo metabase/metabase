@@ -174,6 +174,7 @@
   [:map {:closed true}
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
+   [:version                                   {:optional true} [:maybe :int]]
    [:name                                      {:optional true} [:maybe :string]]
    [:description                               {:optional true} [:maybe :string]]
    [:display                                   {:optional true} [:maybe [:or :keyword :string]]]

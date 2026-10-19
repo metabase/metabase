@@ -246,7 +246,8 @@
 
 (t2/define-before-update :model/Table
   [table]
-  (let [changes        (t2/changes table)
+  (let [table          (mi/increment-version table #{:view_count :estimated_row_count})
+        changes        (t2/changes table)
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
@@ -618,7 +619,7 @@
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
                :data_source :owner_email :owner_user_id :is_published]
-   :skip      [:estimated_row_count :view_count :transform_target]
+   :skip      [:estimated_row_count :view_count :transform_target :version]
    :transform {:created_at     (serdes/date)
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)

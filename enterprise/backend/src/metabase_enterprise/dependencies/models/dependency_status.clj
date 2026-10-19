@@ -50,9 +50,9 @@
         instances (when (seq rows)
                     (m/index-by :id (dependencies.db/instances entity-type (into #{} (map :id) rows))))]
     (into []
-          (keep (fn [{:keys [id updated_at]}]
+          (keep (fn [{:keys [id version]}]
                   (when-let [instance (get instances id)]
-                    [instance updated_at])))
+                    [instance version])))
           rows)))
 
 (defn has-pending-entities?

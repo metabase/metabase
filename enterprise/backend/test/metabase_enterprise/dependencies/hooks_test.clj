@@ -5,7 +5,6 @@
    [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
@@ -37,7 +36,7 @@
     (deps.dependency-status/upsert-status! entity-type entity-id version)))
 
 (defn- status-row-count []
-  (reduce + (map t2/count [:model/DependencyStatus :model/ResultMetadataStatus :model/AnalysisFinding])))
+  (reduce + (map t2/count [:model/DependencyStatus :model/ResultMetadataStatus :model/AnalysisFindingStatus])))
 
 (deftest card-update-writes-nothing-test
   (testing "updating a card writes no status, and triggers the jobs once it commits"
@@ -106,8 +105,8 @@
               (is (not (pending? :dashboard dashboard-id))))))))))
 
 (deftest table-version-test
-  (testing "a write of a table, its user settings, one of its fields, field user settings or dimensions, has the cards
-           on it re-derived"
+  (testing "a write of a table, its user settings, one of its fields, field user settings or dimensions, changes the
+           table's version, which has the result metadata job process it and the cards on it"
     (mt/test-helpers-set-global-values!
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
@@ -116,9 +115,9 @@
           (let [table-id (mt/id :venues)
                 field-id (mt/id :venues :price)
                 changes? (fn [write!]
-                           (deps.test/record-result-metadata-version! card-id)
+                           (deps.test/record-result-metadata-version! :table table-id)
                            (write!)
-                           (deps.test/result-metadata-pending? card-id))]
+                           (deps.test/result-metadata-pending? :table table-id))]
             (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
               (is (changes? #(t2/update! :model/Table table-id {:display_name "Places"}))))
             (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}
@@ -178,22 +177,52 @@
             (is (= [:committed :committed]
                    [(deref cascade 30000 :timeout) (deref single 30000 :timeout)]))))))))
 
-(deftest serdes-load-triggers-jobs-once-test
-  (testing "a serdes load triggers no job while it writes, and the jobs once it finishes"
+(deftest serdes-load-triggers-jobs-test
+  (testing "a serdes load triggers the jobs through the writes it makes"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query (table-query :products)}
                      :model/Dashboard     {dashboard-id :id} {}
                      :model/DashboardCard _                  {:dashboard_id dashboard-id :card_id card-id}]
         (let [exported  (ts/extract-one "Dashboard" dashboard-id)
-              submitted (atom [])
-              triggered (atom 0)]
+              submitted (atom [])]
           (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id :card_id card-id
                                             :row 4 :col 0 :size_x 4 :size_y 4})
-          (mt/with-dynamic-fn-redefs [grouper/submit!                         (fn [_queue write] (swap! submitted conj write))
-                                      task.dependency/trigger-dependency-job! (fn [] (swap! triggered inc))]
+          (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (deps.test/do-with-immediate-hook-writes
              #(serdes/with-cache
                 (serdes.load/load-metabase! (ts/ingestion-in-memory [exported]) :reindex? false))))
           (is (= 1 (t2/count :model/DashboardCard :dashboard_id dashboard-id)))
-          (is (= [] @submitted))
-          (is (= 1 @triggered)))))))
+          (is (seq @submitted)))))))
+
+(deftest ^:synchronized database-delete-marks-source-transforms-stale-test
+  (testing "deleting a database marks its source transforms' analysis findings stale so they surface on /dependency-diagnostics/broken (GDGT-2447)"
+    (deps.test/run-with-dependencies-setup!
+     (fn [_mp]
+       (mt/with-temp [:model/Database {db-id :id} {}
+                      :model/Transform {transform-id :id}
+                      {:source {:type :query
+                                :query {:database db-id
+                                        :type :native
+                                        :native {:query "SELECT 1"}}}
+                       :target {:schema "public" :name "out" :type :table}}
+                      :model/AnalysisFinding _ {:entity_type :transform
+                                                :entity_id transform-id
+                                                :result true
+                                                :analyzed_at :%now}]
+         (t2/delete! :model/Database db-id)
+         (is (nil? (t2/select-one :model/Database db-id))
+             "the Database row is actually gone")
+         (is (pending? :transform transform-id))
+         (deps.test/synchronously-run-dependency-job!)
+         (testing "and the analysis finding job flips :result false so the transform shows on broken-diagnostics"
+           (deps.test/run-analysis-finding-job!)
+           (is (false? (t2/select-one-fn :result :model/AnalysisFinding
+                                         :entity_type :transform
+                                         :entity_id transform-id)))
+           (testing "an analysis_finding_error row points the transform at itself so the diagnostics page (`/graph/breaking`) surfaces it"
+             (is (=? {:source_entity_type :transform
+                      :source_entity_id   transform-id
+                      :error_type         :validation-exception-error}
+                     (t2/select-one :model/AnalysisFindingError
+                                    :analyzed_entity_type :transform
+                                    :analyzed_entity_id transform-id))))))))))

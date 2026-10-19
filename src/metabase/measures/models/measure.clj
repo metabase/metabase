@@ -160,11 +160,12 @@
   (when-let [def-change (:definition (t2/changes measure))]
     (validate-mbql5-definition def-change)
     (lib/check-measure-overwrite id def-change))
-  (if (and (contains? (t2/changes measure) :definition)
-           (seq definition))
-    (m/assoc-some measure
-                  :table_id (lib/primary-source-table-id definition))
-    measure))
+  (mi/increment-version
+   (if (and (contains? (t2/changes measure) :definition)
+            (seq definition))
+     (m/assoc-some measure
+                   :table_id (lib/primary-source-table-id definition))
+     measure)))
 
 (t2/define-before-delete :model/Measure
   [measure]
@@ -231,7 +232,8 @@
 
 (defmethod serdes/make-spec "Measure" [_model-name _opts]
   {:copy [:name :archived :description :entity_id]
-   :skip [;; dimensions are computed from the query and reconciled on read, not serialized
+   :skip [:version
+          ;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; always re-derived from definition by before-insert via lib/primary-source-table-id
           :table_id]

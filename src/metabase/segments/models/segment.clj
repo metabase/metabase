@@ -189,13 +189,14 @@
   (when (contains? (t2/changes segment) :creator_id)
     (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
   ;; normalize and check for cycles if definition is being updated
-  (if-let [def-change (:definition (t2/changes segment))]
-    (let [definition (migrated-segment-definition (assoc segment :definition def-change))]
-      (when (seq definition)
-        (lib/check-segment-overwrite id definition))
-      (cond-> (assoc segment :definition definition)
-        (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
-    segment))
+  (mi/increment-version
+   (if-let [def-change (:definition (t2/changes segment))]
+     (let [definition (migrated-segment-definition (assoc segment :definition def-change))]
+       (when (seq definition)
+         (lib/check-segment-overwrite id definition))
+       (cond-> (assoc segment :definition definition)
+         (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
+     segment)))
 
 (t2/define-before-delete :model/Segment
   [segment]
@@ -249,7 +250,8 @@
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip      [;; always re-derived from definition by before-insert via lib/primary-source-table-id
+   :skip      [:version
+               ;; always re-derived from definition by before-insert via lib/primary-source-table-id
                :table_id]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)

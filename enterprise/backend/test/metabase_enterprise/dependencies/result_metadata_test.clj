@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.result-metadata-test
   (:require
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
@@ -47,13 +46,13 @@
                                       :id           (str (random-uuid))}}))))
 
 (defn- run-jobs!
-  "Compute the dependency graph, then re-derive the result metadata of the cards depending on changed entities until
-  nothing changed, as the job reruns itself."
+  "Run the dependency job, whose current dependencies the result metadata job waits for, then the result metadata job,
+  as each triggers the other, until neither has anything left to do."
   []
-  (deps.test/synchronously-run-dependency-job!)
   (mt/with-premium-features #{:dependencies}
     (loop [runs 1]
-      (when (and (pos? (deps.result-metadata/update-result-metadata! 1000)) (< runs 10))
+      (deps.test/synchronously-run-dependency-job!)
+      (when (and (pos? (deps.result-metadata/update-result-metadata! 1000)) (< runs 20))
         (recur (inc runs))))))
 
 (defn- column [card-id column-name]
@@ -64,18 +63,22 @@
   (mapv #(cond-> % (= column-name (:name %)) (assoc :display_name display-name)) metadata))
 
 (defmacro ^:private with-clean-statuses
-  "Run `body` with the dependencies feature, each write committing on its own so that `updated_at` moves between
-  them as it does between real requests."
+  "Run `body` with the dependencies feature, each write committing on its own as it does between real requests."
   [& body]
   `(mt/test-helpers-set-global-values!
      (mt/with-premium-features #{:dependencies}
        ~@body)))
 
 (defn- reprocess!
-  "Have the dependents of the entity `entity-type` `entity-id` re-derived again, as if it changed."
-  [entity-type entity-id]
-  (dependencies.db/forget-entity-processing! entity-type entity-id)
-  (dependencies.db/forget-dependents-processing! entity-type entity-id))
+  "Have the result metadata job process the Cards with `card-ids` again, as if they changed."
+  [& card-ids]
+  (dependencies.db/delete-result-metadata-statuses! :card (vec card-ids)))
+
+(defn- rederive!
+  "Run one batch of the result metadata job."
+  []
+  (mt/with-premium-features #{:dependencies}
+    (deps.result-metadata/update-result-metadata! 1000)))
 
 (defn- add-grand-total [query]
   (lib/expression query "Grand total" (lib/* (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total)) 2)))
@@ -163,7 +166,7 @@
                                                                                             :id model-id)
                                                                           "TOTAL" "Grand total")})
         (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
-          (is (pending? model-id))
+          (is (pending? :table (mt/id :orders)))
           (run-jobs!)
           (is (not (pending? model-id)))
           (is (= "Grand total" (:display_name (column model-id "TOTAL")))))))))
@@ -174,7 +177,7 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Grand total"}]
-          (is (pending? card-id))
+          (is (pending? :table (mt/id :orders)))
           (run-jobs!)
           (is (= "Grand total" (:display_name (column card-id "TOTAL"))))
           (is (not (pending? card-id))))))))
@@ -198,15 +201,14 @@
           (is (= "avg" (column-name))))))))
 
 (defn- rederive-during-inference!
-  "Re-derive the cards depending on the entity `entity-type` `entity-id` while `write!` runs in the middle of the
-  inference of one of them, returning how many cards the job took."
-  [entity-type entity-id write!]
-  (reprocess! entity-type entity-id)
+  "Re-derive the Card with `card-id` while `write!` runs in the middle of its inference, returning how many entities the
+  job took."
+  [card-id write!]
+  (reprocess! card-id)
   (do-with-inference (fn [infer query card]
                        (write!)
                        (infer query card))
-                     #(mt/with-premium-features #{:dependencies}
-                        (deps.result-metadata/update-result-metadata! 1000))))
+                     rederive!))
 
 (defn- store-run-metadata!
   "Store `metadata` as the result metadata of the Card with `card-id`, as a run of the card does."
@@ -225,8 +227,7 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
         (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
-          (is (pos? (rederive-during-inference! :table (mt/id :orders)
-                                                (once! #(t2/update! :model/Card card-id {:name "Renamed"})))))
+          (is (pos? (rederive-during-inference! card-id (once! #(t2/update! :model/Card card-id {:name "Renamed"})))))
           (is (= "Renamed" (t2/select-one-fn :name :model/Card :id card-id)))
           (is (pending? card-id))
           (run-jobs!)
@@ -242,9 +243,7 @@
                                (rename-column "TOTAL" "Run total")
                                (->> (mapv #(cond-> % (= "ID" (:name %)) (assoc :fingerprint {:global {:distinct-count 7}})))))]
           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :orders :total) :display_name "Order total"}]
-            (is (pos? (rederive-during-inference!
-                       :table (mt/id :orders)
-                       (once! #(store-run-metadata! card-id run-metadata)))))
+            (is (pos? (rederive-during-inference! card-id (once! #(store-run-metadata! card-id run-metadata)))))
             (run-jobs!)
             (is (= "Order total" (:display_name (column card-id "TOTAL"))))
             (is (= {:global {:distinct-count 7}} (:fingerprint (column card-id "ID"))))))))))
@@ -389,19 +388,22 @@
         (is (nil? (#'task.result-metadata/run-batch!)))))))
 
 (deftest storing-card-triggers-jobs-test
-  (testing "the job stores a re-derived card through the Card model, so its hooks trigger the jobs and it moves updated_at"
+  (testing "the job stores a re-derived card through the Card model, so its hooks trigger the jobs and it moves the
+           card's version but not its updated_at"
     (with-clean-statuses
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (deps.test/synchronously-run-dependency-job!)
         (let [submitted (atom [])
-              before    (t2/select-one-fn :updated_at :model/Card :id card-id)]
+              before    (t2/select-one [:model/Card :updated_at :version] :id card-id)]
           (t2/update! :model/Card source-id {:dataset_query (add-grand-total (table-query :orders))})
+          (deps.test/synchronously-run-dependency-job!)
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
-            (mt/with-premium-features #{:dependencies}
-              (deps.result-metadata/update-result-metadata! 1000)))
+            (rederive!)
+            (rederive!))
           (is (some? (column card-id "Grand total")))
-          (is (not= before (t2/select-one-fn :updated_at :model/Card :id card-id)))
+          (is (= (:updated_at before) (t2/select-one-fn :updated_at :model/Card :id card-id)))
+          (is (< (:version before) (t2/select-one-fn :version :model/Card :id card-id)))
           (is (seq @submitted)))))))
 
 (deftest sandboxed-creator-ignored-test
@@ -416,7 +418,7 @@
                                                   :creator_id    (mt/user->id :rasta)
                                                   :result_metadata []}]
           (deps.test/synchronously-run-dependency-job!)
-          (reprocess! :table (mt/id :venues))
+          (reprocess! card-id)
           (mt/with-premium-features #{:dependencies :sandboxes}
             (deps.result-metadata/update-result-metadata! 1000))
           (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
@@ -453,7 +455,7 @@
         (run-jobs!)
         (is (nil? (column card-id "PRICE")))
         (store-run-metadata! native-id (native-run-metadata "SELECT ID, NAME, PRICE FROM VENUES"))
-        (is (pending? card-id))
+        (is (pending? native-id))
         (run-jobs!)
         (is (some? (column card-id "PRICE")))
         (is (not (pending? card-id)))))))
@@ -487,15 +489,14 @@
       (mt/with-temp [:model/Card {orders-card-id :id}   {:dataset_query (table-query :orders)}
                      :model/Card {other-card-id :id}  {:dataset_query (table-query :orders)}]
         (run-jobs!)
-        (reprocess! :table (mt/id :orders))
+        (reprocess! orders-card-id other-card-id)
         (do-with-inference (fn [infer query card]
                              (u/prog1 (rename-column (infer query card) "TOTAL" "Changed")
                                (when (= orders-card-id (:id card))
                                  (store-run-metadata!
                                   orders-card-id
                                   (rename-column (:result_metadata card) "TOTAL" (str (random-uuid)))))))
-                           #(mt/with-premium-features #{:dependencies}
-                              (deps.result-metadata/update-result-metadata! 1000)))
+                           rederive!)
         (is (not= "Changed" (:display_name (column orders-card-id "TOTAL"))))
         (is (= "Changed" (:display_name (column other-card-id "TOTAL"))))))))
 
@@ -505,7 +506,7 @@
       (mt/with-temp [:model/Card {card-id :id}  {:dataset_query (table-query :orders)}
                      :model/Card {other-id :id} {:dataset_query (table-query :venues)}]
         (run-jobs!)
-        (reprocess! :table (mt/id :orders))
+        (reprocess! card-id)
         (let [store  (mt/original-fn #'dependencies.db/update-card-result-metadata!)
               marked (atom nil)]
           (mt/with-dynamic-fn-redefs [dependencies.db/update-card-result-metadata!
@@ -513,12 +514,11 @@
                                         (reset! marked (deref (future (t2/update! :model/ResultMetadataStatus
                                                                                   :entity_type :card
                                                                                   :entity_id other-id
-                                                                                  {:analyzed_updated_at (t/offset-date-time)}))
+                                                                                  {:entity_version 1}))
                                                               5000 :timed-out))
                                         (apply store args))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "TOTAL" "Changed"))
-                               #(mt/with-premium-features #{:dependencies}
-                                  (deps.result-metadata/update-result-metadata! 1000))))
+                               rederive!))
           (is (= 1 @marked))
           (is (= "Changed" (:display_name (column card-id "TOTAL")))))))))
 
@@ -527,7 +527,7 @@
     (with-clean-statuses
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
         (run-jobs!)
-        (reprocess! :table (mt/id :orders))
+        (reprocess! card-id)
         (let [locked (promise)
               save   (future
                        (t2/with-transaction [_]
@@ -539,6 +539,7 @@
                              #(mt/with-premium-features #{:dependencies}
                                 (deps.result-metadata/update-result-metadata! 1000)
                                 @save
+                                (deps.test/synchronously-run-dependency-job!)
                                 (deps.result-metadata/update-result-metadata! 1000)))
           (is (= "Saved" (t2/select-one-fn :name :model/Card :id card-id)))
           (is (= "Changed" (:display_name (column card-id "TOTAL")))))))))
@@ -550,13 +551,12 @@
                      :model/Card {failing-id :id} {:dataset_query (table-query :venues)}
                      :model/Card {last-id :id}   {:dataset_query (table-query :venues)}]
         (run-jobs!)
-        (reprocess! :table (mt/id :venues))
+        (reprocess! first-id failing-id last-id)
         (do-with-inference (fn [infer query card]
                              (if (= failing-id (:id card))
                                (throw (ex-info "Inference failed" {}))
                                (rename-column (infer query card) "NAME" "Changed")))
-                           #(mt/with-premium-features #{:dependencies}
-                              (deps.result-metadata/update-result-metadata! 1000)))
+                           rederive!)
         (is (= ["Changed" "Changed"] (mapv #(:display_name (column % "NAME")) [first-id last-id])))
         (is (not (pending? failing-id)))))))
 
@@ -573,12 +573,11 @@
                                                                    :values_source_config {:card_id     source-id
                                                                                           :value_field [:field (mt/id :venues :price) nil]}}]}]
         (run-jobs!)
-        (reprocess! :table (mt/id :venues))
+        (reprocess! source-id)
         (do-with-inference (fn [infer query card]
                              (cond->> (infer query card)
                                (= source-id (:id card)) (into [] (remove #(= "PRICE" (:name %))))))
-                           #(mt/with-premium-features #{:dependencies}
-                              (deps.result-metadata/update-result-metadata! 1000)))
+                           rederive!)
         (is (nil? (column source-id "PRICE")))
         (is (=? [{:id "price" :values_source_type nil}]
                 (t2/select-one-fn :parameters :model/Card :id card-id)))))))

@@ -93,7 +93,8 @@
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
-  (enforce-invariants settings (t2/changes settings)))
+  (mi/check-parent-unchanged settings :table_id)
+  (mi/increment-version (enforce-invariants settings (t2/changes settings))))
 
 (t2/define-after-update :model/TableUserSettings
   [settings]
@@ -189,6 +190,7 @@
                :show_in_getting_started :data_authority :data_source :owner_email :is_published
                :description_set :visibility_type_set :caveats_set
                :points_of_interest_set :data_layer_set :data_source_set]
+   :skip      [:version]
    :defaults  {:description_set        false
                :visibility_type_set    false
                :caveats_set            false

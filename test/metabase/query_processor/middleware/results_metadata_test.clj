@@ -112,9 +112,9 @@
             (throw (ex-info "Query failed." result))))
         (is (=? (round-to-2-decimals (default-card-results-native))
                 (-> card card-metadata round-to-2-decimals)))
-        (testing "saving changed result metadata moves updated_at, so what depends on the card follows"
-          (is (not= (:updated_at card)
-                    (t2/select-one-fn :updated_at :model/Card :id (u/the-id card)))))))))
+        ;; updated_at should not be modified when saving result metadata
+        (is (= (:updated_at card)
+               (t2/select-one-fn :updated_at :model/Card :id (u/the-id card))))))))
 
 (deftest data-sensitivity-in-result-metadata-test
   (testing "a Field's data_sensitivity label reaches query results through the Lib column metadata"

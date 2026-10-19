@@ -26,12 +26,10 @@
 (mr/def ::analysis-finding.update
   "What an update (or insert) of a AnalysisFinding accepts: every column of `:analysis_finding` except `id`, all optional."
   [:map {:closed true}
-   [:analyzed_entity_type {:optional true} [:maybe [:or :keyword :string]]]
-   [:analyzed_entity_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:analysis_version     {:optional true} [:maybe :int]]
+   [:entity_type          {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_id            {:optional true} [:maybe ms/PositiveInt]]
    [:analyzed_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:result               {:optional true} [:maybe :boolean]]
-   [:analyzed_updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
+   [:result               {:optional true} [:maybe :boolean]]])
 
 (mr/def ::analysis-finding-error
   "A AnalysisFindingError as selected from the app DB: every column of `:analysis_finding_error`."
@@ -70,12 +68,12 @@
   [:merge
    ::dependency-status.update
    [:map {:closed true}
-    [:id                          ms/PositiveInt]]])
+    [:id               ms/PositiveInt]]])
 
 (mr/def ::dependency-status.update
   "What an update (or insert) of a DependencyStatus accepts: every column of `:dependency_status` except `id`, all optional."
   [:map {:closed true}
-   [:entity_type                 {:optional true} [:maybe [:or :keyword :string]]]
-   [:entity_id                   {:optional true} [:maybe ms/PositiveInt]]
-   [:dependency_analysis_version {:optional true} [:maybe :int]]
-   [:analyzed_updated_at         {:optional true} [:maybe ms/TemporalInstant]]])
+   [:entity_type      {:optional true} [:maybe [:or :keyword :string]]]
+   [:entity_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:entity_version   {:optional true} [:maybe :int]]
+   [:analysis_version {:optional true} [:maybe :int]]])

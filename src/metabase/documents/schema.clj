@@ -37,6 +37,7 @@
    [:content_type        {:optional true} [:maybe [:or :keyword :string]]]
    [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:version             {:optional true} [:maybe :int]]
    [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]
    [:archived            {:optional true} [:maybe :boolean]]
    [:archived_directly   {:optional true} [:maybe :boolean]]

@@ -40,7 +40,6 @@
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser)
-  (derive :hook/timestamped?)
   (derive :hook/dependencies))
 
 (t2/deftransforms :model/Sandbox
@@ -303,7 +302,7 @@
 
 (t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
-  (u/prog1 updates
+  (u/prog1 (mi/increment-version updates)
     (let [original (t2/original updates)
           updated  (merge original updates)]
       (when-not (= (:table_id original) (:table_id updated))

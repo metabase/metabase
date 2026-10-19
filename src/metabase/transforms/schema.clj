@@ -146,6 +146,7 @@
    [:entity_id             {:optional true} [:maybe :string]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:version               {:optional true} [:maybe :int]]
    [:source_type           {:optional true} [:maybe [:or :keyword :string]]]
    [:creator_id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:source_database_id    {:optional true} [:maybe ::lib.schema.id/database]]

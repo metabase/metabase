@@ -3,9 +3,9 @@
   (see [[metabase-enterprise.dependencies.models.dependency]]) up to date, that is, makes sure
   the dependency table contains fresh entries.
 
-  It selects the entities whose dependency_status records a version older than theirs (the latest `updated_at` of
-  them, their parts and the snippets they use), an older dependency_analysis_version, or no row, computes their
-  dependencies, and records the version it computed them from."
+  It selects the entities whose dependency_status records another version than theirs (their own `version` plus the
+  versions of their parts), an older analysis_version, or no row, computes their dependencies, and records
+  the version it computed them from."
   (:require
    [clojurewerkz.quartzite.scheduler :as qs]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
@@ -102,7 +102,7 @@
     (let [type-name (name entity-type)
           instances (processable-instances entity-type batch-size)]
       (when (seq instances)
-        (log/infof "Processing a batch of %s %s(s)..." (count instances) type-name))
+        (log/debugf "Processing a batch of %s %s(s)..." (count instances) type-name))
       (reduce (fn [total [entity version]]
                 (+ total
                    (try
@@ -139,7 +139,7 @@
                                                    (update-entity-batch! entity-type (- remaining removed))
                                                    0)]
                                    (when (pos? processed)
-                                     (log/info "Updated" processed "entities."))
+                                     (log/debug "Updated" processed "entities."))
                                    (- remaining removed processed))))
                              batch-size
                              entity-types)]
@@ -162,7 +162,7 @@
         job-key (.getKey (.getJobDetail ctx))
         job-class (.getSimpleName (.getJobClass (.getJobDetail ctx)))
         active-triggers-count (try (count (qs/get-triggers-of-job scheduler job-key)) (catch Exception _))]
-    (log/infof "Executing %s job. %s total triggers active." job-class active-triggers-count)))
+    (log/debugf "Executing %s job. %s total triggers active." job-class active-triggers-count)))
 
 (task/defjob UpdateDependencies
   "Update the dependency table."

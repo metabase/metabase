@@ -58,6 +58,7 @@
   [:map {:closed true}
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
+   [:version                 {:optional true} [:maybe :int]]
    [:name                    {:optional true} [:maybe :string]]
    [:description             {:optional true} [:maybe :string]]
    [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
@@ -114,6 +115,7 @@
   [:map {:closed true}
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:version                {:optional true} [:maybe :int]]
    [:size_x                 {:optional true} [:maybe :int]]
    [:size_y                 {:optional true} [:maybe :int]]
    [:row                    {:optional true} [:maybe :int]]
@@ -140,8 +142,7 @@
    [:dashboardcard_id {:optional true} [:maybe ::lib.schema.id/dashcard]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
    [:position         {:optional true} [:maybe :int]]
-   [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]])
+   [:version          {:optional true} [:maybe :int]]])
 
 (mr/def ::dashboard-tab
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
@@ -158,4 +159,5 @@
    [:position     {:optional true} [:maybe :int]]
    [:entity_id    {:optional true} [:maybe :string]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:version      {:optional true} [:maybe :int]]])

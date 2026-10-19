@@ -1,11 +1,14 @@
 (ns metabase-enterprise.dependencies.result-metadata
-  "Re-derives the result metadata of MBQL cards that changed, or whose upstreams changed, since it was last re-derived;
-  native cards are left alone, since their result metadata comes from running them."
+  "Re-derives the result metadata of the MBQL cards whose version, or the version of an entity they transitively
+  depend on, changed since it was last re-derived; native cards are left alone, since their result metadata comes from
+  running them."
   (:require
    [clojure.walk :as walk]
-   [java-time.api :as t]
    [malli.error :as me]
    [metabase-enterprise.dependencies.db :as dependencies.db]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -83,39 +86,69 @@
       metadata)))
 
 (defn- store-result-metadata!
-  "Store the re-derived result metadata `metadata` of `card` through the Card model, whose hooks update the parameters
-  taking values from the columns it drops, unless the card's `updated_at` changed since it was read, which has it
-  re-derived again later."
-  [{:keys [id updated_at]} metadata]
-  (when (some-> (dependencies.db/locked-card-updated-at id) t/instant (= (t/instant updated_at)))
-    (dependencies.db/update-card-result-metadata! id metadata)))
+  "Store the re-derived result metadata `metadata` of the Card with `card-id` through the Card model, whose hooks update
+  the parameters taking values from the columns it drops, unless its version changed since `version` was read, which
+  has it re-derived again later."
+  [card-id version metadata]
+  (when (= version (dependencies.db/locked-card-version card-id))
+    (dependencies.db/update-card-result-metadata! card-id metadata)))
 
 (defn- rederived-card-metadata
-  "The MBQL Card with `card-id` paired with its re-derived result metadata, or nil when there is nothing to store,
-  logging a failure."
+  "The re-derived result metadata of the Card with `card-id`, or nil when it is native, unchanged or gone, logging a
+  failure."
   [card-id]
   (try
     (lib-be/with-metadata-provider-cache
-      (let [card (dependencies.db/card card-id)]
-        (when-let [metadata (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
-                              (rederived-result-metadata card))]
-          [card metadata])))
+      (when-let [card (dependencies.db/card card-id)]
+        (when (and (not= :native (:query_type card)) (seq (:dataset_query card)))
+          (rederived-result-metadata card))))
     (catch Exception e
       (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e))
       nil)))
 
-(defn update-result-metadata!
-  "Re-derive the result metadata of up to `batch-size` MBQL cards that changed, or whose upstreams changed, since it was
-  last re-derived, storing each with the version it was re-derived from in one transaction, returning how many it
-  took."
+(defn- pending-entities
+  "Up to `batch-size` entities whose ResultMetadataStatus is missing or records another version, as
+  `[entity-type {:id :version}]` pairs: cards, and the other entities some entity depends on."
   [batch-size]
-  (when-let [card-ids (not-empty (dependencies.db/result-metadata-deleted-card-ids batch-size))]
-    (dependencies.db/delete-result-metadata-statuses! card-ids))
-  (let [cards (dependencies.db/result-metadata-pending-cards batch-size)]
-    (doseq [{:keys [id updated_at]} cards
-            :let                 [[card metadata] (rederived-card-metadata id)]]
+  (reduce (fn [pending entity-type]
+            (let [remaining (- batch-size (count pending))]
+              (if (pos? remaining)
+                (into pending
+                      (map (partial vector entity-type))
+                      (dependencies.db/result-metadata-pending-entities
+                       entity-type remaining models.result-metadata-status/current-result-metadata-version
+                       models.dependency/current-dependency-analysis-version))
+                (reduced pending))))
+          []
+          (sort deps.dependency-types/dependency-types)))
+
+(defn- remove-deleted-statuses!
+  "Delete the ResultMetadataStatuses of up to `batch-size` deleted entities of each type, returning how many it
+  deleted."
+  [batch-size]
+  (reduce + (for [entity-type (sort deps.dependency-types/dependency-types)
+                  :let        [ids (dependencies.db/result-metadata-deleted-entity-ids entity-type batch-size)]]
+              (if (seq ids)
+                (dependencies.db/delete-result-metadata-statuses! entity-type ids)
+                0))))
+
+(defn update-result-metadata!
+  "Process up to `batch-size` entities whose ResultMetadataStatus is missing or records another version or none: clear
+  the versions of the transitive dependents of those that changed, so they are processed in turn, then re-derive the
+  MBQL cards among them, storing each with its version in one transaction, and record the version of the others,
+  returning how many it took."
+  [batch-size]
+  (let [removed (remove-deleted-statuses! batch-size)
+        pending (pending-entities batch-size)]
+    (when (seq pending)
+      (dependencies.db/clear-result-metadata-versions!
+       (models.dependency/transitive-dependents (u/group-by first second (filter (comp :changed second) pending)))))
+    (doseq [[entity-type {:keys [id version]}] pending
+            :let                               [metadata (when (= :card entity-type)
+                                                           (rederived-card-metadata id))]]
       (t2/with-transaction [_]
-        (when card
-          (store-result-metadata! card metadata))
-        (dependencies.db/upsert-result-metadata-status! id updated_at)))
-    (count cards)))
+        (when metadata
+          (store-result-metadata! id version metadata))
+        (dependencies.db/upsert-result-metadata-status!
+         entity-type id models.result-metadata-status/current-result-metadata-version version)))
+    (+ removed (count pending))))

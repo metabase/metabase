@@ -1,10 +1,13 @@
 (ns metabase-enterprise.dependencies.analysis-finding
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -47,7 +50,7 @@
 
 (defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`, recording `version`,
-  the `:analyzed_updated_at` of the entity analyzed, unless it is nil.
+  the version of the entity analyzed, unless it is nil.
 
   If any row exists already, it is replaced. If it does not exist, it is created."
   ([toucan-instance]
@@ -93,20 +96,62 @@
   "Entities for which we can compute analysis findings."
   #{:card :transform :segment})
 
-(def ^:private AnalyzableEntityType
-  "Schema for entity types supported by analysis findings."
-  (into [:enum] analyzable-entities))
+(defn- pending-entities
+  "Up to `batch-size` entities whose AnalysisFindingStatus is missing, records another version or an older analysis,
+  as `[entity-type {:id :version}]` pairs: entities the job analyzes, and the other entities some entity depends on."
+  [batch-size]
+  (reduce (fn [pending entity-type]
+            (let [remaining (- batch-size (count pending))]
+              (if (pos? remaining)
+                (into pending
+                      (map (partial vector entity-type))
+                      (dependencies.db/analysis-finding-pending-entities
+                       entity-type remaining models.analysis-finding/*current-analysis-finding-version*
+                       models.dependency/current-dependency-analysis-version
+                       (contains? analyzable-entities entity-type)))
+                (reduced pending))))
+          []
+          (sort deps.dependency-types/dependency-types)))
+
+(defn- remove-deleted-statuses!
+  "Delete the AnalysisFindingStatuses of up to `batch-size` deleted entities of each type, returning how many it
+  deleted."
+  [batch-size]
+  (reduce + (for [entity-type (sort deps.dependency-types/dependency-types)
+                  :let        [ids (dependencies.db/analysis-finding-deleted-entity-ids entity-type batch-size)]]
+              (if (seq ids)
+                (dependencies.db/delete-analysis-finding-statuses! entity-type ids)
+                0))))
+
+(defn- process-entities!
+  "Analyze the analyzable entities among the `[entity-type {:id :version}]` `pending` ones, recording the version of
+  each in its status, which the others only record."
+  [pending]
+  (doseq [[entity-type entities] (group-by first pending)
+          :let                   [versions  (into {} (map (comp (juxt :id :version) second)) entities)
+                                  instances (when (contains? analyzable-entities entity-type)
+                                              (dependencies.db/instances entity-type (set (keys versions))))]]
+    (if instances
+      (doseq [instance instances]
+        (analyze-instance! instance (versions (:id instance))))
+      (doseq [[id version] versions]
+        (dependencies.db/upsert-analysis-finding-status!
+         entity-type id models.analysis-finding/*current-analysis-finding-version* version)))))
 
 (mu/defn analyze-batch! :- nat-int?
-  "Analyze up to `batch-size` entities of `type` whose AnalysisFinding is missing, records a version older than theirs,
-  which includes the versions of the entities they depend on, or an older analysis, returning how many it analyzed."
-  [type :- AnalyzableEntityType
-   batch-size :- pos-int?]
+  "Process up to `batch-size` entities whose AnalysisFindingStatus is missing, records another version or none, or an
+  older analysis: clear the versions of the transitive dependents of those that changed, so they are processed in
+  turn, then analyze the analyzable ones and record the version of each, returning how many it took."
+  [batch-size :- pos-int?]
   ;; The cache spans the select too: reading an entity attaches a `MetadataProvider` to its query
   ;; (see `metabase.lib-be.models.transforms/transform-query`), so selecting outside the cache gives every entity in
   ;; the batch a private one.
-  (lib-be/with-metadata-provider-cache
-    (let [pairs (models.analysis-finding/instances-for-analysis type batch-size)]
-      (doseq [[instance version] pairs]
-        (analyze-instance! instance version))
-      (count pairs))))
+  (let [removed (remove-deleted-statuses! batch-size)]
+    (lib-be/with-metadata-provider-cache
+      (let [pending (pending-entities batch-size)]
+        (when (seq pending)
+          (dependencies.db/clear-analysis-finding-versions!
+           (models.dependency/transitive-dependents
+            (u/group-by first second (filter (comp :changed second) pending))))
+          (process-entities! pending))
+        (+ removed (count pending))))))

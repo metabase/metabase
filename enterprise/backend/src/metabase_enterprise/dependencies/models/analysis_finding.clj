@@ -1,6 +1,5 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
-   [medley.core :as m]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
@@ -13,7 +12,7 @@
 (derive :model/AnalysisFinding :metabase/model)
 
 (t2/deftransforms :model/AnalysisFinding
-  {:analyzed_entity_type mi/transform-keyword})
+  {:entity_type mi/transform-keyword})
 
 (t2/define-before-insert :model/AnalysisFinding
   [finding]
@@ -54,27 +53,25 @@
    :source-entity-id    (:source-entity-id error)})
 
 (defn- upsert-analysis-once!
-  "Upsert the AnalysisFinding of `type` `instance-id` and replace its errors, in one transaction."
+  "Upsert the AnalysisFinding of `type` `instance-id`, replace its errors and record `version`, unless it is nil, in
+  its status, in one transaction."
   [type instance-id result finding-details version]
   (t2/with-transaction [_conn]
-    (let [update (merge {:analysis_version *current-analysis-finding-version*
-                         :result result}
-                        version)
-          existing-id (dependencies.db/finding-id type instance-id)]
-      (if existing-id
-        (dependencies.db/update-finding! existing-id update)
-        (dependencies.db/insert-finding! (assoc update
-                                                :analyzed_entity_type type
-                                                :analyzed_entity_id instance-id)))
-      (deps.analysis-finding-error/replace-errors-for-entity!
-       type
-       instance-id
-       (map error->finding-error-row finding-details)))))
+    (if-let [existing-id (dependencies.db/finding-id type instance-id)]
+      (dependencies.db/update-finding! existing-id {:result result})
+      (dependencies.db/insert-finding! {:result               result
+                                        :entity_type          type
+                                        :entity_id            instance-id}))
+    (deps.analysis-finding-error/replace-errors-for-entity!
+     type
+     instance-id
+     (map error->finding-error-row finding-details))
+    (when version
+      (dependencies.db/upsert-analysis-finding-status! type instance-id *current-analysis-finding-version* version))))
 
 (defn upsert-analysis!
-  "Given the details of an AnalysisFinding row, upsert the data into the actual db, recording `version`, the
-  `:analyzed_updated_at` of the entity analyzed, unless it is nil, and updating the row a
-  concurrent analysis inserted meanwhile.
+  "Given the details of an AnalysisFinding row, upsert the data into the actual db, recording `version`, the version of
+  the entity analyzed, unless it is nil, and updating the row a concurrent analysis inserted meanwhile.
    Also writes individual errors to the analysis_finding_error table with source information."
   [type instance-id result finding-details version]
   (let [existed? (some? (dependencies.db/finding-id type instance-id))]
@@ -84,18 +81,3 @@
         (if (and (not existed?) (dependencies.db/finding-id type instance-id))
           (upsert-analysis-once! type instance-id result finding-details version)
           (throw e))))))
-
-(defn instances-for-analysis
-  "Find a batch of instances of type `entity-type` and maximum size `batch-size` whose AnalysisFinding is missing,
-  records a version older than theirs, or an older analysis, as `[instance version]` pairs, each version the
-  `{:analyzed_updated_at}` to record. Prioritizes changed entities over outdated analyses."
-  [entity-type batch-size]
-  (let [rows      (dependencies.db/analysis-finding-pending-entities
-                   entity-type batch-size *current-analysis-finding-version*)
-        instances (when (seq rows)
-                    (m/index-by :id (dependencies.db/instances entity-type (into #{} (map :id) rows))))]
-    (into []
-          (keep (fn [{:keys [id updated_at]}]
-                  (when-let [instance (get instances id)]
-                    [instance {:analyzed_updated_at updated_at}])))
-          rows)))

@@ -27,6 +27,7 @@
    [:archived      {:optional true} [:maybe :boolean]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:version       {:optional true} [:maybe :int]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]])

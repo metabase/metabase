@@ -15,14 +15,9 @@
   []
   (when (premium-features/has-feature? :dependencies)
     (let [batch-size (deps.settings/dependency-entity-check-batch-size)
-          analyzed   (reduce (fn [taken entity-type]
-                               (let [analyzed (deps.analysis-finding/analyze-batch! entity-type batch-size)]
-                                 (when (pos? analyzed)
-                                   (log/info "Analyzed" analyzed "entities of type" entity-type))
-                                 (+ taken analyzed)))
-                             0
-                             deps.analysis-finding/analyzable-entities)]
-      (when (pos? analyzed)
+          taken      (if (pos? batch-size) (deps.analysis-finding/analyze-batch! batch-size) 0)]
+      (when (pos? taken)
+        (log/debug "Processed" taken "entities for analysis")
         1))))
 
 (declare ^:private job)
@@ -32,7 +27,7 @@
   {:saved-class "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
    :concurrent? false}
   [ctx]
-  (log/info "Executing UpdateAnalysisFindings job...")
+  (log/debug "Executing UpdateAnalysisFindings job...")
   (task.util/run-and-reschedule! (.getScheduler ctx) job))
 
 (def ^:private job

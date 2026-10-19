@@ -58,7 +58,7 @@
                     (triggers/for-job job-key)
                     (triggers/start-at start-at))
           job      (jobs/build (jobs/of-type job-type) (jobs/with-identity job-key))]
-      (log/info "Scheduling next run of job" job-name "at" start-at)
+      (log/debug "Scheduling next run of job" job-name "at" start-at)
       (task/schedule-task! scheduler job trigger))))
 
 (defn run-and-reschedule!
@@ -68,7 +68,7 @@
   (try
     (if-some [delay-in-seconds (run-batch!)]
       (schedule-run! scheduler job delay-in-seconds)
-      (log/info "Job" job-name "has nothing more to do, stopping."))
+      (log/debug "Job" job-name "has nothing more to do, stopping."))
     (catch Throwable e
       (schedule-run! scheduler job (next-run-delay job))
       (throw e))))
