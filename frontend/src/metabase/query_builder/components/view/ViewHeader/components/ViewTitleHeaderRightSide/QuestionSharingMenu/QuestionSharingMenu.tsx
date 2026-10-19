@@ -113,6 +113,7 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
         {isPublicSharingEnabled && (hasPublicLink || canWrite) && (
           <PublicLinkMenuItem
             hasPublicLink={hasPublicLink}
+            entity={{ model: "card", id: question.id() }}
             onClick={() => setModalType("question-public-link")}
           />
         )}

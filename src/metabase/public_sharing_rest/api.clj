@@ -25,6 +25,7 @@
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.public-sharing-rest.api.refusal]
    [metabase.public-sharing-rest.db :as public-sharing-rest.db]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -981,3 +982,9 @@
   (api.macros/ns-handler *ns*
                          public-sharing.validation/+public-sharing-enabled
                          +anonymous-database-routing))
+
+(comment metabase.public-sharing-rest.api.refusal/keep-me)
+
+(def ^{:arglists '([request respond raise])} refusal-routes
+  "`/api/public-link-refusal` routes."
+  (api.macros/ns-handler 'metabase.public-sharing-rest.api.refusal api/+check-superuser))
