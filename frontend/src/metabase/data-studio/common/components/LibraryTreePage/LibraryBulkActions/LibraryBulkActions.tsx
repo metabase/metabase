@@ -200,7 +200,7 @@ type LibraryMoveModalProps = {
   onClose: () => void;
 };
 
-export function LibraryMoveModal({
+function LibraryMoveModal({
   section,
   initialCollectionId,
   movingCollectionIds,
