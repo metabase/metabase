@@ -2,6 +2,7 @@
 .content {
   display: flex;
   flex-direction: column;
+  min-height: min(36rem, calc(100dvh - 2 * var(--modal-y-offset)));
 }
 
 .body {
