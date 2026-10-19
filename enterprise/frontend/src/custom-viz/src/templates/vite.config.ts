@@ -1,6 +1,6 @@
 /* eslint-disable no-console, import/no-default-export, @typescript-eslint/no-require-imports */
 import { cpSync, existsSync, readFileSync, rmSync, watch } from "fs";
-import { createServer, type ServerResponse } from "http";
+import { type ServerResponse, createServer } from "http";
 import { createRequire } from "module";
 import { resolve } from "path";
 
