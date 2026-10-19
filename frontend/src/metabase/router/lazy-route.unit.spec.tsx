@@ -1,4 +1,4 @@
-import { render, renderRoutes, screen } from "__support__/ui";
+import { act, render, renderRoutes, screen } from "__support__/ui";
 import {
   type NavigateFunction,
   type RouteObject,
@@ -37,7 +37,9 @@ describe("a lazy route", () => {
       seen.push(pathname),
     );
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
 
     expect(router?.location.pathname).toBe("/");
     expect(seen).toEqual([]);
@@ -52,7 +54,9 @@ describe("a lazy route", () => {
   it("keeps the previous page mounted while the module loads", async () => {
     const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
 
     expect(screen.getByTestId("home")).toBeInTheDocument();
     expect(await screen.findByTestId("split")).toBeInTheDocument();
@@ -84,8 +88,12 @@ describe("a lazy route", () => {
   it("drops a pending navigation if another one lands first", async () => {
     const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
 
-    router?.navigate("/split");
-    router?.navigate("/");
+    act(() => {
+      router?.navigate("/split");
+    });
+    act(() => {
+      router?.navigate("/");
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -102,7 +110,9 @@ describe("a lazy route", () => {
   it("reports the window to a caller navigating in the same tick", async () => {
     const { navigate } = setupCapturingNavigate();
 
-    navigate?.("/split");
+    act(() => {
+      navigate?.("/split");
+    });
     expect(getIsNavigationPending()).toBe(true);
 
     expect(await screen.findByTestId("split")).toBeInTheDocument();
@@ -117,7 +127,9 @@ describe("a lazy route", () => {
   it("reports no window for a navigation that commits during the call", () => {
     const { navigate } = setupCapturingNavigate();
 
-    navigate?.("/plain");
+    act(() => {
+      navigate?.("/plain");
+    });
 
     expect(getIsNavigationPending()).toBe(false);
   });
@@ -140,7 +152,9 @@ describe("a lazy route", () => {
 
     await load();
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
     expect(router?.location.pathname).toBe("/");
 
     expect(await screen.findByTestId("split")).toBeInTheDocument();
@@ -152,13 +166,19 @@ describe("a lazy route", () => {
   it("is synchronous again on the second visit", async () => {
     const { router } = renderRoutes(makeRoutes(), { initialRoute: "/" });
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
     expect(await screen.findByTestId("split")).toBeInTheDocument();
 
-    router?.navigate("/");
+    act(() => {
+      router?.navigate("/");
+    });
     expect(await screen.findByTestId("home")).toBeInTheDocument();
 
-    router?.navigate("/split");
+    act(() => {
+      router?.navigate("/split");
+    });
 
     expect(router?.location.pathname).toBe("/split");
   });
