@@ -33,6 +33,7 @@ import {
   Modal,
   NavLink,
   ScrollArea,
+  SortableHeaderPill,
   Stack,
   Text,
   TextInput,
@@ -389,7 +390,7 @@ function ReviewContent({
   );
 }
 
-const DEFAULT_LIST_WIDTH = 288;
+const DEFAULT_LIST_WIDTH = 240;
 const MIN_LIST_WIDTH = 180;
 const MAX_LIST_WIDTH = 560;
 const DEFAULT_PANE_WIDTH = 416;
@@ -774,6 +775,7 @@ function TableReview({
             classNames={{
               root: S.suggestions,
               row: S.suggestionRow,
+              rowActive: S.suggestionRowActive,
               cell: S.suggestionCell,
             }}
             ariaLabel={t`Suggestions of ${getTableLabel(table)}`}
@@ -928,19 +930,6 @@ function getColumns({
         </Tooltip>
       ),
       width: 48,
-      cell: suggestionCell((suggestion) => (
-        <AcceptCell
-          suggestion={suggestion}
-          isDeciding={decidingIds.has(suggestion.id)}
-          decide={decide}
-        />
-      )),
-    },
-    ...(isGrouped ? [] : [fieldColumn]),
-    {
-      id: "attribute",
-      header: t`Attribute`,
-      width: 150,
       cell: ({ row }) => {
         const node = row.original;
         if (node.kind === "group") {
@@ -951,13 +940,28 @@ function getColumns({
             </Text>
           );
         }
-        const attributeLabel = getAttributeLabel(node.suggestion.attribute);
+        return (
+          <AcceptCell
+            suggestion={node.suggestion}
+            isDeciding={decidingIds.has(node.suggestion.id)}
+            decide={decide}
+          />
+        );
+      },
+    },
+    ...(isGrouped ? [] : [fieldColumn]),
+    {
+      id: "attribute",
+      header: t`Attribute`,
+      width: 150,
+      cell: suggestionCell((suggestion) => {
+        const attributeLabel = getAttributeLabel(suggestion.attribute);
         return (
           <Text title={attributeLabel} truncate>
             {attributeLabel}
           </Text>
         );
-      },
+      }),
     },
     {
       id: "current",
@@ -994,7 +998,12 @@ function getColumns({
     },
     {
       id: "explanation",
-      header: t`Explanation`,
+      // Centred like the icons below it, which a plain header is not.
+      header: () => (
+        <Center w="100%">
+          <SortableHeaderPill name={t`Explanation`} />
+        </Center>
+      ),
       width: 120,
       cell: suggestionCell(({ reasoning }) =>
         reasoning ? (

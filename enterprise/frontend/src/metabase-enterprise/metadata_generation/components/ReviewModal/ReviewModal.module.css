@@ -68,7 +68,9 @@
 
 /* Rows are neither selectable nor navigable, so they don't highlight. */
 .card .suggestions .suggestionRow:hover,
-.card .suggestions .suggestionRow:focus:not([data-disabled]) {
+.card .suggestions .suggestionRow:focus:not([data-disabled]),
+.card .suggestions .suggestionRowActive,
+.card .suggestions .suggestionRowActive:hover {
   background-color: transparent;
 }
 
@@ -78,6 +80,8 @@
 
 /* A header row naming the field of the rows below it. */
 .card .suggestions .suggestionRow[data-group="true"] {
+  height: 40px !important;
+  min-height: 40px;
   background-color: var(--mb-color-background_page-secondary);
 }
 
