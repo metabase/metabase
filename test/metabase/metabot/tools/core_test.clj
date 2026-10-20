@@ -352,8 +352,8 @@
               (pipeline-failure "no" {:status-code status}))))))
 
 (deftest ^:parallel with-pipeline-errors-does-not-relay-foreign-messages-test
-  (testing "`as-agent-input-error` stamps :agent-error? onto exceptions from lib, toucan2 and JDBC
-           too. Without an :error code there is nothing to say the message was written for a model,
+  (testing "`as-agent-input-error` stamps :agent-error? onto exceptions from lib too.
+           Without an :error code there is nothing to say the message was written for a model,
            so it stays unrecoverable and the model never sees it."
     (is (=? {:class       :unrecoverable
              :code        :internal

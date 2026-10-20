@@ -938,7 +938,7 @@
                              :chart-type
                              chart-type->keyword)
                          :table)
-          ;; Only declared pipeline errors are recoverable; unexpected failures end the turn.
+          ;; Declared pipeline errors and refusals are recoverable; anything else ends the turn.
           structured (:structured-output (tools/with-pipeline-errors
                                            (execute-representations-query query)))
           ;; A query built only to be read needs run_query, so without it the chart is the one way
