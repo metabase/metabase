@@ -90,26 +90,21 @@ export function toPluginSettings(
 
   const merged = Object.fromEntries([...hostEntries, ...pluginEntries]);
 
-  const hostColumn = merged.column;
-  const pluginSettings: PluginSettings = {
-    // Deep-clone so a plugin can't mutate a shared nested host object (e.g. `click_behavior`)
-    // through the sandbox membrane.
-    ...cloneCloneableEntries(merged),
-    column: (column) => {
-      // Custom viz always registers column settings, so the host provides `column`
-      // on every render path. Fall back to plain column formatting rather than
-      // breaking the visualization if that ever changes.
-      if (typeof hostColumn !== "function") {
-        return { column };
-      }
+  // Deep-clone so a plugin can't mutate a shared nested host object (e.g. `click_behavior`)
+  // through the sandbox membrane.
+  const pluginSettings: PluginSettings = cloneCloneableEntries(merged);
+
+  if (typeof merged.column === "function") {
+    pluginSettings.column = (column) => {
       // Fresh copy per call so mutating the result can't reach the host's memoized settings.
-      const { column: _embeddedColumn, ...columnSettings } = hostColumn(column);
+      const { column: _embeddedColumn, ...columnSettings } =
+        merged.column(column);
       return {
         ...cloneCloneableEntries(columnSettings),
         column,
       };
-    },
-  };
+    };
+  }
 
   pluginSettingsCache.set(settings, prefix, pluginSettings);
 

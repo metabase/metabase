@@ -2,12 +2,6 @@
 
 This changelog covers the `@metabase/custom-viz` npm package — the API and CLI for building custom visualizations for Metabase. Changes to how Metabase itself hosts custom visualization plugins are covered by the [Metabase changelog](https://www.metabase.com/changelog).
 
-## Unreleased
-
-### Features
-
-- `settings.column` is no longer optional, since Metabase always provides it: `formatValue(row[1], settings.column(cols[1]))` ([#84606](https://github.com/metabase/metabase/pull/84606)).
-
 ## 2.0.0
 
 ### ⚠ BREAKING CHANGES

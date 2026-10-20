@@ -94,17 +94,13 @@ describe("toPluginSettings", () => {
         { "card.title": "Title", [`${PREFIX}threshold`]: 42 },
         PREFIX,
       ),
-    ).toEqual({
-      "card.title": "Title",
-      threshold: 42,
-      column: expect.any(Function),
-    });
+    ).toEqual({ "card.title": "Title", threshold: 42 });
   });
 
   it("drops other plugins' settings", () => {
-    expect(toPluginSettings({ "custom:other:threshold": 1 }, PREFIX)).toEqual({
-      column: expect.any(Function),
-    });
+    expect(toPluginSettings({ "custom:other:threshold": 1 }, PREFIX)).toEqual(
+      {},
+    );
   });
 
   it("lets a plugin setting shadow a same-named host setting", () => {
@@ -113,7 +109,7 @@ describe("toPluginSettings", () => {
         { "card.title": "Host", [`${PREFIX}card.title`]: "Plugin" },
         PREFIX,
       ),
-    ).toEqual({ "card.title": "Plugin", column: expect.any(Function) });
+    ).toEqual({ "card.title": "Plugin" });
   });
 
   it("keeps a plugin's mutation of a nested value away from the host settings", () => {
@@ -156,13 +152,6 @@ describe("toPluginSettings", () => {
     }
 
     expect(getEntry.call(lookup, "a")).toBe(1);
-  });
-
-  it("exposes column returning just the column when the host has none", () => {
-    const pluginSettings = toPluginSettings({}, PREFIX);
-    const column = { name: "TOTAL", display_name: "Total", source: "fields" };
-
-    expect(pluginSettings.column(column)).toEqual({ column });
   });
 
   it("exposes column as a callable whose results can't poison the host", () => {
