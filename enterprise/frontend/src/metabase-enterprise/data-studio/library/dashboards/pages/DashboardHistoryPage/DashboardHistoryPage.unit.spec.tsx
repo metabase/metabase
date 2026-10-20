@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
   setupEntityRevisionsEndpoint,
@@ -55,6 +56,7 @@ function setup({
     dashcards: [],
   });
   setupListSubscriptionsEndpoint([]);
+  setupBookmarksEndpoints([]);
   setupDashboardEndpoints(dashboard);
   setupCollectionByIdEndpoint({ collections: [SALES] });
   setupEntityRevisionsEndpoint("dashboard", dashboard.id, [RENAMED, CREATED]);

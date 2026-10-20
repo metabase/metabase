@@ -1,6 +1,7 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAuditInfoEndpoint,
+  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
@@ -43,6 +44,7 @@ function setup({ initialRoute, hasUsageAnalyticsAccess = true }: SetupOpts) {
   setupDashboardEndpoints(DASHBOARD);
   setupDashboardEndpoints(AUDIT_DASHBOARD);
   setupListSubscriptionsEndpoint([]);
+  setupBookmarksEndpoints([]);
   setupNotificationChannelsEndpoints({});
   setupAuditInfoEndpoint({
     auditInfo: hasUsageAnalyticsAccess
