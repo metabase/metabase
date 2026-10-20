@@ -26,8 +26,9 @@ export function rememberSummarySession(session: SummarySession) {
 }
 
 /**
- * The question that shows the summary: the source question while the summary is empty,
- * a pivot table once it has a grouping and a value, and the default display otherwise.
+ * The question that shows the summary: the source question while the summary is empty, a pivot
+ * table once values are split by both rows and columns, and otherwise the display the query
+ * builder picks for the query, e.g. a line chart for values by a date.
  * Returns `null` when an item no longer resolves against the base query.
  */
 export function getSummaryQuestion({
@@ -35,10 +36,10 @@ export function getSummaryQuestion({
   base,
   definition,
 }: SummarySession): Question | null {
-  const hasDimensions =
-    definition.rows.length > 0 || definition.columns.length > 0;
+  const hasRows = definition.rows.length > 0;
+  const hasColumns = definition.columns.length > 0;
   const hasValues = definition.values.length > 0;
-  if (!hasDimensions && !hasValues) {
+  if (!hasRows && !hasColumns && !hasValues) {
     return sourceQuestion;
   }
 
@@ -48,7 +49,7 @@ export function getSummaryQuestion({
   }
 
   const summaryQuestion = sourceQuestion.setQuery(summaryQuery);
-  if (!hasDimensions || !hasValues) {
+  if (!hasRows || !hasColumns || !hasValues) {
     return summaryQuestion.setDisplayIsLocked(false).setDefaultDisplay();
   }
 

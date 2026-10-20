@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
@@ -18,10 +19,9 @@ import type { Card, TableId } from "metabase-types/api";
 
 import { QuestionDataSource } from "../../components/view/ViewHeader/components/QuestionDataSource";
 import { ViewHeading } from "../../components/view/ViewSection";
-import { ViewSidebar } from "../../components/view/ViewSidebar";
-import { SIDEBAR_SIZES } from "../../constants";
 
 import { PrototypePicker } from "./PrototypePicker/PrototypePicker";
+import { ResizableSummaryPanel } from "./ResizableSummaryPanel/ResizableSummaryPanel";
 import S from "./SummarizeSidebarPrototypePage.module.css";
 import { usePrototypeQuestion } from "./use-prototype-question";
 import { useSourceCard } from "./use-source-card";
@@ -157,6 +157,7 @@ function PrototypeWorkspace({
 }) {
   const navigate = useNavigate();
   const [isPickingSource, setIsPickingSource] = useState(false);
+  const { ref: contentRef, width: contentWidth } = useElementSize();
   const {
     question,
     result,
@@ -202,7 +203,7 @@ function PrototypeWorkspace({
           {t`Change data`}
         </Button>
       </Flex>
-      <Box className={S.content}>
+      <Box ref={contentRef} className={S.content}>
         <Box component="main" className={S.main}>
           <DebouncedFrame className={S.frame} resetKey={isRunning}>
             {error != null ? (
@@ -228,7 +229,7 @@ function PrototypeWorkspace({
             )}
           </DebouncedFrame>
         </Box>
-        <ViewSidebar side="right" isOpen width={SIDEBAR_SIZES.SUMMARIZE}>
+        <ResizableSummaryPanel containerWidth={contentWidth}>
           <Sidebar
             key={variant.slug}
             question={question}
@@ -236,7 +237,7 @@ function PrototypeWorkspace({
               updateQuestion(nextQuestion, { run: true })
             }
           />
-        </ViewSidebar>
+        </ResizableSummaryPanel>
       </Box>
       <PrototypePicker
         items={PICKER_ITEMS}

@@ -93,6 +93,18 @@ export function SummaryFieldList({ base }: SummaryFieldListProps) {
     />
   ));
   const hasColumns = sections.some((section) => section.columns.length > 0);
+  const countLabel = t`Count of rows`;
+  // pinned above the columns: the quickest value to start a summary with
+  const countItem = countLabel
+    .toLowerCase()
+    .includes(query.trim().toLowerCase()) ? (
+    <DraggableField
+      id="summary-count"
+      icon="sum"
+      item={{ kind: "count", label: countLabel }}
+      query={query}
+    />
+  ) : null;
 
   return (
     <Card className={S.fieldListCard} radius="lg" shadow="xs_outline" p="md">
@@ -168,8 +180,9 @@ export function SummaryFieldList({ base }: SummaryFieldListProps) {
         </Flex>
         <Box className={S.fieldListScroll}>
           {isSearching ? (
-            metrics.length > 0 || hasColumns ? (
+            countItem != null || metrics.length > 0 || hasColumns ? (
               <>
+                {countItem}
                 {metrics.length > 0 && (
                   <Box>
                     <Text className={S.fieldGroupName}>
@@ -186,7 +199,10 @@ export function SummaryFieldList({ base }: SummaryFieldListProps) {
               </Text>
             )
           ) : tab === "columns" ? (
-            columnGroups
+            <>
+              {countItem}
+              {columnGroups}
+            </>
           ) : metrics.length > 0 ? (
             metricItems
           ) : (

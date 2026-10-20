@@ -1,7 +1,10 @@
 import { SummarySidebar } from "../../../components/view/SummarySidebar";
 
+import { SummarySidebar as BreakoutsSummarySidebar } from "./breakouts";
 import { SummarySidebar as RoomySummarySidebar } from "./roomy";
 import { SummarySidebar as RowsOnDemandSummarySidebar } from "./rows-on-demand";
+import { SummarySidebar as SectionsSummarySidebar } from "./sections";
+import { SummarySidebar as SectionsTopSummarySidebar } from "./sections-top";
 import { SummarySidebar as SideBySideSummarySidebar } from "./side-by-side";
 import type { SummarizeSidebarVariant } from "./types";
 import { SummarySidebar as WellsLeftSummarySidebar } from "./wells-left";
@@ -38,6 +41,12 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
     Sidebar: RowsOnDemandSummarySidebar,
   },
   {
+    slug: "breakouts",
+    name: "Breakouts",
+    axis: "Add rows, worded for charts: Values and Breakouts; Pivot adds Rows and renames Breakouts to Columns",
+    Sidebar: BreakoutsSummarySidebar,
+  },
+  {
     slug: "side-by-side",
     name: "Side by side",
     axis: "Fields on the left, wells on the right",
@@ -48,5 +57,17 @@ export const VARIANTS: readonly SummarizeSidebarVariant[] = [
     name: "Wells left",
     axis: "Wells on the left, fields on the right",
     Sidebar: WellsLeftSummarySidebar,
+  },
+  {
+    slug: "sections",
+    name: "Sections",
+    axis: "No tabs: one list with Metrics on top and a collapsible section per table",
+    Sidebar: SectionsSummarySidebar,
+  },
+  {
+    slug: "sections-top",
+    name: "Sections top",
+    axis: "Sections' field list with Breakouts' wells, wells on top",
+    Sidebar: SectionsTopSummarySidebar,
   },
 ];

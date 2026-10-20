@@ -413,6 +413,7 @@ export function canDropOnWell(
     case "column":
       return true;
     case "metric":
+    case "count":
       return wellId === "values";
     case "chip": {
       if (item.wellId === wellId) {
@@ -661,6 +662,8 @@ export function dropOnWell(
         : addDimension(base, definition, wellId, item.column);
     case "metric":
       return addMetricValue(base, definition, item.metric);
+    case "count":
+      return addCountValue(definition);
     case "chip": {
       const dimension = findDimension(definition, item.itemId);
       if (dimension != null && "expression" in dimension) {
@@ -693,6 +696,7 @@ export function isSummaryDragItem(value: unknown): value is SummaryDragItem {
     "kind" in value &&
     (value.kind === "column" ||
       value.kind === "metric" ||
+      value.kind === "count" ||
       value.kind === "chip")
   );
 }

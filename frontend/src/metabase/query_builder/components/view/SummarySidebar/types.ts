@@ -43,4 +43,5 @@ export type SummaryBase = {
 export type SummaryDragItem =
   | { kind: "column"; column: Lib.ColumnMetadata; label: string }
   | { kind: "metric"; metric: Lib.MetricMetadata; label: string }
+  | { kind: "count"; label: string }
   | { kind: "chip"; wellId: SummaryWellId; itemId: string; label: string };
