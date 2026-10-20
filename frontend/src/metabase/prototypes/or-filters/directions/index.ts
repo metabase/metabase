@@ -3,6 +3,10 @@ import { t } from "ttag";
 import type { FilterDirection } from "../types";
 
 import {
+  AdvancedFilterModalButton,
+  AdvancedFilterModalPrototype,
+} from "./advanced-filter-modal/AdvancedFilterModalPrototype";
+import {
   AdvancedWorksheetFilterButton,
   AdvancedWorksheetPrototype,
 } from "./advanced-worksheet/AdvancedWorksheetPrototype";
@@ -56,6 +60,17 @@ export const FILTER_DIRECTIONS: FilterDirection[] = [
       return t`One bar for the whole expression. Pick filters from a dropdown; type "and", "or" and parentheses between them.`;
     },
     Component: ExpressionBarPrototype,
+  },
+  {
+    id: "advanced-filter-modal",
+    get name() {
+      return t`OR filters B3: Advanced filter modal`;
+    },
+    get description() {
+      return t`Today's pills and notebook step. The filter picker ends with "Advanced filter", which opens the expression bar in a modal.`;
+    },
+    Component: AdvancedFilterModalPrototype,
+    FilterButton: AdvancedFilterModalButton,
   },
   {
     id: "expression-bar-inline",

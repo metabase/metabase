@@ -3,6 +3,7 @@ import {
   Fragment,
   type KeyboardEvent,
   type MouseEvent,
+  type ReactNode,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -56,6 +57,12 @@ type ExpressionBarProps = {
   onChange: (query: Lib.Query) => void;
   /** Cancel/Apply live inside the bar instead of the "+" button and a row below. */
   hasInlineActions?: boolean;
+  /** Replaces the Cancel/Apply row, e.g. to put them in a modal footer. */
+  renderActions?: (actions: {
+    canApply: boolean;
+    apply: () => void;
+    cancel: () => void;
+  }) => ReactNode;
 };
 
 /**
@@ -68,6 +75,7 @@ export function ExpressionBar({
   stageIndex,
   onChange,
   hasInlineActions = false,
+  renderActions,
 }: ExpressionBarProps) {
   const committedTokens = useMemo(
     () => readTokens(query, stageIndex),
@@ -390,7 +398,12 @@ export function ExpressionBar({
           {!parsed.ok && parsed.error}
           {parsed.ok && isDirty && t`Press Enter to apply`}
         </Text>
-        {isDirty && !hasInlineActions && (
+        {renderActions?.({
+          canApply: parsed.ok,
+          apply: commit,
+          cancel: revert,
+        })}
+        {isDirty && !hasInlineActions && !renderActions && (
           <Group gap="xs">
             <Button size="compact-sm" variant="subtle" onClick={revert}>
               {t`Cancel`}
