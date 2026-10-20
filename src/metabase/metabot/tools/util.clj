@@ -226,9 +226,9 @@
 
 ;;; ------------------------------------------ metric sources ------------------------------------------
 ;;;
-;;; One answer to "what source must this metric be consumed from?", shared by the three surfaces that ask:
-;;; the `construct_notebook_query` gate, `metric-details`, and search enrichment. They disagreed before, and
-;;; a metric paired with the wrong source is a QP `Incompatible metric` throw -- a 500 to the user.
+;;; One answer to "what source must this metric be consumed from?", shared by every Metabot surface that asks:
+;;; `construct_notebook_query`, `metric-details`, search enrichment and `run_query`'s metric refusal. A metric
+;;; paired with the wrong source is a QP `Incompatible metric` throw -- a 500 to the user.
 
 (defn metric-card-shape-get
   "Read a key off either card shape the metric surfaces accept: `kebab-k` on a lib metadata map, `snake-k` on a t2 row.
