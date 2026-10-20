@@ -24,12 +24,24 @@ const BUTTON_COLORS = [
   "neutral",
 ] as const satisfies readonly ButtonColor[];
 
+const CELL_VARIANTS = {
+  default: "default",
+  filled: "filled",
+  light: "light",
+  subtle: "subtle",
+  transparent: "subtle",
+  "on-dark-primary": "on_dark_primary",
+  "on-dark-secondary": "on_dark_secondary",
+} as const satisfies Record<ButtonVariant, string>;
+
 const DEFAULT_COLORS: Partial<Record<ButtonVariant, ButtonColor>> = {
   default: "neutral",
   filled: "brand",
   light: "brand",
   subtle: "brand",
   transparent: "brand",
+  "on-dark-primary": "neutral",
+  "on-dark-secondary": "neutral",
 };
 
 const CELLS = [
@@ -44,11 +56,15 @@ const CELLS = [
   "light-negative",
   "light-neutral",
   "light-positive",
+  "on_dark_primary-negative",
+  "on_dark_primary-neutral",
+  "on_dark_secondary-negative",
+  "on_dark_secondary-neutral",
   "subtle-brand",
   "subtle-negative",
   "subtle-neutral",
   "subtle-positive",
-] as const satisfies readonly `${ButtonVariant}-${ButtonColor}`[];
+] as const satisfies readonly `${CellVariant}-${ButtonColor}`[];
 
 const DEFAULT_LABEL_HOVER_CELLS = [
   "default-neutral",
@@ -58,9 +74,14 @@ const DEFAULT_LABEL_HOVER_CELLS = [
   "filled-positive",
   "filled-warning",
   "light-neutral",
+  "on_dark_primary-negative",
+  "on_dark_primary-neutral",
+  "on_dark_secondary-negative",
+  "on_dark_secondary-neutral",
   "subtle-neutral",
 ] as const satisfies readonly Cell[];
 
+type CellVariant = (typeof CELL_VARIANTS)[ButtonVariant];
 type Cell = (typeof CELLS)[number];
 type DefaultLabelHoverCell = (typeof DEFAULT_LABEL_HOVER_CELLS)[number];
 
@@ -81,7 +102,7 @@ const getCell = (
   buttonColor: MantineButtonProps["color"],
 ): Cell | undefined => {
   const defaultColor = DEFAULT_COLORS[variant];
-  const cellVariant = variant === "transparent" ? "subtle" : variant;
+  const cellVariant = CELL_VARIANTS[variant];
   const cellColor = isButtonColor(buttonColor) ? buttonColor : defaultColor;
   const cell = `${cellVariant}-${cellColor}`;
   if (isCell(cell)) {

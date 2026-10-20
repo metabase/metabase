@@ -30,8 +30,7 @@
    [:metrics [:sequential :map]]])
 
 (defn fetch-items
-  "Fetches the library's metrics, its published tables and the tables those metrics map, and the query actions that
-  belong to no model."
+  "Fetches Library metrics, published tables and metric backing tables, and eligible query actions without a model."
   ([]
    (fetch-items schemas.source/app-db-source))
   ([source]

@@ -27,6 +27,7 @@
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -298,6 +299,30 @@
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
 
+(deftest native-sandbox-metadata-query-keeps-outer-query-cancelable-test
+  (testing "The query that fetches a native sandbox's metadata leaves the outer query cancelable"
+    (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+      (let [canceled-chan (a/promise-chan)
+            execute       qp.pipeline/*execute*
+            calls         (atom 0)
+            driver-saw    (atom nil)]
+        (binding [qp.pipeline/*canceled-chan* canceled-chan
+                  qp.pipeline/*execute*       (fn [driver query respond]
+                                                (if (= 1 (swap! calls inc))
+                                                  (execute driver query respond)
+                                                  ;; The outer query: cancel the request, and see whether its driver hears it.
+                                                  (do
+                                                    (a/>!! canceled-chan ::canceled)
+                                                    (reset! driver-saw (a/poll! qp.pipeline/*canceled-chan*))
+                                                    nil)))]
+          ;; The canceled outer query returns no rows, which the row helpers reject.
+          (try
+            (run-venues-count-query)
+            (catch Exception _)))
+        (testing "the metadata query runs first, then the outer query, which hears the cancel"
+          (is (= 2 @calls))
+          (is (= ::canceled @driver-saw)))))))
+
 (deftest metric-on-natively-sandboxed-table-test
   (testing "A :metric reference on a natively-sandboxed table should succeed (#76044)"
     (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
@@ -324,6 +349,17 @@
         (is (= [[10]]
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
+
+(deftest sandbox-on-sensitive-field-test
+  (testing "a sandbox can filter on a :sensitive column even though the sandboxed user can't reference it"
+    (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :sensitive}
+      (met/with-gtaps! {:gtaps {:venues (venues-price-mbql-gtap-def)}, :attributes {"price" 1}}
+        (is (= [[22]]
+               (run-venues-count-query)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"not available for querying"
+             (qp/process-query (mt/mbql-query venues {:fields [$price]}))))))))
 
 (deftest e2e-api-key-user-attributes-ignored-test
   (testing (str "login_attributes stored on an API-key pseudo-user are not used for sandboxing (UXW-4240); the "
@@ -1395,7 +1431,6 @@
                     "Model failed to persist")
                 ;; a sandboxed user has no native-query permissions, but only needs to be able to *read* a saved
                 ;; native Card that references the persisted Model to hit this code path.
-                #_{:clj-kondo/ignore [:discouraged-var]}
                 (mt/with-temp [:model/Card card {:dataset_query
                                                  (lib/native-query (mt/metadata-provider)
                                                                    (format "SELECT count(*) FROM {{#%d}} AS m"
