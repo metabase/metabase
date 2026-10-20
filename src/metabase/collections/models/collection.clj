@@ -245,6 +245,14 @@
                                parse-long)]
       (root-collection-type-by-id root-id))))
 
+(defn table-root-collection-type
+  "Return the `:type` of the top-level ancestor of the collection that holds a record's parent table.
+  Reads `:table_collection_id`, `:table_collection_location`, `:table_collection_type` from the ingestion record map."
+  [{:keys [table_collection_id table_collection_location table_collection_type]}]
+  (root-collection-type {:collection_id       table_collection_id
+                         :collection_location table_collection_location
+                         :collection_type     table_collection_type}))
+
 (def library-entity-id
   "The entity_id for the Library collection."
   "librarylibrarylibrary")
@@ -368,6 +376,8 @@
   ([instance]
    (and (not (default-audit-collection? instance))
         (not (is-trash-or-descendant? instance))
+        ;; not even an administrator edits a data app's collection: only a pull of its app changes it
+        (not= (keyword (:namespace instance)) data-apps-ns)
         (mi/current-user-has-full-permissions? :write instance)
         (remote-sync/collection-editable? instance)))
   ([_model pk]
@@ -389,7 +399,9 @@
 ;;; |                                              Slug Validation                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- slugify [collection-name]
+(defn slugify
+  "The slug a collection named `collection-name` is stored with."
+  [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
     (throw (ex-info (tru "Collection name cannot be blank!")
@@ -596,6 +608,13 @@
                     (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
+
+(defn assert-remote-syncable
+  "Throws when `collection` is remote-synced but remote sync can't sync it."
+  [{:keys [is_remote_synced] :as collection}]
+  (when (and is_remote_synced (not (remote-sync/collection-syncable? collection)))
+    (let [msg (tru "Remote sync syncs only the Library, transforms, snippets and data apps unless remote-sync-custom-collections-enabled is on.")]
+      (throw (ex-info msg {:status-code 400, :errors {:is_remote_synced msg}})))))
 
 (defenterprise check-library-content
   "Checks contents of a library collection before saving it. The OSS implementation is a no-op."
@@ -1019,7 +1038,7 @@
                                                                             (when (perms/is-data-analyst? current-user-id)
                                                                               ^:allow-subquery {:select visible-union-columns
                                                                                                 :from [[:collection :c]]
-                                                                                                :where [:= :namespace ^:allow-raw-sql [:inline "transforms"]]})])}
+                                                                                                :where [:= :namespace "transforms"]})])}
                                :c])]
                      ;; The `WHERE` clause is where we apply the other criteria we were given:
                      :where [:and
@@ -1039,7 +1058,7 @@
                                [:not [:exists ^:allow-subquery {:select [1]
                                                                 :from [[:collection :sub_c]]
                                                                 :where [:and [:= :c.id :sub_c.id]
-                                                                        [:= :sub_c.namespace ^:allow-raw-sql [:inline "shared-tenant-collection"]]]}]])
+                                                                        [:= :sub_c.namespace (h2x/literal "shared-tenant-collection")]]}]])
                              ;; excluding things outside of the `archive_operation_id` you wanted...
                              (when-let [op-id (:archive-operation-id visibility-config)]
                                [:or
@@ -1530,7 +1549,8 @@
   (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
     (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
                     {:non-remote-synced-models non-remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:non-remote-synced-models}})))
   model)
 
 (defn check-remote-synced-dependents
@@ -1545,7 +1565,8 @@
   (when-let [remote-synced-deps (not-empty (remote-synced-dependents model))]
     (throw (ex-info (str (deferred-tru "Used by remote synced content."))
                     {:remote-synced-models remote-synced-deps
-                     :status-code 400})))
+                     :status-code 400
+                     :response/keys #{:remote-synced-models}})))
   model)
 
 (defn moving-into-remote-synced?
@@ -1904,7 +1925,8 @@
                (assoc :slug (slugify collection-name))
                (cond->
                 (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
-    (assert-valid-remote-synced-parent <>)))
+    (assert-valid-remote-synced-parent <>)
+    (assert-remote-syncable <>)))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -2125,7 +2147,9 @@
                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
                collection-name (assoc :slug (slugify collection-name)))
       (when-not *clearing-remote-sync*
-        (assert-valid-remote-synced-parent (merge collection-before-updates <>))))))
+        (assert-valid-remote-synced-parent (merge collection-before-updates <>))
+        (when (contains? <> :is_remote_synced)
+          (assert-remote-syncable (merge collection-before-updates <>)))))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
@@ -2192,7 +2216,7 @@
        [:not= (maybe-alias :type) instance-analytics-collection-type]
        [:not= (maybe-alias :type) trash-collection-type]]]
      [:or [:= (maybe-alias :namespace) nil]
-      [:not= (maybe-alias :namespace) ^:allow-raw-sql [:inline "analytics"]]]
+      [:not= (maybe-alias :namespace) "analytics"]]
      [:not (maybe-alias :is_sample)]]))
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set filter-column filter-ids skip-archived]}]
@@ -2275,8 +2299,7 @@
           :slug
           :type]
    :skip []
-   :transform {:created_at        (serdes/date)
-               ;; We only dump the parent id, and recalculate the location from that on load.
+   :transform {;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
                                              (serdes/compose
                                               (serdes/fk :model/Collection)
@@ -2355,7 +2378,8 @@
           (throw (ex-info msg {:status-code          400
                                :errors               {:collection_id msg}
                                :allowed-namespaces   allowed-namespaces
-                               :collection-namespace collection-namespace})))))))
+                               :collection-namespace collection-namespace
+                               :response/keys        #{:allowed-namespaces :collection-namespace}})))))))
 
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are

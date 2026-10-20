@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
-   [metabase-enterprise.data-apps.core :as data-apps]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
@@ -15,6 +14,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
@@ -34,9 +34,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- snapshot-has-transforms?
-  "Checks if the snapshot contains any Transform, PythonLibrary entities,
-   non-built-in TransformTags, or transforms-namespace collections.
-   Used to auto-enable/disable remote-sync-transforms setting during import.
+  "Checks if the snapshot contains any Transform, PythonLibrary entities other than the built-in one with its default
+   empty source, non-built-in TransformTags, or transforms-namespace collections.
+   Used to auto-enable remote-sync-transforms setting during import.
 
    Uses the ingestable to list all entities and checks their :model metadata,
    then also checks if any Collection entities have namespace=transforms.
@@ -44,7 +44,12 @@
   [ingestable]
   (let [serdes-paths (serialization/ingest-list ingestable)
         models-present (spec/models-in-import serdes-paths)]
-    (or (some spec/transform-models models-present)
+    (or (some (disj spec/transform-models "PythonLibrary") models-present)
+        (some (fn [path]
+                (when (= "PythonLibrary" (:model (last path)))
+                  (or (not= transforms-python/builtin-entity-id (:id (last path)))
+                      (not (str/blank? (:source (serialization/ingest-one ingestable path)))))))
+              serdes-paths)
         ;; Check for non-built-in TransformTags
         (when (contains? models-present "TransformTag")
           (some (fn [path]
@@ -144,7 +149,7 @@
 
       ;; the validator names a file, whose path may hold any word the matches below look for
       (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
-      (str "Failed to reload from git repository: " message)
+      (str "Failed to reload from git repository. " message)
 
       (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
@@ -184,6 +189,13 @@
       :else
       (format "Failed to reload from git repository: %s" (or (ex-message e) (.getName (class e)))))))
 
+(defn- library-has-content?
+  "Whether `library` holds anything beyond its system collections."
+  [library]
+  (let [collection-ids (vec (remote-sync.db/subtree-collection-ids [library]))]
+    (or (some (complement collection/library-root-collection?) (remote-sync.db/collections collection-ids))
+        (remote-sync.db/collection-content-exists? collection-ids))))
+
 (defn- get-conflicts
   "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
    - :first-import-conflicts - feature/namespace/library conflicts that only block on the very first import
@@ -191,7 +203,7 @@
                                would wholesale-delete; these block on EVERY import, not just the first
 
    Conflict types detected:
-   - :library-conflict - First import only, local Library exists, import has Library
+   - :library-conflict - First import only, local unsynced Library with content, import has Library
    - :transforms-conflict / :snippets-conflict - import has matching content but local has unsynced entities
    - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
   [ingestable first-import?]
@@ -221,7 +233,8 @@
                            (when (and first-import?
                                       (contains? (get-in imported-data [:by-entity-id "Collection"] #{})
                                                  collection/library-entity-id)
-                                      (not (remote-sync.db/rso-exists? "Collection" (:id local-library))))
+                                      (not (remote-sync.db/rso-exists? "Collection" (:id local-library)))
+                                      (library-has-content? local-library))
                              {:type :library-conflict
                               :category "Library"
                               :message "Import contains Library but local instance has an unsynced Library collection"}))
@@ -426,10 +439,6 @@
         (collection/ensure-library-dashboards-collection!)
         (when finalize! (finalize!))))
     (report 0.9 {:force? true})
-    (when (and (not has-transforms?)
-               (settings/remote-sync-transforms))
-      (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
-      (settings/remote-sync-transforms! false))
     ;; On H2 the reindex's table DDL blocks readers and can deadlock with them, so it must finish
     ;; inside the task; other app DBs keep the previous behavior of reindexing asynchronously.
     (try
@@ -460,7 +469,7 @@
   (serialization/entity-file-path? path))
 
 (defn- pulled-change-count
-  "Total number of entities applied by a pull, across entity-id- and path-identified models in `imported-data`."
+  "Total number of entities applied by a pull, across the entity-id models and the user settings in `imported-data`."
   [imported-data]
   (transduce (map count) + 0 (concat (vals (:by-entity-id imported-data))
                                      (vals (:by-path imported-data)))))
@@ -579,15 +588,6 @@
       (remote-sync.db/update-rso! (:id existing) {:status status :status_changed_at timestamp})
       (remote-sync.db/insert-rso! (-> row (dissoc :id) (assoc :status_changed_at timestamp))))))
 
-(defn- record-data-app-tables!
-  "Record the tables each data app's resources read, after a load or an export, logging a failure: the load's
-  transaction has committed and the export's commit is pushed by then, so a failure must not undo their record."
-  []
-  (try
-    (data-apps/record-table-dependencies!)
-    (catch Exception e
-      (log/warn e "Could not record the tables of the data apps"))))
-
 (defn- import-merged!
   "Import in merge mode. Should only be called when you have a base-snapshot and its version differs from snaphot's version.
 
@@ -618,7 +618,6 @@
                         :finalize! (fn []
                                      (restore-dirty-objects! dirty-objects sync-timestamp)
                                      (finalize!)))
-        (record-data-app-tables!)
         (log/infof "Pull merge: folded in %d remote change(s) (added %d, updated %d, removed %d); kept %d local change(s)"
                    (apply + (vals summary)) (:added summary) (:updated summary) (:removed summary)
                    (count dirty-objects))
@@ -718,8 +717,7 @@
 
                 :else
                 (let [_             (log/info "Remote sync full import: forced")
-                      imported-data (u/prog1 (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)
-                                      (record-data-app-tables!))]
+                      imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)]
                   (log/info "Successfully reloaded entities from git repository")
                   {:status :success
                    :version snapshot-version
@@ -757,8 +755,7 @@
                                     first-import? "first import"
                                     :else         "changes not incrementally loadable")
                     _             (log/infof "Remote sync full import: %s" reason)
-                    imported-data (u/prog1 (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)
-                                    (record-data-app-tables!))]
+                    imported-data (load-snapshot! snapshot report sync-timestamp :finalize! finalize!)]
                 (log/info "Successfully reloaded entities from git repository")
                 {:status :success
                  :version snapshot-version
@@ -856,7 +853,6 @@
                             :finalize! (fn []
                                          (remote-sync.db/mark-all-rsos-synced! sync-timestamp)
                                          (remote-sync.task/set-version! task-id version)))
-            (record-data-app-tables!)
             (log/infof "Exported with merge: folded in %d remote change(s) (added %d, updated %d, removed %d); pushed %d"
                        pulled (:added summary) (:updated summary) (:removed summary) (if empty? 0 pushed-count))
             {:status :success :version version :merge-summary summary
@@ -1225,7 +1221,6 @@
           (doseq [removed-ids (partition-all 500 (find-departed-entities export-rows))]
             (remote-sync.db/delete-rsos! removed-ids))
           (mark-rows-synced! (remote-sync.db/all-rso-ids) synced sync-timestamp))
-        (record-data-app-tables!)
         (if (= version :remote-sync/empty-commit)
           (do
             (log/info "Remote sync full export: re-serialized content matches remote; skipped empty commit")
@@ -1259,7 +1254,6 @@
         (doseq [removed-ids (partition-all 500 removed-ids)]
           (remote-sync.db/delete-rsos! removed-ids))
         (mark-rows-synced! (map :id synced) synced sync-timestamp))
-      (record-data-app-tables!)
       (if (= version :remote-sync/empty-commit)
         (do (log/info "Remote sync incremental export: nothing changed; skipped empty commit")
             {:status :success :outcome {:kind "push-skipped"}})
@@ -1470,6 +1464,12 @@
 
 ;;; ------------------------------------------- Task Result Handling -------------------------------------------
 
+(defn- outcome-on-branch
+  "Names `branch`, the branch the task ran on, in an `outcome` that names one, since the setting the outcome was built from switches to it only after the task."
+  [outcome branch]
+  (cond-> outcome
+    (and branch (contains? outcome :branch)) (assoc :branch branch)))
+
 (defn handle-task-result!
   "Handles the outcome of running import! or export! by updating the RemoteSyncTask record.
 
@@ -1506,7 +1506,7 @@
                   :success (do
                              (when branch
                                (settings/remote-sync-branch! branch))
-                             (remote-sync.task/complete-sync-task! task-id (:outcome result)))
+                             (remote-sync.task/complete-sync-task! task-id (outcome-on-branch (:outcome result) branch)))
                   :conflict (do
                               (remote-sync.task/set-version! task-id (:version result))
                               (remote-sync.task/conflict-sync-task! task-id (:conflicts result) (:outcome result)))
@@ -1645,7 +1645,8 @@
                        :conflicts true
                        ;; The un-pushed local changes a switch would discard, so the client can name exactly
                        ;; what would be lost without a second round-trip to /dirty.
-                       :dirty_objects (remote-sync.object/dirty-objects)})))
+                       :dirty_objects (remote-sync.object/dirty-objects)
+                       :response/keys #{:conflicts :dirty_objects}})))
     (run-async! "import" branch
                 (fn [task-id]
                   (when (branch-changed-since-scheduling? pre-task-branch)

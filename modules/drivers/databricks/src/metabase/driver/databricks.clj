@@ -44,7 +44,13 @@
 
 (defmethod driver/host-carrying-parameters :databricks
   [_driver]
-  ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
+  ["ProxyHost" "CFProxyHost" "OAuth2ConnAuthAuthorizeEndpoint" "OAuth2ConnAuthTokenEndpoint"
+   "OAuth2AuthorizationEndPoint" "OAuth2TokenEndpoint" "OAuthDiscoveryURL" "OIDCDiscoveryEndpoint"])
+
+(defmethod driver/non-host-parameters :databricks
+  [_driver]
+  ["ProxyPort" "CFProxyPort" "UseProxy" "UseCFProxy" "UseSystemProxy" "ProxyIgnoreList" "OAuth2RedirectUrlPort"
+   "EnableOIDCDiscovery" "OAuthDiscoveryMode"])
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
@@ -69,12 +75,12 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
-(defmethod driver/validate-db-details! :databricks
-  [_driver details]
-  (sql-jdbc/reject-dangerous-additional-options! details)
-  (when-let [opts (not-empty (:additional-options details))]
-    (when (re-find #"(?i)VolumeOperationAllowedLocalPaths" opts)
-      (throw (Exception. "Potentially dangerous keys in connection details")))))
+(defmethod driver/disallowed-connection-parameters :databricks
+  [driver]
+  ;; enable Unity Catalog volume operations, which read and write arbitrary local files. `StagingAllowedLocalPaths` is
+  ;; the older spelling of the same setting, and the client still honors it
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        ["VolumeOperationAllowedLocalPaths" "StagingAllowedLocalPaths"]))
 
 (defn- catalog-present?
   [jdbc-spec catalog]
@@ -107,6 +113,10 @@
 (defn- split-catalog+schema
   [schema]
   (str/split schema #"\."))
+
+(defmethod sql.qp/use-ctes-for-stages? :databricks
+  [_driver]
+  true)
 
 (defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
   [_driver [tag identifier-type components :as _identifier]]

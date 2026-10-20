@@ -40,6 +40,7 @@ const setup = (snapshot = "default") => {
   H.resetSnowplow();
   cy.signInAsAdmin();
   H.activateToken("pro-self-hosted");
+  H.updateSetting("remote-sync-custom-collections-enabled", true);
   H.setupGitSync();
   H.interceptTask();
 };

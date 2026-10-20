@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.transport :as transport]
@@ -50,9 +51,7 @@
   "The `scope` an `insufficient_scope` challenge asks for: the `surface-scopes` that are `required` or that
    `token-scopes` matches, in `surface-scopes` order, then `required` when it is outside the surface."
   [surface-scopes token-scopes required]
-  ;; Held scopes ride along because a client may replace its grant with the challenged scope. They are matched, not
-  ;; looked up, so a wildcard grant such as `agent:content:*` keeps the surface scopes it covers. Only scope strings
-  ;; count: nil and the unrestricted sentinel match everything but are never challenged.
+  ;; Held scopes ride along because a client may replace its grant with the challenged scope.
   (let [held (set (filter string? token-scopes))]
     (cond-> (filterv #(or (= required %) (mcp.scope/matches? held %)) surface-scopes)
       (not (some #{required} surface-scopes)) (conj required))))
@@ -68,7 +67,7 @@
    asking for [[step-up-scopes]] over `token-scopes`, with [[step-up-description]] as the `error_description`."
   [error-response token-scopes {:keys [required-scope description]}]
   (transport/insufficient-scope error-response
-                                (step-up-scopes mcp.paths/v2-surface-scopes token-scopes required-scope)
+                                (step-up-scopes mcp.scope/v2-surface-scopes token-scopes required-scope)
                                 (step-up-description description)))
 
 (defn- handle-tools-call [id params session-id token-scopes request-context]
@@ -108,8 +107,16 @@
 
 (defn- handle-resources-read [id params session-id token-scopes]
   (let [uri (:uri params)]
-    (if (or (not (string? uri)) (str/blank? uri))
+    (cond
+      ;; `initialize` checks this too, but a session opened before an admin turned MCP off for the user's groups
+      ;; would otherwise keep reading.
+      (not (mcp.perms/enabled? (mcp.perms/policy-for-current-user)))
+      (transport/jsonrpc-error id common/error-code-invalid-request transport/mcp-access-disabled-message)
+
+      (or (not (string? uri)) (str/blank? uri))
       (transport/jsonrpc-error id -32602 (message/msg ["Missing required parameter: uri"]))
+
+      :else
       ;; The scoped credential the iframe authenticates with. Since #81041 the browser receives it
       ;; through the `refresh_ui_credential` tool; the shell's render-fn still forces this delay for
       ;; templates that embed it (the test fallback), and the production template discards it.
@@ -151,6 +158,18 @@
       (transport/jsonrpc-error id -32601 (message/msg ["Method not found: %s"] method))
       nil)))
 
+;;; ---------------------------------------------------- Catalog ---------------------------------------------------
+
+(defn tool-catalog
+  "Every tool on this surface as `{:name :scope :description :default_access}`, sorted by scope then name."
+  []
+  (registry/tool-catalog))
+
+(defn renamed-tool-names
+  "Every former name a tool on this surface declares, as `{former-name current-name}`."
+  []
+  (registry/renamed-tool-names))
+
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
 (def +mcp-enabled
@@ -160,15 +179,13 @@
 (def ^:private server-instructions
   "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call. It points
   at the `learn` skills and the `glossary` once, settles the routing choices a model makes before reading any tool
-  description closely
-  (structured queries are the default, raw SQL the escape hatch, `visualize_query` for charts when listed), and
-  explains the scope-denial failures that clients rewrite before the model sees them."
-  (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
+  description closely (structured queries are the default, raw SQL the escape hatch, `visualize_query` for charts),
+  and explains the scope-denial failures that clients rewrite before the model sees them."
+  (str "learn() lists task-shaped docs (skills) by topic; learn(topic) returns one.\n"
        "Before your first complex write — native template_tags, dashboard parameter wiring, a multi-stage or joined "
        "query, visualization settings — read the matching skill unless it is already in context.\n"
-       "This instance's glossary defines business terms that matter for answering questions about its data. Fetch "
-       "them with glossary() before you answer — an instance's own definition of a term overrides your reading of "
-       "it.\n"
+       "This instance's glossary defines business terms used in its data. Fetch them with glossary() before you "
+       "answer — an instance's own definition of a term overrides your reading of it.\n"
        "Answer questions from data with execute_query (structured MBQL) by default; execute_sql is the escape hatch "
        "for what MBQL cannot express or an explicit request for SQL.\n"
        "When visualize_query is available, use it for any request to show, chart, plot, or visualize data (pass a "
@@ -180,8 +197,8 @@
        ;; for. The unfiltered tool list needs saying because a scope-filtered list is the conventional design and the
        ;; protocol has no field to signal ours: asked what this connection could do, a model read the roster as a
        ;; grant and answered with scopes it did not hold.
-       "Every tool is listed whatever this connection holds, so the list says nothing about its permissions; only a "
-       "failed call reveals a missing one.\n"
+       "Tools are listed whatever this connection holds, so the list says nothing about its permissions; only a "
+       "failed call reveals a missing one. An unlisted tool is off for this user: ignore advice here about it.\n"
        "An auth error (\"re-authorization\", \"expired token\", \"insufficient scope\", \"Unauthorized\", \"tool "
        "execution failed\") usually means a missing permission, not an expired login. When a tool call or resource "
        "read needs a permission this connection lacks, tell the user which tool or resource failed, which permission "
@@ -194,14 +211,14 @@
 (def ^:private default-ask-scopes
   "The `scope` of the 401 challenge, which an uninstructed client requests on first connect. Every scope here must be
   inside the OAuth server's default grant ceiling."
-  ;; Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
-  ;; `insufficient_scope` naming the union of held and required scopes, so a client steps up to the rest of the surface
-  ;; rather than being granted it up front. Each tool also declares its scope in `securitySchemes`, which is draft
-  ;; SEP-1488 (modelcontextprotocol issue 1488) and supported by ChatGPT; it is not in MCP 2025-03-26, the version this
-  ;; server reports, so other clients learn the missing scope from the 403. The surface still accepts all of
-  ;; [[metabase.mcp.paths/v2-surface-scopes]]. A scope outside the ceiling is answered "Invalid scope" for a client that
-  ;; follows the challenge.
-  mcp.paths/v2-baseline-scopes)
+  ;; The whole surface, not the baseline (ENG-11089). A client whose step-up is lossy, such as a manual reconnect from
+  ;; Claude's connector settings, registers a fresh client and asks for exactly this. When this was the baseline, that
+  ;; reconnect never offered the write scopes, so the user had no way to grant them. The consent page starts every
+  ;; requested scope ticked and lets the user untick any outside the baseline, so a narrower grant is still one
+  ;; untick away. A call needing a scope the token lacks is still answered with a 403 `insufficient_scope`, for
+  ;; clients that step up. A scope outside the ceiling is answered "Invalid scope" for a client that follows the
+  ;; challenge.
+  mcp.scope/v2-surface-scopes)
 
 (def ^{:arglists '([request respond raise])} handler
   "Ring async handler for the MCP endpoint."

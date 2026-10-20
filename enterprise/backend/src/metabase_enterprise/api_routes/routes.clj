@@ -28,6 +28,7 @@
    [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
+   [metabase-enterprise.mcp.api.permissions]
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
@@ -37,8 +38,8 @@
    [metabase-enterprise.replacement.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
+   [metabase-enterprise.search.semantic.api]
    [metabase-enterprise.security-center.api]
-   [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.session-management.api]
    [metabase-enterprise.stale.api]
@@ -113,7 +114,12 @@
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
-   "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
+   ;; MCP permissions check :ai-controls per endpoint and must come first: the Metabot handler refuses every
+   ;; request without the feature, matching or not.
+   "/ai-controls"                  (handlers/routes
+                                    (handlers/route-map-handler
+                                     {"/mcp-permissions" metabase-enterprise.mcp.api.permissions/routes})
+                                    (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls))
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-diagnostics"          (premium-handler metabase-enterprise.content-diagnostics.api/routes :content-diagnostics)
@@ -160,7 +166,7 @@
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
-   "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
+   "/semantic-search"              (premium-handler metabase-enterprise.search.semantic.api/routes :semantic-search)
    "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/session-management"           (premium-handler metabase-enterprise.session-management.api/routes :session-management)

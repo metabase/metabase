@@ -187,6 +187,31 @@ describe("metabot selectors", () => {
       ).toBeUndefined();
     });
 
+    const errored = (errorType: string) =>
+      createMockMetabotMessage({
+        status: { type: "errored", error: { type: errorType } },
+      });
+
+    it("reports full when the last turn failed because the context is full", () => {
+      const state = setup([shortMessage, errored("ai_provider_context_full")]);
+      expect(getLongChatNotice(state, "omnibot")).toBe("full");
+    });
+
+    it("shows nothing when the last turn failed for another reason", () => {
+      const state = setup([shortMessage, errored("ai_provider_billing")]);
+      expect(getLongChatNotice(state, "omnibot")).toBeUndefined();
+    });
+
+    it("shows nothing when only an earlier turn failed because the context is full", () => {
+      const state = setup([
+        shortMessage,
+        errored("ai_provider_context_full"),
+        shortMessage,
+        usage(10000),
+      ]);
+      expect(getLongChatNotice(state, "omnibot")).toBeUndefined();
+    });
+
     describe("getContextUsagePercent", () => {
       it("reports the last observed usage as a share of the window, 0-100", () => {
         const state = setup([shortMessage, usage(CONTEXT_WINDOW / 4)]);

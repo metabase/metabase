@@ -1290,6 +1290,8 @@
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.aggregation-expression"
         }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.named-aggregation"
+        }, {
           "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.measure"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.metric"
@@ -1366,22 +1368,18 @@
         } ]
       },
       "metabase-enterprise.data-apps.query-definition.breakout" : {
-        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.column-with-binning"
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.column-with-binning"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.named-breakout"
+        } ]
       },
       "metabase-enterprise.data-apps.query-definition.column" : {
         "type" : "object",
         "properties" : {
-          "display-name" : {
+          "field-id" : {
             "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "index" : {
-            "oneOf" : [ {
-              "type" : "integer",
-              "minimum" : 1
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
             }, {
               "type" : "null"
             } ]
@@ -1392,20 +1390,6 @@
           "source-field-id" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "source-name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "table-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
             }, {
               "type" : "null"
             } ]
@@ -1427,31 +1411,9 @@
               "type" : "null"
             } ]
           },
-          "index" : {
+          "field-id" : {
             "oneOf" : [ {
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "table-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "display-name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "source-name" : {
-            "oneOf" : [ {
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
             }, {
               "type" : "null"
             } ]
@@ -1528,6 +1490,41 @@
         "required" : [ "type", "id" ],
         "additionalProperties" : false
       },
+      "metabase-enterprise.data-apps.query-definition.named-aggregation" : {
+        "description" : "A measure or a metric whose result column is named, as `aggregations.measure` and `aggregations.metric` name it.",
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "value" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.measure"
+            }, {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.metric"
+            } ]
+          }
+        },
+        "required" : [ "name", "value" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-apps.query-definition.named-breakout" : {
+        "description" : "A breakout whose result column is named, as `breakout(field, { name })` names it.",
+        "type" : "object",
+        "properties" : {
+          "column" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.column-with-binning"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "breakout"
+          }
+        },
+        "required" : [ "type", "name", "column" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.data-apps.query-definition.operator" : {
         "type" : "string"
       },
@@ -1561,38 +1558,6 @@
               "type" : "null"
             } ]
           },
-          "index" : {
-            "oneOf" : [ {
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "table-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "display-name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "source-name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "type" : "string"
-          },
           "direction" : {
             "oneOf" : [ {
               "type" : "string",
@@ -1600,6 +1565,16 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "field-id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
           },
           "source-field-id" : {
             "oneOf" : [ {
@@ -1747,6 +1722,29 @@
         },
         "additionalProperties" : false
       },
+      "metabase-enterprise.data-apps.schema.action" : {
+        "description" : "An action without a model a data app runs, with the entity ID and collection of its copy.",
+        "type" : "object",
+        "properties" : {
+          "action_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "collection_id" : {
+            "description" : "String must be a valid 21-character NanoID string.",
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+          },
+          "entity_id" : {
+            "description" : "String must be a valid 21-character NanoID string.",
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+          }
+        },
+        "required" : [ "action_id", "entity_id", "collection_id" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.data-apps.schema.allowed-host" : {
         "description" : "An origin a data app's sandboxed bundle may fetch: scheme, host with an optional `*.` subdomain wildcard, and an\n   optional port.",
         "type" : "string",
@@ -1758,6 +1756,69 @@
         "items" : {
           "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-host"
         }
+      },
+      "metabase-enterprise.data-apps.schema.app-files" : {
+        "description" : "A data app's files, each at its path from the repository root.",
+        "type" : "object",
+        "properties" : {
+          "files" : {
+            "type" : "array",
+            "items" : {
+              "type" : "object",
+              "properties" : {
+                "path" : {
+                  "type" : "string"
+                },
+                "yaml" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "path", "yaml" ],
+              "additionalProperties" : false
+            }
+          }
+        },
+        "required" : [ "files" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.data-apps.schema.app-request" : {
+        "description" : "What a data app's files are generated from. An existing app passes the entity IDs of its `data_app.yaml` and of its\n  collection, so its files keep them.",
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "description" : "String must be a valid 21-character NanoID string.",
+              "type" : "string",
+              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
+          },
+          "slug" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.slug"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ],
+        "additionalProperties" : false
       },
       "metabase-enterprise.data-apps.schema.bundle-path" : {
         "description" : "The path of a data app's bundle, relative to the app's directory and inside it.",
@@ -1782,6 +1843,56 @@
         "description" : "A data app's display name.",
         "type" : "string",
         "minLength" : 1
+      },
+      "metabase-enterprise.data-apps.schema.file" : {
+        "description" : "A serialization file in the folder of the app's collection, or the error that stops it.",
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "file" : {
+              "type" : "string"
+            },
+            "yaml" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "file", "yaml" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "error" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "error" ],
+          "additionalProperties" : false
+        } ]
+      },
+      "metabase-enterprise.data-apps.schema.query" : {
+        "description" : "A data app `defineQuery` definition, with the name, entity ID and collection of the saved question that holds it.",
+        "type" : "object",
+        "properties" : {
+          "collection_id" : {
+            "description" : "String must be a valid 21-character NanoID string.",
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+          },
+          "entity_id" : {
+            "description" : "String must be a valid 21-character NanoID string.",
+            "type" : "string",
+            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "query" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.query-definition"
+          }
+        },
+        "required" : [ "name", "query", "entity_id", "collection_id" ],
+        "additionalProperties" : false
       },
       "metabase-enterprise.data-apps.schema.slug" : {
         "description" : "A data app's slug: lowercase letters and numbers separated by single dashes, at most 100 characters.",
@@ -1948,6 +2059,48 @@
           }
         },
         "additionalProperties" : false
+      },
+      "metabase-enterprise.dependencies.api.action-entity" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "object",
+            "properties" : {
+              "collection" : { },
+              "creator" : { },
+              "name" : { },
+              "collection_id" : { },
+              "type" : { },
+              "created_at" : { },
+              "model_id" : { },
+              "parameters" : { },
+              "creator_id" : { },
+              "description" : { }
+            }
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dependents_errors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.dependent-error"
+            },
+            "uniqueItems" : true
+          },
+          "id" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "type" : {
+            "const" : "action"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ]
       },
       "metabase-enterprise.dependencies.api.base-entity" : {
         "type" : "object",
@@ -2170,6 +2323,8 @@
           "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.segment-entity"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.measure-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.action-entity"
         } ]
       },
       "metabase-enterprise.dependencies.api.graph-response" : {
@@ -2458,7 +2613,7 @@
       },
       "metabase-enterprise.dependencies.dependency-types.dependency-types" : {
         "type" : "string",
-        "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment" ]
+        "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment", "action" ]
       },
       "metabase-enterprise.dependencies.dependency-types.entity-id" : {
         "type" : "integer",
@@ -5573,6 +5728,13 @@
                 "type" : "null"
               } ]
             },
+            "collection" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.collections.schema.collection-or-root"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "parameter_mappings" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
@@ -5704,6 +5866,13 @@
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "collection" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.collections.schema.collection-or-root"
               }, {
                 "type" : "null"
               } ]
@@ -5842,6 +6011,13 @@
             "entity_id" : {
               "oneOf" : [ {
                 "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "collection" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.collections.schema.collection-or-root"
               }, {
                 "type" : "null"
               } ]
@@ -6804,15 +6980,18 @@
         "required" : [ "uri" ]
       },
       "metabase.agent-api.api.read-resource-request" : {
-        "description" : "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs.",
+        "description" : "Request shape for /v1/read-resource: the tool's own published arguments.\n\n  Taken from the tool rather than written out again, so this endpoint and the agent loop offer the\n  same shape and the same limits. Before, this was a hand-written copy that had already lost the\n  5-URI cap the tool enforces.",
         "type" : "object",
         "properties" : {
           "uris" : {
             "type" : "array",
             "items" : {
+              "description" : "A metabase:// resource URI",
               "type" : "string",
               "minLength" : 1
-            }
+            },
+            "minItems" : 1,
+            "maxItems" : 5
           }
         },
         "required" : [ "uris" ],
@@ -8180,6 +8359,131 @@
         },
         "required" : [ "moved" ]
       },
+      "metabase.collections.schema..collection.update" : {
+        "description" : "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional.",
+        "type" : "object",
+        "properties" : {
+          "archive_operation_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_sample" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_remote_synced" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "slug" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "archived" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "created_at" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "namespace" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "personal_owner_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "archived_directly" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "additionalProperties" : false
+      },
       "metabase.collections.schema.CardType" : {
         "type" : "string",
         "enum" : [ "model", "question", "metric" ]
@@ -8517,6 +8821,230 @@
           }
         },
         "required" : [ "id", "email", "first_name", "last_name", "timestamp" ]
+      },
+      "metabase.collections.schema.collection" : {
+        "description" : "What an update (or insert) of a Collection accepts: every column of `:collection` except `id`, all optional.",
+        "type" : "object",
+        "properties" : {
+          "archive_operation_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_sample" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+          },
+          "effective_location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_remote_synced" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "slug" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "archived" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "can_write" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "created_at" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "namespace" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_personal" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "personal_owner_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "archived_directly" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id" ],
+        "additionalProperties" : false
+      },
+      "metabase.collections.schema.collection-or-root" : {
+        "description" : "A Collection row, or the Root Collection placeholder.",
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.collections.schema.root-collection"
+        }, {
+          "$ref" : "#/components/schemas/metabase.collections.schema.collection"
+        } ]
+      },
+      "metabase.collections.schema.root-collection" : {
+        "description" : "The placeholder for the Root Collection, which has no row, as `metabase.collections.models.collection.root` builds it.",
+        "type" : "object",
+        "properties" : {
+          "can_delete" : {
+            "type" : "boolean"
+          },
+          "authority_level" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "const" : "root"
+          },
+          "effective_ancestors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.collections.schema.collection"
+            }
+          },
+          "effective_location" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_remote_synced" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "can_write" : {
+            "type" : "boolean"
+          },
+          "parent_id" : {
+            "type" : "null"
+          },
+          "can_restore" : {
+            "type" : "boolean"
+          },
+          "metabase.collections.models.collection.root/is-root?" : {
+            "const" : true
+          },
+          "namespace" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "string"
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "is_personal" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "metabase.collections.models.collection.root/is-root?" ],
+        "additionalProperties" : false
       },
       "metabase.comments.schema..comment.context" : {
         "description" : "The `:context` column of a Comment, decoded.",
@@ -9121,6 +9649,62 @@
           "updated_at" : { }
         },
         "required" : [ "id", "entity_id", "name", "settings", "is_default", "created_at", "updated_at" ]
+      },
+      "metabase.embedding.schema..sdk-react-18-host.host" : {
+        "description" : "The `host` of a EmbeddingSdkReact18Host: a lowercase hostname, or an empty string when the host app page URL has no\n  hostname.",
+        "type" : "string"
+      },
+      "metabase.embedding.schema..sdk-react-18-host.response" : {
+        "description" : "A EmbeddingSdkReact18Host as selected from the app DB: every column of `:embedding_sdk_react_18_host`. `host` is an\n  empty string when the host app page URL has no hostname.",
+        "type" : "object",
+        "properties" : {
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "host" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last_seen_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "id", "host", "created_at", "last_seen_at" ],
+        "additionalProperties" : false
+      },
+      "metabase.embedding.schema.sdk-react-18-host" : {
+        "description" : "A EmbeddingSdkReact18Host as selected from the app DB: every column of `:embedding_sdk_react_18_host`. `host` is an\n  empty string when the host app page URL has no hostname.",
+        "type" : "object",
+        "properties" : {
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "host" : {
+            "$ref" : "#/components/schemas/metabase.embedding.schema..sdk-react-18-host.host"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last_seen_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "id", "host", "created_at", "last_seen_at" ],
+        "additionalProperties" : false
       },
       "metabase.explorations.api.CanceledThread" : {
         "description" : "Schema for the cancel endpoint response — just the state-bearing fields the FE needs to\n  reflect the cancellation. EQ status changes are picked up via the existing `/queries` poll.",
@@ -13352,6 +13936,10 @@
           "lib/stage-metadata" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata.stage"
           },
+          "metabase.driver.sql.query-processor/cte-level" : {
+            "type" : "integer",
+            "minimum" : 0
+          },
           "metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes" : {
             "type" : "array",
             "items" : {
@@ -13441,6 +14029,10 @@
             },
             "pivot" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.pivot"
+            },
+            "metabase.driver.sql.query-processor/cte-level" : {
+              "type" : "integer",
+              "minimum" : 0
             },
             "breakout" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.breakouts"
@@ -13571,6 +14163,10 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "metabase.driver.sql.query-processor/cte-level" : {
+              "type" : "integer",
+              "minimum" : 0
             },
             "projections" : {
               "oneOf" : [ {
@@ -14632,7 +15228,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ]
+        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -20480,6 +21076,17 @@
         "required" : [ "id", "locale", "is_superuser", "is_data_analyst", "is_qbnewb", "tenant_id", "personal_collection_id", "permissions" ],
         "additionalProperties" : false
       },
+      "metabase.mcp.permissions.tool-access" : {
+        "description" : "Value must be a map.",
+        "oneOf" : [ {
+          "type" : "object",
+          "additionalProperties" : {
+            "type" : "string"
+          }
+        }, {
+          "description" : "Value must be a map."
+        } ]
+      },
       "metabase.measures.api.RemappedValueResponse" : {
         "description" : "Response schema for dimension remapping endpoint.\n   Returns [value] if no remapping, or [value, display-name] if remapped.",
         "anyOf" : [ {
@@ -24906,8 +25513,13 @@
                 },
                 "cache_invalidated_at" : {
                   "oneOf" : [ {
-                    "type" : "string",
-                    "format" : "date-time"
+                    "anyOf" : [ {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }, {
+                      "description" : "value must be a valid date string",
+                      "type" : "string"
+                    } ]
                   }, {
                     "type" : "null"
                   } ]
@@ -24921,8 +25533,13 @@
                 },
                 "initially_published_at" : {
                   "oneOf" : [ {
-                    "type" : "string",
-                    "format" : "date-time"
+                    "anyOf" : [ {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }, {
+                      "description" : "value must be a valid date string",
+                      "type" : "string"
+                    } ]
                   }, {
                     "type" : "null"
                   } ]
@@ -25499,13 +26116,6 @@
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
-                  },
-                  "is_data_app_group" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
                   },
                   "is_tenant_group" : {
                     "oneOf" : [ {
@@ -26530,8 +27140,13 @@
                 },
                 "cache_invalidated_at" : {
                   "oneOf" : [ {
-                    "type" : "string",
-                    "format" : "date-time"
+                    "anyOf" : [ {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }, {
+                      "description" : "value must be a valid date string",
+                      "type" : "string"
+                    } ]
                   }, {
                     "type" : "null"
                   } ]
@@ -26545,8 +27160,13 @@
                 },
                 "initially_published_at" : {
                   "oneOf" : [ {
-                    "type" : "string",
-                    "format" : "date-time"
+                    "anyOf" : [ {
+                      "type" : "string",
+                      "format" : "date-time"
+                    }, {
+                      "description" : "value must be a valid date string",
+                      "type" : "string"
+                    } ]
                   }, {
                     "type" : "null"
                   } ]
@@ -27158,13 +27778,6 @@
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
-                  },
-                  "is_data_app_group" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
                   },
                   "is_tenant_group" : {
                     "oneOf" : [ {
@@ -28304,13 +28917,6 @@
               "type" : "null"
             } ]
           },
-          "is_data_app_group" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "is_tenant_group" : {
             "oneOf" : [ {
               "type" : "boolean"
@@ -28354,13 +28960,6 @@
             "description" : "value must be an integer greater than zero.",
             "type" : "integer",
             "minimum" : 1
-          },
-          "is_data_app_group" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
           },
           "is_tenant_group" : {
             "oneOf" : [ {
@@ -28406,6 +29005,19 @@
         },
         "required" : [ "id" ],
         "additionalProperties" : false
+      },
+      "metabase.pulse.schema.email-subject" : {
+        "description" : "A dashboard subscription email subject: one line, not blank, at most 255 characters.",
+        "allOf" : [ {
+          "type" : "string",
+          "minLength" : 1
+        }, {
+          "type" : "string",
+          "maxLength" : 255
+        }, {
+          "type" : "string",
+          "pattern" : "\\A[^\\r\\n]*\\z"
+        } ]
       },
       "metabase.queries.schema..card.dataset-query" : {
         "description" : "The `:dataset_query` column of a Card, decoded.",
@@ -29711,6 +30323,14 @@
               "type" : "null"
             } ]
           },
+          "slack_account_status" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "active", "inactive" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
           "id" : {
             "description" : "value must be an integer greater than zero.",
             "type" : "integer",
@@ -29820,7 +30440,7 @@
             "type" : "boolean"
           }
         },
-        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "can_write_any_collection", "sso_source", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
+        "required" : [ "id", "email", "first_name", "last_name", "common_name", "date_joined", "last_login", "updated_at", "first_login", "is_superuser", "is_data_analyst", "is_qbnewb", "is_active", "is_installer", "has_invited_second_user", "has_question_and_dashboard", "has_model", "slack_account_status", "can_write_any_collection", "sso_source", "locale", "tenant_id", "tenant_collection_id", "personal_collection_id", "group_ids", "login_attributes", "jwt_attributes", "attributes", "permissions", "custom_homepage" ]
       },
       "metabase.users-rest.api.user-permissions" : {
         "description" : "Permission flags for the current user, used by the FE to decide which UI elements to show. The `can_access_*`,\n  `is_data_analyst`, and `is_group_manager` flags are only included when `advanced-permissions` is enabled.",
@@ -31507,7 +32127,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-read-resource",
         "summary" : "POST /api/agent/v1/read-resource",
-        "description" : "Read one or more Metabase resources via metabase:// URI patterns.\n\n  Dispatches into the shared URI resolver in `metabase.metabot.tools.resources`,\n  which validates URIs, fetches entities with per-URI permission checks, and\n  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call.",
+        "description" : "Read one or more Metabase resources via metabase:// URI patterns.\n\n  Calls the `read_resource` tool in `metabase.metabot.tools.resources` — the same record the agent\n  loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.\n  A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items\n  that did read. Up to 5 URIs per call, rejected as a 400 by `::read-resource-request`.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -31861,7 +32481,7 @@
       "post" : {
         "operationId" : "post-api-analytics-internal",
         "summary" : "POST /api/analytics/internal",
-        "description" : "Receive a batch of internal analytics events from the frontend and record them as Prometheus metrics.",
+        "description" : "Receive a batch of internal analytics events from the frontend and record them as Prometheus metrics. Only the\n  counters in [[frontend-metrics]] can be incremented; other events are ignored.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -31905,7 +32525,8 @@
                             "oneOf" : [ {
                               "type" : "object",
                               "additionalProperties" : {
-                                "type" : "string"
+                                "type" : "string",
+                                "maxLength" : 200
                               }
                             }, {
                               "description" : "Value must be a map."
@@ -31918,13 +32539,13 @@
                           "type" : "string"
                         },
                         "op" : {
-                          "type" : "string",
-                          "enum" : [ "inc", "dec", "set", "observe", "clear" ]
+                          "const" : "inc"
                         }
                       },
                       "required" : [ "op", "metric" ],
                       "additionalProperties" : false
-                    }
+                    },
+                    "maxItems" : 1001
                   }
                 },
                 "required" : [ "events" ],
@@ -32173,17 +32794,6 @@
                     "anyOf" : [ {
                       "type" : "object",
                       "properties" : {
-                        "has_user_permission_warnings" : {
-                          "type" : "boolean"
-                        },
-                        "table_ids" : {
-                          "type" : "array",
-                          "items" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          }
-                        },
                         "enabled" : {
                           "type" : "boolean"
                         },
@@ -32200,15 +32810,6 @@
                         "display_name" : {
                           "type" : "string",
                           "minLength" : 1
-                        },
-                        "permission_group_id" : {
-                          "oneOf" : [ {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          }, {
-                            "type" : "null"
-                          } ]
                         },
                         "version" : {
                           "description" : "value must be an integer greater than zero.",
@@ -32249,7 +32850,7 @@
                           "minLength" : 1
                         }
                       },
-                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
+                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                     }, {
                       "type" : "object",
                       "properties" : {
@@ -32260,9 +32861,14 @@
                         "name" : {
                           "type" : "string",
                           "minLength" : 1
+                        },
+                        "resource_collection_id" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
                         }
                       },
-                      "required" : [ "name", "display_name" ],
+                      "required" : [ "name", "display_name", "resource_collection_id" ],
                       "additionalProperties" : false
                     } ]
                   }
@@ -32292,17 +32898,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "has_user_permission_warnings" : {
-                      "type" : "boolean"
-                    },
-                    "table_ids" : {
-                      "type" : "array",
-                      "items" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    },
                     "enabled" : {
                       "type" : "boolean"
                     },
@@ -32319,15 +32914,6 @@
                     "display_name" : {
                       "type" : "string",
                       "minLength" : 1
-                    },
-                    "permission_group_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
                     },
                     "version" : {
                       "description" : "value must be an integer greater than zero.",
@@ -32368,7 +32954,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                 }
               }
             }
@@ -32412,6 +32998,148 @@
                 "additionalProperties" : false
               }
             }
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
+    "/api/apps/generate/app" : {
+      "post" : {
+        "operationId" : "post-api-apps-generate-app",
+        "summary" : "POST /api/apps/generate/app",
+        "description" : "A data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the\n  YAML a remote-sync export writes. An existing app passes its `entity_id` and `collection_id` to keep them; a new app\n  gets new entity IDs. For superusers: the files are written into the app's repository, which only an admin works\n  with.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.app-files"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.app-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
+    "/api/apps/generate/resources" : {
+      "post" : {
+        "operationId" : "post-api-apps-generate-resources",
+        "summary" : "POST /api/apps/generate/resources",
+        "description" : "The files of a data app's collection, each a file name in the collection's folder and the YAML a remote-sync\n  export writes: the saved question of each `defineQuery` definition in `queries`, the copy of each action without a\n  model in `actions`, and the copies of the metrics the queries aggregate. Each item answers on its own, with its file\n  or the error that stops it. For superusers: the files are written into the app's repository, which only an admin\n  works with.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "actions" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.file"
+                      }
+                    },
+                    "metrics" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.file"
+                      }
+                    },
+                    "queries" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.file"
+                      }
+                    }
+                  },
+                  "required" : [ "queries", "actions", "metrics" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "actions" : {
+                    "oneOf" : [ {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.action"
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "queries" : {
+                    "oneOf" : [ {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.query"
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
+    "/api/apps/generate/schemas" : {
+      "get" : {
+        "operationId" : "get-api-apps-generate-schemas",
+        "summary" : "GET /api/apps/generate/schemas",
+        "description" : "The TypeScript module a data app's definitions are written against: the root libraries' tables and metrics, and\n  the query actions that belong to no model. For superusers: a data app's author builds from it, and only an admin\n  works with an app's repository.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/apps" ]
@@ -32482,194 +33210,6 @@
         "tags" : [ "/api/apps" ]
       }
     },
-    "/api/apps/serialize-resources" : {
-      "post" : {
-        "operationId" : "post-api-apps-serialize-resources",
-        "summary" : "POST /api/apps/serialize-resources",
-        "description" : "Serialize what the files of a data app's collection are written from, as serialization writes it: the saved question\n  holding the query Metabase builds from each `defineQuery` definition in `queries`, in the app's `collection`,\n  the actions in `actions`, which must belong to no model, and the metrics the queries aggregate. Each item answers\n  on its own, with its serialization or the error that stops it. For superusers: the files are written into the app's\n  repository, which only an admin works with.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "actions" : {
-                      "type" : "array",
-                      "items" : {
-                        "anyOf" : [ {
-                          "type" : "object",
-                          "properties" : {
-                            "entity" : {
-                              "type" : "object",
-                              "properties" : { }
-                            },
-                            "id" : {
-                              "description" : "value must be an integer greater than zero.",
-                              "type" : "integer",
-                              "minimum" : 1
-                            }
-                          },
-                          "required" : [ "id", "entity" ],
-                          "additionalProperties" : false
-                        }, {
-                          "type" : "object",
-                          "properties" : {
-                            "error" : {
-                              "type" : "string"
-                            },
-                            "id" : {
-                              "description" : "value must be an integer greater than zero.",
-                              "type" : "integer",
-                              "minimum" : 1
-                            }
-                          },
-                          "required" : [ "id", "error" ],
-                          "additionalProperties" : false
-                        } ]
-                      }
-                    },
-                    "metrics" : {
-                      "type" : "array",
-                      "items" : {
-                        "anyOf" : [ {
-                          "type" : "object",
-                          "properties" : {
-                            "entity" : {
-                              "type" : "object",
-                              "properties" : { }
-                            },
-                            "id" : {
-                              "description" : "value must be an integer greater than zero.",
-                              "type" : "integer",
-                              "minimum" : 1
-                            }
-                          },
-                          "required" : [ "id", "entity" ],
-                          "additionalProperties" : false
-                        }, {
-                          "type" : "object",
-                          "properties" : {
-                            "error" : {
-                              "type" : "string"
-                            },
-                            "id" : {
-                              "description" : "value must be an integer greater than zero.",
-                              "type" : "integer",
-                              "minimum" : 1
-                            }
-                          },
-                          "required" : [ "id", "error" ],
-                          "additionalProperties" : false
-                        } ]
-                      }
-                    },
-                    "queries" : {
-                      "type" : "array",
-                      "items" : {
-                        "anyOf" : [ {
-                          "type" : "object",
-                          "properties" : {
-                            "entity" : {
-                              "type" : "object",
-                              "properties" : { }
-                            },
-                            "export" : {
-                              "type" : "string"
-                            },
-                            "metrics" : {
-                              "type" : "array",
-                              "items" : {
-                                "type" : "string"
-                              }
-                            }
-                          },
-                          "required" : [ "export", "entity", "metrics" ],
-                          "additionalProperties" : false
-                        }, {
-                          "type" : "object",
-                          "properties" : {
-                            "error" : {
-                              "type" : "string"
-                            },
-                            "export" : {
-                              "type" : "string"
-                            }
-                          },
-                          "required" : [ "export", "error" ],
-                          "additionalProperties" : false
-                        } ]
-                      }
-                    }
-                  },
-                  "required" : [ "queries", "actions", "metrics" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "actions" : {
-                    "default" : [ ],
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }
-                  },
-                  "collection" : {
-                    "description" : "String must be a valid 21-character NanoID string.",
-                    "type" : "string",
-                    "pattern" : "^[A-Za-z0-9_\\-]{21}$"
-                  },
-                  "queries" : {
-                    "default" : [ ],
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : {
-                        "entity_id" : {
-                          "description" : "String must be a valid 21-character NanoID string.",
-                          "type" : "string",
-                          "pattern" : "^[A-Za-z0-9_\\-]{21}$"
-                        },
-                        "export" : {
-                          "type" : "string",
-                          "minLength" : 1
-                        },
-                        "query" : {
-                          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.query-definition"
-                        }
-                      },
-                      "required" : [ "export", "entity_id", "query" ],
-                      "additionalProperties" : false
-                    }
-                  }
-                },
-                "required" : [ "collection" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
     "/api/apps/{slug}" : {
       "put" : {
         "operationId" : "put-api-apps-slug",
@@ -32692,17 +33232,6 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "has_user_permission_warnings" : {
-                      "type" : "boolean"
-                    },
-                    "table_ids" : {
-                      "type" : "array",
-                      "items" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    },
                     "enabled" : {
                       "type" : "boolean"
                     },
@@ -32719,15 +33248,6 @@
                     "display_name" : {
                       "type" : "string",
                       "minLength" : 1
-                    },
-                    "permission_group_id" : {
-                      "oneOf" : [ {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }, {
-                        "type" : "null"
-                      } ]
                     },
                     "version" : {
                       "description" : "value must be an integer greater than zero.",
@@ -32768,7 +33288,7 @@
                       "minLength" : 1
                     }
                   },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                 }
               }
             }
@@ -32818,7 +33338,7 @@
       "delete" : {
         "operationId" : "delete-api-apps-slug",
         "summary" : "DELETE /api/apps/{slug}",
-        "description" : "Delete a data app, its bundle, and the collection and permission group it owns.",
+        "description" : "Delete a data app, its bundle, its collection, and its group assignments.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -32870,17 +33390,6 @@
                   "anyOf" : [ {
                     "type" : "object",
                     "properties" : {
-                      "has_user_permission_warnings" : {
-                        "type" : "boolean"
-                      },
-                      "table_ids" : {
-                        "type" : "array",
-                        "items" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        }
-                      },
                       "enabled" : {
                         "type" : "boolean"
                       },
@@ -32897,15 +33406,6 @@
                       "display_name" : {
                         "type" : "string",
                         "minLength" : 1
-                      },
-                      "permission_group_id" : {
-                        "oneOf" : [ {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        }, {
-                          "type" : "null"
-                        } ]
                       },
                       "version" : {
                         "description" : "value must be an integer greater than zero.",
@@ -32946,7 +33446,7 @@
                         "minLength" : 1
                       }
                     },
-                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "permission_group_id", "table_ids", "bundle_hash", "created_at", "updated_at" ]
+                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
                   }, {
                     "type" : "object",
                     "properties" : {
@@ -32957,9 +33457,14 @@
                       "name" : {
                         "type" : "string",
                         "minLength" : 1
+                      },
+                      "resource_collection_id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
                       }
                     },
-                    "required" : [ "name", "display_name" ],
+                    "required" : [ "name", "display_name", "resource_collection_id" ],
                     "additionalProperties" : false
                   } ]
                 }
@@ -33020,11 +33525,11 @@
         "tags" : [ "/api/apps" ]
       }
     },
-    "/api/apps/{slug}/user-permission-warnings" : {
-      "post" : {
-        "operationId" : "post-api-apps-slug-user-permission-warnings",
-        "summary" : "POST /api/apps/{slug}/user-permission-warnings",
-        "description" : "Return warnings for users who cannot access every table used by a data app.",
+    "/api/apps/{slug}/group-permission-warnings" : {
+      "get" : {
+        "operationId" : "get-api-apps-slug-group-permission-warnings",
+        "summary" : "GET /api/apps/{slug}/group-permission-warnings",
+        "description" : "Return missing table access for groups already assigned to this app.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -33044,6 +33549,11 @@
                   "items" : {
                     "type" : "object",
                     "properties" : {
+                      "group_id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
                       "missing_tables" : {
                         "type" : "array",
                         "items" : {
@@ -33055,8 +33565,7 @@
                               "minimum" : 1
                             },
                             "database_name" : {
-                              "type" : "string",
-                              "minLength" : 1
+                              "type" : "string"
                             },
                             "id" : {
                               "description" : "value must be an integer greater than zero.",
@@ -33064,8 +33573,7 @@
                               "minimum" : 1
                             },
                             "name" : {
-                              "type" : "string",
-                              "minLength" : 1
+                              "type" : "string"
                             },
                             "schema" : {
                               "oneOf" : [ {
@@ -33075,18 +33583,117 @@
                               } ]
                             }
                           },
-                          "required" : [ "id", "name", "schema", "database_id", "database_name" ],
-                          "additionalProperties" : false
+                          "required" : [ "id", "name", "schema", "database_id", "database_name" ]
                         }
-                      },
-                      "user_id" : {
+                      }
+                    },
+                    "required" : [ "group_id", "missing_tables" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
+    "/api/apps/{slug}/groups" : {
+      "get" : {
+        "operationId" : "get-api-apps-slug-groups",
+        "summary" : "GET /api/apps/{slug}/groups",
+        "description" : "List the groups assigned to a data app.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "id" : {
                         "description" : "value must be an integer greater than zero.",
                         "type" : "integer",
                         "minimum" : 1
+                      },
+                      "member_count" : {
+                        "description" : "value must be an integer greater or equal to than zero.",
+                        "type" : "integer",
+                        "minimum" : 0
+                      },
+                      "name" : {
+                        "type" : "string"
                       }
                     },
-                    "required" : [ "user_id", "missing_tables" ],
-                    "additionalProperties" : false
+                    "required" : [ "id", "name", "member_count" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      },
+      "post" : {
+        "operationId" : "post-api-apps-slug-groups",
+        "summary" : "POST /api/apps/{slug}/groups",
+        "description" : "Assign a batch of internal groups atomically.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "member_count" : {
+                        "description" : "value must be an integer greater or equal to than zero.",
+                        "type" : "integer",
+                        "minimum" : 0
+                      },
+                      "name" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "id", "name", "member_count" ]
                   }
                 }
               }
@@ -33105,7 +33712,7 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "user_ids" : {
+                  "group_ids" : {
                     "type" : "array",
                     "items" : {
                       "description" : "value must be an integer greater than zero.",
@@ -33116,10 +33723,54 @@
                     "maxItems" : 100
                   }
                 },
-                "required" : [ "user_ids" ],
+                "required" : [ "group_ids" ],
                 "additionalProperties" : false
               }
             }
+          }
+        },
+        "tags" : [ "/api/apps" ]
+      }
+    },
+    "/api/apps/{slug}/groups/{group-id}" : {
+      "delete" : {
+        "operationId" : "delete-api-apps-slug-groups-group-id",
+        "summary" : "DELETE /api/apps/{slug}/groups/{group-id}",
+        "description" : "Remove a group's assignment and collection access.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "group-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/apps" ]
@@ -36578,7 +37229,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "action", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -36643,7 +37294,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "action", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -37261,7 +37912,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "action", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -37341,7 +37992,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "no_models", "timeline", "snippet", "collection", "measure", "transform", "document", "pulse", "action", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -42899,6 +43550,348 @@
         "tags" : [ "/api/ee/advanced-permissions/impersonation" ]
       }
     },
+    "/api/ee/ai-controls/mcp-permissions" : {
+      "get" : {
+        "operationId" : "get-api-ee-ai-controls-mcp-permissions",
+        "summary" : "GET /api/ee/ai-controls/mcp-permissions",
+        "description" : "List the MCP tool policy of every group, with the tools it can name and the current permission mode.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
+                    "permissions" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "group_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "mcp_enabled" : {
+                            "type" : "boolean"
+                          },
+                          "tool_access" : {
+                            "$ref" : "#/components/schemas/metabase.mcp.permissions.tool-access"
+                          }
+                        },
+                        "required" : [ "group_id", "mcp_enabled", "tool_access" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "tools" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "default_access" : {
+                            "type" : "string",
+                            "enum" : [ "allowed", "denied" ]
+                          },
+                          "description" : {
+                            "type" : "string"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "scope" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "name", "scope", "description", "default_access" ],
+                        "additionalProperties" : false
+                      }
+                    }
+                  },
+                  "required" : [ "advanced", "tools", "permissions" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/mcp-permissions" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-ai-controls-mcp-permissions",
+        "summary" : "PUT /api/ee/ai-controls/mcp-permissions",
+        "description" : "Set the MCP tool policy of the given groups, in one transaction, and return the policy of every group.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
+                    "permissions" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "group_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "mcp_enabled" : {
+                            "type" : "boolean"
+                          },
+                          "tool_access" : {
+                            "$ref" : "#/components/schemas/metabase.mcp.permissions.tool-access"
+                          }
+                        },
+                        "required" : [ "group_id", "mcp_enabled", "tool_access" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "tools" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "default_access" : {
+                            "type" : "string",
+                            "enum" : [ "allowed", "denied" ]
+                          },
+                          "description" : {
+                            "type" : "string"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "scope" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "name", "scope", "description", "default_access" ],
+                        "additionalProperties" : false
+                      }
+                    }
+                  },
+                  "required" : [ "advanced", "tools", "permissions" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "permissions" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "group_id" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "mcp_enabled" : {
+                          "type" : "boolean"
+                        },
+                        "tool_access" : {
+                          "$ref" : "#/components/schemas/metabase.mcp.permissions.tool-access"
+                        }
+                      },
+                      "required" : [ "group_id", "mcp_enabled", "tool_access" ],
+                      "additionalProperties" : false
+                    }
+                  }
+                },
+                "required" : [ "permissions" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/mcp-permissions" ]
+      }
+    },
+    "/api/ee/ai-controls/mcp-permissions/advanced" : {
+      "post" : {
+        "operationId" : "post-api-ee-ai-controls-mcp-permissions-advanced",
+        "summary" : "POST /api/ee/ai-controls/mcp-permissions/advanced",
+        "description" : "Switch to group-level MCP tool access. Removes the rows of All Users and All tenant users, so access comes only\n   from the rows of the other groups, and enables Data Analysts with every tool at its default when it has no row.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
+                    "permissions" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "group_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "mcp_enabled" : {
+                            "type" : "boolean"
+                          },
+                          "tool_access" : {
+                            "$ref" : "#/components/schemas/metabase.mcp.permissions.tool-access"
+                          }
+                        },
+                        "required" : [ "group_id", "mcp_enabled", "tool_access" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "tools" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "default_access" : {
+                            "type" : "string",
+                            "enum" : [ "allowed", "denied" ]
+                          },
+                          "description" : {
+                            "type" : "string"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "scope" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "name", "scope", "description", "default_access" ],
+                        "additionalProperties" : false
+                      }
+                    }
+                  },
+                  "required" : [ "advanced", "tools", "permissions" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/mcp-permissions" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-ai-controls-mcp-permissions-advanced",
+        "summary" : "DELETE /api/ee/ai-controls/mcp-permissions/advanced",
+        "description" : "Switch back to All Users only. Removes the rows of every group other than Administrators, All Users and All\n   tenant users, and enables All Users and All tenant users with every tool at its default, the state the migration\n   leaves.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "advanced" : {
+                      "type" : "boolean"
+                    },
+                    "permissions" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "group_id" : {
+                            "description" : "value must be an integer greater than zero.",
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "mcp_enabled" : {
+                            "type" : "boolean"
+                          },
+                          "tool_access" : {
+                            "$ref" : "#/components/schemas/metabase.mcp.permissions.tool-access"
+                          }
+                        },
+                        "required" : [ "group_id", "mcp_enabled", "tool_access" ],
+                        "additionalProperties" : false
+                      }
+                    },
+                    "tools" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "default_access" : {
+                            "type" : "string",
+                            "enum" : [ "allowed", "denied" ]
+                          },
+                          "description" : {
+                            "type" : "string"
+                          },
+                          "name" : {
+                            "type" : "string"
+                          },
+                          "scope" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "name", "scope", "description", "default_access" ],
+                        "additionalProperties" : false
+                      }
+                    }
+                  },
+                  "required" : [ "advanced", "tools", "permissions" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/mcp-permissions" ]
+      }
+    },
     "/api/ee/ai-controls/permissions" : {
       "get" : {
         "operationId" : "get-api-ee-ai-controls-permissions",
@@ -43850,6 +44843,1405 @@
           }
         },
         "tags" : [ "/api/ee/cloud-proxy" ]
+      }
+    },
+    "/api/ee/content-diagnostics/duplicated" : {
+      "get" : {
+        "operationId" : "get-api-ee-content-diagnostics-duplicated",
+        "summary" : "GET /api/ee/content-diagnostics/duplicated",
+        "description" : "List **duplicated** findings - the latest valid finding per (entity, finding-type) across the\n  duplicated finding types (currently just `duplicate_name`), permission-filtered for the current user.\n  Each item is a flat identity + a top-level `duplicate_count` (the number of other same-type entities\n  sharing the normalized name) + a nested `details` (collection, `description`, `owner`, `creator`,\n  `normalized_name`, and the hydrated same-type `duplicate_entities` peers). Card items also carry a\n  top-level `card_type` (`question`|`model`|`metric`) - card findings only, denormalized at scan time.\n  Paginated via `limit`/`offset`; `total` is the full valid count.\n\n  Params: `include-personal-collections` (default false) - when false, entities currently in a personal\n  collection are excluded and personal-collection peers are omitted from `duplicate_entities`.\n  `entity-types` (repeatable, omitted = all) narrows the flagged entity by type; the card sub-kinds are\n  valid values, `card` means any card type, and `collection` finds same-named collections instance-wide,\n  regardless of parent. Peers are not filtered - cards cluster across sub-kinds, so a model's peers can\n  be questions.\n  `min-duplicate-count` (positive int) keeps findings with at least that many peers. `query`\n  case-insensitively substring-matches the entity name. `sort-column`\n  (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|`duplicate-count`,\n  default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the stable\n  tiebreak.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "include-personal-collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-column",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "detected-at", "entity-type", "name", "created-at", "created-by", "collection-name", "duplicate-count" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-direction",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "desc", "asc" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "entity-types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "transform", "question", "dashboard", "card", "document", "collection", "metric", "model" ]
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "transform", "question", "dashboard", "card", "document", "collection", "metric", "model" ]
+              }
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "min-duplicate-count",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "entity_display_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "collection_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "detected_at" : {
+                            "type" : "string",
+                            "format" : "date-time"
+                          },
+                          "entity_id" : {
+                            "type" : "integer"
+                          },
+                          "id" : {
+                            "type" : "integer"
+                          },
+                          "duplicate_count" : {
+                            "type" : "integer"
+                          },
+                          "finding_type" : {
+                            "type" : "string"
+                          },
+                          "card_type" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "can_write" : {
+                            "type" : "boolean"
+                          },
+                          "details" : {
+                            "type" : "object",
+                            "properties" : {
+                              "collection" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "effective_ancestors" : {
+                                      "type" : "array",
+                                      "items" : {
+                                        "type" : "object",
+                                        "properties" : {
+                                          "id" : {
+                                            "anyOf" : [ {
+                                              "type" : "integer"
+                                            }, {
+                                              "const" : "root"
+                                            } ]
+                                          },
+                                          "name" : {
+                                            "anyOf" : [ {
+                                              "type" : "string"
+                                            }, { } ]
+                                          }
+                                        },
+                                        "required" : [ "id", "name" ],
+                                        "additionalProperties" : false
+                                      }
+                                    },
+                                    "id" : {
+                                      "anyOf" : [ {
+                                        "type" : "integer"
+                                      }, {
+                                        "const" : "root"
+                                      } ]
+                                    },
+                                    "name" : {
+                                      "anyOf" : [ {
+                                        "type" : "string"
+                                      }, { } ]
+                                    },
+                                    "namespace" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "namespace", "effective_ancestors" ],
+                                  "additionalProperties" : false
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "creator" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "id" : {
+                                      "type" : "integer"
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "type" : {
+                                      "const" : "user"
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "type" ],
+                                  "additionalProperties" : false
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "description" : {
+                                "oneOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "duplicate_entities" : {
+                                "type" : "array",
+                                "items" : {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "card_type" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "display" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "entity_type" : {
+                                      "type" : "string"
+                                    },
+                                    "id" : {
+                                      "type" : "integer"
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "namespace" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "view_count" : {
+                                      "type" : "integer"
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "entity_type" ]
+                                }
+                              },
+                              "normalized_name" : {
+                                "type" : "string"
+                              },
+                              "owner" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "email" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "id" : {
+                                      "oneOf" : [ {
+                                        "type" : "integer"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "type" : {
+                                      "type" : "string"
+                                    }
+                                  },
+                                  "required" : [ "type" ]
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "view_count" : {
+                                "type" : "integer"
+                              }
+                            },
+                            "required" : [ "collection", "description", "owner", "creator", "normalized_name", "duplicate_entities" ]
+                          },
+                          "created_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "display" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "entity_type" : {
+                            "type" : "string"
+                          },
+                          "entity_kind" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "finding_type", "entity_type", "entity_kind", "entity_id", "detected_at", "entity_display_name", "created_at", "can_write", "collection_name", "duplicate_count", "details" ]
+                      }
+                    },
+                    "last_scan_at" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "limit" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "offset" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset", "last_scan_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/content-diagnostics" ]
+      }
+    },
+    "/api/ee/content-diagnostics/imbalanced" : {
+      "get" : {
+        "operationId" : "get-api-ee-content-diagnostics-imbalanced",
+        "summary" : "GET /api/ee/content-diagnostics/imbalanced",
+        "description" : "List **imbalanced** findings - the latest valid finding per (entity, finding-type) across the\n  `empty`/`sparse`/`crowded` checkers, permission-filtered for the current user. The checkers run\n  independently, so one entity can appear once per finding type (a collection whose items are all empty\n  is both `crowded` and `empty`) - rows are findings, not entities, and `total` counts findings. Each\n  item is a flat identity plus a top-level `content_count` and a nested `details` (collection breadcrumb,\n  description, owner, creator, the `threshold` crossed, and its `unit`). Card items (card only ever emits\n  `empty`) also carry a top-level `card_type`, denormalized at scan time. Paginated via `limit`/`offset`.\n\n  Params: `include-personal-collections` (default false) excludes entities in personal collections.\n  `entity-types` and `finding-types` (both repeatable) narrow the results; the card sub-kinds are valid\n  `entity-types` values, and `card` means any card type. `query` substring-matches the entity name.\n  `sort-column` (default `detected-at`) + `sort-direction` (default `asc`); `id` breaks ties.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "include-personal-collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-column",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "detected-at", "entity-type", "name", "created-at", "created-by", "collection-name", "content-count", "finding-type" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-direction",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "desc", "asc" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "entity-types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "transform", "question", "dashboard", "card", "document", "collection", "metric", "model" ]
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "transform", "question", "dashboard", "card", "document", "collection", "metric", "model" ]
+              }
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "finding-types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "crowded", "empty", "sparse" ]
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "crowded", "empty", "sparse" ]
+              }
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "entity_display_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "collection_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "detected_at" : {
+                            "type" : "string",
+                            "format" : "date-time"
+                          },
+                          "entity_id" : {
+                            "type" : "integer"
+                          },
+                          "id" : {
+                            "type" : "integer"
+                          },
+                          "finding_type" : {
+                            "type" : "string"
+                          },
+                          "card_type" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "can_write" : {
+                            "type" : "boolean"
+                          },
+                          "details" : {
+                            "type" : "object",
+                            "properties" : {
+                              "as_of" : {
+                                "description" : "value must be a valid date string",
+                                "type" : "string"
+                              },
+                              "collection" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "effective_ancestors" : {
+                                      "type" : "array",
+                                      "items" : {
+                                        "type" : "object",
+                                        "properties" : {
+                                          "id" : {
+                                            "anyOf" : [ {
+                                              "type" : "integer"
+                                            }, {
+                                              "const" : "root"
+                                            } ]
+                                          },
+                                          "name" : {
+                                            "anyOf" : [ {
+                                              "type" : "string"
+                                            }, { } ]
+                                          }
+                                        },
+                                        "required" : [ "id", "name" ],
+                                        "additionalProperties" : false
+                                      }
+                                    },
+                                    "id" : {
+                                      "anyOf" : [ {
+                                        "type" : "integer"
+                                      }, {
+                                        "const" : "root"
+                                      } ]
+                                    },
+                                    "name" : {
+                                      "anyOf" : [ {
+                                        "type" : "string"
+                                      }, { } ]
+                                    },
+                                    "namespace" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "namespace", "effective_ancestors" ],
+                                  "additionalProperties" : false
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "creator" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "id" : {
+                                      "type" : "integer"
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "type" : {
+                                      "const" : "user"
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "type" ],
+                                  "additionalProperties" : false
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "description" : {
+                                "oneOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "owner" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "email" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "id" : {
+                                      "oneOf" : [ {
+                                        "type" : "integer"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "type" : {
+                                      "type" : "string"
+                                    }
+                                  },
+                                  "required" : [ "type" ]
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "threshold" : {
+                                "type" : "integer"
+                              },
+                              "unit" : {
+                                "type" : "string"
+                              },
+                              "view_count" : {
+                                "type" : "integer"
+                              }
+                            },
+                            "required" : [ "collection", "description", "owner", "creator", "threshold", "unit" ]
+                          },
+                          "created_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "display" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "entity_type" : {
+                            "type" : "string"
+                          },
+                          "entity_kind" : {
+                            "type" : "string"
+                          },
+                          "content_count" : {
+                            "type" : "integer"
+                          }
+                        },
+                        "required" : [ "id", "finding_type", "entity_type", "entity_kind", "entity_id", "detected_at", "entity_display_name", "created_at", "can_write", "collection_name", "content_count", "details" ]
+                      }
+                    },
+                    "last_scan_at" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "limit" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "offset" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset", "last_scan_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/content-diagnostics" ]
+      }
+    },
+    "/api/ee/content-diagnostics/invalidate" : {
+      "post" : {
+        "operationId" : "post-api-ee-content-diagnostics-invalidate",
+        "summary" : "POST /api/ee/content-diagnostics/invalidate",
+        "description" : "Dismiss the findings with `ids`. Invalidation is soft and global: the row is kept, but the finding leaves\n  every caller's lists. If the write fails, nothing is dismissed.\n\n  `invalidated` lists the ids this call found active and dismissed (a racing call may list the same id);\n  `skipped` lists every other requested id - nonexistent, already invalidated, superseded by a newer\n  finding for the same entity, or not visible to the caller - without saying which. Both keep the request\n  order, de-duplicated.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "invalidated" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "integer"
+                      }
+                    },
+                    "skipped" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "integer"
+                      }
+                    }
+                  },
+                  "required" : [ "invalidated", "skipped" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "minItems" : 1,
+                    "maxItems" : 500
+                  }
+                },
+                "required" : [ "ids" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/content-diagnostics" ]
+      }
+    },
+    "/api/ee/content-diagnostics/slow" : {
+      "get" : {
+        "operationId" : "get-api-ee-content-diagnostics-slow",
+        "summary" : "GET /api/ee/content-diagnostics/slow",
+        "description" : "List **slow** findings - the latest valid `slow` finding per entity, permission-filtered for the\n  current user. Each item is a flat identity + a top-level `duration_ms` + a nested `details`. `details`\n  varies by `entity_type`: leaves (card/transform) freeze `threshold_ms`; containers (dashboard/document)\n  carry the hydrated `slow_entities` culprit cards. Card items also carry a top-level `card_type`\n  (`question`|`model`|`metric`) - card findings only, denormalized at scan time. Paginated via\n  `limit`/`offset`; `total` is the full valid count.\n\n  Params: `include-personal-collections` (default false) - when false, entities currently in a personal\n  collection are excluded and personal-collection culprit cards are omitted from `slow_entities`.\n  `entity-types` (repeatable, omitted = all) narrows the flagged entity by type; the card sub-kinds are\n  valid values, and `card` means any card type. Containers rolled up from slow cards are matched on\n  their own type.\n  `min-duration-ms` (positive int) keeps findings whose `duration_ms` is at least that (containers\n  filter on their representative duration). `query` case-insensitively substring-matches the entity name.\n  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|\n  `duration-ms`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is the\n  stable tiebreak.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "include-personal-collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-column",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "detected-at", "entity-type", "name", "created-at", "created-by", "collection-name", "duration-ms" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-direction",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "desc", "asc" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "entity-types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "transform", "question", "dashboard", "card", "document", "metric", "model" ]
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "transform", "question", "dashboard", "card", "document", "metric", "model" ]
+              }
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "min-duration-ms",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "entity_display_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "collection_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "detected_at" : {
+                            "type" : "string",
+                            "format" : "date-time"
+                          },
+                          "entity_id" : {
+                            "type" : "integer"
+                          },
+                          "id" : {
+                            "type" : "integer"
+                          },
+                          "finding_type" : {
+                            "type" : "string"
+                          },
+                          "card_type" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "can_write" : {
+                            "type" : "boolean"
+                          },
+                          "duration_ms" : {
+                            "type" : "integer"
+                          },
+                          "details" : {
+                            "type" : "object",
+                            "properties" : {
+                              "collection" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "effective_ancestors" : {
+                                      "type" : "array",
+                                      "items" : {
+                                        "type" : "object",
+                                        "properties" : {
+                                          "id" : {
+                                            "anyOf" : [ {
+                                              "type" : "integer"
+                                            }, {
+                                              "const" : "root"
+                                            } ]
+                                          },
+                                          "name" : {
+                                            "anyOf" : [ {
+                                              "type" : "string"
+                                            }, { } ]
+                                          }
+                                        },
+                                        "required" : [ "id", "name" ],
+                                        "additionalProperties" : false
+                                      }
+                                    },
+                                    "id" : {
+                                      "anyOf" : [ {
+                                        "type" : "integer"
+                                      }, {
+                                        "const" : "root"
+                                      } ]
+                                    },
+                                    "name" : {
+                                      "anyOf" : [ {
+                                        "type" : "string"
+                                      }, { } ]
+                                    },
+                                    "namespace" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "namespace", "effective_ancestors" ],
+                                  "additionalProperties" : false
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "creator" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "id" : {
+                                      "type" : "integer"
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "type" : {
+                                      "const" : "user"
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "type" ],
+                                  "additionalProperties" : false
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "description" : {
+                                "oneOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "owner" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "email" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "id" : {
+                                      "oneOf" : [ {
+                                        "type" : "integer"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "type" : {
+                                      "type" : "string"
+                                    }
+                                  },
+                                  "required" : [ "type" ]
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "slow_entities" : {
+                                "type" : "array",
+                                "items" : {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "card_type" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "entity_type" : {
+                                      "type" : "string"
+                                    },
+                                    "id" : {
+                                      "type" : "integer"
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "view_count" : {
+                                      "type" : "integer"
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "entity_type", "view_count" ]
+                                }
+                              },
+                              "threshold_ms" : {
+                                "type" : "integer"
+                              },
+                              "view_count" : {
+                                "type" : "integer"
+                              }
+                            },
+                            "required" : [ "collection", "description", "owner", "creator" ]
+                          },
+                          "created_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "display" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "entity_type" : {
+                            "type" : "string"
+                          },
+                          "entity_kind" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "finding_type", "entity_type", "entity_kind", "entity_id", "detected_at", "entity_display_name", "created_at", "can_write", "collection_name", "duration_ms", "details" ]
+                      }
+                    },
+                    "last_scan_at" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "limit" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "offset" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset", "last_scan_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/content-diagnostics" ]
+      }
+    },
+    "/api/ee/content-diagnostics/stale" : {
+      "get" : {
+        "operationId" : "get-api-ee-content-diagnostics-stale",
+        "summary" : "GET /api/ee/content-diagnostics/stale",
+        "description" : "List **stale** findings - the latest valid `stale` finding per entity, permission-filtered\n  for the current user. Each item is a flat identity + a nested `details` (collection, `description`, `owner`,\n  `creator`, `threshold_days`). Card items also carry a top-level `card_type`\n  (`question`|`model`|`metric`) - card findings only, denormalized at scan time. Paginated via\n  `limit`/`offset`; `total` is the full valid count.\n\n  Params: `include-personal-collections` (default false) - when false, entities currently in a personal\n  collection are excluded. `entity-types` (repeatable, omitted = all) narrows by type; the card sub-kinds\n  are valid values, and `card` means any card type.\n  `threshold-days` (positive int) keeps findings with `last_active_at` on or before `today -\n  threshold-days` (never-used always pass). `query` case-insensitively substring-matches the entity name.\n  `sort-column` (`detected-at`|`entity-type`|`name`|`created-at`|`created-by`|`collection-name`|\n  `last-active-at`, default `detected-at`) + `sort-direction` (`asc`|`desc`, default `asc`); `id` is\n  the stable tiebreak.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "include-personal-collections",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-column",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "detected-at", "entity-type", "name", "created-at", "created-by", "collection-name", "last-active-at" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort-direction",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "desc", "asc" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "entity-types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string",
+              "enum" : [ "transform", "question", "dashboard", "card", "document", "metric", "model" ]
+            }, {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "transform", "question", "dashboard", "card", "document", "metric", "model" ]
+              }
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "threshold-days",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "entity_display_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "collection_name" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "detected_at" : {
+                            "type" : "string",
+                            "format" : "date-time"
+                          },
+                          "entity_id" : {
+                            "type" : "integer"
+                          },
+                          "last_active_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "type" : "integer"
+                          },
+                          "finding_type" : {
+                            "type" : "string"
+                          },
+                          "card_type" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "can_write" : {
+                            "type" : "boolean"
+                          },
+                          "details" : {
+                            "type" : "object",
+                            "properties" : {
+                              "collection" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "effective_ancestors" : {
+                                      "type" : "array",
+                                      "items" : {
+                                        "type" : "object",
+                                        "properties" : {
+                                          "id" : {
+                                            "anyOf" : [ {
+                                              "type" : "integer"
+                                            }, {
+                                              "const" : "root"
+                                            } ]
+                                          },
+                                          "name" : {
+                                            "anyOf" : [ {
+                                              "type" : "string"
+                                            }, { } ]
+                                          }
+                                        },
+                                        "required" : [ "id", "name" ],
+                                        "additionalProperties" : false
+                                      }
+                                    },
+                                    "id" : {
+                                      "anyOf" : [ {
+                                        "type" : "integer"
+                                      }, {
+                                        "const" : "root"
+                                      } ]
+                                    },
+                                    "name" : {
+                                      "anyOf" : [ {
+                                        "type" : "string"
+                                      }, { } ]
+                                    },
+                                    "namespace" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "namespace", "effective_ancestors" ],
+                                  "additionalProperties" : false
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "creator" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "id" : {
+                                      "type" : "integer"
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "type" : {
+                                      "const" : "user"
+                                    }
+                                  },
+                                  "required" : [ "id", "name", "type" ],
+                                  "additionalProperties" : false
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "description" : {
+                                "oneOf" : [ {
+                                  "type" : "string"
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "owner" : {
+                                "oneOf" : [ {
+                                  "type" : "object",
+                                  "properties" : {
+                                    "email" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "id" : {
+                                      "oneOf" : [ {
+                                        "type" : "integer"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "name" : {
+                                      "oneOf" : [ {
+                                        "type" : "string"
+                                      }, {
+                                        "type" : "null"
+                                      } ]
+                                    },
+                                    "type" : {
+                                      "type" : "string"
+                                    }
+                                  },
+                                  "required" : [ "type" ]
+                                }, {
+                                  "type" : "null"
+                                } ]
+                              },
+                              "threshold_days" : {
+                                "type" : "integer"
+                              },
+                              "view_count" : {
+                                "type" : "integer"
+                              }
+                            },
+                            "required" : [ "collection", "description", "owner", "creator" ]
+                          },
+                          "created_at" : {
+                            "oneOf" : [ {
+                              "type" : "string",
+                              "format" : "date-time"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "display" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "entity_type" : {
+                            "type" : "string"
+                          },
+                          "entity_kind" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "finding_type", "entity_type", "entity_kind", "entity_id", "detected_at", "entity_display_name", "created_at", "can_write", "collection_name", "last_active_at", "details" ]
+                      }
+                    },
+                    "last_scan_at" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "limit" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "offset" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "total" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "data", "total", "limit", "offset", "last_scan_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/content-diagnostics" ]
       }
     },
     "/api/ee/content-translation/csv" : {
@@ -46223,91 +48615,6 @@
           }
         },
         "tags" : [ "/api/ee/email" ]
-      }
-    },
-    "/api/ee/embedding-hub/checklist" : {
-      "get" : {
-        "operationId" : "get-api-ee-embedding-hub-checklist",
-        "summary" : "GET /api/ee/embedding-hub/checklist",
-        "description" : "Get the setup guide checklist status, indicating which setup steps have been completed.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "checklist" : {
-                      "type" : "object",
-                      "properties" : {
-                        "enable-tenants" : {
-                          "type" : "boolean"
-                        },
-                        "create-models" : {
-                          "type" : "boolean"
-                        },
-                        "sso-configured" : {
-                          "type" : "boolean"
-                        },
-                        "configure-row-column-security" : {
-                          "type" : "boolean"
-                        },
-                        "create-test-embed" : {
-                          "type" : "boolean"
-                        },
-                        "data-permissions-and-enable-tenants" : {
-                          "type" : "boolean"
-                        },
-                        "embed-production" : {
-                          "type" : "boolean"
-                        },
-                        "create-dashboard" : {
-                          "type" : "boolean"
-                        },
-                        "move-dashboard-to-shared" : {
-                          "type" : "boolean"
-                        },
-                        "setup-data-segregation-strategy" : {
-                          "type" : "boolean"
-                        },
-                        "create-tenants" : {
-                          "type" : "boolean"
-                        },
-                        "add-data" : {
-                          "type" : "boolean"
-                        },
-                        "sso-auth-manual-tested" : {
-                          "type" : "boolean"
-                        }
-                      },
-                      "required" : [ "add-data", "create-dashboard", "create-models", "configure-row-column-security", "create-test-embed", "embed-production", "sso-configured", "data-permissions-and-enable-tenants", "enable-tenants", "move-dashboard-to-shared", "create-tenants", "setup-data-segregation-strategy", "sso-auth-manual-tested" ],
-                      "additionalProperties" : false
-                    },
-                    "data-isolation-strategy" : {
-                      "oneOf" : [ {
-                        "type" : "string",
-                        "enum" : [ "row-column-level-security", "connection-impersonation", "database-routing" ]
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "checklist", "data-isolation-strategy" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/embedding-hub" ]
       }
     },
     "/api/ee/erd" : {
@@ -53352,6 +55659,127 @@
         "tags" : [ "/api/embed" ]
       }
     },
+    "/api/embedding-hub/checklist" : {
+      "get" : {
+        "operationId" : "get-api-embedding-hub-checklist",
+        "summary" : "GET /api/embedding-hub/checklist",
+        "description" : "Get the setup guide checklist status, indicating which setup steps have been completed.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "checklist" : {
+                      "type" : "object",
+                      "properties" : {
+                        "enable-tenants" : {
+                          "type" : "boolean"
+                        },
+                        "create-models" : {
+                          "type" : "boolean"
+                        },
+                        "sso-configured" : {
+                          "type" : "boolean"
+                        },
+                        "configure-row-column-security" : {
+                          "type" : "boolean"
+                        },
+                        "create-custom-theme" : {
+                          "type" : "boolean"
+                        },
+                        "create-test-embed" : {
+                          "type" : "boolean"
+                        },
+                        "data-permissions-and-enable-tenants" : {
+                          "type" : "boolean"
+                        },
+                        "embed-production" : {
+                          "type" : "boolean"
+                        },
+                        "create-dashboard" : {
+                          "type" : "boolean"
+                        },
+                        "move-dashboard-to-shared" : {
+                          "type" : "boolean"
+                        },
+                        "configure-ai" : {
+                          "type" : "boolean"
+                        },
+                        "setup-data-segregation-strategy" : {
+                          "type" : "boolean"
+                        },
+                        "create-tenants" : {
+                          "type" : "boolean"
+                        },
+                        "add-data" : {
+                          "type" : "boolean"
+                        },
+                        "sso-auth-manual-tested" : {
+                          "type" : "boolean"
+                        }
+                      },
+                      "required" : [ "add-data", "create-dashboard", "create-models", "configure-row-column-security", "create-test-embed", "embed-production", "create-custom-theme", "configure-ai", "sso-configured", "data-permissions-and-enable-tenants", "enable-tenants", "move-dashboard-to-shared", "create-tenants", "setup-data-segregation-strategy", "sso-auth-manual-tested" ],
+                      "additionalProperties" : false
+                    },
+                    "data-isolation-strategy" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "enum" : [ "row-column-level-security", "connection-impersonation", "database-routing" ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "checklist", "data-isolation-strategy" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/embedding-hub" ]
+      }
+    },
+    "/api/embedding-sdk/react-18-hosts" : {
+      "get" : {
+        "operationId" : "get-api-embedding-sdk-react-18-hosts",
+        "summary" : "GET /api/embedding-sdk/react-18-hosts",
+        "description" : "The host apps that used the React embedding SDK with React 18 in the last 4 days, newest first, at most 50. `host`\n  is null when the host app page URL has no hostname.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.embedding.schema..sdk-react-18-host.response"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/embedding-sdk" ]
+      }
+    },
     "/api/eval-trace/{session-id}" : {
       "get" : {
         "operationId" : "get-api-eval-trace-session-id",
@@ -57971,15 +60399,19 @@
                     "minLength" : 1
                   },
                   "metabot_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "string"
+                    } ]
                   },
                   "positive" : {
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "metabot_id", "message_id", "positive" ],
+                "required" : [ "message_id", "positive" ],
                 "additionalProperties" : false
               }
             }
@@ -58089,14 +60521,18 @@
       "get" : {
         "operationId" : "get-api-metabot-metabot-id-prompt-suggestions",
         "summary" : "GET /api/metabot/metabot/{id}/prompt-suggestions",
-        "description" : "Return the prompt suggestions for the metabot instance with `id`.",
+        "description" : "Return the prompt suggestions for a Metabot primary key or entity ID.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
+            "anyOf" : [ {
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "string"
+            } ]
           }
         }, {
           "in" : "query",
@@ -58681,9 +61117,13 @@
                     "minLength" : 1
                   },
                   "metabot_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    }, {
+                      "type" : "string"
+                    } ]
                   },
                   "positive" : {
                     "type" : "boolean"
@@ -58698,7 +61138,7 @@
                     "enum" : [ "table", "card", "model" ]
                   }
                 },
-                "required" : [ "metabot_id", "message_id", "source_id", "source_type", "positive" ],
+                "required" : [ "message_id", "source_id", "source_type", "positive" ],
                 "additionalProperties" : false
               }
             }
@@ -62840,59 +65280,6 @@
           }
         },
         "tags" : [ "/api/preview_embed" ]
-      }
-    },
-    "/api/product-feedback" : {
-      "post" : {
-        "operationId" : "post-api-product-feedback",
-        "summary" : "POST /api/product-feedback",
-        "description" : "Endpoint to provide feedback from the product",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "comments" : {
-                    "oneOf" : [ {
-                      "type" : "string",
-                      "minLength" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "email" : {
-                    "oneOf" : [ {
-                      "type" : "string",
-                      "minLength" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "source" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  }
-                },
-                "required" : [ "source" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/product-feedback" ]
       }
     },
     "/api/public/action/{uuid}" : {
@@ -74327,104 +76714,6 @@
         "tags" : [ "/api/transform" ]
       }
     },
-    "/api/typed-schemas/v1/typescript" : {
-      "get" : {
-        "operationId" : "get-api-typed-schemas-v1-typescript",
-        "summary" : "GET /api/typed-schemas/v1/typescript",
-        "description" : "Generate a TypeScript semantic schema module. For superusers: a data app's author builds from it, and only an\n  admin works with an app's repository.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "database",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : "Scopes the schema to a database by numeric id or name."
-        }, {
-          "in" : "query",
-          "name" : "library-collections",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "minLength" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : "Comma-separated library collection ids or entity ids. Limits tables and metrics to those library collections."
-        }, {
-          "in" : "query",
-          "name" : "include-data-library",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : "Whether to include the entire data library."
-        }, {
-          "in" : "query",
-          "name" : "include-metric-library",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : "Whether to include the entire metric library."
-        }, {
-          "in" : "query",
-          "name" : "include-actions",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : "Include query actions that belong to no model. Database scope filters them; library scope does not. Without a scope, returns actions only."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/typed-schemas" ]
-      }
-    },
     "/api/upload/csv" : {
       "post" : {
         "operationId" : "post-api-upload-csv",
@@ -75295,6 +77584,52 @@
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/user" ]
+      }
+    },
+    "/api/user/{id}/slack" : {
+      "delete" : {
+        "operationId" : "delete-api-user-id-slack",
+        "summary" : "DELETE /api/user/{id}/slack",
+        "description" : "Remove the current user's Slack Connect link.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "null"
+                    },
+                    "status" : {
+                      "const" : 204
+                    }
+                  },
+                  "required" : [ "status", "body" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"

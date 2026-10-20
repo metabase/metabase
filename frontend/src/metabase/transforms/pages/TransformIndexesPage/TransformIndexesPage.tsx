@@ -193,7 +193,7 @@ function useDeleteIndex() {
           });
           sendToast({
             message: getErrorMessage(deleteError, t`Failed to delete index`),
-            icon: "warning",
+            variant: "negative",
           });
         }
       },

@@ -46,7 +46,6 @@
   actual-collection-id
   check-allowed-to-copy-card!
   check-allowed-to-create-card!
-  check-allowed-to-delete-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
   check-card-can-be-saved!
@@ -57,6 +56,7 @@
   batch-fetch-dashboard-metadata
   batch-fetch-query-metadata]
  [metabase.queries.models.card
+  current-card-schema-version
   fully-parameterized?
   maybe-unverify!
   model?
@@ -66,7 +66,6 @@
   update-card!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata
-  infer-metadata
   infer-metadata-with-model-overrides
   maybe-async-result-metadata
   refresh-metadata

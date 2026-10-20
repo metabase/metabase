@@ -10,13 +10,15 @@ import { cardApi, selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { isDataApp, isDataAppDev } from "metabase/embedding-sdk/config";
 import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
-import { fetchTableMetadata } from "metabase/redux/tables";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
 import type {
   Card,
   DatasetQuery,
+  TestBreakoutSpec,
   TestColumnSpec,
   TestExpressionSpec,
+  TestOperatorArgSpec,
   TestQuerySpec,
   TestStageSpec,
   TestStageWithSourceSpec,
@@ -24,7 +26,11 @@ import type {
 import { isObject } from "metabase-types/guards";
 
 import { loadReferencedMetricMetadata } from "./metric-metadata";
-import { validateDynamicQuery, validateQueryInput } from "./validation";
+import {
+  validateDynamicQuery,
+  validateQueryInput,
+  validateUniqueColumnNames,
+} from "./validation";
 
 export type ResolveDatasetQuery = (
   store: SdkStore,
@@ -135,23 +141,38 @@ function resolveQueryFromLoadedMetadata(
   const provider = selectMetadataProviderUnfiltered(state, databaseId);
   const sourceStage = toStageSpec(input);
 
-  const datasetQuery = Lib.toJsQuery(
+  // The dynamic clauses run as their own stage rather than merging into the
+  // source stage. Merged, they would apply before the static aggregation on
+  // a table source but after it on the published card — the same app would
+  // return different numbers in the dev preview and in production.
+  const dynamicStage = dynamicQuery && toResultColumnStageSpec(dynamicQuery);
+
+  validateUniqueColumnNames(
     Lib.createTestQuery(provider, {
-      // The dynamic clauses run as their own stage rather than merging into the
-      // source stage. Merged, they would apply before the static aggregation on
-      // a table source but after it on the published card — the same app would
-      // return different numbers in the dev preview and in production.
-      stages: dynamicQuery
-        ? [sourceStage, toResultColumnStageSpec(dynamicQuery)]
-        : [sourceStage],
+      stages: dynamicStage
+        ? [withoutOrderBys(sourceStage), withoutOrderBys(dynamicStage)]
+        : [withoutOrderBys(sourceStage)],
     } satisfies TestQuerySpec),
   );
+
+  const query = Lib.createTestQuery(provider, {
+    stages: dynamicStage ? [sourceStage, dynamicStage] : [sourceStage],
+  } satisfies TestQuerySpec);
+
+  const datasetQuery = Lib.toJsQuery(query);
 
   // Lib reads the database off the metadata provider, and a user who may read a
   // card but not create queries gets none from `/api/card/:id/query_metadata` —
   // so the query comes back without `:database`, which `/api/dataset` rejects.
   // The source itself carries the id, so set it explicitly.
   return { ...datasetQuery, database: databaseId };
+}
+
+function withoutOrderBys<TStage extends TestStageSpec>({
+  orderBys: _orderBys,
+  ...stage
+}: TStage) {
+  return stage;
 }
 
 function toStageSpec(input: QueryInput): TestStageWithSourceSpec {
@@ -181,17 +202,19 @@ function toResultColumnStageSpec({
     ...(aggregations && {
       aggregations: aggregations.map(toResultColumnExpressionSpec),
     }),
-    ...(breakouts && { breakouts: breakouts.map(toResultColumnSpec) }),
+    ...(breakouts && { breakouts: breakouts.map(toResultBreakoutSpec) }),
     ...(orderBys && { orderBys: orderBys.map(toResultColumnSpec) }),
     ...(limit != null && { limit }),
   };
 }
 
 // A card stage exposes the saved question's result columns, which are no
-// longer joined, so the join and foreign key keys are dropped; the field ID or
-// the name still finds the column.
+// longer joined, so the join and foreign key keys are dropped. The field ID is
+// dropped too, as it differs between the instance an app is built against and
+// the one it runs on; the name finds the column.
 function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
   const {
+    fieldId: _fieldId,
     joinAlias: _joinAlias,
     sourceFieldId: _sourceFieldId,
     sourceFieldJoinAlias: _sourceFieldJoinAlias,
@@ -199,6 +222,14 @@ function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
   } = spec;
 
   return resultColumn;
+}
+
+function toResultBreakoutSpec(spec: TestBreakoutSpec): TestBreakoutSpec {
+  if (spec.type === "breakout") {
+    return { ...spec, column: toResultColumnSpec(spec.column) };
+  }
+
+  return toResultColumnSpec(spec);
 }
 
 function toResultColumnExpressionSpec(
@@ -209,10 +240,22 @@ function toResultColumnExpressionSpec(
   }
 
   if (spec.type === "operator") {
-    return { ...spec, args: spec.args?.map(toResultColumnExpressionSpec) };
+    return { ...spec, args: spec.args?.map(toResultColumnArgSpec) };
   }
 
   return spec;
+}
+
+function toResultColumnArgSpec(spec: TestOperatorArgSpec): TestOperatorArgSpec {
+  if (
+    spec.type === "segment" ||
+    spec.type === "measure" ||
+    spec.type === "metric"
+  ) {
+    return spec;
+  }
+
+  return toResultColumnExpressionSpec(spec);
 }
 
 async function loadSourceMetadata(
@@ -231,7 +274,9 @@ async function loadSourceMetadata(
   }
 
   if (isTableInput(input)) {
-    await store.dispatch(fetchTableMetadata({ id: input.source.id }));
+    await store.dispatch(
+      fetchTableMetadataAndForeignKeys({ id: input.source.id }),
+    );
     await loadReferencedMetricMetadata(store, input);
   }
 }

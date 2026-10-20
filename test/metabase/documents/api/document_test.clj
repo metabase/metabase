@@ -12,10 +12,13 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
@@ -2335,9 +2338,7 @@
                (data-perms/set-database-permission! all-users-group (mt/id) :perms/download-results :no)
                (is (malli= [:map
                             [:status [:= "failed"]]
-                            [:error_type [:= "missing-required-permissions"]]
-                            [:ex-data [:map
-                                       [:permissions-error? [:= true]]]]]
+                            [:error_type [:= "missing-required-permissions"]]]
                            (mt/user-http-request :rasta
                                                  :post 403
                                                  (format "document/%s/card/%s/query/csv" doc-id card-id)

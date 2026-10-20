@@ -1,5 +1,6 @@
 import type {
   DataRouter,
+  Location,
   NavigateFunction,
   NavigateOptions,
   To,
@@ -79,6 +80,9 @@ export function getIsNavigationPending(): boolean {
     currentRouter != null && currentRouter.state.navigation.state !== "idle"
   );
 }
+
+export const getRouterLocation = (): Location | undefined =>
+  currentRouter?.state.location;
 
 export function setRouterNavigate(navigate: NavigateFunction | null): void {
   currentNavigate = navigate;

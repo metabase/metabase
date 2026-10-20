@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import Color from "color";
 
 import { render, screen } from "__support__/ui";
@@ -45,33 +46,37 @@ describe("ColorRangeSelector", () => {
   it("should call `onChange` upon clicking a color", async () => {
     const { onChange } = setup();
 
-    screen.getByRole("button").click();
+    await userEvent.click(screen.getByRole("button"));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
-    (await screen.findByLabelText(color("core-summarize"))).click();
+    await userEvent.click(
+      await screen.findByLabelText(color("core-summarize")),
+    );
     expect(onChange).toHaveBeenCalled();
 
-    screen.getByLabelText(color("core-filter")).click();
+    await userEvent.click(screen.getByLabelText(color("core-filter")));
     expect(onChange).toHaveBeenCalled();
   });
 
   it("should call `onChange` upon clicking a non-initial range", async () => {
     const { onChange } = setup();
 
-    screen.getByRole("button").click();
+    await userEvent.click(screen.getByRole("button"));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
-    (await screen.findByLabelText(getColorRangeLabel(DEFAULT_VALUE))).click();
+    await userEvent.click(
+      await screen.findByLabelText(getColorRangeLabel(DEFAULT_VALUE)),
+    );
     expect(onChange).not.toHaveBeenCalled();
 
-    (
-      await screen.findByLabelText(getColorRangeLabel(WHITE_COLOR_RANGE))
-    ).click();
+    await userEvent.click(
+      await screen.findByLabelText(getColorRangeLabel(WHITE_COLOR_RANGE)),
+    );
     expect(onChange).toHaveBeenCalled();
 
-    (
-      await screen.findByLabelText(getColorRangeLabel(WARNING_COLOR_RANGE))
-    ).click();
+    await userEvent.click(
+      await screen.findByLabelText(getColorRangeLabel(WARNING_COLOR_RANGE)),
+    );
     expect(onChange).toHaveBeenCalled();
   });
 });

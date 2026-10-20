@@ -10,7 +10,8 @@
 (methodical/defmethod t2/table-name :model/DashboardCardSeries [_model] :dashboardcard_series)
 
 (doto :model/DashboardCardSeries
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/dependencies))
 
 (t2/define-before-insert :model/DashboardCardSeries
   [{:keys [dashboardcard_id card_id] :as series}]

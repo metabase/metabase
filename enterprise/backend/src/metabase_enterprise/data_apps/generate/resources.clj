@@ -19,6 +19,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.core :as queries]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -101,13 +102,34 @@
             (tru "Could not serialize {0}: {1}" label cause)
             (tru "Could not serialize {0}." label)))))
 
+(defn- check-unique-column-names
+  "Throws naming the breakouts and aggregations of `query` whose result columns share a name."
+  [query]
+  (let [columns   (concat (for [breakout (lib/breakouts query)
+                                :let [column (lib/breakout-column query breakout)]]
+                            {:name   (:name column)
+                             :clause column})
+                          (for [aggregation (lib/aggregations query)]
+                            {:name   (:name (lib/aggregation-column query aggregation))
+                             :clause aggregation}))
+        conflicts (for [[column-name same-name] (group-by :name columns)
+                        :when (> (count same-name) 1)]
+                    (tru "{0} share the column name \"{1}\""
+                         (str/join ", " (map #(lib/display-name query (:clause %)) same-name))
+                         column-name))]
+    (when (seq conflicts)
+      (fail (tru "Breakouts and aggregations need unique column names: {0}. Name them apart with the `name` option of `breakout` or of an aggregation helper, or with `aggregations.measure` or `aggregations.metric` for a measure or metric."
+                 (str/join "; " conflicts))))))
+
 (mu/defn- build-query :- ::lib.schema/query
   "The query Lib builds from `query-definition`, once its source table and every table it reads at any depth exist."
   [{[{{table-id :id} :source}] :stages, :as query-definition} :- ::query-definition/query-definition]
   (let [table (data-apps.db/table table-id)]
     (when-not table
       (fail (tru "Table {0} does not exist." (str table-id))))
-    (let [query (lib/test-query (lib-be/application-database-metadata-provider (:db_id table)) query-definition)]
+    (let [mp    (lib-be/application-database-metadata-provider (:db_id table))
+          _     (check-unique-column-names (lib/test-query mp (update-in query-definition [:stages 0] dissoc :order-bys)))
+          query (lib/test-query mp query-definition)]
       (when-not (mr/validate ::lib.schema/query query)
         (fail (tru "The definition does not build a valid query.")))
       (doseq [read-id (sort (into (:table (lib/all-referenced-entity-ids-recursive query))
@@ -118,12 +140,13 @@
       query)))
 
 (mu/defn- build-card :- :map
-  "The unsaved question named `card-name` with entity ID `entity-id`, holding `query`."
+  "The question named `card-name` with entity ID `entity-id`, holding `query`, as a pull saves it."
   [card-name :- ms/NonBlankString
    entity-id :- ms/NanoIdString
    query     :- ::lib.schema/query]
   {:entity_id              entity-id
    :name                   card-name
+   :card_schema            queries/current-card-schema-version
    :type                   :question
    :display                :table
    :creator_id             api/*current-user-id*

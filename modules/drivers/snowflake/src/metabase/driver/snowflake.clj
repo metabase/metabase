@@ -33,6 +33,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -50,9 +51,44 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+;; `authenticator` is left out: it names a host only for native Okta (`https://<okta-account>.okta.com`), and otherwise
+;; a flow such as `SNOWFLAKE_JWT`, which is not a name to hand the resolver. See the `connection-parameter-hosts` method
+;; below.
 (defmethod driver/host-carrying-parameters :snowflake
   [_driver]
-  ["proxyHost" "host"])
+  ["proxyHost" "host" "serverURL" "oauthTokenRequestUrl" "oauthAuthorizationUrl"])
+
+(defmethod driver/non-host-parameters :snowflake
+  [_driver]
+  ["oauthRedirectUri" "nonProxyHosts" "proxyPort" "proxyUser" "proxyPassword" "proxyProtocol" "useProxy"
+   "disableSocksProxy" "allowUnderscoresInHost" "disableSamlURLCheck"])
+
+(defn- authenticator-values
+  "Every `authenticator` the client could be handed by `spec`: each one in the connection string, as written and as the
+  client percent-decodes it, and each property whose name matches regardless of case -- the client looks property
+  names up case-insensitively, and details the driver does not recognize are passed through as properties. All are
+  returned rather than guessing which one the client lets win. The connection string is `:connection-uri` when the
+  driver has built one (private-key auth does), otherwise `:subname`; both are read."
+  [spec]
+  (into (into []
+              (mapcat #(sql-jdbc.common/connection-string-parameter-values % "authenticator"))
+              [(:connection-uri spec) (:subname spec)])
+        (keep (fn [[k v]]
+                (when (= "authenticator" (u/lower-case-en (str/trim (name k))))
+                  v)))
+        spec))
+
+(defmethod driver/connection-parameter-hosts :snowflake
+  [driver details]
+  (let [spec (try
+               (sql-jdbc.conn/connection-details->spec driver details)
+               ;; details that do not make a spec cannot open a connection either; the `:sql-jdbc` method below
+               ;; answers the same way
+               (catch Throwable _ nil))]
+    (into ((get-method driver/connection-parameter-hosts :sql-jdbc) driver details)
+          (comp (filter #(and (string? %) (re-find #"(?i)^\s*https?://" %)))
+                (keep u.http/->hostname))
+          (authenticator-values spec))))
 
 (defmethod driver/connection-hosts :snowflake
   [_driver {:keys [account host use-hostname]}]
@@ -448,6 +484,10 @@
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
         (maybe-add-role-to-spec-url details)
+        ;; `PUT` and `GET` move files between the Metabase host and a stage. Details are merged into the spec above, and
+        ;; the client reads property names case-insensitively, so a detail key such as `Enableputget` would otherwise
+        ;; sit beside ours and, depending on hash order, win.
+        (as-> spec (m/remove-keys #(= "enableputget" (u/lower-case-en (str/trim (name %)))) spec))
         (assoc :enablePutGet "false"))))
 
 (mu/defn- database-type->base-type
@@ -595,6 +635,10 @@
   ;; Snowflake's `ALTER COLUMN` can widen a type (e.g. VARCHAR length, NUMBER precision) but never convert
   ;; to a different one, so no promotions are possible
   {})
+
+(defmethod sql.qp/use-ctes-for-stages? :snowflake
+  [_driver]
+  true)
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
