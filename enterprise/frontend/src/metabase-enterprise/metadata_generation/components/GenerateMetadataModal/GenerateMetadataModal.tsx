@@ -13,34 +13,38 @@ import {
   Loader,
   Modal,
   MultiSelect,
-  Radio,
+  SegmentedControl,
+  type SegmentedControlItem,
   Stack,
   Text,
 } from "metabase/ui";
 import {
   useGetMetadataGenerationEstimateQuery,
+  useGetMetadataGenerationRunQuery,
   useStartMetadataGenerationRunMutation,
 } from "metabase-enterprise/api";
 import type {
   ConcreteTableId,
   DatabaseId,
   MetadataGenerationAttribute,
+  MetadataGenerationRun,
   MetadataGenerationRunId,
   MetadataGenerationRunRequest,
 } from "metabase-types/api";
 
 import {
   DEFAULT_ATTRIBUTES,
-  formatCost,
   formatTokens,
-  getAttributeLabel,
+  getAttributePluralLabel,
+  getRunTitle,
   getUnavailableMessage,
+  isRunActive,
 } from "../../utils";
 import { RunProgress } from "../RunProgress";
 
 const ALL_ATTRIBUTES: MetadataGenerationAttribute[] = [
-  "data_sensitivity",
   "semantic_type",
+  "data_sensitivity",
   "description",
 ];
 
@@ -48,62 +52,83 @@ const SCOPE_TYPES = ["database", "schemas", "tables"] as const;
 
 type ScopeType = (typeof SCOPE_TYPES)[number];
 
-function isScopeType(value: string): value is ScopeType {
-  return SCOPE_TYPES.some((scopeType) => scopeType === value);
-}
-
 type GenerateMetadataModalProps = {
   databaseId: DatabaseId;
   initialTableIds?: ConcreteTableId[];
+  /** When true, the run covers exactly `initialTableIds` and the form offers no scope choice. */
+  isScopeFixed?: boolean;
+  /** A run to show the progress of, instead of the form. The owner keeps it, so it decides what reopening shows. */
+  runId?: MetadataGenerationRunId | null;
   opened: boolean;
   onClose: () => void;
+  onReview?: () => void;
+  /** Called with the run the form starts, or a retry starts. */
+  onRunStarted?: (runId: MetadataGenerationRunId) => void;
 };
 
 export function GenerateMetadataModal({
   databaseId,
   initialTableIds,
+  isScopeFixed = false,
+  runId: externalRunId,
   opened,
   onClose,
+  onReview,
+  onRunStarted,
 }: GenerateMetadataModalProps) {
-  const [runId, setRunId] = useState<MetadataGenerationRunId | null>(null);
-
-  const handleClose = () => {
-    setRunId(null);
-    onClose();
-  };
+  const runId = externalRunId ?? null;
+  const { data: run } = useGetMetadataGenerationRunQuery(runId ?? skipToken);
+  const isRunView = runId != null;
+  // Closing a running run only hides the window: the run continues, and the
+  // database panel reopens it.
+  const isMinimizable = isRunView && (run == null || isRunActive(run));
 
   return (
     <Modal
       opened={opened}
-      title={runId == null ? t`Generate metadata` : t`Generating metadata`}
+      title={getTitle(isRunView, run)}
       size="lg"
-      onClose={handleClose}
+      closeButtonProps={
+        isMinimizable
+          ? { icon: <Icon name="minimize" />, "aria-label": t`Minimize` }
+          : undefined
+      }
+      onClose={onClose}
     >
-      {runId == null ? (
+      {isRunView ? (
+        <RunProgress
+          key={runId}
+          runId={runId}
+          onRetry={(run) => onRunStarted?.(run.id)}
+          onReview={onReview}
+        />
+      ) : (
         <GenerateMetadataForm
           databaseId={databaseId}
           initialTableIds={initialTableIds}
-          onStarted={setRunId}
-          onCancel={handleClose}
+          isScopeFixed={isScopeFixed}
+          onStarted={(runId) => onRunStarted?.(runId)}
+          onCancel={onClose}
         />
-      ) : (
-        <Stack gap="lg">
-          <RunProgress runId={runId} onRetry={(run) => setRunId(run.id)} />
-          <Text size="sm" c="text-secondary">
-            {t`The run continues in the background if you close this window. Its status shows on the database page.`}
-          </Text>
-          <Group justify="flex-end">
-            <Button onClick={handleClose}>{t`Close`}</Button>
-          </Group>
-        </Stack>
       )}
     </Modal>
   );
 }
 
+function getTitle(
+  isRunView: boolean,
+  run: MetadataGenerationRun | undefined,
+): string {
+  if (!isRunView) {
+    return t`Generate field metadata`;
+  }
+  return run != null ? getRunTitle(run.scope) : t`Generating field metadata`;
+}
+
 type GenerateMetadataFormProps = {
   databaseId: DatabaseId;
   initialTableIds?: ConcreteTableId[];
+  isScopeFixed?: boolean;
   onStarted: (runId: MetadataGenerationRunId) => void;
   onCancel: () => void;
 };
@@ -111,6 +136,7 @@ type GenerateMetadataFormProps = {
 export function GenerateMetadataForm({
   databaseId,
   initialTableIds,
+  isScopeFixed = false,
   onStarted,
   onCancel,
 }: GenerateMetadataFormProps) {
@@ -126,13 +152,18 @@ export function GenerateMetadataForm({
   const [startRun, { isLoading: isStarting, error: startError }] =
     useStartMetadataGenerationRunMutation();
 
+  // The tables and schemas are only needed to offer a scope choice.
   const { data: database, isLoading: isLoadingDatabase } =
-    useGetDatabaseMetadataQuery({
-      id: databaseId,
-      include_hidden: true,
-      remove_inactive: true,
-      skip_fields: true,
-    });
+    useGetDatabaseMetadataQuery(
+      isScopeFixed
+        ? skipToken
+        : {
+            id: databaseId,
+            include_hidden: true,
+            remove_inactive: true,
+            skip_fields: true,
+          },
+    );
   const tables = useMemo(() => database?.tables ?? [], [database]);
   const schemaOptions = useMemo(
     () =>
@@ -152,6 +183,10 @@ export function GenerateMetadataForm({
         }),
       ),
     [tables],
+  );
+  const scopeOptions = useMemo(
+    () => getScopeOptions(schemaOptions.length > 0),
+    [schemaOptions],
   );
 
   const request = getRunRequest(
@@ -202,25 +237,19 @@ export function GenerateMetadataForm({
         {t`An AI model reads the metadata, sample values and a few rows of each table and proposes values. Nothing changes until you review and accept the proposals.`}
       </Text>
 
-      <Radio.Group
-        label={t`Scope`}
-        value={scopeType}
-        onChange={(value) => {
-          if (isScopeType(value)) {
-            setScopeType(value);
-          }
-        }}
-      >
-        <Group mt="xs" gap="lg">
-          <Radio value="database" label={t`Whole database`} />
-          {schemaOptions.length > 0 && (
-            <Radio value="schemas" label={t`Schemas`} />
-          )}
-          <Radio value="tables" label={t`Tables`} />
-        </Group>
-      </Radio.Group>
+      {!isScopeFixed && (
+        <Stack gap="xs">
+          <Text fw="bold">{t`Scope`}</Text>
+          <SegmentedControl
+            data={scopeOptions}
+            value={scopeType}
+            onChange={setScopeType}
+            aria-label={t`Scope`}
+          />
+        </Stack>
+      )}
 
-      {scopeType === "schemas" && (
+      {!isScopeFixed && scopeType === "schemas" && (
         <MultiSelect
           label={t`Schemas`}
           placeholder={t`Pick one or more schemas`}
@@ -231,9 +260,9 @@ export function GenerateMetadataForm({
           disabled={isLoadingDatabase}
         />
       )}
-      {scopeType === "tables" && (
+      {!isScopeFixed && scopeType === "tables" && (
         <MultiSelect
-          label={t`Tables`}
+          label={t`Specific tables`}
           placeholder={t`Pick one or more tables`}
           data={tableOptions}
           value={tableIds}
@@ -248,7 +277,7 @@ export function GenerateMetadataForm({
         {ALL_ATTRIBUTES.map((attribute) => (
           <Checkbox
             key={attribute}
-            label={getAttributeLabel(attribute)}
+            label={getAttributePluralLabel(attribute)}
             checked={attributes.includes(attribute)}
             onChange={(event) =>
               toggleAttribute(attribute, event.currentTarget.checked)
@@ -256,16 +285,6 @@ export function GenerateMetadataForm({
           />
         ))}
       </Stack>
-
-      <EstimateSummary
-        isLoading={isEstimating}
-        error={estimateError}
-        hasRequest={request != null}
-        tableCount={estimate?.table_count}
-        fieldCount={estimate?.field_count}
-        totalTokens={estimate?.total_tokens}
-        costUsd={estimate?.cost_usd}
-      />
 
       {unavailableReason != null && (
         <Alert color="error" icon={<Icon name="warning" />}>
@@ -278,19 +297,39 @@ export function GenerateMetadataForm({
         </Alert>
       )}
 
-      <Group justify="flex-end" gap="sm">
-        <Button variant="default" onClick={onCancel}>{t`Cancel`}</Button>
-        <Button
-          variant="filled"
-          disabled={!canStart}
-          loading={isStarting}
-          onClick={handleStart}
-        >
-          {t`Start`}
-        </Button>
+      <Group justify="space-between" gap="md" wrap="nowrap">
+        <EstimateSummary
+          isLoading={isEstimating}
+          error={estimateError}
+          hasRequest={request != null}
+          tableCount={estimate?.table_count}
+          fieldCount={estimate?.field_count}
+          totalTokens={estimate?.total_tokens}
+        />
+        <Group justify="flex-end" gap="sm" wrap="nowrap">
+          <Button variant="default" onClick={onCancel}>{t`Cancel`}</Button>
+          <Button
+            variant="filled"
+            disabled={!canStart}
+            loading={isStarting}
+            onClick={handleStart}
+          >
+            {t`Start`}
+          </Button>
+        </Group>
       </Group>
     </Stack>
   );
+}
+
+function getScopeOptions(
+  hasSchemas: boolean,
+): SegmentedControlItem<ScopeType>[] {
+  return [
+    { value: "database", label: t`Whole database` },
+    ...(hasSchemas ? [{ value: "schemas" as const, label: t`Schemas` }] : []),
+    { value: "tables", label: t`Specific tables` },
+  ];
 }
 
 type EstimateSummaryProps = {
@@ -300,7 +339,6 @@ type EstimateSummaryProps = {
   tableCount?: number;
   fieldCount?: number;
   totalTokens?: number;
-  costUsd?: number;
 };
 
 function EstimateSummary({
@@ -310,11 +348,10 @@ function EstimateSummary({
   tableCount,
   fieldCount,
   totalTokens,
-  costUsd,
 }: EstimateSummaryProps) {
   if (!hasRequest) {
     return (
-      <Text size="sm" c="text-secondary">
+      <Text size="sm" c="text-secondary" ta="left">
         {t`Pick what to generate and where.`}
       </Text>
     );
@@ -324,26 +361,26 @@ function EstimateSummary({
   }
   if (error != null) {
     return (
-      <Text size="sm" c="error">
+      <Text size="sm" c="feedback-negative" ta="left">
         {getErrorMessage(error)}
       </Text>
     );
   }
-  if (
-    tableCount == null ||
-    fieldCount == null ||
-    totalTokens == null ||
-    costUsd == null
-  ) {
+  if (tableCount == null || fieldCount == null || totalTokens == null) {
     return null;
   }
   return (
-    <Text size="sm" data-testid="generate-metadata-estimate">
+    <Text
+      size="sm"
+      c="text-secondary"
+      ta="left"
+      data-testid="generate-metadata-estimate"
+    >
       {ngettext(msgid`${tableCount} table`, `${tableCount} tables`, tableCount)}
       {", "}
       {ngettext(msgid`${fieldCount} field`, `${fieldCount} fields`, fieldCount)}
       {". "}
-      {t`About ${formatTokens(totalTokens)} tokens, about ${formatCost(costUsd)}.`}
+      {t`About ${formatTokens(totalTokens)} tokens.`}
     </Text>
   );
 }

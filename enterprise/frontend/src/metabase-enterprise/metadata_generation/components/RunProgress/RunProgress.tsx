@@ -5,7 +5,6 @@ import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import {
-  Badge,
   Button,
   Group,
   Icon,
@@ -30,25 +29,20 @@ import {
   RUN_POLLING_INTERVAL,
   canCancelRun,
   canRetryRun,
-  formatCost,
-  formatTokens,
-  getAttributeLabel,
-  getRunStatusColor,
+  canReviewRun,
   getRunStatusLabel,
-  getScopeLabel,
   isRunActive,
 } from "../../utils";
-
-import S from "./RunProgress.module.css";
 
 const MAX_TABLE_ERRORS = 5;
 
 type RunProgressProps = {
   runId: MetadataGenerationRunId;
   onRetry?: (run: MetadataGenerationRun) => void;
+  onReview?: () => void;
 };
 
-export function RunProgress({ runId, onRetry }: RunProgressProps) {
+export function RunProgress({ runId, onRetry, onReview }: RunProgressProps) {
   const dispatch = useDispatch();
   const [isPolling, setIsPolling] = useState(true);
   const { data: run, error } = useGetMetadataGenerationRunQuery(runId, {
@@ -68,20 +62,21 @@ export function RunProgress({ runId, onRetry }: RunProgressProps) {
   }, [dispatch, isActive]);
 
   if (error) {
-    return <Text c="error">{getErrorMessage(error)}</Text>;
+    return <Text c="feedback-negative">{getErrorMessage(error)}</Text>;
   }
   if (run == null) {
     return <Loader size="sm" />;
   }
-  return <RunProgressView run={run} onRetry={onRetry} />;
+  return <RunProgressView run={run} onRetry={onRetry} onReview={onReview} />;
 }
 
 type RunProgressViewProps = {
   run: MetadataGenerationRun;
   onRetry?: (run: MetadataGenerationRun) => void;
+  onReview?: () => void;
 };
 
-function RunProgressView({ run, onRetry }: RunProgressViewProps) {
+function RunProgressView({ run, onRetry, onReview }: RunProgressViewProps) {
   const [cancelRun, { isLoading: isCanceling }] =
     useCancelMetadataGenerationRunMutation();
   const [retryRun, { isLoading: isRetrying }] =
@@ -111,26 +106,10 @@ function RunProgressView({ run, onRetry }: RunProgressViewProps) {
 
   return (
     <Stack gap="md" data-testid="metadata-generation-run">
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Badge
-          className={S.noShrink}
-          variant="light"
-          color={getRunStatusColor(run.status)}
-          data-testid="metadata-generation-run-status"
-        >
-          {getRunStatusLabel(run.status)}
-        </Badge>
-        <Text size="sm" c="text-secondary" ta="right">
-          {getScopeLabel(run)}
-          {" · "}
-          {run.attributes.map(getAttributeLabel).join(", ")}
-        </Text>
-      </Group>
-
       <Stack gap="xs">
         <Progress
           value={percent}
-          color={run.failed_tables > 0 ? "warning" : "brand"}
+          color={run.failed_tables > 0 ? "feedback-warning" : "core-brand"}
           aria-label={t`Tables processed`}
         />
         <Group justify="space-between">
@@ -138,7 +117,7 @@ function RunProgressView({ run, onRetry }: RunProgressViewProps) {
             {t`${processed} of ${run.total_tables} tables processed`}
           </Text>
           {run.failed_tables > 0 && (
-            <Text size="sm" c="error">
+            <Text size="sm" c="feedback-negative">
               {run.failed_tables === 1
                 ? t`1 table failed`
                 : t`${run.failed_tables} tables failed`}
@@ -146,6 +125,12 @@ function RunProgressView({ run, onRetry }: RunProgressViewProps) {
           )}
         </Group>
       </Stack>
+
+      {!isRunActive(run) && (
+        <Text size="sm" fw="bold" data-testid="metadata-generation-run-status">
+          {getRunStatusLabel(run.status)}
+        </Text>
+      )}
 
       {run.message && (
         <Text size="sm" c="text-secondary">
@@ -157,7 +142,7 @@ function RunProgressView({ run, onRetry }: RunProgressViewProps) {
         <Stack gap={4} data-testid="metadata-generation-table-errors">
           {tableErrors.slice(0, MAX_TABLE_ERRORS).map((tableError) => (
             <Group key={tableError.table_id} gap="xs" wrap="nowrap">
-              <Icon name="warning" c="error" size={12} />
+              <Icon name="warning" c="feedback-negative" size={12} />
               <Text size="sm" truncate>
                 <strong>
                   {tableError.table_name ?? String(tableError.table_id)}
@@ -175,14 +160,6 @@ function RunProgressView({ run, onRetry }: RunProgressViewProps) {
         </Stack>
       )}
 
-      {run.usage && (
-        <Text size="sm" c="text-secondary">
-          {run.usage.cost_usd != null
-            ? t`${formatTokens(run.usage.total_tokens)} tokens, about ${formatCost(run.usage.cost_usd)}`
-            : t`${formatTokens(run.usage.total_tokens)} tokens`}
-        </Text>
-      )}
-
       <Group justify="flex-end" gap="sm">
         {canCancelRun(run) && (
           <Button
@@ -190,7 +167,7 @@ function RunProgressView({ run, onRetry }: RunProgressViewProps) {
             loading={isCanceling}
             onClick={handleCancel}
           >
-            {t`Cancel run`}
+            {t`Cancel`}
           </Button>
         )}
         {canRetryRun(run) && (
@@ -201,6 +178,11 @@ function RunProgressView({ run, onRetry }: RunProgressViewProps) {
             onClick={handleRetry}
           >
             {t`Retry failed tables`}
+          </Button>
+        )}
+        {onReview != null && canReviewRun(run) && (
+          <Button variant="filled" onClick={onReview}>
+            {t`Review suggestions`}
           </Button>
         )}
       </Group>

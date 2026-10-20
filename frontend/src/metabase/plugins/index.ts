@@ -95,7 +95,7 @@ export {
 } from "./oss/metabot";
 export {
   PLUGIN_METADATA_GENERATION,
-  type MetadataGenerationDatabasePaneProps,
+  type MetadataGenerationDatabaseButtonProps,
   type MetadataGenerationTableButtonProps,
 } from "./oss/metadata-generation";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";

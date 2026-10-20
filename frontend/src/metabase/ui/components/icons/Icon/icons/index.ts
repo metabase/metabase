@@ -175,6 +175,7 @@ import message_circle_component from "./message_circle.svg?component";
 import metabot_component from "./metabot.svg?component";
 import metabot_sad_component from "./metabot_sad.svg?component";
 import metric_component from "./metric.svg?component";
+import minimize_component from "./minimize.svg?component";
 import mode_component from "./mode.svg?component";
 import model_component from "./model.svg?component";
 import model_with_badge_component from "./model_with_badge.svg?component";
@@ -479,6 +480,7 @@ export const Icons: Record<IconName, React.VFC> = {
   metabot: metabot_component,
   metabot_sad: metabot_sad_component,
   metric: metric_component,
+  minimize: minimize_component,
   mode: mode_component,
   model: model_component,
   model_with_badge: model_with_badge_component,
