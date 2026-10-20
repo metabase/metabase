@@ -579,7 +579,10 @@ describe("scenarios > data studio > datamodel", () => {
       );
       H.openCommandPalette();
       H.commandPalette().should("be.visible");
-      H.tooltip().should("not.exist");
+      FieldSection.getFieldValuesButton().should(
+        "not.have.attr",
+        "aria-describedby",
+      );
 
       cy.realPress("Escape");
       H.commandPalette().should("not.exist");
