@@ -9,7 +9,8 @@
    [toucan2.core :as t2]))
 
 (defn hydrate-target-with-data-model-perms
-  "Hydrate `:target` on `field`, or set it to nil unless the current user can edit the data model of the target's table."
+  "Hydrate the FK target of `field` as `:target`, or nil when `field` is not an FK or the current user cannot edit the
+  data model of the target's table."
   [field]
   (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
                           (:fk_target_field_id field))

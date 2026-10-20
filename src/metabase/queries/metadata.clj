@@ -98,8 +98,8 @@
 (mu/defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
-      user can edit the data model of (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive in the `:tables` the
+      current user can edit the data model of (default false)"
   [queries :- [:maybe [:sequential ::lib.schema/query]]
    opts    :- [:maybe [:map {:closed true} [:include-sensitive-fields? {:optional true} :boolean]]]]
   (let [source-table-ids       (into #{}
@@ -148,8 +148,8 @@
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive for tables the current
-      user can edit the data model of (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive in the `:tables` the
+      current user can edit the data model of (default false)"
   ([queries]
    (batch-fetch-query-metadata queries nil))
   ([queries opts]

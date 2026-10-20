@@ -549,7 +549,7 @@
                                                               :include_editable_data_model true))
                              (mt/id :venues :id))))))
         (mt/with-premium-features #{:advanced-permissions}
-          (testing "users without data model permissions do not see primary keys"
+          (testing "users see primary keys only of tables they can edit the data model of"
             (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
                                                            :create-queries :query-builder
                                                            :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :none

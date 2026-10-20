@@ -36,8 +36,8 @@
 
 (defenterprise filter-tables-by-data-model-perms
   "Given a list of tables, removes the ones for which the current user does not have data model editing permissions.
-  Admin-only on OSS. Requests with `include_editable_data_model` skip the read check and rely on this filter alone, so
-  it must keep nothing the user cannot edit."
+  Admin-only without the advanced-permissions feature. Data model reads, sensitive fields and FK targets rely on this
+  filter alone, so it must keep nothing the user cannot edit."
   metabase-enterprise.advanced-permissions.common
   [tables]
   (if (mi/superuser?) tables (empty tables)))
@@ -55,7 +55,8 @@
   (mi/can-read? table))
 
 (defn sensitive-fields-table-ids
-  "IDs of the `tables` whose sensitive fields to list: only those the current user can edit the data model of."
+  "IDs of the `tables` whose sensitive fields to list: none unless `include-sensitive-fields?`, and then only those the
+  current user can edit the data model of."
   [include-sensitive-fields? tables]
   (if include-sensitive-fields?
     (into #{} (map :id) (filter-tables-by-data-model-perms tables))
@@ -205,7 +206,6 @@
                                 filter-schema-by-data-model-perms
                                 (map :schema))
                            (filter (partial can-read-schema? id) schemas)))
-        ;; For can-query?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if can-query?
                                      (let [tables (warehouse-schema.db/active-tables-for-database id)

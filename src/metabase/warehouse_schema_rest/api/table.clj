@@ -327,6 +327,8 @@
    the table, even when Remote Sync makes the table read-only, while `false` checks that they can read the table.
    Defaults to `false`.
 
+   The response includes `can_write`, which is false when the user cannot edit the table's metadata right now.
+
    These options are provided for use in the data model pages."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
