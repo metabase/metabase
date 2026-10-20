@@ -1576,3 +1576,25 @@
                            meta/metadata-provider
                            {:stages [{:source {:type :table :id (meta/id :orders)}
                                       :fields [column]}]})))))))
+
+(def ^:private metadata-provider-with-segment-and-measure
+  (lib.tu/mock-metadata-provider
+   metadata-provider-with-measure
+   {:segments [{:id         1
+                :name       "Expensive"
+                :table-id   (meta/id :venues)
+                :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                (lib/filter (lib/> (meta/field-metadata :venues :price) 2)))}]}))
+
+(deftest ^:parallel test-query-operator-with-segment-and-measure-args-test
+  (testing "an operator's args can be segments and measures"
+    (is (=? [[:count-where {} [:segment {} 1]]
+             [:+ {} 1 [:measure {} 1]]]
+            (lib/aggregations
+             (lib.query.test-spec/test-query
+              metadata-provider-with-segment-and-measure
+              {:stages [{:source       {:type :table :id (meta/id :venues)}
+                         :aggregations [{:type :operator :operator :count-where
+                                         :args [{:type :segment :id 1}]}
+                                        {:type :operator :operator :+
+                                         :args [{:type :literal :value 1} {:type :measure :id 1}]}]}]}))))))

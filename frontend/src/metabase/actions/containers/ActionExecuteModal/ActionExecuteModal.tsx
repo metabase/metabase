@@ -88,6 +88,7 @@ export const ActionExecuteModal = ({
 
   return (
     <Modal
+      density="relaxed"
       opened={opened}
       onClose={onClose}
       title={action?.name}

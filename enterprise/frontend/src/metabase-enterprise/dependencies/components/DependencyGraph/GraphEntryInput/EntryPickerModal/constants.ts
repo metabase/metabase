@@ -29,4 +29,6 @@ export const ENTRY_PICKER_MODELS: EntityPickerProps["models"] = [
   "metric",
   "dashboard",
   "transform",
+  "snippet",
+  "action",
 ];

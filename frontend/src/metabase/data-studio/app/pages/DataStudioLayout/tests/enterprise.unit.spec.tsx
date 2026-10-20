@@ -242,12 +242,12 @@ describe("DataStudioLayout", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should not show dirty indicator when remote-sync-transforms setting is disabled", async () => {
+    it("should show dirty indicator for a pending transform removal when remote-sync-transforms setting is disabled", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
-        dirty: [createMockDirtyTransformEntity()],
+        dirty: [createMockDirtyTransformEntity({ sync_status: "removed" })],
         remoteSyncTransforms: false,
       });
 
@@ -257,8 +257,8 @@ describe("DataStudioLayout", () => {
 
       const transformsTab = screen.getByLabelText("Data transformation");
       expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
+        await within(transformsTab).findByTestId("remote-sync-status"),
+      ).toBeInTheDocument();
     });
   });
 

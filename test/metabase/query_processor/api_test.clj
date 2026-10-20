@@ -1254,7 +1254,14 @@
                                                   :settings {:include_sensitive_fields true}))]
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
-              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true")))
+      (testing "sensitive fields are excluded for users who can't edit the table's metadata, even when requested"
+        (let [result (mt/user-http-request :rasta :post 200 "dataset/query_metadata"
+                                           (assoc (mt/mbql-query venues)
+                                                  :settings {:include_sensitive_fields true}))]
+          (is (seq (->> result :tables (mapcat :fields))))
+          (is (not (some #(= (:id %) (mt/id :venues :price))
+                         (->> result :tables (mapcat :fields))))))))))
 
 (deftest native-form-requires-native-query-perms-test
   (testing "POST /api/dataset only returns the compiled query in `:native_form` to users with native query perms"
