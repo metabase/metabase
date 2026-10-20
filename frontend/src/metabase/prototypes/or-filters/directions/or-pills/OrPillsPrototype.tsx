@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { t } from "ttag";
 
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
@@ -139,23 +139,41 @@ type PillLabelProps = {
   rows: PillRows;
 };
 
-/** Figma "Group token (collapsed)": the first row, then `or N more`. */
-function PillLabel({ query, stageIndex, rows }: PillLabelProps) {
-  const [firstRow = [], ...otherRows] = rows;
-  const firstRowLabel = firstRow
-    .map((clause) => getFilterLabel(query, stageIndex, clause))
-    .join(` ${t`and`} `);
+const MAX_FULL_LABEL_CLAUSES = 2;
 
-  if (otherRows.length === 0) {
-    return firstRowLabel;
+/**
+ * Figma "Group token (collapsed)": up to two conditions are spelled out;
+ * three or more collapse to the first condition and `and|or N more`.
+ */
+function PillLabel({ query, stageIndex, rows }: PillLabelProps) {
+  // Each clause is paired with the connector that precedes it.
+  const parts = rows.flatMap((row) =>
+    row.map((clause, clauseIndex) => ({
+      connector: clauseIndex > 0 ? t`and` : t`or`,
+      label: getFilterLabel(query, stageIndex, clause),
+    })),
+  );
+  const [first, ...rest] = parts;
+  if (!first) {
+    return null;
   }
+
+  const isSummarized = parts.length > MAX_FULL_LABEL_CLAUSES;
+  const tail = isSummarized
+    ? [{ connector: rest[0].connector, label: t`${rest.length} more` }]
+    : rest;
+
   return (
     <>
-      {firstRowLabel}
-      <Text span inherit fw="normal" c="text-secondary">
-        {t`or`}
-      </Text>
-      {t`${otherRows.length} more`}
+      {first.label}
+      {tail.map(({ connector, label }, index) => (
+        <Fragment key={index}>
+          <Text span inherit fw="normal" c="text-secondary">
+            {connector}
+          </Text>
+          {label}
+        </Fragment>
+      ))}
     </>
   );
 }
