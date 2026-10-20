@@ -3,7 +3,13 @@ import { t } from "ttag";
 
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { Button, Flex, Icon, Popover } from "metabase/ui";
+import {
+  Button,
+  Flex,
+  Icon,
+  Popover,
+  useStablePopoverPosition,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ClauseStep } from "../ClauseStep";
@@ -77,6 +83,7 @@ function FilterPopover({
   readOnly,
 }: FilterPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
+  const stablePositionProps = useStablePopoverPosition();
   const filterInfo = filter
     ? Lib.displayInfo(query, stageIndex, filter)
     : undefined;
@@ -97,7 +104,7 @@ function FilterPopover({
   };
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened}>
+    <Popover {...stablePositionProps} opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
         {filterInfo ? (
           <FilterPill
