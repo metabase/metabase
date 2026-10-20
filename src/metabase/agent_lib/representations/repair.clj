@@ -2006,7 +2006,8 @@
 (defn- split-post-agg-filters*
   "Top-level pass: walk every stage in the query, expanding any post-agg-filter stage
   in-place to `[stage0 stage1]`. Re-runs are no-ops (idempotent: split stages no longer
-  match the trigger)."
+  match the trigger). Records `::repr/original-stage-indexes` metadata mapping each output stage
+  to its input stage."
   [query]
   (if-not (and (map? query) (vector? (get query "stages")))
     query
@@ -3119,7 +3120,7 @@
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
 
-  Returns metadata `::repr/original-stage-indexes` mapping each output stage to its input stage.
+  The returned query carries `::repr/original-stage-indexes` metadata mapping each output stage to its input stage.
 
   Passes:
     1. ensure every clause vector has an options map at position 2;
