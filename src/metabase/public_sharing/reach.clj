@@ -187,3 +187,20 @@
                                    (get-in published [model id]))]
            :when (seq surfaces)]
        {:model model, :id id, :surfaces surfaces, :indirect? (not shows-one?)}))))
+
+(mr/def ::public-link-model
+  "A content kind that can carry a public link and stands in this relation. An Action can carry one too and is
+  deliberately not here; the exclusion is explained where the relation's starting set is built."
+  [:enum :model/Card :model/Dashboard :model/Document])
+
+(mu/defn databases-reached-by-public-link :- [:set ::lib.schema.id/database]
+  "The ids of the Databases a public link on the entity `id` of `model` would let anonymous traffic get data from."
+  [model :- ::public-link-model
+   id    :- ms/PositiveInt]
+  ;; A public link serves every filter's value list, so a question it renders indirectly counts as much as one it
+  ;; renders directly.
+  (into #{}
+        (comp (mapcat (comp vals public-sharing.db/unarchived-card-database-ids))
+              (remove nil?))
+        (partition-all id-chunk-size
+                       (card-ids-of (get (rendered-card-ids model {id #{:public-link}}) id)))))

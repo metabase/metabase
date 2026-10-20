@@ -104,6 +104,16 @@
       {:response (thunk)
        :refused  @refused})))
 
+(def plain-refusal-message
+  "What the query-time refusal says on the paths that return its message rather than replacing it."
+  "This database does not allow anonymous access.")
+
+(defn configuration-disclosures
+  "The strings a refusal must never show a viewer of the router database `database-name`: the database itself, the
+  feature, and the setting."
+  [database-name]
+  [database-name "routing" "anonymous_access_granted"])
+
 ;;; ------------------------------------------------ Guest embedding -------------------------------------------------
 
 (defn- do-with-guest-embedding-enabled!
