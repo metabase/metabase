@@ -435,6 +435,9 @@ export type VisualizationSettings = {
   /** Explicit order, labels, colors, and enabled state for funnel steps. */
   "funnel.rows"?: SeriesOrderSetting[];
 
+  /** Show the total rows in a stacked chart's tooltip. Not user-editable. */
+  "graph.tooltip_show_stack_totals"?: boolean;
+
   /** Draws a bar chart as product analytics funnel steps. Not user-editable. */
   "product_analytics.funnel_steps"?: boolean;
 

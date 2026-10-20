@@ -151,22 +151,21 @@ export const getReturnOutcome = (period: Period): InsightOutcome => {
   const { next, active, activeTitle } = periodWords(period);
   return {
     isHigherBetter: true,
-    searchingLabel: t`Looking for what people who come back did…`,
+    searchingLabel: t`Looking for what people who return did…`,
     describeRate: (rate) =>
       c("{0} is a percentage, {1} is a period like 'the next week'")
-        .t`${rate} came back ${next}`,
+        .t`${rate} returned ${next}`,
     describeComparison: (rate, expectedRate, size) =>
       c(
         "{0} and {1} are percentages, {2} is a number, {3} is a plural like 'active weeks'",
       )
-        .t`${rate} came back vs. ${expectedRate} expected for people as active · ${size} ${active}`,
+        .t`${rate} returned vs. ${expectedRate} expected for people as active · ${size} ${active}`,
     describeMultiple: (multiplier) =>
-      c("{0} is a multiplier, like 2.5")
-        .t`${multiplier}× as likely to come back`,
+      c("{0} is a multiplier, like 2.5").t`${multiplier}× as likely to return`,
     describeDifference: (percent, isMore) =>
       isMore
-        ? c("{0} is a percentage").t`${percent} more likely to come back`
-        : c("{0} is a percentage").t`${percent} less likely to come back`,
+        ? c("{0} is a percentage").t`${percent} more likely to return`
+        : c("{0} is a percentage").t`${percent} less likely to return`,
     describeExcess: (count, formatted, isMore) =>
       isMore
         ? ngettext(
@@ -184,12 +183,12 @@ export const getReturnOutcome = (period: Period): InsightOutcome => {
         "{0} is a number of event conditions, {1} is a number, {2} is a plural like 'active weeks'",
       )
         .t`Nothing stands out. Checked ${events} event conditions across ${size} ${active}.`,
-    noAttributesLabel: t`There are no event segments on this table to compare people by. Save some to see what people who come back do.`,
+    noAttributesLabel: t`There are no event segments on this table to compare people by. Save some to see what people who return do.`,
     explore: {
       countColumn: "active_periods",
       countTitle: activeTitle,
       rateColumn: "came_back",
-      rateTitle: t`Came back`,
+      rateTitle: t`Returned`,
       expectedRateColumn: "expected_rate",
       expectedRateTitle: t`Expected for people as active`,
     },

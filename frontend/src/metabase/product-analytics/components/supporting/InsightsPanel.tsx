@@ -297,9 +297,11 @@ const QuestionHeading = ({ question, outcome }: QuestionHeadingProps) => {
   return (
     <Group justify="space-between" align="flex-end" wrap="nowrap" gap="md">
       <Stack gap={2} miw={0}>
-        <Text size="sm" c="text-secondary">
-          {question.caption}
-        </Text>
+        {question.caption && (
+          <Text size="sm" c="text-secondary">
+            {question.caption}
+          </Text>
+        )}
         <Title order={5}>
           <Group component="span" gap="sm">
             {question.labels.map((label, index) => (

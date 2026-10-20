@@ -420,6 +420,10 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions = {
     },
     getHidden: () => true,
   },
+  "graph.tooltip_show_stack_totals": {
+    getDefault: () => true,
+    getHidden: () => true,
+  },
   "graph.tooltip_columns": {
     getSection: () => t`Display`,
     get title() {

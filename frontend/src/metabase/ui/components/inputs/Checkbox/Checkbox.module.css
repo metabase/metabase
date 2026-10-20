@@ -136,6 +136,11 @@
     background-color: var(--mb-color-background_surface-brand-strong);
   }
 
+  &[data-checked][data-with-color] {
+    border-color: var(--checkbox-color);
+    background-color: var(--checkbox-color);
+  }
+
   &[data-disabled] {
     --checkbox-icon-color: var(--mb-color-text-disabled);
 

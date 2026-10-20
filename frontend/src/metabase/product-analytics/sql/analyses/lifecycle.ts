@@ -110,6 +110,10 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n"),
   };
 
+  // An actor goes quiet in the period after each active period that the next
+  // one doesn't follow straight on from. leadInFrame only sees the following
+  // rows with an explicit frame, and gives the zero date, not NULL, after the
+  // actor's last period.
   const wentQuiet = [
     "SELECT actor, period FROM (",
     "  SELECT",
@@ -178,7 +182,6 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n"),
     warnings: [
       ...base.warnings,
-      "“Went quiet” is derived from gaps between active periods, so an actor who never returns is counted quiet once — in the period after their last activity.",
       ...(lifecycle.hasFirstSeen
         ? []
         : [

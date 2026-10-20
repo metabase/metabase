@@ -8,20 +8,37 @@ import {
 } from "@mantine/core";
 import { type ReactNode, forwardRef } from "react";
 
+import type { ColorName } from "metabase/ui/colors/types";
+
 export type CheckboxCardProps = Omit<MantineCheckboxCardProps, "children"> & {
   label?: ReactNode;
   description?: ReactNode;
   withIndicator?: boolean;
+  /** Fills the checked indicator, e.g. to match a chart series. */
+  indicatorColor?: ColorName;
 };
 
 export const CheckboxCard = forwardRef<HTMLButtonElement, CheckboxCardProps>(
   function CheckboxCard(
-    { label, description, disabled, withIndicator = true, ...props },
+    {
+      label,
+      description,
+      disabled,
+      withIndicator = true,
+      indicatorColor,
+      ...props
+    },
     ref,
   ) {
     return (
       <MantineCheckboxCard disabled={disabled} {...props} ref={ref}>
-        {withIndicator && <MantineCheckboxIndicator disabled={disabled} />}
+        {withIndicator && (
+          <MantineCheckboxIndicator
+            disabled={disabled}
+            color={indicatorColor}
+            mod={{ "with-color": indicatorColor != null }}
+          />
+        )}
         <Stack component="span" gap={rem(2)} miw={0}>
           {label && (
             <Text

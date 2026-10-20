@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { color } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 
 import { FIRST_SEEN_COLUMN } from "../columns";
@@ -37,6 +39,16 @@ const STATES: readonly LifecycleStateName[] = [
   "resurrected",
   "dormant",
 ];
+
+const STATE_COLOR_NAMES: Record<LifecycleStateName, ColorName> = {
+  new: "accent0",
+  returning: "accent2",
+  resurrected: "accent4",
+  dormant: "accent3",
+};
+
+const getStateColor = (state: LifecycleStateName): string =>
+  color(STATE_COLOR_NAMES[state]);
 
 export const getStateName = (state: LifecycleStateName): string => {
   switch (state) {
@@ -136,6 +148,7 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
       options: STATES.map((state) => ({
         value: state,
         label: getStateName(state),
+        color: STATE_COLOR_NAMES[state],
         description: getStateDescription(
           state,
           getPeriod(settings.granularity),
@@ -189,9 +202,25 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
     "graph.dimensions": ["period", "state"],
     "graph.metrics": ["actors"],
     "stackable.stack_type": "stacked",
+    // Went quiet isn't part of the week's active count, so totals invite the wrong sum.
+    "graph.tooltip_show_stack_totals": false,
     series_settings: Object.fromEntries(
-      STATES.map((state) => [state, { title: getStateName(state) }]),
+      STATES.map((state) => [
+        state,
+        {
+          title: getStateName(state),
+          color: getStateColor(state),
+          color_name: STATE_COLOR_NAMES[state],
+        },
+      ]),
     ),
+    "graph.series_order_dimension": "state",
+    "graph.series_order": STATES.map((state) => ({
+      key: state,
+      name: getStateName(state),
+      enabled: true,
+      color: getStateColor(state),
+    })),
     ...getAxisTitleSettings({
       x: Lib.describeTemporalUnit(settings.granularity),
       y: grainTitle(settings.counting),

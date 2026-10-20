@@ -1,4 +1,5 @@
 import { Checkbox, Stack } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { SettingWidgetProps } from "../../settings/types";
 
@@ -6,6 +7,7 @@ export type CheckboxCardOption<T extends string> = {
   value: T;
   label: string;
   description?: string;
+  color?: ColorName;
 };
 
 type CheckboxCardsWidgetProps<T extends string> = SettingWidgetProps<T[]> & {
@@ -40,6 +42,7 @@ export const CheckboxCardsWidget = <T extends string>({
           value={option.value}
           label={option.label}
           description={option.description}
+          indicatorColor={option.color}
         />
       ))}
     </Stack>

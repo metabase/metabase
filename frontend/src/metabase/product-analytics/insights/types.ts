@@ -90,7 +90,7 @@ export type Insight = GroupCounts & {
 export type InsightQuestion = Counts & {
   question: number;
   /** Above the title, like "Step 1 → 2" or "Landing page". */
-  caption: string;
+  caption?: string;
   /** The title's parts, shown with arrows between them. */
   labels: string[];
 };
