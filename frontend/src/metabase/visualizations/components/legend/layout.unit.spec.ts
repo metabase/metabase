@@ -1,7 +1,7 @@
 import type { LegendPosition } from "metabase-types/api";
 
 import type { LegendItemData } from "./LegendItem";
-import { LEGEND_PADDING } from "./constants";
+import { LEGEND_COLUMN_MARGIN_TOP, LEGEND_PADDING } from "./constants";
 import { MIN_LEGEND_CARD_WIDTH, getLegendLayout } from "./layout";
 import { measureLegend } from "./measure";
 import { type ChartSize, mapLegendCandidates } from "./plots";
@@ -362,9 +362,20 @@ describe("getLegendLayout auto", () => {
       layout(createSeriesNames(20), {
         width: 420,
         height: 300,
-        chartAreaHeight: 169,
+        chartAreaHeight: LEGEND_COLUMN_MARGIN_TOP + 169,
       }),
     ).toMatchObject({ type: "vertical", visibleCount: 7 });
+  });
+
+  it("should leave the column's top margin out of its rows", () => {
+    // (169 - 10 - 2 + 8) / (13.8 + 8) = 7 rows, 6 items + "+ 14 more"
+    expect(
+      layout(createSeriesNames(20), {
+        width: 420,
+        height: 300,
+        chartAreaHeight: 169,
+      }),
+    ).toMatchObject({ type: "vertical", visibleCount: 6 });
   });
 
   it("should widen the column to fit the '+ N more' label", () => {
@@ -396,7 +407,7 @@ describe("getLegendLayout auto", () => {
       layout(createSeriesNames(20), {
         width: 700,
         height: 400,
-        chartAreaHeight: 200,
+        chartAreaHeight: LEGEND_COLUMN_MARGIN_TOP + 200,
         size: "lg",
       }),
     ).toMatchObject({ type: "vertical", visibleCount: 7 });

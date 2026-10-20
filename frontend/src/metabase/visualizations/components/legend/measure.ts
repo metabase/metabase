@@ -3,7 +3,11 @@ import { c } from "ttag";
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 
 import type { LegendItemData } from "./LegendItem";
-import { LEGEND_PADDING, MIN_VISIBLE_COUNT } from "./constants";
+import {
+  LEGEND_COLUMN_MARGIN_TOP,
+  LEGEND_PADDING,
+  MIN_VISIBLE_COUNT,
+} from "./constants";
 import type { ChartSize, LegendCandidates } from "./plots";
 import { LEGEND_SIZES, type LegendSize, type LegendSizeConfig } from "./sizes";
 
@@ -71,7 +75,7 @@ export function measureLegend({
     measureText(getOverflowLabel(overflowCount), font);
   const columnFitCount = getColumnFitCount(
     { itemWidths, config },
-    chartRoom.height,
+    chartRoom.height - LEGEND_COLUMN_MARGIN_TOP,
   );
   const columnVisibleCount = Math.max(columnFitCount, MIN_VISIBLE_COUNT);
   const columnWidth = getColumnWidth(

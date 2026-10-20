@@ -18,6 +18,7 @@ import { Legend } from "./Legend";
 import { LegendActions } from "./LegendActions";
 import type { LegendItemData } from "./LegendItem";
 import S from "./LegendLayout.module.css";
+import { LEGEND_COLUMN_MARGIN_TOP } from "./constants";
 import { HIDDEN_LEGEND_LAYOUT, getLegendLayout } from "./layout";
 import { measureLegend } from "./measure";
 import {
@@ -161,6 +162,7 @@ export const LegendLayout = ({
       className={cx(S.verticalLegend, CS.overflowHidden)}
       flex="0 0 auto"
       miw={0}
+      mt={LEGEND_COLUMN_MARGIN_TOP}
       ml={isLegendBeforeChart ? 0 : verticalGap}
       mr={isLegendBeforeChart ? verticalGap : 0}
       style={{ width: layout.width }}
