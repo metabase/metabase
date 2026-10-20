@@ -43,7 +43,7 @@ To view and manage existing API keys:
 
 ### See how your API keys get used
 
-To see which keys are still in use, which routes they call, and which tools call them, click **View API key usage** on the API keys management page. Metabase takes you to [API key usage](../monitor/api-key-usage.md) in Monitor. This feature is only available on Pro and Enterprise plans.
+See [API key usage](../monitor/api-key-usage.md) in Monitor.
 
 ### Editing API keys
 
