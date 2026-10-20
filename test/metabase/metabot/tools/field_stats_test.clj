@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -35,16 +36,19 @@
                  {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5})))))
     (testing "A field-id not on the table is an agent error, not a field-metadata result."
       (mt/as-admin
-        (is (=? {:output #"Field -1 not found"}
-                (metabot.tools.field-stats/field-values
-                 {:entity-type "table", :entity-id products-id, :field-id -1, :limit 5})))))
+        (is (=? {:class :recoverable :code ::metabot.tools.field-stats/unknown-field
+                 :message #"Field -1 was not found\. Valid field IDs: .*"}
+                (tools.error/classify
+                 (is (thrown? clojure.lang.ExceptionInfo
+                              (metabot.tools.field-stats/field-values
+                               {:entity-type "table", :entity-id products-id, :field-id -1, :limit 5}))))))))
     (testing "A field-id that no longer resolves to a table (e.g. dropped column, stale result_metadata)
               is a graceful agent-facing 404, not an uncaught exception."
       (mt/as-admin
         (mt/with-dynamic-fn-redefs [metabot.perms/field-id->table-id (constantly {})]
-          (is (=? {:output #"No field found with ID \d+" :status-code 404}
-                  (metabot.tools.field-stats/field-values
-                   {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5}))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"No field found with ID \d+"
+                                (metabot.tools.field-stats/field-values
+                                 {:entity-type "table", :entity-id products-id, :field-id category-id, :limit 5}))))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
         (are [table-id field-id value-metadata]
@@ -156,11 +160,3 @@
           (is (=? {:structured-output {:table_reference "User"}}
                   (metabot.tools.field-stats/field-values
                    {:entity-type "metric", :entity-id metric-id, :field-id birth-date-id, :limit 5}))))))))
-
-(deftest field-values-unknown-entity-type-test
-  (testing "an unrecognized entity-type -- e.g. because the schema that constrains it isn't enforced in
-            production -- returns a graceful agent-facing message instead of throwing"
-    (mt/as-admin
-      (is (=? {:output #"Unknown data source type: bogus"}
-              (metabot.tools.field-stats/field-values
-               {:entity-type "bogus", :entity-id 1, :field-id 1, :limit 5}))))))

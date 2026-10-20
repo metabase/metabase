@@ -184,7 +184,7 @@
          (or (nil? fk-field-id)
              (referenced-field-visible? ctx accessible-table-ids fk-field-id)))))
 
-(defn- permission-filter-columns
+(defn permission-filter-columns
   "Remove columns hidden by Table or sandbox permissions and hide inaccessible FK targets on retained columns."
   ([columns] (permission-filter-columns columns nil))
   ([columns {:keys [explicit-joins-caller-performed?]}]

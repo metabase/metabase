@@ -78,6 +78,13 @@
     (when-let [tgt (lib.metadata/field query tgt-id)]
       (column-portable-fk query tgt))))
 
+(defn column-field-id
+  "The physical field ID or column alias emitted as a column's `field_id`."
+  [column]
+  (or (:id column)
+      (:lib/desired-column-alias column)
+      (:lib/source-column-alias column)))
+
 (defn ->result-column
   "Return tool result column for `column` of `query`.
   Uses the real field `:id` when available, falling back to column name for
@@ -92,9 +99,7 @@
         effective-type    (some-> (:effective-type column) u/qualified-name)
         semantic-type     (some-> (:semantic-type column) u/qualified-name)
         coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
-        field-id          (or (:id column)
-                              (:lib/desired-column-alias column)
-                              (:lib/source-column-alias column))
+        field-id          (column-field-id column)
         portable-fk       (try (column-portable-fk query column)
                                (catch Exception _ nil))
         fk-target-fk      (try (fk-target-portable-fk query column)
@@ -116,20 +121,18 @@
                       :table_reference (table-reference query column)))))
 
 (defn find-column-by-field-id
-  "Find a column in `columns` by its real field ID.
-  `field-id` may be an integer or a string-encoded integer.
-  Returns the matching column or throws an agent error if not found."
+  "Find a column by its emitted field ID, or nil if it is absent.
+
+  Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns."
   [field-id columns]
-  (let [numeric-id (cond
-                     (int? field-id) field-id
-                     (string? field-id) (parse-long field-id)
-                     :else nil)]
-    (or (when numeric-id
-          (m/find-first #(= (:id %) numeric-id) columns))
-        (throw (ex-info (str "Field " field-id " not found")
-                        {:agent-error? true
-                         :status-code  404
-                         :field-id     field-id})))))
+  (when (some? field-id)
+    (let [numeric-id (cond
+                       (int? field-id) field-id
+                       (string? field-id) (parse-long field-id))]
+      (or (m/find-first #(= (column-field-id %) field-id) columns)
+          (when numeric-id
+            (m/find-first #(= (:id %) numeric-id) columns))
+          (m/find-first #(= (column-field-id %) (str field-id)) columns)))))
 
 (defn schedule->schedule-map
   "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.
@@ -188,7 +191,8 @@
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (cond-> (lib.metadata/card mp card-id)
                       ;; pivot questions have strange result-columns so we work with the dataset-query
-                      (#{:question} (:type card)) (get :dataset-query))))))
+                      (and (= :question (:type card))
+                           (= :pivot (:display card))) (get :dataset-query))))))
 
 (defn metric-query
   "Return a query based on the metric with ID `metric-id`."

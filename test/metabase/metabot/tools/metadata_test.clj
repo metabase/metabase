@@ -1,126 +1,243 @@
 (ns metabase.metabot.tools.metadata-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as scope]
-   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.metadata :as metadata-tools]
-   [metabase.models.interface :as mi]
+   [metabase.metabot.tools.util :as tools.u]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(deftest get-field-values-tool-rejects-destination-database-table-test
-  (testing "get_field_values for a table on a destination (routed) database is rejected before it ever
-            reaches field-stats -- a destination database is a routing internal, not a resource users
-            should reach directly (see check-resource-database)"
-    (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database {router-id :id}      {}
-                     :model/Database {destination-id :id} {:router_database_id router-id}]
-        ;; A table can't exist on a destination in production (destinations aren't synced), so a normal
-        ;; `with-temp :model/Table` trips a different guard. Insert it directly, like
-        ;; `read-destination-backed-entities-return-errors-test` does for the read_resource tool.
-        (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                                {:db_id      destination-id
-                                                 :name       "destination-table"
-                                                 :active     true
-                                                 :created_at :%now
-                                                 :updated_at :%now})]
-          (with-redefs [mi/can-read? (constantly true)]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
-                                  (metadata-tools/get-field-values-tool
-                                   {:data_source "table" :source_id table-id :field_id 1})))))))))
+(defn- invoke-metadata
+  ([profile tool-name args]
+   (invoke-metadata profile tool-name args nil))
+  ([profile tool-name args metabot]
+   (binding [scope/*current-user-scope* #{"*"}]
+     (let [entries (metabot.tools/->entries (:tools (profiles/get-profile profile)) nil metabot profile)]
+       ((get-in entries [tool-name :fn]) args)))))
 
-(deftest get-field-values-tool-rejects-destination-database-card-test
-  (testing "get_field_values for a model/metric on a destination (routed) database is rejected before it
-            ever reaches field-stats"
-    (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database {router-id :id}      {}
-                     :model/Database {destination-id :id} {:router_database_id router-id}
-                     :model/Card     {model-id :id}       {:type :model :database_id destination-id}
-                     :model/Card     {metric-id :id}      {:type :metric :database_id destination-id}]
-        (with-redefs [mi/can-read? (constantly true)]
-          (testing "model"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
-                                  (metadata-tools/get-field-values-tool
-                                   {:data_source "model" :source_id model-id :field_id 1}))))
-          (testing "metric"
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
-                                  (metadata-tools/get-field-values-tool
-                                   {:data_source "metric" :source_id metric-id :field_id 1})))))))))
+(deftest missing-metabot-is-recoverable-test
+  (is (= {:error {:class :recoverable :code ::metadata-tools/unknown-metabot}
+          :output (str "No Metabot was provided for this call."
+                       "\nAsk the user to reopen the document and try again.")}
+         (invoke-metadata :document-generate-content "list_available_data_sources" {}))))
 
-(deftest get-field-values-tool-supports-question-and-report-data-source-test
-  (testing "get_field_values recognizes \"question\"/\"report\" as card-backed data sources -- the same
-            guard applied to \"model\"/\"metric\" -- instead of throwing on an unmatched case clause"
-    (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database {router-id :id}      {}
-                     :model/Database {destination-id :id} {:router_database_id router-id}
-                     :model/Card     {question-id :id}    {:type :question :database_id destination-id}]
-        (with-redefs [mi/can-read? (constantly true)]
-          (doseq [data-source ["question" "report"]]
-            (testing data-source
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found\."
-                                    (metadata-tools/get-field-values-tool
-                                     {:data_source data-source :source_id question-id :field_id 1}))))))))))
+(deftest metadata-id-limit-is-recoverable-test
+  (doseq [profile [:document-generate-content :slackbot]
+          kind [:table_ids :model_ids :metric_ids]]
+    (testing (str profile " " kind)
+      (is (= {:error {:class :recoverable :code ::metadata-tools/too-many-ids}
+              :output (str "Too many " (name ({:table_ids :table :model_ids :model :metric_ids :metric} kind))
+                           " IDs provided (6). Limit each source type to 5 IDs per call."
+                           "\nSplit the IDs across multiple calls.")}
+             (invoke-metadata profile "list_available_fields"
+                              (assoc {:table_ids [] :model_ids [] :metric_ids []} kind [1 2 3 4 5 6])))))))
 
-(deftest get-field-values-tool-reports-a-refused-table-as-not-found-test
-  (testing "a table the user can't read and one that doesn't exist get the same error, which the model can recover from"
-    (mt/with-no-data-perms-for-all-users!
-      (mt/with-current-user (mt/user->id :rasta)
-        (binding [scope/*current-user-scope* #{"*"}]
-          (doseq [table-id [(mt/id :venues) Integer/MAX_VALUE]]
-            (is (= "The entity referenced here was not found. It may not exist, or you may not have access to it."
-                   (test-util/tool-boundary-error "get_field_values" #'metabot.tools/get-field-values-tool
-                                                  {:data_source "table" :source_id table-id :field_id 1})))))))))
+(deftest metadata-failures-keep-successful-ids-test
+  (mt/as-admin
+    (doseq [profile [:document-generate-content :slackbot]]
+      (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+                                  (fn [{:keys [entity-id]}]
+                                    (if (= entity-id (mt/id :orders))
+                                      {:structured-output {:id entity-id :name "Orders" :fields []}}
+                                      (throw (ex-info "clojure.lang.ExceptionInfo: private database text" {}))))]
+        (let [{:keys [output error]} (invoke-metadata profile "list_available_fields"
+                                                      {:table_ids [(mt/id :orders) (mt/id :products)]
+                                                       :model_ids [] :metric_ids []})]
+          (is (nil? error))
+          (is (str/includes? output "Orders"))
+          (is (str/includes? output (str "Could not load metadata for table " (mt/id :products) "."))))
+        (is (=? {:error {:class :recoverable :code :metabase.metabot.tools.core/all-items-failed}
+                 :output #(str/includes? % (str "Could not load metadata for table " (mt/id :products) "."))}
+                (invoke-metadata profile "list_available_fields"
+                                 {:table_ids [(mt/id :products)] :model_ids [] :metric_ids []})))))))
 
-(deftest get-field-values-tool-unknown-data-source-test
-  (testing "an unexpected data_source -- e.g. because the schema that constrains it isn't enforced in
-            production -- doesn't throw before reaching field-values, which reports it gracefully"
-    (mt/as-admin
-      (mu/disable-enforcement
-        (is (=? {:output #"Unknown data source type: bogus"}
-                (metadata-tools/get-field-values-tool
-                 {:data_source "bogus" :source_id 1 :field_id 1})))))))
+(deftest field-values-unknown-field-lists-valid-ids-test
+  (mt/as-admin
+    (doseq [profile [:document-generate-content :slackbot]]
+      (let [{:keys [error output]} (invoke-metadata profile "get_field_values"
+                                                    {:data_source "table" :source_id (mt/id :products)
+                                                     :field_id "missing"})]
+        (is (= {:class :recoverable :code ::field-stats/unknown-field} error))
+        (is (str/includes? output "Field missing was not found. Valid field IDs:"))
+        (is (str/includes? output (str (mt/id :products :category))))
+        (is (str/includes? output "Retry with one of these field IDs."))))))
 
-(deftest get-metadata-rejects-destination-database-table-test
-  (testing "list_available_fields for a table on a destination (routed) database is rejected before it
-            ever reaches entity-details -- a destination database is a routing internal, not a resource
-            users should reach directly (see check-resource-database)"
-    (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database {router-id :id}      {}
-                     :model/Database {destination-id :id} {:router_database_id router-id}]
-        (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
-                                                {:db_id      destination-id
-                                                 :name       "destination-table"
-                                                 :active     true
-                                                 :created_at :%now
-                                                 :updated_at :%now})]
-          (with-redefs [mi/can-read? (constantly true)]
-            (let [{:keys [structured-output]} (metadata-tools/get-metadata {:table-ids [table-id]})]
-              (is (= [] (:tables structured-output)))
-              (is (= 1 (count (:errors structured-output))))
-              (is (re-find #"Not found\." (first (:errors structured-output)))))))))))
+(deftest field-values-refusals-name-the-requested-entity-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [profile [:document-generate-content :slackbot]
+              table-id [(mt/id :products) Integer/MAX_VALUE]]
+        (is (= {:error {:class :recoverable :code :metabase.metabot.tools.recoverable.common/not-found}
+                :output (str "Table " table-id " was not found. It may not exist, or you may not have access to it."
+                             (when (= profile :slackbot)
+                               "\nCall `search` to find the entity you want and use an id from the results."))}
+               (invoke-metadata profile "get_field_values"
+                                {:data_source "table" :source_id table-id :field_id 1})))))))
 
-(deftest get-metadata-rejects-destination-database-card-test
-  (testing "list_available_fields for a model/metric on a destination (routed) database is rejected
-            before it ever reaches entity-details"
-    (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temp [:model/Database {router-id :id}      {}
-                     :model/Database {destination-id :id} {:router_database_id router-id}
-                     :model/Card     {model-id :id}       {:type :model :database_id destination-id}
-                     :model/Card     {metric-id :id}      {:type :metric :database_id destination-id}]
-        (with-redefs [mi/can-read? (constantly true)]
-          (let [{:keys [structured-output]} (metadata-tools/get-metadata {:model-ids  [model-id]
-                                                                          :metric-ids [metric-id]})]
-            (is (= [] (:models structured-output)))
-            (is (= [] (:metrics structured-output)))
-            (is (= 2 (count (:errors structured-output))))))))))
+(deftest sandboxed-field-refusals-name-the-field-test
+  (mt/as-admin
+    (mt/with-dynamic-fn-redefs [metabot.perms/sandbox-restricted-fields
+                                (fn [_] {(mt/id :products) #{(mt/id :products :id)}})]
+      (doseq [profile [:document-generate-content :slackbot]]
+        (let [field-id (mt/id :products :category)
+              result (invoke-metadata profile "get_field_values"
+                                      {:data_source "table" :source_id (mt/id :products) :field_id field-id})]
+          (is (=? {:error {:class :recoverable :code :metabase.metabot.tools.recoverable.common/not-found}
+                   :output #(str/starts-with? % (str "Field " field-id " was not found."))}
+                  result)))))))
 
-(deftest list-available-fields-tool-errors-test
-  (let [list-fields #(metadata-tools/list-available-fields-tool {:table_ids % :model_ids [] :metric_ids []})]
-    (testing "too many ids go back to the agent as output"
-      (is (= {:output "Too many table IDs provided (6). Limit to 5."}
-             (list-fields [1 2 3 4 5 6]))))
-    (testing "an unexpected error propagates to the agent loop"
-      (mt/with-dynamic-fn-redefs [metadata-tools/validate-id-count (fn [& _] (throw (ex-info "boom" {})))]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (list-fields [])))))))
+(deftest field-values-accept-emitted-column-aliases-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count)))
+          col (first (lib/returned-columns query))
+          field-id (:field_id (tools.u/->result-column query col))]
+      (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query query}]
+        (doseq [profile [:document-generate-content :slackbot]
+                data-source ["question" "report"]]
+          (is (string? field-id))
+          (is (=? {:structured-output {:field_id field-id :result-type :field-metadata}
+                   :output #(str/includes? % "<result>")}
+                  (invoke-metadata profile "get_field_values"
+                                   {:data_source data-source :source_id card-id :field_id field-id}))))))))
+
+(deftest destination-database-field-values-are-not-found-test
+  (mt/as-admin
+    (mt/with-temp [:model/Database {router-id :id} {}
+                   :model/Database {destination-id :id} {:router_database_id router-id}
+                   :model/Card {card-id :id} {:type :question :database_id destination-id}]
+      (let [table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                              {:db_id destination-id :name "destination-table" :active true
+                                               :created_at :%now :updated_at :%now})]
+        (testing "destination databases cannot be addressed directly"
+          (doseq [profile [:document-generate-content :slackbot]
+                  [data-source source-id] [["table" table-id] ["model" card-id] ["metric" card-id]
+                                           ["question" card-id] ["report" card-id]]]
+            (is (=? {:error {:class :recoverable :code :metabase.metabot.tools.recoverable.common/not-found}}
+                    (invoke-metadata profile "get_field_values"
+                                     {:data_source data-source :source_id source-id :field_id 1}))))
+          (doseq [profile [:document-generate-content :slackbot]]
+            (let [{:keys [error output]} (invoke-metadata profile "list_available_fields"
+                                                          {:table_ids [table-id]
+                                                           :model_ids [card-id] :metric_ids [card-id]})]
+              (is (= {:class :recoverable :code :metabase.metabot.tools.core/all-items-failed} error))
+              (doseq [[kind id] [["Table" table-id] ["Model" card-id] ["Metric" card-id]]]
+                (is (str/includes? output (str kind " " id " was not found.")))))))))))
+
+(deftest field-values-validates-the-data-source-test
+  (doseq [profile [:document-generate-content :slackbot]]
+    (is (=? {:error {:class :validation :code :invalid-arguments}
+             :output #(str/includes? % "data_source")}
+            (invoke-metadata profile "get_field_values"
+                             {:data_source "bogus" :source_id 1 :field_id 1})))))
+
+(deftest metadata-accepts-fifteen-ids-test
+  (mt/as-admin
+    (mt/with-dynamic-fn-redefs [entity-details/get-table-details
+                                (fn [{:keys [entity-id]}] {:structured-output {:id entity-id :name "Birds" :fields []}})
+                                entity-details/get-metric-details
+                                (fn [{:keys [metric-id]}] {:structured-output {:id metric-id :name "Bird count"}})]
+      (mt/with-temp [:model/Card {model-id :id} {:type :model}
+                     :model/Card {metric-id :id} {:type :metric}]
+        (doseq [profile [:document-generate-content :slackbot]]
+          (let [result (invoke-metadata profile "list_available_fields"
+                                        {:table_ids (repeat 5 (mt/id :orders))
+                                         :model_ids (repeat 5 model-id) :metric_ids (repeat 5 metric-id)})]
+            (is (nil? (:error result)))
+            (is (= [5 5 5] (mapv #(count (get-in result [:structured-output %])) [:tables :models :metrics])))))))))
+
+(deftest available-data-sources-use-the-turns-metabot-test
+  (let [metabot {:id 42}]
+    (mt/with-dynamic-fn-redefs [entity-details/answer-sources
+                                (fn [options]
+                                  (is (= metabot (:metabot options)))
+                                  {:structured-output {:result-type :answer-sources :models [] :metrics []}})]
+      (is (=? {:output #(str/includes? % "<result>") :structured-output {:models [] :metrics []}}
+              (invoke-metadata :document-generate-content "list_available_data_sources" {} metabot))))))
+
+(deftest unknown-field-suggestions-respect-column-permissions-test
+  (mt/as-admin
+    (let [allowed-id (mt/id :products :id)]
+      (mt/with-dynamic-fn-redefs [metabot.perms/sandbox-restricted-fields
+                                  (fn [_] {(mt/id :products) #{allowed-id}})]
+        (doseq [profile [:document-generate-content :slackbot]]
+          (is (= (str "Field missing was not found. Valid field IDs: [" allowed-id "]."
+                      "\nRetry with one of these field IDs.")
+                 (:output (invoke-metadata profile "get_field_values"
+                                           {:data_source "table" :source_id (mt/id :products)
+                                            :field_id "missing"})))))))))
+
+(deftest metadata-failures-name-each-source-test
+  (mt/as-admin
+    (mt/with-temp [:model/Card {model-id :id} {:type :model}
+                   :model/Card {metric-id :id} {:type :metric}]
+      (doseq [profile [:document-generate-content :slackbot]
+              failure [(fn [_] {:output "private driver text"})
+                       (fn [_] (throw (ex-info "private parser text" {})))
+                       (fn [_] (throw (AssertionError. "private failure")))]]
+        (mt/with-dynamic-fn-redefs [entity-details/get-table-details failure
+                                    entity-details/get-metric-details failure]
+          (let [result (invoke-metadata profile "list_available_fields"
+                                        {:table_ids [(mt/id :orders)] :model_ids [model-id] :metric_ids [metric-id]})]
+            (is (= {:class :recoverable :code :metabase.metabot.tools.core/all-items-failed} (:error result)))
+            (doseq [[kind id] [["table" (mt/id :orders)] ["model" model-id] ["metric" metric-id]]]
+              (is (str/includes? (:output result) (str "Could not load metadata for " kind " " id "."))))))))))
+
+(deftest field-values-accept-numeric-strings-test
+  (mt/as-admin
+    (doseq [profile [:document-generate-content :slackbot]]
+      (is (=? {:structured-output {:field_id (str (mt/id :products :category))}
+               :output #(str/includes? % "<field-metadata")}
+              (invoke-metadata profile "get_field_values"
+                               {:data_source "table" :source_id (str (mt/id :products))
+                                :field_id (str (mt/id :products :category))}))))))
+
+(deftest numeric-column-aliases-keep-their-identity-test
+  (mt/as-admin
+    (let [mp (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          physical-column (first (lib/returned-columns query))
+          aggregate-query (lib/aggregate query (lib/count))
+          alias-column (assoc (first (lib/returned-columns aggregate-query))
+                              :lib/desired-column-alias (str (:id physical-column))
+                              :fingerprint {:global {:distinct-count 17}})
+          field-id (:field_id (tools.u/->result-column aggregate-query alias-column))]
+      (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query aggregate-query}]
+        (mt/with-dynamic-fn-redefs [lib/returned-columns (constantly [alias-column])
+                                    lib/visible-columns (constantly [physical-column])]
+          (doseq [profile [:document-generate-content :slackbot]]
+            (is (=? {:structured-output {:field_id field-id
+                                         :value_metadata {:statistics {:distinct-count 17}}}}
+                    (invoke-metadata profile "get_field_values"
+                                     {:data_source "question" :source_id card-id :field_id field-id})))))))))
+
+(deftest native-card-aliases-match-the-metadata-output-test
+  (mt/as-admin
+    (let [query (lib/native-query (mt/metadata-provider) "SELECT 17 AS \"bird_count\"")
+          columns (-> query qp/process-query :data :results_metadata :columns)]
+      (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query :result_metadata columns}
+                     :model/Card {model-id :id} {:type :model :dataset_query query :result_metadata columns}]
+        (doseq [[data-source source-id entity-type] [["question" question-id :question]
+                                                     ["report" question-id :question]
+                                                     ["model" model-id :model]]
+                :let [metadata (entity-details/get-table-details
+                                {:entity-type entity-type :entity-id source-id
+                                 :with-fields? true :with-field-values? false
+                                 :with-related-tables? false :with-metrics? false
+                                 :with-measures? false :with-segments? false})
+                      field-id (get-in metadata [:structured-output :fields 0 :field_id])]
+                profile [:document-generate-content :slackbot]]
+          (is (string? field-id))
+          (is (=? {:structured-output {:field_id field-id :result-type :field-metadata}}
+                  (invoke-metadata profile "get_field_values"
+                                   {:data_source data-source :source_id source-id :field_id field-id}))))))))

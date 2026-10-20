@@ -5,6 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
@@ -77,50 +79,46 @@
       (when-let [allowed (get (metabot.perms/sandbox-restricted-fields #{table-id}) table-id)]
         (api/check-403 (contains? allowed field-id))))))
 
+(tools/defrecoverable unknown-field!
+  "The field ID does not identify an accessible column of this data source."
+  {:payload [:map {:closed true}
+             [:field-id [:or :int :string]]
+             [:available-ids [:sequential [:or :int :string]]]]}
+  [{:keys [field-id available-ids]}]
+  {:message (str "Field " field-id " was not found. Valid field IDs: " (pr-str available-ids) ".")
+   :recovery [{:text "Retry with one of these field IDs." :uses #{}}]})
+
+(defn- field-column
+  [field-id columns]
+  (if-let [col (metabot.tools.u/find-column-by-field-id field-id columns)]
+    (do (check-column-table-perms! col) col)
+    (unknown-field! {:field-id field-id
+                     :available-ids (into [] (comp (map metabot.tools.u/column-field-id) (distinct))
+                                          (entity-details/permission-filter-columns columns))})))
+
 (defn- table-field-stats
   [table-id field-id limit]
-  (try
-    (let [query        (or (metabot.tools.u/table-query table-id)
-                           (throw (ex-info (str "No table found with ID " table-id)
-                                           {:agent-error? true :status-code 404})))
-          visible-cols (lib/visible-columns query)
-          col          (metabot.tools.u/find-column-by-field-id field-id visible-cols)]
-      (check-column-table-perms! col)
-      (field-metadata-output query col field-id limit))
-    (catch Exception ex
-      (metabot.tools.u/handle-agent-error ex))))
+  (let [query (metabot.tools.u/table-query table-id)
+        col (field-column field-id (lib/visible-columns query))]
+    (field-metadata-output query col field-id limit)))
 
 (defn- card-field-stats
-  [card-id field-id limit card-type]
-  (try
-    (let [query        (or (metabot.tools.u/card-query card-id)
-                           (throw (ex-info (str "No " card-type " found with ID " card-id)
-                                           {:agent-error? true :status-code 404})))
-          visible-cols (lib/visible-columns query)
-          col          (metabot.tools.u/find-column-by-field-id field-id visible-cols)]
-      (check-column-table-perms! col)
-      (field-metadata-output query col field-id limit))
-    (catch Exception ex
-      (metabot.tools.u/handle-agent-error ex))))
+  [card-id field-id limit]
+  (let [query (metabot.tools.u/card-query card-id)
+        columns (distinct (concat (lib/returned-columns query) (lib/visible-columns query)))
+        col (field-column field-id columns)]
+    (field-metadata-output query col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
-  (try
-    (let [query           (or (metabot.tools.u/metric-query metric-id)
-                              (throw (ex-info (str "No metric found with ID " metric-id)
-                                              {:agent-error? true :status-code 404})))
-          filterable-cols (lib/filterable-columns query)
-          col             (metabot.tools.u/find-column-by-field-id field-id filterable-cols)]
-      (check-column-table-perms! col)
-      (field-metadata-output query col field-id limit))
-    (catch Exception ex
-      (metabot.tools.u/handle-agent-error ex))))
+  (let [query (metabot.tools.u/metric-query metric-id)
+        col (field-column field-id (lib/filterable-columns query))]
+    (field-metadata-output query col field-id limit)))
 
 (defn field-values
   "Return statistics and/or values for a given field of a given entity."
   [{:keys [entity-type entity-id field-id limit]}]
   (case entity-type
     "metric"                      (metric-field-stats entity-id field-id limit)
-    ("model" "report" "question") (card-field-stats entity-id field-id limit entity-type)
-    "table"                       (table-field-stats entity-id field-id limit)
-    {:output (str "Unknown data source type: " entity-type)}))
+    ("model" "report" "question") (card-field-stats entity-id field-id limit)
+    "table"                       (table-field-stats entity-id field-id limit)))

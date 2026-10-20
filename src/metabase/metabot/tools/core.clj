@@ -227,8 +227,8 @@
   default it is rethrown so the whole call fails — a bug is not a partial result.
 
   `on-item-fault` is the one seam, for a consumer whose contract says otherwise: it takes the item's
-  args and the throwable and returns that item's [[::entry]]. Only `/v1/read-resource` passes one
-  (see [[with-batched-entries]]); it is nil everywhere else, which is the failing default."
+  args and the throwable and returns that item's [[::entry]]. `/v1/read-resource` and
+  `list_available_fields` pass one (see [[with-batched-entries]]); it is nil elsewhere."
   [tool item-args ctx on-item-fault]
   (try
     (let [result (handle tool item-args ctx)]
@@ -267,23 +267,14 @@
   Returns whatever `f` returns, with the permission cache held across both the item loading and `f`
   (see [[call]]).
 
-  THE ONLY CALLER IS `metabase.agent-api.api`'s `POST /v1/read-resource`, and this function exists
-  for it alone. That endpoint publishes a different contract from the agent loop's: one HTTP status
-  for the whole call and an `:error` on each item that could not be read, so a single-URI request
-  that missed is still a 200 carrying one failed item. [[run-batched]] cannot serve that — it answers
-  with one [[::result]] and throws when nothing was delivered — and before this existed the endpoint
-  got its per-item data by having `read_resource`'s own `compose` build it, which left a tool
-  constructing one of its consumers' response shapes.
-
-  So if that endpoint goes away, delete this with it. Nothing else should reach for it: a consumer
-  that wants one result per call wants [[run-batched]], which is this with `compose` and the
-  nothing-was-delivered check on top.
+  Used by `POST /v1/read-resource` for its per-item HTTP response, and by `list_available_fields`
+  to preserve successful IDs even when another ID raises an undeclared exception. [[run-batched]]
+  instead fails the whole call on such an exception and throws when every item fails.
 
   `opts` may carry `:on-item-fault`, called when one item fails with something other than a declared
   recoverable error, with that item's args and the throwable; it returns that item's [[::entry]].
-  Without it such a failure fails the whole call, which is what the agent loop wants and what the
-  same endpoint must not do — its contract is one status for the call and an `:error` per item, so
-  one URI hitting a bug cannot discard the four that read."
+  Without it such a failure fails the whole call. These two callers preserve the items that loaded
+  even when another fails."
   [tool args ctx {:keys [on-item-fault]} f]
   (metabot.perms/with-cache
     (let [item-args (batched-args tool args)]
