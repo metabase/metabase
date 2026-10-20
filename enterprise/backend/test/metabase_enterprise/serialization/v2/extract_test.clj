@@ -1014,6 +1014,16 @@
       (testing "the owner is exported by email, not by local id"
         (is (= "owner@example.com" (:owner_user_id (ts/extract-one "Table" table-id))))))))
 
+(deftest setting-from-env-var-test
+  (let [exported-site-name #(some (fn [{k :key v :value}] (when (= :site-name k) [v]))
+                                  (serdes/extract-all "Setting" {}))]
+    (mt/with-temporary-setting-values [site-name "From the app DB"]
+      (testing "a Setting set in the app DB is exported"
+        (is (= ["From the app DB"] (exported-site-name))))
+      (mt/with-temp-env-var-value! [mb-site-name "From an env var"]
+        (testing "a Setting set by an env var is not exported"
+          (is (nil? (exported-site-name))))))))
+
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
