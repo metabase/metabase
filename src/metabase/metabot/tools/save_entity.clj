@@ -17,12 +17,12 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -50,22 +50,81 @@
        [:document_id :int]
        [:position {:optional true} [:maybe :int]]]]]]])
 
-(defn- agent-error! [msg]
-  (throw (ex-info msg {:agent-error? true :status-code 400})))
+(tools/defrecoverable no-personal-collection!
+  "A collection destination without a `collection_id` means the personal collection, and this user has none."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "The user has no personal collection, so `collection_id` can't be omitted."
+   :recovery [{:uses #{"read_resource"}
+               :text (str "Read `metabase://collections?tree=true` with `read_resource` and pass the id of a"
+                          " collection with `can_write=true`.")}
+              {:uses #{}
+               :text "Or ask the user which collection to save it to."}]})
+
+(tools/defrecoverable destination-not-writable!
+  "The user may not save to a destination they can see."
+  {:payload     [:or
+                 [:map {:closed true}
+                  [:kind [:enum :collection :dashboard :document]]
+                  [:id   :int]]
+                 ;; The root collection, which has no id.
+                 [:map {:closed true}
+                  [:kind [:= :collection]]]]
+   :status-code 403}
+  [{:keys [kind id]}]
+  {:message  (str "The user doesn't have permission to save to "
+                  (if id (str (name kind) " " id) "the root collection") ".")
+   :recovery [{:uses #{}
+               :text (str "Tell the user, and offer to save it to their personal collection instead: a collection"
+                          " destination without `collection_id`.")}
+              {:uses #{"read_resource"}
+               :text (str "To offer another collection, read `metabase://collections?tree=true` with"
+                          " `read_resource` and pick one with `can_write=true`.")}]})
+
+(defn- check-writable!
+  "Call `check`, a write or create check for `destination`, and report the 403 it throws as
+  [[destination-not-writable!]]."
+  [destination check]
+  (try
+    (check)
+    (catch clojure.lang.ExceptionInfo e
+      (if (= 403 (:status-code (ex-data e)))
+        (destination-not-writable! destination)
+        (throw e)))))
+
+(defn- check-query-permissions!
+  "Throw unless the current user may run `dataset-query`. A refusal ends the turn with a message for the user."
+  [dataset-query]
+  (try
+    (query-perms/check-run-permissions-for-query dataset-query)
+    (catch clojure.lang.ExceptionInfo e
+      (let [status-code (:status-code (ex-data e))]
+        (if (and (int? status-code) (<= 400 status-code 499))
+          ;; The query is the chart's, so the agent has no other one to offer.
+          (tools/unrecoverable!
+           ::no-query-permission
+           {:user-message (tru "You can''t save this chart because you don''t have permission to run its query.")
+            :cause        e})
+          (throw e))))))
+
+(defn- chart-query
+  "The query behind `chart`, a chart from agent memory, or nil when it has none."
+  [chart]
+  (or (first (:queries chart))
+      (get (shared/current-queries-state) (:query_id chart))))
 
 (defn- resolve-chart
   "Look up the generated chart from agent memory and return the pieces needed to
   build a card: a legacy `dataset_query` and a `display` keyword. Mirrors the
   lookup in `edit_chart` / `links/resolve-chart-link`."
   [chart-id]
-  (let [chart (get (shared/current-charts-state) chart-id)
-        query (or (first (:queries chart))
-                  (get (shared/current-queries-state) (:query_id chart)))]
+  (let [charts (shared/current-charts-state)
+        chart  (get charts chart-id)
+        query  (chart-query chart)]
     (when-not query
-      (agent-error!
-       (tru (str "No generated chart found with id `{0}`. Create a chart with "
-                 "`construct_notebook_query` first, then save it using the id it returns.")
-            chart-id)))
+      (recoverable.common/unknown-chart-id!
+       {:chart-id  chart-id
+        :available (sort (for [[id held] charts :when (chart-query held)] id))}))
     ;; agent-created charts carry the display in `:visualization_settings :chart_type`;
     ;; charts seeded from the frontend viewing context (`seed-charts`) leave that nil
     ;; and keep the raw config under `:chart_config` instead
@@ -78,9 +137,7 @@
   (or (:id (collection/user->personal-collection api/*current-user-id*))
       ;; API-key users have no personal collection; without this check the nil would
       ;; silently save into the root collection instead
-      (agent-error!
-       (tru (str "The current user has no personal collection. Pass an explicit "
-                 "`collection_id` (or `null` for the root collection) instead.")))))
+      (no-personal-collection! {})))
 
 (defn- collection-name
   "Current display name of a collection target, for the LLM-facing save summary.
@@ -95,8 +152,11 @@
   (let [collection-id (if (contains? destination :collection_id)
                         (:collection_id destination)
                         (personal-collection-id))]
-    (query-perms/check-run-permissions-for-query dataset_query)
-    (api/create-check :model/Card {:collection_id collection-id})
+    (when collection-id
+      (tools/with-entity {:kind :collection :id collection-id}
+        (api/read-check :model/Collection collection-id)))
+    (check-writable! (cond-> {:kind :collection} collection-id (assoc :id collection-id))
+                     #(api/create-check :model/Card {:collection_id collection-id}))
     (let [card (queries/create-card!
                 {:name                   name
                  :description            description
@@ -113,11 +173,10 @@
 
 (defn- save-to-dashboard!
   [{:keys [name description dataset_query display destination]}]
-  (let [dashboard-id (:dashboard_id destination)]
-    (when-not dashboard-id
-      (agent-error! (tru "A `dashboard_id` is required when saving to a dashboard.")))
-    (query-perms/check-run-permissions-for-query dataset_query)
-    (api/write-check :model/Dashboard dashboard-id)
+  (let [dashboard-id (:dashboard_id destination)
+        dashboard    (tools/with-entity {:kind :dashboard :id dashboard-id}
+                       (api/read-check :model/Dashboard dashboard-id))]
+    (check-writable! {:kind :dashboard :id dashboard-id} #(api/write-check dashboard))
     (let [card (queries/create-card!
                 {:name                   name
                  :description            description
@@ -134,70 +193,78 @@
 
 (defn- save-to-document!
   [{:keys [name description dataset_query display destination]}]
-  (let [document-id (:document_id destination)]
-    (when-not document-id
-      (agent-error! (tru "A `document_id` is required when saving to a document.")))
-    (query-perms/check-run-permissions-for-query dataset_query)
-    (let [document (api/write-check (documents/get-document document-id :log-view? false))
-          _        (api/check-not-archived document)
-          card     (queries/create-card!
-                    {:name                   name
-                     :description            description
-                     :dataset_query          dataset_query
-                     :display                display
-                     :visualization_settings {}
-                     :collection_id          (:collection_id document)
-                     :document_id            document-id}
-                    {:id api/*current-user-id*}
-                    :delay-event)]
+  (let [document-id (:document_id destination)
+        document    (tools/with-entity {:kind :document :id document-id}
+                      (api/check-not-archived (documents/get-document document-id :log-view? false)))]
+    (check-writable! {:kind :document :id document-id} #(api/write-check document))
+    (let [card (queries/create-card!
+                {:name                   name
+                 :description            description
+                 :dataset_query          dataset_query
+                 :display                display
+                 :visualization_settings {}
+                 :collection_id          (:collection_id document)
+                 :document_id            document-id}
+                {:id api/*current-user-id*}
+                :delay-event)]
       (documents/add-card-to-document! document-id (:id card) (:position destination))
       {:card             card
        :destination      {:type "document" :id document-id}
        :destination-name (:name document)
        :link             (str "metabase://document/" document-id)})))
 
-(mu/defn ^{:tool-name "save_entity"
-           :scope     scope/agent-question-create}
-  save-entity-tool
-  "Save a chart you previously created into a collection, a dashboard, or a document.
+(def ^:private tool-description
+  "What the model is told `save_entity` is."
+  (str
+   "Save a chart you previously created into a collection, a dashboard, or a document.\n"
+   "\n"
+   "ONLY call this when the user explicitly asks to save, keep, or add the chart\n"
+   "somewhere. Reference the chart by the `chart_id` you were given when it was\n"
+   "created. Provide a `name` and a concise `description` for the saved question\n"
+   "(reuse the chart's description).\n"
+   "\n"
+   "Choose a `destination`:\n"
+   "- To save into a collection, set `target_type` to `collection` and pass a\n"
+   "  `collection_id`. Inspect available collections first with\n"
+   "  `read_resource` on `metabase://collections?tree=true`. Omit `collection_id`\n"
+   "  to use the user's personal collection; pass `null` for the root collection.\n"
+   "- To add it to a dashboard, set `target_type` to `dashboard` and pass a\n"
+   "  `dashboard_id`. Find dashboards with your search/discovery tool — if that tool is\n"
+   "  `search`, restrict `entity_types` to the `dashboard` type. Only offer or use results\n"
+   "  with `can_write=true`; results\n"
+   "  with `can_write=false` are visible but read-only and cannot be save destinations.\n"
+   "- To embed it in a document, set `target_type` to `document` and pass a\n"
+   "  `document_id`. Find documents the same way — with `search`, restrict `entity_types` to\n"
+   "  the `document` type, just as you would use the `dashboard` type to find dashboards. Search\n"
+   "  using any name or topic the user provided. Before calling `save_entity`, you MUST call\n"
+   "  `read_resource` on `metabase://document/{id}` for the selected result and inspect its\n"
+   "  contents. Only save after that read succeeds and reports `can_write=true`. If it returns\n"
+   "  `can_write=false`, an error, or Not found,\n"
+   "  discard that search result and do not call `save_entity` with its id. If there are\n"
+   "  multiple plausible targets, ask the user which one they mean. Optionally pass `position` — the 0-based index"
+   " among the\n"
+   "  document's top-level blocks where the chart is inserted (`0` puts it at the\n"
+   "  very top). Omit `position` to append the chart at the end. To pick a\n"
+   "  meaningful position, first inspect the document's blocks with\n"
+   "  `read_resource` on `metabase://document/{id}`.\n"
+   "\n"
+   "If your only discovery tool returns library data entities (tables, models, metrics) rather\n"
+   "than saved content, dashboards and documents aren't discoverable that way — save to a\n"
+   "collection instead, or ask the user for the dashboard or document they mean.\n"
+   "\n"
+   "After saving, tell the user where it went and share the returned link."))
 
-  ONLY call this when the user explicitly asks to save, keep, or add the chart
-  somewhere. Reference the chart by the `chart_id` you were given when it was
-  created. Provide a `name` and a concise `description` for the saved question
-  (reuse the chart's description).
+(defrecord SaveEntityTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "save_entity"
+     :description tool-description
+     :scope       scope/agent-question-create
+     :args        save-entity-schema})
 
-  Choose a `destination`:
-  - To save into a collection, set `target_type` to `collection` and pass a
-    `collection_id`. Inspect available collections first with
-    `read_resource` on `metabase://collections?tree=true`. Omit `collection_id`
-    to use the user's personal collection; pass `null` for the root collection.
-  - To add it to a dashboard, set `target_type` to `dashboard` and pass a
-    `dashboard_id`. Find dashboards with your search/discovery tool — if that tool is
-    `search`, restrict `entity_types` to the `dashboard` type. Only offer or use results
-    with `can_write=true`; results
-    with `can_write=false` are visible but read-only and cannot be save destinations.
-  - To embed it in a document, set `target_type` to `document` and pass a
-    `document_id`. Find documents the same way — with `search`, restrict `entity_types` to
-    the `document` type, just as you would use the `dashboard` type to find dashboards. Search
-    using any name or topic the user provided. Before calling `save_entity`, you MUST call
-    `read_resource` on `metabase://document/{id}` for the selected result and inspect its
-    contents. Only save after that read succeeds and reports `can_write=true`. If it returns
-    `can_write=false`, an error, or Not found,
-    discard that search result and do not call `save_entity` with its id. If there are
-    multiple plausible targets, ask the user which one they mean. Optionally pass `position` — the 0-based index among the
-    document's top-level blocks where the chart is inserted (`0` puts it at the
-    very top). Omit `position` to append the chart at the end. To pick a
-    meaningful position, first inspect the document's blocks with
-    `read_resource` on `metabase://document/{id}`.
-
-  If your only discovery tool returns library data entities (tables, models, metrics) rather
-  than saved content, dashboards and documents aren't discoverable that way — save to a
-  collection instead, or ask the user for the dashboard or document they mean.
-
-  After saving, tell the user where it went and share the returned link."
-  [{:keys [chart_id destination description] question-name :name} :- save-entity-schema]
-  (try
+  (handle [_ {:keys [chart_id destination description] question-name :name} _ctx]
     (let [{:keys [dataset_query display]} (resolve-chart chart_id)
+          _    (check-query-permissions! dataset_query)
           args {:name          question-name
                 :description    description
                 :dataset_query  dataset_query
@@ -238,6 +305,8 @@
                              :destination saved-destination
                              ;; markdown entity link the chain-of-thought renders
                              ;; as the settled "Saved …" step label
-                             :title       (te/link question-name link)})]})
-    (catch Exception e
-      (metabot.tools.u/handle-agent-or-api-error e))))
+                             :title       (te/link question-name link)})]})))
+
+(def save-entity-tool
+  "`save_entity`: save a chart from this conversation as a question in a collection, dashboard or document."
+  (->SaveEntityTool))

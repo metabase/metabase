@@ -1,10 +1,16 @@
 (ns metabase.metabot.tools.save-entity-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.save-entity :as save-entity]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as queries]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -39,13 +45,29 @@
                                       :visualization_settings {:chart_type "bar"}}}}
            :context {}})))
 
+(def ^:private chart-args
+  {:chart_id    "c-1"
+   :name        "Venues by price"
+   :description "Count of venues grouped by price."})
+
+(def ^:private tool-names
+  "A profile with every tool the recovery steps here name, so the tests see each step."
+  #{"search" "read_resource" "construct_notebook_query" "create_chart"})
+
+(defn- call-save-entity [args]
+  (test-util/call-tool save-entity/save-entity-tool args))
+
 (defn- save! [destination]
   (binding [shared/*memory-atom* (chart-memory)]
-    (save-entity/save-entity-tool
-     {:chart_id    "c-1"
-      :name        "Venues by price"
-      :description "Count of venues grouped by price."
-      :destination destination})))
+    (call-save-entity (assoc chart-args :destination destination))))
+
+(defn- failure
+  "The failure a save produces: its class and code, plus the text the model reads when it is recoverable."
+  ([destination]
+   (failure (chart-memory) (assoc chart-args :destination destination)))
+  ([memory args]
+   (binding [shared/*memory-atom* memory]
+     (test-util/tool-failure save-entity/save-entity-tool args tool-names))))
 
 (deftest save-to-collection-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -74,7 +96,7 @@
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Collection coll {:name "Persisted charts"}]
         (let [result (binding [shared/*memory-atom* (rehydrated-chart-memory)]
-                       (save-entity/save-entity-tool
+                       (call-save-entity
                         {:chart_id    "c-1"
                          :name        "Venues by price"
                          :description "Count of venues grouped by price."
@@ -89,7 +111,7 @@
                      :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
         (let [memory (doto (chart-memory) (swap! assoc :conversation-id convo-id))
               result (binding [shared/*memory-atom* memory]
-                       (save-entity/save-entity-tool
+                       (call-save-entity
                         {:chart_id    "c-1"
                          :name        "Venues by price"
                          :description "Count of venues grouped by price."
@@ -155,7 +177,7 @@
                                                        :chart_config {:display_type "line"}}}}
                             :context {}})
               result (binding [shared/*memory-atom* memory]
-                       (save-entity/save-entity-tool
+                       (call-save-entity
                         {:chart_id    "c-2"
                          :name        "Seeded chart"
                          :description "Seeded from the viewing context."
@@ -204,37 +226,99 @@
                      (second (:content document-ast))]
                     (get-in (t2/select-one :model/Document :id (:id doc)) [:document :content])))))))))
 
-(deftest save-to-document-requires-id-test
-  (mt/with-current-user (mt/user->id :crowberto)
-    (testing "a missing document_id fails destination schema validation"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"document_id"
-                            (save! {:target_type "document"}))))))
+(deftest ^:parallel arguments-the-schema-refuses-test
+  (testing "a document destination needs a document_id"
+    (is (=? #"Invalid tool arguments: `destination` .*"
+            (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
+                                           (assoc chart-args :destination {:target_type "document"}))))))
 
-(deftest unknown-chart-test
-  (mt/with-current-user (mt/user->id :crowberto)
-    (testing "a missing chart id returns an agent-facing error and creates nothing"
-      (let [result (binding [shared/*memory-atom* (chart-memory)]
-                     (save-entity/save-entity-tool
-                      {:chart_id    "does-not-exist"
-                       :name        "x"
-                       :description "y"
-                       :destination {:target_type "collection" :collection_id nil}}))]
-        (is (nil? (:data-parts result)))
-        (is (re-find #"No generated chart found" (:output result)))))))
+(deftest ^:parallel unknown-chart-test
+  (let [args (assoc chart-args :chart_id "c-9" :destination {:target_type "collection" :collection_id nil})]
+    (testing "a chart id the conversation doesn't hold is a declared error that lists the ones it does"
+      (is (=? {:class :recoverable
+               :code  ::recoverable.common/unknown-chart-id
+               :text  (str "No chart with id \"c-9\" exists in this conversation. The chart ids that do: c-1.\n"
+                           "To make a new chart, call `construct_notebook_query` and use the chart id it returns.\n"
+                           "To chart a query this conversation already holds, call `create_chart` with its"
+                           " query id.")}
+              (failure (chart-memory) args))))
+    (testing "a chart with no query behind it can't be saved, so it isn't offered"
+      (let [memory (doto (chart-memory) (swap! assoc-in [:state :charts "c-2"] {:chart_id "c-2" :queries [nil]}))]
+        (is (str/includes? (:text (failure memory args)) "The chart ids that do: c-1.\n"))))
+    (testing "and a conversation with no charts says so"
+      (is (str/includes? (:text (failure (atom {}) args)) "No charts have been created in it yet.")))))
 
-(deftest save-entity-errors-test
-  (testing "a dashboard that doesn't exist goes back to the agent as output"
-    (mt/with-current-user (mt/user->id :crowberto)
-      (is (= "Not found." (:output (save! {:target_type "dashboard" :dashboard_id Integer/MAX_VALUE}))))))
-  (testing "a collection the user can't write to goes back to the agent as output"
+(deftest no-personal-collection-test
+  (mt/with-temp [:model/User {user-id :id} {:type :api-key}]
+    (mt/with-current-user user-id
+      (testing "a user with no personal collection is told to name a collection rather than saved into the root"
+        (is (= {:class :recoverable
+                :code  ::save-entity/no-personal-collection
+                :text  (str "The user has no personal collection, so `collection_id` can't be omitted.\n"
+                            "Read `metabase://collections?tree=true` with `read_resource` and pass the id of a"
+                            " collection with `can_write=true`.\n"
+                            "Or ask the user which collection to save it to.")}
+               (failure {:target_type "collection"})))))))
+
+(deftest unreadable-destination-test
+  (testing "a destination the user can't see, or that is in the trash, is reported as not found"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection coll {}]
-        (mt/with-current-user (mt/user->id :rasta)
-          (is (= "You don't have permissions to do that."
-                 (:output (save! {:target_type "collection" :collection_id (:id coll)}))))))))
-  (testing "an unexpected error propagates to the agent loop"
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection hidden      {}
+                       :model/Document   trashed-doc {:archived true :document document-ast}]
+          (doseq [[user target-type id] [[:rasta     "collection" (:id hidden)]
+                                         [:crowberto "dashboard"  Integer/MAX_VALUE]
+                                         [:crowberto "document"   Integer/MAX_VALUE]
+                                         [:crowberto "document"   (:id trashed-doc)]]
+                  :let [entity (str (str/capitalize target-type) " " id)]]
+            (testing (str (name user) " saving to " entity)
+              (mt/with-current-user (mt/user->id user)
+                (is (=? {:class :recoverable
+                         :code  ::recoverable.common/not-found
+                         :text  #(str/starts-with? % (str entity " was not found."))}
+                        (failure {:target_type target-type, (keyword (str target-type "_id")) id})))))))))))
+
+(deftest read-only-destination-test
+  (testing "a destination the user can see but not change is a declared error that offers another"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection coll {}
+                       :model/Dashboard  dash {:collection_id (:id coll)}
+                       :model/Document   doc  {:collection_id (:id coll) :document document-ast}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+          (mt/with-current-user (mt/user->id :rasta)
+            (doseq [[destination noun] [[{:target_type "collection" :collection_id (:id coll)}
+                                         (str "collection " (:id coll))]
+                                        [{:target_type "collection" :collection_id nil} "the root collection"]
+                                        [{:target_type "dashboard" :dashboard_id (:id dash)}
+                                         (str "dashboard " (:id dash))]
+                                        [{:target_type "document" :document_id (:id doc)}
+                                         (str "document " (:id doc))]]]
+              (testing noun
+                (is (= {:class :recoverable
+                        :code  ::save-entity/destination-not-writable
+                        :text  (str "The user doesn't have permission to save to " noun ".\n"
+                                    "Tell the user, and offer to save it to their personal collection instead: a"
+                                    " collection destination without `collection_id`.\n"
+                                    "To offer another collection, read `metabase://collections?tree=true` with"
+                                    " `read_resource` and pick one with `can_write=true`.")}
+                       (failure destination)))))
+            (testing "and nothing is saved"
+              (is (not (t2/exists? :model/Card :collection_id (:id coll)))))))))))
+
+(deftest unrunnable-query-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "a chart whose query the user may not run can't be saved, and only the user can change that"
+        (is (= {:class        :unrecoverable
+                :code         ::save-entity/no-query-permission
+                :user-message "You can't save this chart because you don't have permission to run its query."}
+               (tools.error/classify
+                (is (thrown? clojure.lang.ExceptionInfo (save! {:target_type "collection"}))))))))))
+
+(deftest undeclared-failure-test
+  (testing "a failure nobody declared ends the turn rather than reaching the agent"
     (mt/with-dynamic-fn-redefs [queries/create-card! (fn [& _] (throw (ex-info "boom" {})))]
       (mt/with-current-user (mt/user->id :crowberto)
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
-                              (save! {:target_type "collection" :collection_id nil})))))))
+        (is (= {:class :unrecoverable :code :internal}
+               (failure {:target_type "collection" :collection_id nil})))))))
