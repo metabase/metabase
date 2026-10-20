@@ -9,6 +9,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { PLUGIN_DATA_APPS, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
@@ -35,6 +36,8 @@ interface SetupOpts {
   aiFeaturesEnabled?: boolean;
   isConfigured?: boolean;
   mcpEnabled?: boolean;
+  /** What the data apps plugin sets on an instance with the data-apps feature. */
+  hasDataApps?: boolean;
   initialRoute?: string;
   user?: ReturnType<typeof createMockUser>;
   children?: ReactNode;
@@ -83,10 +86,12 @@ const setup = ({
   aiFeaturesEnabled = true,
   isConfigured = true,
   mcpEnabled = true,
+  hasDataApps = false,
   initialRoute = "/monitor",
   user = createMockUser({ is_superuser: true }),
   children = <div data-testid="content">{"Content"}</div>,
 }: SetupOpts = {}) => {
+  PLUGIN_DATA_APPS.isEnabled = hasDataApps;
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
     "ai-features-enabled?": aiFeaturesEnabled,
@@ -130,6 +135,10 @@ const CONTENT_MANAGEMENT_GROUP = "Content management";
 const LOGS_AND_ACTIVITY_GROUP = "Logs and activity";
 
 describe("MonitorLayout", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("groups the sections under static headings with a link for each Monitor section", async () => {
     setup();
 
@@ -662,8 +671,8 @@ describe("MonitorLayout", () => {
     );
   });
 
-  it("shows Data app analytics in AI Auditing with the data-apps feature", async () => {
-    setup({ tokenFeatures: { audit_app: true, "data-apps": true } });
+  it("shows Data app analytics in AI Auditing when the data apps plugin is on", async () => {
+    setup({ tokenFeatures: { audit_app: true }, hasDataApps: true });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
@@ -676,8 +685,11 @@ describe("MonitorLayout", () => {
     ).toBeInTheDocument();
   });
 
-  it("hides Data app analytics without the data-apps feature", async () => {
-    setup({ tokenFeatures: { audit_app: true, "data-apps": false } });
+  it("hides Data app analytics while the data apps plugin is off, whatever the token says", async () => {
+    setup({
+      tokenFeatures: { audit_app: true, "data-apps": true },
+      hasDataApps: false,
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
@@ -694,7 +706,8 @@ describe("MonitorLayout", () => {
   it("marks Data app analytics as the current page on its page", async () => {
     setup({
       initialRoute: Urls.monitorAiAuditingDataApps(),
-      tokenFeatures: { audit_app: true, "data-apps": true },
+      tokenFeatures: { audit_app: true },
+      hasDataApps: true,
     });
 
     await waitFor(() => {
@@ -709,7 +722,7 @@ describe("MonitorLayout", () => {
 
   it("tracks opening the Data app analytics section", async () => {
     trackMonitorSectionClicked.mockClear();
-    setup({ tokenFeatures: { audit_app: true, "data-apps": true } });
+    setup({ tokenFeatures: { audit_app: true }, hasDataApps: true });
 
     await userEvent.click(
       await screen.findByRole("link", { name: "Data app analytics" }),

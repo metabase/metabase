@@ -21,6 +21,7 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { FixedSizeIcon, Flex } from "metabase/ui";
@@ -100,7 +101,6 @@ export function MonitorLayout() {
   const hasAuditAppFeature = useHasTokenFeature("audit_app");
   const hasAiControlsFeature = useHasTokenFeature("ai_controls");
   const hasSessionManagementFeature = useHasTokenFeature("session-management");
-  const hasDataAppsFeature = useHasTokenFeature("data-apps");
   const canAccessDependencyDiagnosticsPage = useSelector(
     canAccessDependencyDiagnostics,
   );
@@ -278,7 +278,7 @@ export function MonitorLayout() {
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("ai-auditing-cli")}
           />
-          {hasDataAppsFeature && (
+          {PLUGIN_DATA_APPS.isEnabled && (
             <AreaTab
               label={t`Data app analytics`}
               icon="app"
