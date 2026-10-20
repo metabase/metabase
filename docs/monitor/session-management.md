@@ -20,7 +20,9 @@ Session management tabs include: **Active** and **Ended**.
 
 Ended sessions are kept for 30 days and show the reason for why they ended (like a timeout or an admin revoking the session).
 
-Click the User, Signed in, or Auth Method headings to sort the table by that column. Click a session in the table to see its details:
+For active sessions, the table of sessions contains columns for user, device, auth method, and time they signed in. For ended sessions, the columns are user, device, signed in, ended, and reason.
+
+Click the User, Signed in, or Auth Method headings to sort the table by that column. Click a session in the table to see its details in a sidebar:
 
 - User
 - Email
