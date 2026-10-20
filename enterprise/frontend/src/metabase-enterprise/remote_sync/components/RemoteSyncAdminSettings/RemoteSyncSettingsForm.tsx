@@ -55,7 +55,7 @@ export const RemoteSyncSettingsForm = ({
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const isCollectionsSyncEnabled = !!useSetting(
-    "remote-sync-collections-enabled",
+    "remote-sync-custom-collections-enabled",
   );
   const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
     refetchOnMountOrArgChange: true,
