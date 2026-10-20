@@ -4,12 +4,14 @@ import { noop } from "underscore";
 
 import {
   Accordion,
+  ActionIcon,
   Alert,
   Box,
   Button,
   Group,
   Icon,
   Loader,
+  Paper,
   Stack,
   Text,
   Title,
@@ -37,7 +39,6 @@ import type {
 import type { Insights, InsightsState } from "../../insights/use-insights";
 
 import S from "./InsightsPanel.module.css";
-import { SupportingPanel } from "./SupportingPanel";
 
 const INSIGHTS_SHOWN = 5;
 const CHART_HEIGHT_PX = 240;
@@ -54,22 +55,53 @@ type InsightsPanelProps = {
   focus: InsightsFocus | undefined;
   /** Shown while the analysis isn't set up enough for insights. */
   idleLabel: string;
+  /** A chart's insights button is hovered. */
+  isHinted?: boolean;
+  onClose: () => void;
 };
 
+/** The side panel on the right that each chart's insights button toggles. */
 export const InsightsPanel = ({
   insights,
   focus,
   idleLabel,
+  isHinted = false,
+  onClose,
 }: InsightsPanelProps) => (
-  <SupportingPanel title={t`Insights`}>
-    <InsightsPanelBody
-      state={insights.state}
-      outcome={insights.outcome}
-      focus={focus}
-      idleLabel={idleLabel}
-      getExplore={insights.getExplore}
-    />
-  </SupportingPanel>
+  <Paper
+    component="aside"
+    withBorder
+    radius="md"
+    className={S.panel}
+    data-hinted={isHinted}
+    aria-label={t`Insights`}
+  >
+    <Group
+      justify="space-between"
+      wrap="nowrap"
+      px="xl"
+      pt="lg"
+      pb="md"
+      className={S.header}
+    >
+      <Group gap="sm" wrap="nowrap">
+        <Icon name="insight" c="text-secondary" />
+        <Title order={4}>{t`Insights`}</Title>
+      </Group>
+      <ActionIcon aria-label={t`Close insights`} onClick={onClose}>
+        <Icon name="close" />
+      </ActionIcon>
+    </Group>
+    <Box px="xl" pt="md" pb="xl" className={S.body}>
+      <InsightsPanelBody
+        state={insights.state}
+        outcome={insights.outcome}
+        focus={focus}
+        idleLabel={idleLabel}
+        getExplore={insights.getExplore}
+      />
+    </Box>
+  </Paper>
 );
 
 type InsightsPanelBodyProps = {

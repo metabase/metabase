@@ -1,15 +1,15 @@
 import { type ReactNode, useEffect, useRef } from "react";
 
-import { Warnings } from "metabase/common/components/Warnings";
 import { Group, Paper, Stack, Title } from "metabase/ui";
 import type { ClickActionsMode } from "metabase/visualizations/types";
+
+import { InsightsToggle } from "./InsightsToggle";
 
 /** For charts in a panel that have nothing to drill into. */
 export const NO_CLICK_ACTIONS: ClickActionsMode = { actionsForClick: () => [] };
 
 type SupportingPanelProps = {
   title: string;
-  warnings?: string[];
   /** Shown at the right of the title, e.g. a range picker. */
   controls?: ReactNode;
   /** Changes with each request to bring the panel into view. */
@@ -24,7 +24,6 @@ type SupportingPanelProps = {
  */
 export const SupportingPanel = ({
   title,
-  warnings = [],
   controls,
   focusId,
   children,
@@ -41,17 +40,18 @@ export const SupportingPanel = ({
     <Paper
       ref={ref}
       withBorder
+      radius="md"
       p="lg"
       style={{ flexShrink: 0, scrollMarginTop: "var(--mantine-spacing-md)" }}
       aria-label={title}
     >
       <Stack gap="lg">
         <Group justify="space-between" wrap="nowrap">
-          <Group gap="md" wrap="nowrap">
-            <Title order={4}>{title}</Title>
-            <Warnings warnings={warnings} size={18} />
+          <Title order={4}>{title}</Title>
+          <Group gap="sm" wrap="nowrap">
+            {controls}
+            <InsightsToggle />
           </Group>
-          {controls}
         </Group>
         {children}
       </Stack>

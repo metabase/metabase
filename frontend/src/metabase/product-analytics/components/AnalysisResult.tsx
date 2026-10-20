@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import { Warnings } from "metabase/common/components/Warnings";
 import {
   Alert,
   Box,
@@ -26,6 +24,8 @@ import type {
 
 import type { MissingSetting } from "../analyses/types";
 
+import { InsightsToggle } from "./supporting/InsightsToggle";
+
 const SYNTHETIC_CARD_ID = -1;
 // The result shares a scrolling column with the supporting analyses below it.
 const MIN_HEIGHT_PX = 480;
@@ -38,7 +38,6 @@ type AnalysisResultProps = {
   datasetQuery: DatasetQuery | undefined;
   isLoading: boolean;
   error: string | undefined;
-  warnings: string[];
   /** Settings still to fill in. When non-empty, this replaces the result. */
   missing: MissingSetting[];
   setupLabel: string;
@@ -55,13 +54,11 @@ export const AnalysisResult = ({
   datasetQuery,
   isLoading,
   error,
-  warnings,
   missing,
   setupLabel,
   onOpenSetup,
   clickActionsMode,
 }: AnalysisResultProps) => {
-  const [vizWarnings, setVizWarnings] = useState<string[]>([]);
   const rawSeries: RawSeries | null =
     dataset?.data !== undefined && datasetQuery !== undefined
       ? [
@@ -81,16 +78,12 @@ export const AnalysisResult = ({
   const isIncomplete = missing.length > 0 && !error && !isLoading;
   const isShowingVisualization =
     !isIncomplete && !isLoading && !error && rawSeries !== null;
-  const allWarnings = isShowingVisualization
-    ? [...warnings, ...vizWarnings]
-    : warnings;
-
   return (
-    <Paper withBorder p="lg" flex={1} miw={0} mih={MIN_HEIGHT_PX}>
+    <Paper withBorder radius="md" p="lg" flex={1} miw={0} mih={MIN_HEIGHT_PX}>
       <Stack h="100%">
         <Group justify="space-between" wrap="nowrap">
           <Title order={4}>{title}</Title>
-          <Warnings warnings={allWarnings} size={18} />
+          <InsightsToggle />
         </Group>
         <Stack gap="sm" flex={1} mih={0}>
           {isIncomplete && (
@@ -115,7 +108,6 @@ export const AnalysisResult = ({
                 rawSeries={rawSeries}
                 isQueryBuilder={false}
                 mode={clickActionsMode}
-                onUpdateWarnings={setVizWarnings}
                 onChangeCardAndRun={noop}
               />
             </Box>

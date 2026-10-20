@@ -31,7 +31,6 @@ export const FunnelPathsPanel = ({
 }: FunnelPathsPanelProps) => (
   <SupportingPanel
     title={t`Paths`}
-    warnings={paths.warnings}
     focusId={focusId}
     controls={
       steps.length > 2 ? (

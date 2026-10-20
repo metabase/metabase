@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
 import type {
@@ -48,6 +49,8 @@ type UseSupportingAnalysesArgs = {
   context: AnalysisContext;
   /** The primary query, for supporting charts that re-read its result. */
   query: AnalysisQueryResult;
+  /** A chart click asked for insights; the side panel should open. */
+  onShowInsights: () => void;
 };
 
 /** The paths through a funnel's steps, for a chosen range of them. */
@@ -60,28 +63,23 @@ export type FunnelPathsSupport = {
   onChangeRange: (range: FunnelPathsRange) => void;
 };
 
+/** The insights side panel's content, for kinds that have insights. */
 export type InsightsSupport = {
   insights: Insights;
   focus: InsightsFocus | undefined;
+  /** Shown while the analysis isn't set up enough for insights. */
+  idleLabel: string;
 };
 
 /** The supporting analyses a funnel shows below its chart. */
 export type FunnelSupport = {
   /** Undefined when the funnel has no paths to show, e.g. unordered steps. */
   paths: FunnelPathsSupport | undefined;
-  insights: InsightsSupport;
 };
 
-/** The steps across a paths analysis, and who bounces from its landing pages. */
+/** The steps across a paths analysis. */
 export type PathsSupport = {
   steps: PathSteps;
-  /** Undefined unless the paths cover every visit from its first step. */
-  insights: Insights | undefined;
-};
-
-/** Who comes back the next period, below the lifecycle chart. */
-export type LifecycleSupport = {
-  insights: Insights;
 };
 
 /** The retention curves below the cohort table, from the table's own result. */
@@ -99,8 +97,11 @@ export type SupportingAnalyses = {
   paths: PathsSupport | undefined;
   /** Set while the analysis is cohorts. */
   cohorts: CohortsSupport | undefined;
-  /** Set while the analysis is lifecycle. */
-  lifecycle: LifecycleSupport | undefined;
+  /**
+   * Set while the analysis has insights to show: funnels and lifecycles
+   * always, paths once they start at the start of a visit.
+   */
+  insights: InsightsSupport | undefined;
   /** The chart click actions that lead to a supporting analysis. */
   getClickActions: (clicked: ClickObject) => ClickAction[];
 };
@@ -133,6 +134,7 @@ export const useSupportingAnalyses = ({
   base,
   context,
   query,
+  onShowInsights,
 }: UseSupportingAnalysesArgs): SupportingAnalyses => {
   const isFunnel = spec?.kind === "funnel";
   const isCohorts = spec?.kind === "cohorts";
@@ -199,18 +201,27 @@ export const useSupportingAnalyses = ({
           : []),
         ...(transition !== undefined
           ? [
-              getShowInsightsAction(() =>
+              getShowInsightsAction(() => {
                 setInsightsFocus((focus) => ({
                   question: transition,
                   id: (focus?.id ?? 0) + 1,
-                })),
-              ),
+                }));
+                onShowInsights();
+              }),
             ]
           : []),
       ];
     },
-    [spec, pathsFunnel, insights.state],
+    [spec, pathsFunnel, insights.state, onShowInsights],
   );
+
+  const insightsIdleLabel = isFunnel
+    ? t`Finish setting up the funnel to see insights.`
+    : isLifecycle
+      ? t`Finish setting up the lifecycle to see insights.`
+      : isPaths && insights.state.status !== "idle"
+        ? t`Start the paths at the start of a visit to see insights.`
+        : undefined;
 
   return {
     funnel: isFunnel
@@ -225,15 +236,9 @@ export const useSupportingAnalyses = ({
                   onChangeRange: setChosenPathsRange,
                 }
               : undefined,
-          insights: { insights, focus: insightsFocus },
         }
       : undefined,
-    paths: isPaths
-      ? {
-          steps: pathSteps,
-          insights: insights.state.status !== "idle" ? insights : undefined,
-        }
-      : undefined,
+    paths: isPaths ? { steps: pathSteps } : undefined,
     cohorts: isCohorts
       ? {
           series: cohortsSeries,
@@ -241,7 +246,10 @@ export const useSupportingAnalyses = ({
           error: query.error,
         }
       : undefined,
-    lifecycle: isLifecycle ? { insights } : undefined,
+    insights:
+      insightsIdleLabel !== undefined
+        ? { insights, focus: insightsFocus, idleLabel: insightsIdleLabel }
+        : undefined,
     getClickActions,
   };
 };

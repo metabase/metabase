@@ -37,6 +37,7 @@ export const SettingsPanel = ({
   return (
     <Paper
       withBorder
+      radius="md"
       pt="xl"
       px="xl"
       w="25rem"

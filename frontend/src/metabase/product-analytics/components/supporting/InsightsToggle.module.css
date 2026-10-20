@@ -1,0 +1,11 @@
+.toggle {
+  flex-shrink: 0;
+  color: var(--mb-color-text-primary);
+  background: var(--mb-color-background_surface-primary);
+  border: 1px solid var(--mb-color-border-neutral);
+
+  &:hover,
+  &[aria-pressed="true"] {
+    background: var(--mb-color-background_surface-hover);
+  }
+}

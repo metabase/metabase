@@ -131,7 +131,7 @@ type PathStepsPanelProps = {
  * started and ended there, counted in visits.
  */
 export const PathStepsPanel = ({ steps }: PathStepsPanelProps) => (
-  <SupportingPanel title={t`Steps`} warnings={steps.warnings}>
+  <SupportingPanel title={t`Steps`}>
     <PathStepsBody steps={steps} />
   </SupportingPanel>
 );

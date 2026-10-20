@@ -1,3 +1,32 @@
+/* Beside the result, drawn like the setup panel on the other side. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-self: flex-start;
+  width: 25rem;
+  max-height: 100%;
+  margin-right: var(--mantine-spacing-lg);
+  overflow: hidden;
+  transition: border-color 120ms ease;
+}
+
+/* While a chart's insights button is hovered. */
+.panel[data-hinted="true"] {
+  border-color: var(--mb-color-border-strong);
+}
+
+.header {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .question {
   position: relative;
   isolation: isolate;

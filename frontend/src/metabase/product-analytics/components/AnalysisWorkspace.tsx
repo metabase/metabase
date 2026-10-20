@@ -35,6 +35,8 @@ import { SettingsPanel } from "./SettingsPanel";
 import { CreateSegmentModal } from "./drills/CreateSegmentModal";
 import { MembersModal } from "./drills/MembersModal";
 import { SegmentPalette } from "./palette/SegmentPalette";
+import { InsightsPanel } from "./supporting/InsightsPanel";
+import { InsightsToggleContext } from "./supporting/InsightsToggle";
 import { SupportingAnalyses } from "./supporting/SupportingAnalyses";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
@@ -51,8 +53,9 @@ type AnalysisWorkspaceProps<K extends AnalysisKind> = {
  * segment palette, the setup panel and the result side by side. A new
  * analysis shows only the palette's table picker until a table is picked.
  * The result's column scrolls, with the kind's supporting analyses below the
- * primary chart. A saved analysis opens on its result, with both side panels
- * collapsed.
+ * primary chart. Each chart's insights button opens the insights in a side
+ * panel on the right. A saved analysis opens on its result, with both side
+ * panels collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
@@ -66,6 +69,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const [isPaletteOpen, setIsPaletteOpen] = useState(isNew);
   // The panel whose toolbar button is hovered lights up its border.
   const [hintedPanel, setHintedPanel] = useState<HintedPanel | null>(null);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const openInsights = useCallback(() => setIsInsightsOpen(true), []);
   const {
     stored,
     hasUnsavedChanges,
@@ -99,7 +104,10 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     base,
     context,
     query,
+    onShowInsights: openInsights,
   });
+  const insights = supporting.insights;
+  const isShowingInsights = isInsightsOpen && insights !== undefined;
   const drillQueries = useDrillQueries({
     spec,
     compiledBase: query.compiledBase,
@@ -243,31 +251,52 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             />
           )}
           {tableId !== undefined && (
-            <Stack
-              flex={1}
-              miw={0}
-              gap="lg"
-              pr="lg"
-              style={{ overflowY: "auto" }}
+            <InsightsToggleContext.Provider
+              value={
+                insights !== undefined
+                  ? {
+                      isOpen: isInsightsOpen,
+                      onToggle: () => setIsInsightsOpen((isOpen) => !isOpen),
+                      onHint: (isHinted) =>
+                        setHintedPanel(isHinted ? "insights" : null),
+                    }
+                  : null
+              }
             >
-              <AnalysisResult
-                title={config.question}
-                display={display}
-                vizSettings={vizSettings}
-                dataset={query.dataset}
-                datasetQuery={query.datasetQuery}
-                isLoading={query.isLoading}
-                error={query.error}
-                warnings={query.warnings}
-                missing={missing}
-                setupLabel={config.setupLabel}
-                onOpenSetup={
-                  panel !== "setup" ? () => setPanel("setup") : undefined
-                }
-                clickActionsMode={drillActions.mode}
-              />
-              <SupportingAnalyses supporting={supporting} />
-            </Stack>
+              <Stack
+                flex={1}
+                miw={0}
+                gap="lg"
+                pr={isShowingInsights ? 0 : "lg"}
+                style={{ overflowY: "auto" }}
+              >
+                <AnalysisResult
+                  title={config.question}
+                  display={display}
+                  vizSettings={vizSettings}
+                  dataset={query.dataset}
+                  datasetQuery={query.datasetQuery}
+                  isLoading={query.isLoading}
+                  error={query.error}
+                  missing={missing}
+                  setupLabel={config.setupLabel}
+                  onOpenSetup={
+                    panel !== "setup" ? () => setPanel("setup") : undefined
+                  }
+                  clickActionsMode={drillActions.mode}
+                />
+                <SupportingAnalyses supporting={supporting} />
+              </Stack>
+            </InsightsToggleContext.Provider>
+          )}
+          {tableId !== undefined && isShowingInsights && (
+            <InsightsPanel
+              insights={insights.insights}
+              focus={insights.focus}
+              idleLabel={insights.idleLabel}
+              isHinted={hintedPanel === "insights"}
+              onClose={() => setIsInsightsOpen(false)}
+            />
           )}
         </Group>
       </Stack>
