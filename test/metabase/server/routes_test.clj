@@ -2,12 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api-keys.core :as api-key]
    [metabase.data-apps.core :as data-apps]
    [metabase.embedding.settings :as embedding.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
-   [metabase.test.http-client :as client]))
+   [metabase.test.http-client :as client]
+   [metabase.util.secret :as u.secret]))
 
 (deftest test-public-routes
   (binding [client/*url-prefix* ""]
@@ -82,6 +84,34 @@
                (is (str/includes? policy "script-src 'unsafe-eval'"))
                (is (str/includes? policy "frame-ancestors *;"))
                (is (nil? (get-in response [:headers "X-Frame-Options"])))))))))))
+
+(deftest modular-data-app-api-key-policy-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:data-apps :embedding-simple}
+     (mt/with-temporary-setting-values [enable-embedding-modular true]
+       (mt/with-temp [:model/ApiKey _ {:name                  "Data app development key"
+                                       :user_id               (mt/user->id :rasta)
+                                       :creator_id            (mt/user->id :crowberto)
+                                       :updated_by_id         (mt/user->id :crowberto)
+                                       ::api-key/unhashed-key (u.secret/secret "mb_dataapp123")}]
+         (binding [client/*url-prefix* ""]
+           (let [access-checks (atom [])
+                 request-options {:request-options {:headers {"x-api-key" "mb_dataapp123"}}}]
+             (mt/with-dynamic-fn-redefs [index/data-app-shell (fn [_ respond _] (respond {:status 200 :body "SHELL"}))
+                                         data-apps/check-data-app-access! (fn [request]
+                                                                            (swap! access-checks conj (:metabase-user-id request)))]
+               (testing "the API key authenticates the policy request and checks app access"
+                 (let [response (client/client-full-response :get 200 "embed/embedded-apps/sales" request-options)]
+                   (is (= "authenticated" (get-in response [:headers "X-Metabase-Data-App-Policy"])))
+                   (is (= [(mt/user->id :rasta)] @access-checks))))
+               (testing "an invalid key cannot load the authenticated document"
+                 (reset! access-checks [])
+                 (client/client-full-response :get 302 "embed/embedded-apps/sales"
+                                              {:request-options {:headers {"x-api-key" "mb_invalid123"}}})
+                 (is (empty? @access-checks))))
+             (testing "a valid key does not bypass app authorization"
+               (mt/with-dynamic-fn-redefs [data-apps/check-data-app-access! (fn [_] (throw (ex-info "Denied" {:status-code 403})))]
+                 (client/client-full-response :get 403 "embed/embedded-apps/sales" request-options))))))))))
 
 (deftest data-app-entrypoint-is-gated-by-the-data-apps-feature-test
   (testing "the /embed/apps/:name entrypoint is served only with :data-apps; without it it

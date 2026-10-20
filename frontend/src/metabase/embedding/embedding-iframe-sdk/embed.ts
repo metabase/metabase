@@ -2,6 +2,7 @@ import type { SqlParameterValues } from "embedding-sdk-bundle/types";
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
 import * as MetabaseErrors from "embedding-sdk-shared/errors";
 import { getDataAppEmbedUrl } from "embedding-sdk-shared/lib/data-app-embed";
+import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
@@ -427,6 +428,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   private _getIsLocalhost() {
+    if (this._componentName === "metabase-data-app") {
+      return getIsLocalhost();
+    }
+
     const { hostname } = window.location;
 
     try {
@@ -455,11 +460,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     if (settings.componentName === "metabase-data-app") {
       if (
         settings.isGuest ||
-        settings.apiKey ||
         settings.useExistingUserSession ||
         settings.guestEmbedProviderUri
       ) {
         raiseError("Data app embeds require SSO authentication.");
+      }
+
+      if (settings.apiKey && !settings._isLocalhost) {
+        raiseError("Using an API key in production is not allowed.");
       }
 
       if (!getDataAppNameFromPath(settings.path)) {

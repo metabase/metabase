@@ -2,6 +2,10 @@ import fetchMock from "fetch-mock";
 import jwt from "jsonwebtoken";
 import { act } from "react-dom/test-utils";
 
+import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
+
+jest.mock("embedding-sdk-shared/lib/get-is-localhost");
+
 import {
   type MetabaseDashboardElement,
   MetabaseEmbedElement,
@@ -31,6 +35,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    jest.mocked(getIsLocalhost).mockReturnValue(true);
     delete window.metabaseConfig;
     // The script does things when it is loaded, so load a fresh copy per test.
     // Isolating it keeps the shared modules, such as fetch-mock, on the same
@@ -189,12 +194,63 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     expect(onReady).toHaveBeenCalledTimes(2);
   });
 
-  it.each([
-    { isGuest: true },
-    { apiKey: "key" },
-    { useExistingUserSession: true },
-  ])("rejects non-SSO data app authentication: %p", (auth) => {
-    defineMetabaseConfig({ instanceUrl: "https://example.com", ...auth });
+  it.each([{ isGuest: true }, { useExistingUserSession: true }])(
+    "rejects non-SSO data app authentication: %p",
+    (auth) => {
+      defineMetabaseConfig({ instanceUrl: "https://example.com", ...auth });
+
+      const embed = document.createElement("metabase-data-app");
+      embed.setAttribute("path", "sales");
+      document.body.appendChild(embed);
+
+      expect(embed.querySelector("iframe")).toBeNull();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[metabase.embed.error]",
+        expect.objectContaining({
+          message: "Data app embeds require SSO authentication.",
+        }),
+      );
+    },
+  );
+
+  it("sends a localhost API key to the data app runtime without an SSO request", async () => {
+    defineMetabaseConfig({
+      instanceUrl: "https://example.com",
+      apiKey: "development-key",
+    });
+
+    const embed = document.createElement("metabase-data-app");
+    embed.setAttribute("path", "sales");
+    document.body.appendChild(embed);
+
+    const iframe = embed.querySelector("iframe")!;
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+    triggerIframeMessage(iframe, { type: "metabase.embed.iframeReady" });
+    triggerIframeMessage(iframe, {
+      type: "metabase.embed.requestSessionToken",
+    });
+    await flushPromises();
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "metabase.embed.setSettings",
+        data: expect.objectContaining({
+          apiKey: "development-key",
+          _isLocalhost: true,
+        }),
+      }),
+      "https://example.com",
+    );
+    expect(iframe.src).not.toContain("development-key");
+    expect(fetchMock.callHistory.calls()).toHaveLength(0);
+  });
+
+  it("rejects a data app API key on a non-localhost host even when Metabase has the same hostname", () => {
+    jest.mocked(getIsLocalhost).mockReturnValue(false);
+    defineMetabaseConfig({
+      instanceUrl: window.location.origin,
+      apiKey: "development-key",
+    });
 
     const embed = document.createElement("metabase-data-app");
     embed.setAttribute("path", "sales");
@@ -204,7 +260,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       "[metabase.embed.error]",
       expect.objectContaining({
-        message: "Data app embeds require SSO authentication.",
+        message: "Using an API key in production is not allowed.",
       }),
     );
   });

@@ -95,18 +95,47 @@ describe("DataAppEmbed", () => {
     expect(document.querySelector("iframe")).toBeNull();
   });
 
-  it.each([
-    { isGuest: true },
-    { apiKey: "key" },
-    { useExistingUserSession: true },
-  ])("rejects non-SSO settings: %p", (overrides) => {
-    setupSettings(overrides);
+  it.each([{ isGuest: true }, { useExistingUserSession: true }])(
+    "rejects non-SSO settings: %p",
+    (overrides) => {
+      setupSettings(overrides);
+
+      render(<DataAppEmbed />);
+
+      expect(
+        screen.getByText("Data app embeds require SSO authentication."),
+      ).toBeInTheDocument();
+      expect(useDataAppBundle).not.toHaveBeenCalled();
+    },
+  );
+
+  it("uses the existing API-key provider setup for a localhost host", async () => {
+    setupSettings({ apiKey: "development-key", _isLocalhost: true });
+    jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
+
+    render(<DataAppEmbed />);
+
+    await waitFor(() =>
+      expect(jest.mocked(ComponentProvider).mock.lastCall?.[0]).toMatchObject({
+        authConfig: {
+          metabaseInstanceUrl: window.location.origin,
+          apiKey: "development-key",
+        },
+        isLocalHost: true,
+      }),
+    );
+    expect(useDataAppBundle).toHaveBeenCalledWith("sales", { embedded: true });
+  });
+
+  it("rejects API keys from a non-localhost host before loading the bundle", () => {
+    setupSettings({ apiKey: "development-key", _isLocalhost: false });
 
     render(<DataAppEmbed />);
 
     expect(
-      screen.getByText("Data app embeds require SSO authentication."),
+      screen.getByText("Using an API key in production is not allowed."),
     ).toBeInTheDocument();
+    expect(ComponentProvider).not.toHaveBeenCalled();
     expect(useDataAppBundle).not.toHaveBeenCalled();
   });
 

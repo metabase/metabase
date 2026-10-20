@@ -234,7 +234,8 @@
       (let [request {:uri uri :params {:modular "true"}}]
         (is (not (req.util/embedded-data-app? request)))
         (is (not (req.util/data-app-bootstrap? request))))))
-  (testing "a session header selects the authenticated policy request"
-    (is (not (req.util/data-app-bootstrap? {:uri "/embed/embedded-apps/sales"
-                                            :headers {"x-metabase-session" "session"}}))))
+  (testing "session and API-key headers select the authenticated policy request"
+    (doseq [headers [{"x-metabase-session" "session"} {"x-api-key" "development-key"}]]
+      (is (not (req.util/data-app-bootstrap? {:uri "/embed/embedded-apps/sales"
+                                              :headers headers})))))
   (is (false? (req.util/embedded-data-app? {}))))

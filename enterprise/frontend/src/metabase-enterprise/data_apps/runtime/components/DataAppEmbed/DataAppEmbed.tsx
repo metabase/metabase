@@ -5,9 +5,13 @@ import { ComponentProvider } from "embedding-sdk-bundle/components/public/Compon
 import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { PLUGIN_API } from "metabase/api/client";
-import { SdkIframeError } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeError";
+import {
+  SdkIframeApiKeyInProductionError,
+  SdkIframeError,
+} from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeError";
 import { useSdkIframeEmbedEventBus } from "metabase/embedding/embedding-iframe-sdk/hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { getDataAppNameFromPath } from "metabase/embedding/embedding-iframe-sdk/utils/data-app-path";
@@ -41,13 +45,13 @@ export function DataAppEmbed() {
   const [providerProps, setProviderProps] =
     useState<DataAppMetabaseProviderProps>({});
 
-  const authConfig = useMemo(
-    () => ({
-      isGuest: false as const,
-      metabaseInstanceUrl: `${window.location.origin}${(window.MetabaseRoot ?? "/").replace(/\/+$/, "")}`,
-    }),
-    [],
-  );
+  const authConfig = useMemo<MetabaseAuthConfig>(() => {
+    const metabaseInstanceUrl = `${window.location.origin}${(window.MetabaseRoot ?? "/").replace(/\/+$/, "")}`;
+
+    return embedSettings?.apiKey
+      ? { metabaseInstanceUrl, apiKey: embedSettings.apiKey }
+      : { metabaseInstanceUrl, isGuest: false };
+  }, [embedSettings?.apiKey]);
 
   useDeepCompareEffect(() => {
     ensureMetabaseProviderPropsStore().setProps({
@@ -76,7 +80,6 @@ export function DataAppEmbed() {
 
   if (
     embedSettings.isGuest ||
-    embedSettings.apiKey ||
     embedSettings.useExistingUserSession ||
     embedSettings.guestEmbedProviderUri
   ) {
@@ -85,7 +88,11 @@ export function DataAppEmbed() {
     );
   }
 
-  if (!PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled()) {
+  if (embedSettings.apiKey && !embedSettings._isLocalhost) {
+    return <SdkIframeApiKeyInProductionError />;
+  }
+
+  if (!PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled() && !embedSettings.apiKey) {
     return (
       <SdkIframeError message="A valid license is required for embedding." />
     );

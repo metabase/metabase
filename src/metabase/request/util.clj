@@ -69,10 +69,11 @@
   (boolean (and uri (str/starts-with? uri (str embedded-data-app-prefix "/")))))
 
 (defn data-app-bootstrap?
-  "Whether the modular data app shell must establish its SSO session first."
+  "Whether the modular data app shell must obtain credentials from its host."
   [request]
   (and (embedded-data-app? request)
-       (not (get-in request [:headers "x-metabase-session"]))))
+       (not (or (get-in request [:headers "x-metabase-session"])
+                (get-in request [:headers "x-api-key"])))))
 
 (defn embed-sdk-eajs-entrypoint?
   "Is this ring request the modular embedding (EAJS) entrypoint page, served by `index/embed-sdk`?

@@ -16,6 +16,7 @@ import {
   isIframeMessage,
   normalizeDataAppPath,
 } from "embedding-sdk-shared/lib/data-app-embed";
+import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type {
@@ -71,8 +72,13 @@ function DataAppInner({ path, ...props }: DataAppProps) {
     }
   }, [instanceUrl, path, id]);
 
-  if (authConfig?.isGuest || authConfig?.apiKey) {
+  if (authConfig?.isGuest) {
     const message = "Data app embeds require SSO authentication.";
+    return <div role="alert">{message}</div>;
+  }
+
+  if (authConfig?.apiKey && !getIsLocalhost()) {
+    const message = "Using an API key in production is not allowed.";
     return <div role="alert">{message}</div>;
   }
 
@@ -152,14 +158,17 @@ function DataAppFrame({
           componentName: "metabase-data-app",
           path,
           instanceUrl: authConfig.metabaseInstanceUrl,
+          ...(authConfig.apiKey && { apiKey: authConfig.apiKey }),
           locale,
           _embedReferrer: window.location.href,
-          _isLocalhost: ["localhost", "127.0.0.1", "[::1]"].includes(
-            window.location.hostname,
-          ),
+          _isLocalhost: getIsLocalhost(),
         },
       });
     const authenticate = async () => {
+      if (authConfig.apiKey) {
+        return;
+      }
+
       try {
         if (!getSession) {
           throw new Error(
