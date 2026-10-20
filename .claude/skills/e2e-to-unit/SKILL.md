@@ -120,6 +120,7 @@ Add to the spec that already exists for the component. Create a new spec only wh
 - Navigation: render with `withRouter: true` and `initialRoute`, and assert `router?.location.pathname`.
 - Make the `setup` wait specific. Wait for one unique element, so that a break fails at your assertion and not in `setup`.
 - Do not use snapshot tests. Do not invent selectors: each query comes from the component source or the e2e spec.
+- Do not copy a CSS selector from Cypress (`cy.get("input[type=file]")`) into `document.querySelector`. The oxlint rule `testing-library/no-node-access` rejects it. Query by role, label or text. A file input inside a `<label>` takes `userEvent.upload(label, file)`.
 
 Run the new tests: `bunx jest --silent <paths...>`. They must pass before you prove them.
 
@@ -168,6 +169,7 @@ Record each break in the verify table of the PR description.
 3. Do not run ESLint. The pre-commit hook runs oxlint.
 4. Before each commit, run `git status --short` and `git diff --cached --name-only`. Stage explicit paths, never `git commit -a`. Only test files, test support and the e2e spec can be staged. A modified production file means that a break is still applied. Do not commit while other agents run tests: the pre-commit hook stashes unstaged changes for a short time.
 5. Use one commit for each test, or for each group that shares a target spec. Do not put an issue key in a commit message.
+6. Run each `git commit` as its own command. If the pre-commit hook fails in a `&&` chain, the staged files stay staged and go into the next commit.
 
 ## Mode: verify
 
@@ -249,8 +251,3 @@ Run it with `-t PROBE`, read the DOM, then replace the probe with a real test.
 ### Negative assertions that pass without proof
 
 An assertion of absence immediately after `cy.visit`, before an assertion that waits for content, can pass while the page loads. It proves nothing. Do not copy it to the unit test. Assert the real behavior that the probe shows, and report the incorrect e2e assertion. In an e2e test that stays, move the absence check after the positive assertions.
-
-### Mantine in jsdom
-
-- `Tabs` removes inactive panels from the DOM. Use `queryBy...` with `not.toBeInTheDocument()`, not `not.toBeVisible()`.
-- `NavLink` and `Collapse` children stay `display: none` for a short time after they expand. Use `findByRole`, not `getByRole`.

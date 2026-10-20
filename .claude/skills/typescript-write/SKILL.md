@@ -118,6 +118,8 @@ For new or edited tests, including Jest and Cypress:
 - **Challenge the assertions.** If the expected behavior were missing or wrong, would this test fail? For multi-step interactions, verify the observable transition between steps—not just the final state.
 - **Preserve the intended coverage when repairing a test.** Correct an ambiguous selector or faulty setup without dropping the behavior the test was meant to exercise. If the assertion itself misstates the expected contract, correct it against the requirements; don't weaken it merely to match the current implementation.
 
+@./../_shared/jest-gotchas.md
+
 ## Verify before done
 
 - **Run the project type-check** when finished (see the shared TypeScript commands above).
