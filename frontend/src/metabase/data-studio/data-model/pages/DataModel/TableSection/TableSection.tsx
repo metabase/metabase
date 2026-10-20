@@ -5,6 +5,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import {
+  AiPreviewFieldset,
   FieldOrderPicker,
   NameDescriptionInput,
 } from "metabase/metadata/components";
@@ -54,6 +55,8 @@ interface Props {
   activeTab: DataStudioTableMetadataTab;
   canPublish: boolean;
   hasLibrary: boolean;
+  /** Whether the fields read their pending AI suggestions as if accepted. The field list is then read-only. */
+  isAiPreview?: boolean;
   onUpdate: () => void;
 }
 
@@ -65,6 +68,7 @@ const TableSectionBase = ({
   activeTab,
   canPublish,
   hasLibrary,
+  isAiPreview = false,
   onUpdate,
 }: Props) => {
   const {
@@ -273,11 +277,13 @@ const TableSectionBase = ({
                     }}
                     aria-hidden={isSorting}
                   >
-                    <TableFieldList
-                      table={table}
-                      activeFieldId={activeFieldId}
-                      getFieldHref={getFieldHref}
-                    />
+                    <AiPreviewFieldset isPreview={isAiPreview}>
+                      <TableFieldList
+                        table={table}
+                        activeFieldId={activeFieldId}
+                        getFieldHref={getFieldHref}
+                      />
+                    </AiPreviewFieldset>
                   </Box>
                 </>
               )}

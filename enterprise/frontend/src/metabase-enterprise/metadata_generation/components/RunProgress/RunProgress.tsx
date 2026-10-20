@@ -15,7 +15,6 @@ import {
 } from "metabase/ui";
 import {
   EnterpriseApi,
-  listTag,
   useCancelMetadataGenerationRunMutation,
   useGetMetadataGenerationRunQuery,
   useRetryFailedMetadataGenerationRunMutation,
@@ -30,6 +29,7 @@ import {
   canCancelRun,
   canRetryRun,
   canReviewRun,
+  getRunEndTags,
   getRunStatusLabel,
   isRunActive,
 } from "../../utils";
@@ -54,9 +54,7 @@ export function RunProgress({ runId, onRetry, onReview }: RunProgressProps) {
   useEffect(() => {
     setIsPolling(isActive);
     if (wasActive.current && !isActive) {
-      dispatch(
-        EnterpriseApi.util.invalidateTags([listTag("metadata-generation-run")]),
-      );
+      dispatch(EnterpriseApi.util.invalidateTags(getRunEndTags()));
     }
     wasActive.current = isActive;
   }, [dispatch, isActive]);

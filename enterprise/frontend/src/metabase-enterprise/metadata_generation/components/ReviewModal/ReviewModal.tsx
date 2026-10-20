@@ -48,21 +48,21 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import {
-  useApplyMetadataGenerationRunMutation,
+  useApplyMetadataGenerationProposalsMutation,
   useGetMetadataGenerationRunQuery,
-  useListMetadataGenerationRunTablesQuery,
-  useListMetadataGenerationSuggestionsQuery,
+  useListMetadataGenerationProposalTablesQuery,
+  useListMetadataGenerationProposalsQuery,
   useStartMetadataGenerationRunMutation,
 } from "metabase-enterprise/api";
 import type {
   ConcreteTableId,
+  DatabaseId,
   FieldId,
   MetadataGenerationApplyResult,
+  MetadataGenerationProposal,
+  MetadataGenerationProposalTable,
   MetadataGenerationRun,
   MetadataGenerationRunId,
-  MetadataGenerationRunTable,
-  MetadataGenerationSuggestion,
-  MetadataGenerationSuggestionId,
 } from "metabase-types/api";
 
 import { getAttributeLabel, getRunRequest } from "../../utils";
@@ -80,47 +80,48 @@ import {
   getApplySummary,
   getBulkDecidable,
   getFieldLabel,
-  getRunTotals,
-  getSuggestionStatusColor,
-  getSuggestionStatusLabel,
+  getHumanSetPendingCount,
   getSuggestionValue,
   getTableCheckboxState,
   getTableLabel,
-  hasOpenDecisions,
   isFieldDataSensitivity,
   isHumanSet,
-  isSuggestionDecidable,
   isSuggestionEdited,
   setEdit,
   setSelected,
 } from "./utils";
 
 type ReviewModalProps = {
-  runId: MetadataGenerationRunId;
+  /** The review lists the pending suggestions of every table of this database, whatever run made them. */
+  databaseId: DatabaseId;
+  /** The run that "Regenerate suggestions" repeats when there is nothing to review. */
+  latestRunId?: MetadataGenerationRunId | null;
   opened: boolean;
   onClose: () => void;
   /** Called with the new run after the person regenerates the suggestions. */
   onRegenerate?: (run: MetadataGenerationRun) => void;
-  /** Called when the person is done with a run that has no suggestions. */
+  /** Called when the person is done and there are no suggestions. */
   onDone?: () => void;
-  /** Called after the person confirms discarding every suggestion of the run. */
+  /** Called after the person confirms discarding every suggestion. */
   onDiscard?: () => void;
 };
 
 export function ReviewModal({
-  runId,
+  databaseId,
+  latestRunId,
   opened,
   onClose,
   onRegenerate,
   onDone,
   onDiscard,
 }: ReviewModalProps) {
-  const { data: tables } = useListMetadataGenerationRunTablesQuery(runId, {
-    skip: !opened,
-  });
+  const { data: tables } = useListMetadataGenerationProposalTablesQuery(
+    { database_id: databaseId },
+    { skip: !opened, refetchOnMountOrArgChange: true },
+  );
   const [applyResult, setApplyResult] =
     useState<MetadataGenerationApplyResult | null>(null);
-  const draft = useReviewDraft(runId);
+  const draft = useReviewDraft(databaseId);
   const isEmpty = tables != null && tables.length === 0;
   const hasTables = tables != null && tables.length > 0;
 
@@ -147,7 +148,6 @@ export function ReviewModal({
           <Group gap="sm" wrap="nowrap">
             {opened && hasTables && (
               <ReviewActions
-                runId={runId}
                 draft={draft}
                 onApply={setApplyResult}
                 onDiscard={onDiscard && handleDiscard}
@@ -162,14 +162,14 @@ export function ReviewModal({
           {opened && tables == null && <Loader size="sm" />}
           {opened && isEmpty && (
             <EmptyRun
-              runId={runId}
+              runId={latestRunId ?? null}
               onRegenerate={onRegenerate}
               onDone={onDone ?? handleClose}
             />
           )}
           {opened && hasTables && (
             <ReviewContent
-              runId={runId}
+              databaseId={databaseId}
               tables={tables}
               draft={draft}
               applyResult={applyResult}
@@ -183,7 +183,7 @@ export function ReviewModal({
 }
 
 type EmptyRunProps = {
-  runId: MetadataGenerationRunId;
+  runId: MetadataGenerationRunId | null;
   onRegenerate?: (run: MetadataGenerationRun) => void;
   onDone: () => void;
 };
@@ -196,9 +196,9 @@ function EmptyRun({ runId, onRegenerate, onDone }: EmptyRunProps) {
 
   return (
     <Stack gap="lg" data-testid="metadata-generation-review-empty">
-      <Text>{t`This run has no suggestions.`}</Text>
+      <Text>{t`There are no suggestions to review.`}</Text>
       <Group justify="flex-end" gap="sm">
-        {onRegenerate != null && (
+        {onRegenerate != null && runId != null && (
           <Button
             disabled={!canRegenerate}
             loading={isRegenerating}
@@ -221,12 +221,12 @@ type RegenerateState = {
 };
 
 function useRegenerate(
-  runId: MetadataGenerationRunId,
+  runId: MetadataGenerationRunId | null,
   onRegenerate?: (run: MetadataGenerationRun) => void,
 ): RegenerateState {
   const [startRun, { isLoading: isRegenerating }] =
     useStartMetadataGenerationRunMutation();
-  const { data: run } = useGetMetadataGenerationRunQuery(runId);
+  const { data: run } = useGetMetadataGenerationRunQuery(runId ?? skipToken);
   const { sendErrorToast } = useMetadataToasts();
 
   const regenerate = async () => {
@@ -251,47 +251,53 @@ type ReviewDraft = {
   edits: SuggestionEdits;
 };
 
-const EMPTY_DRAFT: ReviewDraft = { selection: new Set(), edits: new Map() };
+const EMPTY_DRAFT: ReviewDraft = {
+  selection: new Map(),
+  edits: new Map(),
+};
 
 type ReviewDraftState = ReviewDraft & {
-  /** Ticks or unticks the suggestions with `ids`. */
-  select: (ids: MetadataGenerationSuggestionId[], isSelected: boolean) => void;
+  /** Ticks or unticks `suggestions`. */
+  select: (
+    suggestions: MetadataGenerationProposal[],
+    isSelected: boolean,
+  ) => void;
   /** Sets the edited value of a suggestion, or clears it with `null`, and ticks the suggestion. */
-  edit: (id: MetadataGenerationSuggestionId, value: string | null) => void;
+  edit: (suggestion: MetadataGenerationProposal, value: string | null) => void;
   reset: () => void;
 };
 
 /**
- * The review of a run before apply: the ticked suggestions and the edited values. It lives only in this
- * component, so no request is sent until apply, and a reload or another run starts from nothing.
+ * The review of a database before apply: the ticked suggestions and the edited values. It lives only in this
+ * component, so no request is sent until apply, and a reload or another database starts from nothing.
  */
-function useReviewDraft(runId: MetadataGenerationRunId): ReviewDraftState {
-  const [state, setState] = useState({ runId, ...EMPTY_DRAFT });
-  const draft = state.runId === runId ? state : EMPTY_DRAFT;
+function useReviewDraft(databaseId: DatabaseId): ReviewDraftState {
+  const [state, setState] = useState({ databaseId, ...EMPTY_DRAFT });
+  const draft = state.databaseId === databaseId ? state : EMPTY_DRAFT;
 
   const update = useCallback(
     (change: (draft: ReviewDraft) => ReviewDraft) =>
       setState((current) => ({
-        runId,
-        ...change(current.runId === runId ? current : EMPTY_DRAFT),
+        databaseId,
+        ...change(current.databaseId === databaseId ? current : EMPTY_DRAFT),
       })),
-    [runId],
+    [databaseId],
   );
 
   const select = useCallback(
-    (ids: MetadataGenerationSuggestionId[], isSelected: boolean) =>
+    (suggestions: MetadataGenerationProposal[], isSelected: boolean) =>
       update((current) => ({
         ...current,
-        selection: setSelected(current.selection, ids, isSelected),
+        selection: setSelected(current.selection, suggestions, isSelected),
       })),
     [update],
   );
 
   const edit = useCallback(
-    (id: MetadataGenerationSuggestionId, value: string | null) =>
+    (suggestion: MetadataGenerationProposal, value: string | null) =>
       update((current) => ({
-        selection: setSelected(current.selection, [id], true),
-        edits: setEdit(current.edits, id, value),
+        selection: setSelected(current.selection, [suggestion], true),
+        edits: setEdit(current.edits, suggestion.id, value),
       })),
     [update],
   );
@@ -308,15 +314,15 @@ function useReviewDraft(runId: MetadataGenerationRunId): ReviewDraftState {
 }
 
 type ReviewContentProps = {
-  runId: MetadataGenerationRunId;
-  tables: MetadataGenerationRunTable[];
+  databaseId: DatabaseId;
+  tables: MetadataGenerationProposalTable[];
   draft: ReviewDraftState;
   applyResult: MetadataGenerationApplyResult | null;
   onDismissApplyResult: () => void;
 };
 
 function ReviewContent({
-  runId,
+  databaseId,
   tables,
   draft,
   applyResult,
@@ -329,13 +335,11 @@ function ReviewContent({
   const [paneWidth, setPaneWidth] = useState(DEFAULT_PANE_WIDTH);
   const [hoveredSide, setHoveredSide] = useState<ResizeSide | null>(null);
   const dragStartWidth = useRef(0);
-  const { humanSetPending } = getRunTotals(tables);
-  const displayNames = useTableDisplayNames(runId);
+  const humanSetPending = getHumanSetPendingCount(tables);
+  const displayNames = useTableDisplayNames(databaseId);
 
   const selectedTable =
-    tables.find((table) => table.table_id === selectedTableId) ??
-    tables.find(hasOpenDecisions) ??
-    tables[0];
+    tables.find((table) => table.table_id === selectedTableId) ?? tables[0];
 
   return (
     <Stack gap="md" data-testid="metadata-generation-review">
@@ -380,7 +384,6 @@ function ReviewContent({
           />
           <TableReview
             key={selectedTable.table_id}
-            runId={runId}
             table={selectedTable}
             draft={draft}
             detailFieldId={detailFieldId}
@@ -433,20 +436,13 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-/** The display names of the run's tables, by table id. */
-function useTableDisplayNames(
-  runId: MetadataGenerationRunId,
-): Record<number, string> {
-  const { data: run } = useGetMetadataGenerationRunQuery(runId);
-  const { data: database } = useGetDatabaseMetadataQuery(
-    run != null
-      ? {
-          id: run.database_id,
-          include_hidden: true,
-          skip_fields: true,
-        }
-      : skipToken,
-  );
+/** The display names of the database's tables, by table id. */
+function useTableDisplayNames(databaseId: DatabaseId): Record<number, string> {
+  const { data: database } = useGetDatabaseMetadataQuery({
+    id: databaseId,
+    include_hidden: true,
+    skip_fields: true,
+  });
   return useMemo(
     () =>
       Object.fromEntries(
@@ -509,21 +505,15 @@ function ResizeHandle({
 }
 
 type ReviewActionsProps = {
-  runId: MetadataGenerationRunId;
   draft: ReviewDraftState;
   onApply: (result: MetadataGenerationApplyResult) => void;
   onDiscard?: () => void;
 };
 
 /** The discard and apply actions of the modal header. */
-function ReviewActions({
-  runId,
-  draft,
-  onApply,
-  onDiscard,
-}: ReviewActionsProps) {
-  const [applyRun, { isLoading: isApplying }] =
-    useApplyMetadataGenerationRunMutation();
+function ReviewActions({ draft, onApply, onDiscard }: ReviewActionsProps) {
+  const [applyProposals, { isLoading: isApplying }] =
+    useApplyMetadataGenerationProposalsMutation();
   const [
     isDiscardConfirmOpen,
     { open: openDiscardConfirm, close: closeDiscardConfirm },
@@ -537,10 +527,9 @@ function ReviewActions({
   };
 
   const handleApply = async () => {
-    const { data, error } = await applyRun({
-      run_id: runId,
-      ...getApplyRequestBody(draft.selection, draft.edits),
-    });
+    const { data, error } = await applyProposals(
+      getApplyRequestBody(draft.selection, draft.edits),
+    );
     if (error) {
       sendErrorToast(
         getErrorMessage(error, t`Failed to apply the suggestions`),
@@ -566,7 +555,7 @@ function ReviewActions({
       <ConfirmModal
         opened={isDiscardConfirmOpen}
         title={t`Discard all suggestions?`}
-        message={t`This sets aside every suggestion of this run, including the ones you selected or edited.`}
+        message={t`This sets aside every suggestion until the next run, including the ones you selected or edited.`}
         confirmButtonText={t`Discard`}
         onConfirm={handleDiscard}
         onClose={closeDiscardConfirm}
@@ -616,8 +605,10 @@ function ApplyResult({ result, onDismiss }: ApplyResultProps) {
             {t`Failed suggestions stay pending, so you can select and apply them again after you fix the cause.`}
           </Text>
           {result.failures.map((failure) => (
-            <Text key={failure.suggestion_id} size="sm">
-              {t`Field ${failure.field_id}, ${getAttributeLabel(failure.attribute)}: ${getApplyFailureReasonLabel(failure.reason)}`}
+            <Text key={failure.proposal_id} size="sm">
+              {failure.field_id != null && failure.attribute != null
+                ? t`Field ${failure.field_id}, ${getAttributeLabel(failure.attribute)}: ${getApplyFailureReasonLabel(failure.reason)}`
+                : getApplyFailureReasonLabel(failure.reason)}
             </Text>
           ))}
         </Stack>
@@ -627,7 +618,7 @@ function ApplyResult({ result, onDismiss }: ApplyResultProps) {
 }
 
 type TableListProps = {
-  tables: MetadataGenerationRunTable[];
+  tables: MetadataGenerationProposalTable[];
   displayNames: Record<number, string>;
   selectedTableId: ConcreteTableId;
   onSelect: (tableId: ConcreteTableId) => void;
@@ -669,23 +660,16 @@ function TableList({
   );
 }
 
-function getTableCountsLabel(table: MetadataGenerationRunTable): string {
-  const { stale, applied } = table.counts;
-  const parts = [
-    ngettext(
-      msgid`${table.total} suggestion`,
-      `${table.total} suggestions`,
-      table.total,
-    ),
-    stale > 0 && t`${stale} stale`,
-    applied > 0 && t`${applied} applied`,
-  ].filter((part): part is string => Boolean(part));
-  return parts.join(" · ");
+function getTableCountsLabel(table: MetadataGenerationProposalTable): string {
+  return ngettext(
+    msgid`${table.pending} suggestion`,
+    `${table.pending} suggestions`,
+    table.pending,
+  );
 }
 
 type TableReviewProps = {
-  runId: MetadataGenerationRunId;
-  table: MetadataGenerationRunTable;
+  table: MetadataGenerationProposalTable;
   draft: ReviewDraftState;
   /** The field whose details pane is open. */
   detailFieldId: FieldId | null;
@@ -697,7 +681,7 @@ type TableReviewProps = {
 type SuggestionRowNode = {
   id: string;
   kind: "suggestion";
-  suggestion: MetadataGenerationSuggestion;
+  suggestion: MetadataGenerationProposal;
 };
 
 /** A header row naming the field of the suggestion rows below it. */
@@ -711,7 +695,6 @@ type GroupRowNode = {
 type SuggestionNode = SuggestionRowNode | GroupRowNode;
 
 function TableReview({
-  runId,
   table,
   draft,
   detailFieldId,
@@ -724,10 +707,7 @@ function TableReview({
     data: suggestions,
     error,
     isLoading,
-  } = useListMetadataGenerationSuggestionsQuery({
-    run_id: runId,
-    table_id: table.table_id,
-  });
+  } = useListMetadataGenerationProposalsQuery({ table_id: table.table_id });
 
   // Group by field when any field has more than one suggestion.
   const isGrouped = useMemo(
@@ -749,15 +729,15 @@ function TableReview({
     () => getTableCheckboxState(suggestions ?? [], selection),
     [suggestions, selection],
   );
-  const bulkIds = useMemo(
-    () => getBulkDecidable(suggestions ?? []).map(({ id }) => id),
+  const bulkSuggestions = useMemo(
+    () => getBulkDecidable(suggestions ?? []),
     [suggestions],
   );
   const columns = useMemo(
     () =>
       getColumns({
         tableCheckbox,
-        bulkIds,
+        bulkSuggestions,
         isGrouped,
         selection,
         edits,
@@ -768,7 +748,7 @@ function TableReview({
       }),
     [
       tableCheckbox,
-      bulkIds,
+      bulkSuggestions,
       isGrouped,
       selection,
       edits,
@@ -921,7 +901,7 @@ function getScrolledPastGroup(
 }
 
 function hasFieldWithSeveralSuggestions(
-  suggestions: MetadataGenerationSuggestion[],
+  suggestions: MetadataGenerationProposal[],
 ): boolean {
   const counts = new Map<FieldId, number>();
   for (const { field_id } of suggestions) {
@@ -932,7 +912,7 @@ function hasFieldWithSeveralSuggestions(
 
 /** The rows of the table: suggestions, each field's run of them led by a header row when `isGrouped`. */
 function getNodes(
-  suggestions: MetadataGenerationSuggestion[],
+  suggestions: MetadataGenerationProposal[],
   isGrouped: boolean,
 ): SuggestionNode[] {
   return suggestions.flatMap((suggestion, index, all) => {
@@ -957,7 +937,7 @@ function getNodes(
 }
 
 function matchesQuery(
-  suggestion: MetadataGenerationSuggestion,
+  suggestion: MetadataGenerationProposal,
   edits: SuggestionEdits,
   query: string,
 ): boolean {
@@ -988,15 +968,14 @@ function getRowProps(row: Row<SuggestionNode>): Record<string, unknown> {
   }
   return {
     "data-testid": "metadata-generation-suggestion",
-    "data-human-set":
-      isHumanSet(node.suggestion) && isSuggestionDecidable(node.suggestion),
+    "data-human-set": isHumanSet(node.suggestion),
   };
 }
 
 type ColumnOptions = {
   tableCheckbox: TableCheckboxState;
   /** The suggestions that the table checkbox ticks and unticks. */
-  bulkIds: MetadataGenerationSuggestionId[];
+  bulkSuggestions: MetadataGenerationProposal[];
   isGrouped: boolean;
   selection: SuggestionSelection;
   edits: SuggestionEdits;
@@ -1006,7 +985,7 @@ type ColumnOptions = {
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
-type SuggestionCell = (suggestion: MetadataGenerationSuggestion) => ReactNode;
+type SuggestionCell = (suggestion: MetadataGenerationProposal) => ReactNode;
 
 /** A cell that renders for suggestion rows only; group rows leave it empty. */
 function suggestionCell(render: SuggestionCell) {
@@ -1016,7 +995,7 @@ function suggestionCell(render: SuggestionCell) {
 
 function getColumns({
   tableCheckbox,
-  bulkIds,
+  bulkSuggestions,
   isGrouped,
   selection,
   edits,
@@ -1052,7 +1031,7 @@ function getColumns({
               checked={tableCheckbox.checked}
               indeterminate={tableCheckbox.indeterminate}
               disabled={tableCheckbox.disabled}
-              onChange={() => select(bulkIds, !tableCheckbox.checked)}
+              onChange={() => select(bulkSuggestions, !tableCheckbox.checked)}
             />
           </Box>
         </Tooltip>
@@ -1106,17 +1085,6 @@ function getColumns({
       cell: suggestionCell((suggestion) => (
         <Stack gap={4} align="flex-start" py="xs">
           <ProposedValue suggestion={suggestion} edits={edits} edit={edit} />
-          {suggestion.status === "stale" && (
-            <Tooltip label={getFixedStatusTooltip(suggestion)}>
-              <Badge
-                variant="light"
-                color={getSuggestionStatusColor(suggestion.status)}
-                data-testid="metadata-generation-suggestion-status"
-              >
-                {getSuggestionStatusLabel(suggestion.status)}
-              </Badge>
-            </Tooltip>
-          )}
         </Stack>
       )),
     },
@@ -1170,37 +1138,20 @@ function getColumns({
 }
 
 type AcceptCellProps = {
-  suggestion: MetadataGenerationSuggestion;
+  suggestion: MetadataGenerationProposal;
   isChecked: boolean;
   select: ReviewDraftState["select"];
 };
 
-/** The row's checkbox; an applied suggestion shows a check instead, a stale one nothing. */
 function AcceptCell({ suggestion, isChecked, select }: AcceptCellProps) {
   const attributeLabel = getAttributeLabel(suggestion.attribute);
   const fieldLabel = getFieldLabel(suggestion);
 
-  if (suggestion.status === "applied") {
-    return (
-      <Tooltip label={getFixedStatusTooltip(suggestion)}>
-        <Icon
-          name="check_filled"
-          c="feedback-positive"
-          aria-label={t`Applied`}
-          aria-hidden={false}
-          data-testid="metadata-generation-suggestion-applied"
-        />
-      </Tooltip>
-    );
-  }
-  if (!isSuggestionDecidable(suggestion)) {
-    return null;
-  }
   return (
     <Checkbox
       aria-label={t`Accept ${attributeLabel} of ${fieldLabel}`}
       checked={isChecked}
-      onChange={() => select([suggestion.id], !isChecked)}
+      onChange={() => select([suggestion], !isChecked)}
     />
   );
 }
@@ -1208,7 +1159,7 @@ function AcceptCell({ suggestion, isChecked, select }: AcceptCellProps) {
 function CurrentValue({
   suggestion,
 }: {
-  suggestion: MetadataGenerationSuggestion;
+  suggestion: MetadataGenerationProposal;
 }) {
   const current = formatSuggestionValue(
     suggestion.attribute,
@@ -1232,7 +1183,7 @@ function CurrentValue({
 }
 
 type ProposedValueProps = {
-  suggestion: MetadataGenerationSuggestion;
+  suggestion: MetadataGenerationProposal;
   edits: SuggestionEdits;
   edit: ReviewDraftState["edit"];
 };
@@ -1241,24 +1192,11 @@ function ProposedValue({ suggestion, edits, edit }: ProposedValueProps) {
   const { attribute, proposed_value } = suggestion;
   const value = getSuggestionValue(suggestion, edits);
   const isEdited = isSuggestionEdited(suggestion, edits);
-  const canEdit = isSuggestionDecidable(suggestion);
   const attributeLabel = getAttributeLabel(attribute);
   const fieldLabel = getFieldLabel(suggestion);
 
   const save = (newValue: string | null) =>
-    edit(suggestion.id, newValue === proposed_value ? null : newValue);
-
-  if (!canEdit) {
-    return (
-      <Stack
-        gap={4}
-        align="flex-start"
-        data-testid="metadata-generation-proposed"
-      >
-        <Text>{formatSuggestionValue(attribute, proposed_value)}</Text>
-      </Stack>
-    );
-  }
+    edit(suggestion, newValue === proposed_value ? null : newValue);
 
   const proposal = formatSuggestionValue(attribute, proposed_value);
 
@@ -1304,7 +1242,7 @@ function keepKeysInEditor(event: KeyboardEvent<HTMLDivElement>) {
 const INPUT_WIDTH = "24rem";
 
 type ValueInputProps = {
-  suggestion: MetadataGenerationSuggestion;
+  suggestion: MetadataGenerationProposal;
   value: string;
   label: string;
   onChange: (value: string) => void;
@@ -1394,12 +1332,4 @@ function DescriptionInput({ value, label, onChange }: DescriptionInputProps) {
       onKeyDown={handleKeyDown}
     />
   );
-}
-
-function getFixedStatusTooltip(
-  suggestion: MetadataGenerationSuggestion,
-): string {
-  return suggestion.status === "applied"
-    ? t`This suggestion was applied.`
-    : t`The field changed after the run, so this suggestion can no longer be applied.`;
 }

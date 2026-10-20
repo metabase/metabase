@@ -1,12 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  ConcreteTableId,
   MetadataGenerationApplyResult,
   MetadataGenerationEstimate,
+  MetadataGenerationProposal,
+  MetadataGenerationProposalTable,
   MetadataGenerationRun,
-  MetadataGenerationRunId,
-  MetadataGenerationRunTable,
-  MetadataGenerationSuggestion,
 } from "metabase-types/api";
 
 export function setupListMetadataGenerationRunsEndpoint(
@@ -59,27 +59,24 @@ export function setupRetryFailedMetadataGenerationRunEndpoint(
   );
 }
 
-export function setupListMetadataGenerationRunTablesEndpoint(
-  runId: MetadataGenerationRunId,
-  tables: MetadataGenerationRunTable[],
+export function setupListMetadataGenerationProposalTablesEndpoint(
+  tables: MetadataGenerationProposalTable[],
 ) {
-  fetchMock.get(`path:/api/ee/data-sensitivity/runs/${runId}/tables`, tables);
+  fetchMock.get("path:/api/ee/data-sensitivity/proposals/tables", tables);
 }
 
-export function setupListMetadataGenerationSuggestionsEndpoint(
-  runId: MetadataGenerationRunId,
-  tableId: MetadataGenerationRunTable["table_id"],
-  suggestions: MetadataGenerationSuggestion[],
+export function setupListMetadataGenerationProposalsEndpoint(
+  tableId: ConcreteTableId,
+  proposals: MetadataGenerationProposal[],
 ) {
-  fetchMock.get(
-    `path:/api/ee/data-sensitivity/runs/${runId}/tables/${tableId}/suggestions`,
-    suggestions,
-  );
+  fetchMock.get("path:/api/ee/data-sensitivity/proposals", proposals, {
+    name: `metadata-generation-proposals-${tableId}`,
+    query: { "table-id": String(tableId) },
+  });
 }
 
-export function setupApplyMetadataGenerationRunEndpoint(
-  runId: MetadataGenerationRunId,
+export function setupApplyMetadataGenerationProposalsEndpoint(
   result: MetadataGenerationApplyResult,
 ) {
-  fetchMock.post(`path:/api/ee/data-sensitivity/runs/${runId}/apply`, result);
+  fetchMock.post("path:/api/ee/data-sensitivity/proposals/apply", result);
 }

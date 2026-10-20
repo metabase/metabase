@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { listTag, tag } from "metabase-enterprise/api";
 import type {
   MetadataGenerationAttribute,
   MetadataGenerationRun,
@@ -23,6 +24,16 @@ const ACTIVE_STATUSES: MetadataGenerationRunStatus[] = [
 
 export function isRunActive(run: MetadataGenerationRun): boolean {
   return ACTIVE_STATUSES.includes(run.status);
+}
+
+/** The tags to invalidate when a run ends: it changed the runs, the pending proposals and their previews. */
+export function getRunEndTags() {
+  return [
+    listTag("metadata-generation-run"),
+    listTag("metadata-generation-proposal"),
+    tag("table"),
+    tag("field"),
+  ];
 }
 
 export function canCancelRun(run: MetadataGenerationRun): boolean {

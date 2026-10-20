@@ -74,6 +74,20 @@ export type FieldDataSensitivity =
 
 export type FieldDataSensitivitySource = "human" | "ai" | "deterministic";
 
+export type FieldAiProposalAttribute =
+  | "data_sensitivity"
+  | "semantic_type"
+  | "description";
+
+/** A pending AI proposal of one attribute, as a preview read gives it. */
+export type FieldAiProposal = {
+  value: string;
+  reasoning: string | null;
+  confidence: "high" | "medium" | "low" | null;
+  /** The proposal reads over a value a person set; accepting it clears that value. */
+  conflict: boolean;
+};
+
 export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
@@ -121,6 +135,8 @@ export interface Field {
 
   data_sensitivity?: FieldDataSensitivity | null;
   data_sensitivity_source?: FieldDataSensitivitySource | null;
+  /** Only in a read with `preview_ai_proposals`: the pending AI proposals, which the field reads as if accepted. */
+  ai_proposals?: Partial<Record<FieldAiProposalAttribute, FieldAiProposal>>;
 
   caveats?: string | null;
   points_of_interest?: string;
@@ -143,6 +159,8 @@ export interface FieldFormattingSettings {
 export interface GetFieldRequest {
   id: FieldId;
   include_editable_data_model?: boolean;
+  /** Needs `include_editable_data_model`. */
+  preview_ai_proposals?: boolean;
 }
 
 export interface GetFieldTableIdsRequest {

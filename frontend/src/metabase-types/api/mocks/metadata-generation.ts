@@ -1,10 +1,9 @@
 import type {
   MetadataGenerationApplyResult,
   MetadataGenerationEstimate,
+  MetadataGenerationProposal,
+  MetadataGenerationProposalTable,
   MetadataGenerationRun,
-  MetadataGenerationRunTable,
-  MetadataGenerationStatusCounts,
-  MetadataGenerationSuggestion,
 } from "metabase-types/api";
 
 export const createMockMetadataGenerationRun = (
@@ -42,33 +41,22 @@ export const createMockMetadataGenerationEstimate = (
   ...opts,
 });
 
-export const createMockMetadataGenerationStatusCounts = (
-  opts?: Partial<MetadataGenerationStatusCounts>,
-): MetadataGenerationStatusCounts => ({
-  pending: 0,
-  rejected: 0,
-  stale: 0,
-  applied: 0,
-  ...opts,
-});
-
-export const createMockMetadataGenerationRunTable = (
-  opts?: Partial<MetadataGenerationRunTable>,
-): MetadataGenerationRunTable => ({
+export const createMockMetadataGenerationProposalTable = (
+  opts?: Partial<MetadataGenerationProposalTable>,
+): MetadataGenerationProposalTable => ({
   table_id: 1,
   table_name: "ORDERS",
   schema: "PUBLIC",
-  total: 0,
-  counts: createMockMetadataGenerationStatusCounts(),
+  pending: 0,
   human_set_pending: 0,
   ...opts,
 });
 
-export const createMockMetadataGenerationSuggestion = (
-  opts?: Partial<MetadataGenerationSuggestion>,
-): MetadataGenerationSuggestion => ({
+export const createMockMetadataGenerationProposal = (
+  opts?: Partial<MetadataGenerationProposal>,
+): MetadataGenerationProposal => ({
   id: 1,
-  run_id: 1,
+  last_run_id: 1,
   table_id: 1,
   field_id: 1,
   field_name: "EMAIL",
@@ -79,12 +67,8 @@ export const createMockMetadataGenerationSuggestion = (
   source: "none",
   current_value: null,
   proposed_value: "PII",
-  edited_value: null,
   confidence: "high",
   reasoning: null,
-  status: "pending",
-  decided_by: null,
-  decided_at: null,
   created_at: "2026-10-09T00:00:00Z",
   updated_at: "2026-10-09T00:00:00Z",
   ...opts,
@@ -95,7 +79,6 @@ export const createMockMetadataGenerationApplyResult = (
 ): MetadataGenerationApplyResult => ({
   written: 0,
   rejected: 0,
-  stale: 0,
   failed: 0,
   failures: [],
   ...opts,

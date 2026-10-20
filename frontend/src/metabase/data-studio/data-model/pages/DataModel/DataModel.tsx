@@ -16,6 +16,7 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import {
+  AiPreviewFieldset,
   FieldSection,
   FieldValuesModal,
   NoDatabasesEmptyState,
@@ -23,8 +24,11 @@ import {
   type PreviewType,
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import {
+  getRawTableFieldId,
+  hasAiProposals,
+} from "metabase/metadata/utils/field";
+import { PLUGIN_LIBRARY, PLUGIN_METADATA_GENERATION } from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
   ActionIcon,
@@ -37,7 +41,13 @@ import {
   rem,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { DatabaseId, FieldId, TableId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  Field,
+  FieldId,
+  Table,
+  TableId,
+} from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
 
@@ -95,16 +105,25 @@ function DataModelContent() {
   const metadataTableId = Array.from(selectedTables)[0] ?? queryTableId;
   // But keep the URL tableId for navigation/path to avoid auto-expansion when selecting/deselecting
   const navigationTableId = hasSelectedItems ? queryTableId : queryTableId;
+  // Whether the table and field panes read the pending AI suggestions as if accepted.
+  const [isAiPreview, setIsAiPreview] = useState(false);
 
   const {
     data: table,
     error: tableError,
     isLoading: isLoadingTables,
-  } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
+  } = useGetTableQueryMetadataQuery(
+    getTableMetadataQuery(metadataTableId, { previewAiProposals: isAiPreview }),
+  );
   const fieldsByName = useMemo(() => {
     return _.indexBy(table?.fields ?? [], (field) => field.name);
   }, [table]);
   const field = table?.fields?.find((field) => field.id === fieldId);
+  const { isTablePreview, isFieldPreview } = getAiPreviewState(
+    isAiPreview,
+    table,
+    field,
+  );
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
 
@@ -287,21 +306,28 @@ function DataModelContent() {
               px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                component={ForwardRefLink}
-                to={Urls.dataStudioData({
-                  databaseId: table?.db_id,
-                  schemaName: table?.schema,
-                })}
-                onClick={() => {
-                  closePreview();
-                  resetSelection();
-                }}
-              >
-                <Icon name="close" />
-              </ActionIcon>
+              <Group gap="md" wrap="nowrap">
+                <PendingBadge
+                  table={table}
+                  isPreview={isAiPreview}
+                  onPreviewChange={setIsAiPreview}
+                />
+                <ActionIcon
+                  variant="subtle"
+                  size="sm"
+                  component={ForwardRefLink}
+                  to={Urls.dataStudioData({
+                    databaseId: table?.db_id,
+                    schemaName: table?.schema,
+                  })}
+                  onClick={() => {
+                    closePreview();
+                    resetSelection();
+                  }}
+                >
+                  <Icon name="close" />
+                </ActionIcon>
+              </Group>
             </Group>
             <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
@@ -317,6 +343,7 @@ function DataModelContent() {
                     activeTab={activeTab}
                     canPublish={canPublish}
                     hasLibrary={hasLibrary}
+                    isAiPreview={isTablePreview}
                     onUpdate={() =>
                       onUpdateCallback?.({
                         databaseId: table.db_id,
@@ -353,24 +380,32 @@ function DataModelContent() {
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                component={ForwardRefLink}
-                to={Urls.dataStudioData({
-                  databaseId: table?.db_id,
-                  schemaName: table?.schema,
-                  tableId: table?.id,
-                })}
-                onClick={closePreview}
-              >
-                <Icon name="close" />
-              </ActionIcon>
+              <Group gap="md" wrap="nowrap">
+                <PendingBadge
+                  table={table}
+                  fieldId={fieldId}
+                  isPreview={isAiPreview}
+                  onPreviewChange={setIsAiPreview}
+                />
+                <ActionIcon
+                  variant="subtle"
+                  size="sm"
+                  component={ForwardRefLink}
+                  to={Urls.dataStudioData({
+                    databaseId: table?.db_id,
+                    schemaName: table?.schema,
+                    tableId: table?.id,
+                  })}
+                  onClick={closePreview}
+                >
+                  <Icon name="close" />
+                </ActionIcon>
+              </Group>
             </Group>
             <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && databaseId != null && (
-                  <>
+                  <AiPreviewFieldset isPreview={isFieldPreview}>
                     <FieldSection
                       /**
                        * Make sure internal component state is reset when changing fields.
@@ -387,7 +422,7 @@ function DataModelContent() {
                       onFieldValuesClick={openFieldValuesModal}
                       onPreviewClick={togglePreview}
                     />
-                  </>
+                  </AiPreviewFieldset>
                 )}
               </LoadingAndErrorWrapper>
 
@@ -427,6 +462,42 @@ function DataModelContent() {
         />
       )}
     </Flex>
+  );
+}
+
+/** The panes are read-only while they show pending AI suggestions as if accepted. */
+function getAiPreviewState(
+  isAiPreview: boolean,
+  table: Table | undefined,
+  field: Field | undefined,
+) {
+  return {
+    isTablePreview: isAiPreview && (table?.fields ?? []).some(hasAiProposals),
+    isFieldPreview: isAiPreview && field != null && hasAiProposals(field),
+  };
+}
+
+function PendingBadge({
+  table,
+  fieldId,
+  isPreview,
+  onPreviewChange,
+}: {
+  table: Table | undefined;
+  fieldId?: FieldId;
+  isPreview: boolean;
+  onPreviewChange: (isPreview: boolean) => void;
+}) {
+  if (table == null) {
+    return null;
+  }
+  return (
+    <PLUGIN_METADATA_GENERATION.PendingBadge
+      tableId={table.id}
+      fieldId={fieldId}
+      isPreview={isPreview}
+      onPreviewChange={onPreviewChange}
+    />
   );
 }
 

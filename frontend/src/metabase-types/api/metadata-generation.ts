@@ -90,13 +90,7 @@ export type MetadataGenerationEstimate = {
   unavailable_reason: MetadataGenerationUnavailableReason | string | null;
 };
 
-export type MetadataGenerationSuggestionId = number;
-
-export type MetadataGenerationSuggestionStatus =
-  | "pending"
-  | "rejected"
-  | "stale"
-  | "applied";
+export type MetadataGenerationProposalId = number;
 
 export type MetadataGenerationValueSource =
   | "human"
@@ -106,23 +100,25 @@ export type MetadataGenerationValueSource =
 
 export type MetadataGenerationConfidence = "high" | "medium" | "low";
 
-export type MetadataGenerationStatusCounts = Record<
-  MetadataGenerationSuggestionStatus,
-  number
->;
-
-export type MetadataGenerationRunTable = {
+/** The pending AI proposals of one table. */
+export type MetadataGenerationProposalTable = {
   table_id: ConcreteTableId;
   table_name: string | null;
   schema: string | null;
-  total: number;
-  counts: MetadataGenerationStatusCounts;
+  pending: number;
+  /** The pending proposals that would replace a value a person set. */
   human_set_pending: number;
 };
 
-export type MetadataGenerationSuggestion = {
-  id: MetadataGenerationSuggestionId;
-  run_id: MetadataGenerationRunId;
+/** Give `database_id` (with `schema` when needed) or `table_id`. */
+export type ListMetadataGenerationProposalsRequest =
+  | { database_id: DatabaseId; schema?: SchemaName; table_id?: never }
+  | { table_id: ConcreteTableId; database_id?: never; schema?: never };
+
+/** A pending AI proposal. `source` and `current_value` are the value readers see now. */
+export type MetadataGenerationProposal = {
+  id: MetadataGenerationProposalId;
+  last_run_id: MetadataGenerationRunId | null;
   table_id: ConcreteTableId;
   field_id: FieldId;
   field_name: string;
@@ -133,39 +129,35 @@ export type MetadataGenerationSuggestion = {
   source: MetadataGenerationValueSource;
   current_value: string | null;
   proposed_value: string;
-  /** Always `null`: edited values travel in the apply request and are not stored. */
-  edited_value: string | null;
   confidence: MetadataGenerationConfidence | null;
   reasoning: string | null;
-  status: MetadataGenerationSuggestionStatus;
-  decided_by: UserId | null;
-  decided_at: string | null;
   created_at: string;
   updated_at: string;
 };
 
-export type GetMetadataGenerationSuggestionsRequest = {
-  run_id: MetadataGenerationRunId;
-  table_id: ConcreteTableId;
-};
-
 /**
- * One review of a run. Give `accept` or `all`. `all` accepts every pending or rejected suggestion (of
- * `table_ids`) except those in `except` or `reject`, and except those over a value a person set unless
- * `include_human_set`. An edit replaces the proposed value and accepts its suggestion.
+ * One review. Give `accept`, or `all` with a scope (`database_id` with an optional `schema`, `table_ids` or
+ * `field_ids`). `all` accepts every pending proposal of the scope except those in `except` or `reject`, and except
+ * those over a value a person set unless `include_human_set`. An edit replaces the proposed value and accepts its
+ * proposal. `proposed_values` gives the proposed value the client saw: a proposal that a run changed since is
+ * skipped as `changed`.
  */
-export type ApplyMetadataGenerationRunRequest = {
-  run_id: MetadataGenerationRunId;
-  accept?: MetadataGenerationSuggestionId[];
+export type ApplyMetadataGenerationProposalsRequest = {
+  accept?: MetadataGenerationProposalId[];
   all?: boolean;
-  except?: MetadataGenerationSuggestionId[];
+  except?: MetadataGenerationProposalId[];
+  database_id?: DatabaseId;
+  schema?: SchemaName;
   table_ids?: ConcreteTableId[];
+  field_ids?: FieldId[];
   include_human_set?: boolean;
-  reject?: MetadataGenerationSuggestionId[];
-  edits?: Record<MetadataGenerationSuggestionId, string>;
+  reject?: MetadataGenerationProposalId[];
+  edits?: Record<MetadataGenerationProposalId, string>;
+  proposed_values?: Record<MetadataGenerationProposalId, string>;
 };
 
 export type MetadataGenerationApplyFailureReason =
+  | "changed"
   | "field_not_found"
   | "not_writable"
   | "key_field"
@@ -173,16 +165,15 @@ export type MetadataGenerationApplyFailureReason =
   | "error";
 
 export type MetadataGenerationApplyFailure = {
-  suggestion_id: MetadataGenerationSuggestionId;
-  field_id: FieldId;
-  attribute: MetadataGenerationAttribute;
+  proposal_id: MetadataGenerationProposalId;
+  field_id: FieldId | null;
+  attribute: MetadataGenerationAttribute | null;
   reason: MetadataGenerationApplyFailureReason;
 };
 
 export type MetadataGenerationApplyResult = {
   written: number;
   rejected: number;
-  stale: number;
   failed: number;
   failures: MetadataGenerationApplyFailure[];
 };

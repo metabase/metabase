@@ -1,8 +1,7 @@
 import {
   createMockMetadataGenerationApplyResult,
-  createMockMetadataGenerationRunTable,
-  createMockMetadataGenerationStatusCounts,
-  createMockMetadataGenerationSuggestion,
+  createMockMetadataGenerationProposal,
+  createMockMetadataGenerationProposalTable,
 } from "metabase-types/api/mocks";
 
 import {
@@ -10,89 +9,47 @@ import {
   getApplyRequestBody,
   getApplySummary,
   getBulkDecidable,
-  getRunTotals,
+  getHumanSetPendingCount,
   getSuggestionValue,
   getTableCheckboxState,
   getTableLabel,
-  isSuggestionDecidable,
   setEdit,
   setSelected,
 } from "./utils";
 
-describe("getRunTotals", () => {
-  it("sums the status counts, totals and human-set conflicts of all tables", () => {
-    const totals = getRunTotals([
-      createMockMetadataGenerationRunTable({
-        table_id: 1,
-        total: 5,
-        counts: createMockMetadataGenerationStatusCounts({
-          pending: 2,
-          applied: 3,
+describe("getHumanSetPendingCount", () => {
+  it("sums the human-set conflicts of all tables", () => {
+    expect(
+      getHumanSetPendingCount([
+        createMockMetadataGenerationProposalTable({
+          table_id: 1,
+          pending: 5,
+          human_set_pending: 1,
         }),
-        human_set_pending: 1,
-      }),
-      createMockMetadataGenerationRunTable({
-        table_id: 2,
-        total: 4,
-        counts: createMockMetadataGenerationStatusCounts({
-          pending: 1,
-          rejected: 1,
-          stale: 1,
-          applied: 1,
+        createMockMetadataGenerationProposalTable({
+          table_id: 2,
+          pending: 4,
+          human_set_pending: 2,
         }),
-        human_set_pending: 1,
-      }),
-    ]);
-
-    expect(totals).toEqual({
-      total: 9,
-      counts: { pending: 3, rejected: 1, stale: 1, applied: 4 },
-      humanSetPending: 2,
-    });
+      ]),
+    ).toBe(3);
   });
 
-  it("returns zero counts for no tables", () => {
-    expect(getRunTotals([])).toEqual({
-      total: 0,
-      counts: createMockMetadataGenerationStatusCounts(),
-      humanSetPending: 0,
-    });
+  it("is zero for no tables", () => {
+    expect(getHumanSetPendingCount([])).toBe(0);
   });
 });
 
-describe("decision state", () => {
-  it.each([
-    ["pending", true],
-    ["rejected", true],
-    ["stale", false],
-    ["applied", false],
-  ] as const)("a %s suggestion is decidable: %s", (status, decidable) => {
-    const suggestion = createMockMetadataGenerationSuggestion({ status });
-    expect(isSuggestionDecidable(suggestion)).toBe(decidable);
-  });
-
-  it("leaves human-set and fixed suggestions out of the table checkbox", () => {
+describe("getBulkDecidable", () => {
+  it("leaves human-set suggestions out of the table checkbox", () => {
     const suggestions = [
-      createMockMetadataGenerationSuggestion({ id: 1, source: "none" }),
-      createMockMetadataGenerationSuggestion({ id: 2, source: "human" }),
-      createMockMetadataGenerationSuggestion({
-        id: 3,
-        source: "deterministic",
-        status: "rejected",
-      }),
-      createMockMetadataGenerationSuggestion({
-        id: 4,
-        source: "ai",
-        status: "applied",
-      }),
-      createMockMetadataGenerationSuggestion({
-        id: 5,
-        source: "none",
-        status: "stale",
-      }),
+      createMockMetadataGenerationProposal({ id: 1, source: "none" }),
+      createMockMetadataGenerationProposal({ id: 2, source: "human" }),
+      createMockMetadataGenerationProposal({ id: 3, source: "deterministic" }),
+      createMockMetadataGenerationProposal({ id: 4, source: "ai" }),
     ];
 
-    expect(getBulkDecidable(suggestions).map((s) => s.id)).toEqual([1, 3]);
+    expect(getBulkDecidable(suggestions).map((s) => s.id)).toEqual([1, 3, 4]);
   });
 });
 
@@ -101,10 +58,10 @@ describe("getTableCheckboxState", () => {
     expect(
       getTableCheckboxState(
         [
-          createMockMetadataGenerationSuggestion({ id: 1 }),
-          createMockMetadataGenerationSuggestion({ id: 2, status: "rejected" }),
+          createMockMetadataGenerationProposal({ id: 1 }),
+          createMockMetadataGenerationProposal({ id: 2 }),
         ],
-        new Set([1]),
+        new Map([[1, "PII"]]),
       ),
     ).toEqual({ checked: false, indeterminate: true, disabled: false });
   });
@@ -113,11 +70,10 @@ describe("getTableCheckboxState", () => {
     expect(
       getTableCheckboxState(
         [
-          createMockMetadataGenerationSuggestion({ id: 1 }),
-          createMockMetadataGenerationSuggestion({ id: 2, source: "human" }),
-          createMockMetadataGenerationSuggestion({ id: 3, status: "applied" }),
+          createMockMetadataGenerationProposal({ id: 1 }),
+          createMockMetadataGenerationProposal({ id: 2, source: "human" }),
         ],
-        new Set([1]),
+        new Map([[1, "PII"]]),
       ),
     ).toEqual({ checked: true, indeterminate: false, disabled: false });
   });
@@ -125,26 +81,44 @@ describe("getTableCheckboxState", () => {
   it("is disabled when no suggestion is bulk-decidable", () => {
     expect(
       getTableCheckboxState(
-        [
-          createMockMetadataGenerationSuggestion({ id: 1, source: "human" }),
-          createMockMetadataGenerationSuggestion({ id: 2, status: "stale" }),
-        ],
-        new Set(),
+        [createMockMetadataGenerationProposal({ id: 1, source: "human" })],
+        new Map(),
       ),
     ).toEqual({ checked: false, indeterminate: false, disabled: true });
   });
 });
 
 describe("review draft", () => {
-  it("adds and removes ids from the selection without changing the input", () => {
-    const selection = new Set([1]);
-    expect([...setSelected(selection, [2, 3], true)]).toEqual([1, 2, 3]);
-    expect([...setSelected(selection, [1], false)]).toEqual([]);
-    expect([...selection]).toEqual([1]);
+  it("adds and removes suggestions with their proposed values without changing the input", () => {
+    const selection = new Map([[1, "PII"]]);
+    const added = setSelected(
+      selection,
+      [
+        createMockMetadataGenerationProposal({ id: 2, proposed_value: "NONE" }),
+        createMockMetadataGenerationProposal({
+          id: 3,
+          proposed_value: "BIZ_CONF",
+        }),
+      ],
+      true,
+    );
+    expect([...added]).toEqual([
+      [1, "PII"],
+      [2, "NONE"],
+      [3, "BIZ_CONF"],
+    ]);
+    expect([
+      ...setSelected(
+        selection,
+        [createMockMetadataGenerationProposal({ id: 1 })],
+        false,
+      ),
+    ]).toEqual([]);
+    expect([...selection]).toEqual([[1, "PII"]]);
   });
 
   it("sets and clears an edit, and the value shown follows it", () => {
-    const suggestion = createMockMetadataGenerationSuggestion({
+    const suggestion = createMockMetadataGenerationProposal({
       id: 1,
       proposed_value: "PII",
     });
@@ -153,16 +127,28 @@ describe("review draft", () => {
     expect(getSuggestionValue(suggestion, setEdit(edits, 1, null))).toBe("PII");
   });
 
-  it("sends the selected ids and only the edits of selected suggestions", () => {
+  it("sends the selected ids with the proposed values seen, and only the edits of selected suggestions", () => {
     const edits = new Map([
       [3, "type/Score"],
       [4, "Not selected"],
     ]);
-    expect(getApplyRequestBody(new Set([3, 1]), edits)).toEqual({
+    expect(
+      getApplyRequestBody(
+        new Map([
+          [3, "type/Category"],
+          [1, "PII"],
+        ]),
+        edits,
+      ),
+    ).toEqual({
       accept: [1, 3],
       edits: { 3: "type/Score" },
+      proposed_values: { 1: "PII", 3: "type/Category" },
     });
-    expect(getApplyRequestBody(new Set([1]), edits)).toEqual({ accept: [1] });
+    expect(getApplyRequestBody(new Map([[1, "PII"]]), edits)).toEqual({
+      accept: [1],
+      proposed_values: { 1: "PII" },
+    });
   });
 });
 
@@ -193,7 +179,7 @@ describe("getTableLabel", () => {
   it("prefixes the schema when there is one", () => {
     expect(
       getTableLabel(
-        createMockMetadataGenerationRunTable({
+        createMockMetadataGenerationProposalTable({
           schema: "PUBLIC",
           table_name: "ORDERS",
         }),
@@ -201,7 +187,7 @@ describe("getTableLabel", () => {
     ).toBe("PUBLIC.ORDERS");
     expect(
       getTableLabel(
-        createMockMetadataGenerationRunTable({
+        createMockMetadataGenerationProposalTable({
           schema: null,
           table_name: "ORDERS",
         }),
@@ -225,15 +211,11 @@ describe("getApplySummary", () => {
     ).toBe("2 values written, 1 rejected");
   });
 
-  it("lists the written, stale and failed counts", () => {
+  it("lists the written and failed counts", () => {
     expect(
       getApplySummary(
-        createMockMetadataGenerationApplyResult({
-          written: 21,
-          stale: 1,
-          failed: 2,
-        }),
+        createMockMetadataGenerationApplyResult({ written: 21, failed: 2 }),
       ),
-    ).toBe("21 values written, 1 skipped because the field changed, 2 failed");
+    ).toBe("21 values written, 2 failed");
   });
 });

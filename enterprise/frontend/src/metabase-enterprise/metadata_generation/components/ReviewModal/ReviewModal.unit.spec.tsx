@@ -2,44 +2,38 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupApplyMetadataGenerationRunEndpoint,
-  setupListMetadataGenerationRunTablesEndpoint,
-  setupListMetadataGenerationSuggestionsEndpoint,
+  setupApplyMetadataGenerationProposalsEndpoint,
+  setupListMetadataGenerationProposalTablesEndpoint,
+  setupListMetadataGenerationProposalsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
   createMockMetadataGenerationApplyResult,
-  createMockMetadataGenerationRunTable,
-  createMockMetadataGenerationStatusCounts,
-  createMockMetadataGenerationSuggestion,
+  createMockMetadataGenerationProposal,
+  createMockMetadataGenerationProposalTable,
 } from "metabase-types/api/mocks";
 
 import { ReviewModal } from "./ReviewModal";
 
-const RUN_ID = 1;
-const APPLY_PATH = `path:/api/ee/data-sensitivity/runs/${RUN_ID}/apply`;
+const DATABASE_ID = 1;
+const APPLY_PATH = "path:/api/ee/data-sensitivity/proposals/apply";
 
 function setup() {
   const tables = [
-    createMockMetadataGenerationRunTable({
+    createMockMetadataGenerationProposalTable({
       table_id: 10,
       table_name: "ORDERS",
-      total: 4,
-      counts: createMockMetadataGenerationStatusCounts({
-        pending: 3,
-        stale: 1,
-      }),
+      pending: 3,
       human_set_pending: 1,
     }),
-    createMockMetadataGenerationRunTable({
+    createMockMetadataGenerationProposalTable({
       table_id: 20,
       table_name: "PEOPLE",
-      total: 1,
-      counts: createMockMetadataGenerationStatusCounts({ applied: 1 }),
+      pending: 1,
     }),
   ];
-  const suggestions = [
-    createMockMetadataGenerationSuggestion({
+  const proposals = [
+    createMockMetadataGenerationProposal({
       id: 1,
       table_id: 10,
       field_id: 100,
@@ -48,7 +42,7 @@ function setup() {
       proposed_value: "PII",
       reasoning: "Holds email addresses",
     }),
-    createMockMetadataGenerationSuggestion({
+    createMockMetadataGenerationProposal({
       id: 2,
       table_id: 10,
       field_id: 101,
@@ -60,7 +54,7 @@ function setup() {
       current_value: "type/Quantity",
       proposed_value: "type/Currency",
     }),
-    createMockMetadataGenerationSuggestion({
+    createMockMetadataGenerationProposal({
       id: 3,
       table_id: 10,
       field_id: 102,
@@ -68,39 +62,45 @@ function setup() {
       attribute: "description",
       proposed_value: "Free-text notes",
     }),
-    createMockMetadataGenerationSuggestion({
-      id: 4,
-      table_id: 10,
-      field_id: 103,
-      field_display_name: "Created At",
-      attribute: "semantic_type",
-      proposed_value: "type/CreationTimestamp",
-      status: "stale",
-    }),
   ];
 
-  setupListMetadataGenerationRunTablesEndpoint(RUN_ID, tables);
-  setupListMetadataGenerationSuggestionsEndpoint(RUN_ID, 10, suggestions);
-  setupListMetadataGenerationSuggestionsEndpoint(RUN_ID, 20, []);
-  setupApplyMetadataGenerationRunEndpoint(
-    RUN_ID,
+  fetchMock.get(`path:/api/database/${DATABASE_ID}/metadata`, {
+    id: DATABASE_ID,
+    tables: [],
+  });
+  setupListMetadataGenerationProposalTablesEndpoint(tables);
+  setupListMetadataGenerationProposalsEndpoint(10, proposals);
+  setupListMetadataGenerationProposalsEndpoint(20, [
+    createMockMetadataGenerationProposal({
+      id: 4,
+      table_id: 20,
+      field_id: 200,
+      field_display_name: "Name",
+    }),
+  ]);
+  setupApplyMetadataGenerationProposalsEndpoint(
     createMockMetadataGenerationApplyResult({
       written: 1,
-      stale: 1,
-      failed: 1,
+      failed: 2,
       failures: [
         {
-          suggestion_id: 3,
+          proposal_id: 3,
           field_id: 102,
           attribute: "semantic_type",
           reason: "key_field",
+        },
+        {
+          proposal_id: 4,
+          field_id: null,
+          attribute: null,
+          reason: "changed",
         },
       ],
     }),
   );
 
   return renderWithProviders(
-    <ReviewModal runId={RUN_ID} opened onClose={jest.fn()} />,
+    <ReviewModal databaseId={DATABASE_ID} opened onClose={jest.fn()} />,
   );
 }
 
@@ -132,12 +132,8 @@ describe("ReviewModal", () => {
       "metadata-generation-review-tables",
     );
     expect(within(tables).getByText("PUBLIC.ORDERS")).toBeInTheDocument();
-    expect(
-      within(tables).getByText("4 suggestions · 1 stale"),
-    ).toBeInTheDocument();
-    expect(
-      within(tables).getByText("1 suggestion · 1 applied"),
-    ).toBeInTheDocument();
+    expect(within(tables).getByText("3 suggestions")).toBeInTheDocument();
+    expect(within(tables).getByText("1 suggestion")).toBeInTheDocument();
     expect(
       screen.getByText(
         "1 suggestion would replace a value a person set. Accept it one by one.",
@@ -152,7 +148,7 @@ describe("ReviewModal", () => {
     setup();
 
     const rows = await screen.findAllByTestId("metadata-generation-suggestion");
-    expect(rows).toHaveLength(4);
+    expect(rows).toHaveLength(3);
     expect(within(rows[0]).getByText("Empty")).toBeInTheDocument();
     expect(within(rows[1]).getByText("Set by a person")).toBeInTheDocument();
   });
@@ -177,15 +173,24 @@ describe("ReviewModal", () => {
     expect(getMutationCalls()).toHaveLength(0);
   });
 
-  it("shows no checkbox and a status marker for a stale row", async () => {
+  it("keeps the selection of a table when the person switches to another table", async () => {
     setup();
 
-    const rows = await screen.findAllByTestId("metadata-generation-suggestion");
-    expect(within(rows[3]).queryByRole("checkbox")).not.toBeInTheDocument();
-    expect(
-      within(rows[3]).getByTestId("metadata-generation-suggestion-status"),
-    ).toHaveTextContent("Stale");
-    expect(within(rows[3]).queryByRole("textbox")).not.toBeInTheDocument();
+    await userEvent.click(
+      await getRowCheckbox("Accept Data sensitivity of Email"),
+    );
+    await userEvent.click(await screen.findByText("PUBLIC.PEOPLE"));
+    await userEvent.click(
+      await getRowCheckbox("Accept Data sensitivity of Name"),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Apply 2 selected" }),
+    );
+
+    expect(await getApplyBody()).toEqual({
+      accept: [1, 4],
+      proposed_values: { 1: "PII", 4: "PII" },
+    });
   });
 
   it("selects the table without the human-set suggestions and applies them in one request", async () => {
@@ -207,7 +212,10 @@ describe("ReviewModal", () => {
       screen.getByRole("button", { name: "Apply 2 selected" }),
     );
 
-    expect(await getApplyBody()).toEqual({ accept: [1, 3] });
+    expect(await getApplyBody()).toEqual({
+      accept: [1, 3],
+      proposed_values: { 1: "PII", 3: "Free-text notes" },
+    });
     expect(getMutationCalls()).toHaveLength(1);
   });
 
@@ -230,6 +238,7 @@ describe("ReviewModal", () => {
     expect(await getApplyBody()).toEqual({
       accept: [3],
       edits: { 3: "Order notes" },
+      proposed_values: { 3: "Free-text notes" },
     });
   });
 
@@ -249,7 +258,10 @@ describe("ReviewModal", () => {
       screen.getByRole("button", { name: "Apply 1 selected" }),
     );
 
-    expect(await getApplyBody()).toEqual({ accept: [1] });
+    expect(await getApplyBody()).toEqual({
+      accept: [1],
+      proposed_values: { 1: "PII" },
+    });
   });
 
   it("drops the edit when the AI proposal is chosen again and keeps the row selected", async () => {
@@ -273,7 +285,10 @@ describe("ReviewModal", () => {
       screen.getByRole("button", { name: "Apply 1 selected" }),
     );
 
-    expect(await getApplyBody()).toEqual({ accept: [3] });
+    expect(await getApplyBody()).toEqual({
+      accept: [3],
+      proposed_values: { 3: "Free-text notes" },
+    });
   });
 
   it("shows the apply result and clears the selection", async () => {
@@ -290,13 +305,16 @@ describe("ReviewModal", () => {
       "metadata-generation-apply-result",
     );
     expect(
-      within(result).getByText(
-        "1 value written, 1 skipped because the field changed, 1 failed",
-      ),
+      within(result).getByText("1 value written, 2 failed"),
     ).toBeInTheDocument();
     expect(
       within(result).getByText(
         "Field 102, Semantic type: The field is a primary or foreign key",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(result).getByText(
+        "A newer run changed or removed this suggestion",
       ),
     ).toBeInTheDocument();
     expect(
@@ -316,7 +334,7 @@ describe("ReviewModal", () => {
     unmount();
 
     renderWithProviders(
-      <ReviewModal runId={RUN_ID} opened onClose={jest.fn()} />,
+      <ReviewModal databaseId={DATABASE_ID} opened onClose={jest.fn()} />,
     );
 
     expect(

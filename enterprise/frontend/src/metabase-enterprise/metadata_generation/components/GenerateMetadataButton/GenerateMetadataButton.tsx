@@ -1,18 +1,22 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { getUserIsAdmin } from "metabase/current-user";
 import type { MetadataGenerationDatabaseButtonProps } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Icon, Loader } from "metabase/ui";
-import { useListMetadataGenerationRunsQuery } from "metabase-enterprise/api";
+import {
+  EnterpriseApi,
+  useListMetadataGenerationProposalTablesQuery,
+  useListMetadataGenerationRunsQuery,
+} from "metabase-enterprise/api";
 import type {
   MetadataGenerationRun,
   MetadataGenerationRunId,
 } from "metabase-types/api";
 
-import { RUN_POLLING_INTERVAL, canReviewRun, isRunActive } from "../../utils";
+import { RUN_POLLING_INTERVAL, getRunEndTags, isRunActive } from "../../utils";
 import { GenerateMetadataModal } from "../GenerateMetadataModal";
 import { ReviewModal } from "../ReviewModal";
 
@@ -36,8 +40,9 @@ function GenerateMetadataButtonContent({
     useDisclosure();
   const [startedRunId, setStartedRunId] =
     useState<MetadataGenerationRunId | null>(null);
+  const dispatch = useDispatch();
   const [hasActiveRun, setHasActiveRun] = useState(false);
-  // The run the person dismissed from an empty review, so the button offers to generate again.
+  // The latest run when the person dismissed the review. The button offers to generate again until a newer run.
   const [dismissedRunId, setDismissedRunId] =
     useState<MetadataGenerationRunId | null>(null);
   const { data: runs } = useListMetadataGenerationRunsQuery(
@@ -46,20 +51,28 @@ function GenerateMetadataButtonContent({
     // button changes to "Review suggestions" once the run is done.
     { pollingInterval: hasActiveRun ? RUN_POLLING_INTERVAL : 0 },
   );
+  // The pending suggestions of every run, not only of the latest one.
+  const { data: proposalTables } = useListMetadataGenerationProposalTablesQuery(
+    { database_id: databaseId },
+  );
   const latestRun = runs?.[0] ?? null;
   const activeRun =
     latestRun != null && isRunActive(latestRun) ? latestRun : null;
   const isActive = activeRun != null;
+  const wasActive = useRef(isActive);
 
   useEffect(() => {
     setHasActiveRun(isActive);
-  }, [isActive]);
+    if (wasActive.current && !isActive) {
+      dispatch(EnterpriseApi.util.invalidateTags(getRunEndTags()));
+    }
+    wasActive.current = isActive;
+  }, [dispatch, isActive]);
 
   const modalRunId = startedRunId ?? activeRun?.id ?? null;
-  const state = getButtonState(
-    activeRun,
-    latestRun != null && latestRun.id !== dismissedRunId ? latestRun : null,
-  );
+  const isDismissed = (latestRun?.id ?? null) === dismissedRunId;
+  const hasPending = (proposalTables?.length ?? 0) > 0 && !isDismissed;
+  const state = getButtonState(activeRun, hasPending);
 
   const handleModalClose = () => {
     setStartedRunId(null);
@@ -109,16 +122,15 @@ function GenerateMetadataButtonContent({
         onClose={handleModalClose}
         onReview={handleReview}
       />
-      {latestRun != null && (
-        <ReviewModal
-          runId={latestRun.id}
-          opened={isReviewOpen}
-          onClose={closeReview}
-          onRegenerate={handleRegenerate}
-          onDone={handleReviewDone}
-          onDiscard={handleDiscard}
-        />
-      )}
+      <ReviewModal
+        databaseId={databaseId}
+        latestRunId={latestRun?.id}
+        opened={isReviewOpen}
+        onClose={closeReview}
+        onRegenerate={handleRegenerate}
+        onDone={handleReviewDone}
+        onDiscard={handleDiscard}
+      />
     </>
   );
 }
@@ -131,7 +143,7 @@ type ButtonState = {
 
 function getButtonState(
   activeRun: MetadataGenerationRun | null,
-  latestRun: MetadataGenerationRun | null,
+  hasPending: boolean,
 ): ButtonState {
   if (activeRun != null) {
     return {
@@ -140,7 +152,7 @@ function getButtonState(
       label: t`Generating metadata…`,
     };
   }
-  if (latestRun != null && canReviewRun(latestRun)) {
+  if (hasPending) {
     return {
       action: "review",
       icon: <Icon name="sparkles" />,
