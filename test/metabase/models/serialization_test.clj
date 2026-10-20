@@ -517,3 +517,29 @@
     (is (= #{} (serdes/visualization-settings-deps false goal-viz-settings))))
   (testing "literal goals produce no deps"
     (is (= #{} (serdes/visualization-settings-deps true {:graph.goal_value 100})))))
+
+(defn- in-visualizer
+  "`settings` nested the way a visualizer dashcard stores its chart's settings. The graph goal is hidden: serdes ports
+  goals whether or not they're shown, so turning one on after an import still points at the right entity."
+  [settings]
+  {:visualization {:display  "line"
+                   :settings (assoc settings :graph.show_goal false)}})
+
+(deftest ^:parallel visualizer-viz-dynamic-goals-test
+  (testing "goals nested in a visualizer dashcard export as entity ids"
+    (is (= (in-visualizer exported-goal-viz-settings)
+           (export-goals (in-visualizer goal-viz-settings)))))
+  (testing "and import back to numeric ids"
+    (binding [serdes/*import-fk* (fn [eid _model] (condp = eid card-eid 1, measure-eid 7))]
+      (is (= (in-visualizer goal-viz-settings)
+             (dissoc (serdes/import-visualization-settings (in-visualizer exported-goal-viz-settings))
+                     :column_settings)))))
+  (testing "are declared as deps"
+    (is (= #{[{:model "Card" :id 1}] [{:model "Measure" :id 7}]}
+           (serdes/visualization-settings-deps true (in-visualizer goal-viz-settings))))
+    (is (= #{[{:model "Card" :id card-eid}] [{:model "Measure" :id measure-eid}]}
+           (serdes/visualization-settings-deps false (in-visualizer exported-goal-viz-settings)))))
+  (testing "pull their card in as a descendant"
+    (binding [serdes/*export-fk* (fn [id _model] (when (= 1 id) card-eid))]
+      (is (= {["Card" 1] {"Dashboard" 1}}
+             (serdes/visualization-settings-descendants (in-visualizer goal-viz-settings) {"Dashboard" 1}))))))
