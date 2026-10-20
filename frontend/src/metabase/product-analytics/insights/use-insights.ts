@@ -14,10 +14,7 @@ import type { BaseQueryInput } from "../base-query";
 import { buildSql } from "../build-sql";
 import { getEventFilterColumns } from "../events/filter-columns";
 import type { AnalysisSpec } from "../spec/types";
-import {
-  type FunnelInsightsQuery,
-  planFunnelInsights,
-} from "../sql/analyses/funnel-insights";
+import { type InsightsQuery, planInsights } from "../sql/analyses/insights";
 import {
   getDatasetError,
   toNativeDatasetQuery,
@@ -34,25 +31,22 @@ import {
 } from "./explore";
 import { DEFAULT_INSIGHT_OPTIONS } from "./options";
 import { planPairs } from "./plan-pairs";
-import { parseCountRows } from "./rows";
+import { parseCountRows, parseQuestionLabels } from "./rows";
 import { findInsights } from "./search";
 import {
   getInsightSegments,
   getMinSegmentSize,
   isDescending,
 } from "./segments";
-import type { GroupCounts, Insight, InsightAttribute } from "./types";
+import type {
+  GroupCounts,
+  Insight,
+  InsightAttribute,
+  InsightQuestion,
+  InsightsAnalysis,
+} from "./types";
 
-export type FunnelTransition = {
-  /** Step k → step k+1, numbered from 1. */
-  transition: number;
-  from: string;
-  to: string;
-  reached: number;
-  converted: number;
-};
-
-export type FunnelInsightsState =
+export type InsightsState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "error"; error: string }
@@ -60,7 +54,9 @@ export type FunnelInsightsState =
       status: "done";
       insights: Insight[];
       attributes: InsightAttribute[];
-      transitions: FunnelTransition[];
+      questions: InsightQuestion[];
+      /** How many actors the search looked at. */
+      checkedCount: number;
       /** Pairs of attributes are still being counted. */
       isFindingPairs: boolean;
       /** Single-attribute insights are still shown when pairs fail. */
@@ -74,8 +70,10 @@ export type InsightExplore = {
   series: SingleSeries<UnsavedCard>;
 };
 
-type UseFunnelInsightsArgs = {
+type UseInsightsArgs = {
   spec: AnalysisSpec | undefined;
+  /** Undefined when the analysis has no insights. */
+  analysis: InsightsAnalysis | undefined;
   tableId: ConcreteTableId | undefined;
   /** Must keep its identity while unchanged. */
   base: BaseQueryInput;
@@ -94,39 +92,35 @@ const parseDataset = (
       )
     : undefined;
 
-const getTransitions = (
-  spec: AnalysisSpec,
-  rows: readonly GroupCounts[],
-): FunnelTransition[] => {
-  const steps = spec.funnel?.steps ?? [];
-  return rows
-    .filter(({ conditions }) => conditions.length === 0)
-    .flatMap(({ transition, reached, converted }) => {
-      const from = steps[transition - 1];
-      const to = steps[transition];
-      return from !== undefined && to !== undefined
-        ? [{ transition, from: from.label, to: to.label, reached, converted }]
-        : [];
-    })
-    .sort((a, b) => a.transition - b.transition);
-};
+const parseLabels = (dataset: Dataset | undefined): Map<number, string> =>
+  dataset?.data !== undefined && !dataset.error
+    ? parseQuestionLabels(
+        dataset.data.cols.map(({ name }) => name),
+        dataset.data.rows,
+      )
+    : new Map();
 
 /**
- * Finds what's different about people who convert at each funnel step:
- * counts by single attributes, then by pairs of the most promising ones, and
- * searches them. Single-attribute insights arrive first.
+ * Finds what's different about the actors who have an analysis's outcome at
+ * each of its questions: counts by single attributes, then by pairs of the
+ * most promising ones, and searches them. Single-attribute insights arrive
+ * first. Idle while `analysis` is undefined or doesn't apply to the spec.
  */
-export const useFunnelInsights = ({
+export const useInsights = ({
   spec,
+  analysis,
   tableId,
   base,
   context,
-}: UseFunnelInsightsArgs) => {
-  const isFunnel = spec?.kind === "funnel";
+}: UseInsightsArgs) => {
+  const activeSpec =
+    spec !== undefined && analysis?.appliesTo(spec) ? spec : undefined;
+  const isActive = activeSpec !== undefined;
+  const outcome = useMemo(() => analysis?.getOutcome(), [analysis]);
   const metadataProvider = useMetadataProvider(context.table?.db_id ?? null);
 
   const attributes = useMemo(() => {
-    if (!isFunnel) {
+    if (!isActive) {
       return [];
     }
     const stepColumns = new Set(
@@ -135,7 +129,7 @@ export const useFunnelInsights = ({
       ),
     );
     return getInsightAttributes({ context, roles: base.columns, stepColumns });
-  }, [isFunnel, metadataProvider, base, context]);
+  }, [isActive, metadataProvider, base, context]);
   const attributeIds = useMemo(
     () => attributes.map(({ id }) => id),
     [attributes],
@@ -153,22 +147,29 @@ export const useFunnelInsights = ({
     ],
   });
   const compiledBase = useCompiledBase({
-    isReady: isFunnel && attributes.length > 0,
+    isReady: isActive && attributes.length > 0,
     tableId,
     base: insightsBase,
   });
   const { compiled } = compiledBase;
 
-  const toSql = (query: FunnelInsightsQuery) =>
-    spec !== undefined && compiled !== undefined
+  const toSql = (query: InsightsQuery) => {
+    const population =
+      activeSpec !== undefined
+        ? analysis?.getPopulation(activeSpec, attributeIds, asOf)
+        : undefined;
+    return activeSpec !== undefined &&
+      population !== undefined &&
+      compiled !== undefined
       ? buildSql(
-          spec,
+          activeSpec,
           compiled.sql,
           compiled.columns,
-          planFunnelInsights(spec, query, asOf),
+          planInsights(population, query),
         ).sql
       : undefined;
-  const toQuery = (query: FunnelInsightsQuery, maxRows?: number) => {
+  };
+  const toQuery = (query: InsightsQuery, maxRows?: number) => {
     const sql = toSql(query);
     return sql !== undefined && compiled !== undefined
       ? toNativeDatasetQuery(sql, compiled.databaseId, maxRows)
@@ -176,7 +177,7 @@ export const useFunnelInsights = ({
   };
 
   const singlesQuery =
-    isFunnel && attributeIds.length > 0
+    isActive && attributeIds.length > 0
       ? toQuery(
           { kind: "singles", attributes: attributeIds },
           DEFAULT_INSIGHT_OPTIONS.pairRowBudget,
@@ -186,6 +187,10 @@ export const useFunnelInsights = ({
   const singleRows = useMemo(
     () => parseDataset(singles.currentData, attributeIds),
     [singles.currentData, attributeIds],
+  );
+  const labels = useMemo(
+    () => parseLabels(singles.currentData),
+    [singles.currentData],
   );
 
   const pairValues = useMemo(
@@ -228,8 +233,13 @@ export const useFunnelInsights = ({
   );
 
   const getExplore = (insight: Insight): InsightExplore | undefined => {
-    const total = counts?.totals.get(insight.transition);
-    if (counts === undefined || total === undefined || compiled === undefined) {
+    const total = counts?.totals.get(insight.question);
+    if (
+      counts === undefined ||
+      total === undefined ||
+      compiled === undefined ||
+      outcome === undefined
+    ) {
       return undefined;
     }
     const insightAttributes = insight.conditions.flatMap(
@@ -238,10 +248,12 @@ export const useFunnelInsights = ({
     );
     const sql = toSql({
       kind: "explore",
-      transition: insight.transition,
+      question: insight.question,
       attributes: insightAttributes.map(({ id }) => id),
       segmentLabel: getExploreSegmentLabel(insightAttributes),
-      minPeople: getMinSegmentSize(total.reached),
+      countColumn: outcome.explore.countColumn,
+      rateColumn: outcome.explore.rateColumn,
+      minSize: getMinSegmentSize(total.reached),
       isDescending: isDescending(insight),
     });
     if (sql === undefined) {
@@ -250,16 +262,20 @@ export const useFunnelInsights = ({
     const card = getExploreCard(
       toNativeDatasetQuery(sql, compiled.databaseId),
       insightAttributes,
+      outcome,
     );
     const segments = getInsightSegments(counts, insight);
     return {
       card,
-      series: { card, data: getExploreData(segments, insightAttributes, sql) },
+      series: {
+        card,
+        data: getExploreData(segments, insightAttributes, sql, outcome),
+      },
     };
   };
 
-  const state = ((): FunnelInsightsState => {
-    if (!isFunnel || spec === undefined) {
+  const state = ((): InsightsState => {
+    if (activeSpec === undefined || analysis === undefined) {
       return { status: "idle" };
     }
     if (context.table === undefined) {
@@ -270,7 +286,8 @@ export const useFunnelInsights = ({
         status: "done",
         insights: [],
         attributes,
-        transitions: [],
+        questions: [],
+        checkedCount: 0,
         isFindingPairs: false,
         pairsError: undefined,
       };
@@ -282,17 +299,22 @@ export const useFunnelInsights = ({
     if (singleRows === undefined || insights === undefined) {
       return { status: "loading" };
     }
+    const totals = singleRows.filter(
+      ({ conditions }) => conditions.length === 0,
+    );
+    const questions = analysis.getQuestions(activeSpec, totals, labels);
     return {
       status: "done",
       insights,
       attributes,
-      transitions: getTransitions(spec, singleRows),
+      questions,
+      checkedCount: analysis.getCheckedCount(questions),
       isFindingPairs: pairsQuery !== undefined && pairs.isFetching,
       pairsError: pairsQuery !== undefined ? getDatasetError(pairs) : undefined,
     };
   })();
 
-  return { state, getExplore };
+  return { state, outcome, getExplore };
 };
 
-export type FunnelInsights = ReturnType<typeof useFunnelInsights>;
+export type Insights = ReturnType<typeof useInsights>;

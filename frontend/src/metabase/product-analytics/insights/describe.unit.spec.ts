@@ -5,6 +5,7 @@ import {
   describeLift,
   describeValue,
 } from "./describe";
+import { getBounceOutcome, getConversionOutcome } from "./outcomes";
 
 describe("describeLift", () => {
   it.each([
@@ -18,23 +19,40 @@ describe("describeLift", () => {
   ])(
     "describes $rate vs. $restRate as “$expected”",
     ({ rate, restRate, expected }) => {
-      expect(describeLift({ rate, restRate })).toBe(expected);
+      expect(describeLift({ rate, restRate }, getConversionOutcome())).toBe(
+        expected,
+      );
     },
   );
+
+  it("describes the analysis's outcome", () => {
+    expect(describeLift({ rate: 0.5, restRate: 0.2 }, getBounceOutcome())).toBe(
+      "2.5× as likely to bounce",
+    );
+    expect(describeLift({ rate: 0.1, restRate: 0.2 }, getBounceOutcome())).toBe(
+      "50% less likely to bounce",
+    );
+  });
 });
 
 describe("describeExcess", () => {
   it("rounds to whole conversions in either direction", () => {
-    expect(describeExcess({ excess: 341.6 })).toBe(
+    expect(describeExcess({ excess: 341.6 }, getConversionOutcome())).toBe(
       "About 342 more conversions than at everyone else's rate",
     );
-    expect(describeExcess({ excess: -1200.2 })).toBe(
+    expect(describeExcess({ excess: -1200.2 }, getConversionOutcome())).toBe(
       "About 1,200 fewer conversions than at everyone else's rate",
     );
   });
 
+  it("counts the analysis's outcome", () => {
+    expect(describeExcess({ excess: 12 }, getBounceOutcome())).toBe(
+      "About 12 more bounces than at other visits' rate",
+    );
+  });
+
   it("uses the singular for one conversion", () => {
-    expect(describeExcess({ excess: -1.2 })).toBe(
+    expect(describeExcess({ excess: -1.2 }, getConversionOutcome())).toBe(
       "About 1 fewer conversion than at everyone else's rate",
     );
   });

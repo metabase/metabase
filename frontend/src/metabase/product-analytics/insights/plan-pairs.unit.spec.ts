@@ -9,21 +9,21 @@ const group = (
   reached: number,
   converted = Math.round(reached * 0.3),
 ): GroupCounts => ({
-  transition: 1,
+  question: 1,
   conditions: [{ attributeId, value }],
   reached,
   converted,
 });
 
 const TOTAL: GroupCounts = {
-  transition: 1,
+  question: 1,
   conditions: [],
   reached: 10000,
   converted: 3000,
 };
 
 describe("getPairRowBound", () => {
-  it("sums the value combinations of every pair of columns, per transition", () => {
+  it("sums the value combinations of every pair of columns, per question", () => {
     // The plan's example: 8 columns over a 3-step funnel.
     expect(getPairRowBound([3, 5, 5, 10, 8, 6, 4, 8], 2)).toBe(2062);
   });

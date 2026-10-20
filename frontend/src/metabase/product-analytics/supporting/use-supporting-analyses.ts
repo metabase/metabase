@@ -27,10 +27,8 @@ import {
   getClickedStep,
   getClickedTransition,
 } from "../insights/clicked-transition";
-import {
-  type FunnelInsights,
-  useFunnelInsights,
-} from "../insights/use-funnel-insights";
+import { FUNNEL_INSIGHTS } from "../insights/funnel-analysis";
+import { type Insights, useInsights } from "../insights/use-insights";
 import { type PathSteps, usePathSteps } from "../path-steps/use-path-steps";
 import type { AnalysisSpec, FunnelSpec } from "../spec/types";
 import { periodOf } from "../sql/analyses/cohorts";
@@ -59,8 +57,8 @@ export type FunnelPathsSupport = {
   onChangeRange: (range: FunnelPathsRange) => void;
 };
 
-export type FunnelInsightsSupport = {
-  insights: FunnelInsights;
+export type InsightsSupport = {
+  insights: Insights;
   focus: InsightsFocus | undefined;
 };
 
@@ -68,7 +66,7 @@ export type FunnelInsightsSupport = {
 export type FunnelSupport = {
   /** Undefined when the funnel has no paths to show, e.g. unordered steps. */
   paths: FunnelPathsSupport | undefined;
-  insights: FunnelInsightsSupport;
+  insights: InsightsSupport;
 };
 
 /** The retention curves below the cohort table, from the table's own result. */
@@ -127,7 +125,13 @@ export const useSupportingAnalyses = ({
     };
   }, [spec, dataset, datasetQuery]);
 
-  const insights = useFunnelInsights({ spec, tableId, base, context });
+  const insights = useInsights({
+    spec,
+    analysis: isFunnel ? FUNNEL_INSIGHTS : undefined,
+    tableId,
+    base,
+    context,
+  });
   const pathSteps = usePathSteps({ spec, tableId, base });
   const [insightsFocus, setInsightsFocus] = useState<InsightsFocus>();
 
@@ -164,7 +168,7 @@ export const useSupportingAnalyses = ({
           ? [
               getShowInsightsAction(() =>
                 setInsightsFocus((focus) => ({
-                  transition,
+                  question: transition,
                   id: (focus?.id ?? 0) + 1,
                 })),
               ),

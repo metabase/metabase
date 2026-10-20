@@ -31,7 +31,7 @@ const hasEnoughPeople = (
   counts.reached * (1 - pooledRate) >= options.minExpectedOutcomes;
 
 /**
- * The group compared with everyone else at its transition, or `null` when
+ * The group compared with everyone else at its question, or `null` when
  * either side is too small to compare.
  */
 export const evaluateGroup = (
@@ -76,7 +76,7 @@ const evaluateGroups = (
   options: InsightOptions,
 ): Insight[] =>
   groups.flatMap((group) => {
-    const total = index.totals.get(group.transition);
+    const total = index.totals.get(group.question);
     const insight =
       total !== undefined ? evaluateGroup(group, total, options) : null;
     return insight !== null ? [insight] : [];
@@ -103,9 +103,9 @@ const interactionPValueOf = (
   options: InsightOptions,
 ): number | undefined => {
   const [a, b] = pair.conditions;
-  const total = index.totals.get(pair.transition);
-  const parentA = index.get(pair.transition, [a]);
-  const parentB = index.get(pair.transition, [b]);
+  const total = index.totals.get(pair.question);
+  const parentA = index.get(pair.question, [a]);
+  const parentB = index.get(pair.question, [b]);
   if (total === undefined || parentA === undefined || parentB === undefined) {
     return undefined;
   }
@@ -171,7 +171,7 @@ const overlapOf = (
     return { reached: 0, converted: 0 };
   }
   if (conditions.length === 2) {
-    return index.get(a.transition, conditions);
+    return index.get(a.question, conditions);
   }
   if (conditions.length !== 3) {
     return undefined;
@@ -179,9 +179,9 @@ const overlapOf = (
   const lowerBound = Math.max(
     ...conditions.map((z) => {
       const [x, y] = conditions.filter((item) => item !== z);
-      const xz = index.get(a.transition, [x, z]);
-      const yz = index.get(a.transition, [y, z]);
-      const zOnly = index.get(a.transition, [z]);
+      const xz = index.get(a.question, [x, z]);
+      const yz = index.get(a.question, [y, z]);
+      const zOnly = index.get(a.question, [z]);
       return xz !== undefined && yz !== undefined && zOnly !== undefined
         ? xz.reached + yz.reached - zOnly.reached
         : 0;
@@ -204,10 +204,10 @@ const isExplainedBy = (
   index: CountIndex,
   options: InsightOptions,
 ): boolean => {
-  const total = index.totals.get(insight.transition);
+  const total = index.totals.get(insight.question);
   if (
     other === insight ||
-    other.transition !== insight.transition ||
+    other.question !== insight.question ||
     total === undefined
   ) {
     return false;
@@ -234,7 +234,7 @@ const isExplainedBy = (
 
 /**
  * Groups whose conversion differs significantly from everyone else's at the
- * same transition, strongest first by |excess|.
+ * same question, strongest first by |excess|.
  *
  * Singles and pairs are separate Benjamini–Hochberg families, so the singles
  * found don't change when pairs arrive. A pair's p-value covers both its

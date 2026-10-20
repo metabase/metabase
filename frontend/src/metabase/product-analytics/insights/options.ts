@@ -1,7 +1,7 @@
 export type InsightOptions = {
   /** The smallest group reported, in people. */
   minGroupSize: number;
-  /** The smallest group reported, as a share of the people at the transition. */
+  /** The smallest group reported, as a share of the people at the question. */
   minGroupFraction: number;
   /** Conversions and drop-offs each side needs at the pooled rate for the normal approximation to hold. */
   minExpectedOutcomes: number;
@@ -28,7 +28,7 @@ export const DEFAULT_INSIGHT_OPTIONS: InsightOptions = {
   pairRowBudget: 50_000,
 };
 
-/** The smallest group reported at a transition with `reached` people. */
+/** The smallest group reported at a question with `reached` people. */
 export const getMinGroupSize = (
   reached: number,
   options: InsightOptions,

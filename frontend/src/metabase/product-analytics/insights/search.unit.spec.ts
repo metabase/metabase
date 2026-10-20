@@ -18,7 +18,7 @@ const sumCounts = (segments: readonly Segment[]) => ({
 
 /**
  * What the singles and pairs queries would return for these people at one
- * transition, with every value kept for pairs.
+ * question, with every value kept for pairs.
  */
 const countSegments = (segments: readonly Segment[]) => {
   const attributeIds = _.uniq(
@@ -27,7 +27,7 @@ const countSegments = (segments: readonly Segment[]) => {
   const valuesOf = (attributeId: string) =>
     _.uniq(segments.map(({ values }) => values[attributeId]));
   const groupOf = (conditions: Record<string, string>): GroupCounts => ({
-    transition: 1,
+    question: 1,
     conditions: Object.entries(conditions).map(([attributeId, value]) => ({
       attributeId,
       value,

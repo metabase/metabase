@@ -28,11 +28,12 @@ import type {
   GroupCounts,
   Insight,
 } from "../../frontend/src/metabase/product-analytics/insights/types";
+import { funnelInsightPopulation } from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-insights";
 import {
   type AttributeAsOf,
-  type FunnelInsightsQuery,
-  planFunnelInsights,
-} from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-insights";
+  type InsightsQuery,
+  planInsights,
+} from "../../frontend/src/metabase/product-analytics/sql/analyses/insights";
 
 import { FLAG, defaultSpec } from "./specs";
 
@@ -155,7 +156,11 @@ const main = async () => {
   if(event_name = 'checkout_completed', 1, 0) AS ev_3
 FROM ${TABLE}`;
 
-  const toSql = (query: FunnelInsightsQuery): string =>
+  const population = funnelInsightPopulation(spec, ids, asOf);
+  if (population === undefined) {
+    throw new Error("The funnel needs at least two steps.");
+  }
+  const toSql = (query: InsightsQuery): string =>
     buildSql(
       spec,
       baseSql,
@@ -174,9 +179,9 @@ FROM ${TABLE}`;
           alias: columns[index],
         })),
       },
-      planFunnelInsights(spec, query, asOf),
+      planInsights(population, query),
     ).sql;
-  const run = async (query: FunnelInsightsQuery): Promise<GroupCounts[]> => {
+  const run = async (query: InsightsQuery): Promise<GroupCounts[]> => {
     const started = performance.now();
     const { names, rows } = await chRows(toSql(query));
     console.log(
@@ -216,7 +221,7 @@ FROM ${TABLE}`;
   );
   insights.forEach((insight) =>
     console.log(
-      `  ${transitionName(insight.transition)} | ${describe(insight)} | ` +
+      `  ${transitionName(insight.question)} | ${describe(insight)} | ` +
         `${(insight.rate * 100).toFixed(1)}% vs ${(insight.restRate * 100).toFixed(1)}% | ` +
         `${insight.reached} people | excess ${insight.excess.toFixed(0)} | p ${insight.pValue.toExponential(1)}`,
     ),
@@ -236,7 +241,7 @@ FROM ${TABLE}`;
   planted.expected.forEach((expected) => {
     const found = insights.find(
       (insight) =>
-        transitionName(insight.transition) === expected.transition &&
+        transitionName(insight.question) === expected.transition &&
         expected.conditions.some((conditions) =>
           Bun.deepEquals(conditionsOf(insight), conditions),
         ) &&
@@ -251,7 +256,7 @@ FROM ${TABLE}`;
   planted.unexpected.forEach((unexpected) => {
     const found = insights.find(
       (insight) =>
-        transitionName(insight.transition) === unexpected.transition &&
+        transitionName(insight.question) === unexpected.transition &&
         unexpected.column in conditionsOf(insight) &&
         (unexpected.value === undefined ||
           conditionsOf(insight)[unexpected.column] === unexpected.value),
@@ -266,17 +271,19 @@ FROM ${TABLE}`;
   // The panel draws the explore chart from the counts; the Explore link runs the SQL.
   console.log("\nExplore charts:");
   for (const insight of insights) {
-    const total = counts.totals.get(insight.transition);
+    const total = counts.totals.get(insight.question);
     if (total === undefined) {
       continue;
     }
     const { rows } = await chRows(
       toSql({
         kind: "explore",
-        transition: insight.transition,
+        question: insight.question,
         attributes: insight.conditions.map(({ attributeId }) => attributeId),
         segmentLabel: "segment",
-        minPeople: getMinSegmentSize(total.reached),
+        countColumn: "people",
+        rateColumn: "conversion",
+        minSize: getMinSegmentSize(total.reached),
         isDescending: isDescending(insight),
       }),
     );
@@ -289,7 +296,7 @@ FROM ${TABLE}`;
       ({ label, reached, rate }) => [label, reached, rate.toFixed(4)],
     );
     const matches = Bun.deepEquals(fromSql, fromCounts);
-    const label = `${transitionName(insight.transition)} | ${describe(insight)}`;
+    const label = `${transitionName(insight.question)} | ${describe(insight)}`;
     console.log(
       `  ${matches ? "ok  " : "FAIL"} ${label} (${fromSql.length} segments)`,
     );

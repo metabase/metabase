@@ -1,3 +1,5 @@
+import { QUESTION_LABEL_COLUMN } from "../sql/analyses/insights";
+
 import type { GroupCounts } from "./types";
 
 export const toCount = (value: unknown): number | undefined => {
@@ -18,7 +20,7 @@ export const parseCountRows = (
   attributeIds: readonly string[],
 ): GroupCounts[] => {
   const indexOf = (name: string) => columnNames.indexOf(name);
-  const transitionIndex = indexOf("k");
+  const questionIndex = indexOf("k");
   const reachedIndex = indexOf("reached");
   const convertedIndex = indexOf("converted");
   const attributeIndexes = attributeIds
@@ -26,11 +28,11 @@ export const parseCountRows = (
     .filter(({ index }) => index >= 0);
 
   return rows.flatMap((row) => {
-    const transition = toCount(row[transitionIndex]);
+    const question = toCount(row[questionIndex]);
     const reached = toCount(row[reachedIndex]);
     const converted = toCount(row[convertedIndex]);
     if (
-      transition === undefined ||
+      question === undefined ||
       reached === undefined ||
       converted === undefined
     ) {
@@ -42,6 +44,30 @@ export const parseCountRows = (
         ? [{ attributeId, value }]
         : [];
     });
-    return [{ transition, reached, converted, conditions }];
+    return [{ question, reached, converted, conditions }];
   });
+};
+
+/**
+ * Each question's label, from a singles query over a population with labels.
+ * Empty when it has none.
+ */
+export const parseQuestionLabels = (
+  columnNames: readonly string[],
+  rows: readonly (readonly unknown[])[],
+): Map<number, string> => {
+  const questionIndex = columnNames.indexOf("k");
+  const labelIndex = columnNames.indexOf(QUESTION_LABEL_COLUMN);
+  if (labelIndex < 0) {
+    return new Map();
+  }
+  return new Map(
+    rows.flatMap((row) => {
+      const question = toCount(row[questionIndex]);
+      const label = row[labelIndex];
+      return question !== undefined && typeof label === "string"
+        ? [[question, label] as const]
+        : [];
+    }),
+  );
 };

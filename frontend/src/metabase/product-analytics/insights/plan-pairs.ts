@@ -19,14 +19,14 @@ type PairColumn = {
 /** The most rows the pairs query can return for these columns. */
 export const getPairRowBound = (
   valueCounts: readonly number[],
-  transitionCount: number,
+  questionCount: number,
 ): number => {
   const sum = valueCounts.reduce((total, count) => total + count, 0);
   const sumOfSquares = valueCounts.reduce(
     (total, count) => total + count * count,
     0,
   );
-  return (transitionCount * (sum * sum - sumOfSquares)) / 2;
+  return (questionCount * (sum * sum - sumOfSquares)) / 2;
 };
 
 const getPairColumn = (
@@ -43,7 +43,7 @@ const getPairColumn = (
   // on its own can't be part of a reportable pair.
   const largestByValue = new Map<string, number>();
   groups.forEach((group) => {
-    const total = index.totals.get(group.transition);
+    const total = index.totals.get(group.question);
     const value = group.conditions[0].value;
     if (
       total !== undefined &&
@@ -61,7 +61,7 @@ const getPairColumn = (
   const score = Math.max(
     0,
     ...groups.map((group) => {
-      const total = index.totals.get(group.transition);
+      const total = index.totals.get(group.question);
       const insight =
         total !== undefined ? evaluateGroup(group, total, options) : null;
       return insight !== null ? Math.abs(insight.excess) : 0;
@@ -91,7 +91,7 @@ export const planPairs = (
   const chosen = columns.reduce<PairColumn[]>((picked, column) => {
     const bound = getPairRowBound(
       [...picked, column].map(({ values }) => values.length),
-      index.transitions.length,
+      index.questions.length,
     );
     return bound <= options.pairRowBudget ? [...picked, column] : picked;
   }, []);

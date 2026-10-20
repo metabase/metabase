@@ -1,4 +1,4 @@
-import { OTHER_VALUE } from "../sql/analyses/funnel-insights";
+import { OTHER_VALUE } from "../sql/analyses/insights";
 
 import { indexCounts } from "./counts";
 import { getInsightSegments, getMinSegmentSize } from "./segments";
@@ -11,7 +11,7 @@ const group = (
   reached: number,
   converted: number,
 ): GroupCounts => ({
-  transition: TRANSITION,
+  question: TRANSITION,
   conditions: Object.entries(values).map(([attributeId, value]) => ({
     attributeId,
     value,
@@ -26,7 +26,7 @@ type InsightOpts = {
 };
 
 const insightOf = ({ conditions, isHigher }: InsightOpts): Insight => ({
-  transition: TRANSITION,
+  question: TRANSITION,
   conditions,
   reached: 100,
   converted: 0,

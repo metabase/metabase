@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { c, t } from "ttag";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { t } from "ttag";
 import { noop } from "underscore";
 
 import {
@@ -27,13 +27,14 @@ import {
   describeExcess,
   describeLift,
 } from "../../insights/describe";
+import type { InsightOutcome } from "../../insights/outcomes";
 import { isDescending } from "../../insights/segments";
-import type { Insight, InsightAttribute } from "../../insights/types";
 import type {
-  FunnelInsights,
-  FunnelInsightsState,
-  FunnelTransition,
-} from "../../insights/use-funnel-insights";
+  Insight,
+  InsightAttribute,
+  InsightQuestion,
+} from "../../insights/types";
+import type { Insights, InsightsState } from "../../insights/use-insights";
 
 import S from "./InsightsPanel.module.css";
 import { SupportingPanel } from "./SupportingPanel";
@@ -41,67 +42,98 @@ import { SupportingPanel } from "./SupportingPanel";
 const INSIGHTS_SHOWN = 5;
 const CHART_HEIGHT_PX = 240;
 
-/** A request to bring a transition's insights into view. */
+/** A request to bring a question's insights into view. */
 export type InsightsFocus = {
-  transition: number;
-  /** Distinguishes repeated requests for the same transition. */
+  question: number;
+  /** Distinguishes repeated requests for the same question. */
   id: number;
 };
 
 type InsightsPanelProps = {
-  insights: FunnelInsights;
+  insights: Insights;
   focus: InsightsFocus | undefined;
+  /** Shown while the analysis isn't set up enough for insights. */
+  idleLabel: string;
 };
 
-export const InsightsPanel = ({ insights, focus }: InsightsPanelProps) => (
+export const InsightsPanel = ({
+  insights,
+  focus,
+  idleLabel,
+}: InsightsPanelProps) => (
   <SupportingPanel title={t`Insights`}>
     <InsightsPanelBody
       state={insights.state}
+      outcome={insights.outcome}
       focus={focus}
+      idleLabel={idleLabel}
       getExplore={insights.getExplore}
     />
   </SupportingPanel>
 );
 
 type InsightsPanelBodyProps = {
-  state: FunnelInsightsState;
+  state: InsightsState;
+  /** Undefined while idle. */
+  outcome: InsightOutcome | undefined;
   focus: InsightsFocus | undefined;
-  getExplore: FunnelInsights["getExplore"];
+  idleLabel: string;
+  getExplore: Insights["getExplore"];
 };
 
 const InsightsPanelBody = ({
   state,
+  outcome,
   focus,
+  idleLabel,
   getExplore,
 }: InsightsPanelBodyProps) => {
+  if (state.status === "idle" || outcome === undefined) {
+    return <Text c="text-secondary">{idleLabel}</Text>;
+  }
   switch (state.status) {
-    case "idle":
-      return (
-        <Text c="text-secondary">{t`Finish setting up the funnel to see insights.`}</Text>
-      );
     case "loading":
       return (
         <Group gap="sm" wrap="nowrap">
           <Loader size="xs" />
-          <Text c="text-secondary">{t`Looking for what's different about people who convert…`}</Text>
+          <Text c="text-secondary">{outcome.searchingLabel}</Text>
         </Group>
       );
     case "error":
       return <Alert color="error">{state.error}</Alert>;
     case "done":
       return (
-        <InsightsList state={state} focus={focus} getExplore={getExplore} />
+        <InsightsList
+          state={state}
+          outcome={outcome}
+          focus={focus}
+          getExplore={getExplore}
+        />
       );
   }
 };
 
-type InsightsListProps = Omit<InsightsPanelBodyProps, "state"> & {
-  state: Extract<FunnelInsightsState, { status: "done" }>;
+type InsightsListProps = {
+  state: Extract<InsightsState, { status: "done" }>;
+  outcome: InsightOutcome;
+  focus: InsightsFocus | undefined;
+  getExplore: Insights["getExplore"];
 };
 
-const InsightsList = ({ state, focus, getExplore }: InsightsListProps) => {
-  const { insights, attributes, transitions, isFindingPairs, pairsError } =
-    state;
+const InsightsList = ({
+  state,
+  outcome,
+  focus,
+  getExplore,
+}: InsightsListProps) => {
+  const {
+    insights,
+    attributes,
+    questions,
+    checkedCount,
+    isFindingPairs,
+    pairsError,
+  } = state;
   if (attributes.length === 0) {
     return (
       <Text c="text-secondary">{t`There are no columns with few enough distinct values to compare people by.`}</Text>
@@ -110,27 +142,27 @@ const InsightsList = ({ state, focus, getExplore }: InsightsListProps) => {
   const isNothingFound =
     insights.length === 0 && !isFindingPairs && pairsError === undefined;
   if (isNothingFound) {
-    const people = formatNumber(transitions[0]?.reached ?? 0);
     return (
       <Text c="text-secondary">
-        {c("{0} is a number of columns, {1} is a number of people")
-          .t`Nothing stands out. Checked ${attributes.length} columns across ${people} people.`}
+        {outcome.describeNothingFound(
+          attributes.length,
+          formatNumber(checkedCount),
+        )}
       </Text>
     );
   }
   return (
     <Stack gap="xl">
-      {transitions.map((transition) => (
-        <TransitionInsights
-          key={transition.transition}
-          transition={transition}
+      {questions.map((question) => (
+        <QuestionInsights
+          key={question.question}
+          question={question}
           insights={insights.filter(
-            (insight) => insight.transition === transition.transition,
+            (insight) => insight.question === question.question,
           )}
           attributes={attributes}
-          focusId={
-            focus?.transition === transition.transition ? focus.id : undefined
-          }
+          outcome={outcome}
+          focusId={focus?.question === question.question ? focus.id : undefined}
           getExplore={getExplore}
         />
       ))}
@@ -156,22 +188,24 @@ const formatRate = (rate: number) => formatNumber(rate, CONVERSION_FORMAT);
 
 const insightKey = (insight: Insight) => JSON.stringify(insight.conditions);
 
-type TransitionInsightsProps = {
-  transition: FunnelTransition;
+type QuestionInsightsProps = {
+  question: InsightQuestion;
   insights: Insight[];
   attributes: InsightAttribute[];
-  /** Set while this transition has been asked to come into view. */
+  outcome: InsightOutcome;
+  /** Set while this question has been asked to come into view. */
   focusId: number | undefined;
-  getExplore: FunnelInsights["getExplore"];
+  getExplore: Insights["getExplore"];
 };
 
-const TransitionInsights = ({
-  transition,
+const QuestionInsights = ({
+  question,
   insights,
   attributes,
+  outcome,
   focusId,
   getExplore,
-}: TransitionInsightsProps) => {
+}: QuestionInsightsProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
@@ -185,11 +219,11 @@ const TransitionInsights = ({
   }, [focusId]);
 
   return (
-    <Stack ref={ref} gap="md" className={S.transition}>
+    <Stack ref={ref} gap="md" className={S.question}>
       {focusId !== undefined && (
         <div key={focusId} className={S.highlight} aria-hidden />
       )}
-      <TransitionHeading transition={transition} />
+      <QuestionHeading question={question} outcome={outcome} />
       {insights.length === 0 ? (
         <Text size="sm" c="text-secondary">{t`Nothing stands out.`}</Text>
       ) : (
@@ -199,6 +233,7 @@ const TransitionInsights = ({
               key={insightKey(insight)}
               insight={insight}
               attributes={attributes}
+              outcome={outcome}
               isOpen={openKeys.includes(insightKey(insight))}
               getExplore={getExplore}
             />
@@ -220,31 +255,36 @@ const TransitionInsights = ({
   );
 };
 
-const TransitionHeading = ({
-  transition,
-}: {
-  transition: FunnelTransition;
-}) => {
+type QuestionHeadingProps = {
+  question: InsightQuestion;
+  outcome: InsightOutcome;
+};
+
+const QuestionHeading = ({ question, outcome }: QuestionHeadingProps) => {
   const rate = formatRate(
-    transition.reached > 0 ? transition.converted / transition.reached : 0,
+    question.reached > 0 ? question.converted / question.reached : 0,
   );
   return (
     <Group justify="space-between" align="flex-end" wrap="nowrap" gap="md">
       <Stack gap={2} miw={0}>
         <Text size="sm" c="text-secondary">
-          {c("{0} and {1} are funnel step numbers")
-            .t`Step ${transition.transition} → ${transition.transition + 1}`}
+          {question.caption}
         </Text>
         <Title order={5}>
           <Group component="span" gap="sm">
-            <span>{transition.from}</span>
-            <Icon name="arrow_right" c="text-secondary" aria-hidden />
-            <span>{transition.to}</span>
+            {question.labels.map((label, index) => (
+              <Fragment key={index}>
+                {index > 0 && (
+                  <Icon name="arrow_right" c="text-secondary" aria-hidden />
+                )}
+                <span>{label}</span>
+              </Fragment>
+            ))}
           </Group>
         </Title>
       </Stack>
       <Text c="text-secondary" style={{ flexShrink: 0 }}>
-        {c("{0} is a percentage").t`${rate} converted`}
+        {outcome.describeRate(rate)}
       </Text>
     </Group>
   );
@@ -253,17 +293,20 @@ const TransitionHeading = ({
 type InsightItemProps = {
   insight: Insight;
   attributes: InsightAttribute[];
+  outcome: InsightOutcome;
   isOpen: boolean;
-  getExplore: FunnelInsights["getExplore"];
+  getExplore: Insights["getExplore"];
 };
 
 const InsightItem = ({
   insight,
   attributes,
+  outcome,
   isOpen,
   getExplore,
 }: InsightItemProps) => {
   const isHigher = isDescending(insight);
+  const isBetter = isHigher === outcome.isHigherBetter;
   const conditions = insight.conditions.map(({ attributeId, value }) => ({
     attribute: attributes.find(({ id }) => id === attributeId),
     value,
@@ -281,7 +324,7 @@ const InsightItem = ({
         icon={
           <Icon
             name={isHigher ? "arrow_up" : "arrow_down"}
-            c={isHigher ? "success" : "error"}
+            c={isBetter ? "success" : "error"}
             aria-hidden
           />
         }
@@ -295,13 +338,19 @@ const InsightItem = ({
               <Icon name="info" c="text-secondary" />
             </Tooltip>
           )}
-          <Text component="span" c={isHigher ? "success" : "error"}>
-            {describeLift(insight)}
+          <Text component="span" c={isBetter ? "success" : "error"}>
+            {describeLift(insight, outcome)}
           </Text>
         </Group>
       </Accordion.Control>
       <Accordion.Panel>
-        {isOpen && <InsightDetails insight={insight} getExplore={getExplore} />}
+        {isOpen && (
+          <InsightDetails
+            insight={insight}
+            outcome={outcome}
+            getExplore={getExplore}
+          />
+        )}
       </Accordion.Panel>
     </Accordion.Item>
   );
@@ -309,25 +358,29 @@ const InsightItem = ({
 
 type InsightDetailsProps = {
   insight: Insight;
-  getExplore: FunnelInsights["getExplore"];
+  outcome: InsightOutcome;
+  getExplore: Insights["getExplore"];
 };
 
-const InsightDetails = ({ insight, getExplore }: InsightDetailsProps) => {
+const InsightDetails = ({
+  insight,
+  outcome,
+  getExplore,
+}: InsightDetailsProps) => {
   const explore = getExplore(insight);
   const rate = formatRate(insight.rate);
   const restRate = formatRate(insight.restRate);
-  const people = formatNumber(insight.reached);
+  const size = formatNumber(insight.reached);
 
   return (
     <Stack gap="md" pt="sm">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap={2} miw={0}>
           <Text size="sm" c="text-secondary">
-            {c("{0} and {1} are percentages, {2} is a number of people")
-              .t`${rate} converted vs. ${restRate} of everyone else · ${people} people`}
+            {outcome.describeComparison(rate, restRate, size)}
           </Text>
           <Text size="sm" c="text-secondary">
-            {describeExcess(insight)}
+            {describeExcess(insight, outcome)}
           </Text>
         </Stack>
         {explore !== undefined && (

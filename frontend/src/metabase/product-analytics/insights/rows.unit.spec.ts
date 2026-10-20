@@ -13,15 +13,15 @@ describe("parseCountRows", () => {
         ["attr_1", "attr_2"],
       ),
     ).toEqual([
-      { transition: 1, reached: 1000, converted: 250, conditions: [] },
+      { question: 1, reached: 1000, converted: 250, conditions: [] },
       {
-        transition: 1,
+        question: 1,
         reached: 400,
         converted: 80,
         conditions: [{ attributeId: "attr_1", value: "Safari" }],
       },
       {
-        transition: 2,
+        question: 2,
         reached: 300,
         converted: 45,
         conditions: [

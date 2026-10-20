@@ -3,7 +3,7 @@ import type { ClickObject } from "metabase/visualizations/types";
 import type { AnalysisSpec } from "../spec/types";
 import { getFunnelStepLabel } from "../sql/analyses/funnel";
 
-import type { FunnelInsightsState } from "./use-funnel-insights";
+import type { InsightsState } from "./use-insights";
 
 /**
  * The clicked step of the "Step by step" chart, numbered from 1. Undefined
@@ -31,7 +31,7 @@ export const getClickedStep = (
  */
 export const getClickedTransition = (
   spec: AnalysisSpec | undefined,
-  state: FunnelInsightsState,
+  state: InsightsState,
   clicked: ClickObject,
 ): number | undefined => {
   const step = getClickedStep(spec, clicked);
@@ -42,6 +42,6 @@ export const getClickedTransition = (
   const transition = step - 1;
   const hasInsights =
     transition >= 1 &&
-    state.insights.some((insight) => insight.transition === transition);
+    state.insights.some((insight) => insight.question === transition);
   return hasInsights ? transition : undefined;
 };

@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { SupportingAnalyses as SupportingAnalysesState } from "../../supporting/use-supporting-analyses";
 
 import { FunnelPathsPanel } from "./FunnelPathsPanel";
@@ -35,6 +37,7 @@ export const SupportingAnalyses = ({ supporting }: SupportingAnalysesProps) => {
       <InsightsPanel
         insights={funnel.insights.insights}
         focus={funnel.insights.focus}
+        idleLabel={t`Finish setting up the funnel to see insights.`}
       />
     </>
   );

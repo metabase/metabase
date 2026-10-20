@@ -8,7 +8,7 @@ import type { AnalysisSpec } from "../spec/types";
 
 import { getClickedTransition } from "./clicked-transition";
 import type { Insight } from "./types";
-import type { FunnelInsightsState } from "./use-funnel-insights";
+import type { InsightsState } from "./use-insights";
 
 type SpecOpts = {
   view?: "steps" | "overTime" | "timeToConvert";
@@ -34,7 +34,7 @@ const getFunnelSpec = ({ view = "steps" }: SpecOpts = {}): AnalysisSpec => {
 };
 
 const insightAt = (transition: number): Insight => ({
-  transition,
+  question: transition,
   conditions: [{ attributeId: "os", value: "iOS" }],
   reached: 1000,
   converted: 140,
@@ -44,11 +44,12 @@ const insightAt = (transition: number): Insight => ({
   pValue: 0.001,
 });
 
-const doneState = (insights: Insight[]): FunnelInsightsState => ({
+const doneState = (insights: Insight[]): InsightsState => ({
   status: "done",
   insights,
   attributes: [],
-  transitions: [],
+  questions: [],
+  checkedCount: 0,
   isFindingPairs: false,
   pairsError: undefined,
 });

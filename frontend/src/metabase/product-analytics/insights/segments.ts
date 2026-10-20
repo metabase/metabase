@@ -1,9 +1,6 @@
 import _ from "underscore";
 
-import {
-  OTHER_VALUE,
-  SEGMENT_SEPARATOR,
-} from "../sql/analyses/funnel-insights";
+import { OTHER_VALUE, SEGMENT_SEPARATOR } from "../sql/analyses/insights";
 
 import type { CountIndex } from "./counts";
 import {
@@ -24,9 +21,9 @@ export type InsightSegment = Counts & {
 
 /** People in a segment smaller than this are counted in `OTHER_VALUE`. */
 export const getMinSegmentSize = (
-  transitionReached: number,
+  questionReached: number,
   options: InsightOptions = DEFAULT_INSIGHT_OPTIONS,
-): number => Math.ceil(getMinGroupSize(transitionReached, options));
+): number => Math.ceil(getMinGroupSize(questionReached, options));
 
 /** Better-converting insights list the best segments first; worse ones, the worst. */
 export const isDescending = (insight: Pick<Insight, "rate" | "restRate">) =>
@@ -50,7 +47,7 @@ const labelOf = (group: GroupCounts, attributeIds: readonly string[]) =>
   valuesOf(group, attributeIds).join(SEGMENT_SEPARATOR);
 
 /**
- * Conversion at the insight's transition by every combination of its
+ * The outcome rate at the insight's question by every combination of its
  * attributes' values, sorted by rate in the insight's direction. Segments too
  * small for a meaningful rate are pooled into a last `OTHER_VALUE` segment.
  */
@@ -59,7 +56,7 @@ export const getInsightSegments = (
   insight: Insight,
   options: InsightOptions = DEFAULT_INSIGHT_OPTIONS,
 ): InsightSegment[] => {
-  const total = index.totals.get(insight.transition);
+  const total = index.totals.get(insight.question);
   if (total === undefined) {
     return [];
   }
@@ -67,7 +64,7 @@ export const getInsightSegments = (
   const minSize = getMinSegmentSize(total.reached, options);
   const shown = index.groups.filter(
     (group) =>
-      group.transition === insight.transition &&
+      group.question === insight.question &&
       isSegmentOf(group, attributeIds) &&
       group.reached >= minSize,
   );

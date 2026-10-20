@@ -1,4 +1,5 @@
 import { getExploreData } from "./explore";
+import { getConversionOutcome } from "./outcomes";
 import type { InsightSegment } from "./segments";
 import type { InsightAttribute } from "./types";
 
@@ -35,6 +36,7 @@ describe("getExploreData", () => {
       ],
       [IDENTIFIED, BROWSER],
       "SELECT 1",
+      getConversionOutcome(),
     );
     expect(data.rows.map(([label]) => label)).toEqual([
       "Anonymous · Safari",

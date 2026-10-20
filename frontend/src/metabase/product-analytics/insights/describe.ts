@@ -1,54 +1,44 @@
-import { c, msgid, ngettext, t } from "ttag";
+import { c, t } from "ttag";
 
 import { formatNumber } from "metabase/utils/formatting";
 
 import { IDENTIFIED_COLUMN } from "../columns";
-import { NOT_SET_VALUE } from "../sql/analyses/funnel-insights";
+import { NOT_SET_VALUE } from "../sql/analyses/insights";
 
+import type { InsightOutcome } from "./outcomes";
 import type { Insight, InsightAttribute } from "./types";
 
 const MULTIPLIER_FROM = 2;
 // Below this, a whole-number percentage would hide the difference.
 const PRECISE_DIFFERENCE_BELOW = 0.1;
 
-/** How much more or less likely the group is to convert than everyone else. */
-export const describeLift = ({
-  rate,
-  restRate,
-}: Pick<Insight, "rate" | "restRate">): string => {
+/** How much more or less likely the group is to have the outcome than everyone else. */
+export const describeLift = (
+  { rate, restRate }: Pick<Insight, "rate" | "restRate">,
+  outcome: InsightOutcome,
+): string => {
   const ratio = restRate > 0 ? rate / restRate : Infinity;
   if (ratio >= MULTIPLIER_FROM) {
     const multiplier = Number.isFinite(ratio)
       ? formatNumber(ratio, { maximumFractionDigits: 1 })
       : "∞";
-    return c("{0} is a multiplier, like 2.5")
-      .t`${multiplier}× as likely to convert`;
+    return outcome.describeMultiple(multiplier);
   }
   const difference = Math.abs(ratio - 1);
   const percent = formatNumber(difference, {
     number_style: "percent",
     maximumFractionDigits: difference < PRECISE_DIFFERENCE_BELOW ? 1 : 0,
   });
-  return ratio >= 1
-    ? c("{0} is a percentage").t`${percent} more likely to convert`
-    : c("{0} is a percentage").t`${percent} less likely to convert`;
+  return outcome.describeDifference(percent, ratio >= 1);
 };
 
-/** The conversions the group gained or lost against everyone else's rate. */
-export const describeExcess = ({ excess }: Pick<Insight, "excess">): string => {
+/** The outcomes the group gained or lost against everyone else's rate. */
+export const describeExcess = (
+  { excess }: Pick<Insight, "excess">,
+  outcome: InsightOutcome,
+): string => {
   const count = Math.round(Math.abs(excess));
-  const formatted = formatNumber(count);
-  return excess >= 0
-    ? ngettext(
-        msgid`About ${formatted} more conversion than at everyone else's rate`,
-        `About ${formatted} more conversions than at everyone else's rate`,
-        count,
-      )
-    : ngettext(
-        msgid`About ${formatted} fewer conversion than at everyone else's rate`,
-        `About ${formatted} fewer conversions than at everyone else's rate`,
-        count,
-      );
+  return outcome.describeExcess(count, formatNumber(count), excess >= 0);
 };
 
 type DescribedAttribute = Pick<
