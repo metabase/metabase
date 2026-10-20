@@ -46,14 +46,15 @@
           (is (empty? @calls)))))))
 
 (deftest pin-remote-sync-custom-collections-enabled-test
-  (testing "First startup stores whether remote sync was already configured, so existing setups keep choosing collections"
-    (doseq [[url expected] [["https://github.com/foo/bar.git" true] [nil false]]]
-      (testing (pr-str url)
-        (mt/with-temporary-setting-values [:remote-sync-url                 url
+  (testing "First startup stores whether custom collections are already synced"
+    (doseq [synced? [true false]]
+      (testing (pr-str synced?)
+        (mt/with-temporary-setting-values [:remote-sync-url                        "https://github.com/foo/bar.git"
                                            :remote-sync-custom-collections-enabled nil]
-          (settings/pin-remote-sync-custom-collections-enabled!)
-          (is (= :database (setting/get-raw-value-source :remote-sync-custom-collections-enabled)))
-          (is (= expected (settings/remote-sync-custom-collections-enabled)))))))
+          (mt/with-temp [:model/Collection _ {:location "/" :is_remote_synced synced?}]
+            (settings/pin-remote-sync-custom-collections-enabled!)
+            (is (= :database (setting/get-raw-value-source :remote-sync-custom-collections-enabled)))
+            (is (= synced? (settings/remote-sync-custom-collections-enabled))))))))
   (testing "Later startups keep stored value"
     (mt/with-temporary-setting-values [:remote-sync-url                 nil
                                        :remote-sync-custom-collections-enabled true]

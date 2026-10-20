@@ -104,6 +104,14 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Stop syncing the collections"
                               (startup/def-startup-validation! ::settings/remote-sync-custom-collections-enabled)))))))
 
+(deftest stored-value-requires-no-custom-synced-collections-test
+  (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                     remote-sync-custom-collections-enabled true]
+    (mt/with-temp [:model/Collection _ {:location "/" :is_remote_synced true}]
+      (mt/with-temporary-raw-setting-values [remote-sync-custom-collections-enabled "false"]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Stop syncing the collections"
+                              (startup/def-startup-validation! ::settings/remote-sync-custom-collections-enabled)))))))
+
 (deftest pull-rejects-custom-collection-test
   (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only
                                      remote-sync-branch "main"]
