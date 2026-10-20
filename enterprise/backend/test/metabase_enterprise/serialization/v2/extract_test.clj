@@ -1006,6 +1006,14 @@
           (testing "collection_id is nil"
             (is (nil? (:collection_id ser)))))))))
 
+(deftest table-owner-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/User     {user-id :id}  {:email "owner@example.com"}
+                       :model/Database {db-id :id}    {:name "My Database"}
+                       :model/Table    {table-id :id} {:name "Owned Table" :db_id db-id :owner_user_id user-id}]
+      (testing "the owner is exported by email, not by local id"
+        (is (= "owner@example.com" (:owner_user_id (ts/extract-one "Table" table-id))))))))
+
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"

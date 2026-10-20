@@ -320,6 +320,21 @@
           (load! (assoc field :dimensions []))
           (is (not (t2/exists? :model/Dimension :field_id (:id email)))))))))
 
+(deftest table-owner-import-test
+  (testing "a Table's owner is imported by email, and an older file's local id is kept"
+    (mt/with-empty-h2-app-db!
+      (let [db    (ts/create! :model/Database :name "my-db")
+            owner (ts/create! :model/User :first_name "Table" :last_name "Owner" :email "owner@example.com")
+            other (ts/create! :model/User :first_name "Other" :last_name "User" :email "other@example.com")
+            table (ts/create! :model/Table :name "customers" :db_id (:id db) :owner_user_id (:id owner))
+            file  (ts/extract-one "Table" (:id table))
+            load! (fn [entity] (serdes.load/load-metabase! (ts/ingestion-in-memory [entity])))]
+        (t2/update! :model/Table (:id table) {:owner_user_id nil})
+        (load! file)
+        (is (= (:id owner) (t2/select-one-fn :owner_user_id :model/Table (:id table))))
+        (load! (assoc file :owner_user_id (:id other)))
+        (is (= (:id other) (t2/select-one-fn :owner_user_id :model/Table (:id table))))))))
+
 (deftest legacy-table-user-settings-fields-import-test
   (testing "a settings file written before Field settings got files of their own replaces its Table's Field settings"
     (mt/with-empty-h2-app-db!
