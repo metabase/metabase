@@ -142,6 +142,21 @@ describe("useSerializedMcpDerive", () => {
     expect(getCurrentMcpQueryHandle()).toBe("tool-result-handle");
   });
 
+  it("drops a derive that fails after a new tool result replaced its handle", async () => {
+    fetchMock.post(deriveUrl("handle-1"), 400, { delay: 500 });
+
+    const { deriveQuery: derive } = setup();
+    const derived = derive([YEAR], APPLY);
+
+    // The failure belongs to a chart that is gone, so it must not show on the new one.
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls()).toHaveLength(1);
+    });
+    setCurrentMcpQueryHandle("tool-result-handle");
+
+    await expect(derived).rejects.toMatchObject({ isStale: true });
+  });
+
   it("drops a derive requested before a new tool result replaced the handle", async () => {
     fetchMock.post(deriveUrl("tool-result-handle"), {
       handle: "handle-9",

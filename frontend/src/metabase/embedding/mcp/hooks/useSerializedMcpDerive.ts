@@ -43,6 +43,7 @@ export function useSerializedMcpDerive({
     ): Promise<DerivedQuery> => {
       pendingDerivesRef.current += 1;
       const generation = getMcpQueryHandleGeneration();
+      const isReplaced = () => getMcpQueryHandleGeneration() !== generation;
       const stale = () =>
         Object.assign(
           new Error("The query changed while this change was in flight."),
@@ -50,7 +51,7 @@ export function useSerializedMcpDerive({
         );
 
       const derive = lastDeriveRef.current.then(async () => {
-        if (getMcpQueryHandleGeneration() !== generation) {
+        if (isReplaced()) {
           throw stale();
         }
 
@@ -61,15 +62,20 @@ export function useSerializedMcpDerive({
           throw new Error("The query cannot be changed here.");
         }
 
-        const derived = await deriveMcpQuery({
-          instanceUrl,
-          uiCredential,
-          mcpSessionId,
-          queryHandle,
-          operations,
-        });
+        let derived: DerivedQuery;
+        try {
+          derived = await deriveMcpQuery({
+            instanceUrl,
+            uiCredential,
+            mcpSessionId,
+            queryHandle,
+            operations,
+          });
+        } catch (error) {
+          throw isReplaced() ? stale() : error;
+        }
 
-        if (getMcpQueryHandleGeneration() !== generation) {
+        if (isReplaced()) {
           throw stale();
         }
 
