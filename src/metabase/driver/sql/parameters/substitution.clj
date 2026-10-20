@@ -285,19 +285,14 @@
    col        :- driver-api/schema.metadata.column
    param-type :- driver-api/schema.parameter.type
    value      :- ::substitutable-value]
-  ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
-  ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
-  ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
-  ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
-  ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
-  ;; I haven't figured out what that is yet
   (let [temporal-unit (align-temporal-unit-with-param-type-and-value driver col param-type value)]
     (-> (cond-> col
           temporal-unit (lib/with-temporal-bucket temporal-unit))
         lib/ref
-        (lib/update-options assoc
-                            driver-api/qp.add.source-table (:table-id col)
-                            ::compiling-field-filter?      true))))
+        (lib/update-options merge
+                            (driver-api/column-info-options (driver-api/metadata-provider) col)
+                            {driver-api/qp.add.source-table (:table-id col)
+                             ::compiling-field-filter?      true}))))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an appropriate snippet to represent this `field` in SQL given its param type.

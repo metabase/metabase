@@ -209,11 +209,17 @@
       (recur (:parent-id parent) (conj names (:name parent)))
       (not-empty (vec names)))))
 
-(defn- add-column-info-to-options [opts query col]
-  (m/assoc-some opts
+(mu/defn column-info-options :- :map
+  "The `::coercion-strategy`, `::database-type`, and `::parent-names` options for a `:field` ref to `col`."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   col                   :- ::lib.schema.metadata/column]
+  (m/assoc-some {}
                 ::coercion-strategy (:coercion-strategy col)
                 ::database-type     (:database-type col)
-                ::parent-names      (parent-names query col)))
+                ::parent-names      (parent-names metadata-providerable col)))
+
+(defn- add-column-info-to-options [opts query col]
+  (merge opts (column-info-options query col)))
 
 (defn- add-source-to-field-ref [query path field-ref col]
   (lib/update-options

@@ -1738,10 +1738,9 @@
   syntax-error
   validation-exception-error]
  [metabase.lib.walk.util
-  all-field-ids
   all-referenced-entity-ids
   all-referenced-entity-ids-recursive
-  all-implicitly-joined-field-ids
+  all-implicit-join-fk-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
   all-segment-ids

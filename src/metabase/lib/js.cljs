@@ -2653,10 +2653,10 @@
   [a-query]
   (clj->js (vec (or (lib.core/all-source-card-ids a-query) #{}))))
 
-(defn ^:export all-field-ids
-  "Return a JS array of all field IDs referenced anywhere in `a-query`."
+(defn ^:export all-implicit-join-fk-field-ids
+  "Return a JS array of the IDs of the FK fields that the implicit joins anywhere in `a-query` go through."
   [a-query]
-  (clj->js (vec (or (lib.core/all-field-ids a-query) #{}))))
+  (clj->js (vec (lib.core/all-implicit-join-fk-field-ids a-query))))
 
 (defn ^:export can-run
   "Returns true if the query is runnable.

@@ -9,7 +9,6 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.fetch-source-query :as qp.fetch-source-query]
-   [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
    [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -26,8 +25,7 @@
                                                  (qp.fetch-source-query/normalize-card-query query)
                                                  :dataset-query)
                            resolved-query   (qp.fetch-source-query/resolve-source-cards referenced-query)]]
-    (qp.resolve-source-table/resolve-source-tables resolved-query)
-    (qp.resolve-fields/resolve-fields resolved-query)))
+    (qp.resolve-source-table/resolve-source-tables resolved-query)))
 
 (mu/defn- fetch-card-query
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable

@@ -128,9 +128,9 @@
   (t2/select [:model/Table :id :db_id] :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn card-names
-  "The id and name of the Cards with `card-ids`."
+  "The id, name, and Database id of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name] :id [:in (mapv long card-ids)]))
+  (t2/select [:model/Card :id :name :database_id] :id [:in (mapv long card-ids)]))
 
 (defn- grouped-rollup-where
   [source-type source-id bucket-start bucket-end]

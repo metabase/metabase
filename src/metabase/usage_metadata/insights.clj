@@ -68,22 +68,13 @@
                                 :name         name
                                 :display-name (or display_name name)}])
                 tables)
-           (map (fn [{:keys [id name]}]
+           (map (fn [{:keys [id name database_id]}]
                   [[:card id] {:type         :card
                                :id           id
+                               :db-id        database_id
                                :name         name
                                :display-name name}])
                 cards)])))
-
-(defn- predicate-field-ids
-  "Return distinct field ids referenced in a decoded predicate."
-  [predicate]
-  (when predicate
-    (try
-      (vec (lib/all-field-ids predicate))
-      (catch Throwable e
-        (log/debugf "usage-metadata: predicate-field-ids failed: %s" (ex-message e))
-        []))))
 
 ;; No SQL LIMIT here: callers filter saved-signature collisions in Clojure, so a SQL LIMIT can under-deliver.
 (defn- grouped-segment-rows
@@ -131,6 +122,20 @@
       (catch Throwable e
         (log/debugf "Failed to wrap query for usage-metadata insights: %s" (ex-message e))
         nil))))
+
+(defn- predicate-field-ids
+  "Return distinct field ids referenced in a decoded predicate on `source`."
+  [{source-type :type, source-id :id, db-id :db-id} predicate]
+  (when predicate
+    (when-let [query (wrap-query db-id {:lib/type :mbql/query
+                                        :stages   [(case source-type
+                                                     :table {:lib/type :mbql.stage/mbql, :source-table source-id}
+                                                     :card  {:lib/type :mbql.stage/mbql, :source-card source-id})]})]
+      (try
+        (into [] (comp (keep :id) (distinct)) (lib/referenced-columns query predicate))
+        (catch Throwable e
+          (log/debugf "usage-metadata: predicate-field-ids failed: %s" (ex-message e))
+          [])))))
 
 (defn- extract-facts
   [database-id query-map]
@@ -209,15 +214,17 @@
          raw-rows    (remove (fn [{:keys [source_type source_id predicate]}]
                                (contains? existing [source_type source_id predicate]))
                              (grouped-segment-rows opts))
-         ;; Decode each predicate + its field-ids in one pass so we can bulk-fetch below.
-         enriched    (mapv (fn [{:keys [predicate] :as row}]
-                             (let [decoded (decode-predicate predicate)]
-                               (assoc row
-                                      ::decoded   decoded
-                                      ::field-ids (predicate-field-ids decoded))))
-                           raw-rows)
          source-idx  (build-source-index
-                      (into #{} (map (juxt :source_type :source_id)) enriched))
+                      (into #{} (map (juxt :source_type :source_id)) raw-rows))
+         ;; Decode each predicate + its field-ids in one pass so we can bulk-fetch below.
+         enriched    (lib-be/with-metadata-provider-cache
+                       (mapv (fn [{:keys [predicate source_type source_id] :as row}]
+                               (let [decoded (decode-predicate predicate)]
+                                 (assoc row
+                                        ::decoded   decoded
+                                        ::field-ids (some-> (source-idx [source_type source_id])
+                                                            (predicate-field-ids decoded)))))
+                             raw-rows))
          field-idx   (build-field-index
                       (into #{} (mapcat ::field-ids) enriched))]
      (into []
