@@ -38,6 +38,15 @@
    :recovery [{:uses #{"search"}
                :text "Call `search` to find another source and use an id from the results."}]})
 
+(tools/defrecoverable incomplete-query!
+  "The conversation query names no database or no query type, as a draft does before the user picks its data."
+  {:payload [:map {:closed true}
+             [:query-id :string]]}
+  [{:keys [query-id]}]
+  {:message  (str "Query " query-id " is not complete enough for an X-ray, since it has no data source yet.")
+   :recovery [{:uses #{"search"}
+               :text "Call `search` to find a table, model or metric to X-ray instead."}]})
+
 (defn- readable-source
   "The `kind` entity with `id` and its X-ray path, if the current user can read it and it is still in use."
   [kind id]
@@ -81,6 +90,8 @@
                           {:agent-error? true
                            :query-id query_id
                            :available-queries (keys queries-state)})))
+        (when-not (and (:database query) (or (:lib/type query) (:type query)))
+          (incomplete-query! {:query-id query_id}))
         (tools/with-entity {:kind :query :id query_id}
           (api/check-403 (query-perms/check-data-perms query (query-perms/required-perms-for-query query)
                                                        :throw-exceptions? false)))

@@ -2,8 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.macros :as api.macros]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.context :as metabot.context]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.autogen-dashboard :as autogen-dashboard]
    [metabase.metabot.tools.legacy :as tools.legacy]
@@ -230,6 +233,21 @@
                               "Call `search` to find the entity you want and use an id from the results.")}
                  (mt/with-current-user (mt/user->id :rasta)
                    (failure {:query_id "q-1"})))))))))
+
+(deftest draft-query-test
+  (testing "a draft from the viewing context, before the user picked its data, is too incomplete for an X-ray"
+    (doseq [draft [{} {:stages []} {:database nil :type "query" :query {:source-table nil}}]]
+      (testing (pr-str draft)
+        (let [context (api.macros/decode-and-validate-params
+                       :body ::metabot.context/context
+                       {:user_is_viewing [{:id "q-draft" :type "adhoc" :query draft}]})]
+          (binding [shared/*memory-atom* (atom {:state (#'agent/seed-state {} context)})]
+            (is (= {:class :recoverable
+                    :code  ::autogen-dashboard/incomplete-query
+                    :text  (str "Query q-draft is not complete enough for an X-ray, since it has no data source yet.\n"
+                                "Call `search` to find a table, model or metric to X-ray instead.")}
+                   (mt/with-current-user (mt/user->id :crowberto)
+                     (failure {:query_id "q-draft"}))))))))))
 
 (deftest unavailable-source-test
   (mt/with-temp [:model/Card  {model-id :id} {:type :model :archived true}
