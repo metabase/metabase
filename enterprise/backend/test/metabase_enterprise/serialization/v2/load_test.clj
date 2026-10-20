@@ -1901,11 +1901,16 @@
               (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
               (is (= query (stored-query))))
             (testing "an export that names the referenced card by its source id loads the same way"
-              (serdes.load/load-metabase!
-               (ts/ingestion-in-memory (walk/postwalk #(cond-> %
-                                                         (string? %) (str/replace (str "#" @target-eid)
-                                                                                  (str "#" (:id @target1s))))
-                                                      @serialized)))
+              (let [tag-name     #(str "#" % "-bh-population-model")
+                    display-name #(u.humanization/name->human-readable-name :simple (tag-name %))
+                    source-id    (:id @target1s)]
+                (serdes.load/load-metabase!
+                 (ts/ingestion-in-memory
+                  (walk/postwalk #(cond
+                                    (= % (display-name @target-eid)) (display-name source-id)
+                                    (string? %)                      (str/replace % (tag-name @target-eid) (tag-name source-id))
+                                    :else                            %)
+                                 @serialized))))
               (is (= query (stored-query))))))))))
 
 (deftest load-action-test
