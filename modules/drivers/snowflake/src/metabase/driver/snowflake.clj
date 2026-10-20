@@ -419,9 +419,10 @@
     password                                               "password"))
 
 (defn- resolve-credentials
-  "Set the JDBC credential properties. An explicit :auth-mode wins, because it is the method the user
-  selected and the details can still hold credentials of the method they used before. Without
-  :auth-mode, derive password vs key-pair from the other auth-related keys."
+  "Set the JDBC credential properties. An explicit `:auth-mode` is preferred, because some can't be
+   inferred from other keys in the details (e.g. WIF), and because the details can have credential
+   keys from previous auth methods. Without an explicit `:auth-mode`, infer password vs key-pair
+   from the current details."
   [{:keys [auth-mode] :as details}]
   (case (or (#{"wif" "password" "key-pair"} auth-mode)
             (infer-auth-mode details)
@@ -1199,8 +1200,7 @@
          (some? (infer-auth-mode details)))
     (as-> d (assoc d :auth-mode (infer-auth-mode d)))
 
-    ;; Keep :use-password in sync with an explicit :auth-mode, so that a stale value from the
-    ;; previous method does not change which credentials are tried first.
+    ;; Keep `:use-password` in sync with an explicit `:auth-mode`
     (#{"password" "key-pair"} (:auth-mode details))
     (assoc :use-password (= "password" (:auth-mode details)))))
 
