@@ -10,7 +10,7 @@ With no other flags it reads the deleted `it()` titles and the changed unit spec
 
 ## How it works
 
-1. **Scope.** The nightly `E2E Coverage Manifest` workflow runs the e2e suite against an instrumented frontend and records, for every `it()`, which product functions fired. `verify.ts` downloads the raw shard artifacts of the latest successful run once, into `local/claude/e2e-coverage/<run id>/`, and drops every function that 20% or more of all e2e tests fire (`--boot-threshold`). What is left is the code that the deleted test drove beyond boot: a median of about 200 functions in about 30 files.
+1. **Scope.** The nightly `E2E Coverage Manifest` workflow runs the e2e suite against an instrumented frontend and records, for every `it()`, which product functions fired. The builder publishes that as `spec-test-functions.json` inside the `spec-file-manifest` artifact (30-day retention). `verify.ts` downloads it once, into `local/claude/e2e-coverage/<run id>/`, and falls back to the raw `coverage-shard-*` artifacts (7-day retention) for a run that predates the file. It then drops every function that 20% or more of all e2e tests fire (`--boot-threshold`). What is left is the code that the deleted test drove beyond boot: a median of about 200 functions in about 30 files.
 2. **Map.** Each function is located by its start line at the nightly commit, shifted through `git diff -U0 <nightly sha>` onto the working tree, and matched to the function node that starts there. A function inside a changed hunk is reported as `changed since nightly`.
 3. **Execute.** One jest run with `--coverageProvider=v8` over the branch's unit specs says which of those functions they execute at all. The rest are `not executed` rows and need no further work.
 4. **Mutate.** Each executed function gets up to `--per-function` mutants (default 4), chosen in this order: return `undefined`, `if` never takes its branch, ternary takes its second arm, a call statement is removed, a JSX prop becomes `undefined`, a string becomes empty. All mutants are compiled into the file once, each behind `globalThis.__E2E_MUTANT__ === <id>`, so the file still loads and behaves as the original.
@@ -25,7 +25,7 @@ The tool edits product files in the working tree while jest runs. It refuses to 
 
 ## Limits
 
-- Raw shard artifacts expire after 7 days. A run older than that has no scope data until the nightly publishes a compact per-test function manifest.
+- The function manifest describes the nightly's own commit. Functions inside a hunk of `git diff <nightly sha>` are reported as `changed since nightly` rather than mapped, so run it against a recent nightly.
 - The nightly records that a function ran, not that an assertion depended on it. The mutants supply the assertion half, and an equivalent mutant can leave a false `survived` row. Read the detail column before treating a row as a gap.
 - Functions that jsdom cannot reach (layout, scrolling, real focus) show as `not executed` and are keep signals for the e2e test, not gaps in the unit test.
 

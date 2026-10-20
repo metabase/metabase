@@ -304,11 +304,102 @@ export async function loadIndex(
     }
     fs.rmSync(cached);
   }
-  const shardsDir = await fetchShards(repoRoot, run, options.log);
-  options.log("indexing shards");
-  const index = buildIndex(shardsDir, run, options.bootThreshold);
+  const manifest = await fetchFunctionManifest(
+    repoRoot,
+    run.runId,
+    options.log,
+  );
+  let index: CoverageIndex;
+  if (manifest) {
+    index = indexFromManifest(manifest, run.runId, options.bootThreshold);
+  } else {
+    options.log(
+      "no per-test function manifest in this run; falling back to the raw shards",
+    );
+    const shardsDir = await fetchShards(repoRoot, run, options.log);
+    options.log("indexing shards");
+    index = buildIndex(shardsDir, run, options.bootThreshold);
+  }
   fs.writeFileSync(cached, JSON.stringify(index));
   return index;
+}
+
+interface FunctionManifest {
+  builtAt: string;
+  totalTests: number;
+  keys: string[];
+  frequency: number[];
+  tests: { spec: string; title: string; fired: number[] }[];
+}
+
+function isFunctionManifest(value: unknown): value is FunctionManifest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "builtAt" in value &&
+    typeof value.builtAt === "string" &&
+    "totalTests" in value &&
+    typeof value.totalTests === "number" &&
+    "keys" in value &&
+    Array.isArray(value.keys) &&
+    "frequency" in value &&
+    Array.isArray(value.frequency) &&
+    "tests" in value &&
+    Array.isArray(value.tests)
+  );
+}
+
+const MANIFEST_ARTIFACT = "spec-file-manifest";
+const FUNCTIONS_FILE = "spec-test-functions.json";
+
+/**
+ * The compact per-test function manifest that the nightly publishes next to
+ * the spec manifests. Null when the run predates it.
+ */
+async function fetchFunctionManifest(
+  repoRoot: string,
+  runId: string,
+  log: (line: string) => void,
+): Promise<FunctionManifest | null> {
+  const dir = path.join(cacheRoot(repoRoot), runId, "manifest");
+  const file = path.join(dir, FUNCTIONS_FILE);
+  if (!fs.existsSync(dir)) {
+    log(`downloading the ${MANIFEST_ARTIFACT} artifact of run ${runId}`);
+    fs.mkdirSync(dir, { recursive: true });
+    await download(runId, MANIFEST_ARTIFACT, dir);
+  }
+  if (!fs.existsSync(file)) {
+    return null;
+  }
+  const parsed: unknown = readJson(file);
+  return isFunctionManifest(parsed) ? parsed : null;
+}
+
+export function indexFromManifest(
+  manifest: FunctionManifest,
+  runId: string,
+  bootThreshold: number,
+): CoverageIndex {
+  const boot = new Set<number>();
+  manifest.frequency.forEach((count, id) => {
+    if (count / manifest.totalTests >= bootThreshold) {
+      boot.add(id);
+    }
+  });
+  return {
+    runId,
+    sha: manifest.builtAt,
+    bootThreshold,
+    totalTests: manifest.totalTests,
+    keys: manifest.keys,
+    frequency: manifest.frequency,
+    boot: [...boot],
+    tests: manifest.tests.map(({ spec, title, fired }) => ({
+      spec,
+      title,
+      rare: fired.filter((id) => !boot.has(id)),
+    })),
+  };
 }
 
 export function parseKey(key: string): FunctionRef {

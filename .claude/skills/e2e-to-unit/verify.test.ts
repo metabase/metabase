@@ -4,6 +4,7 @@ import ts from "typescript";
 
 import {
   buildIndex,
+  indexFromManifest,
   findTests,
   parseKey,
   toRepoRelative,
@@ -357,5 +358,24 @@ describe("coverage index", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("index from the nightly function manifest", () => {
+  it("applies the boot threshold and keeps the rare functions per test", () => {
+    const index = indexFromManifest(
+      {
+        builtAt: "abc",
+        totalTests: 4,
+        keys: ["a#1#boot", "a#9#rare"],
+        frequency: [4, 1],
+        tests: [{ spec: "x.cy.spec.ts", title: "x does one", fired: [0, 1] }],
+      },
+      "42",
+      0.5,
+    );
+    expect(index.sha).toBe("abc");
+    expect(index.boot).toEqual([0]);
+    expect(index.tests[0].rare).toEqual([1]);
   });
 });
