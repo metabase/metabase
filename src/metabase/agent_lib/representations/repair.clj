@@ -1432,9 +1432,9 @@
 
 (defn- split-top-level-and-filters*
   [form]
-  (match/replace form
+  (match/replace-all form
     {"filters" (filters :guard (and (sequential? filters) (some and-filter-clause? filters)))}
-    (&recur (assoc &match "filters" (into [] (mapcat and-filter-operands) filters)))))
+    (assoc &match "filters" (into [] (mapcat and-filter-operands) filters))))
 
 ;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
