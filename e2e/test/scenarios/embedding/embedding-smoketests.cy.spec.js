@@ -8,7 +8,7 @@ import {
 
 const standalonePath = "/embedding/security";
 
-// These tests will run on both OSS and EE instances. Both without a token!
+// These tests run only on OSS builds, without a token.
 describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
