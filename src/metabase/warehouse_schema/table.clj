@@ -55,7 +55,7 @@
   [table]
   (mi/can-read? table))
 
-(defn- sensitive-fields-table-ids
+(defn sensitive-fields-table-ids
   "IDs of the `tables` whose sensitive fields to list: only those the current user can edit the data model of."
   [include-sensitive-fields? tables]
   (if include-sensitive-fields?

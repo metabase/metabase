@@ -523,7 +523,7 @@
   []
   (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
+(defn- db-metadata [id include-hidden? include-sensitive-fields? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
                ((if skip-fields?
                   #(t2/hydrate % [:tables :segments :metrics])
@@ -540,16 +540,12 @@
              db
              (update db :tables apply-sandbox-column-filter))]
     (-> db
-        (update :tables (if include-hidden?
-                          (fn [tables]
-                            (let [editable-table-ids (into #{} (map :id) (schema.table/filter-tables-by-data-model-perms tables))]
-                              (for [table tables]
-                                (cond-> table
-                                  (not (editable-table-ids (:id table))) (m/update-existing :fields filter-sensitive-fields)))))
-                          (fn [tables]
-                            (->> tables
-                                 (remove :visibility_type)
-                                 (map #(m/update-existing % :fields filter-sensitive-fields))))))
+        (update :tables (if include-hidden? identity (partial remove :visibility_type)))
+        (update :tables (fn [tables]
+                          (let [sensitive-table-ids (schema.table/sensitive-fields-table-ids include-sensitive-fields? tables)]
+                            (for [table tables]
+                              (cond-> table
+                                (not (sensitive-table-ids (:id table))) (m/update-existing :fields filter-sensitive-fields))))))
         (update :tables (fn [tables]
                           (if-not include-editable-data-model?
                             ;; If we're filtering by data model perms, table perm checks were already done by
@@ -577,8 +573,10 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
-  By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them; sensitive fields
-  are then included only for tables whose data model the current user can edit.
+  By default only non-hidden tables are returned. Passing include_hidden=true includes them.
+
+  Passing include_sensitive_fields=true includes fields with visibility_type sensitive, for tables whose data model the
+  current user can edit.
 
   Passing include_editable_data_model will only return tables for which the current user has data model editing
   permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the
@@ -586,14 +584,16 @@
   DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}
+   {:keys [include_hidden include_sensitive_fields include_editable_data_model remove_inactive skip_fields]}
    :- [:map {:closed true}
        [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+       [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
        [:remove_inactive             {:default false} [:maybe ms/BooleanValue]]
        [:skip_fields                 {:default false} [:maybe ms/BooleanValue]]]]
   (db-metadata id
                include_hidden
+               include_sensitive_fields
                include_editable_data_model
                remove_inactive
                skip_fields))
