@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.config.core :as config]
-   [metabase.settings.core :as setting]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.date-2 :as u.date]
@@ -59,12 +59,36 @@
       (is (nil? (#'analytics.settings/default-metaplow-url))))))
 
 (deftest metaplow-url-is-unset-outside-production-test
-  (testing "The registered default is absent in this run mode, so the setting resolves as unset"
-    (is (nil? (setting/default-value :metaplow-url)))
+  (testing "There is no default in this run mode, so the setting resolves as unset"
+    (is (nil? (analytics.settings/metaplow-url)))
     ;; a blank env var value is treated as absent, so this is also what a run with `MB_METAPLOW_URL=` resolves to
     (mt/with-temp-env-var-value! [mb-metaplow-url ""]
       (is (nil? (analytics.settings/metaplow-url)))
       (is (false? (analytics.settings/metaplow-tracking-enabled))))))
+
+(deftest metaplow-url-air-gap-test
+  (mt/with-temporary-setting-values [anon-tracking-enabled true
+                                     metaplow-url          nil]
+    (with-redefs [config/is-prod? true]
+      (testing "In production run mode with nothing set, the Metabase Track collector is the default"
+        (mt/with-dynamic-fn-redefs [premium-features/airgap-enabled (constantly false)]
+          (is (= "https://product-analytics-ingestion.metabase.com/api/send"
+                 (analytics.settings/metaplow-url)))
+          (is (true? (analytics.settings/metaplow-tracking-enabled)))))
+      (mt/with-dynamic-fn-redefs [premium-features/airgap-enabled (constantly true)]
+        (testing "An air-gapped instance gets no default collector, so nothing is sent"
+          (is (nil? (analytics.settings/metaplow-url)))
+          (is (false? (analytics.settings/metaplow-tracking-enabled))))
+        (testing "An air-gapped instance still sends to an explicitly set collector"
+          (mt/with-temporary-setting-values [metaplow-url "https://collector.example.com/api/send"]
+            (is (= "https://collector.example.com/api/send"
+                   (analytics.settings/metaplow-url)))
+            (is (true? (analytics.settings/metaplow-tracking-enabled)))))
+        (testing "...including one set by env var"
+          (mt/with-temp-env-var-value! [mb-metaplow-url "https://env-collector.example.com/api/send"]
+            (is (= "https://env-collector.example.com/api/send"
+                   (analytics.settings/metaplow-url)))
+            (is (true? (analytics.settings/metaplow-tracking-enabled)))))))))
 
 (deftest metaplow-tracking-enabled-test
   (testing "Metabase Track is on when anonymous tracking is on and a collector URL resolves"
