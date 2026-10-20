@@ -60,40 +60,32 @@ Put each test in one bucket:
 
 | Bucket | Meaning | Action |
 |---|---|---|
-| **A: Fully mocked** | `cy.intercept(..., { body })`, `req.reply(...)` or a fixture stubs the data that the test asserts on. The real backend only serves the page. | Move (pass 1) |
-| **B: Render-only** | The test visits a page, or seeds state through the API, and then asserts on the UI. No action has an effect that goes through the backend. Clicks that only navigate or open UI are still B. | Move (pass 1) |
-| **S: Contract seam** | A UI action sends a request, and the test checks how the UI shows the response. A backend test already pins that response. | Move the UI half (pass 2) |
+| **A: Fully mocked** | `cy.intercept(..., { body })`, `req.reply(...)` or a fixture stubs the data that the test asserts on. The real backend only serves the page. | Move |
+| **B: Render-only** | The test visits a page, or seeds state through the API, and then asserts on the UI. No action has an effect that goes through the backend. Clicks that only navigate or open UI are still B. | Move |
+| **S: Contract seam** | A UI action sends a request, and the test checks how the UI shows the response. A backend test already pins that response. | Move the UI half, only when the user asks or the spec is slow or flaky |
 | **N: Narrow** | True e2e, but over-split or doing more boots than the coverage needs. | Record it. Do not change it here. |
 | **C: True e2e** | The value comes from the integration. | Keep |
 
 A test that a signal for e2e keeps, but only because a backend test does not pin the data or the response, is S when that backend test exists. A low issue priority can change the order of work. It must not change the standard of proof.
-
-## Passes
-
-| Pass | Scope | Verify |
-|---|---|---|
-| 1 | A and B tests. This is the default. | Light: read helpers only where a step needs them, at most 5 gap breaks, frontend only. |
-| 2 | S tests. Only when the user asks, or when the spec is slow or flaky. | Full: read each helper and hook, at most 10 gap breaks, backend breaks permitted. |
-| — | C and N tests | Do not touch. |
 
 Do one PR for each spec. Do not group specs, also when they are in the same folder.
 
 ## Mode: triage
 
 1. Read the full spec before you judge a test, also when the user gave a list of candidates. Note the shared `before` and `beforeEach`: the snapshot that they restore, the token that they activate, and what they create through `cy.request`.
-2. For each candidate `it()` (or each `it()` when there is no list), write the layers that it touches and its bucket, with a one-line reason. If your bucket does not agree with the reason given in the input, write both.
+2. For each candidate `it()` (or each `it()` when there is no list), write its bucket with a one-line reason that names the layers that it touches. If your bucket does not agree with the reason given in the input, write both.
 3. For each move candidate that references an issue (`metabase#NNNNN`, `(#NNNNN)`), find the fix. Verify uses it as a break.
    `gh issue view NNNNN --repo metabase/metabase --json title,body,closedByPullRequestsReferences`
    `gh pr diff <fix PR> --repo metabase/metabase --name-only`
    Read the issue title, the steps to reproduce, and the diff of the product files only. Do not read the comment thread. If the fix changes frontend and backend code, the test is probably S or C.
 4. For each move candidate, find the target unit spec. Grep `frontend/src` and `enterprise/frontend/src` for the `data-testid`, aria label or visible text that the test anchors on. The component that owns the anchor is the subject. Prefer the smallest component whose props or store state hold the behavior. Then:
    `bunx jest --listTests --findRelatedTests <component file>`
-   If a case there already asserts the same thing, write "possibly covered". Triage does not delete.
+   If a case there already asserts the same thing, write "possibly covered" beside the target. Triage does not delete.
 5. Get the cost from `e2e/support/timings.json` (key `../test/scenarios/<path>`, milliseconds for each full spec pass). Divide by the number of `it()` blocks for a rough cost for each test.
 6. Write one table:
 
-| # | `it()` title (line) | Bucket | Layers touched | Issue / fix PR | Target unit spec | Existing coverage |
-|---|---|---|---|---|---|---|
+| # | `it()` title (line) | Bucket | Reason | Issue / fix PR | Target unit spec |
+|---|---|---|---|---|---|
 
 Then write how many tests stay, how many move, and the CI seconds that the move bucket costs.
 
@@ -115,7 +107,7 @@ List the **implicit** assertions too. They are easy to lose:
 
 Look for coverage that is easy to miss: route-level harnesses (often one spec for each edition), component and page specs, navbar and layout specs. Tests that look covered often have a small gap: a link `href`, a tracking event, a tab switch, a `null` value, an icon, a URL.
 
-### Step 1b: Contract seam (pass 2 only)
+### Step 1b: Contract seam (S tests only)
 
 1. Find the endpoint that the UI action calls, and its backend test:
    `rg -n "<endpoint path>" test/ enterprise/backend/test/`
@@ -173,14 +165,14 @@ Verify is the only proof step. It checks the claims of migrate and finds what mi
 If the `e2e-replacement-check` skill is available, use it for steps 1 to 5. Steps 6 and 7 stay the same.
 
 1. **Use a fresh agent.** Start one subagent with the Agent tool. Give it the base ref, the deleted and shrunk tests, the mapping table from Step 1 (claims to check, not facts), the fix PRs from triage, and this section. Do not give it the reasoning of the session that wrote the tests. The subagent does not run tests.
-2. **List the steps.** For each deleted test, read it at the merge base (`git show <base>:<spec>`). List each UI step and each assertion, explicit and implicit. For each step, find the product code that it drove. In pass 1, read a helper or hook only when a step or a precondition depends on it. In pass 2, read each helper and hook.
+2. **List the steps.** For each deleted test, read it at the merge base (`git show <base>:<spec>`). List each UI step and each assertion, explicit and implicit. For each step, find the product code that it drove. For A and B tests, read a helper or hook only when a step or a precondition depends on it. For S tests, read each helper and hook.
 3. **Write claim breaks.** For each test in the mapping table, new or existing, write one break of the behavior that it claims to cover. Choose in this order:
    1. Revert the fix from the fix PR (tests that reference an issue). If the code moved, write the same break where the logic is now. This is the strongest proof.
    2. Change the product line that reads the input that the e2e test varied (a flag, a role, a token, a setting).
    3. Remove or change the line that makes the asserted behavior.
 
    For S tests, also change the text in the mocked response. This shows that the UI shows the response, not static text with the same words.
-4. **Write gap breaks.** For each step that no claim covers, and for each shortfall below, write a break. Rank them by the most likely loss. Use at most 5 in pass 1 (frontend only), and at most 10 in pass 2 (backend permitted). The shortfalls are where the new test:
+4. **Write gap breaks.** For each step that no claim covers, and for each shortfall below, write a break. Rank them by the most likely loss. Use at most 5 when the PR moves only A and B tests (frontend only), and at most 10 when it moves S tests (backend permitted). The shortfalls are where the new test:
    - mocks what the e2e test ran for real;
    - covers one of several entry points to the behavior;
    - does not check the request shape or field that joins frontend and backend, and no backend test does;
@@ -204,7 +196,7 @@ Write the report to `local/claude/<spec-name>-e2e-to-unit.md` and the PR descrip
 
 The PR description has:
 
-- A short summary for reviewers: how many e2e tests were deleted and why, which unit specs were added or extended, how many rows the fix pass closed, which e2e tests were restored, the CI seconds that the deleted tests cost (`timings.json`), the tokens used, and e2e assertions that the probe showed to be incorrect.
+- A short summary for reviewers: how many e2e tests were deleted and why, which unit specs were added or extended, how many rows the fix pass closed, which e2e tests were restored, the CI seconds that the deleted tests cost (`timings.json`), and e2e assertions that the probe showed to be incorrect.
 - Bugs in production code, and gaps between frontend types and backend responses. Report them only.
 - The verify table and the coverage table:
 
@@ -238,7 +230,6 @@ Tokens are expensive. CPU is cheap. Prove one time, in verify, with test runs. D
 - **Agents for search only.** One spec is usually small enough to search yourself. Use an agent only for a large search, never one for each test, and at most 4 at a time. Use a cheaper model through the Agent tool's `model` parameter (`sonnet`, or `haiku` for pure grep and read). Give each agent the exact paths and the facts that you already know. Require a report under about 300 words, with `file:line` citations. A search result is a claim. Verify proves it.
 - **Limit each investigation.** If you cannot explain an assertion after about 3 lookups, stop reading and write a probe. This also applies to subagents.
 - **Make Jest output short.** Use `--silent` and `-t`. If the output goes to a file, grep it for `✓|✕|Tests:`.
-- **Record the tokens** for each spec in the report, from the agent usage notifications. Record how many rows verify opened and how many the fix pass closed.
 
 ## Reference
 
